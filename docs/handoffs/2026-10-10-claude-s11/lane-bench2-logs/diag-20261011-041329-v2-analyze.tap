@@ -1,0 +1,20 @@
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_authid", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_subscription", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_database", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_db_role_setting", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_tablespace", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_auth_members", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_shdepend", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_shdescription", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_replication_origin", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_shseclabel", skipping it
+psql:/w/scratch/bench2-lane/probe-analyze.sql:1: WARNING:  permission denied to analyze "pg_parameter_acl", skipping it
+/w/scratch/bench2-lane/probe-analyze.sql .. 
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/probe-analyze.sql (Wstat: 0 Tests: 0 Failed: 0)
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  1 wallclock secs ( 0.02 usr  0.01 sys +  0.01 cusr  0.00 csys =  0.04 CPU)
+Result: FAIL

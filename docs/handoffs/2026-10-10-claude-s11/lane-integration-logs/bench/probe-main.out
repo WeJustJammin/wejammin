@@ -1,0 +1,26 @@
+[probe] main load_before=1.81 2.67 3.78
+[probe] main exit=1 load_after=1.98 2.68 3.77
+# probe: role=postgres rolsuper=false track_functions=none shared_preload=pg_stat_statements, pgaudit, plpgsql, plpgsql_check, pg_cron, pg_net, pgsodium, auto_explain, pg_tle, plan_filter, supabase_vault server_version=17.6 work_mem=4MB jit=on
+# 00 TOTAL (as bench times it)                         p50=  308.1 p95=  386.1 max=  402.5
+# 01 start->scope/capability/reserve                   p50=    0.6 p95=    1.7 max=    2.9
+# 02 reserve                                           p50=    2.7 p95=    3.7 max=    4.6
+# 03 exact_keys                                        p50=    0.1 p95=    0.3 max=    0.5
+# 04 field-less validation (regex/registries)          p50=    1.7 p95=    3.6 max=    6.6
+# 05 template check                                    p50=    0.0 p95=    0.1 max=    0.2
+# 06 duplicate checks (jsonb_array_elements x5)        p50=    1.3 p95=    2.3 max=    3.1
+# 07 locale shape                                      p50=    0.2 p95=    1.1 max=    2.8
+# 08 locale validate (platform_api)                    p50=    1.1 p95=    2.7 max=    5.3
+# 09 advisory lock + exists                            p50=    0.1 p95=    0.6 max=    1.3
+# 10 definition_artifact_hash                          p50=   78.3 p95=   96.0 max=  100.7
+# 11 insert content_types                              p50=    0.7 p95=    1.1 max=    1.7
+# 12 insert content_type_versions                      p50=    2.1 p95=    4.4 max=    8.2
+# 13 insert schema_artifacts (manifests)               p50=   56.2 p95=   71.2 max=   84.9
+# 14 field validation (cms_valid_field_input x128)     p50=   64.9 p95=   84.8 max=  110.0
+# 15 insert 128 field defs                             p50=   83.2 p95=   95.2 max=   99.5
+# 16 relations/capabilities loops                      p50=    0.1 p95=    0.2 max=    0.3
+# 17 emit_event                                        p50=    0.8 p95=    0.9 max=    1.1
+# 18 type_version_resource                             p50=    4.3 p95=    5.7 max=    5.8
+# 19 cms_complete                                      p50=    0.6 p95=    0.8 max=    0.9
+# 21 from last stamp to RPC return                     p50=    0.9 p95=    1.5 max=    2.3
+Result: FAIL
+psql:/tmp/claude-1000/-home-rob-Projects-WeJammin/7aaa9e49-fdde-440a-9c62-f82994358a13/scratchpad/probe/supabase/tests/probe_create_timing.sql:111: ERROR:  # No tests run!

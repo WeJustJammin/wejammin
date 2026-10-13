@@ -1,0 +1,26 @@
+psql:/w/scratch/bench2-lane/probe-prof.sql:2: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-prof.sql:4: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-prof.sql:103: ERROR:  permission denied to set parameter "pg_stat_statements.track"
+CONTEXT:  SQL statement "SELECT pg_catalog.set_config('pg_stat_statements.track', 'all', true)"
+PL/pgSQL function inline_code_block line 6 at PERFORM
+/w/scratch/bench2-lane/probe-prof.sql .. 
+{"created": true, "personId": "76f39f1a-0c03-43e5-b620-e36b4d0729de", "contextKind": "self", "accountState": "active", "actingPartyId": "76f39f1a-0c03-43e5-b620-e36b4d0729de", "bindingVersion": 1}
+{"created": true, "personId": "5e7c19d6-c22e-4210-96f8-729e8ea91de4", "contextKind": "self", "accountState": "active", "actingPartyId": "5e7c19d6-c22e-4210-96f8-729e8ea91de4", "bindingVersion": 1}
+{"created": true, "personId": "22243d66-008f-4ca0-86be-d3f132b785ed", "contextKind": "self", "accountState": "active", "actingPartyId": "22243d66-008f-4ca0-86be-d3f132b785ed", "bindingVersion": 1}
+{"created": true, "personId": "b05e2247-29d3-45fc-8988-68725e8fc141", "contextKind": "self", "accountState": "active", "actingPartyId": "b05e2247-29d3-45fc-8988-68725e8fc141", "bindingVersion": 1}
+{"created": true, "personId": "3b2e9ae2-9944-4080-aed1-4c71f25a38b3", "contextKind": "self", "accountState": "active", "actingPartyId": "3b2e9ae2-9944-4080-aed1-4c71f25a38b3", "bindingVersion": 1}
+{"created": true, "personId": "f0bd49a9-cd2a-49ca-9b30-b3312e21df7f", "contextKind": "self", "accountState": "active", "actingPartyId": "f0bd49a9-cd2a-49ca-9b30-b3312e21df7f", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/probe-prof.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  1 wallclock secs ( 0.04 usr  0.01 sys +  0.02 cusr  0.00 csys =  0.07 CPU)
+Result: FAIL

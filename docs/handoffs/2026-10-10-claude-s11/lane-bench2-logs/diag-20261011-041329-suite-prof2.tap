@@ -1,0 +1,96 @@
+psql:/w/scratch/bench2-lane/probe-prof.sql:3: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-prof.sql:4: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench2-lane/probe-prof.sql:5: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-prof.sql:126: ERROR:  # No tests run!
+CONTEXT:  PL/pgSQL function _finish(integer,integer,integer,boolean) line 12 at RAISE
+SQL function "finish" statement 1
+/w/scratch/bench2-lane/probe-prof.sql .. 
+{"created": true, "personId": "86890aeb-7fc0-4a3f-9d68-2045f4cc86d2", "contextKind": "self", "accountState": "active", "actingPartyId": "86890aeb-7fc0-4a3f-9d68-2045f4cc86d2", "bindingVersion": 1}
+{"created": true, "personId": "a3c27b0e-4736-4fc7-8be2-a35e93ef468e", "contextKind": "self", "accountState": "active", "actingPartyId": "a3c27b0e-4736-4fc7-8be2-a35e93ef468e", "bindingVersion": 1}
+{"created": true, "personId": "f8e720b3-919e-477c-a0df-716cf092fa9c", "contextKind": "self", "accountState": "active", "actingPartyId": "f8e720b3-919e-477c-a0df-716cf092fa9c", "bindingVersion": 1}
+{"created": true, "personId": "7fd4ec89-d835-42fd-84d9-e19b6a9943d7", "contextKind": "self", "accountState": "active", "actingPartyId": "7fd4ec89-d835-42fd-84d9-e19b6a9943d7", "bindingVersion": 1}
+{"created": true, "personId": "93a8a124-dafa-4906-8587-454224285775", "contextKind": "self", "accountState": "active", "actingPartyId": "93a8a124-dafa-4906-8587-454224285775", "bindingVersion": 1}
+{"created": true, "personId": "3cc5071c-a0b6-462c-a438-ed0a6b7f557a", "contextKind": "self", "accountState": "active", "actingPartyId": "3cc5071c-a0b6-462c-a438-ed0a6b7f557a", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+# STMT calls=1 tot=3345.0 mean=3344.981 rows=1 hit=94657 read=0 dirt=134 | select pg_temp.probe_run($1, $2)
+# STMT calls=15 tot=3238.8 mean=215.922 rows=15 hit=94657 read=0 dirt=134 | select platform_api.cms_create_type_draft($1)
+# STMT calls=15 tot=1298.3 mean=86.557 rows=1920 hit=77941 read=0 dirt=103 | insert into platform_private.cms_field_definition_versions( id, owner_id, state, version, content_type_version_id, stable_field_id, field_ke
+# STMT calls=15 tot=941.0 mean=62.731 rows=15 hit=0 read=0 dirt=0 | exists ( select 1 from pg_catalog.jsonb_array_elements(p_request->'fields') field_entry(value) where not platform_private.cms_valid_field_in
+# STMT calls=5895 tot=482.9 mean=0.082 rows=5895 hit=0 read=0 dirt=0 | '{' || coalesce(( select pg_catalog.string_agg( member.key_text || ':' || case pg_catalog.jsonb_typeof(member.value) when 'object' then plat
+# STMT calls=150 tot=447.9 mean=2.986 rows=150 hit=0 read=0 dirt=0 | '[' || coalesce(( select pg_catalog.string_agg( case pg_catalog.jsonb_typeof(element.value) when 'object' then platform_private.cms_jcs(elem
+# STMT calls=1920 tot=209.2 mean=0.109 rows=1920 hit=13440 read=0 dirt=0 | SELECT platform_private.cms_invalidate_activation_reviews(version_id)
+# STMT calls=1920 tot=189.0 mean=0.098 rows=1920 hit=0 read=0 dirt=0 | pg_catalog.jsonb_typeof(constraints) is distinct from 'object' or not platform_private.cms_json_bounded(constraints, 8192, 8, 64, 256) or ex
+# STMT calls=15 tot=181.3 mean=12.085 rows=15 hit=540 read=0 dirt=30 | insert into platform_private.cms_schema_artifacts( id, owner_id, state, version, content_type_version_id, compiler_version, zod_contract_ref
+# STMT calls=5775 tot=173.7 mean=0.030 rows=5775 hit=0 read=0 dirt=0 | not exists ( with recursive walk(node, level) as ( select p_value, 0 union all select child.value, walk.level + 1 from walk cross join later
+# STMT calls=1920 tot=165.2 mean=0.086 rows=1920 hit=15360 read=0 dirt=0 | select version_row.state::text from platform_private.cms_content_type_versions version_row where version_row.id = parent_version_id order by
+# STMT calls=1920 tot=129.9 mean=0.068 rows=0 hit=13440 read=0 dirt=0 | SELECT 1 from platform_private.cms_content_type_versions version_row where version_row.id = p_candidate_id and version_row.state in ( 'revie
+# STMT calls=30 tot=126.2 mean=4.206 rows=30 hit=0 read=0 dirt=0 | select case when pg_catalog.octet_length(p_value::text) > $2 then $3 when pg_catalog.jsonb_typeof(p_value) not in ($4, $5) then $6 else not 
+# STMT calls=15 tot=71.1 mean=4.743 rows=15 hit=0 read=0 dirt=0 | select jsonb_build_object('typeKey', 'probe' || p_tag, 'label', 'Probe ' || p_tag, 'ownerCapability', 'cms.schema_designer', 'sourceLocale',
+# STMT calls=15 tot=69.8 mean=4.654 rows=15 hit=14697 read=0 dirt=0 | select jsonb_build_object( $2, $3, $4, version_row.id, $5, version_row.version::text, $6, version_row.definition_hash, $7, version_row.creat
+# STMT calls=1950 tot=34.8 mean=0.018 rows=1950 hit=0 read=0 dirt=0 | select p_value is not null and p_value ~ $2
+# STMT calls=1935 tot=26.8 mean=0.014 rows=1935 hit=15480 read=0 dirt=0 | SELECT 1 FROM ONLY "platform_private"."cms_content_type_versions" x WHERE "id" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x
+# STMT calls=1920 tot=26.6 mean=0.014 rows=1920 hit=0 read=0 dirt=0 | select parent_id from ( values (case when tg_op = 'DELETE' then old.content_type_version_id else new.content_type_version_id end), (case whe
+# STMT calls=3855 tot=26.6 mean=0.007 rows=25200 hit=0 read=0 dirt=0 | select value from pg_catalog.jsonb_object_keys(p_value) as value
+# STMT calls=15 tot=26.0 mean=1.736 rows=15 hit=344 read=0 dirt=0 | insert into platform_private.cms_content_type_versions( id, owner_id, state, version, content_type_id, version_no, labels, workflow_key, wor
+# STMT calls=1935 tot=25.0 mean=0.013 rows=1935 hit=0 read=0 dirt=0 | select lower(coalesce(p_key, $2)) = any(array[ $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, 
+# STMT calls=45 tot=21.3 mean=0.473 rows=45 hit=0 read=0 dirt=0 | select coalesce( pg_catalog.jsonb_agg(value order by value->>'stableFieldId', value->>'key'), '[]'::jsonb ) from pg_catalog.jsonb_array_elem
+# STMT calls=15 tot=20.4 mean=1.359 rows=15 hit=0 read=0 dirt=0 | select extensions.digest( pg_catalog.convert_to( (case when coalesce(p_request, $2::jsonb) ? $3 and pg_catalog.jsonb_typeof(p_request->$4) =
+# STMT calls=9810 tot=20.3 mean=0.002 rows=9810 hit=0 read=0 dirt=0 | select pg_catalog.current_setting($1, $2) = $3
+# STMT calls=30 tot=16.0 mean=0.532 rows=30 hit=0 read=0 dirt=0 | select platform_private.cms_jcs_sha256(pg_catalog.jsonb_build_object( $5, p_source, $6, p_default, $7, platform_private.cms_locale_sorted(p_
+# STMT calls=1920 tot=14.5 mean=0.008 rows=1920 hit=0 read=0 dirt=0 | select parent_id from (values (new_version_id), (old_version_id)) parents(parent_id) where parent_id is not null group by parent_id order by
+# STMT calls=1950 tot=13.9 mean=0.007 rows=1950 hit=3900 read=0 dirt=0 | SELECT 1 FROM ONLY "auth"."users" x WHERE "id" OPERATOR(pg_catalog.=) $1 FOR KEY SHARE OF x
+# STMT calls=15 tot=13.3 mean=0.887 rows=15 hit=0 read=0 dirt=0 | (select pg_catalog.count(*) <> pg_catalog.count(distinct pg_catalog.lower(field_entry->>'stableFieldId')) from pg_catalog.jsonb_array_elemen
+# STMT calls=45 tot=11.9 mean=0.264 rows=45 hit=0 read=0 dirt=0 | select pg_catalog.encode( extensions.digest( pg_catalog.convert_to(platform_private.cms_jcs(p_value), $2), $3 ), $4 )
+# STMT calls=15 tot=11.2 mean=0.750 rows=15 hit=308 read=0 dirt=1 | SELECT platform_private.cms_emit_event( 'cms.schema.draft.create', actor_id, acting_party_id, 'cms_content_type_version', version_id, 'CMS_S
+# STMT calls=15 tot=9.7 mean=0.648 rows=15 hit=60 read=0 dirt=0 | select platform_private.cms_workflow_policy_member(p_key, p_version) is not null
+# STMT calls=15 tot=8.7 mean=0.583 rows=15 hit=203 read=0 dirt=0 | SELECT platform_private.cms_complete(reservation.id, version_id, 201, response)
+# STMT calls=15 tot=7.4 mean=0.494 rows=15 hit=155 read=0 dirt=0 | insert into platform_private.cms_content_types( id, owner_id, state, version, type_key, owner_capability, created_by ) values (type_id, acti
+# STMT calls=15 tot=7.3 mean=0.484 rows=15 hit=203 read=0 dirt=0 | update platform_private.idempotency_records set state = 'completed', response_ref = case when p_response is null then jsonb_build_object('st
+# STMT calls=15 tot=5.6 mean=0.373 rows=15 hit=0 read=0 dirt=0 | select platform_private.cms_jcs_sha256(pg_catalog.jsonb_build_object( $6, p_key, $7, p_version, $8, p_risk_class, $9, p_required_decision_co
+# STMT calls=1935 tot=5.5 mean=0.003 rows=1935 hit=0 read=0 dirt=0 | SELECT pg_catalog.set_config('app.cms_rpc', 'true', true)
+# STMT calls=15 tot=4.9 mean=0.326 rows=15 hit=169 read=0 dirt=0 | insert into platform_private.idempotency_records( actor_id, operation, key_hash, request_hash, expires_at ) values ( p_actor_id, p_operation
+# STMT calls=15 tot=4.5 mean=0.299 rows=15 hit=139 read=0 dirt=0 | insert into platform_private.outbox_events( id, event_type, schema_version, aggregate_type, aggregate_id, aggregate_version, correlation_id,
+# STMT calls=15 tot=4.2 mean=0.277 rows=15 hit=0 read=0 dirt=0 | SELECT pg_temp.s09d_session(p_actor)
+# STMT calls=15 tot=4.0 mean=0.264 rows=15 hit=169 read=0 dirt=1 | insert into audit_private.audit_events( action, actor_id, acting_party_id, target_type, target_id, decision, reason_code, correlation_id ) v
+# STMT calls=15 tot=3.1 mean=0.206 rows=15 hit=90 read=0 dirt=0 | SELECT platform_private.cms_require_capability(actor_id, acting_party_id, 'cms.schema_designer')
+# STMT calls=15 tot=2.9 mean=0.191 rows=15 hit=0 read=0 dirt=0 | select case when exists ( select $2 from pg_catalog.jsonb_array_elements( case when pg_catalog.jsonb_typeof(p_definition->$3) = $4 then p_de
+# STMT calls=345 tot=2.6 mean=0.008 rows=345 hit=0 read=0 dirt=0 | SELECT pg_catalog.set_config('probe.t01', pg_catalog.clock_timestamp()::text, true)
+# STMT calls=1 tot=2.6 mean=2.551 rows=1 hit=42 read=0 dirt=0 | select pg_temp.pp_reset()
+# STMT calls=15 tot=2.2 mean=0.145 rows=15 hit=45 read=0 dirt=0 | SELECT platform_private.cms_require_scope_member(actor_id, acting_party_id)
+# 00 TOTAL (as the bench times it)                     p50=  222.4 p95=  258.1 max=  267.4
+# 01 scope member + capability + correlation           p50=    0.4 p95=    0.9 max=    1.0
+# 02 idempotency reserve                               p50=    2.5 p95=    2.8 max=    2.9
+# 03 exact_keys                                        p50=    0.1 p95=    0.1 max=    0.1
+# 04 field-less request validation                     p50=    1.6 p95=    1.7 max=    1.8
+# 05 duplicate checks                                  p50=    1.1 p95=    1.3 max=    1.3
+# 06 locale config shape + validate                    p50=    1.2 p95=    1.4 max=    1.5
+# 07 advisory lock + type-key exists                   p50=    0.1 p95=    0.2 max=    0.2
+# 08 canonical_type_definition + required validators   p50=    2.7 p95=    3.1 max=    3.2
+# 09 editor + renderer manifests                       p50=    0.8 p95=    1.0 max=    1.2
+# 10 contract ref + locale hash                        p50=    0.8 p95=    0.9 max=    1.0
+# 11 jcs of the stub document                          p50=    1.4 p95=    2.2 max=    3.2
+# 12 splice check + jcs of the field array             p50=   27.7 p95=   36.7 max=   38.7
+# 13 sha256                                            p50=    0.2 p95=    0.3 max=    0.3
+# 14 insert content_types                              p50=    0.6 p95=    0.7 max=    0.8
+# 15 insert content_type_versions                      p50=    1.9 p95=    2.2 max=    2.5
+# 16 insert schema_artifacts (manifest CHECKs)         p50=   12.5 p95=   14.8 max=   15.0
+# 17 field validation x128                             p50=   60.3 p95=   74.3 max=   76.6
+# 18 insert 128 field defs (row triggers)              p50=   86.2 p95=  101.1 max=  111.1
+# 19 relations/capabilities loops                      p50=    0.1 p95=    0.2 max=    0.2
+# 20 emit_event                                        p50=    0.7 p95=    1.0 max=    1.1
+# 21 type_version_resource                             p50=    6.0 p95=    8.9 max=   10.8
+# 22 cms_complete                                      p50=    0.6 p95=    0.9 max=    0.9
+# 24 from last stamp to RPC return                     p50=    0.9 p95=    1.4 max=    1.5
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/probe-prof.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  4 wallclock secs ( 0.03 usr  0.00 sys +  0.02 cusr  0.00 csys =  0.05 CPU)
+Result: FAIL

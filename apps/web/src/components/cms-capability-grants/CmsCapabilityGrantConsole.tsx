@@ -9,7 +9,7 @@ import CmsCapabilityGrantRowForm from './CmsCapabilityGrantRowForm';
 import { disabledReasonIdFor } from './cms-capability-grant-reasons';
 import { COMMAND_COPY } from './cms-capability-grant-commands';
 import { stepUpHref } from './cms-capability-grant-navigation';
-import { cmsCapabilityGrantConsoleUrl } from './cms-capability-grant-url';
+import { cmsCapabilityGrantConsoleUrl } from './cms-capability-grant-console-url';
 import { useStepUpFreshness } from '../content-schema-registry/use-step-up-freshness';
 import type { GrantFieldErrors } from './cms-capability-grant-validation';
 import type {

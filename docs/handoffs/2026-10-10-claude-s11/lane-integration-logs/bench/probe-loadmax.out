@@ -1,0 +1,33 @@
+[probe] loadmax load_before=0.84 1.86 2.80
+[probe] loadmax exit=0 load_after=1.43 1.91 2.78
+# A 256 nodes (2x32 props=64 + 192 blocks) checker_input #     59.2 ms   256 nodes, 91078 bytes
+# A 256 nodes (2x32 props=64 + 192 blocks) checker_input #     49.7 ms   256 nodes, 91078 bytes
+# A 256 nodes (2x32 props=64 + 192 blocks) checker_input #     48.7 ms   256 nodes, 91078 bytes
+# A 256 nodes (2x32 props=64 + 192 blocks) render_plan #1      11.8 ms   256 rows
+# A 256 nodes (2x32 props=64 + 192 blocks) render_plan #2      10.0 ms   256 rows
+# A 256 nodes (2x32 props=64 + 192 blocks) render_plan #3      10.6 ms   256 rows
+# B 4096 field nodes (128x32, 4-char keys) checker_input #    795.1 ms   4096 nodes, 1597810 bytes
+# B 4096 field nodes (128x32, 4-char keys) checker_input #    619.9 ms   4096 nodes, 1597810 bytes
+# B 4096 field nodes (128x32, 4-char keys) checker_input #    562.1 ms   4096 nodes, 1597810 bytes
+# B 4096 field nodes (128x32, 4-char keys) render_plan #1     142.8 ms   4096 rows
+# B 4096 field nodes (128x32, 4-char keys) render_plan #2      81.8 ms   4096 rows
+# B 4096 field nodes (128x32, 4-char keys) render_plan #3      67.4 ms   4096 rows
+# C 4096 field nodes (128x32, 64-char keys) checker_input     550.9 ms   4096 nodes, 1843570 bytes
+# C 4096 field nodes (128x32, 64-char keys) checker_input     558.6 ms   4096 nodes, 1843570 bytes
+# C 4096 field nodes (128x32, 64-char keys) checker_input     450.5 ms   4096 nodes, 1843570 bytes
+# C 4096 field nodes (128x32, 64-char keys) render_plan #1     65.2 ms   4096 rows
+# C 4096 field nodes (128x32, 64-char keys) render_plan #2     74.4 ms   4096 rows
+# C 4096 field nodes (128x32, 64-char keys) render_plan #3     62.9 ms   4096 rows
+# D 8192 block nodes only checker_input #1                   1156.4 ms   8192 nodes, 2817311 bytes
+# D 8192 block nodes only checker_input #2                   1296.4 ms   8192 nodes, 2817311 bytes
+# D 8192 block nodes only checker_input #3                   1123.4 ms   8192 nodes, 2817311 bytes
+# D 8192 block nodes only render_plan #1                      222.8 ms   8192 rows
+# D 8192 block nodes only render_plan #2                      169.2 ms   8192 rows
+# D 8192 block nodes only render_plan #3                      139.6 ms   8192 rows
+# E 4096 + 8192 = 12288 nodes checker_input #1               1791.4 ms   12288 nodes, 4414751 bytes
+# E 4096 + 8192 = 12288 nodes checker_input #2               1665.0 ms   12288 nodes, 4414751 bytes
+# E 4096 + 8192 = 12288 nodes checker_input #3               1671.2 ms   12288 nodes, 4414751 bytes
+# E 4096 + 8192 = 12288 nodes render_plan #1                  236.2 ms   12288 rows
+# E 4096 + 8192 = 12288 nodes render_plan #2                  243.0 ms   12288 rows
+# E 4096 + 8192 = 12288 nodes render_plan #3                  234.3 ms   12288 rows
+Result: PASS

@@ -1,0 +1,3 @@
+# flock -s /tmp/wejammin-quiet.lock pnpm exec tsc --noEmit -p apps/web/tsconfig.json ; ... -p apps/worker/tsconfig.json (resume 2026-10-11, HEAD 0fd4bf31)
+web-exit=0
+worker-exit=0

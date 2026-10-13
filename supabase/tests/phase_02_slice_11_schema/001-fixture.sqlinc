@@ -1,0 +1,111 @@
+-- Slice 11 data-model fixture (lane S11-2).  Builds on the Slice 10 RPC
+-- fixture (organization, creator/editor/outsider/stranger persons, an active
+-- content type, entry A with revision A1 authored by the creator) and adds the
+-- extra rows the review, schedule, publication and token rules need.  Everything
+-- is inserted inside the suite's rolled-back transaction inside the CMS RPC
+-- context, exactly as a named RPC would write it.
+--
+--   entry A  a9100000-...-301   revision A1 (…302, creator) and A2 (a9110000-...-001, editor)
+--   entry B  a9110000-...-101   revision B1 (a9110000-...-102, creator)
+--   persons  creator (A1 author), editor (A2 author), outsider, stranger and
+--            reviewer shadow persons s11_reviewer_01 .. s11_reviewer_17
+--
+-- Reviews, decisions and the other S11 rows are created by the tests that
+-- probe them, through pg_temp.s11_insert_sql(), so every rule is exercised
+-- against the real guards.
+
+select set_config('app.cms_rpc', 'true', true);
+
+insert into s11_ids(key, value)
+select 'org', value from s10_ids where key = 'organization'
+union all select 'creator', value from s10_ids where key = 'creatorPerson'
+union all select 'editor', value from s10_ids where key = 'editorPerson'
+union all select 'outsider', value from s10_ids where key = 'outsiderPerson'
+union all select 'stranger', value from s10_ids where key = 'strangerPerson'
+union all select 'creatorAuth', value from s10_ids where key = 'creatorAuth'
+union all select 'schemaVersion', value from s10_ids where key = 'draftVersionId'
+union all select 'artifactId', value from s10_ids where key = 'typeArtifactId'
+union all select 'artifactHash', value from s10_ids where key = 'typeArtifactHash'
+union all select 'entryA', value from s10_ids where key = 'entryId'
+union all select 'revA1', value from s10_ids where key = 'entryRevisionId'
+union all select 'revA2', 'a9110000-0000-4000-8000-000000000001'
+union all select 'entryB', 'a9110000-0000-4000-8000-000000000101'
+union all select 'revB1', 'a9110000-0000-4000-8000-000000000102';
+
+-- Revision A2: a second draft of entry A authored by the editor, so revision
+-- author separation can be probed with two distinct authors.
+insert into platform_private.cms_entry_revisions(
+  id, owner_id, entry_id, revision_number, schema_version_id,
+  template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+  payload_hash, author_person_id, acting_party_id, state, version,
+  validation_state, validation_report, created_at, updated_at
+)
+values (
+  pg_temp.s11_id('revA2'), pg_temp.s11_id('org'), pg_temp.s11_id('entryA'), 2,
+  pg_temp.s11_id('schemaVersion'), null, '[]'::jsonb,
+  jsonb_build_array(pg_temp.s11_id('revA1')), 'en-US',
+  pg_temp.s11_hex('s11-revA2'), pg_temp.s11_id('editor'),
+  pg_temp.s11_id('org'), 'draft', 1, 'valid', '{}'::jsonb,
+  timestamptz '2026-10-08T12:00:00Z', timestamptz '2026-10-08T12:00:00Z'
+);
+
+-- Entry B with its own first revision: the cross-entry negative controls.
+insert into platform_private.cms_content_entries(
+  id, owner_id, content_type_id, owner_party_id, lifecycle,
+  current_draft_revision_id, version, created_by, created_at, updated_at
+)
+select pg_temp.s11_id('entryB'), pg_temp.s11_id('org'), ids_type.value::uuid,
+       pg_temp.s11_id('org'), 'active', null, 1, pg_temp.s11_id('creatorAuth'),
+       timestamptz '2026-10-08T12:00:00Z', timestamptz '2026-10-08T12:00:00Z'
+from s10_ids ids_type where ids_type.key = 'typeId';
+
+insert into platform_private.cms_entry_revisions(
+  id, owner_id, entry_id, revision_number, schema_version_id,
+  template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
+  payload_hash, author_person_id, acting_party_id, state, version,
+  validation_state, validation_report, created_at, updated_at
+)
+values (
+  pg_temp.s11_id('revB1'), pg_temp.s11_id('org'), pg_temp.s11_id('entryB'), 1,
+  pg_temp.s11_id('schemaVersion'), null, '[]'::jsonb, '[]'::jsonb, 'en-US',
+  pg_temp.s11_hex('s11-revB1'), pg_temp.s11_id('creator'),
+  pg_temp.s11_id('org'), 'draft', 1, 'valid', '{}'::jsonb,
+  timestamptz '2026-10-08T12:00:00Z', timestamptz '2026-10-08T12:00:00Z'
+);
+
+update platform_private.cms_content_entries
+set current_draft_revision_id = pg_temp.s11_id('revB1')
+where id = pg_temp.s11_id('entryB');
+
+-- Shadow persons used as extra reviewers (no auth user, no membership).
+insert into platform_private.party(id, kind)
+select ('a9110000-0000-4000-8000-0000000020' || lpad(n::text, 2, '0'))::uuid, 'person'
+from generate_series(1, 17) as n;
+
+insert into platform_private.person_party(party_id, account_state)
+select ('a9110000-0000-4000-8000-0000000020' || lpad(n::text, 2, '0'))::uuid, 'shadow'
+from generate_series(1, 17) as n;
+
+insert into s11_ids(key, value)
+select 'reviewer' || lpad(n::text, 2, '0'),
+       'a9110000-0000-4000-8000-0000000020' || lpad(n::text, 2, '0')
+from generate_series(1, 17) as n;
+
+select ok(
+  (select count(*) = 14 from s11_ids where key not like 'reviewer%')
+    and (select count(*) = 17 from s11_ids where key like 'reviewer%')
+    and exists (
+      select 1 from platform_private.cms_entry_revisions
+      where id = pg_temp.s11_id('revA2')
+        and entry_id = pg_temp.s11_id('entryA')
+        and author_person_id = pg_temp.s11_id('editor')
+    )
+    and exists (
+      select 1 from platform_private.cms_entry_revisions
+      where id = pg_temp.s11_id('revB1')
+        and entry_id = pg_temp.s11_id('entryB')
+    )
+    and (select count(*) = 17 from platform_private.person_party
+         where party_id::text like 'a9110000-0000-4000-8000-0000000020%'),
+  'S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist'
+);

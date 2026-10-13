@@ -1,6 +1,7 @@
 import {
   AsyncRpcDependencyError,
   AsyncRpcManualReviewError,
+  AsyncRpcRefusalError,
   AsyncRpcTransportError,
 } from './async-runtime-rpc-errors';
 
@@ -117,5 +118,40 @@ export const parseResponseBody = (body: Uint8Array): unknown => {
     return JSON.parse(text) as unknown;
   } catch {
     throw new AsyncRpcManualReviewError('malformed_json');
+  }
+};
+
+/** A refusal body is one small PostgREST error object; anything larger is not one. */
+const REFUSAL_BODY_MAX_BYTES = 4 * 1024;
+/** The whole token, case-sensitive: `preflight_evidence_stale`, `CONFLICT`, never prose. */
+const REFUSAL_TOKEN = /^[A-Za-z][A-Za-z0-9_]{0,63}$/u;
+
+/**
+ * The failure of a non-2xx answer. It is a typed refusal only for a 4xx whose
+ * bounded body is exactly the database refusal shape (`code` `P0001` and an
+ * identifier-shaped `message`); every other case, including an unreadable or
+ * oversized body, is the opaque `http_error` it has always been. The body is
+ * read under the call's own abort signal and is never retained.
+ */
+export const httpFailure = async (
+  response: Response,
+  signal: AbortSignal,
+): Promise<AsyncRpcDependencyError> => {
+  if (response.status < 400 || response.status > 499)
+    return new AsyncRpcDependencyError('http_error');
+  try {
+    const body = parseResponseBody(
+      await readBoundedResponse(response, REFUSAL_BODY_MAX_BYTES, signal),
+    );
+    if (body === null || typeof body !== 'object' || Array.isArray(body))
+      return new AsyncRpcDependencyError('http_error');
+    const { code, message } = body as Record<string, unknown>;
+    return code === 'P0001' &&
+      typeof message === 'string' &&
+      REFUSAL_TOKEN.test(message)
+      ? new AsyncRpcRefusalError(message)
+      : new AsyncRpcDependencyError('http_error');
+  } catch {
+    return new AsyncRpcDependencyError('http_error');
   }
 };

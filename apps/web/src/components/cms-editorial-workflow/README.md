@@ -1,0 +1,135 @@
+# CMS editorial workflow components (Slice 11)
+
+## Contents
+
+The browser surfaces of the review, schedule, preview and publication workflow
+(CMS-03B-05 to -09 and the reads and assignment CMS-03B-15 to -18): the workflow
+panel and its checks, the reviewer queue, the review detail, and the six command
+forms with the engine they share. Internal operations CMS-03B-19 and -20 have no
+browser surface and are never modelled here.
+
+## Ownership
+
+These modules render server-verified resources and send the generated, strict
+request bodies. They own the `Idempotency-Key`, the exactly-once guard, the
+reconcile-before-retry rule, the step-up detour and the fixed copy. They own no
+authorization, no time rules (the pinned Time authority is imported, never
+re-implemented) and no persistence: authority, concealment and every typed
+refusal come from the Worker through the first-party proxies in
+`apps/web/src/server/cms-workflow-platform-*.ts`.
+
+## Module map
+
+- Lazy contracts (AC-106): the island and its forms ship no zod. The specs table
+  is zod-free (`schemas(validators)` reads the generated schemas from the lazily
+  loaded validators); the transport, the canonical reads and the form checks
+  obtain them with `loadedCmsValidators() ?? (await loadCmsValidators())` or
+  `withCmsValidators`, and a command frame warms them when a control takes
+  focus. Validators that cannot be fetched send nothing and say so
+  (`validators_unavailable`).
+- Contracts and transport: `cms-workflow-command-specs.ts` (the six commands as
+  one table shared with the proxy), `cms-workflow-command-transport.ts` (send one
+  command, reduce the answer to one closed result), `cms-workflow-canonical-read.ts`
+  (the no-store refetch of a workflow or review).
+- State: `cms-workflow-command-controller.ts` (key policy, step-up draft and
+  restore, sync conflict), `use-cms-workflow-command.ts`,
+  `use-cms-workflow-canonical.ts`, `use-cms-workflow-draft-fields.ts`.
+- Copy: `cms-workflow-labels.ts` (every closed vocabulary), `cms-workflow-refusal.ts`
+  (a refusal to a kind, a sentence and the fields it names).
+- Reads (server-rendered): `CmsEditorialWorkflowPanel`, `CmsEditorialPreflightSummary`,
+  `CmsEditorialReviewQueue`, `CmsEditorialReviewDetail`.
+- Forms: `CmsEditorialReviewSubmitForm` (05), `CmsEditorialDecisionForm` (06),
+  `CmsEditorialScheduleForm` (07, lazy Time authority via `use-cms-schedule-time.ts`
+  and `cms-workflow-schedule-resolution.ts`; its action choices come from
+  `cms-workflow-schedule-actions.ts` and the server-proven `publishPermitted`),
+  `CmsEditorialPreviewForm` and
+  `CmsEditorialPreviewToken` (08), `CmsEditorialPublishConfirmation` (09),
+  `CmsEditorialReviewAssignmentForm` over `CmsEditorialAssignmentCreate` and
+  `CmsEditorialAssignmentRevoke` (18). Shared parts: `CmsWorkflowCommandFrame`,
+  `CmsWorkflowFields`, `CmsWorkflowClosedState`.
+- Islands: `CmsEditorialWorkflowIsland` and `CmsEditorialReviewDetailIsland`. Each
+  owns one persistent confirmation line (`CmsWorkflowStatusRegion`, fed by
+  `useIslandConfirmation` and read by the forms through `useCommittedAnnouncement`,
+  both in `use-cms-workflow-status.ts`); `CmsWorkflowRefusalAlert` is the alert a
+  form frame renders for a refusal, an unavailable step-up or an ended session.
+- `*.test-support.ts(x)` — fixtures parsed through the real contracts
+  (`cms-workflow-fixtures`), the island mounts (`cms-workflow-island-mount`) and
+  the focus drivers (`cms-workflow-focus`, `cms-workflow-focus-harness`).
+
+## Extension rules
+
+A new command is a row in `cms-workflow-command-specs.ts` (and its registry row),
+a form over `useWorkflowCommand` and `CmsWorkflowCommandFrame`, and its copy in
+`cms-workflow-labels.ts` / `cms-workflow-refusal.ts`. Never render server text:
+only a verified reason token selects a fixed sentence. Never persist a manifest,
+a version set, a hash, a token or a person identifier: a step-up draft holds only
+the editable text fields of a form. A 202 is "scheduled" or "recorded", never
+"published". Files stay within the size limits (components 200 lines, lib 300,
+tests 400).
+
+## Focus rules (FE03)
+
+Focus stays on the control a person activated until navigation or a named result
+heading; a refetch never moves it. Only these may take it: the refusal alert and
+the local-error summary of `CmsWorkflowCommandFrame`, the preview token heading
+of `CmsEditorialPreviewForm`, and the heading a form names to its island through
+`onDone` (`WORKFLOW_HEADING_IDS`, `REVIEW_DETAIL_HEADING_IDS`) once the canonical
+read behind the command has landed. A commit control is `aria-disabled`, never
+`disabled`, because a disabled button drops keyboard focus to the body. The rules
+are pinned per form by `cms-workflow-focus-forms.test.tsx` (every command form)
+and through the real islands by `*Island.focus.test.tsx`; the route heading on
+navigation only is `apps/web/src/lib/route-heading-focus.ts`.
+
+## Confirmations (FE03 "announce status")
+
+A committed command is confirmed by one polite atomic status line that the
+island owns (`data-cms-workflow-status="island"`, under the Actions heading),
+never by the form that sent it: the canonical refetch that follows a decision, a
+submission, a publication or a schedule removes that form within a few
+milliseconds, and a confirmation inside it would be gone before assistive
+technology could read it. The line is mounted empty with the island, so it is
+registered before the first message. A committed form hands its sentence to the
+line and its own status line then stays empty, so exactly one live region says
+it. The sentence stays until the next command begins (any form in the island
+reaching `pending`), until the form that produced it starts over (`startOver`: hiding
+a preview token, assigning another reviewer) or until navigation. A refusal, a lost
+answer and a step-up detour put nothing in the line: the pending, restored and
+unknown sentences stay in the form's own status line and a refusal in its alert. When the island ends
+(session over, record gone) the line goes with the protected data. A form mounted
+alone, outside an island, keeps its committed sentence in its own line. Focus is
+unaffected: the line never takes it. Pinned by `*Island.status.test.tsx` (through the
+real islands and the real controller) and `use-cms-workflow-status.test.tsx`.
+
+## Schedule actions
+
+BE03b:268-270 refuses the revision author only the action `publish`. The island
+passes `publishPermitted={permittedNextActions.includes('publish')}` and the form
+then offers `unpublish`, `expire` and `archive` (defaulting to the first) with the
+fixed second-person note; it never hides the form. A stored or earlier `publish`
+choice is replaced by the default once `publish` is no longer offered.
+
+## Retain input (FE03, AC-037, AC-040, AC-043)
+
+A refusal or a lost answer never costs a person what they typed. The forms keep the entries in their own
+state (`use-cms-workflow-draft-fields.ts`, or the preview form's `useState`), never in the controller, so the
+controller specs cannot prove retention. `cms-workflow-input-retention.test.tsx` (decision, submit, preview)
+and `cms-workflow-input-retention-time.test.tsx` (schedule, publish) mount each form with real fetches, enter
+values, drive a definite 409 or 422 and an unknown 504, assert the controls still hold exactly what was
+entered, press the commit control again and assert the second request carries the same body (and, after an
+unknown outcome, the same `Idempotency-Key`). Their shared fetch queue, environment and request readers are
+in `cms-workflow-input-retention.test-support.ts`. To cover a new form add a `describe` to the file with room
+(each stays under 400 lines) and assert the entered values, not a phase.
+
+## Conventions
+
+Island tests use `// @vitest-environment jsdom` with the native-DOM driver in
+`../cms-editorial-fields/cms-editor-dom.test-support.tsx`. Element ids repeat
+across mounts, so a test that mounts two forms unmounts the first. Assertions
+prefer roles, accessible names and live-region attributes over styling.
+
+## Related links
+
+- `.memory/wiki/specs/fe/03-cms-content-modeling.md` (Slice 11 surfaces and states)
+- `.memory/wiki/specs/be/03b-editorial-workflow-publication.md`
+- `apps/web/src/components/cms-editorial/README.md`
+- `apps/web/src/server/README.md`

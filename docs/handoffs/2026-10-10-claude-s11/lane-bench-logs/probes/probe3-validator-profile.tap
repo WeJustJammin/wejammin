@@ -1,0 +1,53 @@
+psql:/w/scratch/bench-lane/probe3.sql:2: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench-lane/probe3.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench-lane/probe3.sql:4: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench-lane/probe3.sql:27: NOTICE:  instrumented 34 points
+psql:/w/scratch/bench-lane/probe3.sql:46: ERROR:  # No tests run!
+CONTEXT:  PL/pgSQL function _finish(integer,integer,integer,boolean) line 12 at RAISE
+SQL function "finish" statement 1
+/w/scratch/bench-lane/probe3.sql .. 
+# stmt 01 = 243.2 us
+# stmt 02 = 327.2 us
+# stmt 03 = 45.8 us
+# stmt 04 = 629.6 us
+# stmt 05 = 55.4 us
+# stmt 06 = 45.0 us
+# stmt 07 = 41.0 us
+# stmt 08 = 40.5 us
+# stmt 09 = 540.4 us
+# stmt 10 = 57.0 us
+# stmt 11 = 45.4 us
+# stmt 12 = 40.0 us
+# stmt 13 = 38.4 us
+# stmt 14 = 37.5 us
+# stmt 15 = 38.9 us
+# stmt 16 = 39.7 us
+# stmt 17 = 38.0 us
+# stmt 18 = 38.6 us
+# stmt 19 = 40.4 us
+# stmt 20 = 54.0 us
+# stmt 21 = 42.5 us
+# stmt 22 = 38.4 us
+# stmt 23 = 53.7 us
+# stmt 24 = 40.8 us
+# stmt 25 = 38.5 us
+# stmt 26 = 45.3 us
+# stmt 27 = 39.9 us
+# stmt 28 = 40.2 us
+# stmt 29 = 40.5 us
+# stmt 30 = 48.0 us
+# stmt 31 = 42.9 us
+# stmt 32 = 41.5 us
+# stmt 33 = 241.4 us
+# stmt 34 = 84.7 us
+# total per call = 3336.5 us (incl. stamp inserts)
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench-lane/probe3.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  1 wallclock secs ( 0.13 usr  0.02 sys +  0.07 cusr  0.01 csys =  0.23 CPU)
+Result: FAIL

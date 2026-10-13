@@ -1,0 +1,22 @@
+-- Committed fixture of the Slice 11 preview race runners (lane S11-3c).  Included by
+-- infra/database-races/preview-kit.mjs AFTER the review world (000-world, 030-submit) and 000-world of this
+-- directory, inside one transaction that COMMITS (the runners drive fresh sessions against it).  The Vault
+-- history-signing key is committed so the preview token can be derived.  The last statement of the script is the
+-- ids document the runners read.
+
+select pg_temp.r11p_key();
+select pg_temp.r11_entry(tag) from (values ('race-pv-same'), ('race-pv-mismatch'), ('race-pv-grant'), ('race-pv-held'),
+  ('race-pv-archive'), ('race-pv-verify')) as t(tag);
+
+select jsonb_build_object(
+  'org', pg_temp.s11_id('org'),
+  'organization', pg_temp.s11_id('org'),
+  'creatorPerson', pg_temp.s11_id('creator'),
+  'actors', (select jsonb_object_agg(key, jsonb_build_object('auth', auth_user_id, 'person', person_id)) from r11_actor),
+  'entries', (select jsonb_object_agg(tag, pg_temp.h11w_uuid(tag || ':entry'))
+                from (values ('race-pv-same'), ('race-pv-mismatch'), ('race-pv-grant'), ('race-pv-held'),
+                             ('race-pv-archive'), ('race-pv-verify')) as t(tag)),
+  'revisions', (select jsonb_object_agg(tag, pg_temp.h11w_uuid(tag || ':revision'))
+                  from (values ('race-pv-same'), ('race-pv-mismatch'), ('race-pv-grant'), ('race-pv-held'),
+                               ('race-pv-archive'), ('race-pv-verify')) as t(tag))
+)::text;

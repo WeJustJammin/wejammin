@@ -14,12 +14,20 @@ const CanonicalUuidSchema = z
   );
 const RegistryKeySchema = z.string().regex(/^[a-z][a-z0-9_.:-]{0,127}$/);
 
+const POSITIVE_BIGINT_DECIMAL = /^[1-9]\d{0,18}$/;
+
+// Zod 4 runs refinements even after a failed regex check, so the range check
+// only converts a value that already matches the canonical decimal grammar;
+// anything else is a validation failure, never a thrown SyntaxError.
 export const PositiveBigintDecimalSchema = z
   .string()
-  .regex(/^[1-9]\d{0,18}$/)
-  .refine((value) => BigInt(value) <= 9_223_372_036_854_775_807n, {
-    message: 'Version exceeds the positive bigint range',
-  });
+  .regex(POSITIVE_BIGINT_DECIMAL)
+  .refine(
+    (value) =>
+      !POSITIVE_BIGINT_DECIMAL.test(value) ||
+      BigInt(value) <= 9_223_372_036_854_775_807n,
+    { message: 'Version exceeds the positive bigint range' },
+  );
 
 export const PlatformEventTypeSchema = z.enum([
   'identity.acting-context.revoked.v1',

@@ -9,6 +9,7 @@ import {
   QuotedVersionSchema,
 } from '../request-navigation-security.ts';
 import { ConflictChoiceSchema } from './conflict-choice.ts';
+import { refineIfMatchEqualsExpectedVersion } from './if-match.ts';
 
 /**
  * BE03b ConflictResolutionRequest: the CMS-03B-02 body.  entryId and conflictId
@@ -68,12 +69,14 @@ export const ConflictResolutionForbiddenAuthoritySchema = z
  * headers, and the explicit-choice body, so the generated document can bind
  * every parameter location to the runtime schemas it already validates.
  */
-export const ConflictResolutionApiRequestSchema = z.strictObject({
-  entryId: CmsUuidSchema,
-  conflictId: CmsUuidSchema,
-  headers: ConflictResolutionHeadersSchema,
-  body: ConflictResolutionRequestSchema,
-});
+export const ConflictResolutionApiRequestSchema = z
+  .strictObject({
+    entryId: CmsUuidSchema,
+    conflictId: CmsUuidSchema,
+    headers: ConflictResolutionHeadersSchema,
+    body: ConflictResolutionRequestSchema,
+  })
+  .superRefine(refineIfMatchEqualsExpectedVersion);
 
 /**
  * Implementation checklist only.  These are the checks CMS-03B-02 must perform

@@ -1,0 +1,135 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts (14 tests | 6 failed) 165ms
+     × after a lost response keeps the key and replays the IDENTICAL request 37ms
+     × stops replaying automatically after three tries and offers a manual retry 11ms
+     × maps a typed 422 to its field and fixed copy, keeps the values, and waits for an edit 9ms
+     × waits out a rate limit and then saves again with the values it kept 17ms
+     × on a 409 with a durable open conflict reads it, links to resolution and keeps the values 7ms
+     × on a 409 without a durable conflict rebases the unsent edits and retries once 10ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 6 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts > editor controller: outcome unknown and refusals > after a lost response keeps the key and replays the IDENTICAL request
+AssertionError: expected 'saving' to be 'unknown' // Object.is equality
+
+Expected: "unknown"
+Received: "saving"
+
+ ❯ apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts:30:41
+     28|     controller.setValue(TITLE, 'Replay me');
+     29|     await clock.advance(3_000);
+     30|     expect(controller.getState().phase).toBe('unknown');
+       |                                         ^
+     31|     // An edit made now must not alter the request that may already be…
+     32|     controller.setValue(BLURB, 'later');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts > editor controller: outcome unknown and refusals > stops replaying automatically after three tries and offers a manual retry
+AssertionError: expected [] to have a length of 4 but got +0
+
+- Expected
++ Received
+
+- 4
++ 0
+
+ ❯ apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts:55:27
+     53|     await clock.advance(3_000);
+     54|     await clock.advance(30_000);
+     55|     expect(writes(calls)).toHaveLength(4);
+       |                           ^
+     56|     expect(controller.getState()).toMatchObject({
+     57|       phase: 'unknown',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+ FAIL  apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts > editor controller: outcome unknown and refusals > maps a typed 422 to its field and fixed copy, keeps the values, and waits for an edit
+AssertionError: expected 'saving' to be 'invalid' // Object.is equality
+
+Expected: "invalid"
+Received: "saving"
+
+ ❯ apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts:80:25
+     78|     await clock.advance(3_000);
+     79|     const state = controller.getState();
+     80|     expect(state.phase).toBe('invalid');
+       |                         ^
+     81|     expect(state.refusedFieldIds).toEqual([TITLE]);
+     82|     expect(state.message).toContain('rich text');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/6]⎯
+
+ FAIL  apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts > editor controller: outcome unknown and refusals > waits out a rate limit and then saves again with the values it kept
+AssertionError: expected { phase: 'saving', …(17) } to match object { phase: 'waiting', …(1) }
+(24 matching properties omitted from actual)
+
+- Expected
++ Received
+
+  {
+-   "phase": "waiting",
+-   "retryAfterSeconds": 7,
++   "phase": "saving",
++   "retryAfterSeconds": null,
+  }
+
+ ❯ apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts:108:35
+    106|     controller.setValue(TITLE, 'Patient');
+    107|     await clock.advance(3_000);
+    108|     expect(controller.getState()).toMatchObject({
+       |                                   ^
+    109|       phase: 'waiting',
+    110|       retryAfterSeconds: 7,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/6]⎯
+
+ FAIL  apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts > editor controller: conflicts and merges > on a 409 with a durable open conflict reads it, links to resolution and keeps the values
+AssertionError: expected undefined to match object { method: 'GET', …(1) }
+
+- Expected:
+{
+  "method": "GET",
+  "url": "/api/v1/cms/entries/018f0c45-73fe-7dc2-9c09-68f7ecf132dc",
+}
+
++ Received:
+undefined
+
+ ❯ apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts:152:22
+    150|     controller.setValue(TITLE, 'Mine');
+    151|     await clock.advance(3_000);
+    152|     expect(calls[1]).toMatchObject({
+       |                      ^
+    153|       method: 'GET',
+    154|       url: `/api/v1/cms/entries/${ENTRY_ID}`,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/6]⎯
+
+ FAIL  apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts > editor controller: conflicts and merges > on a 409 without a durable conflict rebases the unsent edits and retries once
+AssertionError: expected [ { …(4) } ] to have a length of 2 but got 1
+
+- Expected
++ Received
+
+- 2
++ 1
+
+ ❯ apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts:184:27
+    182|     controller.setValue(TITLE, 'Mine');
+    183|     await clock.advance(3_000);
+    184|     expect(writes(calls)).toHaveLength(2);
+       |                           ^
+    185|     expect(bodyOf(calls[2])).toMatchObject({
+    186|       baseRevision: '3',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/6]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  6 failed | 8 passed (14)
+   Start at  23:25:29
+   Duration  5.30s (transform 2.78s, setup 0ms, import 3.79s, tests 165ms, environment 1.10s)
+

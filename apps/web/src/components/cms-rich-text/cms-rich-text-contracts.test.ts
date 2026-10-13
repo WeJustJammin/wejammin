@@ -2,8 +2,11 @@ import { describe, expect, it } from 'vitest';
 
 import { RichTextV1Schema } from '@wejammin/contracts';
 
-// Runtime-computed specifier: the planned module is authored by the next slice.
-const RICH_TEXT_CONTRACTS = String('./cms-rich-text-contracts');
+import { isCanonicalRichText } from './cms-rich-text-contracts';
+
+// Runtime-computed specifier: the zod schemas of the browser projection live in
+// the schema module, which only these parity proofs import (AC-106).
+const RICH_TEXT_CONTRACTS = String('./cms-rich-text-schemas');
 type RichTextContractsModule = {
   RichTextV1DocumentSchema: {
     safeParse(value: unknown): { success: boolean };
@@ -181,6 +184,13 @@ describe('[P2-S10] rich_text.v1 browser projection parity with the shared schema
       const shared = RichTextV1Schema.safeParse(probe.value).success;
       expect(mod!.RichTextV1DocumentSchema.safeParse(probe.value).success).toBe(
         shared,
+      );
+    });
+
+  for (const probe of probes)
+    it(`the zod-free guard agrees with the shared schema: ${probe.name}`, () => {
+      expect(isCanonicalRichText(probe.value)).toBe(
+        RichTextV1Schema.safeParse(probe.value).success,
       );
     });
 

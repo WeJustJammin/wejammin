@@ -1,0 +1,150 @@
+     73|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/18]⎯
+
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps free text an opaque http_error without leaking the body
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps a token over 64 characters an opaque http_error without leaking the body
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps a non-P0001 SQLSTATE an opaque http_error without leaking the body
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps a PostgREST error code an opaque http_error without leaking the body
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps a missing message an opaque http_error without leaking the body
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps a non-string message an opaque http_error without leaking the body
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps an array an opaque http_error without leaking the body
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps malformed JSON an opaque http_error without leaking the body
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps an empty body an opaque http_error without leaking the body
+AssertionError: The instanceof assertion needs a constructor but undefined was given.
+ ❯ apps/worker/src/async-runtime-rpc-refusal.test.ts:86:23
+     84|   ])('keeps %s an opaque http_error without leaking the body', async (…
+     85|     const error = await call(postgrest(body));
+     86|     expect(error).not.toBeInstanceOf(AsyncRpcRefusalError);
+       |                       ^
+     87|     expect(error).toMatchObject({
+     88|       name: 'AsyncRpcDependencyError',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/18]⎯
+
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps an oversized error body an opaque http_error
+AssertionError: The instanceof assertion needs a constructor but undefined was given.
+ ❯ apps/worker/src/async-runtime-rpc-refusal.test.ts:104:23
+    102|       }),
+    103|     );
+    104|     expect(error).not.toBeInstanceOf(AsyncRpcRefusalError);
+       |                       ^
+    105|     expect(error).toMatchObject({ reason: 'http_error' });
+    106|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/18]⎯
+
+ FAIL  apps/worker/src/async-runtime-rpc-refusal.test.ts > a database refusal token through the RPC transport > keeps a 5xx with a token body a plain http_error: only a client refusal is a refusal
+AssertionError: The instanceof assertion needs a constructor but undefined was given.
+ ❯ apps/worker/src/async-runtime-rpc-refusal.test.ts:112:23
+    110|       postgrest({ code: 'P0001', message: 'preflight_evidence_stale' }…
+    111|     );
+    112|     expect(error).not.toBeInstanceOf(AsyncRpcRefusalError);
+       |                       ^
+    113|     expect(error).toMatchObject({ reason: 'http_error' });
+    114|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/18]⎯
+
+ FAIL  apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > recomputes fresh checker evidence and executes the same claim again under the same lease
+AssertionError: expected [ …(3) ] to deeply equal [ …(5) ]
+
+- Expected
++ Received
+
+  [
+    "cms_claim_due_publication_schedules",
+    "cms_load_quality_gate_input",
+    "cms_execute_publication_schedule",
+-   "cms_load_quality_gate_input",
+-   "cms_execute_publication_schedule",
+  ]
+
+ ❯ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts:116:26
+    114|     ).resolves.toBeUndefined();
+    115|
+    116|     expect(names(calls)).toEqual([
+       |                          ^
+    117|       'cms_claim_due_publication_schedules',
+    118|       'cms_load_quality_gate_input',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/18]⎯
+
+ FAIL  apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > re-executes at most twice more, then leaves the schedule to its lease and carries on with the batch
+AssertionError: expected [ …(5) ] to deeply equal [ …(9) ]
+
+- Expected
++ Received
+
+@@ -2,10 +2,6 @@
+    "cms_claim_due_publication_schedules",
+    "cms_load_quality_gate_input",
+    "cms_execute_publication_schedule",
+    "cms_load_quality_gate_input",
+    "cms_execute_publication_schedule",
+-   "cms_load_quality_gate_input",
+-   "cms_execute_publication_schedule",
+-   "cms_load_quality_gate_input",
+-   "cms_execute_publication_schedule",
+  ]
+
+ ❯ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts:164:26
+    162|     ).resolves.toBeUndefined();
+    163|
+    164|     expect(names(calls)).toEqual([
+       |                          ^
+    165|       'cms_claim_due_publication_schedules',
+    166|       // first schedule: the proof, then two recomputations
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/18]⎯
+
+ FAIL  apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > sends no proof on the re-execution when the checker cannot produce one, so the database ladder takes the unavailable outcome
+AssertionError: expected undefined to match object { …(2) }
+
+- Expected:
+{
+  "evidence": null,
+  "leaseId": "223e4567-e89b-42d3-a456-426614174001",
+}
+
++ Received:
+undefined
+
+ ❯ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts:230:20
+    228|     const [first, second] = executes(calls);
+    229|     expect(first?.evidence).not.toBeNull();
+    230|     expect(second).toMatchObject({ leaseId: claim.leaseId, evidence: n…
+       |                    ^
+    231|   });
+    232|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/18]⎯
+
+ FAIL  apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > never reuses the stale evidence object: each execution carries its own proof
+AssertionError: expected undefined to match object { category: 'accessibility', …(1) }
+
+- Expected:
+{
+  "category": "accessibility",
+  "outcome": "healthy",
+}
+
++ Received:
+undefined
+
+ ❯ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts:277:30
+    275|     const [first, second] = executes(calls);
+    276|     expect(first?.evidence).not.toBe(second?.evidence);
+    277|     expect(second?.evidence).toMatchObject({
+       |                              ^
+    278|       category: 'accessibility',
+    279|       outcome: 'healthy',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/18]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  18 failed | 5 passed (23)
+   Start at  16:54:12
+   Duration  13.86s (transform 8.84s, setup 0ms, import 12.83s, tests 909ms, environment 2ms)
+

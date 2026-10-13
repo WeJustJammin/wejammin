@@ -8,6 +8,7 @@ import {
   IdempotencyKeySchema,
   QuotedVersionSchema,
 } from '../request-navigation-security.ts';
+import { refineIfMatchEqualsExpectedVersion } from './if-match.ts';
 import {
   Bcp47Schema,
   BoundedEntryValuesSchema,
@@ -44,11 +45,13 @@ export const EntryRevisionHeadersSchema = z
  * needs one schema that names every parameter location; the body stays the
  * runtime EntryRevisionRequestSchema rather than a restated copy.
  */
-export const EntryRevisionApiRequestSchema = z.strictObject({
-  entryId: CmsUuidSchema,
-  headers: EntryRevisionHeadersSchema,
-  body: EntryRevisionRequestSchema,
-});
+export const EntryRevisionApiRequestSchema = z
+  .strictObject({
+    entryId: CmsUuidSchema,
+    headers: EntryRevisionHeadersSchema,
+    body: EntryRevisionRequestSchema,
+  })
+  .superRefine(refineIfMatchEqualsExpectedVersion);
 
 export type EntryRevisionRequest = z.infer<typeof EntryRevisionRequestSchema>;
 export type EntryRevisionPathParams = z.infer<

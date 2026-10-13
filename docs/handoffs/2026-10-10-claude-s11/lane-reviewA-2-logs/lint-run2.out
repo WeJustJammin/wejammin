@@ -1,0 +1,5 @@
+# flock -s /tmp/wejammin-quiet.lock pnpm exec prettier --check / eslint --max-warnings=0 on the five TS files of this lane (resume 2026-10-11)
+Checking formatting...
+All matched files use Prettier code style!
+prettier-exit=0
+eslint-exit=0

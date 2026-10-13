@@ -1,0 +1,337 @@
+{
+  "schemaVersion": 1,
+  "baseline": "1f041a8d89a22315b1c79ae66846ddcc151b3aae",
+  "scope": "E7 writer72/lookup54 and read29 GREEN; mandatory legacy SQL gate RED",
+  "acceptance": "0/122; Slices12-17 not started",
+  "files": [
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+      "lines": 17,
+      "sha": "fa080a58d0d38123b88c634d9cc5a8675d13cdaf73aa46cb9516e0cdfa5b3a9f",
+      "inverseOriginalExact": true
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+      "lines": 214,
+      "sha": "50a9908336eca76d704080b9f1e6f9e081ee893f3001fa744b5396a0016b02c6",
+      "inverseOriginalExact": true
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-read-workflow-noeffects.apispec.ts",
+      "lines": 100,
+      "sha": "3ca9c077d4d70d886cb592bdbc0e678b0738a6a022f3df5ed47cbb4c513528a5",
+      "inverseOriginalExact": true
+    }
+  ],
+  "producerFrozen": {
+    "p": "supabase/migrations/20261010130000_cms_settings_write_tail_lookup.sql",
+    "lines": 212,
+    "sha": "7bd5eb6405875ba052e83b45cece793534156bba152cd5a695c4b2c165838784",
+    "frozenQa": [
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+        "exact": true
+      },
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+        "exact": true
+      },
+      {
+        "p": "tests/postgrest/phase-02-slice-11-assignment-refusals.apispec.ts",
+        "exact": true
+      },
+      {
+        "p": "tests/postgrest/phase-02-slice-11-preview-verifier.apispec.ts",
+        "exact": true
+      },
+      {
+        "p": "tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts",
+        "exact": true
+      },
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings_lookup.sql",
+        "exact": true
+      },
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings/000-writer-helpers.sqlinc",
+        "exact": true
+      },
+      {
+        "p": "supabase/tests/phase_02_slice_11_e7_settings/001-writer-requests.sqlinc",
+        "exact": true
+      }
+    ],
+    "dirtyPaths": [
+      "tests/postgrest/phase-02-slice-11-read-workflow-scopes.apispec.ts",
+      "tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts",
+      "supabase/migrations/20261010130000_cms_settings_write_tail_lookup.sql"
+    ]
+  },
+  "static": {
+    "format": 0,
+    "targetLint": 0,
+    "typeCheck": 0,
+    "diffCheck": 0,
+    "driverInverseByteExact": true,
+    "atomicityInverseByteExact": true,
+    "readNoeffectsExecutableInverseExact": true
+  },
+  "focus": {
+    "log": ".lane-logs/parent-s11-e7-writer72-noeffects-first-focus-20261010.log",
+    "sha256": "c4ed39d7b3fdb36538b8e583c6187527392e6e86ceed291df50fde8ee604203c",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "lookup": {
+      "executed": 54,
+      "passed": 54
+    },
+    "writer": {
+      "executed": 72,
+      "passed": 72,
+      "intendedP7E01Exact": true,
+      "sevenCheckpointBooleansExact": true,
+      "namedWholeEffectRollback": true,
+      "healthyNewKeyExistingHashCAS": true,
+      "fullOwnerOtherSnapshotImagesEqual": true,
+      "originalAssertions": 70,
+      "addedAssertions": 2
+    },
+    "api": {
+      "files": 5,
+      "tests": 29,
+      "passed": 29,
+      "seconds": 32.42
+    },
+    "preReset": 0,
+    "postReset": 0,
+    "driverClosed": 0,
+    "knownScheduleNineDigitDefect": "excluded focused suite; still genuine prior422vs202 RED, not skipped in full gate"
+  },
+  "full": {
+    "log": ".lane-logs/parent-s11-e7-writer72-noeffects-full-gate-20261010.log",
+    "sha256": "e27ee36989f24ac840f426bea736bda029673ece946382e4c6038d28aee1cf2a",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "sqlFiles": 335,
+    "sqlAssertions": 12380,
+    "seconds": 105,
+    "failedFiles": 28,
+    "failedAssertions": 168,
+    "abortedFiles": 24,
+    "files": [
+      {
+        "path": "supabase/tests/phase_02_slice_09_evidence_trigger_catalog.sql",
+        "wstat": 0,
+        "executed": 45,
+        "failed": 1
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_09_schema.sql",
+        "wstat": 0,
+        "executed": 564,
+        "failed": 1
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_lineage.sql",
+        "wstat": 768,
+        "executed": 12,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_lineage_append_only.sql",
+        "wstat": 768,
+        "executed": 8,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_manifest.sql",
+        "wstat": 0,
+        "executed": 87,
+        "failed": 33
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_preflight.sql",
+        "wstat": 0,
+        "executed": 157,
+        "failed": 121
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+        "wstat": 768,
+        "executed": 25,
+        "failed": 12
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_preview_mint.sql",
+        "wstat": 768,
+        "executed": 11,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_claim.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_evidence_audit.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_execute.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_publish.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_schedule.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_reads_gate.sql",
+        "wstat": 768,
+        "executed": 11,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_reads_queue.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_reads_review.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_decision.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_decision_invalidation.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_evidence_audit.sql",
+        "wstat": 768,
+        "executed": 15,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_submit.sql",
+        "wstat": 768,
+        "executed": 11,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_submit_evidence_replay.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      },
+      {
+        "path": "supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql",
+        "wstat": 768,
+        "executed": 9,
+        "failed": 0
+      }
+    ],
+    "dbVerify": 1,
+    "api": "UNRUN",
+    "races": "UNRUN",
+    "dbTypes": "UNRUN",
+    "validate": "UNRUN",
+    "postReset": 0,
+    "driverClosed": 1
+  },
+  "changedTitles": [
+    {
+      "file": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+      "originalTitles": "all original70 assertion titles retained",
+      "added": [
+        "healthy existing-hash B01 uses a fresh key, returns a new canonical successor and advances actual CAS with completed201",
+        "healthy existing-hash B01 preserves all owner and other-owner snapshot row images including IDs/timestamps/versions/ordinals/values/hash"
+      ]
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-read-workflow-noeffects.apispec.ts",
+      "title": "[CMS-03B-15] a first eligible draft workflow read on a fresh isolated assignee org writes no effect",
+      "retained": true,
+      "change": "two exact snapshot counts0->1, messages/comments/header only; full14-effect comparison unchanged"
+    }
+  ],
+  "reviews": {
+    "observer": "s11_recovery_reference_source: no bounded mismatch under selected legitimate root locator contract; no fake receipt/authority",
+    "readNoeffects": "s11_api_foundation_refutation: no actionable weakening/source mismatch",
+    "legacySql": "s11_sql2_refutation_exact + s11_recovery_reference_source: shared001 world30 imports lacks actual saved resource; selected real existing smoke B10 setup source compatible; S09 lists demonstrably stale",
+    "limits": [
+      "advisory presence not included in named rollback image",
+      "supplied checker bindings not checker E2E",
+      "controlled active schema fixture not genuine activation",
+      "canonical-owner-field mutation sensitivity/global lock order unproved"
+    ]
+  },
+  "next": {
+    "world": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-legacy-world-saved-resource-fixture-2026-10-10.md",
+    "s09Footprint": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-s09-write-snapshot-footprint-fixture-2026-10-10.md",
+    "settingsLookup": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-legacy-settings-lookup-fixture-cascade-2026-10-10.md",
+    "authorStatus": "UNRUN until clean pushed checkpoint and source review",
+    "genuineDefects": [
+      "complete nine-digit durable time semantics",
+      "expired matching publication lease fence"
+    ],
+    "remaining": "lease70/stageauthority/prepwiring/publiclifecycle/fullgates/acceptance"
+  }
+}

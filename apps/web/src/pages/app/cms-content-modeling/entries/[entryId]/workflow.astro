@@ -1,0 +1,67 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialDocument from '../../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import { cmsEditorialAppEntryPath } from '../../../../../components/cms-editorial/cms-editorial-app-routes';
+import CmsEditorialPageNotice from '../../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import { createCmsEditorialPageReads } from '../../../../../components/cms-editorial-pages/cms-editorial-page-reads';
+import { loadWorkflowPage } from '../../../../../components/cms-editorial-pages/load-workflow-page';
+import CmsEditorialWorkflowIsland from '../../../../../components/cms-editorial-workflow/CmsEditorialWorkflowIsland';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+
+/*
+ * Protected entry workflow for CMS-03B-15 with the review, schedule, preview and
+ * publish commands (CMS-03B-05, -07, -08, -09). All behavior lives in the tested
+ * loader and island: the loader verifies the strict workflow for THIS entry and
+ * returns one view, one closed state, or a sign-in redirect; the island renders
+ * the panel and exactly the forms `permittedNextActions` allows. The frozen
+ * manifest and version set exist only in the island's data of this no-store
+ * document, never in a URL.
+ */
+const entryId = Astro.params.entryId ?? '';
+const outcome = await loadWorkflowPage({
+  request: Astro.request,
+  entryId,
+  reads: createCmsEditorialPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+const draftPath = cmsEditorialAppEntryPath(entryId);
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Check, review, schedule, preview and publish the current draft of an entry."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <>
+        {draftPath !== null && (
+          <p>
+            <a href={draftPath}>Back to the draft</a>
+          </p>
+        )}
+        <CmsEditorialWorkflowIsland
+          init={{
+            workflow: outcome.view.workflow,
+            entryId: outcome.view.entryId,
+            revisionId: outcome.view.revisionId,
+            verifiedAt: outcome.view.verifiedAt,
+          }}
+          client:load
+        />
+      </>
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

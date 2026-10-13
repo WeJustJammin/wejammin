@@ -27,6 +27,17 @@ CMS-03B-12 open-conflict read and `entries/[entryId]/revisions/[revisionId]/rest
 the CMS-03B-04 restore transport. The browser forms are under
 `apps/web/src/components/cms-editorial/`.
 
+The Slice 11 review, schedule, preview and publication endpoints are one file
+each, at the path the generated registry declares: `entries/[entryId]/reviews.ts`
+(CMS-03B-05), `entries/[entryId]/workflow.ts` (CMS-03B-15),
+`reviews/index.ts` (CMS-03B-17), `reviews/[reviewId].ts` (CMS-03B-16),
+`reviews/[reviewId]/decision.ts` (CMS-03B-06), `reviews/[reviewId]/assignments.ts`
+(CMS-03B-18), `publication-schedules/index.ts` (CMS-03B-07), `previews/index.ts`
+(CMS-03B-08) and `publications/index.ts` (CMS-03B-09). Every file is a single
+call into `server/cms-workflow-platform-command.ts` or `-reads.ts`;
+`slice-11-workflow-routes.test.ts` proves each module sits at its registry path.
+CMS-03B-19 and CMS-03B-20 are internal RPCs with no browser route.
+
 ## Ownership
 
 These routes validate and forward first-party browser requests through the

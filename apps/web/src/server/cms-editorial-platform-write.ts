@@ -1,4 +1,9 @@
-import { cmsEditorialForwardedError } from './cms-editorial-platform-bounded';
+import type { CmsEditorialErrorDeclaration } from '@wejammin/contracts';
+
+import {
+  cmsEditorialForwardedError,
+  type CmsEditorialDetailProjector,
+} from './cms-editorial-platform-bounded';
 import type { CmsEditorialErrorDetailPolicy } from './cms-editorial-platform-error-details';
 import {
   CMS_EDITORIAL_PLATFORM_API_ORIGIN,
@@ -98,14 +103,16 @@ export const dispatchCmsEditorialWrite = async (
 export const relayCmsEditorialWriteFailure = async (
   request: Request,
   upstream: Response,
-  allowedErrors: Readonly<Record<string, number>>,
+  allowedErrors: CmsEditorialErrorDeclaration,
   detailPolicy: CmsEditorialErrorDetailPolicy,
+  projector?: CmsEditorialDetailProjector,
 ): Promise<Response> => {
   const response = await cmsEditorialForwardedError(
     request,
     upstream,
     allowedErrors,
     detailPolicy,
+    projector,
   );
   return response.status >= 500
     ? cmsEditorialOutcomeUnknown(response)

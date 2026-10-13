@@ -1,0 +1,19 @@
+[alt] waiting for lock 01:27:47
+[alt] lock acquired 01:27:47
+[alt] reset ok 01:28:13
+[alt] pg_prove exit=1  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-012747-1202214.tap
+not ok 11 - CMS-03B-17 under stale planner statistics returns the maximum page of 50 items and a next cursor within the statement timeout [P2-S11-AC-064]
+not ok 12 - CMS-03B-17 cursor page under stale planner statistics returns its 50 items within the statement timeout [P2-S11-AC-064]
+not ok 13 - CMS-03B-17 first page reads a bounded number of tuples from the review and assignment tables per call (under 10,000 of 503 reviews and 237 assignments; the pathological plan read 27 million) [P2-S11-AC-064]
+not ok 14 - CMS-03B-17 cursor page reads a bounded number of tuples from the review and assignment tables per call (under 10,000) [P2-S11-AC-064]
+not ok 18 - CMS-03B-17 first page at the maximum limit of 50 under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+not ok 19 - CMS-03B-17 cursor page at the maximum limit of 50 under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+not ok 20 - every call of the five measured reads completed within the exact 8,000 ms read deadline under stale planner statistics (50 calls) [P2-S11-AC-052]
+Test Summary Report
+-------------------
+zz_mutant_guard.sql (Wstat: 0 Tests: 20 Failed: 7)
+  Failed tests:  11-14, 18-20
+Files=1, Tests=20, 122 wallclock secs ( 0.01 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.02 CPU)
+Result: FAIL
+Files=1, Tests=20, 122 wallclock secs ( 0.01 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.02 CPU)
+Result: FAIL

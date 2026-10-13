@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import {
   assertCmsEditorialRouteRegistry,
   cmsEditorialCapabilitiesSatisfied,
+  cmsEditorialDeclaredStatuses,
   cmsEditorialRoutePolicies,
   editorialDraftDetailErrors,
   editorialEntryCreateErrors,
@@ -55,20 +56,19 @@ const revisionErrors = {
   UNSUPPORTED_MEDIA_TYPE: 415,
   VALIDATION_FAILED: 422,
   RATE_LIMITED: 429,
-  BAD_GATEWAY: 502,
-  DEPENDENCY_UNAVAILABLE: 503,
+  DEPENDENCY_UNAVAILABLE: [502, 503],
   GATEWAY_TIMEOUT: 504,
   INTERNAL_ERROR: 500,
 } as const;
 
 describe('cms editorial route registry', () => {
   it('registers exactly the nine locked operations and method/path pairs', () => {
+    // Slice 11 (DEC-148) appends its nine operations after these nine rows;
+    // routes-slice11.test.ts asserts the full eighteen-row registry.
     expect(
-      cmsEditorialRoutePolicies.map(({ operationId, method, path }) => [
-        operationId,
-        method,
-        path,
-      ]),
+      cmsEditorialRoutePolicies
+        .slice(0, expected.length)
+        .map(({ operationId, method, path }) => [operationId, method, path]),
     ).toEqual(expected);
   });
 
@@ -141,23 +141,23 @@ describe('cms editorial route registry', () => {
         route,
       ] as unknown as typeof cmsEditorialRoutePolicies),
     ).toThrow(/Duplicate cms editorial route/u);
-    // Six rows with a non-member id swapped in: count and uniqueness hold, so
-    // only the missing-operation check can fail.
+    // One row with a non-member id swapped in: count and uniqueness hold, so
+    // only the missing-operation check can fail. (Slice 11 made CMS-03B-07 a
+    // member, so a still-unassigned id stands in for the non-member.)
     expect(() =>
       assertCmsEditorialRouteRegistry([
-        { ...route, operationId: 'CMS-03B-07' },
+        { ...route, operationId: 'CMS-03B-99' },
         ...cmsEditorialRoutePolicies.slice(1),
       ] as unknown as typeof cmsEditorialRoutePolicies),
     ).toThrow(/Missing cms editorial operation/u);
   });
 
   it('keeps every command row on headers and every read row on query', () => {
-    const commandRows = cmsEditorialRoutePolicies.filter(
-      ({ method }) => method === 'POST',
-    );
-    const readRows = cmsEditorialRoutePolicies.filter(
-      ({ method }) => method === 'GET',
-    );
+    // The nine Slice 10 rows; the Slice 11 commands and reads are asserted in
+    // routes-slice11.test.ts (they add step-up, 202/200 outcomes and new classes).
+    const slice10Rows = cmsEditorialRoutePolicies.slice(0, expected.length);
+    const commandRows = slice10Rows.filter(({ method }) => method === 'POST');
+    const readRows = slice10Rows.filter(({ method }) => method === 'GET');
     expect(commandRows).toHaveLength(4);
     expect(readRows).toHaveLength(5);
     for (const candidate of commandRows) {
@@ -177,8 +177,8 @@ describe('cms editorial route registry', () => {
         .filter(({ ifMatch }) => ifMatch === 'none')
         .map(({ operationId }) => operationId),
     ).toEqual(['CMS-03B-10']);
-    expect(Object.keys(createRoute.errors)).toHaveLength(12);
-    expect(Object.keys(detailRoute.errors)).toHaveLength(11);
+    expect(cmsEditorialDeclaredStatuses(createRoute.errors)).toHaveLength(12);
+    expect(cmsEditorialDeclaredStatuses(detailRoute.errors)).toHaveLength(11);
   });
 
   it('enforces the nine-operation discriminants', () => {

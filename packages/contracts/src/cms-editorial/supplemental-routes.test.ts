@@ -5,6 +5,7 @@ import {
   ConflictDetailApiRequestSchema,
   EntryListApiRequestSchema,
   assertCmsEditorialRouteRegistry,
+  cmsEditorialDeclaredStatuses,
   cmsEditorialRoutePolicies,
   editorialAuthoringContextErrors,
   editorialConflictDetailErrors,
@@ -66,8 +67,7 @@ const readErrorShape = {
   UNSUPPORTED_MEDIA_TYPE: 415,
   VALIDATION_FAILED: 422,
   RATE_LIMITED: 429,
-  BAD_GATEWAY: 502,
-  DEPENDENCY_UNAVAILABLE: 503,
+  DEPENDENCY_UNAVAILABLE: [502, 503],
   GATEWAY_TIMEOUT: 504,
   INTERNAL_ERROR: 500,
 } as const;
@@ -81,12 +81,12 @@ const forbiddenOwnership = [
 
 describe('supplemental cms editorial route registry', () => {
   it('registers exactly the nine locked operations in order', () => {
+    // Slice 11 (DEC-148) appends its nine operations after these nine rows;
+    // routes-slice11.test.ts asserts the full eighteen-row registry.
     expect(
-      cmsEditorialRoutePolicies.map(({ operationId, method, path }) => [
-        operationId,
-        method,
-        path,
-      ]),
+      cmsEditorialRoutePolicies
+        .slice(0, expectedOrder.length)
+        .map(({ operationId, method, path }) => [operationId, method, path]),
     ).toEqual(expectedOrder);
   });
 
@@ -191,7 +191,7 @@ describe('supplemental cms editorial route registry', () => {
       expect(errors).toEqual(readErrorShape);
       expect(errors).toEqual(editorialDraftDetailErrors);
       expect(errors).not.toHaveProperty('CONFLICT');
-      expect(Object.keys(errors)).toHaveLength(11);
+      expect(cmsEditorialDeclaredStatuses(errors)).toHaveLength(11);
       expect(errors.UNSUPPORTED_MEDIA_TYPE).toBe(415);
     }
   });
@@ -205,7 +205,9 @@ describe('supplemental cms editorial route registry', () => {
       ...readErrorShape,
       CONFLICT: 409,
     });
-    expect(Object.keys(editorialEntryListErrors)).toHaveLength(12);
+    expect(cmsEditorialDeclaredStatuses(editorialEntryListErrors)).toHaveLength(
+      12,
+    );
     expect(editorialEntryListErrors.CONFLICT).toBe(409);
     expect(editorialEntryListErrors.INVALID_REQUEST).toBe(400);
     expect(editorialEntryListErrors.UNSUPPORTED_MEDIA_TYPE).toBe(415);

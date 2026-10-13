@@ -1,0 +1,38 @@
+[b2] w1 waiting for EXCLUSIVE quiet lock 06:17:43
+[b2] w1 locks held 07:07:29 load=2.75 3.21 3.30 HEAD=6af4f106 dirty=17
+[b2] migrations of this lane in the tree: 20261010161000_cms_history_sealed_cursor.sql 20261010161100_cms_history_sealed_cursor_wrapper.sql 20261010162000_cms_schedule_audit_event_ids.sql 20261010162100_cms_schedule_publication_lapse_and_audit.sql 20261010162200_cms_execute_publication_schedule_conflicts.sql 20261010164000_cms_review_recheck_relay.sql 20261010164100_cms_dependency_recheck.sql 20261010165000_cms_projection_consumer_state.sql 20261010165100_cms_publication_projection_state_reads.sql 20261010165200_cms_takedown_preview_tokens.sql 20261010166000_cms_create_type_draft_single_compile.sql 20261010166100_cms_compiled_manifest_bound_scan.sql 20261010167000_cms_valid_field_input_fast_accept.sql 
+[b2] sha256 of those migrations: 50b3f3360431 c8cab571579c c8daa7d2dbc9 
+[b2] reset ok (w1-r1) 07:08:35
+[b2] prefix (w1-r1): 94 files, exit=0, 61s, failing: 0 07:09:36
+[b2] bench (w1-r1-in-suite) exit=0 load_before=1.48 load_after=2.00 07:11:26
+# activate p50=95.8ms p95=117.2ms max=127.1ms n=25
+# assign p50=11.2ms p95=13.1ms max=18.3ms n=25
+# create128 p50=159.1ms p95=189.4ms max=210.1ms n=25
+# decide p50=50.5ms p95=66.8ms max=69.7ms n=25
+# dry_run p50=95.2ms p95=120.0ms max=153.0ms n=25
+# submit p50=99.4ms p95=121.7ms max=162.5ms n=25
+[b2] reset ok (w1-r2) 07:12:30
+[b2] prefix (w1-r2): 94 files, exit=0, 61s, failing: 0 07:13:31
+[b2] bench (w1-r2-in-suite) exit=0 load_before=1.48 load_after=1.75 07:14:27
+# activate p50=101.8ms p95=119.4ms max=131.3ms n=25
+# assign p50=11.5ms p95=16.8ms max=18.3ms n=25
+# create128 p50=163.0ms p95=204.7ms max=210.5ms n=25
+# decide p50=54.6ms p95=67.5ms max=71.7ms n=25
+# dry_run p50=103.7ms p95=118.5ms max=128.7ms n=25
+# submit p50=105.1ms p95=127.8ms max=135.4ms n=25
+[b2] reset ok (w1-r3) 07:15:31
+[b2] prefix (w1-r3): 94 files, exit=0, 62s, failing: 0 07:16:33
+[b2] bench (w1-r3-in-suite) exit=0 load_before=1.48 load_after=1.52 07:17:54
+# activate p50=99.2ms p95=114.2ms max=116.3ms n=25
+# assign p50=10.9ms p95=15.9ms max=18.4ms n=25
+# create128 p50=158.5ms p95=184.0ms max=194.8ms n=25
+# decide p50=55.2ms p95=70.1ms max=74.6ms n=25
+# dry_run p50=102.2ms p95=125.3ms max=126.0ms n=25
+# submit p50=101.0ms p95=132.0ms max=171.8ms n=25
+[b2] reset ok (w1-prof) 07:18:58
+[b2] prefix (w1-prof): 94 files, exit=0, 62s, failing: 0 07:20:00
+[b2] probe w1-suite-func (probe-func-prof.sql) load_after=1.70 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/w1-20261011-061743-w1-suite-func.tap
+[b2] job w1 done 07:21:03
+[b2] reset ok (w1-plansfresh) 07:22:07
+[b2] probe w1-fresh-plans (probe-plans.sql) load_after=1.49 tap=/home/rob/.codex/worktrees/phase2-slice11/WeJammin/docs/handoffs/2026-10-10-claude-s11/lane-bench2-logs/w1-20261011-061743-w1-fresh-plans.tap
+[b2] plans part w1 done 07:23:24

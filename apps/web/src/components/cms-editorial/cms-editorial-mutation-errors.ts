@@ -111,10 +111,20 @@ const EDITORIAL_ERROR_CODE_FOR_STATUS: Readonly<Record<number, string>> = {
   422: 'VALIDATION_FAILED',
   429: 'RATE_LIMITED',
   500: 'INTERNAL_ERROR',
-  502: 'BAD_GATEWAY',
+  502: 'DEPENDENCY_UNAVAILABLE',
   503: 'DEPENDENCY_UNAVAILABLE',
   504: 'GATEWAY_TIMEOUT',
 };
+
+/**
+ * The copy class of a verified error. BE00 (lines 172 and 590) publishes a 502
+ * under the same `DEPENDENCY_UNAVAILABLE` as a 503, but the editor must not read
+ * an invalid dependency answer as an outage: the write may have committed, so a
+ * 502 keeps the generic "check the current version before retrying" copy it
+ * always showed.
+ */
+const editorialCopyCodeFor = (status: number, code: string): string =>
+  status === 502 ? 'INTERNAL_ERROR' : code;
 
 const violationPathsFrom = (error: ApiError): readonly string[] => {
   const violations = error.details.violations;
@@ -182,7 +192,7 @@ export const cmsEditorialVerifiedMutationErrorFrom = async (
   return {
     outcome: mapped.outcome,
     retryable: mapped.retryable,
-    errorCode: parsed.data.code,
+    errorCode: editorialCopyCodeFor(response.status, parsed.data.code),
     errorDetails: violationPathsFrom(parsed.data),
     reasonCode: isCmsEditorialReasonCode(parsed.data.details.reasonCode)
       ? parsed.data.details.reasonCode

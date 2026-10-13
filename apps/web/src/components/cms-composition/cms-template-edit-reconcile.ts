@@ -1,8 +1,10 @@
+import type { TemplateVersionDetail } from '@wejammin/contracts';
+
 import {
-  CmsTemplateKeySchema,
-  TemplateVersionDetailSchema,
-  type TemplateVersionDetail,
-} from '@wejammin/contracts';
+  loadCmsValidators,
+  loadedCmsValidators,
+  type CmsValidators,
+} from '../../lib/cms-contract-validators';
 
 export type CmsTemplateLatestResult =
   | { readonly kind: 'loaded'; readonly detail: TemplateVersionDetail }
@@ -14,7 +16,15 @@ export const readLatestCmsTemplateVersion = async (
   templateKey: string,
   fetcher: typeof fetch = fetch,
 ): Promise<CmsTemplateLatestResult> => {
-  const key = CmsTemplateKeySchema.safeParse(templateKey);
+  // The schemas load on this first read; if they cannot be fetched the latest
+  // version is unverifiable, exactly like an unreachable service.
+  let validators: CmsValidators;
+  try {
+    validators = loadedCmsValidators() ?? (await loadCmsValidators());
+  } catch {
+    return { kind: 'unavailable' };
+  }
+  const key = validators.CmsTemplateKeySchema.safeParse(templateKey);
   if (!key.success) return { kind: 'unavailable' };
   let response: Response;
   try {
@@ -40,7 +50,7 @@ export const readLatestCmsTemplateVersion = async (
   } catch {
     return { kind: 'unavailable' };
   }
-  const detail = TemplateVersionDetailSchema.safeParse(candidate);
+  const detail = validators.TemplateVersionDetailSchema.safeParse(candidate);
   if (
     !detail.success ||
     detail.data.templateKey !== key.data ||

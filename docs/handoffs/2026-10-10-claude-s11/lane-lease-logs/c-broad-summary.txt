@@ -1,0 +1,5 @@
+ FAIL  tests/documentation-boundaries.test.ts > directory documentation boundaries > documents every non-generated directory with more than two direct files
+ FAIL  apps/worker/src/authentication/phase-02-slice-09-r8-factor-refetch.test.ts > AUTH-API-16 reflects a factor change on the next read > [P2-S09-AC-906] the second GET after a change returns the new version as ETag and body version
+ Test Files  2 failed | 580 passed (582)
+      Tests  2 failed | 9115 passed (9117)
+   Duration  1765.21s (transform 103.09s, setup 0ms, import 2472.56s, tests 578.91s, environment 375ms)

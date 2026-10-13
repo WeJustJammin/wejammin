@@ -1388,20 +1388,45 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'preview',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'a version set that differs from the one recomputed from canonical state (schema hash, block ids, template, settings version) is 409 version_set_stale [P2-S11-AC-089]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'control: the exact recomputed version set at the current entry version mints [P2-S11-AC-089]',
+          },
+        ],
       },
       {
         text: 'publication bind the same bytes.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql',
+            title:
+              'an expectedVersionSet that is not exactly the version set frozen on the approved review (schema, settings or taxonomy member) is 409 version_set_stale [P2-S11-AC-033]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_review_submit.sql',
+            title:
+              'the review is open at version 1 and freezes the revision hash, the dependency hash, the activation evidence and the strictest-of workflow policy evidence of the manifest [P2-S11-AC-005]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'pending DEC-147 forward-scope ruling. Unproven clauses are the forward ones only: "preview" and "publication bind the same bytes" have no passing test because no preview or publication runtime exists in Slice 10 (CMS-03B-07..09 are contract-only; runtime is Slice 11). Review, activation, write (create, append, conflict resolution), restore and the reads are each proven against the same artifact and definition-hash bytes, including the DEC-133 object structure (EC R1 079-a was fixed by migration 20261005015000; EC R1 079-b was a probe defect, every real structure drift is refused by the existing activation check).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-080',
-    text: 'TypeScript and PostgreSQL validators enforce the same DEC-133 object structure and value semantics across create, append, conflict resolution, restore, draft read, preview, and publication.',
+    text: 'TypeScript and PostgreSQL validators enforce the same DEC-133 object structure and value semantics across create, append, conflict resolution, restore, draft read, and publication (the preflight `contract` category in the submit, schedule and publish phases). Preview evaluates no field value; it binds the same frozen bytes (P2-S10-AC-079).',
     clauses: [
       {
         text: 'TypeScript and PostgreSQL validators enforce the same DEC-133 object structure and value semantics across create',
@@ -1621,17 +1646,34 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'preview',
+        text: 'publication (the preflight `contract` category in the submit, schedule and publish phases).',
         citations: [],
       },
       {
-        text: 'publication.',
+        text: 'Preview evaluates no field value',
         citations: [],
+      },
+      {
+        text: 'it binds the same frozen bytes (P2-S10-AC-079).',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'a version set that differs from the one recomputed from canonical state (schema hash, block ids, template, settings version) is 409 version_set_stale [P2-S11-AC-089]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql',
+            title:
+              'control: the exact recomputed version set at the current entry version mints [P2-S11-AC-089]',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'pending DEC-147 forward-scope ruling. Unproven clauses are the forward ones only: "preview" and "publication" have no passing test because no preview or publication runtime exists in Slice 10 (CMS-03B-07..09 are contract-only; runtime is Slice 11). Create, append, conflict resolution, restore and draft read are each compared with the TypeScript verdict over the DEC-133 object corpus through the real Worker/PostgREST boundary (restore: a corrupt source revision is fed the same 11 values and restores exactly when TypeScript admits them, refusing the rest with a typed 4xx that changes nothing).',
+      'Unproven: "publication (the preflight `contract` category in the submit, schedule and publish phases)" and "Preview evaluates no field value". The preflight contract category re-runs the same platform_private.cms_draft_field_value_valid validator as draft read (supabase/migrations/20261005017570_cms_preflight_evaluation.sql), but the existing publish-phase contract cases cover a number in a short_text field, relations and rich text, not a stored DEC-133 object value that violates the structure; one pgTAP case in step with the TypeScript verdict over the object corpus is still to be added. "Preview evaluates no field value" is a negative (BE03b: CMS-03B-08 runs no registry phase) that no test asserts. Create, append, conflict resolution, restore and draft read are each compared with the TypeScript verdict over the DEC-133 object corpus through the real Worker/PostgREST boundary, and the preview binding of the same frozen bytes is cited from the Slice 11 version-set tests.',
   },
   {
     criterion: 'P2-S10-AC-081',
@@ -2748,7 +2790,7 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S10-AC-089',
-    text: 'CMS-03B-12 rejects malformed entry/conflict UUIDs, undeclared queries or bodies, and out-of-bound preimages before any existence or dependency work.',
+    text: 'CMS-03B-12 rejects malformed entry/conflict UUIDs and undeclared queries or bodies before any existence or dependency work, and refuses an out-of-bound preimage response (more than 128 paths, or a side over 256 KiB) as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure without serving it.',
     clauses: [
       {
         text: 'CMS-03B-12 rejects malformed entry/conflict UUIDs',
@@ -2827,13 +2869,202 @@ export const S10_EVIDENCE_LEDGER_071_105: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'out-of-bound preimages before any existence or dependency work.',
-        citations: [],
+        text: 'before any existence or dependency work',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-089] rejects a malformed entry or conflict UUID as 400 before any dependency work',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-10-ev-ec-reads.apispec.ts',
+            title:
+              'EC CMS-03B-12 conflict detail through the real stack [EC-089] never reaches the database for malformed addressing or an undeclared query',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-089] rejects undeclared queries, request bodies, and mutation headers on the read',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/server/cms-editorial-platform-reads-app.test.ts',
+            title:
+              'cms-editorial conflict-detail read proxy (CMS-03B-12) refuses a query string and read mutation headers',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/integration/phase-02-slice-10-ev-ec-r1-read-boundary.test.ts',
+            title:
+              'EC-095 the safe reads refuse a body and mutation headers before any database call CMS-03B-12 refuses a declared request body (Content-Length) without calling the database',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/integration/phase-02-slice-10-ev-ec-r1-read-boundary.test.ts',
+            title:
+              'EC-095 the safe reads refuse a body and mutation headers before any database call CMS-03B-12 refuses a chunked request body (Transfer-Encoding) without calling the database',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/integration/phase-02-slice-10-ev-ec-r1-read-boundary.test.ts',
+            title:
+              'EC-095 the safe reads refuse a body and mutation headers before any database call CMS-03B-12 refuses a request media type (Content-Type) without calling the database',
+          },
+        ],
+      },
+      {
+        text: 'and refuses an out-of-bound preimage response (more than 128 paths,',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail.test.ts',
+            title:
+              'conflict detail resource envelope caps paths at 128 entries',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail.test.ts',
+            title:
+              'conflict detail resource envelope bounds changedPaths at 1-128 unique entries',
+          },
+        ],
+      },
+      {
+        text: 'or a side over 256 KiB)',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound accepts a side whose serialized value is exactly 256 KiB and refuses one byte more',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound refuses a resource whose base side is over 256 KiB and serves the same resource at the bound',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound refuses a resource whose theirs side is over 256 KiB and serves the same resource at the bound',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound refuses a resource whose yours side is over 256 KiB and serves the same resource at the bound',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              '[P2-S10-AC-089] CMS-03B-12 conflict detail preimage side bound counts serialized UTF-8 bytes, not characters, and covers a nested object value',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound answers a base side over 256 KiB as 502 DEPENDENCY_UNAVAILABLE without serving it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound answers a theirs side over 256 KiB as 502 DEPENDENCY_UNAVAILABLE without serving it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound answers a yours side over 256 KiB as 502 DEPENDENCY_UNAVAILABLE without serving it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial-production-conflict-detail-bound.test.ts',
+            title:
+              'CMS-03B-12 production conflict-detail read [P2-S10-AC-089] over-bound preimage side refuses a side of 256 KiB plus one byte (declared length) as 502 DEPENDENCY_UNAVAILABLE and serves nothing of it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial-production-conflict-detail-bound.test.ts',
+            title:
+              'CMS-03B-12 production conflict-detail read [P2-S10-AC-089] over-bound preimage side refuses a side of 256 KiB plus one byte (streamed without a declared length) as 502 DEPENDENCY_UNAVAILABLE and serves nothing of it',
+          },
+        ],
+      },
+      {
+        text: 'as a 502 `DEPENDENCY_UNAVAILABLE` response-contract failure without serving it.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-088] treats a resolved or superseded payload as a dependency fault (DEC-139: only an open conflict is served)',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P1-S10-API] rejects a dependency resource whose entry or conflict id is not bound to the request',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-092] refuses an open record with no paths and a closed record that still carries paths',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-routes.test.ts',
+            title:
+              'CMS-03B-12 protected conflict-detail route [P2-S10-AC-092] maps a dependency timeout to 504 and an invalid response to 502',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/route-errors-dependency.test.ts',
+            title:
+              '[BE00:172][BE00:590] a 502 is published as DEPENDENCY_UNAVAILABLE on every editorial route CMS-03B-12 publishes a 502 as DEPENDENCY_UNAVAILABLE with a retryable cms_editorial dependency and no upstream text',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/routes-dependency-code.test.ts',
+            title:
+              '[BE00:172][BE00:590] a CMS editorial 502 is DEPENDENCY_UNAVAILABLE declares DEPENDENCY_UNAVAILABLE for 502 and 503 and keeps 504 as GATEWAY_TIMEOUT on every route',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound answers a base side over 256 KiB as 502 DEPENDENCY_UNAVAILABLE without serving it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial/conflict-detail-side-bound.test.ts',
+            title:
+              'CMS-03B-12 conflict-detail route [P2-S10-AC-089] preimage side bound serves the same answer when its base side is exactly 256 KiB (control)',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial-production-conflict-detail-bound.test.ts',
+            title:
+              'CMS-03B-12 production conflict-detail read [P2-S10-AC-089] over-bound preimage side refuses a side of 256 KiB plus one byte (declared length) as 502 DEPENDENCY_UNAVAILABLE and serves nothing of it',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-editorial-production-conflict-detail-bound.test.ts',
+            title:
+              'CMS-03B-12 production conflict-detail read [P2-S10-AC-089] over-bound preimage side serves an answer of exactly 256 KiB and refuses the same answer one byte longer',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Clause "out-of-bound preimages before any existence or dependency work" is not satisfiable as worded: a preimage exists only in the dependency response, so its bound (128 paths, 256 KiB per side) is enforced as a response-contract check AFTER the read (Worker 502 on an out-of-bound or invalid resource, contract cap of 128 paths, SQL INTERNAL_ERROR on an over-bound stored side, and a bounded write-time `proposed_values` CHECK), never before it. Malformed UUIDs, undeclared queries and bodies ARE refused before any database call (EC R1 read-boundary suite). Needs a wording ruling: amend AC-089 so the "before any existence or dependency work" clause governs only addressing/queries/bodies. EVIDENCE GAP EC R1 089-a. R1b: no production change landed for this clause, and it is not a DEC-147 forward-scope item (preview/publication): the gap is the criterion wording itself, so it stays partial until the wording ruling.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-090',

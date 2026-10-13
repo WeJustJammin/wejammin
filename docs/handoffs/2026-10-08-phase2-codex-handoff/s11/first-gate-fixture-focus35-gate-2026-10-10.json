@@ -1,0 +1,388 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": {
+    "staticLog": ".lane-logs/parent-s11-first-gate-fixtures-checkpoint-static-20261010.log",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "contractsCheck": 0,
+    "progressCheck": 0,
+    "targetLint": 0,
+    "typeCheck": 0,
+    "diffCheck": 0,
+    "canonicalCompileOk": true,
+    "inheritedSpecGraphIssues": 64,
+    "sourceHashesUnchanged": true,
+    "fiveWriterCatalog": {
+      "log": ".lane-logs/parent-s11-e7-five-writer-catalog-20261010.log",
+      "exit": 0,
+      "activeCI": 0,
+      "sharedFlock": true,
+      "functions": [
+        {
+          "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+          "owner": "wejammin_cms_definer",
+          "config": ["search_path=\"\""],
+          "function": "platform_private.cms_author_locale_variant(jsonb)",
+          "bypassRls": false,
+          "prosrcMd5": "9521f3178fc52bc9cfe05dc57a9a3e2c",
+          "superuser": false,
+          "apiExecute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "volatility": "v",
+          "definitionMd5": "5d022c89e83a49396678b1abd2cbc166",
+          "securityDefiner": true
+        },
+        {
+          "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+          "owner": "wejammin_cms_definer",
+          "config": ["search_path=\"\""],
+          "function": "platform_private.cms_create_entry(jsonb)",
+          "bypassRls": false,
+          "prosrcMd5": "4b3ff16fc36a2cf6e11353e3b2b313c6",
+          "superuser": false,
+          "apiExecute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "volatility": "v",
+          "definitionMd5": "d7855d363775652e3e5028c83637944f",
+          "securityDefiner": true
+        },
+        {
+          "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+          "owner": "wejammin_cms_definer",
+          "config": ["search_path=\"\""],
+          "function": "platform_private.cms_create_revision(jsonb)",
+          "bypassRls": false,
+          "prosrcMd5": "f0bfdac1be9fee6f14873698bae2c953",
+          "superuser": false,
+          "apiExecute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "volatility": "v",
+          "definitionMd5": "8813bdc948c8ff144a2df0b0ac1a2ccb",
+          "securityDefiner": true
+        },
+        {
+          "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+          "owner": "wejammin_cms_definer",
+          "config": ["search_path=\"\""],
+          "function": "platform_private.cms_resolve_conflict(jsonb)",
+          "bypassRls": false,
+          "prosrcMd5": "26ede79aefc8a7fcb2ee5330dc617af1",
+          "superuser": false,
+          "apiExecute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "volatility": "v",
+          "definitionMd5": "f249d3072fb36fbb510a62b23e0f5291",
+          "securityDefiner": true
+        },
+        {
+          "acl": ["wejammin_cms_definer=X/wejammin_cms_definer"],
+          "owner": "wejammin_cms_definer",
+          "config": ["search_path=\"\""],
+          "function": "platform_private.cms_restore_revision(jsonb)",
+          "bypassRls": false,
+          "prosrcMd5": "551996cb945b4b09d634e19d39710a59",
+          "superuser": false,
+          "apiExecute": {
+            "anon": false,
+            "service_role": false,
+            "authenticated": false
+          },
+          "volatility": "v",
+          "definitionMd5": "1ac24770572b089e8fb6723f2ffc922a",
+          "securityDefiner": true
+        }
+      ]
+    }
+  },
+  "baseline": "ee1ed24bc1d67494a5eb413d3585d8320f87d2af",
+  "scope": "shared dry-run preparation fixture and two human-read pagination witnesses",
+  "acceptance": "0/122",
+  "files": [
+    {
+      "path": "tests/postgrest/support/phase-02-slice-11-schema-lifecycle.ts",
+      "lines": 294,
+      "sha": "1cf06981ca03bd5e130b56c3c0b8e83ea71b9a657466e3b212773cf9dd6325c4"
+    },
+    {
+      "path": "tests/postgrest/worker-round-trip.apispec.ts",
+      "lines": 328,
+      "sha": "b7e41c10d6198d725ae18966ed111e22899be0857331acdf8e3dba84fae082f1"
+    },
+    {
+      "path": "tests/postgrest/support/worker-round-trip-pagination.ts",
+      "lines": 133,
+      "sha": "7790cced69ff68c270f7494bcf81f893b4fcd3c72e266ce26971ab2620d91e79"
+    }
+  ],
+  "unchanged": {
+    "sharedHelperInverseByteExact": true,
+    "roundTripEightTitlesExact": true,
+    "roundTripOtherSixBodiesTokenExact": true,
+    "productionSqlUntouched": true
+  },
+  "changedTitles": [
+    "human CMS read: the owner lists content types through the production adapter",
+    "human CMS read: the same read as the owner directly (authenticated JWT) succeeds, and a stranger forging the owner does not"
+  ],
+  "static": {
+    "typeCheck": 0,
+    "targetLint": 0,
+    "diffCheck": 0
+  },
+  "rootMisaddressedConfig": {
+    "log": ".lane-logs/parent-s11-first-gate-fixtures-api-static-20261010.log",
+    "wrongConfig": "infra/vitest.postgrest.config.ts",
+    "apiExit": 1,
+    "executedCases": 0,
+    "postReset": 0,
+    "proof": false
+  },
+  "focused": {
+    "log": ".lane-logs/parent-s11-first-gate-fixtures-api-real-20261010.log",
+    "sha": "83e13f65115f825bb133984a526e13557bc6317b8a38707981902fd745650e6d",
+    "command": "pnpm db:api-test tests/postgrest/phase-02-slice-11-lifecycle.apispec.ts tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts tests/postgrest/phase-02-slice-11-publish-preflight.apispec.ts tests/postgrest/worker-round-trip.apispec.ts",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "preReset": 0,
+    "files": {
+      "failed": 2,
+      "passed": 2
+    },
+    "cases": {
+      "failed": 4,
+      "passed": 31,
+      "total": 35
+    },
+    "durationSeconds": 34.7,
+    "apiExit": 1,
+    "postReset": 0,
+    "driverDrained": true,
+    "suites": {
+      "worker-round-trip": {
+        "passed": 8,
+        "failed": 0
+      },
+      "publish-preflight": {
+        "passed": 16,
+        "failed": 0
+      },
+      "lifecycle": {
+        "passed": 6,
+        "failed": 1
+      },
+      "assignment-lifecycle": {
+        "passed": 1,
+        "failed": 3
+      }
+    },
+    "failures": [
+      " FAIL  tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts > CMS-03B-18 assignment lifecycle > [CMS-03B-18] absent nonmember ungranted and submitter reviewers share one exact eligibility refusal without effects",
+      " FAIL  tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts > CMS-03B-18 assignment lifecycle > [CMS-03B-18] stale review closed review and concealed review refuse exactly without effects",
+      " FAIL  tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts > CMS-03B-18 assignment lifecycle > [CMS-03B-18] sixteen active assignments are accepted and the seventeenth refuses without effects",
+      " FAIL  tests/postgrest/phase-02-slice-11-lifecycle.apispec.ts > Slice 11 genuine local schema lifecycle > activates a fresh draft only with the actual dry-run, independent decision and server-derived approval hash"
+    ],
+    "limits": [
+      "Assignment digests reveal only inequality, not actual refusal reason; later no-effect checks were not reached.",
+      "Direct psql lifecycle digest lacks the definer RLS context; empty boolean output is not proof of absent outer rows or activation defect.",
+      "No full gate or acceptance closure."
+    ]
+  },
+  "full": {
+    "log": ".lane-logs/parent-s11-first-gate-fixtures-db-verify-validate-20261010.log",
+    "sha": "cc057eb534a5043e1985907846d3823c260268062108d5d1864a5bf94078bcbb",
+    "status": "CLOSED",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "sql": {
+      "files": 333,
+      "assertions": 12764,
+      "result": "PASS",
+      "seconds": 113
+    },
+    "api": {
+      "files": {
+        "failed": 10,
+        "passed": 54,
+        "total": 64
+      },
+      "cases": {
+        "failed": 15,
+        "passed": 791,
+        "skipped": 0,
+        "total": 806
+      },
+      "durationSeconds": 2140.8,
+      "failures": [
+        {
+          "line": 4575,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts > CMS-03B-18 assignment lifecycle > [CMS-03B-18] absent nonmember ungranted and submitter reviewers share one exact eligibility refusal without effects"
+        },
+        {
+          "line": 4596,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts > CMS-03B-18 assignment lifecycle > [CMS-03B-18] stale review closed review and concealed review refuse exactly without effects"
+        },
+        {
+          "line": 4617,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts > CMS-03B-18 assignment lifecycle > [CMS-03B-18] sixteen active assignments are accepted and the seventeenth refuses without effects"
+        },
+        {
+          "line": 4638,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-assignment-refusals.apispec.ts > CMS-03B-18 refusals through the real stack > [CMS-03B-18] step-up, eligibility, duplicates, expiry bounds, revoke and conflict"
+        },
+        {
+          "line": 4650,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-lifecycle.apispec.ts > Slice 11 genuine local schema lifecycle > activates a fresh draft only with the actual dry-run, independent decision and server-derived approval hash"
+        },
+        {
+          "line": 4668,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-preview-verifier.apispec.ts > CMS-03B-19 production adapter over actual PostgREST > [CMS-03B-19] sends only the token hash and returns the complete bound resource without any writes"
+        },
+        {
+          "line": 4688,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-read-workflow-noeffects.apispec.ts > CMS-03B-15 read writes nothing > [CMS-03B-15] a first eligible draft workflow read on a fresh isolated assignee org writes no effect"
+        },
+        {
+          "line": 4707,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-read-workflow-scopes.apispec.ts > CMS-03B-15 scoped preparation > [CMS-03B-15] assignee publisher and reviewer scopes read the same frozen candidate and submission moves the composite ETag"
+        },
+        {
+          "line": 4727,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts > CMS-03B-07 exact action and audience schedule identity > [CMS-03B-07] nine-digit fractional schedule accepted by Worker remains accepted by SQL"
+        },
+        {
+          "line": 4747,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts > CMS-03B-07 exact action and audience schedule identity > [CMS-03B-07] header/body CAS disagreement is 400 before any RPC or reservation"
+        },
+        {
+          "line": 4768,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts > CMS-03B-07 exact action and audience schedule identity > [CMS-03B-07] non-JSON body is exact 415 before RPC and changes nothing"
+        },
+        {
+          "line": 4789,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-schedule.apispec.ts > CMS-03B-07 schedule through the real stack > [CMS-03B-07] readable nonpublisher is exactly 403 and hidden and absent revisions are identical safe 404s"
+        },
+        {
+          "line": 4810,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts > CMS-03B-05 frozen submission and admission contracts > [CMS-03B-05] superseded revisions refuse revision_not_submittable using the current entry operand"
+        },
+        {
+          "line": 4830,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts > CMS-03B-05 frozen submission and admission contracts > [CMS-03B-05] weak-etag is refused before RPC and before every durable effect"
+        },
+        {
+          "line": 4850,
+          "text": " FAIL  tests/postgrest/phase-02-slice-11-sweep-outcomes.apispec.ts > CMS-03B-20 retryable and blocked outcomes > [CMS-03B-20] an expired matching real lease refuses unchanged operands before stale-evidence handling"
+        }
+      ]
+    },
+    "dbVerify": 1,
+    "validate": "UNRUN",
+    "postReset": 0,
+    "unifiedSessionExit": 1,
+    "recordedProcessesAlive": []
+  },
+  "next": {
+    "grantFreeAlternative": {
+      "status": "source-compatible in principle; UNSELECTED and UNIMPLEMENTED",
+      "shape": "generic cms_complete unchanged; existing settings UUID ABI lookup-only; nested materialization blocks only after complete/before RETURN at five existing CMS-owned positive 201 tails",
+      "insert": "always attempt max+1 ON CONFLICT(owner_id,snapshot_hash) DO NOTHING then reread/reuse stored ordinal",
+      "requirements": [
+        "verify five actual catalog owners ACL attributes and source fingerprints",
+        "exact unique positive-tail anchors; B01 conflict409 and all earlier replays unchanged",
+        "actual five-writer behavior and atomicity proof, not text-only checks",
+        "clock_timestamp command-server instant; effective values before owner leaf; no later canonical locks",
+        "canonical owner field source obligation; authorized divergent/NULL writer witness impossible, mutation sensitivity unproven"
+      ],
+      "reviews": ["s11_recovery_reference_source", "s11_sql2_refutation_exact"],
+      "grantChanges": 0
+    },
+    "assignmentBrief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-assignment-typed-refusal-fixture-2026-10-10.md",
+    "lifecycleBrief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-lifecycle-persisted-digest-fixture-2026-10-10.md",
+    "sourcePreflight": "Assignment/lifecycle and standalone lookup briefs source-compatible. Writer brief corrected false-submit/forged-policy/conflict/replay fixture gaps; private-helper shape now DEFERRED after actual no-grant ownership failure. No-new-function inline existing-writer alternative under independent source review. Next authors only assignment/lifecycle/lookup after clean pushed checkpoint.",
+    "writeClaims": "UNRUN until current full gate final, live handoff refreshed and clean exact pushed checkpoint.",
+    "lookupRedBrief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-e7-settings-lookup-red-2026-10-10.md",
+    "writerTailRedBrief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-e7-settings-writer-tail-red-2026-10-10.md",
+    "deferredProducerBrief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-e7-settings-write-tail-green-2026-10-10.md",
+    "catalog": {
+      "markers": ["activeCI=0", "e7SettingsCatalogExit=0"],
+      "catalog": [
+        {
+          "container": "supabase_db_wejammin",
+          "functions": [
+            {
+              "acl": "{postgres=X/postgres,wejammin_cms_definer=X/postgres}",
+              "owner": "postgres",
+              "config": ["search_path=\"\""],
+              "canLogin": true,
+              "bypassRls": true,
+              "signature": "platform_private.cms_complete(uuid,uuid,integer,jsonb)",
+              "superuser": false,
+              "volatility": "v",
+              "anonExecute": false,
+              "definitionMd5": "90994296fa523f04f0906dabd969a641",
+              "cmsRoleExecute": true,
+              "securityDefiner": true,
+              "serviceRoleExecute": false,
+              "authenticatedExecute": false
+            },
+            {
+              "acl": "{wejammin_cms_definer=X/wejammin_cms_definer}",
+              "owner": "wejammin_cms_definer",
+              "config": ["search_path=\"\""],
+              "canLogin": false,
+              "bypassRls": false,
+              "signature": "platform_private.cms_settings_snapshot(uuid)",
+              "superuser": false,
+              "volatility": "v",
+              "anonExecute": false,
+              "definitionMd5": "3970fc1b407c03012efed279fd24a464",
+              "cmsRoleExecute": true,
+              "securityDefiner": true,
+              "serviceRoleExecute": false,
+              "authenticatedExecute": false
+            }
+          ]
+        }
+      ]
+    },
+    "ownerPrivileges": {
+      "markers": ["activeCI=0", "e7SettingsRoleExit=0"],
+      "privileges": [
+        {
+          "privileges": {
+            "currentUser": "postgres",
+            "sessionUser": "postgres",
+            "cmsRoleSchemaCreate": false,
+            "migrationRoleCmsMember": true,
+            "migrationRoleSuperuser": false,
+            "migrationRoleLookupExecute": true,
+            "migrationRoleSupabaseAdminMember": false
+          }
+        }
+      ]
+    },
+    "ownerTransferProbe": {
+      "markers": ["activeCI=0", "e7SettingsOwnerTransferProbeExit=0"],
+      "probe": [
+        {
+          "outcome": "REFUSED",
+          "sqlState": "42501",
+          "reason": "permission denied for schema platform_private",
+          "probeGone": true
+        }
+      ]
+    }
+  }
+}

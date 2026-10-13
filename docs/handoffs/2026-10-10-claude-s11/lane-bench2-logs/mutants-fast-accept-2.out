@@ -1,0 +1,7 @@
+m09_kind_list                      KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m10_kind_object                    KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m17_maxlength_type                 KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m23_default_value_present          KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m32_label_length                   KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m33_label_empty                    KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m34_label_raw_length               KILLED       failing=1 all 188 benchmark and authored field shapes are valid and take the early accept (no call reaches the full rules) [P2-S09-AC-217]

@@ -1,0 +1,26 @@
+[bench] head2 start load=1.46 3.33 4.37
+[bench] head2 run 1 exit=1 load_before=1.46 load_after=1.85
+# activate p50=219.2ms p95=270.1ms max=282.9ms n=25
+# assign p50=11.7ms p95=16.2ms max=19.7ms n=25
+# create128 p50=312.5ms p95=424.8ms max=447.3ms n=25
+# decide p50=55.8ms p95=76.7ms max=85.4ms n=25
+# dry_run p50=104.1ms p95=139.7ms max=211.4ms n=25
+# submit p50=107.4ms p95=129.3ms max=206.7ms n=25
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+[bench] head2 run 2 exit=1 load_before=1.85 load_after=1.87
+# activate p50=194.7ms p95=267.4ms max=277.9ms n=25
+# assign p50=11.2ms p95=15.4ms max=24.1ms n=25
+# create128 p50=279.1ms p95=370.5ms max=403.1ms n=25
+# decide p50=55.5ms p95=80.0ms max=99.8ms n=25
+# dry_run p50=100.8ms p95=132.2ms max=143.0ms n=25
+# submit p50=99.0ms p95=134.2ms max=156.0ms n=25
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+[bench] head2 run 3 exit=1 load_before=1.87 load_after=1.85
+# activate p50=223.3ms p95=325.9ms max=327.4ms n=25
+# assign p50=11.5ms p95=17.5ms max=27.6ms n=25
+# create128 p50=323.4ms p95=384.4ms max=473.7ms n=25
+# decide p50=58.5ms p95=85.3ms max=94.7ms n=25
+# dry_run p50=103.1ms p95=143.8ms max=194.6ms n=25
+# submit p50=100.1ms p95=164.5ms max=173.6ms n=25
+not ok 3 - activate on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]

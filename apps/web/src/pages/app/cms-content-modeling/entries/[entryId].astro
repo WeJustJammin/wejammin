@@ -2,6 +2,7 @@
 import { env } from 'cloudflare:workers';
 
 import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import { cmsEditorialAppWorkflowPath } from '../../../../components/cms-editorial/cms-editorial-app-routes';
 import CmsEditorialEntryEditorIsland from '../../../../components/cms-editorial/CmsEditorialEntryEditorIsland';
 import CmsEditorialEntryEditUnavailable from '../../../../components/cms-editorial-pages/CmsEditorialEntryEditUnavailable';
 import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
@@ -30,6 +31,7 @@ Astro.response.status =
 const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
 const heading =
   outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+const workflowPath = cmsEditorialAppWorkflowPath(Astro.params.entryId ?? '');
 ---
 
 <CmsEditorialDocument
@@ -42,7 +44,14 @@ const heading =
     outcome.kind === 'notice' ? (
       <CmsEditorialPageNotice notice={outcome.notice} />
     ) : outcome.view.kind === 'editor' ? (
-      <CmsEditorialEntryEditorIsland init={outcome.view.init} client:load />
+      <>
+        {workflowPath !== null && (
+          <p>
+            <a href={workflowPath}>Review and publish</a>
+          </p>
+        )}
+        <CmsEditorialEntryEditorIsland init={outcome.view.init} client:load />
+      </>
     ) : (
       <CmsEditorialEntryEditUnavailable view={outcome.view} />
     )

@@ -4,7 +4,7 @@ import {
   EntryDraftDetailResourceSchema,
 } from '@wejammin/contracts';
 
-import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor';
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import { draftValuesFromDetail } from '../cms-editorial/cms-editorial-draft-values';
 import type { CmsEditorialEntryEditorInit } from '../cms-editorial/cms-editorial-entry-editor-state';
 import {
@@ -139,10 +139,8 @@ export const loadEntryEditPage = async (input: {
   if (!parsed.success)
     return failure(cmsEditorialUnverifiedNotice('Edit entry'));
 
-  const projected = draftValuesFromDetail(
-    detail,
-    describeCmsAuthoringFields(parsed.data.fields),
-  );
+  const descriptors = describeCmsAuthoringFields(parsed.data.fields);
+  const projected = draftValuesFromDetail(detail, descriptors);
   return view(200, {
     kind: 'editor',
     init: {
@@ -161,7 +159,7 @@ export const loadEntryEditPage = async (input: {
               conflictId: detail.openConflict.conflictId,
               version: detail.openConflict.version,
             },
-      fields: parsed.data.fields,
+      descriptors,
       values: projected.values,
       provenance: projected.provenance,
       readOnlyNotices: projected.readOnlyNotices,

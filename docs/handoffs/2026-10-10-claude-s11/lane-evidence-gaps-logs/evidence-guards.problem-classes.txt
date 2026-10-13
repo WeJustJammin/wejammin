@@ -1,0 +1,15 @@
+Slice 10 430 {"total":105,"verified":102,"partial":3,"unverified":0,"contractOnly":0}
+  198  AC): stale receipt: the test file changed after the run (receipt hash does not match the file now)
+  78  no receipt: the test did not run, or its title does not match exactly (pgTAP titles are whitespace-collapsed)
+  41 7): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+  32 6): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+  25 2): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+  15 4): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+  14 1): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+  13 5): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+  4 3): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+  4 8): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+  4 0): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+  2 9): stale receipt: a file included by the pgTAP entrypoint changed after the run (closure hash does not match)
+Slice 11 2270 {"total":122,"verified":118,"partial":2,"unverified":2,"contractOnly":0}
+  2270  no receipt: the test did not run, or its title does not match exactly (pgTAP titles are whitespace-collapsed)

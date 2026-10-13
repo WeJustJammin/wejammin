@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { vi } from 'vitest';
 
+import { settleCmsValidatorsForTest } from '../../lib/cms-contract-validators';
+
 import {
   ConsoleUnderTest,
   jsonResponse,
@@ -81,6 +83,9 @@ export const settle = async (): Promise<void> => {
     await new Promise<void>((resolve) => {
       realSetTimeout(resolve, RESPONSE_BODY_SETTLE_MS);
     });
+    // An in-flight lazy validator import (AC-106) is finished by real time too.
+    await settleCmsValidatorsForTest();
+    for (let index = 0; index < 6; index += 1) await Promise.resolve();
   });
 };
 

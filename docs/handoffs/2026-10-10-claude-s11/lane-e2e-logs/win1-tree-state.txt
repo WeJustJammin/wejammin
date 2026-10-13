@@ -1,0 +1,62 @@
+0fd4bf31cbe672b51a1f04a7949a652bd4049d02
+ M apps/web/src/components/cms-editorial-workflow/README.md
+ M apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts
+ M apps/web/src/server/cms-editorial-platform-write.ts
+ M apps/worker/src/README.md
+ M apps/worker/src/cms-editorial/a11y-structural/max-input.test.ts
+ M apps/worker/src/cms-editorial/route-errors.test.ts
+ M apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts
+ M infra/run-database-race-runners.mjs
+ M packages/application/src/infrastructure/jobs/README.md
+ M supabase/migrations/20261005017620_cms_assign_editorial_reviewer.sql
+ M supabase/migrations/README.md
+ M supabase/tests/phase_02_slice_09_evidence_misc.sql
+ M supabase/tests/phase_02_slice_11_criteria/README.md
+ M supabase/tests/phase_02_slice_11_criteria_decision_order.sql
+ M supabase/tests/phase_02_slice_11_criteria_publish_gates.sql
+ M supabase/tests/phase_02_slice_11_helpers_settings.sql
+ M supabase/tests/phase_02_slice_11_races/010-review-assignment-race.mjs
+ M supabase/tests/phase_02_slice_11_races/README.md
+ M supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql
+ M supabase/tests/phase_02_slice_11_rpc_publication/README.md
+ M supabase/tests/phase_02_slice_11_rpc_publication_claim.sql
+ M supabase/tests/phase_02_slice_11_rpc_publication_execute.sql
+ M supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql
+ M supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql
+ M supabase/tests/phase_02_slice_11_rpc_reads/README.md
+ M supabase/tests/phase_02_slice_11_rpc_review/000-world.sqlinc
+ M supabase/tests/phase_02_slice_11_rpc_review/README.md
+ M supabase/tests/phase_02_slice_11_rpc_review_assign_refusals.sql
+ M supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql
+ M supabase/tests/phase_02_slice_11_rpc_review_evidence_audit.sql
+ M supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql
+ M supabase/tests/phase_02_slice_11_schema/README.md
+ M supabase/tests/phase_02_slice_11_schema_posture.sql
+ M tests/e2e/phase-02-slice-10-entry-list-real-route.spec.ts
+ M tests/e2e/phase-02-slice-11-workflow-real-route.spec.ts
+ M tests/e2e/support/README.md
+ M tests/e2e/support/s11-real-world.ts
+?? apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx
+?? apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test-support.ts
+?? apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx
+?? apps/worker/src/cms-editorial-principal-boundaries.test-support.ts
+?? apps/worker/src/cms-publication-schedule-import-graph.test.ts
+?? apps/worker/src/import-graph.test-support.ts
+?? apps/worker/src/import-graph.test.ts
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-report.md
+?? docs/handoffs/2026-10-10-claude-s11/lane-reviewA-2-logs/
+?? docs/handoffs/2026-10-10-claude-s11/lane-reviewA-2-report.md
+?? docs/handoffs/2026-10-10-claude-s11/lane-reviewA1-report.md
+?? supabase/migrations/20261010169000_cms_slice11_session_scope_rls.sql
+?? supabase/tests/phase_02_slice_11_effect_oracle.sql
+?? supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs
+?? supabase/tests/phase_02_slice_11_reads_bench128.sql
+?? supabase/tests/phase_02_slice_11_reads_bench128/
+?? supabase/tests/phase_02_slice_11_rls_session_scope.sql
+?? supabase/tests/phase_02_slice_11_rpc_publication_sweep_grants.sql
+?? supabase/tests/phase_02_slice_11_rpc_reads_workflow_reviewer_scope.sql
+?? tests/contracts/phase-02-slice-11-evidence-guard.test.ts
+?? tests/e2e/support/s11-dst-gap.test.ts
+?? tests/e2e/support/s11-dst-gap.ts
+diff-sha256 0d3564ded28997db

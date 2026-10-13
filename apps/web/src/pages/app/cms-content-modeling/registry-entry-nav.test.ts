@@ -27,3 +27,12 @@ describe('content-modeling registry navigates to the entries list', () => {
     expect(primary?.[0]).toContain('/app/cms-content-modeling/entries');
   });
 });
+
+describe('content-modeling registry navigates to the reviewer queue', () => {
+  it('exposes a primary-navigation link to /app/cms-content-modeling/reviews', () => {
+    const primary = registryIndex.match(
+      /<nav aria-label="Primary navigation">[\s\S]*?<\/nav>/u,
+    );
+    expect(primary?.[0]).toContain('href="/app/cms-content-modeling/reviews"');
+  });
+});

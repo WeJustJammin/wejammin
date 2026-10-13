@@ -1,11 +1,8 @@
-import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor';
 import { validateCmsFieldValue } from '../cms-editorial-fields/cms-field-value';
 import { cmsEditorialAppEntryPath } from './cms-editorial-app-routes';
-import { executeCmsEditorialConflictDetailRead } from './cms-editorial-conflict-detail-transport';
-import {
-  executeCmsEditorialConflictResolve,
-  type CmsEditorialConflictResolveRequest,
-  type CmsEditorialConflictResolveTransportResult,
+import type {
+  CmsEditorialConflictResolveRequest,
+  CmsEditorialConflictResolveTransportResult,
 } from './cms-editorial-conflict-resolve';
 import {
   conflictPathViewsFrom,
@@ -13,11 +10,10 @@ import {
   initialConflictState,
   type CmsEditorialConflictState,
 } from './cms-editorial-conflict-state';
-import { executeCmsEditorialEntryDraftDetailRead } from './cms-editorial-entry-draft-detail-transport';
 import {
   newCmsEditorialIdempotencyKey,
   READ_CSRF_COOKIE_FROM_DOCUMENT,
-} from './cms-editorial-entry-create-submit';
+} from './cms-editorial-request-support';
 import { COPY, refusedFromViolations } from './cms-editorial-conflict-copy';
 import type {
   CmsEditorialConflictController,
@@ -43,10 +39,7 @@ export const createCmsEditorialConflictController = (
 ): CmsEditorialConflictController => {
   const { init } = deps;
   const descriptors = new Map(
-    describeCmsAuthoringFields(init.fields).map((descriptor) => [
-      descriptor.fieldId,
-      descriptor,
-    ]),
+    init.descriptors.map((descriptor) => [descriptor.fieldId, descriptor]),
   );
   const listeners = new Set<() => void>();
   let state = initialConflictState(init);
@@ -63,9 +56,16 @@ export const createCmsEditorialConflictController = (
   };
   const entryPath = cmsEditorialAppEntryPath(init.entryId) ?? '/';
 
+  // The transports (and the contract schemas they validate with) load on the
+  // first read or resolve, never with the island (FE03 "Performance budgets and
+  // loading strategy", AC-106). A chunk that cannot be fetched sent nothing.
   const close = async (): Promise<void> => {
     // The draft is re-read so the entry page the author returns to is canonical.
-    await executeCmsEditorialEntryDraftDetailRead({
+    const draftDetail =
+      await import('./cms-editorial-entry-draft-detail-transport').catch(
+        () => null,
+      );
+    await draftDetail?.executeCmsEditorialEntryDraftDetailRead({
       basePath: '/api/v1/cms/entries',
       entryId: init.entryId,
       ...(deps.fetcher === undefined ? {} : { fetcher: deps.fetcher }),
@@ -75,14 +75,18 @@ export const createCmsEditorialConflictController = (
   };
 
   const reloadAfterConflict = async (): Promise<void> => {
-    const read = await executeCmsEditorialConflictDetailRead({
+    const detail =
+      await import('./cms-editorial-conflict-detail-transport').catch(
+        () => null,
+      );
+    const read = await detail?.executeCmsEditorialConflictDetailRead({
       basePath: '/api/v1/cms/entries',
       entryId: init.entryId,
       conflictId: init.conflictId,
       ...(deps.fetcher === undefined ? {} : { fetcher: deps.fetcher }),
     });
-    if (read.outcome === 'not-found') return close();
-    if (read.outcome !== 'success' || read.resource === null) {
+    if (read?.outcome === 'not-found') return close();
+    if (read?.outcome !== 'success' || read.resource === null) {
       set({ phase: 'idle', alert: true, message: COPY.reloadFailed });
       return;
     }
@@ -174,7 +178,15 @@ export const createCmsEditorialConflictController = (
     inFlight = true;
     set({ phase: 'submitting', alert: false, message: COPY.submitting });
     try {
-      const result = await executeCmsEditorialConflictResolve({
+      const resolve = await import('./cms-editorial-conflict-resolve').catch(
+        () => null,
+      );
+      if (resolve === null) {
+        // Nothing was sent: the identical request is replayed under its key.
+        set({ phase: 'unknown', alert: false, message: COPY.unknown });
+        return;
+      }
+      const result = await resolve.executeCmsEditorialConflictResolve({
         path: `/api/v1/cms/entries/${init.entryId}/conflicts/${init.conflictId}/resolve`,
         request: sent.request,
         csrfToken: csrf,

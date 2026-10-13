@@ -1,0 +1,118 @@
+-- Capture helpers of the CMS-03A-01 parity suite.  A capture runs one function on one request inside a
+-- sub-transaction, records everything the call produced (outcome, response, every row it wrote with the
+-- generated ids replaced by symbols, the per-table row-count delta), and rolls the sub-transaction back, so
+-- the previous and the current function see the same database state and their images are comparable
+-- byte for byte.
+
+-- A deterministic version-4 / variant-1 UUID from a seed (cms_valid_uuid admits only that shape).
+create or replace function pg_temp.parity_uuid(p_seed text) returns uuid language sql immutable as $body$
+  select (substr(h, 1, 12) || '4' || substr(h, 14, 3) || '8' || substr(h, 18, 15))::uuid
+  from (select md5(p_seed) as h) seed
+$body$;
+
+-- Row count of every table of the schemas the command can touch, as {schema.table: n}.
+create or replace function pg_temp.parity_counts() returns jsonb language sql as $body$
+  select coalesce(jsonb_object_agg(rel.name, rel.n), '{}'::jsonb)
+  from (
+    select c.oid::regclass::text as name,
+           (xpath('/row/c/text()', query_to_xml(format('select count(*) as c from %s', c.oid::regclass), false, true, '')))[1]::text::bigint as n
+    from pg_class c join pg_namespace ns on ns.oid = c.relnamespace
+    where c.relkind in ('r', 'p') and ns.nspname in ('platform_private', 'audit_private', 'identity_private', 'content_private')
+  ) rel
+$body$;
+
+-- One RPC call as the owner with every envelope value that would otherwise be random fixed.
+create or replace function pg_temp.parity_call(p_label text, p_function text, p_request jsonb) returns void
+language plpgsql as $body$
+begin
+  perform pg_temp.s09d_rpc(p_label, p_function, 'owner', p_request, false, jsonb_build_object(
+    'sessionId', 'a9d20000-0000-4000-8000-000000000001', 'requestId', 'a9d20000-0000-4000-8000-000000000002',
+    'correlationId', 'a9d20000-0000-4000-8000-000000000003', 'stepUpAt', to_jsonb(now() - interval '1 minute')));
+end;
+$body$;
+
+-- Everything one command left behind, generated ids replaced by <type>, <version>, <artifact>.
+create or replace function pg_temp.parity_image(p_request jsonb, p_before jsonb, p_after jsonb) returns jsonb
+language plpgsql as $body$
+declare
+  type_row jsonb; version_row jsonb; artifact_row jsonb;
+  type_id uuid; version_id uuid; artifact_id uuid; img jsonb; img_text text;
+begin
+  select to_jsonb(t) into type_row from platform_private.cms_content_types t where t.type_key = p_request->>'typeKey';
+  type_id := (type_row->>'id')::uuid;
+  select to_jsonb(v) into version_row from platform_private.cms_content_type_versions v where v.content_type_id = type_id;
+  version_id := (version_row->>'id')::uuid;
+  select to_jsonb(a) into artifact_row from platform_private.cms_schema_artifacts a where a.content_type_version_id = version_id;
+  artifact_id := (artifact_row->>'id')::uuid;
+  img := jsonb_build_object(
+    'outcomes', (select coalesce(jsonb_agg(jsonb_build_object('label', p.label, 'state', p.state, 'message', p.message,
+        'detail', p.detail, 'response', p.response) order by p.label), '[]'::jsonb)
+      from s09d_probe p where p.label like 'parity:call:%'),
+    'type', type_row, 'version', version_row, 'artifact', artifact_row,
+    'fields', (select coalesce(jsonb_agg(to_jsonb(f) order by f.stable_field_id), '[]'::jsonb)
+      from platform_private.cms_field_definition_versions f where f.content_type_version_id = version_id),
+    'relations', (select coalesce(jsonb_agg(to_jsonb(r) - 'id' order by r.field_definition_id), '[]'::jsonb)
+      from platform_private.cms_relation_definitions r
+      join platform_private.cms_field_definition_versions f on f.id = r.field_definition_id
+      where f.content_type_version_id = version_id),
+    'capabilityBindings', (select coalesce(jsonb_agg(to_jsonb(b) - 'id' order by b.capability_key, b.capability_version), '[]'::jsonb)
+      from platform_private.cms_content_type_capability_bindings b where b.content_type_version_id = version_id),
+    'templateBindings', (select coalesce(jsonb_agg(to_jsonb(b) - 'id' order by b.template_version_id), '[]'::jsonb)
+      from platform_private.cms_content_type_template_bindings b where b.content_type_version_id = version_id),
+    'outbox', (select coalesce(jsonb_agg(to_jsonb(o) - 'id' order by o.event_type), '[]'::jsonb)
+      from platform_private.outbox_events o where o.aggregate_id = version_id),
+    'audit', (select coalesce(jsonb_agg(to_jsonb(e) - 'id' order by e.action), '[]'::jsonb)
+      from audit_private.audit_events e where e.target_id = version_id),
+    -- expires_at is clock_timestamp()-based, so it is compared as the whole days of retention.
+    'idempotency', (select coalesce(jsonb_agg((to_jsonb(i) - 'id' - 'expires_at') || jsonb_build_object(
+        'retentionDays', round(extract(epoch from i.expires_at - i.created_at) / 86400)) order by i.key_hash), '[]'::jsonb)
+      from platform_private.idempotency_records i where i.operation = 'CMS-03A-01'),
+    'rowDelta', (select coalesce(jsonb_object_agg(k.k, (p_after->>k.k)::bigint - coalesce((p_before->>k.k)::bigint, 0))
+        filter (where (p_after->>k.k)::bigint is distinct from coalesce((p_before->>k.k)::bigint, 0)), '{}'::jsonb)
+      from jsonb_object_keys(p_after) as k(k)));
+  img_text := img::text;
+  if type_id is not null then img_text := replace(img_text, type_id::text, '<type>'); end if;
+  if version_id is not null then img_text := replace(img_text, version_id::text, '<version>'); end if;
+  if artifact_id is not null then img_text := replace(img_text, artifact_id::text, '<artifact>'); end if;
+  return img_text::jsonb;
+end;
+$body$;
+
+-- Runs p_calls identical calls of p_function (after the prior requests, created through the public
+-- function in both runs) and returns the image; the sub-transaction is always rolled back.
+create or replace function pg_temp.parity_capture(
+  p_function text, p_request jsonb, p_prior jsonb default '[]'::jsonb, p_calls integer default 1
+) returns jsonb language plpgsql as $body$
+declare
+  image jsonb; prior jsonb; before_counts jsonb; after_counts jsonb; i integer;
+  sentinel constant text := 'PARITY_CAPTURE_ROLLBACK';
+begin
+  begin
+    for prior in select value from jsonb_array_elements(p_prior) loop
+      perform pg_temp.parity_call('parity:prior', 'platform_api.cms_create_type_draft', prior);
+      if pg_temp.s09d_outcome('parity:prior') <> 'OK' then
+        raise exception 'parity fixture: the prior request failed: %', pg_temp.s09d_outcome('parity:prior');
+      end if;
+    end loop;
+    before_counts := pg_temp.parity_counts();
+    for i in 1..p_calls loop
+      perform pg_temp.parity_call('parity:call:' || i, p_function, p_request);
+    end loop;
+    after_counts := pg_temp.parity_counts();
+    image := pg_temp.parity_image(p_request, before_counts, after_counts);
+    raise exception '%', sentinel using errcode = 'P0001';
+  exception when others then
+    if sqlerrm is distinct from sentinel then raise; end if;
+  end;
+  return image;
+end;
+$body$;
+
+-- NULL when the two images are identical, else the differing members.
+create or replace function pg_temp.parity_diff(p_legacy jsonb, p_current jsonb) returns text language sql as $body$
+  select case when p_legacy is null or p_current is null then 'a capture returned no image'
+    else (select string_agg(k.k || ': legacy=' || left(coalesce(p_legacy->k.k, 'null'::jsonb)::text, 300)
+        || ' | current=' || left(coalesce(p_current->k.k, 'null'::jsonb)::text, 300), E'\n' order by k.k)
+      from jsonb_object_keys(p_legacy || p_current) as k(k)
+      where (p_legacy->k.k) is distinct from (p_current->k.k)) end
+$body$;

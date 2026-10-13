@@ -1,3 +1,4 @@
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import {
   AuthoringContextResourceSchema,
   CmsUuidSchema,
@@ -92,7 +93,10 @@ export const loadConflictPage = async (input: {
   }
   const parsed = AuthoringContextResourceSchema.safeParse(definitionsBody);
   if (!parsed.success) return cmsEditorialUnverifiedNotice('Conflict detail');
-  const init = conflictInitFrom(conflict.data, parsed.data.fields);
+  const init = conflictInitFrom(
+    conflict.data,
+    describeCmsAuthoringFields(parsed.data.fields),
+  );
   const known = new Set(parsed.data.fields.map((field) => field.stableFieldId));
   if (init.paths.some((path) => !known.has(path.fieldId)))
     return cmsEditorialUnverifiedNotice('Conflict detail');

@@ -27,6 +27,7 @@ import { isRecord, isSafeToken, isUuid } from './migration-worker-schema-core';
 /** Validated dependency context shared by each migration stage. */
 export type MigrationWorkerRuntime = Readonly<{
   workerId: string;
+  executionPurpose: 'dry_run' | 'activation';
   now: () => number;
   leaseDurationMs: number;
   maxBatchRows: number;
@@ -101,6 +102,14 @@ const persistDeadLetter = async (
 export const createMigrationWorkerRuntime = (
   dependencies: SchemaMigrationWorkerDependencies,
 ): MigrationWorkerRuntime => {
+  const configuredPurpose = dependencies.executionPurpose;
+  if (
+    configuredPurpose !== undefined &&
+    configuredPurpose !== 'dry_run' &&
+    configuredPurpose !== 'activation'
+  )
+    throw new Error('executionPurpose is invalid');
+  const executionPurpose = configuredPurpose ?? 'activation';
   const now = dependencies.now ?? Date.now;
   const leaseDurationMs =
     dependencies.leaseDurationMs ?? DEFAULT_MIGRATION_LEASE_MS;
@@ -184,6 +193,7 @@ export const createMigrationWorkerRuntime = (
 
   return {
     workerId: dependencies.workerId,
+    executionPurpose,
     now,
     leaseDurationMs,
     maxBatchRows,

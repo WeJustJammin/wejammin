@@ -1,8 +1,13 @@
 import * as React from 'react';
 
+import {
+  warmCmsValidators,
+  withCmsValidators,
+} from '../../lib/cms-contract-validators';
+import CmsCapabilityGrantCheckNotice from './CmsCapabilityGrantCheckNotice';
 import { ReasonField } from './CmsCapabilityGrantFields';
 import { capabilityLabel } from './cms-capability-grant-labels';
-import { CMS_CAPABILITY_GRANT_CONSOLE_PATH } from './cms-capability-grant-url';
+import { CMS_CAPABILITY_GRANT_CONSOLE_PATH } from './cms-capability-grant-console-url';
 import {
   validateRevocationFields,
   type GrantFieldErrors,
@@ -34,6 +39,7 @@ export default function CmsCapabilityGrantRevokeConfirmation(
   const [reason, setReason] = React.useState('');
   const [confirmed, setConfirmed] = React.useState(false);
   const [errors, setErrors] = React.useState<GrantFieldErrors>({});
+  const [checkUnavailable, setCheckUnavailable] = React.useState(false);
   const heading = React.useRef<HTMLHeadingElement | null>(null);
   React.useEffect(() => heading.current?.focus({ preventScroll: true }), []);
   const label = capabilityLabel(grant.capability);
@@ -41,10 +47,17 @@ export default function CmsCapabilityGrantRevokeConfirmation(
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
     if (props.disabled || props.pending || !confirmed) return;
-    const found = validateRevocationFields({ reason });
-    setErrors(found);
-    if (found.reason !== undefined) return;
-    props.onSubmit(event.currentTarget);
+    const form = event.currentTarget;
+    withCmsValidators(
+      (validators) => {
+        setCheckUnavailable(false);
+        const found = validateRevocationFields(validators, { reason });
+        setErrors(found);
+        if (found.reason !== undefined) return;
+        props.onSubmit(form);
+      },
+      () => setCheckUnavailable(true),
+    );
   };
   return (
     <form
@@ -56,6 +69,7 @@ export default function CmsCapabilityGrantRevokeConfirmation(
       action={CMS_CAPABILITY_GRANT_CONSOLE_PATH}
       noValidate
       onSubmit={onSubmit}
+      onFocus={warmCmsValidators}
       onKeyDown={(event) => {
         if (event.key !== 'Escape') return;
         event.preventDefault();
@@ -101,6 +115,10 @@ export default function CmsCapabilityGrantRevokeConfirmation(
           I understand this revokes access immediately.
         </label>
       </fieldset>
+      <CmsCapabilityGrantCheckNotice
+        id={`cms-revoke-${grant.id}-check-unavailable`}
+        unavailable={checkUnavailable}
+      />
       <div className="content-schema-registry-actions">
         <button
           type="submit"

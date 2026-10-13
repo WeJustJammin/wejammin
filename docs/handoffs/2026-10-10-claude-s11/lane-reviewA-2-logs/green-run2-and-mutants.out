@@ -1,0 +1,107 @@
+[alt] waiting for lock 18:01:28
+[alt] lock acquired 18:01:28
+[alt] reset ok 18:04:24
+[alt] pg_prove exit=1  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-180128-1835189.tap
+not ok 25 - control: the observation sees a write - an accepted assignment changes the assignment, review, reservation, event and audit tables inside its probe [P2-S11-AC-071]
+not ok 27 - control: the observation sees a write - a minted preview changes the token, settings snapshot, reservation, event and audit tables inside its probe [P2-S11-AC-027]
+not ok 8 - a non-member, a member without any scope on the review, a caller acting in another party and an absent review are one indistinguishable NOT_FOUND [P2-S11-AC-069]
+not ok 9 - a submitter, a publisher and an assigned reviewer can read the review but are not the receipt-derived owner: 403 capability_missing for create and revoke [P2-S11-AC-069]
+not ok 10 - an owner without a valid cms.editor grant is refused both a create and a revoke: 403 capability_missing (BE03b CMS-03B-18, review of finding A-B1) [P2-S11-AC-069]
+not ok 11 - an owner whose cms.editor grant has lapsed (its valid_through day passed) is refused both a create and a revoke: 403 capability_missing [P2-S11-AC-069]
+not ok 12 - an owner whose membership tenure has ended no longer holds the owner scope: the review is concealed NOT_FOUND for create and revoke [P2-S11-AC-069]
+not ok 13 - an approved, rejected or invalidated review accepts no assignment change: review_not_open [P2-S11-AC-071]
+not ok 14 - a stale review version is VERSION_MISMATCH carrying the expected and current versions [P2-S11-AC-071]
+not ok 15 - If-Match must equal expectedVersion (INVALID_REQUEST) and both must be positive decimals (VALIDATION_FAILED at the member) [P2-S11-AC-068]
+not ok 16 - an absent, non-member, ungranted, publisher-only, submitter, revision-author, banned, shadow, lapsed, deactivated or ended-tenure reviewer is one byte-identical reviewer_not_eligible [P2-S11-AC-069]
+not ok 18 - a second assignment of a reviewer who holds an active row is assignment_exists, even when that row is expired but not revoked [P2-S11-AC-071]
+not ok 19 - the seventeenth active assignment of a review is assignment_limit [P2-S11-AC-071]
+not ok 21 - the expiry must be after now, within seven days, and not after the reviewer grant day end or the owner cms.editor grant day end (the end itself is allowed) [P2-S11-AC-068]
+not ok 22 - an unknown key (a caller-supplied owner), a missing member, the other action's members, an unknown action, a malformed review id and a missing or short idempotency key are INVALID_REQUEST [P2-S11-AC-068]
+not ok 23 - a non-UUID reviewer or assignment id and an expiry that is not an offset ISO instant are VALIDATION_FAILED at their member pointer [P2-S11-AC-068]
+not ok 24 - every refusal above changed none of the fourteen durable tables (whole-row digests of assignment, review, decision, reservation, audit record, outbox event and the rest), observed inside its own call before the probe rolled back; only the five successful controls wrote [P2-S11-AC-071]
+not ok 25 - control: the observation sees a write - an accepted assignment changes the assignment, review, reservation, event and audit tables inside its probe [P2-S11-AC-071]
+not ok 11 - a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]
+not ok 13 - a non-member, a scope-less member, an absent review, another acting party and a reviewer whose assignment was revoked are one indistinguishable NOT_FOUND [P2-S11-AC-013]
+not ok 14 - a readable review without an EFFECTIVE assignment (window over, not started, submitter, publisher, owner) is 403 capability_missing [P2-S11-AC-013]
+not ok 15 - an approved, rejected or invalidated review is review_not_open, and the state is evaluated before the CAS operand [P2-S11-AC-108]
+not ok 16 - a stale review version is VERSION_MISMATCH with the expected and current versions [P2-S11-AC-014]
+not ok 17 - If-Match must equal expectedVersion (INVALID_REQUEST) and be a positive decimal (VALIDATION_FAILED) [P2-S11-AC-012]
+not ok 18 - the review submitter and the revision author are 403 separation_of_duties even with an effective assignment [P2-S11-AC-108]
+not ok 19 - a second decision by the same human is 409 duplicate_decision [P2-S11-AC-108]
+not ok 20 - a lapsed or deactivated standing cms.reviewer grant is 403 capability_missing; an ended membership leaves no scope at all (404) [P2-S11-AC-108]
+not ok 22 - an unknown decision, an empty, over-long, non-NFC, control, separator, bidi, markup or brace reason, and a non-string reason are VALIDATION_FAILED at their pointer [P2-S11-AC-012]
+not ok 24 - a caller capability or stepUpAt is an unknown key, and a missing reason or malformed review id is INVALID_REQUEST [P2-S11-AC-012]
+not ok 25 - every refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot and the rest), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]
+not ok 11 - a caller riskClass or owner, a missing member, a malformed id and an If-Match that disagrees with the entry version are INVALID_REQUEST [P2-S11-AC-006]
+not ok 12 - a non-lowercase-hex hash, a non-object or over-bound manifest and a non-decimal version are VALIDATION_FAILED at their pointer [P2-S11-AC-006]
+not ok 13 - a non-member, an absent entry, another acting party, a revision of another entry and an absent revision are one indistinguishable NOT_FOUND [P2-S11-AC-007]
+not ok 14 - a visible entry with no assignment is 403 capability_missing [P2-S11-AC-007]
+not ok 15 - a stale entry version is VERSION_MISMATCH with the expected and current versions [P2-S11-AC-008]
+not ok 16 - a superseded revision and a revision under an open, approved or rejected review are 409 revision_not_submittable [P2-S11-AC-005]
+not ok 17 - a frozen hash that is not the stored payload hash is VALIDATION_FAILED at /frozenHash [P2-S11-AC-005]
+not ok 18 - a submitted manifest that differs from the rebuilt one in any member is 409 dependency_changed carrying only the CURRENT dependencyHash [P2-S11-AC-005]
+not ok 19 - a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]
+not ok 20 - absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight (DEC-159: the Worker adds retryable) [P2-S11-AC-097]
+not ok 21 - a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]
+not ok 22 - evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]
+not ok 23 - an archived entry fails the revocation category (entry_unavailable) [P2-S11-AC-096]
+not ok 24 - a deactivated cms.author grant revokes the creator's assignments (DEC-143) and the submit is 403 capability_missing [P2-S11-AC-007]
+not ok 25 - every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]
+not ok 11 - an unknown key (entryId, riskClass), a missing member, a malformed revision id, If-Match disagreeing with expectedVersion and a non-object proof are INVALID_REQUEST [P2-S11-AC-018]
+not ok 12 - every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: action, a real local date and time without offset or leap second at most nine fraction digits, the zone grammar, an offset instant, the tzdb tag, disambiguation, the audience grammar, expectedVersion and If-Match [P2-S11-AC-018]
+not ok 13 - several invalid fields are reported together, in request order, and nothing else is echoed [P2-S11-AC-018]
+not ok 14 - a stale, future-dated (beyond the 30 s skew), unverified or absent proof is STEP_UP_REQUIRED, even for a caller who could not see the target [P2-S11-AC-047]
+not ok 15 - a non-member, a member with no scope on the entry and an absent revision are the same byte-identical NOT_FOUND [P2-S11-AC-019]
+not ok 16 - a visible target without the owner-party cms.publisher grant is 403 capability_missing: the entry assignee, the assigned reviewer and the owner [P2-S11-AC-019]
+not ok 17 - the human who authored the revision cannot schedule its publish (E11) [P2-S11-AC-107]
+not ok 18 - a stale approved-review version is 409 VERSION_MISMATCH carrying only the expected and current versions [P2-S11-AC-020]
+not ok 19 - an invalidation advances the review version, so a command against an invalidated approval is VERSION_MISMATCH [P2-S11-AC-020]
+not ok 20 - a revision whose latest review is invalidated, rejected or open, or that was never reviewed, cannot be scheduled: CONFLICT [P2-S11-AC-038]
+not ok 21 - a tzdbVersion other than the pinned one is 422 tzdb_version_mismatch carrying the pinned value [P2-S11-AC-104]
+not ok 22 - a schedule under 60 s ahead, in the past or over 366 days ahead is 422 schedule_out_of_horizon with the minUtc and maxUtc window [P2-S11-AC-105]
+not ok 23 - a local time more than 14 h after or 12 h before the resolved UTC (no real zone offset) is 422 resolved_utc_mismatch [P2-S11-AC-105]
+not ok 24 - a cms.publisher grant that ends before the resolved UTC day is 422 authority_ends_before_schedule [P2-S11-AC-107]
+not ok 25 - a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]
+not ok 26 - absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight [P2-S11-AC-097]
+not ok 27 - a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]
+not ok 28 - evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]
+not ok 29 - every refusal above raised and changed none of the fourteen durable tables (whole-row digests of schedule, review, lineage row, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-018]
+not ok 37 - a fresh attempt against the invalidated approval is VERSION_MISMATCH [P2-S11-AC-020]
+not ok 11 - an unknown key (action), a missing member, malformed ids, If-Match disagreeing with expectedVersion and a non-object proof are INVALID_REQUEST [P2-S11-AC-030]
+not ok 12 - every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: frozenHash, the version set shape, the audience grammar, expectedVersion and If-Match [P2-S11-AC-030]
+not ok 13 - several invalid fields are reported together, in request order [P2-S11-AC-030]
+not ok 14 - a stale, future-dated (beyond the 30 s skew), unverified or absent proof is STEP_UP_REQUIRED, even for a caller who could not see the target [P2-S11-AC-048]
+not ok 15 - a non-member, a member with no scope, an absent revision and a revision of another entry are the same byte-identical NOT_FOUND [P2-S11-AC-031]
+not ok 16 - a visible target without the owner-party cms.publisher grant is 403 capability_missing: the entry assignee, the assigned reviewer and the owner [P2-S11-AC-031]
+not ok 17 - the human who authored the revision cannot publish it (E11) [P2-S11-AC-107]
+not ok 18 - a stale approved-review version is 409 VERSION_MISMATCH carrying only the expected and current versions [P2-S11-AC-032]
+not ok 19 - an invalidation advances the review version, so a command against an invalidated approval is VERSION_MISMATCH [P2-S11-AC-032]
+not ok 20 - a revision whose latest review is invalidated, rejected or open, or that was never reviewed, cannot be published: CONFLICT [P2-S11-AC-033]
+not ok 21 - a frozenHash that is not the approved review's frozen hash is 422 at /frozenHash [P2-S11-AC-030]
+not ok 22 - an expectedVersionSet that is not exactly the version set frozen on the approved review (schema, settings or taxonomy member) is 409 version_set_stale [P2-S11-AC-033]
+not ok 23 - a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]
+not ok 24 - absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight [P2-S11-AC-097]
+not ok 25 - a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]
+Test Summary Report
+-------------------
+phase_02_slice_11_rpc_review_assign_refusals.sql       (Wstat: 0 Tests: 25 Failed: 1)
+  Failed test:  25
+phase_02_slice_11_rpc_preview_mint_refusals.sql        (Wstat: 0 Tests: 28 Failed: 1)
+  Failed test:  27
+zz_a2_mutant_assign.sql                                (Wstat: 0 Tests: 25 Failed: 16)
+  Failed tests:  8-16, 18-19, 21-25
+zz_a2_mutant_decision.sql                              (Wstat: 0 Tests: 26 Failed: 12)
+  Failed tests:  11, 13-20, 22, 24-25
+zz_a2_mutant_submit.sql                                (Wstat: 0 Tests: 25 Failed: 15)
+  Failed tests:  11-25
+zz_a2_mutant_schedule.sql                              (Wstat: 0 Tests: 41 Failed: 20)
+  Failed tests:  11-29, 37
+zz_a2_mutant_publish.sql                               (Wstat: 0 Tests: 36 Failed: 18)
+  Failed tests:  11-27, 32
+zz_a2_mutant_mint.sql                                  (Wstat: 0 Tests: 28 Failed: 16)
+  Failed tests:  10-15, 17-19, 21-23, 25-28
+Files=13, Tests=385, 110 wallclock secs ( 0.95 usr  0.19 sys +  1.67 cusr  0.79 csys =  3.60 CPU)
+Result: FAIL
+Files=13, Tests=385, 110 wallclock secs ( 0.95 usr  0.19 sys +  1.67 cusr  0.79 csys =  3.60 CPU)
+Result: FAIL
+exit=1

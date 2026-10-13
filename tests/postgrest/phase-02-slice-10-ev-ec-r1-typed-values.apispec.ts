@@ -26,10 +26,8 @@ import {
   type ObjectStructure,
 } from '@wejammin/contracts';
 
-import {
-  describeCmsAuthoringFields,
-  type CmsFieldDescriptor,
-} from '../../apps/web/src/components/cms-editorial-fields/cms-field-descriptor';
+import type { CmsFieldDescriptor } from '../../apps/web/src/components/cms-editorial-fields/cms-field-descriptor';
+import { describeCmsAuthoringFields } from '../../apps/web/src/components/cms-editorial-fields/cms-field-descriptor-decode';
 import { validateCmsFieldValue } from '../../apps/web/src/components/cms-editorial-fields/cms-field-value';
 import { CMS_EDITORIAL_REASON_COPY } from '../../apps/web/src/components/cms-editorial/cms-editorial-reason-copy';
 import { protectedValidatorDescriptor } from '../../packages/contracts/src/content-schema-registry/protected-validators';

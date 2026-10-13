@@ -1,9 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  CMS_EDITORIAL_APP_REVIEWS_PATH,
   cmsEditorialAppConflictPath,
   cmsEditorialAppEntryPath,
+  cmsEditorialAppReviewPath,
   cmsEditorialAppRevisionsPath,
+  cmsEditorialAppWorkflowPath,
 } from './cms-editorial-app-routes';
 
 const ENTRY_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132dc';
@@ -22,12 +25,26 @@ describe('CMS editorial app routes', () => {
     );
   });
 
+  it('addresses the workflow of an entry, the reviewer queue and a review on app pages', () => {
+    expect(cmsEditorialAppWorkflowPath(ENTRY_ID)).toBe(
+      `/app/cms-content-modeling/entries/${ENTRY_ID}/workflow`,
+    );
+    expect(CMS_EDITORIAL_APP_REVIEWS_PATH).toBe(
+      '/app/cms-content-modeling/reviews',
+    );
+    expect(cmsEditorialAppReviewPath(CONFLICT_ID)).toBe(
+      `/app/cms-content-modeling/reviews/${CONFLICT_ID}`,
+    );
+  });
+
   it('refuses an id that is not a UUID instead of building a path from it', () => {
     for (const bad of ['', '../x', 'abc', `${ENTRY_ID}/../x`, '/api/v1']) {
       expect(cmsEditorialAppEntryPath(bad)).toBeNull();
       expect(cmsEditorialAppRevisionsPath(bad)).toBeNull();
       expect(cmsEditorialAppConflictPath(bad, CONFLICT_ID)).toBeNull();
       expect(cmsEditorialAppConflictPath(ENTRY_ID, bad)).toBeNull();
+      expect(cmsEditorialAppWorkflowPath(bad)).toBeNull();
+      expect(cmsEditorialAppReviewPath(bad)).toBeNull();
     }
   });
 });

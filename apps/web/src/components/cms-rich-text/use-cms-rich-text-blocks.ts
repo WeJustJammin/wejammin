@@ -7,7 +7,7 @@ import {
   type AssembledDocument,
   type EditorBlock,
 } from './cms-rich-text-blocks';
-import { RichTextV1DocumentSchema } from './cms-rich-text-contracts';
+import { isCanonicalRichText } from './cms-rich-text-contracts';
 
 export interface CmsRichTextBlocks {
   /** False when the value is not a canonical rich_text.v1 document. */
@@ -38,7 +38,7 @@ export const useCmsRichTextBlocks = (
   value: unknown,
   onChange: ((value: unknown) => void) | undefined,
 ): CmsRichTextBlocks => {
-  const valid = RichTextV1DocumentSchema.safeParse(value).success;
+  const valid = isCanonicalRichText(value);
   const incoming = valid ? richTextKey(value) : null;
   // Ids are deterministic (see `BlockIdFor`): the first hydration is positional
   // and identical on the server and the client; a later hydration (an adopted

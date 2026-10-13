@@ -4,6 +4,11 @@ import { metricKey } from '../content-schema-registry/route-metric-key';
 import { emitTelemetry } from './route-execution';
 import { actingContextOf, stagesEntered } from './route-stages';
 import {
+  workflowMetrics,
+  type WorkflowLabels,
+  type WorkflowPreflightFact,
+} from './workflow-telemetry';
+import {
   CMS_EDITORIAL_RUNBOOK,
   type CmsEditorialDependencies,
   type CmsEditorialError,
@@ -30,11 +35,23 @@ export type RouteFacts = Readonly<{
   entry?: EntryFacts;
   /** An exact-key replay of an earlier committed command. */
   replayed?: boolean;
+  /** Slice 11 closed labels (risk class, decision, assignment action). */
+  labels?: WorkflowLabels;
+  /** Slice 11 preflight categories a successful workflow read served. */
+  preflight?: readonly WorkflowPreflightFact[];
 }>;
 
 const REVISION_WRITES: ReadonlySet<string> = new Set([
   'CMS-03B-01',
   'CMS-03B-02',
+  'CMS-03B-10',
+]);
+
+/** The operations whose success creates a revision (the review family does not). */
+const REVISION_CREATING: ReadonlySet<string> = new Set([
+  'CMS-03B-01',
+  'CMS-03B-02',
+  'CMS-03B-04',
   'CMS-03B-10',
 ]);
 
@@ -116,7 +133,7 @@ const outcomeLabels = (
     if (SAFE_COUNT.test(name) && Number.isFinite(value) && value >= 0)
       metrics[name] = value;
   if (status < 400) {
-    if (operationId !== 'CMS-03B-03' && policy.eventType !== 'none')
+    if (REVISION_CREATING.has(operationId))
       metrics.cms_revision_created_total = 1;
     if (operationId === 'CMS-03B-02') metrics.cms_conflict_closed_total = 1;
     if (operationId === 'CMS-03B-10' && facts.replayed === true)
@@ -153,6 +170,16 @@ const outcomeLabels = (
       metrics.cms_conflict_records_created_total = 1;
     }
   }
+  Object.assign(
+    metrics,
+    workflowMetrics({
+      operationId,
+      outcome,
+      labels: facts.labels,
+      error: facts.error,
+      preflight: facts.preflight,
+    }),
+  );
   if (operationId === 'CMS-03B-10') {
     metrics[metricKey('cms_entry_create_total', { outcome })] = 1;
     if (status === 409) metrics.cms_entry_create_conflict_total = 1;

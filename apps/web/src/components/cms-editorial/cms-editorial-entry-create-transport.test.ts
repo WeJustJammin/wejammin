@@ -161,7 +161,7 @@ describe('executeCmsEditorialEntryCreate outcomes', () => {
     [404, 'NOT_FOUND', 'not-found', false],
     [415, 'UNSUPPORTED_MEDIA_TYPE', 'unsupported-media', false],
     [429, 'RATE_LIMITED', 'rate-limited', true],
-    [502, 'BAD_GATEWAY', 'degraded', true],
+    [502, 'DEPENDENCY_UNAVAILABLE', 'degraded', true],
     [503, 'DEPENDENCY_UNAVAILABLE', 'degraded', true],
   ] as const)(
     'maps %i %s to a %s outcome with retryable=%s',

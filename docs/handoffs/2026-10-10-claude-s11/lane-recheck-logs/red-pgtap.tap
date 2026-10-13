@@ -1,0 +1,716 @@
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_relay.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_relay.sql:4: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_relay.sql .......... 
+1..15
+ok 1 - cms.schema.activated.v1 resolves its registered producer cms.schema_registry [P2-S11-AC-113]
+ok 2 - cms.template.activated.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+not ok 3 - cms.pattern.activated.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+# Failed test 3: "cms.pattern.activated.v1 resolves its registered producer cms.composition [P2-S11-AC-113]"
+#         have: NULL
+#         want: cms.composition
+not ok 4 - cms.taxonomy.changed.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+# Failed test 4: "cms.taxonomy.changed.v1 resolves its registered producer cms.composition [P2-S11-AC-113]"
+#         have: NULL
+#         want: cms.composition
+ok 5 - cms.localization.changed.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+ok 6 - cms.block.lifecycle.changed.v1 resolves its registered producer cms.schema_registry [P2-S11-AC-113]
+not ok 7 - the relay claims each of the six recheck source events with its aggregate and registered producer [P2-S11-AC-113]
+# Failed test 7: "the relay claims each of the six recheck source events with its aggregate and registered producer [P2-S11-AC-113]"
+#         have: NULL
+#         want: cms.block.lifecycle.changed.v1/cms_block_definition_version=cms.schema_registry,cms.localization.changed.v1/cms_content_entry=cms.composition,cms.pattern.activated.v1/cms_pattern_version=cms.composition,cms.schema.activated.v1/cms_content_type_version=cms.schema_registry,cms.taxonomy.changed.v1/cms_taxonomy_version=cms.composition,cms.template.activated.v1/cms_template_version=cms.composition
+ok 8 - a wrong aggregate, a key that is not a registry key, a wrong schema version and an unlisted event are never claimed [P2-S11-AC-113]
+ok 9 - a claimed recheck source event carries its producer, its outbox instant and a first lease [P2-S11-AC-113]
+not ok 10 - claiming leases the six rows to the caller without dispatching them [P2-S11-AC-113]
+# Failed test 10: "claiming leases the six rows to the caller without dispatching them [P2-S11-AC-113]"
+#         have: 0
+#         want: 6
+ok 11 - the four tuples relayed before the widening are still claimed [P2-S11-AC-113]
+ok 12 - the claim still returns the identifier columns, occurred_at and the registered producer [P2-S11-AC-113]
+ok 13 - the private claim is still a VOLATILE SECURITY DEFINER of the platform definer with an empty search_path [P2-S11-AC-113]
+ok 14 - only the service role executes the platform_api claim and no API role the private one [P2-S11-AC-113]
+not ok 15 - the newly registered prefixes are as immutable as the rest of the map [P2-S11-AC-113]
+# Failed test 15: "the newly registered prefixes are as immutable as the rest of the map [P2-S11-AC-113]"
+#       caught: no exception
+#       wanted: P0001
+# Looks like you failed 5 tests of 15
+Failed 5/15 subtests 
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql:14: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql:15: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql:95: ERROR:  function "platform_api.cms_review_dependency_event_resolve(uuid)" does not exist
+LINE 10:      from pg_proc p where p.oid = 'platform_api.cms_review_d...
+                                           ^
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql .. 
+1..28
+{"created": true, "personId": "4f03a3d8-cce0-4012-9278-69aaf47db2ce", "contextKind": "self", "accountState": "active", "actingPartyId": "4f03a3d8-cce0-4012-9278-69aaf47db2ce", "bindingVersion": 1}
+{"created": true, "personId": "3dfb1a59-8469-4d3e-9d3d-8b61acd94680", "contextKind": "self", "accountState": "active", "actingPartyId": "3dfb1a59-8469-4d3e-9d3d-8b61acd94680", "bindingVersion": 1}
+{"created": true, "personId": "a0def855-9c0e-4af7-9e58-748f10d3e58d", "contextKind": "self", "accountState": "active", "actingPartyId": "a0def855-9c0e-4af7-9e58-748f10d3e58d", "bindingVersion": 1}
+{"created": true, "personId": "3bc454ac-e081-4cbe-8935-fd0f763fa413", "contextKind": "self", "accountState": "active", "actingPartyId": "3bc454ac-e081-4cbe-8935-fd0f763fa413", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+a9200000-0000-4000-8000-470dcc91889b
+a9200000-0000-4000-8000-a7453e987fcb
+a9200000-0000-4000-8000-1680d7feacfd
+true
+not ok 8 - the private resolver is a SECURITY DEFINER function of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-113]
+# Failed test 8: "the private resolver is a SECURITY DEFINER function of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-113]"
+Dubious, test returned 3 (wstat 768, 0x300)
+Failed 21/28 subtests 
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:14: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:15: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:190: ERROR:  function platform_private.cms_review_dependency_lineage(unknown, unknown) does not exist
+LINE 1: select is(platform_private.cms_review_dependency_lineage('bl...
+                  ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql ............ 
+1..44
+{"created": true, "personId": "20f9cb7b-2679-49da-9cfe-c45dd8d427ad", "contextKind": "self", "accountState": "active", "actingPartyId": "20f9cb7b-2679-49da-9cfe-c45dd8d427ad", "bindingVersion": 1}
+{"created": true, "personId": "1f103056-8836-47a4-a23f-ab5b28468a4e", "contextKind": "self", "accountState": "active", "actingPartyId": "1f103056-8836-47a4-a23f-ab5b28468a4e", "bindingVersion": 1}
+{"created": true, "personId": "fb483f47-b25d-4259-9f36-adab2ae8e904", "contextKind": "self", "accountState": "active", "actingPartyId": "fb483f47-b25d-4259-9f36-adab2ae8e904", "bindingVersion": 1}
+{"created": true, "personId": "64db6f2e-af7d-457e-8eee-7ae8f6e0c8fc", "contextKind": "self", "accountState": "active", "actingPartyId": "64db6f2e-af7d-457e-8eee-7ae8f6e0c8fc", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+a9200000-0000-4000-8000-e737cc29f22e
+a9200000-0000-4000-8000-2d2475f9de3a
+a9200000-0000-4000-8000-1fc775c92612
+a9200000-0000-4000-8000-387d6e9abf0f
+a9200000-0000-4000-8000-94f8fe48def3
+a9200000-0000-4000-8000-c2fce84d5b47
+a9200000-0000-4000-8000-8b6004df3050
+a9200000-0000-4000-8000-bc9316115916
+{"reviewId": "0a9c95d9-27fc-48e9-8d56-378670aba0ef", "invalidated": true, "cancelledSchedules": 0, "revokedPreviewTokens": 0}
+not ok 9 - the run, the event resolver and the lineage helper are private SECURITY DEFINER functions of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-113]
+# Failed test 9: "the run, the event resolver and the lineage helper are private SECURITY DEFINER functions of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-113]"
+not ok 10 - the two platform_api wrappers are SECURITY DEFINER functions of the CMS definer executable by the service role only [P2-S11-AC-113]
+# Failed test 10: "the two platform_api wrappers are SECURITY DEFINER functions of the CMS definer executable by the service role only [P2-S11-AC-113]"
+not ok 11 - the run answers jsonb { examined, invalidated, nextCursor } [P2-S11-AC-113]
+# Failed test 11: "the run answers jsonb { examined, invalidated, nextCursor } [P2-S11-AC-113]"
+#         have: NULL
+#         want: jsonb
+Dubious, test returned 3 (wstat 768, 0x300)
+Failed 36/44 subtests 
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_cap.sql:11: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_cap.sql:12: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_cap.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_cap.sql:83: ERROR:  syntax error at or near "drop"
+LINE 1: create temp table cap_bast drop as
+                                   ^
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_cap.sql ............ 
+1..17
+{"created": true, "personId": "f2de320f-1e76-4ece-8181-d28ff0f61736", "contextKind": "self", "accountState": "active", "actingPartyId": "f2de320f-1e76-4ece-8181-d28ff0f61736", "bindingVersion": 1}
+{"created": true, "personId": "c7c49187-372b-4f4f-b299-94b1d996f27b", "contextKind": "self", "accountState": "active", "actingPartyId": "c7c49187-372b-4f4f-b299-94b1d996f27b", "bindingVersion": 1}
+{"created": true, "personId": "f7f10a7b-72a7-41d5-a6b3-7069ad467e6d", "contextKind": "self", "accountState": "active", "actingPartyId": "f7f10a7b-72a7-41d5-a6b3-7069ad467e6d", "bindingVersion": 1}
+{"created": true, "personId": "1f6a8eeb-f557-41d4-b172-885e28d132a8", "contextKind": "self", "accountState": "active", "actingPartyId": "1f6a8eeb-f557-41d4-b172-885e28d132a8", "bindingVersion": 1}
+
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+a9200000-0000-4000-8000-9022f3a492a0
+a9200000-0000-4000-8000-e87e2cebf413
+a9200000-0000-4000-8000-2b7e03244709
+a9200000-0000-4000-8000-ee992d0d3c0b
+a9200000-0000-4000-8000-126770b0dc0a
+a9200000-0000-4000-8000-b168c6116c2c
+a9200000-0000-4000-8000-98dff017429f
+a9200000-0000-4000-8000-655ce35c48e6
+a9200000-0000-4000-8000-77c06dd97720
+a9200000-0000-4000-8000-45aea8bfdf80
+a9200000-0000-4000-8000-2463a16512fe
+a9200000-0000-4000-8000-22bd6f9e9387
+a9200000-0000-4000-8000-41f7da801c4b
+a9200000-0000-4000-8000-d6e8d62e2c72
+a9200000-0000-4000-8000-45bca3b137db
+a9200000-0000-4000-8000-7d4249c5cf35
+a9200000-0000-4000-8000-2bd94bbfd0ad
+a9200000-0000-4000-8000-c3519ae31cbe
+a9200000-0000-4000-8000-3b68409760fd
+a9200000-0000-4000-8000-b2e392c64346
+a9200000-0000-4000-8000-8b8e300fe902
+a9200000-0000-4000-8000-bf027c5b36cc
+a9200000-0000-4000-8000-215338e95327
+a9200000-0000-4000-8000-b4681cd6d038
+a9200000-0000-4000-8000-3133df3e4165
+a9200000-0000-4000-8000-4491a54fa0f0
+a9200000-0000-4000-8000-cc90cd20a48f
+a9200000-0000-4000-8000-6e7c34652b4c
+a9200000-0000-4000-8000-4a29b5a62850
+a9200000-0000-4000-8000-9621d03f01e2
+a9200000-0000-4000-8000-ce4b0edef13f
+a9200000-0000-4000-8000-9960cd718737
+a9200000-0000-4000-8000-1296f49a68bc
+a9200000-0000-4000-8000-fbc7c9efeb72
+a9200000-0000-4000-8000-3ff3ae139c9d
+a9200000-0000-4000-8000-d61a92ea6e06
+a9200000-0000-4000-8000-a26d56bf06a8
+a9200000-0000-4000-8000-912dc0a23233
+a9200000-0000-4000-8000-56c950b0d08a
+a9200000-0000-4000-8000-30ada8dbc94e
+a9200000-0000-4000-8000-d37860f80170
+a9200000-0000-4000-8000-e31bc32b9d6d
+a9200000-0000-4000-8000-ca24d9db87d0
+a9200000-0000-4000-8000-a40023f86839
+a9200000-0000-4000-8000-1de83f33e238
+a9200000-0000-4000-8000-0be444d1f722
+a9200000-0000-4000-8000-b7ba0a5e354f
+a9200000-0000-4000-8000-17e5fc715a08
+a9200000-0000-4000-8000-c91e948c1c87
+a9200000-0000-4000-8000-d37142e9daf2
+a9200000-0000-4000-8000-47a6a6a4ec64
+a9200000-0000-4000-8000-6d7950ce72db
+a9200000-0000-4000-8000-3768a6400a89
+a9200000-0000-4000-8000-2b8f9f0c01a8
+a9200000-0000-4000-8000-09212cff385a
+a9200000-0000-4000-8000-3b2bb65b844c
+a9200000-0000-4000-8000-0dfe767c7367
+a9200000-0000-4000-8000-231da65ef941
+a9200000-0000-4000-8000-8826fee69049
+a9200000-0000-4000-8000-f4f3cb68fbfb
+a9200000-0000-4000-8000-913ed88a8cf1
+a9200000-0000-4000-8000-0e357af7a2f6
+a9200000-0000-4000-8000-e096b8bff2ff
+a9200000-0000-4000-8000-fcab6562eec1
+a9200000-0000-4000-8000-0782299e01c7
+a9200000-0000-4000-8000-83cbe5c91b9a
+a9200000-0000-4000-8000-44e1e6774168
+a9200000-0000-4000-8000-1cfc65ddae40
+a9200000-0000-4000-8000-26187106fd2a
+a9200000-0000-4000-8000-898643ff2b33
+a9200000-0000-4000-8000-d90cb7a9e98f
+a9200000-0000-4000-8000-635c3fd0f737
+a9200000-0000-4000-8000-aca2e470cbdf
+a9200000-0000-4000-8000-fdf679507d4a
+a9200000-0000-4000-8000-a4d890306613
+a9200000-0000-4000-8000-259405704b31
+a9200000-0000-4000-8000-cf04bc5ee7e7
+a9200000-0000-4000-8000-947c5ed80596
+a9200000-0000-4000-8000-6b0bb62e87ee
+a9200000-0000-4000-8000-537a2d679f7d
+a9200000-0000-4000-8000-cdda56e81b11
+a9200000-0000-4000-8000-26607fba4a39
+a9200000-0000-4000-8000-ed5300fe4352
+a9200000-0000-4000-8000-ffa96942183b
+a9200000-0000-4000-8000-19294a7da28d
+a9200000-0000-4000-8000-0d328f878656
+a9200000-0000-4000-8000-f87b04707fba
+a9200000-0000-4000-8000-9686fb742499
+a9200000-0000-4000-8000-47ab46a7d713
+a9200000-0000-4000-8000-be45312be32d
+a9200000-0000-4000-8000-9d1de00711b5
+a9200000-0000-4000-8000-4489537864ae
+a9200000-0000-4000-8000-62a5d76fd25a
+a9200000-0000-4000-8000-f86a331e2057
+a9200000-0000-4000-8000-a781204af962
+a9200000-0000-4000-8000-bfc5f6c8523a
+a9200000-0000-4000-8000-cf9e657652f0
+a9200000-0000-4000-8000-a5e8489b05e7
+a9200000-0000-4000-8000-dc6a961df643
+a9200000-0000-4000-8000-fb5bf4a5a297
+a9200000-0000-4000-8000-aed176675220
+a9200000-0000-4000-8000-df6e9f00e4a1
+a9200000-0000-4000-8000-5466b3f567a9
+a9200000-0000-4000-8000-abaee906dffe
+a9200000-0000-4000-8000-93f133ee15fe
+a9200000-0000-4000-8000-702abeb20152
+a9200000-0000-4000-8000-628417518746
+a9200000-0000-4000-8000-7d69f7d665ca
+a9200000-0000-4000-8000-9028c545c0b0
+a9200000-0000-4000-8000-1fa94bf9cd4a
+a9200000-0000-4000-8000-412a18591a8a
+a9200000-0000-4000-8000-4a37ba84c339
+a9200000-0000-4000-8000-057394201731
+a9200000-0000-4000-8000-5191b85af16e
+a9200000-0000-4000-8000-473dfd3efaf1
+a9200000-0000-4000-8000-09f706a308f1
+a9200000-0000-4000-8000-25fa1828f0bf
+a9200000-0000-4000-8000-a8db885c1265
+a9200000-0000-4000-8000-8ec723d0d941
+a9200000-0000-4000-8000-4225770e9e44
+a9200000-0000-4000-8000-8cacaa518b70
+a9200000-0000-4000-8000-83437e00dcc3
+a9200000-0000-4000-8000-b2cfe221ce18
+a9200000-0000-4000-8000-dba76ccf7d56
+a9200000-0000-4000-8000-8c4b277dd7e3
+a9200000-0000-4000-8000-f8df456e09a2
+a9200000-0000-4000-8000-712941b8fb5f
+a9200000-0000-4000-8000-415a9cfd68ea
+a9200000-0000-4000-8000-b264937f0f75
+a9200000-0000-4000-8000-103d06e71802
+a9200000-0000-4000-8000-71d0b3bd52a6
+a9200000-0000-4000-8000-3b18e7129d79
+a9200000-0000-4000-8000-e58092c01a89
+a9200000-0000-4000-8000-dae538fa9747
+a9200000-0000-4000-8000-55c4970e5126
+a9200000-0000-4000-8000-c64ff041be4a
+a9200000-0000-4000-8000-11e5f428b5b8
+a9200000-0000-4000-8000-7363b4d6b1ab
+a9200000-0000-4000-8000-5e784b816a7b
+a9200000-0000-4000-8000-6ab35a33a05a
+a9200000-0000-4000-8000-d591b831b3fb
+a9200000-0000-4000-8000-04e34a035f03
+a9200000-0000-4000-8000-95444d68fb49
+a9200000-0000-4000-8000-e80458c2bceb
+a9200000-0000-4000-8000-30e5eb2fe966
+a9200000-0000-4000-8000-5031469e9df8
+a9200000-0000-4000-8000-95bbb6c587bf
+a9200000-0000-4000-8000-07d76a2a025b
+a9200000-0000-4000-8000-dfe38a6344a0
+a9200000-0000-4000-8000-c9b877e30ad7
+a9200000-0000-4000-8000-2ada779c2073
+a9200000-0000-4000-8000-83a6feae9514
+a9200000-0000-4000-8000-6f9292303ef7
+a9200000-0000-4000-8000-5ec3ff1ae872
+a9200000-0000-4000-8000-2f300654c719
+a9200000-0000-4000-8000-16250dab3087
+a9200000-0000-4000-8000-19dab6279f9c
+a9200000-0000-4000-8000-eb76c19f838d
+a9200000-0000-4000-8000-a3a52e92c628
+a9200000-0000-4000-8000-ca6a66baf9fd
+a9200000-0000-4000-8000-663f63797a80
+a9200000-0000-4000-8000-fe07bd39d7ec
+a9200000-0000-4000-8000-376f256d099c
+a9200000-0000-4000-8000-3cd08b76fe15
+a9200000-0000-4000-8000-e668af2303b5
+a9200000-0000-4000-8000-838270b1e259
+a9200000-0000-4000-8000-9366c83ab3e1
+a9200000-0000-4000-8000-ef6b210f6d5d
+a9200000-0000-4000-8000-53df492669da
+a9200000-0000-4000-8000-f72cd60e3c65
+a9200000-0000-4000-8000-5b2d3ea040bd
+a9200000-0000-4000-8000-e055d64f41af
+a9200000-0000-4000-8000-518aebe8f87d
+a9200000-0000-4000-8000-ab30d0c641be
+a9200000-0000-4000-8000-c745c18e7410
+a9200000-0000-4000-8000-5fe4c1f4fc0c
+a9200000-0000-4000-8000-e371d18205d0
+a9200000-0000-4000-8000-c58b6dbc39d9
+a9200000-0000-4000-8000-6ceb9fafcc5a
+a9200000-0000-4000-8000-46e5e7ed271f
+a9200000-0000-4000-8000-1071aee88d1a
+a9200000-0000-4000-8000-ea4fdcdfab3a
+a9200000-0000-4000-8000-239435d5e7f8
+a9200000-0000-4000-8000-c2512a86e40b
+a9200000-0000-4000-8000-49331f9528c4
+a9200000-0000-4000-8000-78ee5338904c
+a9200000-0000-4000-8000-857df9d3c555
+a9200000-0000-4000-8000-b7ce368a0d85
+a9200000-0000-4000-8000-023bc3fbe009
+a9200000-0000-4000-8000-e80b81a24793
+a9200000-0000-4000-8000-bd117341e878
+a9200000-0000-4000-8000-237c59bc5474
+a9200000-0000-4000-8000-f219fc492ea0
+a9200000-0000-4000-8000-c2ce4e7489fc
+a9200000-0000-4000-8000-247242718c7c
+a9200000-0000-4000-8000-f6d61c00cec7
+a9200000-0000-4000-8000-2563b736ecc1
+a9200000-0000-4000-8000-cca228e1526b
+a9200000-0000-4000-8000-4e706cbf9fac
+a9200000-0000-4000-8000-554167e7a237
+a9200000-0000-4000-8000-54b8b00af65f
+a9200000-0000-4000-8000-f419280d2ca4
+a9200000-0000-4000-8000-076ec97988aa
+a9200000-0000-4000-8000-5686541c33d3
+a9200000-0000-4000-8000-6264ae81e139
+a9200000-0000-4000-8000-f205f571d961
+a9200000-0000-4000-8000-0cfe2fe755fb
+a9200000-0000-4000-8000-748ac4010c65
+a9200000-0000-4000-8000-459d7fde5556
+a9200000-0000-4000-8000-000f2a1f38fa
+a9200000-0000-4000-8000-39c0164fc3e2
+a9200000-0000-4000-8000-9c90ec12405d
+a9200000-0000-4000-8000-309455bc8132
+a9200000-0000-4000-8000-eefa66a65bf8
+a9200000-0000-4000-8000-b8cdbc65bf02
+a9200000-0000-4000-8000-7e2f44aae6af
+a9200000-0000-4000-8000-1df72406d615
+a9200000-0000-4000-8000-94068af0b7e5
+a9200000-0000-4000-8000-8c5871a5544c
+a9200000-0000-4000-8000-d06dfb390795
+a9200000-0000-4000-8000-8b7967447b46
+a9200000-0000-4000-8000-8744d735ed07
+a9200000-0000-4000-8000-52d248bf5029
+a9200000-0000-4000-8000-92be2433f562
+a9200000-0000-4000-8000-56851c6e8a09
+a9200000-0000-4000-8000-b06772021eba
+a9200000-0000-4000-8000-e0e1833266e2
+a9200000-0000-4000-8000-c810ec2a8e27
+a9200000-0000-4000-8000-719db935d2a6
+a9200000-0000-4000-8000-d32a77602305
+a9200000-0000-4000-8000-7adb5bc54ca6
+a9200000-0000-4000-8000-5eae4e7f1252
+a9200000-0000-4000-8000-bb1db3cea540
+a9200000-0000-4000-8000-edd64720d8e5
+a9200000-0000-4000-8000-d7cc1d2a60ad
+a9200000-0000-4000-8000-ae627de422c4
+a9200000-0000-4000-8000-d013768e0800
+a9200000-0000-4000-8000-5bb5dd33e38e
+a9200000-0000-4000-8000-451384ad74ba
+a9200000-0000-4000-8000-3eaf374788a4
+a9200000-0000-4000-8000-32d025856789
+a9200000-0000-4000-8000-486e6fe7af5b
+a9200000-0000-4000-8000-a9d67d417cf6
+a9200000-0000-4000-8000-37e85c49db64
+a9200000-0000-4000-8000-6526780a1803
+a9200000-0000-4000-8000-40461eda7347
+a9200000-0000-4000-8000-878c86de617f
+a9200000-0000-4000-8000-5a625e231e66
+a9200000-0000-4000-8000-17c6c18e9f70
+a9200000-0000-4000-8000-17fa75f6c855
+a9200000-0000-4000-8000-358bcca2e728
+a9200000-0000-4000-8000-6e51d8bb5a72
+a9200000-0000-4000-8000-ed5128b235bf
+a9200000-0000-4000-8000-7e04ee0312db
+a9200000-0000-4000-8000-02b84dfba31f
+a9200000-0000-4000-8000-fb46767e20e2
+a9200000-0000-4000-8000-2b58a0273387
+a9200000-0000-4000-8000-3771c63d243f
+a9200000-0000-4000-8000-86b13e73a7af
+a9200000-0000-4000-8000-3f172c5d6de5
+a9200000-0000-4000-8000-bb3cc027aaa7
+a9200000-0000-4000-8000-7a2eba15b06a
+a9200000-0000-4000-8000-47552c1cabc2
+a9200000-0000-4000-8000-25e02a0297a6
+a9200000-0000-4000-8000-0af55b85e133
+a9200000-0000-4000-8000-dde77a77943c
+a9200000-0000-4000-8000-def98fc0d49d
+a9200000-0000-4000-8000-3c9c32a91fc3
+a9200000-0000-4000-8000-953abb3fa8c3
+a9200000-0000-4000-8000-ec9fdde1cadb
+a9200000-0000-4000-8000-11e1e88b98cb
+a9200000-0000-4000-8000-6fa70be46022
+a9200000-0000-4000-8000-1af26c557099
+a9200000-0000-4000-8000-6df57d92063a
+a9200000-0000-4000-8000-77f39052bb67
+a9200000-0000-4000-8000-17325254de4d
+a9200000-0000-4000-8000-ae95578593bd
+a9200000-0000-4000-8000-8094f5c43702
+a9200000-0000-4000-8000-c3d4e20af8db
+a9200000-0000-4000-8000-956544eb4268
+a9200000-0000-4000-8000-1f3f5fd07542
+a9200000-0000-4000-8000-f5163b18ed26
+a9200000-0000-4000-8000-24e66ebfa816
+a9200000-0000-4000-8000-a8b242597ef6
+a9200000-0000-4000-8000-277b34d1c033
+a9200000-0000-4000-8000-6e743b50b1f1
+a9200000-0000-4000-8000-4ba9f1868b25
+a9200000-0000-4000-8000-0a38e5c102e1
+a9200000-0000-4000-8000-9fc52fa96805
+a9200000-0000-4000-8000-8833f43512c4
+a9200000-0000-4000-8000-8910010d3395
+a9200000-0000-4000-8000-5bae0e147133
+a9200000-0000-4000-8000-5b10bb6251dc
+a9200000-0000-4000-8000-07a509515e9b
+a9200000-0000-4000-8000-dfcba9524fe0
+a9200000-0000-4000-8000-e1fc1aa6a208
+a9200000-0000-4000-8000-c4c789b3c4e0
+a9200000-0000-4000-8000-6a31ec55c58b
+a9200000-0000-4000-8000-bada4d5c1b0e
+a9200000-0000-4000-8000-108159bfb456
+a9200000-0000-4000-8000-1203ea633e1b
+a9200000-0000-4000-8000-2962b784b7d5
+a9200000-0000-4000-8000-d1b2da916a95
+a9200000-0000-4000-8000-ab7a6d1771d0
+a9200000-0000-4000-8000-090e6e491fcf
+a9200000-0000-4000-8000-a6e1d8b62bfd
+a9200000-0000-4000-8000-4b750eed8412
+a9200000-0000-4000-8000-991d644bd89c
+a9200000-0000-4000-8000-37e901f979dd
+a9200000-0000-4000-8000-1ac0822a7202
+a9200000-0000-4000-8000-05d0bf8fd6f8
+a9200000-0000-4000-8000-88e64a7b1309
+a9200000-0000-4000-8000-bd3343fd970c
+a9200000-0000-4000-8000-2ba35ce2cb79
+a9200000-0000-4000-8000-96ef24b69902
+a9200000-0000-4000-8000-31bc6f64484b
+a9200000-0000-4000-8000-6c5db0b71fc1
+a9200000-0000-4000-8000-a6be23132278
+a9200000-0000-4000-8000-33542a8e081a
+a9200000-0000-4000-8000-b467e9912296
+a9200000-0000-4000-8000-40c24e110d01
+a9200000-0000-4000-8000-45d5c5e7c062
+a9200000-0000-4000-8000-9eeebafcf6ea
+a9200000-0000-4000-8000-bf0052a35a16
+a9200000-0000-4000-8000-c1c69b57a08f
+a9200000-0000-4000-8000-100ac2363c31
+a9200000-0000-4000-8000-c344b6700626
+a9200000-0000-4000-8000-317b947c299e
+a9200000-0000-4000-8000-262bd00609c2
+a9200000-0000-4000-8000-6dfe6b05aae1
+a9200000-0000-4000-8000-838608852a21
+a9200000-0000-4000-8000-d1e79669de43
+a9200000-0000-4000-8000-0614656d77c1
+a9200000-0000-4000-8000-0cd0159d12c1
+a9200000-0000-4000-8000-f272a6190351
+a9200000-0000-4000-8000-5c672009aba6
+a9200000-0000-4000-8000-8143a162656e
+a9200000-0000-4000-8000-b32b990fb1a0
+a9200000-0000-4000-8000-e169ce5dd590
+a9200000-0000-4000-8000-02c2cf93a700
+a9200000-0000-4000-8000-e65e0649616d
+a9200000-0000-4000-8000-7429278da53d
+a9200000-0000-4000-8000-5e13028a1d21
+a9200000-0000-4000-8000-14e3721c3c0a
+a9200000-0000-4000-8000-d87334bd645d
+a9200000-0000-4000-8000-12bdf023b4e4
+a9200000-0000-4000-8000-fd1541adb69d
+a9200000-0000-4000-8000-1ac2e73003ef
+a9200000-0000-4000-8000-3a875ba7d3bc
+a9200000-0000-4000-8000-a379d58f8c99
+a9200000-0000-4000-8000-d036c90af677
+a9200000-0000-4000-8000-63f150db1fdb
+a9200000-0000-4000-8000-aa57d3ae3134
+a9200000-0000-4000-8000-dc8da44691d3
+a9200000-0000-4000-8000-2f7b589c9b98
+a9200000-0000-4000-8000-8e4ba2957788
+a9200000-0000-4000-8000-083d47c32129
+a9200000-0000-4000-8000-950d76597ae5
+a9200000-0000-4000-8000-bbbead310892
+a9200000-0000-4000-8000-036c51bf6a8c
+a9200000-0000-4000-8000-9511596721dc
+a9200000-0000-4000-8000-652bfdfcd144
+a9200000-0000-4000-8000-c0e9d1e01105
+a9200000-0000-4000-8000-89228d14970b
+a9200000-0000-4000-8000-5d5739d13ff6
+a9200000-0000-4000-8000-20dd926ffdd4
+a9200000-0000-4000-8000-7b2493e77425
+a9200000-0000-4000-8000-33677f92e56c
+a9200000-0000-4000-8000-dfdfde85a310
+a9200000-0000-4000-8000-216c605ff9d3
+a9200000-0000-4000-8000-80060e425bc1
+a9200000-0000-4000-8000-ad5f77ae0f70
+a9200000-0000-4000-8000-090ed68a2bd7
+a9200000-0000-4000-8000-40a72930d85f
+a9200000-0000-4000-8000-d749de4f3b10
+a9200000-0000-4000-8000-916ec2a69d92
+a9200000-0000-4000-8000-d098ee013a58
+a9200000-0000-4000-8000-04ef5d40101c
+a9200000-0000-4000-8000-88ad52ee6534
+a9200000-0000-4000-8000-0ef975a014ee
+a9200000-0000-4000-8000-a2d1686002d3
+a9200000-0000-4000-8000-984cd7eea832
+a9200000-0000-4000-8000-1ddd60a1e595
+a9200000-0000-4000-8000-e29b5a980604
+a9200000-0000-4000-8000-ac5821e9419f
+a9200000-0000-4000-8000-9e32a2ffef1f
+a9200000-0000-4000-8000-8f5bc9185f79
+a9200000-0000-4000-8000-47aa8e3cd6c4
+a9200000-0000-4000-8000-73eb3e3984a5
+a9200000-0000-4000-8000-809c06e3f619
+a9200000-0000-4000-8000-5126c9823643
+a9200000-0000-4000-8000-46e3335746a1
+a9200000-0000-4000-8000-a98316354ec5
+a9200000-0000-4000-8000-82865c63b127
+a9200000-0000-4000-8000-73d9adcefc50
+a9200000-0000-4000-8000-1695b43f5b7c
+a9200000-0000-4000-8000-272c5e6d4fcd
+a9200000-0000-4000-8000-2953e0d3e112
+a9200000-0000-4000-8000-1c5ebe33eaf2
+a9200000-0000-4000-8000-471580d5a254
+a9200000-0000-4000-8000-d863c86086f7
+a9200000-0000-4000-8000-2044acd24413
+a9200000-0000-4000-8000-7194a98a9001
+a9200000-0000-4000-8000-c11a795ee697
+a9200000-0000-4000-8000-85fa42f0dc5a
+a9200000-0000-4000-8000-62e74ad6c15e
+a9200000-0000-4000-8000-e16cf9a6d421
+a9200000-0000-4000-8000-0e455a2be018
+a9200000-0000-4000-8000-5e32c3a2bf26
+a9200000-0000-4000-8000-6e8c5e3d08a8
+a9200000-0000-4000-8000-3bbf6974c897
+a9200000-0000-4000-8000-f9aabb8d7ecf
+a9200000-0000-4000-8000-b2475c693c2d
+a9200000-0000-4000-8000-e16be45a4856
+a9200000-0000-4000-8000-3de06d255145
+a9200000-0000-4000-8000-086aa565224d
+a9200000-0000-4000-8000-296c87b267a9
+a9200000-0000-4000-8000-532bb49b03aa
+a9200000-0000-4000-8000-b4ccf0ff3129
+a9200000-0000-4000-8000-08d31e5d03e9
+a9200000-0000-4000-8000-e5b728bd1e50
+a9200000-0000-4000-8000-6c6b00a1f4b6
+a9200000-0000-4000-8000-8ed71889e7ff
+a9200000-0000-4000-8000-ae02a871fcb2
+a9200000-0000-4000-8000-fc70d08ff55b
+a9200000-0000-4000-8000-110a9408443d
+a9200000-0000-4000-8000-d55b6add9564
+a9200000-0000-4000-8000-71111353f4a2
+a9200000-0000-4000-8000-23986c4d9fd6
+a9200000-0000-4000-8000-a024834c3e03
+a9200000-0000-4000-8000-befb7f333bfa
+a9200000-0000-4000-8000-39fa94215d98
+a9200000-0000-4000-8000-6cd92a3e61a5
+a9200000-0000-4000-8000-14a00fe4dbc6
+a9200000-0000-4000-8000-289d79fb24ec
+a9200000-0000-4000-8000-60f074805f4a
+a9200000-0000-4000-8000-c52a6502fed5
+a9200000-0000-4000-8000-db684517580b
+a9200000-0000-4000-8000-714d39fb7739
+a9200000-0000-4000-8000-417699faf407
+a9200000-0000-4000-8000-a88369c19370
+a9200000-0000-4000-8000-0439b03b32d8
+a9200000-0000-4000-8000-9d990f6123aa
+a9200000-0000-4000-8000-3bfb47f943fc
+a9200000-0000-4000-8000-23eaf8a0a35c
+a9200000-0000-4000-8000-312ddd9c8bcb
+a9200000-0000-4000-8000-c0a2fa8b255a
+a9200000-0000-4000-8000-170c5b14b35e
+a9200000-0000-4000-8000-5fd4882db40a
+a9200000-0000-4000-8000-c795c6712796
+a9200000-0000-4000-8000-b3cb3898eb19
+a9200000-0000-4000-8000-87947e3ae2f1
+a9200000-0000-4000-8000-76c44d7c7d87
+a9200000-0000-4000-8000-96e6bd62298f
+a9200000-0000-4000-8000-4b9983aa637d
+a9200000-0000-4000-8000-027b5facdbb7
+a9200000-0000-4000-8000-a3012bfe32d1
+a9200000-0000-4000-8000-f801ef912b24
+a9200000-0000-4000-8000-55de70098b8f
+a9200000-0000-4000-8000-306270610070
+a9200000-0000-4000-8000-9c684ca78369
+a9200000-0000-4000-8000-9b00aec25805
+a9200000-0000-4000-8000-578d3ddfc301
+a9200000-0000-4000-8000-981dbeb41c8c
+a9200000-0000-4000-8000-be398de201c1
+a9200000-0000-4000-8000-8862320ecd1c
+a9200000-0000-4000-8000-953aabb4a4ec
+a9200000-0000-4000-8000-ce66e82bbf47
+a9200000-0000-4000-8000-ba3dfba3f293
+a9200000-0000-4000-8000-a084fd23d1bd
+a9200000-0000-4000-8000-5c25eefc8059
+a9200000-0000-4000-8000-7c8d1d614d93
+a9200000-0000-4000-8000-98f78c853d36
+a9200000-0000-4000-8000-a253def76ae5
+a9200000-0000-4000-8000-b0a965bdeef9
+a9200000-0000-4000-8000-97c536624c4a
+a9200000-0000-4000-8000-b72746c40e78
+a9200000-0000-4000-8000-fcc5bb23bc5a
+a9200000-0000-4000-8000-6bf060614d48
+a9200000-0000-4000-8000-45d882eb55be
+a9200000-0000-4000-8000-0f7ee43232fa
+a9200000-0000-4000-8000-457c8734577e
+a9200000-0000-4000-8000-b61b3541c749
+a9200000-0000-4000-8000-a0bd7ef8d897
+a9200000-0000-4000-8000-27ce1c5c2ece
+a9200000-0000-4000-8000-0af78e849315
+a9200000-0000-4000-8000-7b222f7dbe1d
+a9200000-0000-4000-8000-d231afac885e
+a9200000-0000-4000-8000-92a04890f795
+a9200000-0000-4000-8000-ec5f8b3f45b8
+a9200000-0000-4000-8000-cb94d521836d
+a9200000-0000-4000-8000-2256cf7dd2c7
+a9200000-0000-4000-8000-ab6c4a2ded5d
+a9200000-0000-4000-8000-11b2de264460
+a9200000-0000-4000-8000-1d8b3ae99ce7
+a9200000-0000-4000-8000-4c613d459611
+a9200000-0000-4000-8000-dfe65229a4da
+a9200000-0000-4000-8000-ddd23e4e1584
+a9200000-0000-4000-8000-7849048e84b7
+a9200000-0000-4000-8000-79435c1e74b1
+a9200000-0000-4000-8000-92ae6d00b860
+true
+Dubious, test returned 3 (wstat 768, 0x300)
+Failed 9/17 subtests 
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_index.sql:15: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_index.sql:16: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_index.sql:17: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_index.sql .......... 
+1..10
+{"created": true, "personId": "0c0354e9-ef62-426f-80b8-b9b6107d5262", "contextKind": "self", "accountState": "active", "actingPartyId": "0c0354e9-ef62-426f-80b8-b9b6107d5262", "bindingVersion": 1}
+{"created": true, "personId": "416b0f4d-9a6e-4c6a-bc8f-91e3ebbc0722", "contextKind": "self", "accountState": "active", "actingPartyId": "416b0f4d-9a6e-4c6a-bc8f-91e3ebbc0722", "bindingVersion": 1}
+{"created": true, "personId": "6a034606-9d31-433a-9a3b-e1f7cf4b8ed6", "contextKind": "self", "accountState": "active", "actingPartyId": "6a034606-9d31-433a-9a3b-e1f7cf4b8ed6", "bindingVersion": 1}
+{"created": true, "personId": "29b4df5a-a91b-4863-9fa6-d6edbb6db29f", "contextKind": "self", "accountState": "active", "actingPartyId": "29b4df5a-a91b-4863-9fa6-d6edbb6db29f", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 8 - no API role holds any privilege on the dependency index [P2-S11-AC-113]
+ok 9 - PUBLIC holds no privilege on the dependency index [P2-S11-AC-113]
+ok 10 - the CMS definer role holds INSERT and SELECT on the index and nothing else: no UPDATE, DELETE or TRUNCATE [P2-S11-AC-113]
+ok 11 - cms_submit_review is the only function whose body inserts into the dependency index [P2-S11-AC-113]
+ok 12 - no function updates or deletes a dependency row [P2-S11-AC-113]
+ok 13 - the Worker service role cannot insert a dependency row directly [P2-S11-AC-113]
+ok 14 - a signed-in human cannot insert a dependency row directly [P2-S11-AC-113]
+false
+ok 15 - even the table owner is refused outside the CMS RPC context [P2-S11-AC-113]
+true
+a9200000-0000-4000-8000-60b56b28c74d
+a9200000-0000-4000-8000-de6c6e3e7321
+true
+ok 16 - one frozen manifest yields a dependency row of each of the nine kinds [P2-S11-AC-113]
+ok 17 - each (kind, ref_id) identity is listed once, which UNIQUE(review_id, kind, ref_id) requires [P2-S11-AC-113]
+# Looks like you planned 10 tests but ran 17
+All 10 subtests passed 
+
+Test Summary Report
+-------------------
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_relay.sql        (Wstat: 0 Tests: 15 Failed: 5)
+  Failed tests:  3-4, 7, 10, 15
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql (Wstat: 768 (exited 3) Tests: 8 Failed: 1)
+  Failed test:  8
+  Non-zero exit status: 3
+  Parse errors: Bad plan.  You planned 28 tests but ran 8.
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql          (Wstat: 768 (exited 3) Tests: 11 Failed: 3)
+  Failed tests:  9-11
+  Non-zero exit status: 3
+  Parse errors: Bad plan.  You planned 44 tests but ran 11.
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_cap.sql          (Wstat: 768 (exited 3) Tests: 8 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: Bad plan.  You planned 17 tests but ran 8.
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_index.sql        (Wstat: 0 Tests: 17 Failed: 7)
+  Failed tests:  11-17
+  Parse errors: Bad plan.  You planned 10 tests but ran 17.
+Files=5, Tests=59, 78 wallclock secs ( 0.29 usr  0.06 sys +  0.48 cusr  0.15 csys =  0.98 CPU)
+Result: FAIL

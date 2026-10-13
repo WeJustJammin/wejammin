@@ -1,0 +1,12 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+
+ Test Files  424 passed (424)
+      Tests  4611 passed (4611)
+   Start at  23:32:00
+   Duration  213.33s (transform 10.94s, setup 0ms, import 175.68s, tests 90.67s, environment 112.50s)
+

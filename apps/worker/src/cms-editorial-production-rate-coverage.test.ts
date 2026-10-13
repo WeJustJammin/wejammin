@@ -104,7 +104,7 @@ describe('cms editorial production rate limiter', () => {
       expect(result).toMatchObject({
         ok: false,
         status: 502,
-        code: 'BAD_GATEWAY',
+        code: 'DEPENDENCY_UNAVAILABLE',
       });
     }
   });
@@ -208,7 +208,7 @@ describe('cms editorial production rate limiter', () => {
     expect(result).toMatchObject({
       ok: false,
       status: 502,
-      code: 'BAD_GATEWAY',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
   it('maps a shared auth limiter rejection through the auth failure table', async () => {

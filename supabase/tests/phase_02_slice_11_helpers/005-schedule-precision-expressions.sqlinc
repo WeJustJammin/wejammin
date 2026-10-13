@@ -1,0 +1,159 @@
+-- Installed-source arithmetic seam only. No RPC, persistent row, clock override,
+-- fixture warmup, or replacement production function. This include emits no TAP.
+create temp table h11p_catalog on commit drop as
+select signature, p.oid, p.prosrc, pg_catalog.pg_get_functiondef(p.oid) as definition,
+  pg_catalog.jsonb_build_object(
+    'signature', signature, 'oid', p.oid, 'sourceMd5', pg_catalog.md5(p.prosrc),
+    'definitionMd5', pg_catalog.md5(pg_catalog.pg_get_functiondef(p.oid)),
+    'owner', pg_catalog.pg_get_userbyid(p.proowner), 'securityDefiner', p.prosecdef,
+    'configuration', p.proconfig, 'volatility', p.provolatile, 'acl', p.proacl,
+    'language', l.lanname, 'result', pg_catalog.pg_get_function_result(p.oid)
+  ) as metadata
+from (values
+  ('platform_private.cms_schedule_publication(jsonb)'),
+  ('platform_private.cms_claim_due_publication_schedules(jsonb)'),
+  ('platform_private.cms_execute_publication_schedule(jsonb)'),
+  ('platform_private.cms_get_entry_workflow(jsonb)'),
+  ('platform_private.cms_schedule_state_guard()')
+) signatures(signature)
+left join pg_catalog.pg_proc p on p.oid = pg_catalog.to_regprocedure(signature)
+left join pg_catalog.pg_language l on l.oid = p.prolang;
+
+-- Anchors select complete operations, not the old formula or a line number.
+-- Whitespace wrapping is accepted. Each pattern has exactly one capture group.
+create temp table h11p_anchors (key text primary key, signature text, pattern text)
+on commit drop;
+insert into h11p_anchors values
+('offset', 'platform_private.cms_schedule_publication(jsonb)',
+ $re$\mif\s+([^;]+)\s+then\s+raise exception 'resolved_utc_mismatch'$re$),
+('horizon', 'platform_private.cms_schedule_publication(jsonb)',
+ $re$\mif\s+([^;]+)\s+then\s+raise exception 'schedule_out_of_horizon'$re$),
+('detail', 'platform_private.cms_schedule_publication(jsonb)',
+ $re$raise exception 'schedule_out_of_horizon'\s+using errcode\s*=\s*'P0001',\s*detail\s*=\s*([^;]+);$re$),
+('due', 'platform_private.cms_claim_due_publication_schedules(jsonb)',
+ $re$with\s+due\s+as\s*\(\s*select\s+schedule_item\.id\s+from\s+platform_private\.cms_publication_schedules\s+schedule_item\s+where\s+([^;]+)\s+order\s+by\s+[^;]+\s+limit\s+batch_size\s+for\s+update\s+skip\s+locked\s*\),\s*moved\s+as$re$),
+('claim_order', 'platform_private.cms_claim_due_publication_schedules(jsonb)',
+ $re$with\s+due\s+as\s*\(\s*select\s+schedule_item\.id\s+from\s+platform_private\.cms_publication_schedules\s+schedule_item\s+where\s+[^;]+\s+order\s+by\s+([^;]+)\s+limit\s+batch_size\s+for\s+update\s+skip\s+locked\s*\),\s*moved\s+as$re$),
+('return_order', 'platform_private.cms_claim_due_publication_schedules(jsonb)',
+ $re$'correlationId'\s*,\s*platform_private\.cms_schedule_correlation\(moved\.id,\s*moved\.lease_id\)\s*\)\s+order\s+by\s+(.+?)\),\s*'\[\]'::jsonb$re$),
+('deviation', 'platform_private.cms_execute_publication_schedule(jsonb)',
+ $re$\mdeviation\s*:=\s*([^;]+);$re$),
+('workflow', 'platform_private.cms_get_entry_workflow(jsonb)',
+ $re$'resolvedUtc'\s*,\s*(.+?)\s*,\s*'reasonCode'$re$);
+
+-- Closed lexical vocabulary plus balanced delimiters. No statements, relation
+-- reads, comments, quoted identifiers, parameters, or unreviewed function calls.
+-- auth_iso_time is intentionally allowed for BOTH detail and workflow: baseline
+-- precision loss must fail a VALUE assertion, not extraction/setup.
+create function pg_temp.h11p_safe(p_expression text) returns boolean
+language plpgsql set search_path = pg_catalog, pg_temp as $body$
+declare
+  scrubbed text;
+  token text;
+  depth integer := 0;
+  symbol text;
+begin
+  if p_expression is null or btrim(p_expression) = ''
+     or p_expression ~ $re$;|--|/\*|\*/|\$|\\$re$ then return false; end if;
+  scrubbed := regexp_replace(p_expression, $re$'(?:[^']|'')*'$re$, '', 'g');
+  if scrubbed ~ $re$'|"|[^\x00-\x7F]$re$ then return false; end if;
+  -- Identifier permission is not function-call permission. Operands must never
+  -- become callable, even when pg_catalog-qualified; only reviewed pure calls
+  -- may be evaluated. The source's EXTRACT syntax is a reviewed special form.
+  -- Canonicalize only matched names, never the expression evaluated below.
+  -- PostgreSQL permits whitespace around each qualification dot.
+  for token in select lower(regexp_replace(m[1], '\s+', '', 'g')) from regexp_matches(
+    scrubbed, '([A-Za-z_][A-Za-z_0-9]*(?:\s*\.\s*[A-Za-z_][A-Za-z_0-9]*)*)\s*\(', 'g') m
+  loop
+    if token = 'platform_private.auth_iso_time' then continue; end if;
+    if token = any(array['and', 'or', 'not', 'in', 'when', 'then', 'else', 'from', 'between'])
+       then continue; end if;
+    token := regexp_replace(token, '^pg_catalog\.', '');
+    if not token = any(array[
+      'extract', 'round', 'date_part', 'floor', 'ceil', 'ceiling', 'trunc',
+      'abs', 'div', 'mod', 'sign', 'coalesce', 'nullif', 'greatest', 'least', 'to_char',
+      'lpad', 'rpad', 'concat', 'jsonb_build_object'
+    ]) then return false; end if;
+  end loop;
+  for token in select lower(regexp_replace(m[1], '\s+', '', 'g')) from regexp_matches(
+    scrubbed, '([A-Za-z_][A-Za-z_0-9]*(?:\s*\.\s*[A-Za-z_][A-Za-z_0-9]*)*)', 'g') m
+  loop
+    if token ~ '^(schedule_item|schedule_row|listed|moved)\.(id|state|resolved_at_utc|resolved_utc_submicro_ns|local_datetime|local_datetime_submicro_ns|next_attempt_at)$'
+       or token = 'platform_private.auth_iso_time' then continue; end if;
+    token := regexp_replace(token, '^pg_catalog\.', '');
+    if not token = any(array[
+      'local_value', 'resolved_value', 'accepted_at', 'stamp', 'actual_at',
+      'local_submicro_ns', 'resolved_submicro_ns', 'and', 'or', 'not', 'between',
+      'at', 'time', 'zone', 'interval', 'case', 'when', 'then', 'else', 'end',
+      'is', 'null', 'true', 'false', 'distinct', 'from', 'in', 'as', 'asc', 'desc',
+      'nulls', 'first', 'last', 'numeric', 'bigint', 'integer', 'smallint', 'text',
+      'timestamp', 'timestamptz', 'without', 'with', 'double', 'precision', 'jsonb',
+      'extract', 'epoch', 'round', 'date_part', 'floor', 'ceil', 'ceiling', 'trunc',
+      'abs', 'div', 'mod', 'sign', 'coalesce', 'nullif', 'greatest', 'least', 'to_char',
+      'lpad', 'rpad', 'concat', 'jsonb_build_object'
+    ]) then return false; end if;
+  end loop;
+  for symbol in select regexp_split_to_table(scrubbed, '') loop
+    if symbol = '(' then depth := depth + 1; end if;
+    if symbol = ')' then depth := depth - 1; end if;
+    if depth < 0 then return false; end if;
+  end loop;
+  return depth = 0;
+end;
+$body$;
+
+create temp table h11p_expressions on commit drop as
+select a.key, a.signature, count(m.capture)::integer as matches,
+  case when count(m.capture) = 1 then min(m.capture[1]) end as expression,
+  count(m.capture) = 1 and coalesce(bool_and(pg_temp.h11p_safe(m.capture[1])), false) as valid
+from h11p_anchors a join h11p_catalog c using (signature)
+left join lateral pg_catalog.regexp_matches(c.prosrc, a.pattern, 'gs') m(capture) on true
+group by a.key, a.signature;
+
+-- The extracted expression is inserted byte-for-byte. Only typed scalar inputs
+-- and genuine source aliases are supplied. Errors remain visible as failed values.
+create function pg_temp.h11p_value(p_key text, p_input jsonb) returns text
+language plpgsql set search_path = pg_catalog, pg_temp as $body$
+declare expression text; answer text;
+begin
+  select e.expression into expression from pg_temp.h11p_expressions e
+    where e.key = p_key and e.valid and e.key not in ('claim_order', 'return_order');
+  if expression is null then return 'INVALID EXTRACTION: ' || p_key; end if;
+  execute format($sql$
+    select (%s)::text
+    from jsonb_to_record($1) as scalar(
+      local_value timestamp, resolved_value timestamptz, accepted_at timestamptz,
+      stamp timestamptz, actual_at timestamptz,
+      local_submicro_ns smallint, resolved_submicro_ns smallint,
+      id uuid, state text, resolved_at_utc timestamptz, next_attempt_at timestamptz,
+      resolved_utc_submicro_ns smallint, local_datetime timestamp,
+      local_datetime_submicro_ns smallint)
+    cross join lateral (select scalar.id, scalar.state, scalar.resolved_at_utc,
+      scalar.next_attempt_at, scalar.resolved_utc_submicro_ns,
+      scalar.local_datetime, scalar.local_datetime_submicro_ns) schedule_item
+    cross join lateral (select schedule_item.*) schedule_row
+    cross join lateral (select schedule_item.*) listed
+    cross join lateral (select schedule_item.*) moved
+  $sql$, expression) into answer using p_input;
+  return answer;
+exception when others then return 'EVALUATION ERROR ' || sqlstate || ': ' || sqlerrm;
+end;
+$body$;
+
+create function pg_temp.h11p_order(p_key text, p_input jsonb) returns text
+language plpgsql set search_path = pg_catalog, pg_temp as $body$
+declare expression text; answer text;
+begin
+  select e.expression into expression from pg_temp.h11p_expressions e
+    where e.key = p_key and e.valid and e.key in ('claim_order', 'return_order');
+  if expression is null then return 'INVALID EXTRACTION: ' || p_key; end if;
+  execute format($sql$
+    select jsonb_agg(schedule_item.id order by %s)::text
+    from jsonb_to_recordset($1) as schedule_item(
+      id uuid, resolved_at_utc timestamptz, resolved_utc_submicro_ns smallint)
+    cross join lateral (select schedule_item.*) moved
+  $sql$, expression) into answer using p_input;
+  return answer;
+exception when others then return 'EVALUATION ERROR ' || sqlstate || ': ' || sqlerrm;
+end;
+$body$;

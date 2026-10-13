@@ -1,0 +1,14 @@
+[alt] waiting for lock 18:12:01
+[alt] lock acquired 18:12:01
+[alt] (no reset) 18:12:01
+[alt] pg_prove exit=1  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-181201-1880989.tap
+psql:phase_02_slice_11_reads_bench128.sql:137: ERROR:  INVALID_REQUEST
+Test Summary Report
+-------------------
+phase_02_slice_11_reads_bench128.sql (Wstat: 768 (exited 3) Tests: 17 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=17, 32 wallclock secs ( 0.15 usr  0.03 sys +  0.11 cusr  0.05 csys =  0.34 CPU)
+Result: FAIL
+Files=1, Tests=17, 32 wallclock secs ( 0.15 usr  0.03 sys +  0.11 cusr  0.05 csys =  0.34 CPU)
+Result: FAIL

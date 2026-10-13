@@ -5,6 +5,7 @@ import {
   CmsLocaleSchema,
   CmsUuidSchema,
 } from '../content-schema-registry/primitives.ts';
+import { FIELD_POINTER_PREFIX, fieldIdOfPointer } from './field-pointer.ts';
 
 /**
  * BE03b `Bcp47`: the registry's locked grammar plus the 2-35 character length
@@ -57,8 +58,6 @@ export const cmsEditorialJsonDepth = (value: unknown): number => {
   return 0;
 };
 
-const FIELD_POINTER_PREFIX = '/fields/';
-
 /**
  * BE03b "Pointers" (normative): a command addresses a field as
  * `/fields/{stableFieldId}` for every field kind (a relation is a field), where
@@ -74,9 +73,7 @@ export const FieldPointerSchema = z.string().refine((value) => {
   return id === id.toLowerCase() && CmsUuidSchema.safeParse(id).success;
 }, 'field_pointer_invalid');
 
-/** The stable field id a validated field pointer names. */
-export const fieldIdOfPointer = (pointer: string): string =>
-  pointer.slice(FIELD_POINTER_PREFIX.length);
+export { fieldIdOfPointer };
 
 /** BE03b `ChangedPaths`: 1-128 unique `/fields/{stableFieldId}` pointers. */
 export const ChangedPathsSchema = z

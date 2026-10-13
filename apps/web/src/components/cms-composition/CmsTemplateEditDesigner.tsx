@@ -4,6 +4,7 @@ import type {
   TemplateVersionDetail,
 } from '@wejammin/contracts';
 
+import { warmCmsValidators } from '../../lib/cms-contract-validators';
 import CmsTemplateBindings from './CmsTemplateBindings';
 import CmsTemplateFields from './CmsTemplateFields';
 import CmsTemplateLatestVersionPanel from './CmsTemplateLatestVersionPanel';
@@ -13,6 +14,10 @@ import { useCmsTemplateEditState } from './cms-template-edit-reconcile-state';
 import { buildCmsTemplateSuccessorRequest } from './cms-template-designer-request';
 import { submitCmsTemplateSuccessorDraft } from './cms-template-designer-submit';
 import { useCmsTemplateRateWait } from './cms-template-rate-wait';
+import {
+  CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE,
+  useCmsTemplateValidators,
+} from './use-cms-template-validators';
 
 interface Props {
   readonly context: TemplateDesignerContext;
@@ -28,6 +33,7 @@ export default function CmsTemplateEditDesigner({
 }: Props): React.ReactElement {
   const state = useCmsTemplateEditState(detail);
   const rateWait = useCmsTemplateRateWait();
+  const gate = useCmsTemplateValidators();
   const fields = {
     templateKey: detail.templateKey,
     compatibleTypeIds: state.compatibleTypeIds,
@@ -52,8 +58,18 @@ export default function CmsTemplateEditDesigner({
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
-    if (cannotSubmit) return;
+    if (cannotSubmit || gate.isChecking()) return;
+    // If the lazily loaded schemas cannot be fetched the draft is unchecked.
+    const validators = await gate.obtain();
+    if (validators === null) {
+      state.setStatus({
+        kind: 'validation',
+        message: CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE,
+      });
+      return;
+    }
     const prepared = buildCmsTemplateSuccessorRequest(
+      validators,
       fields,
       context,
       state.baseDetail,
@@ -65,6 +81,7 @@ export default function CmsTemplateEditDesigner({
     const key = state.beginAttempt(JSON.stringify(prepared.value));
     state.setStatus({ kind: 'pending' });
     const result = await submitCmsTemplateSuccessorDraft(
+      validators,
       prepared.value,
       csrfToken,
       key,
@@ -123,7 +140,11 @@ export default function CmsTemplateEditDesigner({
           onUseAsParent={state.useLatestAsParent}
         />
       ) : null}
-      <form onSubmit={(event) => void submit(event)} noValidate>
+      <form
+        onSubmit={(event) => void submit(event)}
+        onFocus={warmCmsValidators}
+        noValidate
+      >
         <fieldset
           disabled={
             state.status.kind === 'pending' || state.status.kind === 'created'

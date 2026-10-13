@@ -1,0 +1,239 @@
+-- Existing S10 actors/grants only. Fresh minimal CMS03A01 schema, real registered
+-- policy descriptor, guarded terminal fixture (NOT genuine schema activation).
+select pg_temp.s10_rpc_as(
+  (select value::uuid from s10_ids where key = 'creatorAuth'),
+  (select value::uuid from s10_ids where key = 'organization'));
+select set_config('app.cms_rpc', 'true', true);
+create temp table e7_type on commit drop as
+select platform_api.cms_create_type_draft(request || jsonb_build_object(
+  'typeKey', 'e7writer', 'label', 'E7 writer', 'idempotencyKey', 'e7-schema-0001',
+  'fields', jsonb_build_array(
+    (request->'fields'->0) || '{"stableFieldId":"e7100000-0000-4000-8000-000000000101"}'::jsonb,
+    jsonb_build_object('stableFieldId', 'e7100000-0000-4000-8000-000000000102',
+      'key', 'body', 'kind', 'rich_text', 'constraints', '{}'::jsonb,
+      'required', false, 'validatorKey', null, 'validatorVersion', null,
+      'defaultMode', 'none', 'localizationMode', 'none',
+      'editorConfig', '{"label":"Body","order":1}'::jsonb, 'lifecycle', 'active')),
+  'relations', '[]'::jsonb)) as response
+from s10_type_request;
+create temp table e7_policy on commit drop as
+select platform_private.cms_workflow_policy_member('editorial', 1) as member;
+update platform_private.cms_content_type_versions
+set state = 'active', version = version + 1,
+    activation_workflow_policy_key = (select member->>'key' from e7_policy),
+    activation_workflow_policy_version = (select (member->>'version')::bigint from e7_policy),
+    activation_workflow_policy_hash = (select member->>'policyHash' from e7_policy),
+    activation_required_decision_count = (select (member->>'requiredDecisionCount')::integer from e7_policy),
+    activation_required_capabilities = (select member->'requiredCapabilities' from e7_policy),
+    activation_approval_evidence_hash = repeat('b', 64), updated_at = clock_timestamp()
+where id = (select (response->>'id')::uuid from e7_type);
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select (response->>'contentTypeId')::uuid from e7_type);
+
+create function pg_temp.e7_owner() returns uuid language sql stable as $$
+  select value::uuid from s10_ids where key = 'organization'
+$$;
+create function pg_temp.e7_id(p_suffix text) returns uuid language sql immutable as $$
+  select ('e7100000-0000-4000-8000-' || lpad(p_suffix, 12, '0'))::uuid
+$$;
+create function pg_temp.e7_values(p_title text) returns jsonb language sql as $$
+  select jsonb_build_object(pg_temp.e7_id('101')::text, p_title,
+    pg_temp.e7_id('102')::text, jsonb_build_object('format', 'rich_text.v1',
+      'blocks', jsonb_build_array(jsonb_build_object('type', 'paragraph',
+        'spans', jsonb_build_array(jsonb_build_object('text', 'Body text', 'marks', '[]'::jsonb))))))
+$$;
+
+-- Guarded legacy predecessor, not an ordinary writer; owner snapshot stays absent.
+-- Two immutable, correctly hashed revisions permit a genuine B01 conflict without
+-- first warming the owner through a successful ordinary writer.
+insert into platform_private.cms_content_entries(
+  id, owner_id, content_type_id, owner_party_id, lifecycle, version, created_by)
+select pg_temp.e7_id('301'), pg_temp.e7_owner(), (response->>'contentTypeId')::uuid,
+  pg_temp.e7_owner(), 'active', 1,
+  (select value::uuid from s10_ids where key = 'creatorAuth') from e7_type;
+insert into platform_private.cms_entry_revisions(
+  id, owner_id, entry_id, revision_number, schema_version_id, template_version_id,
+  taxonomy_version_ids, parent_revision_ids, locale, payload_hash, author_person_id,
+  acting_party_id, state, version, validation_state, validation_report)
+select pg_temp.e7_id((301 + n)::text), pg_temp.e7_owner(), pg_temp.e7_id('301'), n,
+  (response->>'id')::uuid, null, '[]'::jsonb,
+  case n when 1 then '[]'::jsonb else jsonb_build_array(pg_temp.e7_id('302')) end,
+  'en-US', platform_private.cms_jcs_sha256(pg_temp.e7_values('Legacy ' || n)),
+  (select value::uuid from s10_ids where key = 'creatorPerson'), pg_temp.e7_owner(),
+  'draft', 1, 'valid', '{}'::jsonb from e7_type cross join generate_series(1, 2) n;
+insert into platform_private.cms_entry_field_values(
+  owner_id, state, version, revision_id, field_id, field_definition_id,
+  locale, value, provenance, value_hash)
+select pg_temp.e7_owner(), 'active', 1, pg_temp.e7_id((301 + n)::text),
+  item.key::uuid, definition.id, 'en-US', item.value, 'authored',
+  platform_private.cms_jcs_sha256(item.value)
+from generate_series(1, 2) n cross join e7_type
+cross join lateral jsonb_each(pg_temp.e7_values('Legacy ' || n)) item
+join platform_private.cms_field_definition_versions definition
+  on definition.stable_field_id = item.key::uuid
+  and definition.content_type_version_id = (response->>'id')::uuid;
+update platform_private.cms_content_entries
+set current_draft_revision_id = pg_temp.e7_id('303'), version = 2
+where id = pg_temp.e7_id('301');
+insert into platform_private.cms_entry_assignments(
+  owner_id, entry_id, assignee_person_id, capability_key, state, version)
+select pg_temp.e7_owner(), pg_temp.e7_id('301'), value::uuid, 'cms.author', 'active', 1
+from s10_ids where key = 'creatorPerson';
+
+create function pg_temp.e7_snapshots(p_other boolean default false)
+returns jsonb language sql as $$
+  select coalesce(jsonb_agg(to_jsonb(s) order by s.owner_id, s.ordinal, s.id), '[]'::jsonb)
+  from platform_private.cms_publication_settings_snapshots s
+  where (p_other and s.owner_id <> pg_temp.e7_owner())
+     or (not p_other and s.owner_id = pg_temp.e7_owner())
+$$;
+
+-- Full row-image fingerprints, not counts: IDs/CAS/timestamps/values survive in
+-- the digest comparison. Invoked by the test owner, never inside the CMS trigger.
+create function pg_temp.e7_effects() returns jsonb language plpgsql as $$
+declare table_name text; digest text; result jsonb := '{}'::jsonb;
+begin
+  foreach table_name in array array[
+    'platform_private.cms_content_entries', 'platform_private.cms_entry_revisions',
+    'platform_private.cms_entry_field_values', 'platform_private.cms_entry_relations',
+    'platform_private.cms_entry_assignments', 'platform_private.cms_conflict_records',
+    'platform_private.cms_locale_variants', 'platform_private.cms_restore_chain_manifests',
+    'platform_private.cms_editorial_reviews', 'platform_private.cms_editorial_review_dependencies',
+    'platform_private.cms_editorial_review_assignments', 'platform_private.cms_editorial_decisions',
+    'platform_private.cms_command_accessibility_evidence',
+    'platform_private.idempotency_records', 'platform_private.outbox_events',
+    'audit_private.audit_events', 'platform_private.cms_publication_settings_snapshots']
+  loop
+    execute format('select md5(coalesce(jsonb_agg(to_jsonb(r) order by to_jsonb(r)::text), ''[]''::jsonb)::text) from %s r', table_name)
+      into digest;
+    result := result || jsonb_build_object(table_name, digest);
+  end loop;
+  return result;
+end;
+$$;
+
+create function pg_temp.e7_call(p_operation text, p_request jsonb)
+returns jsonb language plpgsql as $$
+declare response jsonb; detail text; command text;
+begin
+  command := case p_operation when 'B10' then 'cms_create_entry'
+    when 'B01' then 'cms_create_revision' when 'B02' then 'cms_resolve_conflict'
+    when 'B04' then 'cms_restore_revision' when 'C04' then 'cms_author_locale_variant'
+    when 'B05' then 'cms_submit_review' when 'A01' then 'cms_create_type_draft' end;
+  if command is null then raise exception 'E7_UNKNOWN_OPERATION'; end if;
+  begin
+    execute format('select platform_api.%I($1)', command) into response using p_request;
+    return jsonb_build_object('outcome', '00000:', 'response', response);
+  exception when others then
+    get stacked diagnostics detail = pg_exception_detail;
+    return jsonb_build_object('outcome', sqlstate || ':' || sqlerrm,
+      'detail', nullif(detail, ''), 'response', null);
+  end;
+end;
+$$;
+
+create function pg_temp.e7_request(p_operation text, p_key text)
+returns jsonb language plpgsql as $$
+declare request jsonb; entry_row platform_private.cms_content_entries;
+  version_id uuid := (select (response->>'id')::uuid from e7_type);
+begin
+  select * into entry_row from platform_private.cms_content_entries where id = pg_temp.e7_id('301');
+  if p_operation = 'B10' then
+    select jsonb_build_object('contentTypeId', entry_row.content_type_id,
+      'contentTypeVersionId', version_id, 'locale', 'en-US',
+      'changedPaths', jsonb_build_array('/fields/' || pg_temp.e7_id('101'), '/fields/' || pg_temp.e7_id('102')),
+      'values', pg_temp.e7_values('New entry'), 'validatorRefs', '[]'::jsonb,
+      'workflowPolicy', platform_private.cms_editorial_workflow_policy_evidence(version_id),
+      'activationEvidence', platform_private.cms_type_version_resource(version_id)->'activationEvidence',
+      'schemaArtifact', jsonb_build_object('id', artifact.id, 'contentTypeVersionId', version_id,
+        'artifactHash', artifact.artifact_hash, 'compilerVersion', artifact.compiler_version,
+        'zodContractRef', artifact.zod_contract_ref)) into request
+    from platform_private.cms_schema_artifacts artifact where artifact.content_type_version_id = version_id;
+  elsif p_operation = 'B01' then
+    select jsonb_build_object('entryId', entry_row.id, 'baseRevision', revision_number::text,
+      'changedPaths', jsonb_build_array('/fields/' || pg_temp.e7_id('101')),
+      'values', jsonb_build_object(pg_temp.e7_id('101')::text, 'Edited title'), 'locale', 'en-US')
+      into request from platform_private.cms_entry_revisions where id = entry_row.current_draft_revision_id;
+  elsif p_operation = 'B02' then
+    select jsonb_build_object('entryId', entry_row.id, 'conflictId', id, 'baseRevision', '1',
+      'choices', jsonb_build_array(jsonb_build_object('path', changed_paths->>0, 'choice', 'theirs')))
+      into request from platform_private.cms_conflict_records where entry_id = entry_row.id and state = 'open';
+  elsif p_operation = 'B04' then
+    request := jsonb_build_object('entryId', entry_row.id, 'revisionId', pg_temp.e7_id('302'),
+      'migrationChainId', platform_private.cms_restore_chain_manifest_id(
+        platform_private.cms_restore_chain_derive(entry_row.content_type_id, version_id, version_id)->>'hash'));
+  elsif p_operation = 'C04' then
+    select jsonb_build_object('entryId', entry_row.id, 'sourceRevisionId', id,
+      'sourceHash', payload_hash, 'locale', 'fr-FR', 'fallbackChain', '["en-US"]'::jsonb,
+      'noFallbackFieldIds', '[]'::jsonb, 'fields', jsonb_build_array(
+        jsonb_build_object('fieldId', pg_temp.e7_id('101'), 'value', 'Titre traduit')))
+      into request from platform_private.cms_entry_revisions where id = entry_row.current_draft_revision_id;
+  end if;
+  if p_operation <> 'B10' then
+    request := request || jsonb_build_object('expectedVersion', entry_row.version::text, 'ifMatch', entry_row.version::text);
+  end if;
+  return request || jsonb_build_object('idempotencyKey', p_key);
+end;
+$$;
+
+-- Positive, exact replay, then structural refusal; observations only, no TAP.
+create function pg_temp.e7_writer_case(p_operation text)
+returns jsonb language plpgsql as $$
+declare request jsonb; answer jsonb; replay jsonb; refused jsonb; effects jsonb;
+  snapshots jsonb; other_rows jsonb := pg_temp.e7_snapshots(true);
+  absent boolean := pg_temp.e7_snapshots() = '[]'::jsonb; result jsonb;
+  resource_id uuid; canonical boolean; conflict jsonb;
+begin
+  if p_operation = 'B02' then
+    conflict := pg_temp.e7_call('B01', pg_temp.e7_request('B01', 'e7-conflict-0001') || '{"baseRevision":"1"}'::jsonb);
+  end if;
+  request := pg_temp.e7_request(p_operation, 'e7-positive-' || p_operation);
+  effects := pg_temp.e7_effects();
+  refused := pg_temp.e7_call(p_operation, request || '{"unexpected":true,"idempotencyKey":"e7-cold-invalid"}'::jsonb);
+  result := jsonb_build_object('absent', absent,
+    'coldRefusal', refused->>'outcome' = 'P0001:INVALID_REQUEST'
+      and pg_temp.e7_effects() = effects and pg_temp.e7_snapshots() = '[]'::jsonb,
+    'conflictTyped', conflict->>'outcome' = '00000:' and conflict#>>'{response,kind}' = 'conflict'
+      and conflict#>>'{response,code}' = 'VERSION_MISMATCH'
+      and pg_temp.s10_reservation_status('e7-conflict-0001') = 'completed'
+      and exists(select 1 from platform_private.idempotency_records where key_hash = platform_private.cms_key_hash('e7-conflict-0001') and response_ref->>'status' = '409'),
+    'conflictNoSnapshot', pg_temp.e7_snapshots() = '[]'::jsonb);
+  answer := pg_temp.e7_call(p_operation, request);
+  resource_id := coalesce(answer#>>'{response,entry,id}', answer#>>'{response,resource,id}', answer#>>'{response,id}')::uuid;
+  if p_operation = 'B10' then
+    select exists(select 1 from platform_private.cms_content_entries e
+      join platform_private.cms_entry_revisions r on r.id = e.current_draft_revision_id
+      where e.id = resource_id and e.owner_id = pg_temp.e7_owner() and e.version = 1
+        and r.id::text = answer#>>'{response,revision,id}' and r.payload_hash::text = answer#>>'{response,contentHash}') into canonical;
+  elsif p_operation = 'C04' then
+    select exists(select 1 from platform_private.cms_locale_variants v
+      join platform_private.cms_entry_revisions r on r.id = v.revision_id
+      where v.id = resource_id and v.owner_id = pg_temp.e7_owner() and v.locale = 'fr-FR'
+        and r.payload_hash::text = answer#>>'{response,contentHash}') into canonical;
+  else
+    select exists(select 1 from platform_private.cms_entry_revisions r
+      join platform_private.cms_content_entries e on e.current_draft_revision_id = r.id
+      where r.id = resource_id and r.owner_id = pg_temp.e7_owner() and e.version = 3
+        and r.payload_hash::text = coalesce(answer#>>'{response,resource,contentHash}', answer#>>'{response,contentHash}')) into canonical;
+  end if;
+  snapshots := pg_temp.e7_snapshots(); effects := pg_temp.e7_effects();
+  replay := pg_temp.e7_call(p_operation, request);
+  result := result || jsonb_build_object('outcome', answer->>'outcome',
+    'success201', answer->>'outcome' = '00000:' and exists(
+      select 1 from platform_private.idempotency_records where key_hash = platform_private.cms_key_hash(request->>'idempotencyKey')
+        and state = 'completed' and response_ref = jsonb_build_object('status', 201,
+          'resourceRef', resource_id::text, 'safeHeaders', jsonb_build_object('response', answer->'response'))),
+    'canonical', canonical,
+    'snapshot', jsonb_array_length(snapshots) = 1 and exists(
+      select 1 from platform_private.cms_publication_settings_snapshots where owner_id = pg_temp.e7_owner()
+        and ordinal = 1 and registry_version = 1 and version = 1 and state = 'active'
+        and effective_values = '[]'::jsonb and snapshot_hash = pg_temp.h11_sha256('[]')),
+    'otherOwners', pg_temp.e7_snapshots(true) = other_rows,
+    'replay', replay = answer and pg_temp.e7_effects() = effects,
+    'snapshotReplay', pg_temp.e7_snapshots() = snapshots);
+  refused := pg_temp.e7_call(p_operation, request || '{"unexpected":true,"idempotencyKey":"e7-invalid-key"}'::jsonb);
+  return result || jsonb_build_object('refusal', (result->>'coldRefusal')::boolean
+    and refused->>'outcome' = 'P0001:INVALID_REQUEST' and pg_temp.e7_effects() = effects);
+end;
+$$;

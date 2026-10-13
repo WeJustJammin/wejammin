@@ -1,7 +1,11 @@
+import type { QueueEnvelope } from '@wejammin/contracts';
+
 import type {
   AsyncWorkerBindings,
   PlatformJobsMessage,
 } from './async-entrypoint';
+import type { CmsPublicationScheduleRpcName } from './cms-publication-schedule-rpc-names';
+import type { CmsReviewRecheckRpcName } from './cms-editorial/review-recheck/rpc-names';
 import type { SchemaMigrationRpcName } from './content-schema-registry/migration-worker';
 import type { EventConsumerRpcName } from './event-consumers/rpc-names';
 
@@ -18,6 +22,8 @@ export type AsyncRpcOperation =
   | 'apply_job_outcome'
   | 'record_processed_event'
   | 'ac265_prepare_hosted_run'
+  | CmsPublicationScheduleRpcName
+  | CmsReviewRecheckRpcName
   | EventConsumerRpcName
   | SchemaMigrationRpcName;
 
@@ -39,6 +45,13 @@ export type AsyncJobRuntimeDependencies = Readonly<{
   rpc?: AsyncRpcClient;
   fetch?: typeof fetch;
   effect?: import('@wejammin/application').JobEffectPort['execute'];
+  verifyCmsSchemaDryRunOrigin?: (
+    input: Readonly<{
+      env: AsyncWorkerBindings;
+      envelope: QueueEnvelope;
+      signal: AbortSignal;
+    }>,
+  ) => Promise<boolean>;
   leaseToken?: (message: PlatformJobsMessage) => string;
   outboxLeaseToken?: () => string;
   leaseSeconds?: number;

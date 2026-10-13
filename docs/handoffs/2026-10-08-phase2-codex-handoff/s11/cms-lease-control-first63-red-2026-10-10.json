@@ -1,0 +1,54 @@
+{
+  "schemaVersion": 1,
+  "scope": "First actual lease-control QA RED; producer UNRUN",
+  "baseline": "680119107f81908917b47fc0f2ea27f3d490ff02",
+  "proof": {
+    "driverExit": 1,
+    "signal": null,
+    "log": ".lane-logs/parent-s11-cms-lease-control-first63-red-20261010.log",
+    "summary": [
+      "activeCI=0",
+      " ❯ packages/application/src/infrastructure/jobs/consumer-cms-lease-control.test.ts (32 tests | 27 failed) 27ms",
+      " ❯ apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts (31 tests | 27 failed) 28ms",
+      "⎯⎯⎯⎯⎯⎯ Failed Tests 54 ⎯⎯⎯⎯⎯⎯⎯",
+      " Test Files  2 failed (2)",
+      "      Tests  54 failed | 9 passed (63)",
+      "cmsLeaseFocusedExit=1",
+      "apps/worker/src/async-entrypoint-cms-origin-admission.test.ts(202,41): error TS2339: Property 'AbortController' does not exist on type 'typeof globalThis'.",
+      "apps/worker/src/async-entrypoint-cms-origin-admission.test.ts(207,33): error TS2345: Argument of type 'this' is not assignable to parameter of type 'AbortController'.",
+      "apps/worker/src/async-entrypoint-cms-origin-admission.test.ts(300,18): error TS2339: Property 'AbortController' does not exist on type 'typeof globalThis'.",
+      "apps/worker/src/async-entrypoint-cms-origin-admission.test.ts(355,20): error TS2339: Property 'AbortController' does not exist on type 'typeof globalThis'.",
+      "cmsLeaseTypecheckExit=2",
+      "cmsLeaseLintExit=0"
+    ],
+    "files": [
+      {
+        "path": "packages/application/src/infrastructure/jobs/consumer-cms-lease-control.test.ts",
+        "lines": 404,
+        "sha": "75a241b36996bd0d380f060dbfd2ac080ff3e471253aa724e5421e488a2d1eab"
+      },
+      {
+        "path": "packages/application/src/infrastructure/jobs/consumer-cms-lease-control-test-support.ts",
+        "lines": 346,
+        "sha": "e701ba86d6165a48515c79d7e7468823867f6f53aed2a35b957437ef2bd17282"
+      },
+      {
+        "path": "apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts",
+        "lines": 291,
+        "sha": "ad2af6479c6c9a75387d91da9d39ce7991c491d4bd6adb2e4429c52a24834640"
+      }
+    ],
+    "all37Exact": true,
+    "receiving2Exact": true
+  },
+  "limitations": [
+    "applicationQA404 exceeds hard400",
+    "combined typecheckExit2 originates in receiving cancellation globalThis AbortController declarations",
+    "independent source refutation: pending lost checkpoint drain before success/manual-review/throw and final-expiry manual-review/throw branches unwitnessed",
+    "independent source refutation: not-due snapshot outer/nested freeze and fresh identities unwitnessed",
+    "independent source refutation: valid positive initial receipt regressed version6 below preclaim7 unwitnessed",
+    "independent source refutation: eventJobType omitted with verified canonical CMS does not independently isolate construction clamp",
+    "tokenblind current metadata is not stage write authority"
+  ],
+  "acceptance": "0/122; QA correction gate, producer/full validation open"
+}

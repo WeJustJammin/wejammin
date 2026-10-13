@@ -18,6 +18,18 @@ no server message is ever rendered (fixed copy only).
 
 ## Module map
 
+- Lazy contracts (AC-106): the editor, create and conflict islands ship no zod.
+  Their `init` carries the field descriptors the page loader decoded
+  (`cms-editorial-fields/cms-field-descriptor-decode.ts`), the zod-free helpers
+  every write shares live in `cms-editorial-request-support.ts` (CSRF cookie,
+  idempotency key, violation pointers), and the transports and their schemas
+  (`cms-editorial-runtime.ts`, `-entry-create-submit.ts`, `-entry-draft-detail-transport.ts`,
+  `-conflict-resolve.ts`, `-conflict-detail-transport.ts`) are imported
+  dynamically at the call site, on the first save, create, re-read or resolve. A
+  chunk that cannot be fetched sent nothing and is reported as a lost answer, so
+  the author's values stay. Tests that drive a submit call
+  `preloadCmsEditorialTransports` (`cms-editorial-lazy-transports.test-support.ts`).
+  `apps/web/src/cms-island-static-closure.test.ts` guards the static closure.
 - Create (CMS-03B-10): `CmsEditorialEntryCreateIsland.tsx` over
   `use-cms-editorial-entry-create.ts`, `cms-editorial-entry-create-values.ts`
   (what is sent) and `cms-editorial-entry-create-submit.ts` (the command with

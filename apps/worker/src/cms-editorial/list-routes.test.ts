@@ -205,7 +205,7 @@ describe('CMS-03B-13 protected assigned-entry list route', () => {
     const response = await get(app);
     expect(response.status).toBe(502);
     expect(ApiErrorSchema.parse(await response.json()).code).toBe(
-      'BAD_GATEWAY',
+      'DEPENDENCY_UNAVAILABLE',
     );
   });
 

@@ -1,0 +1,42 @@
+{
+  "schemaVersion": 1,
+  "scope": "Controlled CMS immutable-origin generic receiving QA; not acceptance",
+  "baseline": "6f0b4774d23ec2e798f484886519a7edc924abd7",
+  "sourceQaFrozen37": {
+    "receipt": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/root-zod-gate-receipts-2026-10-10.json",
+    "allExact": true
+  },
+  "qa": {
+    "formatExit": 0,
+    "formatTail": [
+      "apps/worker/src/async-entrypoint-cms-origin-admission.test.ts 142ms",
+      "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-cms-lease-control-tdd-2026-10-10.md 53ms"
+    ],
+    "path": "apps/worker/src/async-entrypoint-cms-origin-admission.test.ts",
+    "lines": 490,
+    "sha": "dbfb13c959d299948f6fc35b0821d37b4363d8535b1dcc330878b166eeb47a96",
+    "all37Exact": true
+  },
+  "focused": {
+    "log": ".lane-logs/parent-s11-cms-origin-receiving-first-red-20261010.log",
+    "activeCI": 0,
+    "serializedLock": "/tmp/wejammin-supabase-ci.lock",
+    "executed": 23,
+    "failed": 17,
+    "passed": 6,
+    "exit": 1,
+    "typeCheckExit": 0,
+    "lintExit": 0,
+    "redBoundary": "Boolean ordered-history and early processed-barrier assertions; no import/setup failure"
+  },
+  "independentReview": "No other bounded assertion gap; receiver-owned post-await cancellation unexercised. Deleting that check survives existing23. Formatted490 exceeds400 cap, so QA not accepted.",
+  "nextAmendment": {
+    "paths": [
+      "apps/worker/src/async-entrypoint-cms-origin-admission.test.ts",
+      "apps/worker/src/async-entrypoint-cms-origin-admission-test-support.ts"
+    ],
+    "mechanical": "Move existing lines19–319 into support; leave history builders/case bodies in spec; preserve all23 titles/initializers/assertions; no circular import",
+    "newCase": "Test-local native AbortController subclass maps actual signal to owner; abort matching receiver controller during deferred verifier, then resolve false; actual receiving retries with no claim/effect/outcome/processed/ACK; restore globals in finally"
+  },
+  "acceptance": "0/122; receiving producer/enduring SQL authority/HB/mapping/public lifecycle/full gates remain open"
+}

@@ -1,0 +1,83 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx (4 tests | 3 failed) 98ms
+     × sends nothing, says so, keeps the values and sends once the connection returns 58ms
+     × sends nothing, says so, and keeps the unsent values 11ms
+     × reports the latest version unavailable when the schemas cannot check the read 9ms
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx > template create island without validators > sends nothing, says so, keeps the values and sends once the connection returns
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx:143:21
+    141|     resetCmsValidatorsForTest();
+    142|     await act(async () => submitForm(container));
+    143|     expect(fetcher).toHaveBeenCalledTimes(1);
+       |                     ^
+    144|     expect(container.textContent).toContain('Draft created.');
+    145|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx > template edit island without validators > sends nothing, says so, and keeps the unsent values
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      "/api/v1/cms/templates/versions",
+      Object {
+        "body": "{"templateKey":"release-note","compatibleTypeIds":["018f0c45-73fe-7dc2-9c09-68f7ecf132da"],"slots":[],"reservedRegions":["header","now","record","detail","provenance"],"bindings":{},"locale":"en-US","audience":"public","expectedVersion":null}",
+        "cache": "no-store",
+        "credentials": "same-origin",
+        "headers": Object {
+          "content-type": "application/json",
+          "idempotency-key": "draft-attempt-001",
+          "x-csrf-token": "csrf-token",
+        },
+        "method": "POST",
+        "redirect": "error",
+      },
+    ]
+
+
+Number of calls: 1
+
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx:183:25
+    181|       submitForm(container);
+    182|     });
+    183|     expect(fetcher).not.toHaveBeenCalled();
+       |                         ^
+    184|     const status = container.querySelector('.cms-template-designer-sta…
+    185|     expect(status.getAttribute('role')).toBe('alert');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx > template edit island without validators > reports the latest version unavailable when the schemas cannot check the read
+AssertionError: expected 'Edit template draftEditing version 2.…' to contain 'The result is unknown'
+
+Expected: "The result is unknown"
+Received: "Edit template draftEditing version 2. Your values remain in this form until you explicitly choose a newer parent version.Template definitionTemplate keyLowercase letters, numbers, and hyphens; immutable after creation.Compatible active content typesrelease_note · version 2LocaleAudienceReserved regionsThe first five regions are fixed: header, now, record, detail, provenance.Additional regions, comma separatedUse distinct lowercase region keys.SlotsSupported blocks: none available.Add slotProjection bindingsAdd bindingA saved successor is a private draft, not publication or activation.Save successor draft"
+
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx:209:35
+    207|       submitForm(container);
+    208|     });
+    209|     expect(container.textContent).toContain('The result is unknown');
+       |                                   ^
+    210|     expect(fetcher).toHaveBeenCalledTimes(1);
+    211|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed | 321 passed (322)
+      Tests  3 failed | 3391 passed (3394)
+   Start at  13:19:05
+   Duration  174.78s (transform 7.94s, setup 0ms, import 131.44s, tests 77.83s, environment 104.81s)
+

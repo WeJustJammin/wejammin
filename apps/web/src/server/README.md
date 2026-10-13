@@ -73,6 +73,18 @@ fails closed (`docs/runbooks/platform/cms-editorial.md`).
   same-origin check, the CSRF cookie/header match, bounded printable tokens,
   disclosure-safe local `ApiError` construction, and the allowlisted
   forward/copy header sets.
+- `cms-workflow-platform-command.ts` — the six Slice 11 browser commands
+  (CMS-03B-05 submit, -06 decision, -07 schedule, -08 preview, -09 publish, -18
+  assignment) over one admission kit driven by the generated registry row and
+  the generated request, header and resource schemas. A 2xx it cannot verify
+  (status, strict resource, identity binding, validator, Location) is a 502
+  carrying `x-cms-editorial-outcome: unknown`.
+- `cms-workflow-platform-reads.ts` — the three Slice 11 protected reads
+  (CMS-03B-15 workflow, -16 review detail, -17 reviewer queue): a typed query,
+  no mutation header, and only a strict resource bound to the asked identity.
+- `cms-workflow-platform-errors.ts` — the Slice 11 error-detail projector: a
+  step-up recovery action, an operation's own reason token with its structured
+  members (preflight list, time-authority alternatives), nothing verbatim.
 - `cms-editorial-platform-bounded.ts` — the locked 256 KiB body cap for this
   command family plus declared-then-streamed byte reads that cancel their
   source on overflow, so no contract parse ever sees an unbounded buffer. It

@@ -1,0 +1,253 @@
+-- Slice 11 data-model helpers (BE03b Database Schema, lane S11-2).
+--
+-- Everything here is a pg_temp function, so it lives and dies with the test
+-- session.  Structural inspectors resolve identifiers by OID/regclass and answer
+-- false or empty for an absent object, so a RED run reports every missing
+-- column, constraint, index and table instead of aborting at the first one.
+-- Behavioural probes run inside subtransactions, so a rejected statement never
+-- aborts the enclosing suite transaction.
+--
+-- Prerequisite includes (in this order): support/jwt-claims.sqlinc,
+-- phase_02_slice_10_rpc/000-helpers.sqlinc, phase_02_slice_10_rpc/001-fixtures.sqlinc
+-- and phase_02_slice_10_remaining_schema/000-helpers.sqlinc (the s10r_ inspectors).
+
+create temp table s11_ids(
+  key text primary key,
+  value text not null
+) on commit drop;
+
+-- Outcome of one statement: '00000' when it succeeds, 'P0001:<token>' for a
+-- guard or RPC refusal token, otherwise the bare SQLSTATE.  The statement's
+-- effects are kept when it succeeds.
+create or replace function pg_temp.s11_outcome(p_sql text)
+returns text
+language plpgsql
+as $body$
+begin
+  begin
+    execute p_sql;
+    return '00000';
+  exception
+    when others then
+      if sqlstate = 'P0001' then
+        return 'P0001:' || sqlerrm;
+      end if;
+      return sqlstate;
+  end;
+end;
+$body$;
+
+-- Same, but the statement runs with every USER trigger of p_table disabled so a
+-- table CHECK, NOT NULL, unique index or foreign key is probed in isolation from
+-- the guard triggers, and a successful statement is rolled back.
+create or replace function pg_temp.s11_bare_outcome(p_table text, p_sql text)
+returns text
+language plpgsql
+as $body$
+declare
+  outcome text;
+begin
+  if to_regclass(p_table) is null then
+    return '42P01';
+  end if;
+  execute format('alter table %s disable trigger user', p_table);
+  begin
+    execute p_sql;
+    raise exception 'S11_BARE_ACCEPTED';
+  exception
+    when others then
+      outcome := case
+        when sqlerrm = 'S11_BARE_ACCEPTED' then '00000'
+        when sqlstate = 'P0001' then 'P0001:' || sqlerrm
+        else sqlstate
+      end;
+  end;
+  execute format('alter table %s enable trigger user', p_table);
+  return outcome;
+end;
+$body$;
+
+-- INSERT statement text for a jsonb row image (unknown keys are ignored by
+-- jsonb_populate_record, so a RED run against an absent column still builds).
+create or replace function pg_temp.s11_insert_sql(p_table text, p_row jsonb)
+returns text
+language sql
+as $body$
+  select format(
+    'insert into %s select * from jsonb_populate_record(null::%s, %L::jsonb)',
+    p_table, p_table, p_row::text
+  )
+$body$;
+
+create or replace function pg_temp.s11_id(p_key text)
+returns uuid
+language sql
+stable
+as $body$
+  select value::uuid from s11_ids where key = p_key
+$body$;
+
+create or replace function pg_temp.s11_val(p_key text)
+returns text
+language sql
+stable
+as $body$
+  select value from s11_ids where key = p_key
+$body$;
+
+-- Closed CHECK label union for a column (all constraints that name it), sorted.
+create or replace function pg_temp.s11_labels(p_table text, p_column text)
+returns text[]
+language sql
+stable
+as $body$
+  select pg_temp.s10r_closed_check_labels(p_table, p_column)
+$body$;
+
+-- Rendered definition of a named constraint, or null when it is absent.
+create or replace function pg_temp.s11_condef(p_table text, p_constraint text)
+returns text
+language sql
+stable
+as $body$
+  select pg_get_constraintdef(c.oid)
+  from pg_constraint c
+  where c.conrelid = to_regclass(p_table) and c.conname = p_constraint
+$body$;
+
+-- True when the named constraint exists, is validated and renders every fragment.
+create or replace function pg_temp.s11_constraint_has(
+  p_table text,
+  p_constraint text,
+  p_fragments text[]
+)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_and(
+    c.convalidated
+    and pg_get_constraintdef(c.oid) like all (
+      select '%' || f || '%' from unnest(p_fragments) as f
+    )
+  ), false)
+  from pg_constraint c
+  where c.conrelid = to_regclass(p_table) and c.conname = p_constraint
+$body$;
+
+-- Index existence by name with every rendered fragment (partial predicates too).
+create or replace function pg_temp.s11_index_has(
+  p_table text,
+  p_index text,
+  p_fragments text[]
+)
+returns boolean
+language sql
+stable
+as $body$
+  select pg_temp.s10r_has_index(p_table, p_index, p_fragments)
+$body$;
+
+-- Trigger inventory of a table: name:function:type, sorted, user triggers only.
+create or replace function pg_temp.s11_triggers(p_table text)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(string_agg(
+    t.tgname || ':' || p.proname || ':' || t.tgtype::text, ',' order by t.tgname
+  ), '')
+  from pg_trigger t
+  join pg_proc p on p.oid = t.tgfoid
+  where t.tgrelid = to_regclass(p_table) and not t.tgisinternal
+$body$;
+
+-- Table privilege matrix across the API roles (empty means none).
+create or replace function pg_temp.s11_api_privileges(p_table text)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(string_agg(r.rolname || ':' || p.privilege, ',' order by r.rolname, p.privilege), '')
+  from pg_roles r
+  cross join unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) as p(privilege)
+  where r.rolname in ('anon', 'authenticated', 'service_role')
+    and to_regclass(p_table) is not null
+    and has_table_privilege(r.oid, to_regclass(p_table), p.privilege)
+$body$;
+
+-- RLS posture: enabled and forced (false for an absent table).
+create or replace function pg_temp.s11_rls_forced(p_table text)
+returns boolean
+language sql
+stable
+as $body$
+  select coalesce(bool_and(c.relrowsecurity and c.relforcerowsecurity), false)
+  from pg_class c where c.oid = to_regclass(p_table)
+$body$;
+
+-- Policy names on a table, sorted.
+create or replace function pg_temp.s11_policies(p_table text)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(string_agg(pol.polname, ',' order by pol.polname), '')
+  from pg_policy pol where pol.polrelid = to_regclass(p_table)
+$body$;
+
+-- Deterministic 64-hex strings for evidence columns.
+create or replace function pg_temp.s11_hex(p_seed text)
+returns text
+language sql
+immutable
+as $body$
+  select encode(extensions.digest(p_seed, 'sha256'), 'hex')
+$body$;
+
+-- Archives an entry the way a fixture needs it (lifecycle only) WITHOUT the
+-- Slice 11 review-invalidation cascade (cms_content_entries_review_invalidation,
+-- BE03b "Review invalidation", proved in phase_02_slice_11_helpers_invalidation.sql),
+-- so a table guard that reads the review and the entry is probed in isolation
+-- on an entry whose review is still approved.  The trigger is re-enabled at once.
+create or replace function pg_temp.s11_archive_entry(p_entry uuid)
+returns void
+language plpgsql
+as $body$
+declare
+  cascade_trigger name;
+begin
+  select t.tgname into cascade_trigger
+    from pg_trigger t
+   where t.tgrelid = 'platform_private.cms_content_entries'::regclass
+     and t.tgname = 'cms_content_entries_review_invalidation'
+     and not t.tgisinternal;
+  if cascade_trigger is not null then
+    execute format('alter table platform_private.cms_content_entries disable trigger %I', cascade_trigger);
+  end if;
+  update platform_private.cms_content_entries set lifecycle = 'archived' where id = p_entry;
+  if cascade_trigger is not null then
+    execute format('alter table platform_private.cms_content_entries enable trigger %I', cascade_trigger);
+  end if;
+end;
+$body$;
+
+-- Fixture seeding of a DECIDED review (approved, rejected, or an open review that already
+-- counts a decision) for suites whose subject is another table: assignments, decisions,
+-- dependencies, schedules, lineage.  cms_review_cas_guard refuses a transition out of `open`
+-- that no decision row backs (BE03b EditorialReview, proved in
+-- phase_02_slice_11_reviews_guard.sql), so the one UPDATE runs with ONLY the review state
+-- guard disabled; it is enabled again before returning.  Returns the s11_outcome of the update.
+create or replace function pg_temp.s11_seed_review_update(p_sql text)
+returns text
+language plpgsql
+as $body$
+declare
+  outcome text;
+begin
+  execute 'alter table platform_private.cms_editorial_reviews disable trigger cms_editorial_reviews_z_state_guard';
+  outcome := pg_temp.s11_outcome(p_sql);
+  execute 'alter table platform_private.cms_editorial_reviews enable trigger cms_editorial_reviews_z_state_guard';
+  return outcome;
+end;
+$body$;

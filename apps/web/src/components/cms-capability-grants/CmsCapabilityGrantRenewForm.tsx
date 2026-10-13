@@ -1,8 +1,13 @@
 import * as React from 'react';
 
+import {
+  warmCmsValidators,
+  withCmsValidators,
+} from '../../lib/cms-contract-validators';
+import CmsCapabilityGrantCheckNotice from './CmsCapabilityGrantCheckNotice';
 import { ReasonField, TermField } from './CmsCapabilityGrantFields';
 import { capabilityLabel } from './cms-capability-grant-labels';
-import { CMS_CAPABILITY_GRANT_CONSOLE_PATH } from './cms-capability-grant-url';
+import { CMS_CAPABILITY_GRANT_CONSOLE_PATH } from './cms-capability-grant-console-url';
 import {
   validateRenewalFields,
   type CmsCapabilityGrantTermBounds,
@@ -33,6 +38,7 @@ export default function CmsCapabilityGrantRenewForm(
   const { grant } = props;
   const [values, setValues] = React.useState({ validThrough: '', reason: '' });
   const [errors, setErrors] = React.useState<GrantFieldErrors>({});
+  const [checkUnavailable, setCheckUnavailable] = React.useState(false);
   const shown: GrantFieldErrors = { ...props.serverErrors, ...errors };
   const heading = React.useRef<HTMLHeadingElement | null>(null);
   React.useEffect(() => heading.current?.focus({ preventScroll: true }), []);
@@ -40,15 +46,26 @@ export default function CmsCapabilityGrantRenewForm(
   const onSubmit: React.FormEventHandler<HTMLFormElement> = (event) => {
     event.preventDefault();
     if (props.disabled || props.pending) return;
-    const found = validateRenewalFields(values, props.termWindow);
-    setErrors(found);
-    if (found.validThrough !== undefined) {
-      event.currentTarget
-        .querySelector<HTMLElement>('input[name="validThrough"]')
-        ?.focus();
-      return;
-    }
-    props.onSubmit(event.currentTarget);
+    const form = event.currentTarget;
+    withCmsValidators(
+      (validators) => {
+        setCheckUnavailable(false);
+        const found = validateRenewalFields(
+          validators,
+          values,
+          props.termWindow,
+        );
+        setErrors(found);
+        if (found.validThrough !== undefined) {
+          form
+            .querySelector<HTMLElement>('input[name="validThrough"]')
+            ?.focus();
+          return;
+        }
+        props.onSubmit(form);
+      },
+      () => setCheckUnavailable(true),
+    );
   };
   return (
     <form
@@ -59,6 +76,7 @@ export default function CmsCapabilityGrantRenewForm(
       action={CMS_CAPABILITY_GRANT_CONSOLE_PATH}
       noValidate
       onSubmit={onSubmit}
+      onFocus={warmCmsValidators}
       onKeyDown={(event) => {
         if (event.key === 'Escape') props.onCancel();
       }}
@@ -98,6 +116,10 @@ export default function CmsCapabilityGrantRenewForm(
         Consequence: the term restarts from today and ends at the end of the
         chosen date.
       </p>
+      <CmsCapabilityGrantCheckNotice
+        id={`${id}-check-unavailable`}
+        unavailable={checkUnavailable}
+      />
       <div className="content-schema-registry-actions">
         <button
           type="submit"

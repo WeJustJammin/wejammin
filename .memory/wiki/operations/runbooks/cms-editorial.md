@@ -55,6 +55,15 @@ secret immediately and have clients restart pagination from the first page.
 Never put key material in a ticket, log, URL, migration, or chat. The local
 pgTAP key is fixed test data created only inside a rolled-back transaction.
 
+A `CMS-03B-03` request with a `state` filter answers a sealed cursor
+(encrypt-then-MAC, DEC-168) instead of the signed envelope, because its scan can
+end on a revision the caller may not know exists. The sealing keys are derived
+from the same Vault secrets, so provisioning and rotation do not change. The
+repository runbooks `docs/runbooks/platform/cms-editorial.md` and
+`docs/runbooks/platform/cms-publication.md` carry the Slice 10 and Slice 11
+operating detail, including the schedule executor, the dependency recheck job,
+the preview takedown RPC and the outbox relay's poison rows.
+
 ## Detection and immediate containment
 
 Inspect per-operation request rate, latency, typed errors, idempotency and

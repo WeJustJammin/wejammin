@@ -1,0 +1,46 @@
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_bench128.sql .. 
+{"created": true, "personId": "eff5e568-0d45-4d19-a612-4ed95b5168f0", "contextKind": "self", "accountState": "active", "actingPartyId": "eff5e568-0d45-4d19-a612-4ed95b5168f0", "bindingVersion": 1}
+{"created": true, "personId": "a25f389f-f909-4168-8e70-9a426bac6b87", "contextKind": "self", "accountState": "active", "actingPartyId": "a25f389f-f909-4168-8e70-9a426bac6b87", "bindingVersion": 1}
+{"created": true, "personId": "912bc78f-4634-4568-86d8-85d70bc4d50f", "contextKind": "self", "accountState": "active", "actingPartyId": "912bc78f-4634-4568-86d8-85d70bc4d50f", "bindingVersion": 1}
+{"created": true, "personId": "b0341af7-34bf-4ebd-bfd7-a8b8692623eb", "contextKind": "self", "accountState": "active", "actingPartyId": "b0341af7-34bf-4ebd-bfd7-a8b8692623eb", "bindingVersion": 1}
+{"created": true, "personId": "3a64a906-06b9-4f81-9bcd-6673c269bb48", "contextKind": "self", "accountState": "active", "actingPartyId": "3a64a906-06b9-4f81-9bcd-6673c269bb48", "bindingVersion": 1}
+{"created": true, "personId": "bfac7803-978c-4fa8-b30b-d7d3e404f314", "contextKind": "self", "accountState": "active", "actingPartyId": "bfac7803-978c-4fa8-b30b-d7d3e404f314", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+ok 1 - fixture: twenty-five 128-field definitions were created, reviewed and activated through the real producers [P2-S09-AC-217]
+ok 2 - each activated definition carries exactly 128 fields [P2-S09-AC-217]
+# activate p50=205.8ms p95=263.1ms max=270.1ms n=25
+# assign p50=10.4ms p95=15.4ms max=18.7ms n=25
+# create128 p50=277.7ms p95=336.3ms max=339.1ms n=25
+# decide p50=52.7ms p95=62.9ms max=77.5ms n=25
+# dry_run p50=93.5ms p95=124.0ms max=129.5ms n=25
+# submit p50=94.6ms p95=124.2ms max=128.8ms n=25
+ok 3 - activate on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 4 - assign on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+# Failed test 5: "create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]"
+ok 6 - decide on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 7 - dry_run on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 8 - submit on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 9 - create128: the p95 is taken over at least twenty samples (n=25) [P2-S09-AC-217]
+# create128: 128-field create RPC p95=336.3ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget [P2-S09-AC-217]
+ok 10 - activate: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 11 - assign: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 12 - create128: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 13 - decide: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 14 - dry_run: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 15 - submit: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+1..15
+# Looks like you failed 1 test of 15
+Failed 1/15 subtests 
+
+Test Summary Report
+-------------------
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_bench128.sql (Wstat: 0 Tests: 15 Failed: 1)
+  Failed test:  5
+Files=1, Tests=15, 20 wallclock secs ( 0.05 usr  0.01 sys +  0.03 cusr  0.00 csys =  0.09 CPU)
+Result: FAIL
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_bench128.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_bench128.sql:4: WARNING:  there is no transaction in progress

@@ -14,16 +14,66 @@ Database RPCs remain the transaction and audit authority.
 ## Module map
 
 - `migration-worker.ts` is the compatibility export facade.
-- `migration-worker-engine.ts` composes admission, lease, dry-run, backfill,
-  and verification stages.
+- `migration-worker-engine.ts` owns normalization, in-flight dedupe and event
+  claim scoping; `migration-worker-execution.ts` composes admission, lease,
+  dry-run, backfill and verification stages with trusted private purpose.
 - `migration-worker-{admission,lease,dry-run,backfill,verification}.ts` own
   stage decisions; `migration-worker-batches.ts` owns bounded batch execution.
+- `migration-worker-resolved-admission.ts` owns shared post-read identity/state
+  admission; `migration-worker-event-recovery.ts` owns unchanged legacy ACK/release
+  recovery. The legacy claim/read/parse path delegates with its original context.
+- `claimed-schema-migration-preparation.ts` is an unwired private acquired-receipt
+  entry: one complete caller-bound resolve, plan-derived CAS, retained report and
+  request, trusted dry-run execution. Controlled entry and legacy-equivalence
+  tests do not establish persisted dispatch, continuation or live authority.
+- `migration-worker-activation.ts` preserves activation/reconciliation/rollback
+  and durable event-ACK continuation, separate from pre-review preparation.
 - `migration-worker-input-schemas.ts` is the stable facade over the focused
   job, activation-evidence, and queue schema modules.
 - `migration-worker-plan-schemas.ts` is the stable facade over plan types,
   plan-record, batch, and plan-record output modules; `schema-core.ts` and
   `validation.ts` own shared parsing and validation.
+  The plan-record parser/output preserve DEC-162's narrow first-empty null ID
+  pairs; the producer must independently prove firstness and actual emptiness.
+- `schema-dry-run-claim-{request,response,shape}.ts` define the private closed
+  claimed-receipt/original-event resolution contracts and 15 internal response
+  relations, reusing the existing event/plan parsers. These contracts do not
+  resolve server records, bind an external claim context or prove live authority.
+- `schema-dry-run-claim-{request,response}.test.ts` and focused support exercise
+  actual private parsers, each internal relation, original own-key boundaries,
+  readonly output/input immutability, lossless versions and UUID-v7 claim tokens.
+  All 31 isolated parent mutations are detected; restored 419 parser cases plus
+  491 related cases pass. See the Slice 11 mutation receipt handoff for limits.
+  Controlled fixtures are not persisted provenance or live-authority evidence.
+- `schema-dry-run-claim-{input,binding}.ts` are the pure acquired-receipt request
+  builder and complete-response caller binder. Their focused tests retain the
+  original event, distinguish original/preclaim/acquired versions, preserve
+  immutable complete output and caller metadata, and reject unbound/legacy
+  projections. These seams do not wire preparation, resolve SQL records or
+  establish enduring job/owner authority. Verification receipts belong in the
+  Slice11 handoff; import RED alone is not behavioral proof.
 - `migration-worker-results.ts` owns result and rollback mapping.
+- `migration-worker-first-empty-baseline.test.ts` pins DEC-162's defensive null-ID
+  shape and completed read-only replay; provisional zeros are not SQL eligibility
+  or authenticated migration/activation evidence.
+- `migration-worker-lease-token-compatibility.test.ts` checks actual UUID lease
+  decoding and preservation of bounded legacy tokens without widening non-lease
+  token domains.
+- `migration-worker-sealed-lease-handoff.test.ts` and its focused
+  `migration-worker-sealed-lease-test-support.ts` pin canonical post-seal reclaim
+  operands, failure barriers, held-lease and read-only replay controls. Controlled
+  ports prove worker transitions, not SQL authority, seal races or approval.
+- `migration-worker-dry-run-purpose.test.ts` and its focused
+  `migration-worker-dry-run-purpose-test-support.ts` pin the trusted, private
+  preparation-purpose boundary and unchanged activation controls. Controlled ports do not
+  establish production dispatch or persisted job completion.
+- `migration-worker-pre-review-purpose.test.ts` and its focused support pin
+  DEC-108 nonzero preparation through verification/complete without an early
+  switch, genuine-empty shape controls and unchanged activation/failure behavior.
+  Empty controlled shapes are not SQL census or concurrent-fence proof.
+- `migration-worker-pre-review-response-guards.test.ts` pins strict completion
+  state and each empty-plan discriminator operand independently; controlled
+  dependency denials are not legal sealed SQL states or authority proof.
 - `migration-source-read.ts` validates the `cms_read_schema_migration_source_rows`
   page (at most 128 rows; `targetFields[]` of changed fields with compiled
   constraints, `retiredFields[]` of removed keys carried unvalidated; a page
@@ -76,6 +126,17 @@ response schema and port name to `runtime-port.ts`, its RPC to
 the contract route policy and are never restated here.
 
 ## Conventions
+
+Claimed preparation QA is kept separate from the legacy reader:
+
+- `claimed-schema-migration-preparation.test.ts` and its test support cover the
+  unwired private claim/resolution boundary, cancellation and receipt isolation.
+- `claimed-schema-migration-preparation-stages.test.ts` asserts controlled
+  scan/seal/fresh-reclaim/backfill/verification/completion without activation.
+- `migration-worker-resolved-admission-equivalence.test.ts` preserves legacy
+  identity/terminal ordering, exact ACK/release and rejected in-flight eviction.
+
+Controlled fixtures are not persisted-report, live-claim or receiving proof.
 
 Use the existing `ContentSchemaRegistry` naming and keep security branches and
 contract changes covered by colocated tests.

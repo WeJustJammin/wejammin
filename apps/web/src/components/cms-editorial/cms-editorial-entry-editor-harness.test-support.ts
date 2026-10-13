@@ -1,6 +1,12 @@
 import { createCmsEditorialEntryEditorController } from './cms-editorial-entry-editor-controller';
 import { editorInit } from './cms-editorial-editor-fixtures.test-support';
 import { createFakeClock } from './cms-editorial-fake-clock.test-support';
+import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
+
+// The save flow imports its transport lazily on the first save (AC-106). The fake clock
+// settles a bounded number of turns, which a cold module load outlasts when a test file
+// runs alone (or first in a worker); load the transports once before any test drives a save.
+await preloadCmsEditorialTransports();
 
 export type Step = Response | Error | (() => Promise<Response>);
 

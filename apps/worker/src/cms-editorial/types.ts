@@ -1,41 +1,69 @@
+import type { TimeAuthority } from '@wejammin/contracts/time-authority';
 import type {
   CmsEditorialErrorStatus,
   CmsEditorialOperationId,
   CmsEditorialRoutePolicy,
   AuthoringContextResource,
   ConflictDetailResource,
+  EditorialReviewAssignmentResource,
+  EditorialReviewDetailResource,
+  EditorialReviewResource,
   EntryCreateResource,
   EntryDraftDetailResource,
   EntryListPage,
   EntryRevisionResource,
+  EntryWorkflowResource,
+  PreflightEvidence,
+  PreviewTokenResource,
+  PublicationResource,
+  PublicationScheduleResource,
+  ReviewQueuePage,
   RevisionHistoryPage,
   RevisionRestoreVerification,
 } from '@wejammin/contracts';
 
 import type {
+  CmsEditorialAssignmentPortInput,
   CmsEditorialAuthoringContextPortInput,
   CmsEditorialConflictDetailPortInput,
   CmsEditorialConflictPortInput,
   CmsEditorialCreatePortInput,
+  CmsEditorialDecisionPortInput,
   CmsEditorialDraftPortInput,
   CmsEditorialEntryListPortInput,
   CmsEditorialHistoryPortInput,
   CmsEditorialPortInput,
+  CmsEditorialPreviewPortInput,
+  CmsEditorialPublishPortInput,
   CmsEditorialRestorePortInput,
+  CmsEditorialReviewDetailPortInput,
+  CmsEditorialReviewQueuePortInput,
+  CmsEditorialSchedulePortInput,
   CmsEditorialSession,
+  CmsEditorialSubmitReviewPortInput,
+  CmsEditorialWorkflowPortInput,
 } from './port-inputs';
 
 export type {
+  CmsEditorialAssignmentPortInput,
   CmsEditorialAuthoringContextPortInput,
   CmsEditorialConflictDetailPortInput,
   CmsEditorialConflictPortInput,
   CmsEditorialCreatePortInput,
+  CmsEditorialDecisionPortInput,
   CmsEditorialDraftPortInput,
   CmsEditorialEntryListPortInput,
   CmsEditorialHistoryPortInput,
   CmsEditorialPortInput,
+  CmsEditorialPreviewPortInput,
+  CmsEditorialPublishPortInput,
   CmsEditorialRestorePortInput,
+  CmsEditorialReviewDetailPortInput,
+  CmsEditorialReviewQueuePortInput,
+  CmsEditorialSchedulePortInput,
   CmsEditorialSession,
+  CmsEditorialSubmitReviewPortInput,
+  CmsEditorialWorkflowPortInput,
 } from './port-inputs';
 
 /**
@@ -78,6 +106,34 @@ export const CMS_EDITORIAL_ENTRY_LIST_OPERATION_ID =
 
 export const CMS_EDITORIAL_AUTHORING_CONTEXT_OPERATION_ID =
   'CMS-03B-14' as const satisfies CmsEditorialOperationId;
+
+/** Slice 11 browser operations: review, schedule, preview, publication, reads. */
+export const CMS_EDITORIAL_SUBMIT_REVIEW_OPERATION_ID =
+  'CMS-03B-05' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_DECISION_OPERATION_ID =
+  'CMS-03B-06' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_SCHEDULE_OPERATION_ID =
+  'CMS-03B-07' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_PREVIEW_OPERATION_ID =
+  'CMS-03B-08' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_PUBLISH_OPERATION_ID =
+  'CMS-03B-09' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_WORKFLOW_OPERATION_ID =
+  'CMS-03B-15' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_REVIEW_DETAIL_OPERATION_ID =
+  'CMS-03B-16' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_REVIEW_QUEUE_OPERATION_ID =
+  'CMS-03B-17' as const satisfies CmsEditorialOperationId;
+
+export const CMS_EDITORIAL_ASSIGNMENT_OPERATION_ID =
+  'CMS-03B-18' as const satisfies CmsEditorialOperationId;
 
 /** Canonical dependency failure shape consumed by the route error mapper. */
 export type CmsEditorialError = Readonly<{
@@ -146,7 +202,68 @@ export type CmsEditorialPorts = Readonly<{
     input: CmsEditorialAuthoringContextPortInput,
     signal: AbortSignal,
   ) => Promise<CmsEditorialResult<AuthoringContextResource>>;
+  submitReview?: (
+    input: CmsEditorialSubmitReviewPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<EditorialReviewResource>>;
+  recordDecision?: (
+    input: CmsEditorialDecisionPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<EditorialReviewResource>>;
+  schedulePublication?: (
+    input: CmsEditorialSchedulePortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<PublicationScheduleResource>>;
+  mintPreview?: (
+    input: CmsEditorialPreviewPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<PreviewTokenResource>>;
+  publishRevision?: (
+    input: CmsEditorialPublishPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<PublicationResource>>;
+  getEntryWorkflow?: (
+    input: CmsEditorialWorkflowPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<EntryWorkflowResource>>;
+  getEditorialReview?: (
+    input: CmsEditorialReviewDetailPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<EditorialReviewDetailResource>>;
+  listEditorialReviews?: (
+    input: CmsEditorialReviewQueuePortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<ReviewQueuePage>>;
+  assignEditorialReviewer?: (
+    input: CmsEditorialAssignmentPortInput,
+    signal: AbortSignal,
+  ) => Promise<CmsEditorialResult<EditorialReviewAssignmentResource>>;
 }>;
+
+/**
+ * The in-process `quality_gate_evaluate` call (BE05c, D25). The Worker loads the
+ * revision through a read-only service RPC, runs the pure
+ * `cms.a11y.structural` checker within its 2,000 ms budget and returns the
+ * verified `PreflightEvidence`, or null when the checker produced none (input
+ * unreadable, dependency down, timeout). It never throws and never reports an
+ * error: an absent proof reaches the command RPC as null and the database
+ * answers the `accessibility` category unavailable/checker_failed (DEC-150).
+ */
+export type CmsEditorialQualityGateInput = Readonly<{
+  phase: 'submit' | 'schedule' | 'publish' | 'workflow_read';
+  requestId: string;
+  request: Request;
+  session: CmsEditorialSession;
+  /** The entry the caller addressed, or null when the route names only a revision. */
+  entryId: string | null;
+  /** The revision the caller named, or null for the entry's current draft. */
+  revisionId: string | null;
+}>;
+
+export type CmsEditorialQualityGate = (
+  input: CmsEditorialQualityGateInput,
+  signal: AbortSignal,
+) => Promise<PreflightEvidence | null>;
 
 export type CmsEditorialRateLimitDecision = Readonly<{
   allowed: boolean;
@@ -156,16 +273,7 @@ export type CmsEditorialRateLimitDecision = Readonly<{
 }>;
 
 export type CmsEditorialRateLimitInput = Readonly<{
-  operationId:
-    | 'CMS-03B-01'
-    | 'CMS-03B-02'
-    | 'CMS-03B-03'
-    | 'CMS-03B-04'
-    | 'CMS-03B-10'
-    | 'CMS-03B-11'
-    | 'CMS-03B-12'
-    | 'CMS-03B-13'
-    | 'CMS-03B-14';
+  operationId: CmsEditorialOperationId;
   request: Request;
   /**
    * The bucket identity. For `rateScope: 'user'` this is the acting user; for
@@ -250,4 +358,12 @@ export type CmsEditorialDependencies = Readonly<{
   now?: () => number;
   deadlineMs?: number;
   telemetry?: CmsEditorialTelemetry;
+  /** Accessibility proof for the preflight-bearing routes (05, 07, 09, 15). */
+  qualityGate?: CmsEditorialQualityGate;
+  /**
+   * The pinned tz snapshot behind the CMS-03B-07 time rules (BE03b E8), or null
+   * when its integrity check failed (every schedule command is then 503).
+   * Default: the committed snapshot, verified once at module load.
+   */
+  timeAuthority?: () => Promise<TimeAuthority | null>;
 }>;

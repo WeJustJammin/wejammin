@@ -1,0 +1,21 @@
+[lane-api] exit=1 full log: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/api-125037.log
+     × relays the committed cms.schema.activated.v1 as an identifier-only envelope with its registered producer 98ms
+     × [P2-S11-AC-113] did not let two unparseable historical rows stop that relay: each is a recorded dead letter, finalized and never queued 265ms
+     × consumes the envelope: rereads the event and enqueues { eventId, kind, refId } for the activated version 6ms
+     × runs the job: both live reviews of the superseded version are invalidated dependency_changed and the control review is untouched 5ms
+     × commits one review-changed event per invalidation carrying the correlation id of the activation, and retains the dependency index 273ms
+     × is idempotent under redelivery: the same event again enqueues a job that finds nothing and changes nothing 1186ms
+     × holds an approved review of a locale variant whose frozen manifest names the source revision and its hash 448ms
+     × runs the job: the approved review whose source changed is invalidated dependency_changed 118ms
+     × is idempotent under redelivery: the same job finds no live review 510ms
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the dependency recheck through the real relay, consumer, job and database > relays the committed cms.schema.activated.v1 as an identifier-only envelope with its registered producer
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the dependency recheck through the real relay, consumer, job and database > [P2-S11-AC-113] did not let two unparseable historical rows stop that relay: each is a recorded dead letter, finalized and never queued
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the dependency recheck through the real relay, consumer, job and database > consumes the envelope: rereads the event and enqueues { eventId, kind, refId } for the activated version
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the dependency recheck through the real relay, consumer, job and database > runs the job: both live reviews of the superseded version are invalidated dependency_changed and the control review is untouched
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the dependency recheck through the real relay, consumer, job and database > commits one review-changed event per invalidation carrying the correlation id of the activation, and retains the dependency index
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the dependency recheck through the real relay, consumer, job and database > is idempotent under redelivery: the same event again enqueues a job that finds nothing and changes nothing
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the localization recheck through the real relay, consumer, job and database > holds an approved review of a locale variant whose frozen manifest names the source revision and its hash
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the localization recheck through the real relay, consumer, job and database > runs the job: the approved review whose source changed is invalidated dependency_changed
+ FAIL  tests/postgrest/phase-02-slice-11-recheck.apispec.ts > [P2-S11-AC-113] the localization recheck through the real relay, consumer, job and database > is idempotent under redelivery: the same job finds no live review
+ Test Files  1 failed (1)
+      Tests  9 failed | 4 passed (13)

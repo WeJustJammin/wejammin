@@ -39,6 +39,13 @@ export type GateFixture = Readonly<{
   real: Outcome;
   /** Differs from `real` only where the service-role path answers differently. */
   svcReal?: Outcome;
+  /**
+   * The exact member names of the JSON object a successful (200) call answers. When
+   * set, a 200 whose body has other members is a different outcome, so a gate-less
+   * stub that answers `{}` cannot pass a probe that expects the function's own
+   * success (an actorless operation has no ghost or forged caller to tell them apart).
+   */
+  successKeys?: readonly string[];
 }>;
 
 export type FixtureTable = Readonly<Record<string, GateFixture>>;

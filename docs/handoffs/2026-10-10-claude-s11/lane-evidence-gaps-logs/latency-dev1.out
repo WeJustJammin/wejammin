@@ -1,0 +1,5 @@
+[lane-api] exit=1 full log: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/api-015335.log
+ FAIL  tests/postgrest/phase-02-slice-11-read-latency.apispec.ts [ tests/postgrest/phase-02-slice-11-read-latency.apispec.ts ]
+ Test Files  1 failed (1)
+      Tests  6 skipped (6)
+done rc=1

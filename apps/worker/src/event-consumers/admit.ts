@@ -50,8 +50,11 @@ export const safeEventIdentity = (body: unknown): DeadLetterIdentity => {
 };
 
 /** An event of a known family at any version but exactly v1 is an unknown version. */
-const reasonFor = (body: unknown): DeadLetterReason => {
-  if (!isRecord(body) || !isConsumerEventType(body.eventType))
+const reasonFor = (
+  body: unknown,
+  isKnownFamily: (value: unknown) => value is string,
+): DeadLetterReason => {
+  if (!isRecord(body) || !isKnownFamily(body.eventType))
     return 'INVALID_QUEUE_PAYLOAD';
   const exactlyV1 = body.schemaVersion === 1 && body.eventType.endsWith('.v1');
   return exactlyV1 ? 'INVALID_QUEUE_PAYLOAD' : 'UNKNOWN_EVENT_VERSION';
@@ -60,6 +63,13 @@ const reasonFor = (body: unknown): DeadLetterReason => {
 export type AdmitInput<T> = Readonly<{
   consumer: string;
   schema: EnvelopeSchema<T>;
+  /**
+   * Whether an event type belongs to the consumer's family at any version.
+   * Defaults to the platform consumer families; a consumer of another family
+   * (the Slice 11 review recheck sources) names its own so that an unknown
+   * version is a dead letter with reason `UNKNOWN_EVENT_VERSION`.
+   */
+  isKnownFamily?: (value: unknown) => value is string;
   message: EventConsumerMessage;
   deadLetter: DeadLetterPort;
   telemetry: ConsumerTelemetry;
@@ -81,7 +91,10 @@ export const admitConsumerEvent = async <T>(
 ): Promise<Admission<T>> => {
   const parsed = input.schema.safeParse(input.message.body);
   if (parsed.success) return { ok: true, envelope: parsed.data };
-  const reasonCode = reasonFor(input.message.body);
+  const reasonCode = reasonFor(
+    input.message.body,
+    input.isKnownFamily ?? isConsumerEventType,
+  );
   const identity = safeEventIdentity(input.message.body);
   try {
     await input.deadLetter.record(

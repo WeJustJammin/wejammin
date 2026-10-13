@@ -1,0 +1,60 @@
+@@ -26,6 +26,18 @@
+        "p_job_id": "11111111-1111-4111-8111-111111111111",
+        "p_lease_seconds": 300,
+        "p_lease_token": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
+      },
+    ],
++   [
++     "apply_job_outcome",
++     {
++       "p_error_code": "LEASE_CONTROL_UNAVAILABLE",
++       "p_expected_version": "19",
++       "p_job_id": "11111111-1111-4111-8111-111111111111",
++       "p_lease_token": "aaaaaaaa-aaaa-4aaa-8aaa-aaaaaaaaaaaa",
++       "p_next_state": "queued",
++       "p_result_ref": null,
++       "p_retryable": true,
++     },
++   ],
+  ]
+
+ ❯ apps/worker/src/async-runtime-cms-lease-control.test.ts:233:21
+    231|     const f = fixture({ now: () => times.shift() ?? 400_000 });
+    232|     await f.run();
+    233|     expect(f.calls).toEqual([read, read, restore, restore, claim]);
+       |                     ^
+    234|     expect(f.prepareSchemaDryRun).not.toHaveBeenCalled();
+    235|     expect(f.retry).toHaveBeenCalledTimes(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/6]⎯
+
+ FAIL  apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts > production private CMS lease-control forwarding > refuses unusable capability or initial receipt 0 before dispatcher effects
+ FAIL  apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts > production private CMS lease-control forwarding > refuses unusable capability or initial receipt 1 before dispatcher effects
+ FAIL  apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts > production private CMS lease-control forwarding > refuses unusable capability or initial receipt 2 before dispatcher effects
+ FAIL  apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts > production private CMS lease-control forwarding > refuses unusable capability or initial receipt 3 before dispatcher effects
+ FAIL  apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts > production private CMS lease-control forwarding > refuses unusable capability or initial receipt 9 before dispatcher effects
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ same packages/application/src/infrastructure/jobs/consumer-cms-lease-control-test-support.ts:57:35
+     55| };
+     56| export const same = (actual: unknown, expected: unknown) =>
+     57|   expect(equal(actual, expected)).toBe(true);
+       |                                   ^
+     58| export const metadata = (value: object) => ({
+     59|   prototype: Object.getPrototypeOf(value),
+ ❯ apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts:339:7
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/6]⎯
+
+
+ Test Files  2 failed | 13 passed (15)
+      Tests  6 failed | 209 passed (215)
+   Start at  17:12:30
+   Duration  59.31s (transform 19.45s, setup 0ms, import 97.10s, tests 3.51s, environment 17ms)
+

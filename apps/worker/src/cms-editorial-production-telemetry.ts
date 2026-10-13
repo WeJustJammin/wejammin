@@ -8,6 +8,12 @@ const COMMAND_OPERATIONS: ReadonlySet<string> = new Set([
   'CMS-03B-02',
   'CMS-03B-04',
   'CMS-03B-10',
+  'CMS-03B-05',
+  'CMS-03B-06',
+  'CMS-03B-07',
+  'CMS-03B-08',
+  'CMS-03B-09',
+  'CMS-03B-18',
 ]);
 
 /**

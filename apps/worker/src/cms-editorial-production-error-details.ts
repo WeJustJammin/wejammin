@@ -121,3 +121,48 @@ export const safeDetails = (
     details.violations = violationsFrom(violations);
   return Object.fromEntries(Object.entries(details).slice(0, MAX_DETAIL_KEYS));
 };
+
+/**
+ * Structured members of a Slice 11 typed refusal (BE03b): the preflight entries,
+ * the dependency hash, the pinned release, the time-authority alternatives and
+ * the safe versions. The database names them either in a JSON object `DETAIL`
+ * of a raised refusal or in the `details` of a committed refusal disposition.
+ * Only these keys are carried; the route boundary rebuilds each one against its
+ * strict contract, so a value here is never published as received.
+ */
+const STRUCTURED_KEYS = [
+  'preflight',
+  'dependencyHash',
+  'pinnedVersion',
+  'expectedUtc',
+  'minUtc',
+  'maxUtc',
+  'alternatives',
+  'dependencyClass',
+  'retryAfterSeconds',
+  'expectedVersion',
+  'currentVersion',
+] as const;
+
+export const structuredMembers = (
+  source: unknown,
+): Readonly<Record<string, unknown>> => {
+  if (!isRecord(source)) return {};
+  const members: Record<string, unknown> = {};
+  for (const key of STRUCTURED_KEYS)
+    if (source[key] !== undefined) members[key] = source[key];
+  return members;
+};
+
+/** The members of a raised refusal whose machine DETAIL is a JSON object. */
+export const structuredMembersFromDetailText = (
+  detail: unknown,
+): Readonly<Record<string, unknown>> => {
+  if (typeof detail !== 'string' || detail.length > MAX_DETAIL_TEXT_LENGTH)
+    return {};
+  try {
+    return structuredMembers(JSON.parse(detail) as unknown);
+  } catch {
+    return {};
+  }
+};

@@ -1,7 +1,16 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
+import { preloadCmsEditorialTransports } from '../../apps/web/src/components/cms-editorial/cms-editorial-lazy-transports.test-support';
 import { installCmsEditorialPageActions } from '../../apps/web/src/lib/cms-editorial-page-actions-core';
 import { submitCmsEditorialRestoreForm } from '../../apps/web/src/components/cms-editorial/cms-editorial-restore-submit';
 
@@ -19,6 +28,9 @@ const REQUEST_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132e9';
 const INSTANT = '2026-10-05T00:00:00+00:00';
 const CSRF_TOKEN = 'csrf-token';
 const KEY = 'restore-key-12345';
+
+// The restore command's module loads on the first restore (AC-106); load it before a test submits.
+beforeAll(preloadCmsEditorialTransports);
 
 const hidden = (name: string, value: string): string =>
   `<input type="hidden" name="${name}" value="${value}" />`;

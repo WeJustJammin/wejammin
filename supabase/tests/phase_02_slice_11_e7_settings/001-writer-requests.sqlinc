@@ -1,0 +1,120 @@
+-- Each isolated case starts with the same genuine absent legacy-owner snapshot.
+-- gset retains observations across ROLLBACK; no TAP counter is rolled back.
+savepoint e7_b10;
+select pg_temp.e7_writer_case('B10') as e7_b10 \gset
+rollback to savepoint e7_b10;
+release savepoint e7_b10;
+savepoint e7_b01;
+select pg_temp.e7_writer_case('B01') as e7_b01 \gset
+rollback to savepoint e7_b01;
+release savepoint e7_b01;
+savepoint e7_b02;
+select pg_temp.e7_writer_case('B02') as e7_b02 \gset
+rollback to savepoint e7_b02;
+release savepoint e7_b02;
+savepoint e7_b04;
+select pg_temp.e7_writer_case('B04') as e7_b04 \gset
+rollback to savepoint e7_b04;
+release savepoint e7_b04;
+savepoint e7_c04;
+select pg_temp.e7_writer_case('C04') as e7_c04 \gset
+rollback to savepoint e7_c04;
+release savepoint e7_c04;
+
+create function pg_temp.e7_assert_case(p_operation text, p_result jsonb)
+returns setof text language plpgsql as $$
+begin
+  return next ok((p_result->>'absent')::boolean, p_operation || ': isolated legacy owner begins absent');
+  return next ok((p_result->>'success201')::boolean,
+    p_operation || ': actual writer completes201 with exact canonical response_ref (' || coalesce(p_result->>'outcome', 'MISSING') || ')');
+  return next ok((p_result->>'canonical')::boolean, p_operation || ': response names committed canonical resource and owner');
+  return next ok((p_result->>'snapshot')::boolean, p_operation || ': one ordinal1 registry1 active snapshot contains [] and independent JCS hash');
+  return next ok((p_result->>'otherOwners')::boolean, p_operation || ': other owners snapshot row images unchanged');
+  return next ok((p_result->>'replay')::boolean, p_operation || ': exact replay preserves complete response and all effect fingerprints');
+  return next ok((p_result->>'snapshotReplay')::boolean, p_operation || ': replay preserves exact snapshot IDs/timestamps/versions/ordinals');
+  return next ok((p_result->>'refusal')::boolean, p_operation || ': malformed request is exact INVALID_REQUEST with no effects');
+end;
+$$;
+select * from pg_temp.e7_assert_case('B10', :'e7_b10'::jsonb);
+select * from pg_temp.e7_assert_case('B01', :'e7_b01'::jsonb);
+select * from pg_temp.e7_assert_case('B02', :'e7_b02'::jsonb);
+select * from pg_temp.e7_assert_case('B04', :'e7_b04'::jsonb);
+select * from pg_temp.e7_assert_case('C04', :'e7_c04'::jsonb);
+select ok((:'e7_b02'::jsonb->>'conflictTyped')::boolean,
+  'B01 negative: guarded predecessor yields actual typed conflict409 and completed receipt');
+select ok((:'e7_b02'::jsonb->>'conflictNoSnapshot')::boolean,
+  'B01 negative: committed conflict409 does not initialize owner settings');
+
+-- A schema-only command is not one of the five entry/revision writer tails.
+savepoint e7_schema_control;
+select pg_temp.e7_call('A01', request || jsonb_build_object(
+  'typeKey', 'e7control', 'idempotencyKey', 'e7-schema-control-0001',
+  'fields', jsonb_build_array((request->'fields'->0)
+    || '{"stableFieldId":"e7100000-0000-4000-8000-000000000901"}'::jsonb),
+  'relations', '[]'::jsonb)) as e7_schema
+from s10_type_request \gset
+select pg_temp.e7_snapshots() = '[]'::jsonb as e7_schema_absent \gset
+rollback to savepoint e7_schema_control;
+release savepoint e7_schema_control;
+select is(:'e7_schema'::jsonb->>'outcome', '00000:', 'CMS03A01 control is an actual successful schema command');
+select ok(:'e7_schema_absent'::boolean, 'CMS03A01 does not initialize entry/revision settings');
+
+-- Controlled legacy receipt, NOT a claim of a historical successful writer.
+-- Canonical revision2 already exists. Serialize its complete B01 resource, then
+-- use real reserve + unchanged generic completion; no forged reservation row.
+savepoint e7_legacy_receipt;
+create temp table e7_legacy on commit drop as
+select pg_temp.e7_request('B01', 'e7-legacy-replay-0001') || jsonb_build_object(
+    'baseRevision', '1', 'expectedVersion', '1', 'ifMatch', '1',
+    'values', jsonb_build_object(pg_temp.e7_id('101')::text, 'Legacy 2')) as request,
+  jsonb_build_object('id', r.id, 'version', r.version::text,
+    'createdAt', platform_private.auth_iso_time(r.created_at),
+    'updatedAt', platform_private.auth_iso_time(r.updated_at), 'state', 'draft',
+    'entryId', r.entry_id, 'revisionNumber', r.revision_number::text,
+    'schemaVersionId', r.schema_version_id, 'templateVersionId', r.template_version_id,
+    'taxonomyVersionIds', r.taxonomy_version_ids, 'locale', r.locale,
+    'contentHash', r.payload_hash, 'parentRevisionIds', r.parent_revision_ids,
+    'validationState', r.validation_state, 'conflictId', null, 'entryVersion', '2') as response
+from platform_private.cms_entry_revisions r where r.id = pg_temp.e7_id('303');
+select platform_private.cms_complete(
+  (platform_private.cms_reserve(request,
+    (select value::uuid from s10_ids where key = 'creatorAuth'), 'CMS-03B-01')).id,
+  pg_temp.e7_id('303'), 201, response) from e7_legacy;
+select pg_temp.e7_snapshots() = '[]'::jsonb and exists(
+  select 1 from platform_private.idempotency_records r cross join e7_legacy l
+  where r.key_hash = platform_private.cms_key_hash(l.request->>'idempotencyKey')
+    and r.state = 'completed' and r.response_ref = jsonb_build_object('status', 201,
+      'resourceRef', pg_temp.e7_id('303')::text, 'safeHeaders', jsonb_build_object('response', l.response))
+    and r.request_hash = extensions.digest(platform_private.cms_request_hash(l.request)
+      || uuid_send(pg_temp.e7_owner()), 'sha256')) as e7_legacy_completed \gset
+select pg_temp.e7_effects() as e7_legacy_before \gset
+select pg_temp.e7_call('B01', request) as e7_legacy_answer, response as e7_legacy_expected from e7_legacy \gset
+select pg_temp.e7_effects() = :'e7_legacy_before'::jsonb as e7_legacy_unchanged,
+  pg_temp.e7_snapshots() = '[]'::jsonb as e7_legacy_absent \gset
+rollback to savepoint e7_legacy_receipt;
+release savepoint e7_legacy_receipt;
+select ok(:'e7_legacy_completed'::boolean, 'legacy reserve+generic complete stores matching hash/resourceRef/safeHeaders without settings');
+select ok(:'e7_legacy_answer'::jsonb->>'outcome' = '00000:'
+    and :'e7_legacy_answer'::jsonb->'response' = :'e7_legacy_expected'::jsonb,
+  'actual B01 exact completed legacy replay returns the full stored canonical resource');
+select ok(:'e7_legacy_unchanged'::boolean and :'e7_legacy_absent'::boolean,
+  'legacy completed replay neither initializes settings nor changes any canonical/effect row');
+
+-- Catalog controls pin the receiving privilege seam, not copied helper bodies.
+select ok(pg_temp.h11_private_definer(name || '(jsonb)') and exists(
+  select 1 from pg_proc p where p.oid = to_regprocedure('platform_private.' || name || '(jsonb)')
+    and p.provolatile = 'v' and pg_get_function_result(p.oid) = 'jsonb'
+    and p.proconfig = array['search_path=""']
+    and not exists(select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+      where a.privilege_type = 'EXECUTE' and a.grantee <> p.proowner)),
+  name || ': existing CMS owner/ACL/SECURITY DEFINER/empty search_path; no API execute')
+from (values ('cms_create_entry'), ('cms_create_revision'), ('cms_resolve_conflict'),
+  ('cms_restore_revision'), ('cms_author_locale_variant')) writers(name);
+select ok(exists(select 1 from pg_roles where rolname = 'wejammin_cms_definer'
+    and not rolcanlogin and not rolbypassrls and not rolsuper),
+  'existing CMS role remains NOLOGIN/nonbypass/nonsuperuser');
+select ok(not has_schema_privilege('wejammin_cms_definer', 'platform_private', 'CREATE'),
+  'writer tails introduce no CMS schema CREATE privilege or new production helper seam');
+
+-- Authorized divergent/null owner_party_id witness is impossible at admission.
+-- Canonical-field mutation sensitivity and global lock order remain source-bound.

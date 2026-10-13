@@ -332,7 +332,7 @@ describe('cms-editorial CMS-03B-01 route', () => {
     const response = await post(app);
     expect(response.status).toBe(502);
     expect(response.headers.get('x-cms-editorial-retryable')).toBe('false');
-    expect((await readJson(response)).code).toBe('BAD_GATEWAY');
+    expect((await readJson(response)).code).toBe('DEPENDENCY_UNAVAILABLE');
   });
 
   it('scrubs internal failures instead of echoing dependency internals', async () => {

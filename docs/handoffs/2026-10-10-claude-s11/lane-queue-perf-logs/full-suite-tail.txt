@@ -1,0 +1,12 @@
+ok 47 - conflicting digest is surfaced as a security conflict
+ok 48 - conflicting digest enters manual review
+ok 49 - conflicting digest writes sanitized immutable security evidence
+ok 50 - unverified or malformed webhook evidence is rejected
+ok 51 - manual-review receipt remains idempotently terminal
+ok 52 - webhook digest identity is immutable
+ok 53 - manual-review receipt cannot be reopened
+1..53
+ok
+All tests successful.
+Files=369, Tests=14026, 130 wallclock secs ( 1.80 usr  0.46 sys +  3.37 cusr  1.52 csys =  7.15 CPU)
+Result: PASS

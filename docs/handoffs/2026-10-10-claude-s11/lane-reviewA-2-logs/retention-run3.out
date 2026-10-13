@@ -1,0 +1,19 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx (6 tests) 2914ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason after a definite 409 refusal and re-sends them  1183ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason through an unknown outcome and re-sends them under the same key  399ms
+     ✓ [P2-S11-AC-043] keeps the audience and route after a definite 409 refusal and re-sends them  604ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts (21 tests) 535ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx (5 tests) 12244ms
+     ✓ [P2-S11-AC-040] keeps the action, local time, zone and audience after a definite 409 refusal and re-sends them  6767ms
+     ✓ [P2-S11-AC-040] keeps every entry after a 422 that names a field, and the named field is marked  2912ms
+     ✓ [P2-S11-AC-040] keeps every entry through an unknown outcome and re-sends them under the same key  2028ms
+     ✓ [P2-S11-AC-043] keeps the audience after a definite 409 refusal and re-sends it  319ms
+
+ Test Files  3 passed (3)
+      Tests  32 passed (32)
+   Start at  18:26:17
+   Duration  59.24s (transform 44.33s, setup 0ms, import 71.73s, tests 15.69s, environment 20.65s)
+

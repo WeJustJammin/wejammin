@@ -1,0 +1,186 @@
+# cms.a11y.structural, version 1
+
+The BE05c accessibility and content-quality checker (decision D25, DEC-134) and
+the in-process `quality_gate_evaluate` gate call built on it. It is a pure,
+in-process TypeScript module: no network provider, no DOM, no Browser Rendering
+provider, no axe-core. Its result is evidence for a human reviewer, never a
+substitute for one or for the build-time accessibility tests.
+
+Slice 11 delivers it as the first `worker` preflight provider (category
+`accessibility`). Slice 16 reuses this directory unchanged for the
+`quality_check` action, `quality_check_runs` persistence and the quality reads.
+Until then a gate call persists nothing.
+
+## Contents
+
+| File                                                                           | Purpose                                                                                                    |
+| ------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------- |
+| `index.ts`                                                                     | The only import path for callers outside this directory.                                                   |
+| `catalog.ts`                                                                   | Code-owned rule catalog: ruleId to severity and static message.                                            |
+| `input-schema.ts`                                                              | Strict Zod input: revision identity and hashes, plus the nodes in render order. Refuses any media node.    |
+| `render-plan.ts`                                                               | Stable location identity of a node (field, object property, block): what the database's render plan names. |
+| `registry.ts`                                                                  | Code-owned checker registry: the `cms.a11y.structural` row, one current version per target type.           |
+| `checker.ts`                                                                   | `runAccessibilityChecker`: runs the groups in order and builds the run.                                    |
+| `rules-structure.ts`, `rules-heading.ts`, `rules-link.ts`, `rules-landmark.ts` | One module per rule group (media is inert, see below).                                                     |
+| `findings.ts`, `locations.ts`                                                  | Finding model, deterministic order, bounded collector, pointer builders.                                   |
+| `text.ts`                                                                      | NFKC normalizers, whitespace test, primary language, generic-phrase lists.                                 |
+| `hashes.ts`                                                                    | `accessibilityInputHash` and `accessibilityBindingHash` (JCS + SHA-256).                                   |
+| `gate.ts`, `gate-budget.ts`                                                    | `evaluateAccessibilityGate`: one wall-clock budget, retry once, typed failures.                            |
+| `evidence.ts`                                                                  | `toPreflightEvidence` and `auditRecordOf`.                                                                 |
+| `zod-runtime.ts`                                                               | The single `zod` import seam.                                                                              |
+| `*.test.ts`, `a11y-structural.test-support.ts`                                 | Colocated tests; the support file holds fixtures only.                                                     |
+| `purity.test.ts`, `gate-isolation.test.ts`                                     | AC-098: no network, DOM, Browser Rendering or environment dependency (static) and a trapped-globals run.   |
+
+## Public surface
+
+- `runAccessibilityChecker(input, { shouldStop? })` returns a run
+  (`healthy` or `blocked`, at most 500 findings, true `blockingCount` and
+  `warningCount`, `truncated`, `inputHash`) or `{ state: 'stopped' }` when
+  `shouldStop()` returned true between nodes.
+- `evaluateAccessibilityGate({ load, timeoutMs?, now?, sleep?, signal? })`
+  returns a completed run or a `failed` run with `CHECKER_TIMEOUT`,
+  `CHECKER_DEPENDENCY_UNAVAILABLE` or `TARGET_UNREADABLE`.
+- `toPreflightEvidence(gateRun)` and `auditRecordOf(gateRun)`.
+- `accessibilityInputHash(input)` and `accessibilityBindingHash(binding)`.
+- `ACCESSIBILITY_CHECKER_REGISTRY`, `defineCheckerRegistry(rows)`,
+  `checkerTargetOf(input)` and `CMS_ENTRY_REVISION_TARGET_TYPE`: the registry
+  row and its rules (see Registry below).
+
+## Behaviour that is easy to get wrong
+
+- **Order.** The `nodes` array is the render order and PostgreSQL
+  `platform_private.cms_revision_render_plan` is the one derivation of it. The
+  checker never re-derives it. Findings sort blocking first, then render
+  position `[node, block, span]`, then ruleId, then pointer, so identical input
+  gives byte-identical output.
+- **Object properties (DEC-133).** The rich_text property of an `object` field
+  is a node of its own: `{ kind: 'field', fieldId, propertyKey, fieldKind,
+value }`, listed at the field's editor position in the order the object
+  structure declares its properties (never the stored key order). A whole
+  top-level rich_text value has no `propertyKey`. A field is one or the other:
+  both in one input is refused. The identity (`render-plan.ts`) carries no
+  content, is unique per location, and is exactly what the render-plan hash
+  covers; `render-plan.test.ts` and `phase_02_slice_11_checker_render_plan.sql`
+  pin the same independent hash vector on both sides.
+- **Node bound (12,288).** `ACCESSIBILITY_NODES_MAX` is derived, not chosen:
+  128 fields x 32 `object` properties (4,096 field nodes) plus 64 template slots
+  x 128 instances (8,192 block nodes); `input-schema.ts` carries the derivation
+  and its sources. It is a validity bound: the 2,000 ms deadline covers the
+  database load and the evaluation, and the load answers a document above 1 MiB
+  as `NOT_FOUND`, so a revision near the maximum can still end as an unavailable
+  check (never a pass). `max-input.test.ts` runs the Worker side of the exact
+  maximum and one node more.
+- **Finding pointers.** `/fields/{fieldId}/blocks/{i}/spans/{j}` for a whole
+  value and `/fields/{fieldId}/{propertyKey}/blocks/{i}/spans/{j}` for a
+  property; `blockPath` is the pointer inside the field's value (`/{propertyKey}`
+  for the property itself, `null` for a whole value).
+- **Slot-bound fields.** BE05c orders "template slot order, then bound field
+  position within each slot, then composition order". No registry row binds an
+  entry field to a template slot in Phase 2 (template `bindings` bind named
+  domain projections), so every field is in the leading root region and only
+  composition instances follow slot order. Add slot-bound field position to
+  `cms_revision_render_plan` when a binding exists; the checker needs no change.
+- **Privacy.** A finding holds only the ruleId, severity, a pointer built from
+  stable ids and indexes, the catalog message and `humanReview: 'required'`.
+  Author text, link text, URLs, alt text and names never enter a finding, and
+  the privacy test serializes a run with a canary string to prove it.
+- **Links.** A link is the run of adjacent spans with the same target
+  (rich_text.v1 only merges adjacent spans with equal marks and link, so one
+  styled link is several spans). The finding addresses the run's first span.
+- **Languages.** Version 1 has a generic-phrase list for `en` only. Any other
+  primary language raises one `link.text_unchecked_language` warning at its
+  first link instead of silence.
+- **Media is inert.** No media reference can exist before Slice 14, so the media
+  rules (`alt.missing`, `media.accessibility_not_approved`,
+  `media.captions_missing`) have no catalog entry and no code. The input schema
+  refuses a media node, so the gate reports `TARGET_UNREADABLE` (fail closed).
+  `inputHash` keeps an empty `accessibilityRows` member so Slice 14 extends it
+  without changing the shape.
+- **Truncation.** Counts are true totals; only the stored findings are bounded.
+  `PreflightEvidence.blockingCount` is clamped to 1000 (the contract bound);
+  the run keeps the true total.
+- **A failed run has no evidence.** `toPreflightEvidence` returns `null` for a
+  `failed` gate run: a checker that could not finish has no binding to prove.
+  The database maps absent evidence to an `unavailable` result with reasonCode
+  `checker_failed` (DEC-150), which refuses the command with 503
+  `DEPENDENCY_UNAVAILABLE` or retries it at schedule execution.
+- **Binding.** `accessibilityBindingHash` must equal what PostgreSQL
+  `cms_accessibility_binding_hash` recomputes. `hashes.test.ts` pins a vector
+  computed independently with `sha256sum`; if either side changes, change both.
+- **Budget.** One budget (100 to 2000 ms, default 2000) covers load,
+  validation and evaluation. The load is retried once after 250 ms, only if the
+  load says it is retryable and the pause still fits inside the deadline. A
+  timer, the cooperative stop and a parent abort all end as `CHECKER_TIMEOUT`.
+  A throwing `load` or `sleep` is `dependency_unavailable` and never propagates.
+
+## Registry (AC-098)
+
+`registry.ts` is the BE05c registry row, code-owned. `defineCheckerRegistry`
+refuses a registry that has a malformed key, version (a positive decimal
+integer of at most 18 digits), target type or `timeoutMs` (an integer from 100
+to 2,000), a (key, version) registered twice, or a target type without exactly
+one current version. Older versions stay readable (`find`, `versionsOf`) and
+`currentFor(targetType)` answers the one current registration, which is how
+Slice 16 decides a stored run is `stale`. The Phase 2 registry holds
+`cms.a11y.structural` version 1 for `cms.entry_revision`, built from the
+`@wejammin/contracts` constants so the registry, the evidence and the audit
+record cannot disagree. `checkerTargetOf(input)` is the target: the revision
+uuid and its `revision_number`.
+
+## Purity (AC-098)
+
+`purity.test.ts` reads every production source here and every local module it
+imports as a syntax tree and fails on a network, DOM, Browser Rendering or
+environment name (`fetch`, `document`, `window`, `puppeteer`, `env`, `process`,
+`import.meta`, ...) or on a package other than `@wejammin/contracts` and `zod`
+(`zod` only in `zod-runtime.ts`). `gate-isolation.test.ts` runs the gate with
+the same globals replaced by throwing traps. Keep new code here free of both.
+
+## Extension
+
+### How to add a rule
+
+Rules of version 1 are frozen: changing what an existing rule reports, or adding
+a rule, is a new checker version (BE05c: positive-integer versions, older
+versions stay readable, one current version per target type). Register it in
+`registry.ts`: add the row, mark it current and set the previous version's
+`current` to false.
+
+1. Add the rule to `ACCESSIBILITY_RULE_CATALOG` in `catalog.ts` with its
+   severity and a static message that quotes no content.
+2. Write `rules-<group>.ts` exporting `create<Group>Rule(collector, ...)`
+   that calls `collector.add(ruleId, location, position)`. Build locations with
+   `locations.ts`; a position is `[node, block, span]` with `-1` for unused levels.
+3. Wire it into `checker.ts` in BE05c evaluation order
+   (structure, heading, link, media, landmark) with a `visitAll` pass so
+   `shouldStop` is polled before each node.
+4. Write the failing test first (`rules-<group>.test.ts`): a positive and a
+   negative fixture per rule, built with `a11y-structural.test-support.ts`.
+5. Keep coverage at 100%, files under 300 lines (tests under 400), no `any`.
+
+## Ownership
+
+The Phase 2 CMS editorial workflow owns this module (Slice 11 delivers it as the
+first `worker` preflight provider; Slice 16 owns the `quality_check` action and
+the quality reads built on it). The PostgreSQL side of the contract is
+`platform_private.cms_revision_render_plan` and
+`cms_accessibility_binding_hash`; this directory never re-derives either.
+
+## Conventions
+
+- Tests are colocated `*.test.ts`; helpers are `*.test-support.ts`.
+- Import `zod` only through `zod-runtime.ts`.
+- Hashes use the shared RFC 8785 module
+  `apps/worker/src/content-schema-registry/migration-transform-jcs.ts`.
+
+## Related links
+
+- Spec: `.memory/wiki/specs/be/05c-portability-quality-lifecycle.md`
+  (Accessibility and content-quality checker) and
+  `.memory/wiki/specs/be/03b-editorial-workflow-publication.md`
+  (Accessibility provider, Accessibility outcome mapping).
+- Contracts: `packages/contracts/src/cms-editorial/preflight.ts`
+  (`PreflightEvidenceSchema`, `preflightResultForAccessibilityEvidence`) and
+  `packages/contracts/src/content-schema-registry/structured-values.ts`
+  (`validateRichTextV1`).
+- Parent: `apps/worker/src/cms-editorial/README.md`.

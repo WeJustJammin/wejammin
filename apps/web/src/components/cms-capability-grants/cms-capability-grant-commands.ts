@@ -47,6 +47,8 @@ export const COMMAND_COPY = {
     'The result of this change is not confirmed yet. Checking the current grants before you retry.',
   signIn: 'Sign in again to change CMS access.',
   entriesNotSaved: 'Your entries were not saved.',
+  filterUnavailable:
+    'The list could not be filtered because the page checks could not be loaded. Check your connection and try again.',
   saved: 'The capability grant was saved.',
 } as const;
 

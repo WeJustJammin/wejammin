@@ -1,5 +1,5 @@
 import { forgetRestoreDraft } from './cms-editorial-restore-draft';
-import { clearRestoreFailure } from './cms-editorial-restore-feedback';
+import { clearRestoreFailure } from './cms-editorial-restore-summary';
 
 const REVIEW = 'details[data-cms-editorial-restore-review]';
 

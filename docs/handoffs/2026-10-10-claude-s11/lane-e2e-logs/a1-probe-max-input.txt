@@ -1,0 +1,8 @@
+round=1 wireBytes=4069568 jsonParse=12.9ms zod=43.9ms checker=96.5ms phasesWall=153.3ms phasesCpu=286.6ms | gate state=healthy gateWall=99.7ms gate.durationMs=91 gateCpu=159.4ms loadavg=0.61/1.04/0.92
+round=2 wireBytes=4069568 jsonParse=11.9ms zod=18.8ms checker=44.6ms phasesWall=75.4ms phasesCpu=96.3ms | gate state=healthy gateWall=88ms gate.durationMs=79 gateCpu=112.4ms loadavg=0.61/1.04/0.92
+round=3 wireBytes=4069568 jsonParse=12ms zod=18.4ms checker=43.4ms phasesWall=73.8ms phasesCpu=92.2ms | gate state=healthy gateWall=103.6ms gate.durationMs=97 gateCpu=286.6ms loadavg=0.61/1.04/0.92
+round=4 wireBytes=4069568 jsonParse=12.4ms zod=17.8ms checker=46.1ms phasesWall=76.3ms phasesCpu=101.5ms | gate state=healthy gateWall=84.2ms gate.durationMs=78 gateCpu=103.7ms loadavg=0.61/1.04/0.92
+round=5 wireBytes=4069568 jsonParse=15.6ms zod=16ms checker=46.1ms phasesWall=77.7ms phasesCpu=102.6ms | gate state=healthy gateWall=84.8ms gate.durationMs=78 gateCpu=103.6ms loadavg=0.61/1.04/0.92
+round=6 wireBytes=4069568 jsonParse=16.8ms zod=15.9ms checker=44.3ms phasesWall=77ms phasesCpu=98.8ms | gate state=healthy gateWall=81.9ms gate.durationMs=76 gateCpu=101.8ms loadavg=0.61/1.04/0.92
+round=7 wireBytes=4069568 jsonParse=14.5ms zod=15.7ms checker=44.9ms phasesWall=75.2ms phasesCpu=97.4ms | gate state=healthy gateWall=84.6ms gate.durationMs=78 gateCpu=110.8ms loadavg=0.61/1.04/0.92
+round=8 wireBytes=4069568 jsonParse=12.9ms zod=19.9ms checker=43.9ms phasesWall=76.7ms phasesCpu=98ms | gate state=healthy gateWall=83.4ms gate.durationMs=76 gateCpu=106.5ms loadavg=0.61/1.04/0.92

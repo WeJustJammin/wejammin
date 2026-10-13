@@ -19,6 +19,7 @@ import {
   flush,
   typeInto,
 } from '../../apps/web/src/components/cms-editorial-fields/cms-editor-dom.test-support';
+import { preloadCmsEditorialTransports } from '../../apps/web/src/components/cms-editorial/cms-editorial-lazy-transports.test-support';
 import {
   setup,
   unmountAll,
@@ -33,6 +34,8 @@ import {
  */
 
 beforeAll(enableReactAct);
+// The save transport loads on the first save (AC-106); load it before the test drives one.
+beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 beforeEach(() => {
   document.cookie = 'wj_csrf=csrf-token';

@@ -1,0 +1,54 @@
+# cd worktree && flock -s /tmp/wejammin-quiet.lock pnpm exec vitest run apps/worker/src/cms-publication-schedule-sweep --reporter=verbose   (resume 2026-10-11, HEAD 0fd4bf31)
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ✓ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts > the 15,000 ms job deadline > is the contract deadline the RPC transport enforces and never exceeds 15ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts > the 15,000 ms job deadline > aborts a claim that never answers at 15,000 ms and asks the platform to retry the tick 64ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > recomputes fresh checker evidence and executes the same claim again under the same lease 295ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts > the 15,000 ms job deadline > aborts an execute that never answers at 15,000 ms, logs it as retryable and finishes the tick 234ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts > the 15,000 ms job deadline > shares ONE 15,000 ms job deadline between the claim and the execute: a claim that takes 10,000 ms leaves 5,000 ms 26ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts > the 15,000 ms job deadline > starts no further schedule once the job deadline has passed and logs how many were left unstarted 27ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts > the 15,000 ms job deadline > leaves no timer behind when the tick finishes inside the deadline 7ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > re-executes at most twice more, then leaves the schedule to its lease and carries on with the batch 43ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > sends no proof on the re-execution when the checker cannot produce one, so the database ladder takes the unavailable outcome 18ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > does not re-execute after another typed conflict: the outcome is unknown and the lease decides 12ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > does not re-execute after a lease conflict reason: the outcome is unknown and the lease decides 13ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > does not re-execute after an unavailable database: the outcome is unknown and the lease decides 10ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > does not re-execute after a stale token on a server error: the outcome is unknown and the lease decides 10ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > never recomputes past the 15,000 ms job deadline: a proof still being loaded when it passes ends the claim without another execution 20ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-stale-evidence.test.ts > a stale accessibility proof at execution > never reuses the stale evidence object: each execution carries its own proof 19ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > is three executions in all: the first proof plus at most two recomputations 8ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > executes once with the first proof when the database accepts it 15ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > hands each execution its own freshly computed proof and numbers the recomputations from 1 5ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > throws the last stale refusal unchanged once the bound is spent 5ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > throws another refusal token unchanged without recomputing 4ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > throws a plain http_error unchanged without recomputing 3ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > throws a timeout unchanged without recomputing 3ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > throws a foreign error unchanged without recomputing 3ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > does not recompute when the job deadline has already passed 5ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > does not execute again when the deadline passes while the proof is recomputed 3ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > sends a null proof through when the checker could not produce one 2ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-evidence.test.ts > executeWithFreshEvidence > recognises only the stale token on a typed refusal 1ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > a quiet tick > claims the bounded batch once and logs only the count 183ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > executing claims > runs the checker then executes each claim in order with the bound proof 97ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > executing claims > sends blocked evidence for a revision the checker blocks 18ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > executing claims > sends no proof when the revision cannot be loaded or is not the claimed one 40ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > executing claims > keeps going after one execution fails and logs it without ids 24ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > executing claims > logs a malformed JSON reply as a contract fault and does not retry the execution 13ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > executing claims > logs a result for another schedule as a contract fault and does not retry the execution 12ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > claim failures > requests a retry without leaking the upstream body when the claim RPC is unavailable 7ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > claim failures > requests a retry on a non-list 5ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > claim failures > requests a retry on an unknown member 4ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > claim failures > requests a retry on more than the batch 5ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep.test.ts > claim failures > records a manual-review failure and rethrows it for a non-JSON body 5ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-wiring.test.ts > scheduled publication sweep wiring > runs the publication schedule sweep with the platform bindings on every tick 11ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-wiring.test.ts > scheduled publication sweep wiring > surfaces its failure after the edit-presence sweep and still runs the alerts 7ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-wiring.test.ts > scheduled publication sweep wiring > lets an alert failure surface only after the publication schedule sweep 2ms
+ ✓ apps/worker/src/cms-publication-schedule-sweep-wiring.test.ts > scheduled publication sweep wiring > suppresses platform retries when only the publication sweep needs manual review 2ms
+
+ Test Files  5 passed (5)
+      Tests  43 passed (43)
+   Start at  20:25:06
+   Duration  20.67s (transform 13.92s, setup 0ms, import 30.29s, tests 1.35s, environment 2ms)
+
+exit=0

@@ -1,0 +1,55 @@
+[mut] waiting 20:35:52
+[mut] lock 20:37:43
+[mut] restored 20:40:09
+[mut] reset ok with mutants; migrations restored 20:40:09
+[mut] pg_prove exit=1 TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-203552-mut.tap
+not ok 3 - cms.pattern.activated.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+not ok 4 - cms.taxonomy.changed.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+not ok 7 - the relay claims each of the six recheck source events with its aggregate and registered producer [P2-S11-AC-113]
+not ok 9 - a claimed recheck source event carries its producer, its outbox instant and a first lease [P2-S11-AC-113]
+not ok 10 - claiming leases the six rows to the caller without dispatching them [P2-S11-AC-113]
+not ok 15 - the newly registered prefixes are as immutable as the rest of the map [P2-S11-AC-113]
+not ok 16 - cms.localization.changed.v1 names the SOURCE revision of the variant, not the variant revision the event carries [P2-S11-AC-113]
+not ok 17 - the locale of a localization event is compared case-insensitively [P2-S11-AC-113]
+not ok 18 - the latest version of the locale variant names its source revision [P2-S11-AC-113]
+not ok 21 - the run selects the six LIVE reviews that name the schema version and invalidates none while every manifest still holds [P2-S11-AC-113]
+not ok 22 - a review that still holds is left untouched, and a rejected or already invalidated review is not selected [P2-S11-AC-113]
+not ok 23 - a run that invalidates nothing emits no event [P2-S11-AC-113]
+not ok 26 - the withdrawn block invalidates the one review that froze it [P2-S11-AC-113]
+not ok 27 - the review of the withdrawn block is invalidated dependency_changed (CAS version + 1) and the review of another block is untouched [P2-S11-AC-113]
+not ok 28 - the invalidation writes one cms.entry.review-changed.v1 at the new version carrying the correlation id of the source event [P2-S11-AC-113]
+not ok 29 - the invalidation writes its audit record with the same correlation id [P2-S11-AC-113]
+not ok 30 - idempotent: a repeated run skips the review that is already invalidated [P2-S11-AC-113]
+not ok 31 - idempotent: a repeated run emits no second event [P2-S11-AC-113]
+not ok 32 - idempotent: a repeated run writes no second audit record [P2-S11-AC-113]
+not ok 34 - inequality: the changed term invalidates the review that froze it [P2-S11-AC-113]
+not ok 39 - the event of the NEW pattern version reaches the review that froze its superseded predecessor [P2-S11-AC-113]
+not ok 41 - one event per invalidated review so far: block, term and pattern [P2-S11-AC-113]
+not ok 43 - precondition: r1, r2 and r6 are the live reviews of the schema version [P2-S11-AC-113]
+not ok 44 - a run continues after the cursor: only reviews with a greater id are selected [P2-S11-AC-113]
+not ok 45 - a cursor on the last review selects nothing [P2-S11-AC-113]
+not ok 46 - a superseded schema version invalidates the live reviews after the cursor [P2-S11-AC-113]
+not ok 47 - the approved review is invalidated at its next version, the review before the cursor is untouched [P2-S11-AC-113]
+not ok 48 - the run from the start finishes what is left: the review before the old cursor [P2-S11-AC-113]
+not ok 49 - idempotent: with no live review left a run examines nothing [P2-S11-AC-113]
+not ok 11 - a run handles at most 500 of the 501 live reviews and returns the 500th review id as its continuation cursor [P2-S11-AC-113]
+not ok 14 - while every manifest holds, no review changes state or version [P2-S11-AC-113]
+not ok 15 - while every manifest holds, a walk of the whole index emits no event [P2-S11-AC-113]
+not ok 16 - a run that invalidates handles at most 500 reviews too: 500 invalidated and a cursor [P2-S11-AC-113]
+not ok 17 - exactly 500 reviews are invalidated dependency_changed at the next CAS version [P2-S11-AC-113]
+not ok 18 - the 501st review is still live after the first run [P2-S11-AC-113]
+not ok 19 - the continuation, called through the platform_api wrapper, invalidates the 501st review and returns no cursor [P2-S11-AC-113]
+not ok 23 - idempotent: a repeated run finds no live review [P2-S11-AC-113]
+not ok 25 - idempotent: a run from a cursor in the middle finds none either [P2-S11-AC-113]
+Test Summary Report
+-------------------
+phase_02_slice_11_recheck_relay.sql        (Wstat: 0 Tests: 15 Failed: 6)
+  Failed tests:  3-4, 7, 9-10, 15
+phase_02_slice_11_recheck_event_resolve.sql (Wstat: 0 Tests: 35 Failed: 3)
+  Failed tests:  16-18
+phase_02_slice_11_recheck_run.sql          (Wstat: 0 Tests: 52 Failed: 20)
+  Failed tests:  21-23, 26-32, 34, 39, 41, 43-49
+phase_02_slice_11_recheck_cap.sql          (Wstat: 0 Tests: 25 Failed: 9)
+  Failed tests:  11, 14-19, 23, 25
+Files=4, Tests=127, 26 wallclock secs ( 0.28 usr  0.05 sys +  0.28 cusr  0.12 csys =  0.73 CPU)
+Result: FAIL

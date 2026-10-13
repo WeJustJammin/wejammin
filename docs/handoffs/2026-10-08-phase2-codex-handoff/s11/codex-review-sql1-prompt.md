@@ -1,0 +1,15 @@
+STRICTLY READ-ONLY REVIEW. Do not modify any file. Do not run node, bun, pnpm, npx, vitest, playwright, psql, pg_prove, docker, supabase, or any script/test; do not touch any database or network. Only read files (cat/sed/grep/rg/git status/git diff are fine).
+
+Repository: current working directory (WeJammin, branch claude/phase2-slice11, uncommitted Slice 11 work). Review ONLY these new forward migrations and their pgTAP tests:
+- supabase/migrations/20261005017000*.sql .. 20261005017090*.sql (data model: reviews, decisions, assignments, dependencies, settings snapshots, preflight registry, schedules, publication lineage, preview tokens, guards)
+- supabase/migrations/20261005017500*.sql .. 20261005017595*.sql (shared helpers: acting-context version, reference counter, version set, approvers recount, effective revision state, settings snapshot, dependency manifest builder, preflight registry evaluation, review invalidation core + trigger producers, preview scope/token revocation, publication lineage append, tzdb version)
+- supabase/tests/phase_02_slice_11_*.sql and fragment dirs supabase/tests/phase_02_slice_11_schema/, supabase/tests/phase_02_slice_11_helpers/
+Context to read: the lane design notes in /home/rob/.codex/worktrees/phase2-slice10/orchestration/s11/lane-s11-2-report.md and lane-s11-3s-report.md and helpers-api.md; rulings in /home/rob/.codex/worktrees/phase2-slice10/orchestration/lanes/NOTES.md (DEC-156..161); normative spec .memory/wiki/specs/be/03b-editorial-workflow-publication.md (E1-E3, E7, E8, D19 registry, review invalidation, persistence rows ~1940-1990, access control, global lock order ~1698-1720) and .memory/wiki/decisions.md DEC-132..DEC-161; Slice 10 conventions in supabase/migrations/2026100501*.sql.
+
+Find real defects only, with severity (high/medium/low), file:line, spec citation (file:line), a concrete failing scenario (exact row values / call sequence), and the minimal fix:
+(1) security: SECURITY DEFINER functions without search_path '' or with grants to anon/authenticated/service_role that the spec does not allow; RLS not forced; direct table grants; SQL injection via dynamic SQL; privacy leaks of person/party ids or tokens.
+(2) integrity: CHECK/trigger guards that allow an illegal state transition, mutation of frozen/append-only columns, or deletion; CAS (version+1) holes; constraints that reject spec-valid rows.
+(3) concurrency: lock acquisitions out of the DEC-157/BE03b global order (deadlock risk), missing FOR UPDATE / advisory locks where two transactions can both pass a check, TOCTOU in invalidation/lineage append.
+(4) correctness vs spec: manifest canonical ordering/bounds/hash (JCS), version-set projection, preflight registry rows/order/reason sets (DEC-150/158/160), effective-state precedence, invalidation reasons and side effects (schedule cancellation, token revocation), lineage rules E3 (supersede, tombstone, publication_not_active), settings snapshot E7, tzdb pin.
+(5) tests that would pass on a broken implementation (asserting nothing meaningful, wrong oracle, tautologies).
+Do not report style. If a category has no finding, say so. Output Markdown.

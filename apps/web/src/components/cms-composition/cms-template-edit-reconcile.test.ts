@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { resetCmsValidatorsForTest } from '../../lib/cms-contract-validators';
 import { readLatestCmsTemplateVersion } from './cms-template-edit-reconcile';
 
 const TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
@@ -63,5 +64,20 @@ describe('CMS-11 canonical reconciliation read', () => {
       kind: 'unavailable',
     });
     expect(denied).toHaveBeenCalledOnce();
+  });
+});
+
+describe('CMS-11 canonical reconciliation read without validators', () => {
+  afterEach(() => {
+    resetCmsValidatorsForTest();
+  });
+
+  it('is unavailable, and asks nothing of the server, when the schemas cannot be fetched', async () => {
+    resetCmsValidatorsForTest(() => Promise.reject(new Error('offline')));
+    const fetcher = vi.fn<typeof fetch>();
+    expect(await readLatestCmsTemplateVersion('release-note', fetcher)).toEqual(
+      { kind: 'unavailable' },
+    );
+    expect(fetcher).not.toHaveBeenCalled();
   });
 });

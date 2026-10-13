@@ -108,6 +108,7 @@ export const runDryRunStage = async (
         { signal, call: runtime.call, deadLetter: runtime.deadLetter },
       );
     }
+    return { plan: current, leaseToken: current.leaseToken };
   }
   return { plan: current, leaseToken };
 };

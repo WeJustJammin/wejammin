@@ -5,11 +5,13 @@ import {
   isCounter,
   isHash,
   isInstant,
+  isMigrationLeaseToken,
   isRecord,
   isSafeToken,
   isUuid,
   isVersion,
   schema,
+  validateNullableUuid,
   type RuntimeSchema,
 } from './migration-worker-schema-core';
 import type { MigrationPlanRecord } from './migration-worker-plan-types';
@@ -47,15 +49,34 @@ export const MigrationPlanRecordSchema: RuntimeSchema<MigrationPlanRecord> =
     ] as const;
     if (!hasExactKeys(value, keys))
       return failure([], 'plan keys are not allowed');
-    for (const key of [
-      'id',
-      'contentTypeId',
-      'fromVersionId',
-      'toVersionId',
-      'activeVersionId',
-    ] as const) {
+    for (const key of ['id', 'contentTypeId', 'toVersionId'] as const) {
       if (!isUuid(value[key])) return failure([key], `${key} is invalid`);
     }
+    if (!validateNullableUuid(value.fromVersionId))
+      return failure(['fromVersionId'], 'fromVersionId is invalid');
+    if (
+      !validateNullableUuid(value.activeVersionId) ||
+      (value.fromVersionId !== null && value.activeVersionId === null) ||
+      (value.fromVersionId === null &&
+        value.state !== 'completed' &&
+        value.activeVersionId !== null)
+    )
+      return failure(['activeVersionId'], 'activeVersionId is invalid');
+    // DEC-162 shape only; producer/scanner/seal must prove firstness and emptiness.
+    if (
+      value.fromVersionId === null &&
+      (value.classification !== 'additive' ||
+        value.transformKey !== null ||
+        value.transformVersion !== null ||
+        value.sourceHash !== '0'.repeat(64) ||
+        value.cursor !== '0' ||
+        value.sourceCount !== '0' ||
+        value.targetCount !== '0' ||
+        value.rowErrorCount !== '0' ||
+        value.migratedCount !== '0' ||
+        value.failedCount !== '0')
+    )
+      return failure(['fromVersionId'], 'first baseline shape is invalid');
     if (value.fromVersionId === value.toVersionId)
       return failure(['toVersionId'], 'source and target versions must differ');
     if (typeof value.state !== 'string' || !migrationStates.has(value.state))
@@ -107,7 +128,7 @@ export const MigrationPlanRecordSchema: RuntimeSchema<MigrationPlanRecord> =
       return failure([], 'plan hashes are invalid');
     if (value.leaseOwner !== null && !isSafeToken(value.leaseOwner, 200))
       return failure(['leaseOwner'], 'leaseOwner is invalid');
-    if (value.leaseToken !== null && !isSafeToken(value.leaseToken, 200))
+    if (value.leaseToken !== null && !isMigrationLeaseToken(value.leaseToken))
       return failure(['leaseToken'], 'leaseToken is invalid');
     if (value.leaseExpiresAt !== null && !isInstant(value.leaseExpiresAt))
       return failure(['leaseExpiresAt'], 'leaseExpiresAt is invalid');

@@ -1,6 +1,16 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
 
 const navigateTo = vi.hoisted(() => vi.fn());
 vi.mock('./cms-capability-grant-navigation', async (importOriginal) => ({
@@ -62,6 +72,11 @@ const stepUp = () =>
     }),
   );
 const list = () => jsonResponse(200, grantListPage(sampleItems()));
+
+// The form checks run synchronously once the lazily loaded validators are in.
+beforeAll(async () => {
+  await loadCmsValidators();
+});
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });

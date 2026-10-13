@@ -96,6 +96,40 @@ it is not answering and hands the API Worker the stack's service key through a
   preconditions (an entry with history, a second author's entry).
 - `s10-real-browser.ts` — signed-in contexts, the axe gate and the scroll gate.
 
+The Slice 11 workflow spec (`phase-02-slice-11-workflow-real-route.spec.ts`)
+layers these on the same world:
+
+- `s11-real-world.ts` — reviewer, publisher and owner principals with their
+  grants (30 days by default; a spec that schedules months ahead passes
+  `grantDays`, because a schedule is refused when the publisher's grant ends
+  before the day it takes effect) and the signed Slice 11 session.
+- `s11-real-browser.ts` / `s11-real-flow.ts` — signed-in contexts, the completed
+  step-up instant, and the first-party submit, assign and decide preconditions.
+- `s11-approved-entry.ts` — the author, reviewer, publisher and owner cast on the
+  Slice 10 world (the publisher's grant outlasts the 366 day schedule horizon) and
+  `approvedEntry`, a fresh entry submitted, assigned and approved through the
+  first-party routes, for a spec that needs the publisher's schedule and publish
+  forms on the workflow page.
+- `s11-status-recorder.ts` — records every text a command form's polite status
+  line shows. The form's own line lasts only until the canonical read replaces
+  the form (20 to 40 ms on a quiet host); the island's persistent status line
+  keeps the confirmation after the refetch. Specs assert that the confirmation
+  was announced, that the island line still holds it, and the canonical page
+  state, never a visibility check on the transient form line.
+- `s11-dst-gap.ts` (with `s11-dst-gap.test.ts`) — the next real spring-forward
+  gap inside the schedule horizon, read from the host's tz data, so the schedule
+  spec never types a fixed calendar date that goes stale.
+
+The Slice 11 bundle-budget spec (`phase-02-slice-11-bundle-budget-real-route.spec.ts`)
+reads every JavaScript response Chrome loads from the production-built workflow
+route, gzips each body exactly as `pnpm bundle:check` gzips a built asset, and
+asserts that the Time authority chunk is absent from the cold load, fetched once
+when the schedule form opens, and within the lazy-chunk threshold. The threshold is
+`BUNDLE_BUDGETS`, imported from `scripts/verify-bundle-budget.mjs` so it has one
+owner. The route's own initial JavaScript is not asserted there. The spec runs
+only in the real-route project (it is in the functional config's `testIgnore` and
+in this project's `testMatch`).
+
 Local iteration: start `node tests/e2e/support/run-s09-real-servers.mjs` once and
 run Playwright with `S09_REUSE_SERVERS=1`; CI never sets it.
 

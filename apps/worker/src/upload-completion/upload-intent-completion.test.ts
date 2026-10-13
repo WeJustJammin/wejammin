@@ -19,8 +19,31 @@ import {
 } from './upload-intent-completion.test-support';
 
 afterEach(() => {
+  vi.useRealTimers();
   vi.restoreAllMocks();
 });
+
+/**
+ * Runs a request whose command deadline is the only timer under the test's control.
+ * The deadline cannot elapse before `reached` says the dependency under test is in
+ * flight, however slow or loaded the host is (a 5 ms wall-clock deadline that elapsed
+ * earlier left nothing to abort or fence), and it then elapses exactly when advanced.
+ */
+const withControlledDeadline = async <T>(
+  start: () => Promise<T>,
+  reached: Promise<void>,
+  deadlineMs: number,
+): Promise<T> => {
+  vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+  try {
+    const pending = start();
+    await reached;
+    await vi.advanceTimersByTimeAsync(deadlineMs);
+    return await pending;
+  } finally {
+    vi.useRealTimers();
+  }
+};
 
 describe('upload completion Worker boundary', () => {
   it('fails closed when the production completion adapter is absent', async () => {
@@ -159,6 +182,10 @@ describe('upload completion Worker boundary', () => {
 
   it('aborts the exact command deadline and propagates the abort signal', async () => {
     let aborted = false;
+    let sessionEntered!: () => void;
+    const sessionStarted = new Promise<void>((resolve) => {
+      sessionEntered = resolve;
+    });
     const route = makeRouteDependencies({
       deadlineMs: 5,
       resolveSession: vi.fn(
@@ -172,10 +199,15 @@ describe('upload completion Worker boundary', () => {
               },
               { once: true },
             );
+            sessionEntered();
           }),
       ),
     });
-    const response = await createHarness(route).request(requestFor());
+    const response = await withControlledDeadline(
+      () => Promise.resolve(createHarness(route).request(requestFor())),
+      sessionStarted,
+      5,
+    );
 
     expect(response.status).toBe(503);
     expect(aborted).toBe(true);
@@ -189,6 +221,10 @@ describe('upload completion Worker boundary', () => {
     const commitGate = new Promise<void>((resolve) => {
       releaseCommit = resolve;
     });
+    let commitEntered!: () => void;
+    const commitStarted = new Promise<void>((resolve) => {
+      commitEntered = resolve;
+    });
     let fenced = false;
     let committed = false;
     const base = makePorts();
@@ -199,6 +235,7 @@ describe('upload completion Worker boundary', () => {
       },
     );
     const commitCompletion = vi.fn(async () => {
+      commitEntered();
       await commitGate;
       if (fenced) throw new Error('canonical completion fenced');
       committed = true;
@@ -212,6 +249,14 @@ describe('upload completion Worker boundary', () => {
     });
     const route = makeRouteDependencies({
       deadlineMs: 5,
+      // A host that stalls for 30 ms (six deadlines) before the commit starts.
+      resolveSession: vi.fn(async () => {
+        const stalledUntil = Date.now() + 30;
+        while (Date.now() < stalledUntil) {
+          // busy wait: blocks the event loop like a starved host
+        }
+        return { userId: ACTOR_ID };
+      }),
       ports: {
         ...base,
         persistence: {
@@ -221,10 +266,14 @@ describe('upload completion Worker boundary', () => {
         },
       },
     });
-    const responsePromise = createHarness(route).request(requestFor());
-
-    await new Promise((resolve) => setTimeout(resolve, 15));
-    await expect(responsePromise).resolves.toMatchObject({ status: 503 });
+    // The deadline cannot elapse before the canonical commit is in flight (see
+    // withControlledDeadline), so cancelCompletion always has a commit to fence.
+    const response = await withControlledDeadline(
+      () => Promise.resolve(createHarness(route).request(requestFor())),
+      commitStarted,
+      5,
+    );
+    expect(response.status).toBe(503);
     expect(cancelCompletion).toHaveBeenCalledOnce();
     expect(committed).toBe(false);
 
@@ -235,11 +284,16 @@ describe('upload completion Worker boundary', () => {
   });
 
   it('returns within the bounded recovery window when canonical completion never settles', async () => {
+    let commitEntered!: () => void;
+    const commitStarted = new Promise<void>((resolve) => {
+      commitEntered = resolve;
+    });
     const base = makePorts();
     const cancelCompletion = vi.fn(async () => undefined);
-    const commitCompletion = vi.fn(
-      async () => new Promise<never>(() => undefined),
-    );
+    const commitCompletion = vi.fn(async () => {
+      commitEntered();
+      return new Promise<never>(() => undefined);
+    });
     const route = makeRouteDependencies({
       deadlineMs: 5,
       ports: {
@@ -251,16 +305,16 @@ describe('upload completion Worker boundary', () => {
         },
       },
     });
-    const outcome = await Promise.race([
-      Promise.resolve(createHarness(route).request(requestFor())).then(
-        (response) => response.status,
-      ),
-      new Promise<'timeout'>((resolve) =>
-        setTimeout(() => resolve('timeout'), 250),
-      ),
-    ]);
+    // The commit never settles. Only the deadline (5 ms) is advanced, never the one-second
+    // recovery bound or any later time: the response must follow the fence alone, so a
+    // response that waited for the commit or for the bound would hang here and fail.
+    const response = await withControlledDeadline(
+      () => Promise.resolve(createHarness(route).request(requestFor())),
+      commitStarted,
+      5,
+    );
 
-    expect(outcome).toBe(503);
+    expect(response.status).toBe(503);
     expect(cancelCompletion).toHaveBeenCalledOnce();
   });
 
