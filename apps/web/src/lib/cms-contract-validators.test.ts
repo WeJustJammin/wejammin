@@ -5,6 +5,7 @@ import {
   loadCmsValidators,
   loadedCmsValidators,
   resetCmsValidatorsForTest,
+  settleCmsValidatorsForTest,
   warmCmsValidators,
   withCmsValidators,
 } from './cms-contract-validators';
@@ -90,5 +91,43 @@ describe('lazy CMS editorial validators', () => {
       () => calls.push('unavailable'),
     );
     await vi.waitFor(() => expect(calls).toEqual(['unavailable']));
+  });
+
+  it('keeps a load that settles after a reset from leaking into the next loader, and settles in-flight loads for tests', async () => {
+    let finish: (module: CmsValidators) => void = () => undefined;
+    let fail: (error: Error) => void = () => undefined;
+    resetCmsValidatorsForTest(
+      () =>
+        new Promise<CmsValidators>((resolve) => {
+          finish = resolve;
+        }),
+    );
+    const stale = loadCmsValidators();
+    resetCmsValidatorsForTest(() => Promise.reject(new Error('offline')));
+    finish(FAKE);
+    await expect(stale).resolves.toBe(FAKE);
+    expect(loadedCmsValidators()).toBeNull();
+    await expect(loadCmsValidators()).rejects.toThrow('offline');
+
+    resetCmsValidatorsForTest(
+      () =>
+        new Promise<CmsValidators>((_resolve, reject) => {
+          fail = reject;
+        }),
+    );
+    const failing = loadCmsValidators();
+    resetCmsValidatorsForTest(async () => FAKE);
+    const fresh = loadCmsValidators();
+    fail(new Error('late'));
+    await expect(failing).rejects.toThrow('late');
+    await expect(fresh).resolves.toBe(FAKE);
+    expect(loadedCmsValidators()).toBe(FAKE);
+
+    await expect(settleCmsValidatorsForTest()).resolves.toBeUndefined();
+    resetCmsValidatorsForTest(() => Promise.reject(new Error('down')));
+    void loadCmsValidators().catch(() => undefined);
+    await expect(settleCmsValidatorsForTest()).resolves.toBeUndefined();
+    resetCmsValidatorsForTest();
+    await expect(settleCmsValidatorsForTest()).resolves.toBeUndefined();
   });
 });

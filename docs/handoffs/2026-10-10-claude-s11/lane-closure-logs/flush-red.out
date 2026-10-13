@@ -1,0 +1,39 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx (10 tests | 2 failed) 91ms
+     × sends the served preparation unmodified at the entry version and then refetches 12ms
+     × sends the submission once a slow lazy validator load completes, within one flush 10ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > sends the served preparation unmodified at the entry version and then refetches
+TypeError: undefined is not iterable (cannot read property Symbol(Symbol.iterator))
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx:118:28
+    116|     await click(buttonNamed(container, /Submit for review/u));
+    117|     await flush();
+    118|     const [target, init] = fetcher.mock.calls[0] as unknown as [
+       |                            ^
+    119|       string,
+    120|       RequestInit,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > sends the submission once a slow lazy validator load completes, within one flush
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx:152:23
+    150|       await click(buttonNamed(container, /Submit for review/u));
+    151|       await flush();
+    152|       expect(fetcher).toHaveBeenCalledTimes(1);
+       |                       ^
+    153|       expect(fetcher.mock.calls[0]?.[0]).toBe(
+    154|         `/api/v1/cms/entries/${ENTRY_ID}/reviews`,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed | 8 passed (10)
+   Start at  13:05:17
+   Duration  1.75s (transform 714ms, setup 0ms, import 1.16s, tests 91ms, environment 408ms)
+

@@ -125,12 +125,12 @@ const fixture = (
       history.push(['apply-response', applied]);
       return applied;
     }
-    if (operation === 'record_processed_event') {
-      if (hold === 'processed') await gate.hold();
-      history.push(['processed-response', 'recorded']);
-      return 'recorded';
-    }
-    throw new Error('Unexpected queued-continuation RPC');
+    expect(operation, 'Unexpected queued-continuation RPC').toBe(
+      'record_processed_event',
+    );
+    if (hold === 'processed') await gate.hold();
+    history.push(['processed-response', 'recorded']);
+    return 'recorded';
   };
   const rpcCalls: Parameters<AsyncRpcClient>[] = [];
   const rpc: AsyncRpcClient = <T>(
@@ -177,9 +177,8 @@ const fixture = (
     history.push(['effect', input]);
     return effectResult;
   });
-  const send = vi.fn<PlatformJobsQueue['send']>(async () => ({
-    metadata: { metrics: { backlogBytes: 0, backlogCount: 0 } },
-  }));
+  // The continuation never enqueues; `assertFinished` asserts this mock stays uncalled.
+  const send = vi.fn<PlatformJobsQueue['send']>();
   const env = {
     APP_ENVIRONMENT: 'staging',
     APP_RELEASE: 'controlled-continuation-test',

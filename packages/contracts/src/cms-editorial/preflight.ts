@@ -153,9 +153,11 @@ export const CMS_PREFLIGHT_REGISTRY = [
   ]),
 ] as const satisfies readonly CmsPreflightRegistryRow[];
 
+/** The reason codes the registry row of `category` registers (one row per category). */
 const registeredReasons = (category: PreflightCategory): readonly string[] =>
-  CMS_PREFLIGHT_REGISTRY.find((row) => row.category === category)
-    ?.reasonCodes ?? [];
+  CMS_PREFLIGHT_REGISTRY.filter((row) => row.category === category).flatMap(
+    (row) => row.reasonCodes,
+  );
 
 /**
  * DEC-160 (BE03b D19, "Unavailable reasons"): the closed set of reasons an

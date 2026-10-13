@@ -129,9 +129,7 @@ const fixture = (options: Options = {}) => {
     effects = 0,
     delivery = 0;
   const fakeFetch: typeof fetch = async (resource, init) => {
-    const url = new URL(
-      resource instanceof Request ? resource.url : String(resource),
-    );
+    const url = new URL(String(resource));
     const headers = new Headers(init?.headers);
     same(
       [
@@ -142,9 +140,9 @@ const fixture = (options: Options = {}) => {
       ],
       ['https://controlled.invalid', 'POST', 'platform_api', 'platform_api'],
     );
-    if (typeof init?.body !== 'string')
-      throw new Error('Expected protected JSON body');
-    const body: unknown = JSON.parse(init.body);
+    const raw = init?.body;
+    expect(typeof raw, 'Expected protected JSON body').toBe('string');
+    const body: unknown = JSON.parse(raw as string);
     const operation = url.pathname.replace('/rest/v1/rpc/', '');
     expect(url.pathname === `/rest/v1/rpc/${operation}`).toBe(true);
     history.push(R(operation, body));
@@ -157,7 +155,7 @@ const fixture = (options: Options = {}) => {
       value = mode === 'nonboolean' ? { accepted: true } : mode !== 'false';
     } else if (operation === 'read_canonical_job') {
       value = jobs[reads++];
-      if (value === undefined) throw new Error('Unexpected canonical read');
+      expect(value, 'Unexpected canonical read').toBeDefined();
     } else if (operation === 'read_restore_fence') {
       value = {
         expected_epoch: '3',
@@ -167,15 +165,18 @@ const fixture = (options: Options = {}) => {
       };
     } else if (operation === 'claim_job') {
       value = leases[claims++];
-      if (value === undefined) throw new Error('Unexpected lease claim');
+      expect(value, 'Unexpected lease claim').toBeDefined();
     } else if (operation === 'apply_job_outcome') {
       history.push(['applied', true]);
       value = true;
-    } else if (operation === 'record_processed_event') {
+    } else {
+      expect(operation, 'Unexpected receiving RPC').toBe(
+        'record_processed_event',
+      );
       if (options.hold) await barrier.hold();
       history.push(['processed', 'recorded']);
       value = 'recorded';
-    } else throw new Error('Unexpected receiving RPC');
+    }
     return new Response(JSON.stringify(value), {
       headers: { 'content-type': 'application/json' },
     });
@@ -219,9 +220,8 @@ const fixture = (options: Options = {}) => {
       errorCode: null,
     };
   });
-  const send = vi.fn<PlatformJobsQueue['send']>(async () => ({
-    metadata: { metrics: { backlogBytes: 0, backlogCount: 0 } },
-  }));
+  // The receiving path never enqueues; `check` asserts this mock stays uncalled.
+  const send = vi.fn<PlatformJobsQueue['send']>();
   const env = {
     APP_ENVIRONMENT: 'staging',
     APP_RELEASE: 'controlled-origin',

@@ -1,0 +1,35 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/web/src/lib/cms-contract-validators.test.ts (6 tests | 1 failed) 162ms
+     × keeps a load that settles after a reset from leaking into the next loader, and settles in-flight loads for tests 3ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/lib/cms-contract-validators.test.ts > lazy CMS editorial validators > keeps a load that settles after a reset from leaking into the next loader, and settles in-flight loads for tests
+AssertionError: expected { CmsUuidSchema: {} } to be null
+
+- Expected:
+null
+
++ Received:
+{
+  "CmsUuidSchema": {},
+}
+
+ ❯ apps/web/src/lib/cms-contract-validators.test.ts:109:35
+    107|     finish(FAKE);
+    108|     await expect(stale).resolves.toBe(FAKE);
+    109|     expect(loadedCmsValidators()).toBeNull();
+       |                                   ^
+    110|     await expect(loadCmsValidators()).rejects.toThrow('offline');
+    111|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 5 passed (6)
+   Start at  13:18:21
+   Duration  287ms (transform 22ms, setup 0ms, import 32ms, tests 162ms, environment 0ms)
+

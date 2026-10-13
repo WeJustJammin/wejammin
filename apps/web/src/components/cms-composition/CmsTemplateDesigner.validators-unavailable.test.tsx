@@ -8,6 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {
   resetCmsValidatorsForTest,
+  settleCmsValidatorsForTest,
   type CmsValidators,
 } from '../../lib/cms-contract-validators';
 import CmsTemplateDesigner from './CmsTemplateDesigner';
@@ -139,7 +140,10 @@ describe('template create island without validators', () => {
     ).toBe('release-note');
 
     resetCmsValidatorsForTest();
-    await act(async () => submitForm(container));
+    await act(async () => {
+      submitForm(container);
+      await settleCmsValidatorsForTest();
+    });
     expect(fetcher).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain('Draft created.');
   });
@@ -205,6 +209,7 @@ describe('template edit island without validators', () => {
     );
     await act(async () => {
       submitForm(container);
+      await settleCmsValidatorsForTest();
     });
     expect(container.textContent).toContain('The result is unknown');
     expect(fetcher).toHaveBeenCalledTimes(1);

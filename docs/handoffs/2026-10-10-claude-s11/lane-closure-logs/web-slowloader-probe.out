@@ -1,0 +1,273 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx (4 tests | 3 failed) 126ms
+     × [P2-S11-AC-072] returns focus to the assignments heading after an assign commits and the review is refetched 61ms
+     × [P2-S11-AC-072] returns focus to the assignments heading after a revoke commits and the review is refetched 15ms
+     × [P2-S11-AC-037] keeps focus on Record approval until the read lands, then moves it to the decisions heading only 16ms
+Not implemented: navigation to another Document
+ ❯ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx (21 tests | 3 failed) 523ms
+     × [P2-S11-AC-037] Submit for review keeps focus on the activated control while its command is in flight 47ms
+     × [P2-S11-AC-037] Submit for review keeps focus through an unknown outcome and a reconciling read that is not verified 7ms
+     × [P2-S11-AC-037] Submit for review moves focus only to its named result heading once the canonical read has landed 6ms
+ ❯ apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.validators-unavailable.dom.test.tsx (7 tests | 1 failed) 514ms
+     × sends nothing from the grant form, says so, and sends after the connection returns 119ms
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx (6 tests | 2 failed) 354ms
+     × [P2-S11-AC-054] keeps focus where the person put it through a reconciling refetch, verified and then degraded 57ms
+     × [P2-S11-AC-037] keeps focus on the refusal alert while the refetch it triggered lands 19ms
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.status.test.tsx (6 tests | 1 failed) 372ms
+     × [P2-S11-AC-037] still reads the submit confirmation after the refetch removed the submit form, announced once 34ms
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx (4 tests | 3 failed) 106ms
+     × sends nothing, says so, keeps the values and sends once the connection returns 61ms
+     × sends nothing, says so, and keeps the unsent values 14ms
+     × reports the latest version unavailable when the schemas cannot check the read 8ms
+
+⎯⎯⎯⎯⎯⎯ Failed Tests 13 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx > template create island without validators > sends nothing, says so, keeps the values and sends once the connection returns
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx:143:21
+    141|     resetCmsValidatorsForTest();
+    142|     await act(async () => submitForm(container));
+    143|     expect(fetcher).toHaveBeenCalledTimes(1);
+       |                     ^
+    144|     expect(container.textContent).toContain('Draft created.');
+    145|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/13]⎯
+
+ FAIL  apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx > template edit island without validators > sends nothing, says so, and keeps the unsent values
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 2 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      "/api/v1/cms/templates/versions",
+      Object {
+        "body": "{"templateKey":"release-note","compatibleTypeIds":["018f0c45-73fe-7dc2-9c09-68f7ecf132da"],"slots":[],"reservedRegions":["header","now","record","detail","provenance"],"bindings":{},"locale":"en-US","audience":"public","expectedVersion":null}",
+        "cache": "no-store",
+        "credentials": "same-origin",
+        "headers": Object {
+          "content-type": "application/json",
+          "idempotency-key": "draft-attempt-001",
+          "x-csrf-token": "csrf-token",
+        },
+        "method": "POST",
+        "redirect": "error",
+      },
+    ]
+
+  2nd vi.fn() call:
+
+    Array [
+      "/api/v1/cms/templates/versions",
+      Object {
+        "body": "{"templateKey":"release-note","compatibleTypeIds":["018f0c45-73fe-7dc2-9c09-68f7ecf132da"],"slots":[],"reservedRegions":["header","now","record","detail","provenance"],"bindings":{},"locale":"en-US","audience":"changed","expectedVersion":"2"}",
+        "cache": "no-store",
+        "credentials": "same-origin",
+        "headers": Object {
+          "content-type": "application/json",
+          "idempotency-key": "draft-attempt-001",
+          "if-match": ""2"",
+          "x-csrf-token": "csrf-token",
+        },
+        "method": "POST",
+        "redirect": "error",
+      },
+    ]
+
+
+Number of calls: 2
+
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx:183:25
+    181|       submitForm(container);
+    182|     });
+    183|     expect(fetcher).not.toHaveBeenCalled();
+       |                         ^
+    184|     const status = container.querySelector('.cms-template-designer-sta…
+    185|     expect(status.getAttribute('role')).toBe('alert');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/13]⎯
+
+ FAIL  apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx > template edit island without validators > reports the latest version unavailable when the schemas cannot check the read
+AssertionError: expected 'Edit template draftEditing version 2.…' to contain 'The result is unknown'
+
+Expected: "The result is unknown"
+Received: "Edit template draftEditing version 2. Your values remain in this form until you explicitly choose a newer parent version.Template definitionTemplate keyLowercase letters, numbers, and hyphens; immutable after creation.Compatible active content typesrelease_note · version 2LocaleAudienceReserved regionsThe first five regions are fixed: header, now, record, detail, provenance.Additional regions, comma separatedUse distinct lowercase region keys.SlotsSupported blocks: none available.Add slotProjection bindingsAdd bindingA saved successor is a private draft, not publication or activation.Save successor draft"
+
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx:209:35
+    207|       submitForm(container);
+    208|     });
+    209|     expect(container.textContent).toContain('The result is unknown');
+       |                                   ^
+    210|     expect(fetcher).toHaveBeenCalledTimes(1);
+    211|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/13]⎯
+
+ FAIL  apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.validators-unavailable.dom.test.tsx > console checks when the validators cannot be loaded > sends nothing from the grant form, says so, and sends after the connection returns
+AssertionError: expected undefined to match object { …(2) }
+
+- Expected:
+{
+  "method": "POST",
+  "url": "/api/v1/cms/capability-grants",
+}
+
++ Received:
+undefined
+
+ ❯ apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.validators-unavailable.dom.test.tsx:96:22
+     94|     resetCmsValidatorsForTest();
+     95|     await submit(form);
+     96|     expect(calls[0]).toMatchObject({
+       |                      ^
+     97|       url: '/api/v1/cms/capability-grants',
+     98|       method: 'POST',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/13]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx > CmsEditorialReviewDetailIsland focus > [P2-S11-AC-072] returns focus to the assignments heading after an assign commits and the review is refetched
+AssertionError: expected 'Back to reviewsPress releaseRevision …' to contain 'Reviewer assigned'
+
+Expected: "Reviewer assigned"
+Received: "Back to reviewsPress releaseRevision 4 (en-US) · State: Open · Risk class: ordinary0 of 1 decisions recorded. Qualifying approvals: 0.Submitted 2026-10-08T12:00:00Z.Frozen candidateFrozen hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaDependency hash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbContent type version 123e4567-e89b-42d3-a456-426614174001. Settings version 1. Compiler 1.2.3. 1 block, 1 pattern, 1 vocabulary.DecisionsNo decisions recorded yet.AssignmentsNo active assignmentsActionsYou have no active assignment to decide this review, or you have already decided it.Assign a reviewerReviewerChoose a reviewer123e4567-e89b-42d3-a456-42661417400c (access ends 2026-11-11T17:10:36.575Z)Assignment endsUp to seven days from now, and not after the reviewer’s access ends.Reason (optional)0 of 256 charactersAssign reviewer "
+
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx:118:35
+    116|     await click(assign);
+    117|     await settle();
+    118|     expect(container.textContent).toContain('Reviewer assigned');
+       |                                   ^
+    119|     expect(document.activeElement).toBe(assign);
+    120|     await release(pending, ok(owner([active])));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/13]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx > CmsEditorialReviewDetailIsland focus > [P2-S11-AC-072] returns focus to the assignments heading after a revoke commits and the review is refetched
+AssertionError: expected 'Back to reviewsPress releaseRevision …' to contain 'Assignment revoked.'
+
+Expected: "Assignment revoked."
+Received: "Back to reviewsPress releaseRevision 4 (en-US) · State: Open · Risk class: ordinary0 of 1 decisions recorded. Qualifying approvals: 0.Submitted 2026-10-08T12:00:00Z.Frozen candidateFrozen hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaDependency hash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbContent type version 123e4567-e89b-42d3-a456-426614174001. Settings version 1. Compiler 1.2.3. 1 block, 1 pattern, 1 vocabulary.DecisionsNo decisions recorded yet.AssignmentsReviewer 1 · Active · from 2026-10-08T12:00:00Z to 2026-10-09T12:00:00ZActionsYou have no active assignment to decide this review, or you have already decided it.Assign a reviewerNo reviewer has an active cms.reviewer grant. Grant accessReviewerChoose a reviewerAssignment endsUp to seven days from now, and not after the reviewer’s access ends.Reason (optional)0 of 256 charactersAssign reviewer Revoke an assignmentRevoking assignment…Reviewer 1, ends 2026-10-09T12:00:00Z Revoke Reviewer 1"
+
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx:140:35
+    138|     await click(revoke);
+    139|     await settle();
+    140|     expect(container.textContent).toContain('Assignment revoked.');
+       |                                   ^
+    141|     expect(document.activeElement).toBe(revoke);
+    142|     await release(pending, ok(owner([{ ...active, state: 'revoked' }])…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/13]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx > CmsEditorialReviewDetailIsland focus > [P2-S11-AC-037] keeps focus on Record approval until the read lands, then moves it to the decisions heading only
+AssertionError: expected 'Back to reviewsPress releaseRevision …' to contain 'Decision recorded.'
+
+Expected: "Decision recorded."
+Received: "Back to reviewsPress releaseRevision 4 (en-US) · State: Open · Risk class: ordinary0 of 1 decisions recorded. Qualifying approvals: 0.Submitted 2026-10-08T12:00:00Z.Frozen candidateFrozen hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaDependency hash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbContent type version 123e4567-e89b-42d3-a456-426614174001. Settings version 1. Compiler 1.2.3. 1 block, 1 pattern, 1 vocabulary.DecisionsNo decisions recorded yet.ActionsRecord your decisionDecisionApproveRejectReasonFine.5 of 2000 charactersRecord approval"
+
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx:163:35
+    161|     await click(record);
+    162|     await settle();
+    163|     expect(container.textContent).toContain('Decision recorded.');
+       |                                   ^
+    164|     expect(document.activeElement).toBe(record);
+    165|     await release(pending, ok(reviewDetailFixture({ version: '3' })));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/13]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx > CmsEditorialWorkflowIsland focus > [P2-S11-AC-054] keeps focus where the person put it through a reconciling refetch, verified and then degraded
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx:101:26
+     99|     await settle();
+    100|     // The lost answer starts the reconciling read; it is in flight no…
+    101|     expect(readWorkflow).toHaveBeenCalledTimes(1);
+       |                          ^
+    102|     expect(document.activeElement).toBe(submit);
+    103|     await release(first, ok(workflowFixture()));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[8/13]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx > CmsEditorialWorkflowIsland focus > [P2-S11-AC-037] keeps focus on the refusal alert while the refetch it triggered lands
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx:141:26
+    139|     await settle();
+    140|     const alert = container.querySelector('[role="alert"]') as HTMLEle…
+    141|     expect(readWorkflow).toHaveBeenCalledTimes(1);
+       |                          ^
+    142|     expect(document.activeElement).toBe(alert);
+    143|     await release(pending, ok(workflowFixture()));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[9/13]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.status.test.tsx > CmsEditorialWorkflowIsland confirmation > [P2-S11-AC-037] still reads the submit confirmation after the refetch removed the submit form, announced once
+AssertionError: expected [] to deeply equal [ <p role="status" …(3)></p> ]
+
+- Expected
++ Received
+
+- [
+-   <p
+-     aria-atomic="true"
+-     aria-live="polite"
+-     data-cms-workflow-status="island"
+-     role="status"
+-   />,
+- ]
++ []
+
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.status.test.tsx:117:50
+    115|     await settle();
+    116|     // In flight: the confirmation is in the island line, not twice.
+    117|     expect(regionsReading(container, SUBMITTED)).toEqual([line]);
+       |                                                  ^
+    118|     expect(formStatuses(container)).toEqual([]);
+    119|     expect(document.activeElement).toBe(submit);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[10/13]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Submit for review' > [P2-S11-AC-037] Submit for review keeps focus on the activated control while its command is in flight
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx:49:26
+     47|     await click(trigger);
+     48|     await settle();
+     49|     expect(wire.fetcher).toHaveBeenCalledTimes(1);
+       |                          ^
+     50|     expect(trigger.disabled).toBe(false);
+     51|     expect(document.activeElement).toBe(trigger);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[11/13]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Submit for review' > [P2-S11-AC-037] Submit for review keeps focus through an unknown outcome and a reconciling read that is not verified
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx:63:26
+     61|     await settle();
+     62|     // The lost answer triggers exactly one reconciling read; it verif…
+     63|     expect(wire.refetch).toHaveBeenCalledTimes(1);
+       |                          ^
+     64|     expect(document.activeElement).toBe(trigger);
+     65|     wire.refetch.mockResolvedValueOnce(false);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[12/13]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Submit for review' > [P2-S11-AC-037] Submit for review moves focus only to its named result heading once the canonical read has landed
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx:82:26
+     80|     await click(trigger);
+     81|     await settle();
+     82|     expect(wire.refetch).toHaveBeenCalledTimes(1);
+       |                          ^
+     83|     if (harness.resultHeading === null) {
+     84|       // The preview form owns its result region: the token heading ta…
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[13/13]⎯
+
+
+ Test Files  6 failed | 418 passed (424)
+      Tests  13 failed | 4597 passed (4610)
+   Start at  13:10:34
+   Duration  209.37s (transform 10.70s, setup 0ms, import 173.42s, tests 88.75s, environment 109.63s)
+

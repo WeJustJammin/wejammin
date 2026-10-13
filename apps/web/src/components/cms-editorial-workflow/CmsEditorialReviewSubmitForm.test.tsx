@@ -14,6 +14,7 @@ import {
   COMMAND_CASES,
   CSRF,
 } from '../../server/cms-workflow-platform-command.test-support';
+import { resetCmsValidatorsForTest } from '../../lib/cms-contract-validators';
 import CmsEditorialReviewSubmitForm from './CmsEditorialReviewSubmitForm';
 import {
   ENTRY_ID,
@@ -135,6 +136,27 @@ describe('CmsEditorialReviewSubmitForm (CMS-03B-05)', () => {
     expect(
       container.querySelector('[data-cms-workflow-status]')?.textContent,
     ).toBe('Review submitted. It is open for decisions.');
+  });
+
+  it('sends the submission once a slow lazy validator load completes, within one flush', async () => {
+    // The islands import zod lazily (AC-106); under load that import outlasts a few microtasks.
+    resetCmsValidatorsForTest(() =>
+      new Promise((resolve) => setTimeout(resolve, 25)).then(
+        () => import('@wejammin/contracts/cms-editorial/validators'),
+      ),
+    );
+    try {
+      const { container, fetcher, refetch } = mount([created()]);
+      await click(buttonNamed(container, /Submit for review/u));
+      await flush();
+      expect(fetcher).toHaveBeenCalledTimes(1);
+      expect(fetcher.mock.calls[0]?.[0]).toBe(
+        `/api/v1/cms/entries/${ENTRY_ID}/reviews`,
+      );
+      expect(refetch).toHaveBeenCalledTimes(1);
+    } finally {
+      resetCmsValidatorsForTest();
+    }
   });
 
   it('submits exactly once when the control is pressed twice', async () => {

@@ -88,7 +88,6 @@ export const purposeFixture = (mode: Mode = 'seal') => {
         };
       if (rpc === RPC.deadLetter || rpc === RPC.acknowledgeEvent)
         return { accepted: true };
-      if (rpc === RPC.claimEvent) return { status: 'new' };
       const response = await f.call(rpc, request, signal);
       if (rpc === RPC.processBatch) backfilled = true;
       return response;

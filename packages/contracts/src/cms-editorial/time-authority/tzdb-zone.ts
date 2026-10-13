@@ -13,58 +13,56 @@ import type { TzdbSnapshot } from './tzdb-snapshot.ts';
  * wall-clock time equals a given local time (zero for a gap, two for a fold).
  */
 
+/** An explicit transition: the UTC second it takes effect and the UT offset from then on. */
+export type ZoneTransition = Readonly<{ at: number; offset: number }>;
+
 export type CompiledZone = Readonly<{
   initialOffset: number;
-  /** Absolute UTC seconds of each explicit transition, ascending. */
-  times: readonly number[];
-  /** The UT offset in effect from each explicit transition on. */
-  offsets: readonly number[];
+  /** Explicit transitions, ascending by `at`. */
+  transitions: readonly ZoneTransition[];
   /** The footer that governs the instants from the last transition on; null when absent. */
   footer: ParsedFooter | null;
 }>;
 
+/** Compiles one snapshot zone, refusing a zone whose offset indexes do not line up. */
 export const compileZone = (
   zone: TzdbSnapshot['zones'][number],
 ): CompiledZone => {
   const [distinct, initial, deltas, indexes, footerText] = zone;
-  const times: number[] = [];
+  if (deltas.length !== indexes.length)
+    throw new Error('The tz zone needs one offset index per transition delta.');
+  const offsetFor = (index: number): number => {
+    const offset = distinct[index];
+    if (offset === undefined)
+      throw new Error(
+        `The tz zone offset index ${index} is outside its table of ${distinct.length} offsets.`,
+      );
+    return offset;
+  };
   let running = 0;
-  for (const delta of deltas) {
-    running += delta;
-    times.push(running);
-  }
   return {
-    initialOffset: distinct[initial] ?? 0,
-    times,
-    offsets: indexes.map((index) => distinct[index] ?? 0),
+    initialOffset: offsetFor(initial),
+    transitions: deltas.map((delta, position) => {
+      running += delta;
+      return { at: running, offset: offsetFor(indexes[position]!) };
+    }),
     footer: footerText === '' ? null : parseFooter(footerText),
   };
 };
 
-/** The greatest index with `times[index] <= instant`, or -1. */
-const lastAtOrBefore = (times: readonly number[], instant: number): number => {
-  let low = 0;
-  let high = times.length - 1;
-  let found = -1;
-  while (low <= high) {
-    const middle = (low + high) >> 1;
-    if ((times[middle] ?? 0) <= instant) {
-      found = middle;
-      low = middle + 1;
-    } else high = middle - 1;
-  }
-  return found;
-};
+const lastTransitionAt = (zone: CompiledZone): number | undefined =>
+  zone.transitions[zone.transitions.length - 1]?.at;
 
 /** The UT offset in effect at a UTC instant. */
 export const zoneOffsetAt = (zone: CompiledZone, instant: number): number => {
-  const lastTime = zone.times[zone.times.length - 1];
+  const lastTime = lastTransitionAt(zone);
   if (zone.footer !== null && (lastTime === undefined || instant >= lastTime))
     return footerOffsetAt(zone.footer, instant);
-  const index = lastAtOrBefore(zone.times, instant);
-  return index < 0
-    ? zone.initialOffset
-    : (zone.offsets[index] ?? zone.initialOffset);
+  return zone.transitions.reduce(
+    (offset, transition) =>
+      transition.at <= instant ? transition.offset : offset,
+    zone.initialOffset,
+  );
 };
 
 /** Offset changes at instants in `(low, high]`, explicit transitions then footer rules. */
@@ -74,18 +72,13 @@ export const zoneTransitions = (
   high: number,
 ): readonly FooterTransition[] => {
   const found: FooterTransition[] = [];
-  for (const [index, at] of zone.times.entries())
-    if (at > low && at <= high)
-      found.push({
-        at,
-        before:
-          index === 0
-            ? zone.initialOffset
-            : (zone.offsets[index - 1] ?? zone.initialOffset),
-        after: zone.offsets[index] ?? zone.initialOffset,
-      });
+  let before = zone.initialOffset;
+  for (const { at, offset } of zone.transitions) {
+    if (at > low && at <= high) found.push({ at, before, after: offset });
+    before = offset;
+  }
   if (zone.footer !== null) {
-    const lastTime = zone.times[zone.times.length - 1];
+    const lastTime = lastTransitionAt(zone);
     for (const transition of footerTransitions(zone.footer, low, high))
       if (lastTime === undefined || transition.at > lastTime)
         found.push(transition);

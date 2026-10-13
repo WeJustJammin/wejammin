@@ -48,8 +48,7 @@ export const cmsEditorialDeclaresError = (
   code: string,
   status: number,
 ): boolean => {
-  if (!Object.hasOwn(errors, code)) return false;
-  const declared = errors[code];
+  const declared = Object.hasOwn(errors, code) ? errors[code] : undefined;
   if (declared === undefined) return false;
   return typeof declared === 'number'
     ? declared === status

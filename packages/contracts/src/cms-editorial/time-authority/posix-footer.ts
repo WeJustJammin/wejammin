@@ -15,14 +15,16 @@ export type FooterRule = Readonly<{
   time: number;
 }>;
 
+type DaylightRule = Readonly<{
+  offset: number;
+  start: FooterRule;
+  end: FooterRule;
+}>;
+
 export type ParsedFooter = Readonly<{
   /** UT offset of standard time in seconds (east of UTC positive). */
   standardOffset: number;
-  daylight: Readonly<{
-    offset: number;
-    start: FooterRule;
-    end: FooterRule;
-  }> | null;
+  daylight: DaylightRule | null;
 }>;
 
 export type FooterTransition = Readonly<{
@@ -35,15 +37,16 @@ const fail = (footer: string): never => {
   throw new Error(`Unsupported POSIX TZ footer: ${JSON.stringify(footer)}`);
 };
 
-/** `[+-]hh[:mm[:ss]]` to seconds, or null. */
-const clockSeconds = (text: string): number | null => {
-  const match = /^([+-]?)(\d{1,3})(?::(\d{2}))?(?::(\d{2}))?$/u.exec(text);
-  if (match === null) return null;
-  const seconds =
-    Number(match[2]) * 3_600 +
-    Number(match[3] ?? 0) * 60 +
-    Number(match[4] ?? 0);
-  return match[1] === '-' ? -seconds : seconds;
+/** `[+-]hh[:mm[:ss]]` to seconds; `FOOTER_PATTERN` has already vetted every caller's text. */
+const clockSeconds = (text: string): number => {
+  const seconds = text
+    .replace(/^[+-]/u, '')
+    .split(':')
+    .reduce(
+      (total, part, place) => total + Number(part) * 60 ** (2 - place),
+      0,
+    );
+  return text.startsWith('-') ? -seconds : seconds;
 };
 
 const NAME = '(?:<[^<>]+>|[A-Za-z]{3,})';
@@ -56,46 +59,41 @@ const FOOTER_PATTERN = new RegExp(
 );
 
 const parseRule = (
-  rule: string | undefined,
+  rule: string,
   time: string | undefined,
   footer: string,
 ): FooterRule => {
-  const match = /^M(\d{1,2})\.(\d)\.(\d)$/u.exec(rule ?? '');
-  if (match === null) return fail(footer);
-  const month = Number(match[1]);
-  const week = Number(match[2]);
-  const weekday = Number(match[3]);
-  const seconds = time === undefined ? 7_200 : clockSeconds(time);
-  if (
-    month < 1 ||
-    month > 12 ||
-    week < 1 ||
-    week > 5 ||
-    weekday > 6 ||
-    seconds === null
-  )
+  const [monthText, weekText, weekdayText] = rule.slice(1).split('.');
+  const month = Number(monthText);
+  const week = Number(weekText);
+  const weekday = Number(weekdayText);
+  if (month < 1 || month > 12 || week < 1 || week > 5 || weekday > 6)
     return fail(footer);
-  return { month, week, weekday, time: seconds };
+  return {
+    month,
+    week,
+    weekday,
+    time: time === undefined ? 7_200 : clockSeconds(time),
+  };
 };
 
 /** Parses a footer; throws for any form the pinned release does not emit. */
 export const parseFooter = (footer: string): ParsedFooter => {
   const match = FOOTER_PATTERN.exec(footer);
   if (match === null) return fail(footer);
-  const standardWest = clockSeconds(match[1] ?? '');
-  if (standardWest === null) return fail(footer);
   // `0 - x` rather than `-x` so a zero offset is +0, never -0.
-  const standardOffset = 0 - standardWest;
+  const standardOffset = 0 - clockSeconds(match[1]!);
   if (match[3] === undefined) return { standardOffset, daylight: null };
   const daylightWest = match[2] === undefined ? null : clockSeconds(match[2]);
   const offset =
     daylightWest === null ? standardOffset + 3_600 : 0 - daylightWest;
   return {
     standardOffset,
+    // The daylight clause captures both of its rules or neither.
     daylight: {
       offset,
       start: parseRule(match[3], match[4], footer),
-      end: parseRule(match[5], match[6], footer),
+      end: parseRule(match[5]!, match[6], footer),
     },
   };
 };
@@ -120,33 +118,31 @@ const yearOf = (utcSeconds: number, offset: number): number =>
 
 /** The UTC instants of both DST changes in `year`: start (to DST) and end (back to standard). */
 const yearChanges = (
-  footer: ParsedFooter,
+  standardOffset: number,
+  daylight: DaylightRule,
   year: number,
-): { start: number; end: number } | null => {
-  if (footer.daylight === null) return null;
-  return {
-    start:
-      ruleLocalSeconds(year, footer.daylight.start) - footer.standardOffset,
-    end: ruleLocalSeconds(year, footer.daylight.end) - footer.daylight.offset,
-  };
-};
+): { start: number; end: number } => ({
+  start: ruleLocalSeconds(year, daylight.start) - standardOffset,
+  end: ruleLocalSeconds(year, daylight.end) - daylight.offset,
+});
 
 /** The UT offset in effect at a UTC instant according to the footer. */
 export const footerOffsetAt = (
   footer: ParsedFooter,
   utcSeconds: number,
 ): number => {
+  const { daylight, standardOffset } = footer;
+  if (daylight === null) return standardOffset;
   const changes = yearChanges(
-    footer,
-    yearOf(utcSeconds, footer.standardOffset),
+    standardOffset,
+    daylight,
+    yearOf(utcSeconds, standardOffset),
   );
-  if (changes === null || footer.daylight === null)
-    return footer.standardOffset;
   const inDaylight =
     changes.start < changes.end
       ? utcSeconds >= changes.start && utcSeconds < changes.end
       : utcSeconds >= changes.start || utcSeconds < changes.end;
-  return inDaylight ? footer.daylight.offset : footer.standardOffset;
+  return inDaylight ? daylight.offset : standardOffset;
 };
 
 /** The footer's offset changes at instants in the window `(low, high]`, in time order. */
@@ -163,8 +159,7 @@ export const footerTransitions = (
     year <= yearOf(high, footer.standardOffset) + 1;
     year += 1
   ) {
-    const changes = yearChanges(footer, year);
-    if (changes === null) continue;
+    const changes = yearChanges(footer.standardOffset, daylight, year);
     for (const candidate of [
       {
         at: changes.start,

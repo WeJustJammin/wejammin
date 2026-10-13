@@ -3,6 +3,8 @@ import { act } from 'react';
 import { createRoot, type Root } from 'react-dom/client';
 import { afterEach } from 'vitest';
 
+import { settleCmsValidatorsForTest } from '../../lib/cms-contract-validators';
+
 /**
  * Minimal DOM driver for React components under jsdom. It exercises real
  * native controls (value setter + bubbling input/change events, real clicks),
@@ -63,8 +65,14 @@ export const unmountEveryMountedRoot = (): void => {
 
 afterEach(unmountEveryMountedRoot);
 
+/**
+ * Settle pending work: microtasks, plus an in-flight lazy validator import (the
+ * islands load zod on first need, AC-106), then the microtasks its continuation queues.
+ */
 export const flush = async (): Promise<void> => {
   await act(async () => {
+    for (let index = 0; index < 20; index += 1) await Promise.resolve();
+    await settleCmsValidatorsForTest();
     for (let index = 0; index < 20; index += 1) await Promise.resolve();
   });
 };

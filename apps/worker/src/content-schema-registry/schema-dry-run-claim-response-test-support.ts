@@ -196,9 +196,11 @@ export const snapshot = (value: unknown): unknown => {
   return {
     prototype: Object.getPrototypeOf(value),
     properties: Reflect.ownKeys(value).map((key) => {
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if (descriptor === undefined)
-        throw new Error('Missing fixture descriptor');
+      // Every key of `Reflect.ownKeys` has an own descriptor.
+      const descriptor = Object.getOwnPropertyDescriptor(
+        value,
+        key,
+      ) as PropertyDescriptor;
       return [key, { ...descriptor, value: snapshot(descriptor.value) }];
     }),
   };

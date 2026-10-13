@@ -29,6 +29,8 @@ const defaultLoader: Loader = () =>
 let loader: Loader = defaultLoader;
 let loaded: CmsValidators | null = null;
 let pending: Promise<CmsValidators> | null = null;
+/** Bumped by every test reset, so a load started before it is discarded. */
+let generation = 0;
 
 /** The validators when an earlier need already loaded them, else `null`. */
 export const loadedCmsValidators = (): CmsValidators | null => loaded;
@@ -36,13 +38,15 @@ export const loadedCmsValidators = (): CmsValidators | null => loaded;
 /** Load the validators once; a failed load is retried by the next caller. */
 export const loadCmsValidators = (): Promise<CmsValidators> => {
   if (loaded !== null) return Promise.resolve(loaded);
+  const started = generation;
   pending ??= loader().then(
     (module) => {
-      loaded = module;
+      // A load that a test reset overtook must not install its module.
+      if (started === generation) loaded = module;
       return module;
     },
     (error: unknown) => {
-      pending = null;
+      if (started === generation) pending = null;
       throw error;
     },
   );
@@ -76,10 +80,19 @@ export const withCmsValidators = (
   loadCmsValidators().then(use, unavailable);
 };
 
+/**
+ * Tests only: resolve once an in-flight load has settled (loaded or failed), so a
+ * DOM test's flush covers the lazy import a handler is waiting on. Starts no load.
+ */
+export const settleCmsValidatorsForTest = async (): Promise<void> => {
+  await pending?.catch(() => undefined);
+};
+
 /** Tests only: replace the loader and forget what was loaded. */
 export const resetCmsValidatorsForTest = (
   replacement: Loader = defaultLoader,
 ): void => {
+  generation += 1;
   loader = replacement;
   loaded = null;
   pending = null;

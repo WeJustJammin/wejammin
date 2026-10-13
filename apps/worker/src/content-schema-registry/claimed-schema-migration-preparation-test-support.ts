@@ -115,9 +115,7 @@ export const processed = (f: Fixture, result = {}) => ({
   },
 });
 export const deferred = <T>() => {
-  let complete: (value: T) => void = () => {
-    throw new Error('Deferred not initialized');
-  };
+  let complete!: (value: T) => void;
   const promise = new Promise<T>((resolve) => {
     complete = resolve;
   });
@@ -140,8 +138,11 @@ const capture = (roots: readonly unknown[]): readonly ObjectSnapshot[] => {
     const prototype: unknown = Object.getPrototypeOf(value);
     // Ordered pairs retain constructor/symbols without descriptor-map type traps.
     const descriptors = Reflect.ownKeys(value).map((key) => {
-      const descriptor = Object.getOwnPropertyDescriptor(value, key);
-      if (descriptor === undefined) throw new Error('Missing own descriptor');
+      // Every key of `Reflect.ownKeys` has an own descriptor.
+      const descriptor = Object.getOwnPropertyDescriptor(
+        value,
+        key,
+      ) as PropertyDescriptor;
       return [key, { ...descriptor }] as const;
     });
     entries.push({
@@ -166,8 +167,8 @@ export const preserve = (f: Fixture, reply: unknown = f.response) => {
     const after = capture(roots());
     expect(after).toHaveLength(before.length);
     after.forEach((entry, index) => {
-      const previous = before[index];
-      if (previous === undefined) throw new Error('Missing object snapshot');
+      // `toHaveLength` above proves `before` has an entry for every `after` index.
+      const previous = before[index]!;
       expect(entry.value).toBe(previous.value);
       expect(entry.prototype).toBe(previous.prototype);
       expect(entry.descriptors).toStrictEqual(previous.descriptors);
