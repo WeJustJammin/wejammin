@@ -1,0 +1,5 @@
+FAIL apps/web/src/components/cms-editorial/cms-editorial-entry-editor-controller.test.ts
+FAIL apps/web/src/components/cms-editorial/cms-editorial-entry-editor-outcomes.test.ts
+FAIL apps/web/src/components/cms-editorial/cms-editorial-entry-editor-reconcile.test.ts
+FAIL apps/web/src/components/cms-editorial/ev-ea-autosave-rollback.test.ts
+FAIL apps/web/src/components/content-schema-registry/content-schema-registry-island-refetch-feedback.dom.test.tsx
