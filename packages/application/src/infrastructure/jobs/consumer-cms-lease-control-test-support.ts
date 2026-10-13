@@ -292,8 +292,8 @@ export const fixture = (options: Options = {}) => {
     leaseToken: TOKEN,
   };
   const assertEffect = (controlled = true) => {
-    const args = execute.mock.calls[0];
-    if (args === undefined) throw new Error('Expected effect invocation');
+    expect(execute.mock.calls, 'Expected effect invocation').toHaveLength(1);
+    const args = execute.mock.calls[0]!;
     same(execute.mock.calls, [
       controlled ? [effectArgs, args[1]] : [effectArgs],
     ]);

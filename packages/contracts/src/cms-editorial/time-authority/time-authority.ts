@@ -57,12 +57,11 @@ export const createTimeAuthority = async (
   const compiled = new Map<number, CompiledZone>();
   const zoneOf = (name: string): CompiledZone | undefined => {
     if (!Object.hasOwn(snapshot.names, name)) return undefined;
-    const index = snapshot.names[name];
-    const raw = index === undefined ? undefined : snapshot.zones[index];
-    if (index === undefined || raw === undefined) return undefined;
+    // `TzdbSnapshotSchema` proved that every name maps to an index inside the zone table.
+    const index = snapshot.names[name]!;
     let zone = compiled.get(index);
     if (zone === undefined) {
-      zone = compileZone(raw);
+      zone = compileZone(snapshot.zones[index]!);
       compiled.set(index, zone);
     }
     return zone;

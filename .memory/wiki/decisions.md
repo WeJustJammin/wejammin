@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 183
-- **Unique decision titles**: 183
+- **Total decisions**: 186
+- **Unique decision titles**: 186
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2618,6 +2618,48 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: BE03c CMS-03C-02 contract (items bound), composition-row rule, path suffix of expanded roots, render plan and diff; Slice 12 rows AC216-AC219 and AC247.
 - **Reversibility**: Medium
 
+## DEC-182: Slice 12 wording batch ratified, including G5 for Slice 10 AC030 (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T17:39:20.720Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: eleven Slice 12 criterion texts (AC010, AC022, AC025, AC027, AC030, AC034, AC036, AC037, the AC004-AC039 source citations, the fuller AC026) disagreed with locked BE03c text or with DEC-175/DEC-181, and BE03b:251/:1543 plus Slice 10 AC030 still said `/blocks/...` is refused "until a composition write path exists" although Slice 12 ships that path.
+- **Options considered**: (A) approve all eleven items; (B) all except the optional W-10 fuller AC026; (C) review one by one.
+- **Decision**: owner chose (A) on 2026-10-12. Apply every item of docs/handoffs/2026-10-12-claude-s12/wording-batch-draft.md: W-01..W-10 to the Slice 12 plan and tracker, and G5 to Slice 10 AC030 (plan, tracker, evidence ledger text) and BE03b:251/:1543: `/blocks/...` stays refused because composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate version and are reported by comparison.
+- **Downstream**: Slice 12 rows and evidence; Slice 10 AC030 ledger text and receipts; BE03b.
+- **Reversibility**: High
+
+## DEC-183: Claimed CMS dry-run preparation Job disposition; a sealed failing scan polls failed MIGRATION_BLOCKED (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-13T02:17:04.058Z
+- **Agents**: claude
+- **Sources**: implement-slice (boundary #128 design)
+- **Index**: [[index]]
+
+- **Problem**: boundary #128 (finding B-08): the production callback of the claimed CMS schema dry-run preparation entry is absent, so every production dry-run Job that reaches the effect ends stuck `running` with its message acknowledged; no locked text maps the entry result to a BE00 Job state.
+- **Options considered**: (A) a sealed failing scan is Job `failed` with `MIGRATION_BLOCKED` (BE00:569 literal); (B) Job `succeeded` with the report as resultRef, keeping `failed` for infrastructure faults.
+- **Decision**: owner chose (A) on 2026-10-12. The total map of docs/handoffs/2026-10-12-claude-s12/b08-production-trigger-design.md section 3 (option 1A) applies: completed -> succeeded with resultRef {type: cms_schema_dry_run_report, id: reportId}; progress, retry and failed_retryable -> queued; blocked -> failed MIGRATION_BLOCKED; failed_terminal and invalid claim/resolution -> failed; unreachable outcomes fail closed with PREPARATION_OUTCOME_UNMAPPED; a thrown callback -> queued DEPENDENCY_UNAVAILABLE; never pending_manual_review or cancelled. The report stays the only pass/fail authority (FE03:952).
+- **Downstream**: production-job-effect-dispatcher and its claimed-preparation callback, BE03a/BE00 spec text, boundary #128 closure; the delivery-budget capacity policy (gap 3) is a separate owner decision.
+- **Reversibility**: Low (Job terminal states are irreversible once written)
+
+## DEC-184: Claimed dry-run preparation delivery budget; fail late now, measure, then cap (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-13T02:18:05.149Z
+- **Agents**: claude
+- **Sources**: implement-slice (boundary #128 design)
+- **Index**: [[index]]
+
+- **Problem**: under BE00 (4 deliveries) and the 128-row batch with maxBatchesPerInvocation m (default 1, 1..32; CPU per batch against limits.cpu_ms 50 unmeasured) a preparation completes only when the content type has at most 256 x m source rows; no spec states a ceiling or what happens above it.
+- **Options considered**: (A) ship the BE00 budget now, an oversized type fails late with MIGRATION_RETRIES_EXHAUSTED and a rolled-back recoverable plan, then measure batch CPU, raise m where safe and propose an early cap; (B) also add an early 422 cap at CMS-03A-10 now; (C) re-enqueue continuations as fresh messages (no ceiling).
+- **Decision**: owner chose (A) on 2026-10-12. Implement option 3A of docs/handoffs/2026-10-12-claude-s12/b08-production-trigger-design.md section 5: deliveryAttempt = max(1, message.attempts); on delivery 4 a would-be queued result rolls the plan back terminally and fails the Job MIGRATION_RETRIES_EXHAUSTED; BE00 15/60/300 s backoff on retry-type outcomes (not on progress); per-invocation budget min(240000, lease remaining - 60000) ms; state the 256 x m ceiling in BE03a. Follow-up owed: measure one batch CPU, then bring the owner an early-cap decision (option B) with a measured number.
+- **Downstream**: production async entrypoint and claimed-preparation callback, BE03a spec text, runbook, boundary #128 closure.
+- **Reversibility**: Medium
+
 ## DEC-162: Narrow first-empty schema baseline representation
 
 - **Occurrences**: 1
@@ -5070,6 +5112,45 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Options considered**: (A) expand a top-level nested reference into that pattern's own top-level blocks, recursively, so every row carries a block; (B) refuse 422 when a pattern version puts a nested pattern at the top level; (C) relax block_key/block_version to nullable for a reference row.
 - **Decision**: owner chose (A) on 2026-10-12. A placement writes one row per block root after recursively expanding top-level nested pattern references; every row stays pinned to the placed (patternId, patternVersion), whose pinned tree already fixes each nested version. The CMS-03C-02 items list may therefore exceed 32 rows; the existing bound of at most 512 nodes after expansion bounds it. Nested references below a block root stay inside that root's pinned tree.
 - **Downstream**: BE03c CMS-03C-02 contract (items bound), composition-row rule, path suffix of expanded roots, render plan and diff; Slice 12 rows AC216-AC219 and AC247.
+- **Reversibility**: Medium
+
+### DEC-182: Slice 12 wording batch ratified, including G5 for Slice 10 AC030 (2026-10-12)
+
+- **Timestamp**: 2026-10-12T17:39:20.720Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, owner-decision, wording
+
+- **Problem**: eleven Slice 12 criterion texts (AC010, AC022, AC025, AC027, AC030, AC034, AC036, AC037, the AC004-AC039 source citations, the fuller AC026) disagreed with locked BE03c text or with DEC-175/DEC-181, and BE03b:251/:1543 plus Slice 10 AC030 still said `/blocks/...` is refused "until a composition write path exists" although Slice 12 ships that path.
+- **Options considered**: (A) approve all eleven items; (B) all except the optional W-10 fuller AC026; (C) review one by one.
+- **Decision**: owner chose (A) on 2026-10-12. Apply every item of docs/handoffs/2026-10-12-claude-s12/wording-batch-draft.md: W-01..W-10 to the Slice 12 plan and tracker, and G5 to Slice 10 AC030 (plan, tracker, evidence ledger text) and BE03b:251/:1543: `/blocks/...` stays refused because composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate version and are reported by comparison.
+- **Downstream**: Slice 12 rows and evidence; Slice 10 AC030 ledger text and receipts; BE03b.
+- **Reversibility**: High
+
+### DEC-183: Claimed CMS dry-run preparation Job disposition; a sealed failing scan polls failed MIGRATION_BLOCKED (2026-10-12)
+
+- **Timestamp**: 2026-10-13T02:17:04.058Z
+- **Agent**: claude
+- **Source**: implement-slice (boundary #128 design)
+- **Tags**: decision, owner-decision, boundary-128, jobs
+
+- **Problem**: boundary #128 (finding B-08): the production callback of the claimed CMS schema dry-run preparation entry is absent, so every production dry-run Job that reaches the effect ends stuck `running` with its message acknowledged; no locked text maps the entry result to a BE00 Job state.
+- **Options considered**: (A) a sealed failing scan is Job `failed` with `MIGRATION_BLOCKED` (BE00:569 literal); (B) Job `succeeded` with the report as resultRef, keeping `failed` for infrastructure faults.
+- **Decision**: owner chose (A) on 2026-10-12. The total map of docs/handoffs/2026-10-12-claude-s12/b08-production-trigger-design.md section 3 (option 1A) applies: completed -> succeeded with resultRef {type: cms_schema_dry_run_report, id: reportId}; progress, retry and failed_retryable -> queued; blocked -> failed MIGRATION_BLOCKED; failed_terminal and invalid claim/resolution -> failed; unreachable outcomes fail closed with PREPARATION_OUTCOME_UNMAPPED; a thrown callback -> queued DEPENDENCY_UNAVAILABLE; never pending_manual_review or cancelled. The report stays the only pass/fail authority (FE03:952).
+- **Downstream**: production-job-effect-dispatcher and its claimed-preparation callback, BE03a/BE00 spec text, boundary #128 closure; the delivery-budget capacity policy (gap 3) is a separate owner decision.
+- **Reversibility**: Low (Job terminal states are irreversible once written)
+
+### DEC-184: Claimed dry-run preparation delivery budget; fail late now, measure, then cap (2026-10-12)
+
+- **Timestamp**: 2026-10-13T02:18:05.149Z
+- **Agent**: claude
+- **Source**: implement-slice (boundary #128 design)
+- **Tags**: decision, owner-decision, boundary-128, jobs
+
+- **Problem**: under BE00 (4 deliveries) and the 128-row batch with maxBatchesPerInvocation m (default 1, 1..32; CPU per batch against limits.cpu_ms 50 unmeasured) a preparation completes only when the content type has at most 256 x m source rows; no spec states a ceiling or what happens above it.
+- **Options considered**: (A) ship the BE00 budget now, an oversized type fails late with MIGRATION_RETRIES_EXHAUSTED and a rolled-back recoverable plan, then measure batch CPU, raise m where safe and propose an early cap; (B) also add an early 422 cap at CMS-03A-10 now; (C) re-enqueue continuations as fresh messages (no ceiling).
+- **Decision**: owner chose (A) on 2026-10-12. Implement option 3A of docs/handoffs/2026-10-12-claude-s12/b08-production-trigger-design.md section 5: deliveryAttempt = max(1, message.attempts); on delivery 4 a would-be queued result rolls the plan back terminally and fails the Job MIGRATION_RETRIES_EXHAUSTED; BE00 15/60/300 s backoff on retry-type outcomes (not on progress); per-invocation budget min(240000, lease remaining - 60000) ms; state the 256 x m ceiling in BE03a. Follow-up owed: measure one batch CPU, then bring the owner an early-cap decision (option B) with a measured number.
+- **Downstream**: production async entrypoint and claimed-preparation callback, BE03a spec text, runbook, boundary #128 closure.
 - **Reversibility**: Medium
 
 ### DEC-162: Narrow first-empty schema baseline representation

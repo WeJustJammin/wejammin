@@ -159,10 +159,6 @@ export const productionPreparationFixture = (start: Start = 'draft') => {
         return Response.json(completed);
       case RPC.activate:
         return Response.json({ activated: true });
-      case RPC.claimEvent:
-        return Response.json({ status: 'new' });
-      case RPC.acknowledgeEvent:
-        return Response.json({ accepted: true });
       default:
         throw new Error(`Unexpected protected migration RPC: ${rpc}`);
     }

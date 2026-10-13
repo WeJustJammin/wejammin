@@ -125,3 +125,17 @@ memory DEC-164..169/PAT-025..027 (2c55d937); composition mock + node bound + rac
   S11 (121) criteria, gates, Depth Ratio, phase/index counts, session log, progress:check -> commit -> draft PR.
 - Owner item to report: AC-045 boundary clause (rule that tracked boundaries satisfy it, or keep partial until #127
   lands in Slice 13 and #128 gets its Job-state result-map architecture decision).
+
+## Update 2026-10-12 ~18:00Z — receipts green, validate run 1 failed on coverage
+
+- Canonical `pnpm db:verify` exit 0 at 6aa968fb (10:43Z). Receipt passes 1-3 (`lanes/refresh-receipts.sh`,
+  `refresh-pass2.sh`, `refresh-pass3.sh`): S09 marker, S10 and S11 identity receipts regenerated; all three guards,
+  the process record and the closeout guard pass (46/46). Fixed on the way: describe.each quoted titles in the S11
+  ledger; lazy-validator test flake (flush/settle helpers, loader reset leak); S09 receiving-row rule.
+- Trackers (uncommitted): S11 121/122 ticked, six gates, Depth Ratio naming AC-045, status in-progress; S10 102/105;
+  phase/index/spec-pipeline 2,671 active-checked. The record's canonical-validate line is a PREDICTION until a canonical
+  run passes: run 1 (17:38Z) failed coverage (99.86-99.92%), so the line is NOT yet true.
+- Running: coverage lane (18 files). Then rerun `lanes/gate-validate.sh` (it re-stamps the line); update the vitest
+  count in the line if the lane adds tests; commit; push; draft PR.
+- Slice 12 branch `claude/phase2-slice12`: cascade (DEC-178..180), DEC-181 nested-root expansion, DEC-182 wording batch
+  (owner approved all); wording lane and B-08 (#128) design research running there.

@@ -1,0 +1,33 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx (4 tests | 1 failed) 167ms
+     × [P2-S11-AC-072] returns focus to the assignments heading after an assign commits and the review is refetched 80ms
+Not implemented: navigation to another Document
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx > CmsEditorialReviewDetailIsland focus > [P2-S11-AC-072] returns focus to the assignments heading after an assign commits and the review is refetched
+AssertionError: expected 'Back to reviewsPress releaseRevision …' to contain 'Reviewer assigned'
+
+Expected: "Reviewer assigned"
+Received: "Back to reviewsPress releaseRevision 4 (en-US) · State: Open · Risk class: ordinary0 of 1 decisions recorded. Qualifying approvals: 0.Submitted 2026-10-08T12:00:00Z.Frozen candidateFrozen hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaDependency hash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbContent type version 123e4567-e89b-42d3-a456-426614174001. Settings version 1. Compiler 1.2.3. 1 block, 1 pattern, 1 vocabulary.DecisionsNo decisions recorded yet.AssignmentsNo active assignmentsActionsYou have no active assignment to decide this review, or you have already decided it.Assign a reviewerReviewerChoose a reviewer123e4567-e89b-42d3-a456-42661417400c (access ends 2026-11-11T17:07:37.961Z)Assignment endsUp to seven days from now, and not after the reviewer’s access ends.Reason (optional)0 of 256 charactersAssign reviewer "
+
+ ❯ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx:118:35
+    116|     await click(assign);
+    117|     await settle();
+    118|     expect(container.textContent).toContain('Reviewer assigned');
+       |                                   ^
+    119|     expect(document.activeElement).toBe(assign);
+    120|     await release(pending, ok(owner([active])));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed | 423 passed (424)
+      Tests  1 failed | 4609 passed (4610)
+   Start at  13:05:51
+   Duration  209.00s (transform 11.10s, setup 0ms, import 173.15s, tests 88.18s, environment 109.72s)
+

@@ -145,11 +145,8 @@ export const CMS_SCHEDULE_MAX_RETRY_ATTEMPTS = 3 as const;
 export const cmsScheduleRetryDelaySeconds = (
   failureNumber: number,
 ): number | null =>
-  Number.isInteger(failureNumber) &&
-  failureNumber >= 1 &&
-  failureNumber <= CMS_SCHEDULE_MAX_RETRY_ATTEMPTS
-    ? (CMS_SCHEDULE_RETRY_DELAYS_SECONDS[failureNumber - 1] ?? null)
-    : null;
+  // Only the integers 1..3 index the ladder; any other number reads `undefined`.
+  CMS_SCHEDULE_RETRY_DELAYS_SECONDS[failureNumber - 1] ?? null;
 
 /** CMS-03B-20 claim argument: `batch` integer 1-100. */
 export const ClaimDueSchedulesRequestSchema = z

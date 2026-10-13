@@ -4385,7 +4385,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/web/src/server/cms-workflow-platform-reads.test.ts',
             title:
-              'CMS-03B-15 read proxy refuses a mutation header, a media type or a body on a safe read',
+              "'CMS-03B-15' read proxy refuses a mutation header, a media type or a body on a safe read",
           },
         ],
       },
@@ -4408,7 +4408,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/web/src/server/cms-workflow-platform-reads.test.ts',
             title:
-              'CMS-03B-15 read proxy refuses a mutation header, a media type or a body on a safe read',
+              "'CMS-03B-15' read proxy refuses a mutation header, a media type or a body on a safe read",
           },
         ],
       },
@@ -6680,7 +6680,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/web/src/server/cms-workflow-platform-reads.test.ts',
             title:
-              'CMS-03B-16 read proxy refuses a mutation header, a media type or a body on a safe read',
+              "'CMS-03B-16' read proxy refuses a mutation header, a media type or a body on a safe read",
           },
         ],
       },
@@ -6912,7 +6912,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/web/src/server/cms-workflow-platform-reads.test.ts',
             title:
-              'CMS-03B-16 read proxy refuses a mutation header, a media type or a body on a safe read',
+              "'CMS-03B-16' read proxy refuses a mutation header, a media type or a body on a safe read",
           },
         ],
       },
@@ -7775,7 +7775,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/web/src/server/cms-workflow-platform-reads.test.ts',
             title:
-              'CMS-03B-17 read proxy refuses a mutation header, a media type or a body on a safe read',
+              "'CMS-03B-17' read proxy refuses a mutation header, a media type or a body on a safe read",
           },
           {
             tool: 'vitest',
@@ -8540,7 +8540,7 @@ export const S11_EVIDENCE_LEDGER_035_066: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/web/src/server/cms-workflow-platform-reads.test.ts',
             title:
-              'CMS-03B-17 read proxy relays a strict, bound, validator-carrying 200 as no-store',
+              "'CMS-03B-17' read proxy relays a strict, bound, validator-carrying 200 as no-store",
           },
         ],
       },

@@ -1660,6 +1660,10 @@
 
 ## Structured Memory
 
+- pattern: PAT-029: DOM test flush helpers must await lazy imports; probe with a deliberately slow loader (2026-10-12) — 2026-10-13T03:00:38.061Z
+- decision: DEC-184: Claimed dry-run preparation delivery budget; fail late now, measure, then cap (2026-10-12) — 2026-10-13T02:18:05.149Z
+- decision: DEC-183: Claimed CMS dry-run preparation Job disposition; a sealed failing scan polls failed MIGRATION_BLOCKED (2026-10-12) — 2026-10-13T02:17:04.058Z
+- decision: DEC-182: Slice 12 wording batch ratified, including G5 for Slice 10 AC030 (2026-10-12) — 2026-10-12T17:39:20.720Z
 - decision: DEC-181: A top-level nested pattern reference is expanded at placement (2026-10-12) — 2026-10-12T16:51:24.933Z
 - decision: DEC-179: Slice 12 mechanical reconciliations R1-R4 of BE03c and FE03 (2026-10-12) — 2026-10-12T10:30:14.997Z
 - decision: DEC-180: Slice 12 implementation decisions G2-G4, G6, G8, G9, G11 and R5 readings (owner may override) (2026-10-12) — 2026-10-12T10:30:14.997Z

@@ -1,6 +1,7 @@
 import { act } from 'react';
 import { expect, vi } from 'vitest';
 
+import { settleCmsValidatorsForTest } from '../../lib/cms-contract-validators';
 import { flush } from '../cms-editorial-fields/cms-editor-dom.test-support';
 
 /**
@@ -41,9 +42,14 @@ export const lostFetcher = () =>
 export const answeringFetcher = (response: () => Response) =>
   vi.fn<Fetcher>(async () => response());
 
-/** Lets every promise chain and React update that is already queued finish. */
+/**
+ * Lets every promise chain and React update that is already queued finish,
+ * including an in-flight lazy validator import (AC-106) and what it queues.
+ */
 export const settle = async (): Promise<void> => {
   await act(async () => {
+    for (let tick = 0; tick < 40; tick += 1) await Promise.resolve();
+    await settleCmsValidatorsForTest();
     for (let tick = 0; tick < 40; tick += 1) await Promise.resolve();
   });
 };
