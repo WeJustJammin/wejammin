@@ -18,6 +18,8 @@ test-first fixes. The narrative is the "Canonical validation" section of
   `CmsTemplateDesigner.validators-unavailable.test.tsx`.
 - `loader-leak-red.out`, `loader-leak-green.out`: the loader test proving that a load started before a test reset
   no longer installs its module after the reset.
+- `isolation-sweep-red.txt`, `editor-outcomes-isolated-red.out`: after CI failed `cms-editorial-entry-editor-outcomes.test.ts` on PR 129, every CMS web test file was run alone (six at a time): four editor files failed deterministically because the save flow imports its transport lazily and the fake clock settles a bounded number of turns, and one registry file failed under the parallel load for the same reason with its lazily imported contract validators.
+- `web-after-preload.out`: all web tests after the editor harness and the registry refetch support preload those modules once (424 files, 4,611 tests passed); the 16 files that use the two supports also passed two rounds six at a time.
 
 ## Ownership
 

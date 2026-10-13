@@ -5,7 +5,13 @@ import { createRoot, type Root } from 'react-dom/client';
 import type { ContentSchemaRegistryWorkbenchIslandProps } from './ContentSchemaRegistryWorkbenchIsland';
 import type { ContentSchemaRegistryWorkbenchProps } from './content-schema-registry-types';
 import { approvedReviewPreparation } from './content-schema-registry-activation-preparation.test-support';
+import { loadContractValidators } from './content-schema-registry-contract-validators';
 import { approvedProtectedReview } from './content-schema-review-dec108.test-support';
+
+// A canonical refetch validates the read with the lazily imported contract validators.
+// `settle` gives one macrotask turn, which a cold import outlasts under load or when a file
+// runs alone; load them once before any test drives a refetch (production never preloads).
+await loadContractValidators();
 
 /** Shared fixtures/helpers for the island canonical-refetch test suites. */
 
