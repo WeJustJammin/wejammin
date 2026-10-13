@@ -1660,6 +1660,7 @@
 
 ## Structured Memory
 
+- decision: DEC-187: CompositionInstanceResource exposes the read-only position (2026-10-13) — 2026-10-13T03:52:27.839Z
 - decision: DEC-185: Composition rows carry an authored position (2026-10-13) — 2026-10-13T03:36:55.688Z
 - decision: DEC-186: Slice 12 implementation decisions for placement paths, digest status and spec drift (owner may override) (2026-10-13) — 2026-10-13T03:36:55.688Z
 - pattern: PAT-029: DOM test flush helpers must await lazy imports; probe with a deliberately slow loader (2026-10-12) — 2026-10-13T03:00:38.061Z

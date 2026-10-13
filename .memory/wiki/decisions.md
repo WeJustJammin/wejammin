@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 188
-- **Unique decision titles**: 188
+- **Total decisions**: 189
+- **Unique decision titles**: 189
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2688,6 +2688,20 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: BE03c/FE03 text, CMS-03C-01..05 code and tests, Slice 12 contracts and SQL.
 - **Reversibility**: High
 
+## DEC-187: CompositionInstanceResource exposes the read-only position (2026-10-13)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-13T03:52:27.839Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 spec completion)
+- **Index**: [[index]]
+
+- **Problem**: DEC-185 adds position to cms_composition_instances, but the resource schema did not say whether clients see it; the placement list and the composition editor need authored order.
+- **Options considered**: (A) expose position read-only on CompositionInstanceResource; (B) keep it internal and rely on list order only.
+- **Decision**: (A), orchestrator implementation decision, owner may override: `position` integer 0..2147483647, immutable per path; lists stay in position order. Applied to BE03c CompositionInstanceResource.
+- **Downstream**: packages/contracts cms-composition resources, CMS-03C-02/-14/-15 responses, FE composition list.
+- **Reversibility**: High
+
 ## DEC-162: Narrow first-empty schema baseline representation
 
 - **Occurrences**: 1
@@ -5205,6 +5219,19 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Options considered**: per item, the researched recommendation versus leaving it to the implementing lane.
 - **Decision**: (1) a placement row path is the canonical slotPath joined with "/" and the root node key, and for an expanded nested root the key chain of the reference and its roots; a root slotPath contributes no extra separator; row paths stay within 248 octets or the placement is 422 at /slotPath. (2) blockRegistryDigest: malformed shape is 422 at its pointer; a differing digest is 409 with the new closed token block_registry_digest_mismatch (the shipped CMS-03C-01 SQL already behaves so) for CMS-03C-01, -02 and -12. (3) overrides keys address nodes by the same key chain inside expanded roots. (4) the successor guard for a term merge accepts an active or deprecated survivor as P2-S12-AC-225 states. (5) a malformed template key on the template pages answers 400 as P2-S12-AC-265 states. (6) template keys are unique per owner (E14) and a second owner's key never discloses another owner's row. (7) CMS-03C routes map 502, 503 and 504 to DEPENDENCY_UNAVAILABLE as the BE03c catalog states (the DEC-172 pattern). Remaining DEC-181 consequences (placement versus the CMS-03C-15 per-request bound, FE list size) are settled by the spec-completion lane and reported.
 - **Downstream**: BE03c/FE03 text, CMS-03C-01..05 code and tests, Slice 12 contracts and SQL.
+- **Reversibility**: High
+
+### DEC-187: CompositionInstanceResource exposes the read-only position (2026-10-13)
+
+- **Timestamp**: 2026-10-13T03:52:27.839Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 spec completion)
+- **Tags**: decision, slice-12, implementation-decision
+
+- **Problem**: DEC-185 adds position to cms_composition_instances, but the resource schema did not say whether clients see it; the placement list and the composition editor need authored order.
+- **Options considered**: (A) expose position read-only on CompositionInstanceResource; (B) keep it internal and rely on list order only.
+- **Decision**: (A), orchestrator implementation decision, owner may override: `position` integer 0..2147483647, immutable per path; lists stay in position order. Applied to BE03c CompositionInstanceResource.
+- **Downstream**: packages/contracts cms-composition resources, CMS-03C-02/-14/-15 responses, FE composition list.
 - **Reversibility**: High
 
 ### DEC-162: Narrow first-empty schema baseline representation

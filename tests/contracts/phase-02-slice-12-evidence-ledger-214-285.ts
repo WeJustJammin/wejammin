@@ -57,10 +57,10 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-218',
-    text: "Pattern insertion rows (DEC-175, DEC-181): the request `slotPath` must exist in the revision's template (or be a root path when the entry has no template); a top-level nested pattern reference (`kind: pattern`) in the pinned forest is expanded at placement into that pattern's own block roots, recursively, so every row carries a block; one placement writes one append-only row per block root of the pinned pattern version's forest after that expansion, one or more rows (at most 512, the node cap after expansion) in one transaction and all-or-nothing, and answers 201 `PatternPlacementResource`, an `items` list of one or more `CompositionInstanceResource`; each row stays pinned to the placed `(patternId, patternVersion)`, carries its block root's block identity in `block_key` and `block_version` with that root's `key` as the suffix of its `path`, keeps the nodes below a block root inside the pinned tree and stores the server-recomputed digest, the link mode and the `overrides` that lie under its root; `overrides` keys are normalized node paths under the inserted root (`/{nodeKey}(/{nodeKey})*`, at most 512 characters) that each name a node of the pinned tree, any other key being 422 `COMPOSITION_VALIDATION_FAILED` at `/overrides`; `(revision_id, path)` is unique per version, and an override collision produces `pending_diff` and never overwrites.",
+    text: "Pattern insertion rows (DEC-175, DEC-181, DEC-185): the request `slotPath` must exist in the revision's template (or be a root path when the entry has no template); a top-level nested pattern reference (`kind: pattern`) in the pinned forest is expanded at placement into that pattern's own block roots, recursively, so every row carries a block; one placement writes one append-only row per block root of the pinned pattern version's forest after that expansion, one or more rows (at most 512, the node cap after expansion) in one transaction and all-or-nothing, at consecutive `position` values in forest order starting one above the greatest `position` of the revision's slot (0 for an empty slot) under the revision/slot lock (DEC-185), and answers 201 `PatternPlacementResource`, an `items` list of one or more `CompositionInstanceResource` in position order; each row stays pinned to the placed `(patternId, patternVersion)`, carries its block root's block identity in `block_key` and `block_version` with that root's `key` as the suffix of its `path`, keeps the nodes below a block root inside the pinned tree and stores the server-recomputed digest, the link mode and the `overrides` that lie under its root; `overrides` keys are normalized node paths under the inserted root (`/{nodeKey}(/{nodeKey})*`, at most 512 characters) that each name a node of the pinned tree, any other key being 422 `COMPOSITION_VALIDATION_FAILED` at `/overrides`; `(revision_id, path)` is unique per version, and an override collision produces `pending_diff` and never overwrites.",
     clauses: [
       {
-        text: "Pattern insertion rows (DEC-175, DEC-181): the request `slotPath` must exist in the revision's template (or be a root path when the entry has no template);",
+        text: "Pattern insertion rows (DEC-175, DEC-181, DEC-185): the request `slotPath` must exist in the revision's template (or be a root path when the entry has no template);",
         citations: [],
       },
       {
@@ -68,7 +68,7 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
         citations: [],
       },
       {
-        text: "one placement writes one append-only row per block root of the pinned pattern version's forest after that expansion, one or more rows (at most 512, the node cap after expansion) in one transaction and all-or-nothing, and answers 201 `PatternPlacementResource`, an `items` list of one or more `CompositionInstanceResource`;",
+        text: "one placement writes one append-only row per block root of the pinned pattern version's forest after that expansion, one or more rows (at most 512, the node cap after expansion) in one transaction and all-or-nothing, at consecutive `position` values in forest order starting one above the greatest `position` of the revision's slot (0 for an empty slot) under the revision/slot lock (DEC-185), and answers 201 `PatternPlacementResource`, an `items` list of one or more `CompositionInstanceResource` in position order;",
         citations: [],
       },
       {
@@ -97,7 +97,7 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Uncited: slotPath existence in the template or root path; nested pattern expansion into block roots; one append-only row per block root (at most 512, all-or-nothing, 201 PatternPlacementResource items); per-row pin, block identity, path suffix, digest, link mode and overrides; normalized override keys with 422 COMPOSITION_VALIDATION_FAILED at /overrides; the override collision producing pending_diff. Only the (revision_id, path, version) unique index is asserted.',
+      'Text resynced to the tracker after DEC-185 (2026-10-13). Unproven clauses: "Pattern insertion rows (DEC-175, DEC-181, DEC-185): the request `slotPath` must exist in the revision\'s template (or be …"; "a top-level nested pattern reference (`kind: pattern`) in the pinned forest is expanded at placement into that pattern\'s…"; "one placement writes one append-only row per block root of the pinned pattern version\'s forest after that expansion, one…"; "each row stays pinned to the placed `(patternId, patternVersion)`, carries its block root\'s block identity in `block_key…"; "`overrides` keys are normalized node paths under the inserted root (`/{nodeKey}(/{nodeKey})*`, at most 512 characters) t…"; "and an override collision produces `pending_diff` and never overwrites.". Earlier reading: Uncited: slotPath existence in the template or root path; nested pattern expansion into block roots; one append-only row per block root (at most 512, all-or-nothing, 201 PatternPlacementResource items); per-row pin, block identity, path suffix, digest, link mode and overrides; normalized override keys with 422 COMPOSITION_VALIDATION_FAILED at /overrides; the override collision producing pending_diff. Only the (revision_id, path, version) unique index is asserted.',
   },
   {
     criterion: 'P2-S12-AC-219',
@@ -668,16 +668,16 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-247',
-    text: 'Render plan (DEC-165 receiving obligation): `platform_private.cms_revision_render_plan` takes, for each `(revision_id, path)`, the current (highest `version`) composition instance in state `draft`, `active` or `pending_diff` in template slot order, then path (bytewise) and id, renders a `pending_diff` instance from its pinned version, reads each block-root row of a pattern placement as one block at its own `path` (DEC-175, DEC-181) and excludes `superseded` and `retired` rows, so that the accessibility checker input and the projection compiler read one derivation of what readers get, and field placement changes only if a field-to-slot binding is introduced (none is: template `bindings` map named keys to domain projections).',
+    text: 'Render plan (DEC-165 receiving obligation, DEC-185): `platform_private.cms_revision_render_plan` takes, for each `(revision_id, path)`, the current (highest `version`) composition instance in state `draft`, `active` or `pending_diff` in template slot order, then `position` (so the rows of one placement render in forest order and two placements in one slot stay grouped), then path (bytewise) and id, renders a `pending_diff` instance from its pinned version, reads each block-root row of a pattern placement as one block at its own `path` (DEC-175, DEC-181) and excludes `superseded` and `retired` rows, so that the accessibility checker input and the projection compiler read one derivation of what readers get, and field placement changes only if a field-to-slot binding is introduced (none is: template `bindings` map named keys to domain projections).',
     clauses: [
       {
-        text: 'Render plan (DEC-165 receiving obligation): `platform_private.cms_revision_render_plan` takes, for each `(revision_id, path)`, the current (highest `version`) composition instance in state `draft`, `active` or `pending_diff` in template slot order, then path (bytewise) and id, renders a `pending_diff` instance from its pinned version, reads each block-root row of a pattern placement as one block at its own `path` (DEC-175, DEC-181) and excludes `superseded` and `retired` rows, so that the accessibility checker input and the projection compiler read one derivation of what readers get, and field placement changes only if a field-to-slot binding is introduced (none is: template `bindings` map named keys to domain projections).',
+        text: 'Render plan (DEC-165 receiving obligation, DEC-185): `platform_private.cms_revision_render_plan` takes, for each `(revision_id, path)`, the current (highest `version`) composition instance in state `draft`, `active` or `pending_diff` in template slot order, then `position` (so the rows of one placement render in forest order and two placements in one slot stay grouped), then path (bytewise) and id, renders a `pending_diff` instance from its pinned version, reads each block-root row of a pattern placement as one block at its own `path` (DEC-175, DEC-181) and excludes `superseded` and `retired` rows, so that the accessibility checker input and the projection compiler read one derivation of what readers get, and field placement changes only if a field-to-slot binding is introduced (none is: template `bindings` map named keys to domain projections).',
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet for the Slice 12 derivation: the render plan still reads only draft and active rows, with no highest-version selection, pending_diff rendering or block-root rows. The Slice 11 test orders two blocks by path inside one slot only.',
+      'Text resynced to the tracker after DEC-185 (2026-10-13). No clause is proven yet: "Render plan (DEC-165 receiving obligation, DEC-185): `platform_private.cms_revision_render_plan` takes, for each `(revis…". Earlier reading: No test can exist yet for the Slice 12 derivation: the render plan still reads only draft and active rows, with no highest-version selection, pending_diff rendering or block-root rows. The Slice 11 test orders two blocks by path inside one slot only.',
   },
   {
     criterion: 'P2-S12-AC-248',
@@ -811,14 +811,10 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-258',
-    text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`, `carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance, and every instance version is append-only with `updated_at = created_at` and UPDATE and DELETE rejected.",
+    text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`, `carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance, `position integer NOT NULL` records the authored order of a row within its `(revision_id, slot_key)` (a placement takes consecutive values in forest order appended after the slot's greatest, the forward migration backfills every existing row, and accept, detach, the linked-update scan, restore and carry-over copy it unchanged, DEC-185), and every instance version is append-only with `updated_at = created_at` and UPDATE and DELETE rejected.",
     clauses: [
       {
-        text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`,",
-        citations: [],
-      },
-      {
-        text: '`carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance,',
+        text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`, `carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance, `position integer NOT NULL` records the authored order of a row within its `(revision_id, slot_key)` (a placement takes consecutive values in forest order appended after the slot's greatest, the forward migration backfills every existing row, and accept, detach, the linked-update scan, restore and carry-over copy it unchanged, DEC-185),",
         citations: [],
       },
       {
@@ -839,7 +835,7 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Uncited: pending_pattern_version non-null exactly when state is pending_diff, and carried_from_id referencing cms_composition_instances(id). Caveat on the cited clause: the DELETE rejection and the updated_at = created_at CHECK have no direct assertion (UPDATE rejection and the guard trigger are asserted).',
+      'Text resynced to the tracker after DEC-185 (2026-10-13). Unproven clauses: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `st…". Earlier reading: Uncited: pending_pattern_version non-null exactly when state is pending_diff, and carried_from_id referencing cms_composition_instances(id). Caveat on the cited clause: the DELETE rejection and the updated_at = created_at CHECK have no direct assertion (UPDATE rejection and the guard trigger are asserted).',
   },
   {
     criterion: 'P2-S12-AC-259',

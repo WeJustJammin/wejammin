@@ -1002,7 +1002,7 @@ build-time accessibility tests of ENGINEERING-STANDARDS.
 | runtime | In-process pure TypeScript module in the Worker; no network provider and no DOM |
 | timeoutMs | 2,000 wall-clock milliseconds covering input load and evaluation, inside the 100 to 2,000 range |
 | Inputs | One read-only RPC load of the revision (values by stable field ID, locale, schema version, template version, composition instances); for every referenced block its safe BlockDefinitionRegistryRecord (lifecycle, accessibility manifest, props snapshot); for every media reference the asset's verified media type family and the approved AssetAccessibility row for that asset, use code and the revision locale; the revision's render plan |
-| Document order | The render plan: template slot order, then bound field position within each slot, then composition order. It is the pure function the projection compiler also uses; the checker never re-derives order |
+| Document order | The render plan: template slot order, then bound field position within each slot, then composition order, which is the stored `position` order of the composition rows of the slot, then `path` (bytewise) and `id` (BE03c, DEC-185). It is the pure function the projection compiler also uses; the checker never re-derives order |
 | inputHash | SHA-256 of the canonical JSON of the checker key and version, the revision content hash, the block record hashes, the accessibility row identifiers, versions and states, and the render-plan hash |
 
 Rules of version 1. Messages come from a code-owned catalog keyed by ruleId. A
@@ -1493,6 +1493,7 @@ None.
 | 2026-08-28 | Added strict portability branches, isolated restore proof, quality blockers, hold precedence and store-level lifecycle recovery | /write-be-spec-write | API, database, middleware, events, tests |
 | 2026-10-07 | Slice 11 cascade (DEC-134, D25): the accessibility checker, its registry row and the `quality_gate_evaluate` gate call are delivered by Slice 11 as the first BE03b preflight provider (the gate also runs at schedule acceptance); Slice 16 keeps the CFG-05C-02 action, `quality_check_runs` persistence and the CFG-05C-06/07 reads; the gate persists nothing until then and its evidence is the BE03b `PreflightEvidence`. | /propagate-decision | Accessibility and content-quality checker |
 | 2026-10-02 | Phase 2 scope (DEC-114): closed CFG-05C-01 import, export and restore gaps (object adapter and 50 MiB profile, mapper and resource registries, import commit/cancel, export revoke, encryption envelope, download claim, isolated restore verifier and eight-check set, Free-tier no-PITR boundary) and added CFG-05C-03 to CFG-05C-09; defined the D25 code-owned structural accessibility checker (cms.a11y.structural version 1) over rich_text.v1 and the block registry | /propagate-decision | Phase 2 scope, API, contracts, database, middleware, data flow, errors, observability, tests |
+| 2026-10-13 | Slice 12 spec completion (owner decision DEC-185): the accessibility checker's document order defines composition order as the stored `position` order of the composition rows of a slot (a placement keeps its forest order), then `path` and `id`, matching the BE03c render plan; no checker rule, rule id or hash formula changes | write-be-spec (Slice 12 spec-completion pass) | Accessibility and content-quality checker |
 
 ## Dependency References
 
