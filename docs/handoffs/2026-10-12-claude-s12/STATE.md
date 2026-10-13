@@ -39,3 +39,17 @@ First ledger classification (source reading, no receipts): 9 verified, 66 partia
   prefixes), each with its own migration range; then L3 Worker routes/adapters for CMS-03C-06..21, L4 web pages and
   islands, L5 relay/jobs/providers (DEC-166, G9), L6 e2e/races/perf; Slice 10 AC-080 pgTAP cases; ledger refresh;
   independent review; gates; receipts; tracking.
+
+## Update 2026-10-13 ~05:30Z — wave 1 integrated
+
+- Committed: L0 contracts/registry/OpenAPI (c1cca047); spec completion DEC-185/186/187 (b87044d7); boundary #128
+  production trigger (bfb1c8ab: DEC-183/184, real-stack apispecs, S11 closeout guard now tracks only #127); FIX
+  (32faf5fd: E13/E14/E4 template keys per owner, live template reads, DEPENDENCY_UNAVAILABLE 502/503/504, 400 pages).
+- Running (wave 2): L1 governed review BE (migrations 202610133xxxxx), L2a patterns/composition BE (4xxxxx), L2b
+  taxonomy/related/locale BE (5xxxxx).
+- Known red until lanes land: 9 CMS-03C-02 worker/web tests (PatternPlacementResource; L2a fixes worker, web lane later);
+  `pnpm db:types` must be regenerated after the SQL lanes (new template_id column etc.).
+- Open follow-ups: a `verifying` plan whose 30 s plan lease lapsed cannot be rolled back by the DEC-184 exhaustion path
+  (SQL refuses the lease), leaving the plan blocking new dry runs with 409 — needs a SQL fix lane; DEC-184 CPU
+  measurement of one 128-row batch; issue #128 can be closed once merged to main; S11/S09 receipts on this branch go
+  stale as S11 test files change and are regenerated at the Slice 12 close; Slice 10 AC-080 pgTAP cases.
