@@ -1660,6 +1660,7 @@
 
 ## Structured Memory
 
+- pattern: PAT-029: DOM test flush helpers must await lazy imports; probe with a deliberately slow loader (2026-10-12) — 2026-10-13T03:00:38.061Z
 - pattern: PAT-028: Closure guards must follow the ledger, never demand a claim it does not support (2026-10-12) — 2026-10-12T09:56:00.747Z
 - decision: DEC-177: P2-S11-AC-079 lists the executor cancelled (entry_unavailable) outcome (2026-10-12) — 2026-10-12T05:26:46.711Z
 - decision: DEC-176: Patterns apply to entry revisions only; template-draft wording is reworded (2026-10-12) — 2026-10-12T04:52:06.387Z

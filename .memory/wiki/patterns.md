@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total patterns**: 33
-- **Unique pattern titles**: 30
+- **Total patterns**: 34
+- **Unique pattern titles**: 31
 
 ## PAT-001: Verify a generated claim against the kit's own reference before propagating it (2026-07-16)
 
@@ -449,6 +449,20 @@
 - **Context**: Slice-close guards that run inside `pnpm validate` (process-record attestation, tracker closeout).
 - **Pattern**: A closeout guard drafted to require a Completion Signature would have forced either a false completion claim or a permanently red validate while P2-S11-AC-045 stays partial. Tie closure assertions to the evidence ledger both ways: the Depth Ratio line must name every non-verified criterion, the status must be `in-progress` and the signature absent while any criterion is open, and the signature is required once every criterion is verified. The canonical-validate attestation that a guard inside `pnpm validate` checks has a circular dependency (the run needs the line, the line records the run): write the line with the counts a prior full run produced, regenerate receipts, then let the canonical run itself verify the line; rewrite and rerun if any count differs. Never fill it from a non-canonical run and never leave the placeholder in a committed close.
 - **Source**: Slice 11 closeout lane test (2026-10-12) required `- Completed:` unconditionally.
+
+## PAT-029: DOM test flush helpers must await lazy imports; probe with a deliberately slow loader (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-13T03:00:38.061Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 11 closure)
+- **Index**: [[index]]
+
+- **Type**: best-practice
+- **Confidence**: 0.5
+- **Context**: React island tests after a production change made a dependency lazy (dynamic `import()` of zod validators for the AC-106 bundle budget).
+- **Pattern**: Microtask-only `flush()`/`settle()` helpers race a dynamic import, which resolves after real time; the tests passed in warm full runs and failed alone or under load. Give the lazy module a test-only `settle...ForTest()` that awaits the in-flight load without starting one, make every shared flush helper await it, and find every exposed test by running the suite once with the default loader delayed (a temporary local edit, reverted). Also guard module-level caches against a test reset overtaken by a pending load (a generation counter).
+- **Source**: Slice 11 receipt pass 2 failure in CmsEditorialReviewSubmitForm.test.tsx; probe found 13 exposed tests in 6 files.
 
 ## Full Log
 
@@ -905,3 +919,16 @@
 - **Context**: Slice-close guards that run inside `pnpm validate` (process-record attestation, tracker closeout).
 - **Pattern**: A closeout guard drafted to require a Completion Signature would have forced either a false completion claim or a permanently red validate while P2-S11-AC-045 stays partial. Tie closure assertions to the evidence ledger both ways: the Depth Ratio line must name every non-verified criterion, the status must be `in-progress` and the signature absent while any criterion is open, and the signature is required once every criterion is verified. The canonical-validate attestation that a guard inside `pnpm validate` checks has a circular dependency (the run needs the line, the line records the run): write the line with the counts a prior full run produced, regenerate receipts, then let the canonical run itself verify the line; rewrite and rerun if any count differs. Never fill it from a non-canonical run and never leave the placeholder in a committed close.
 - **Source**: Slice 11 closeout lane test (2026-10-12) required `- Completed:` unconditionally.
+
+### PAT-029: DOM test flush helpers must await lazy imports; probe with a deliberately slow loader (2026-10-12)
+
+- **Timestamp**: 2026-10-13T03:00:38.061Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 11 closure)
+- **Tags**: pattern, testing, flake
+
+- **Type**: best-practice
+- **Confidence**: 0.5
+- **Context**: React island tests after a production change made a dependency lazy (dynamic `import()` of zod validators for the AC-106 bundle budget).
+- **Pattern**: Microtask-only `flush()`/`settle()` helpers race a dynamic import, which resolves after real time; the tests passed in warm full runs and failed alone or under load. Give the lazy module a test-only `settle...ForTest()` that awaits the in-flight load without starting one, make every shared flush helper await it, and find every exposed test by running the suite once with the default loader delayed (a temporary local edit, reverted). Also guard module-level caches against a test reset overtaken by a pending load (a generation counter).
+- **Source**: Slice 11 receipt pass 2 failure in CmsEditorialReviewSubmitForm.test.tsx; probe found 13 exposed tests in 6 files.

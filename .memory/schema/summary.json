@@ -1,13 +1,13 @@
 {
-  "compiledAt": "2026-10-12T09:56:05.319Z",
-  "rawFiles": 21,
-  "knowledgeEntries": 1858,
-  "chunkEntries": 82520,
-  "semanticEntries": 82520,
+  "compiledAt": "2026-10-13T03:00:42.797Z",
+  "rawFiles": 22,
+  "knowledgeEntries": 1859,
+  "chunkEntries": 82523,
+  "semanticEntries": 82523,
   "specGraphNodes": 1657,
   "specGraphEdges": 10175,
   "specGraphLintIssues": 64,
-  "patterns": 33,
+  "patterns": 34,
   "decisions": 179,
   "blockers": 6
 }
