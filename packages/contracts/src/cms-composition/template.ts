@@ -13,11 +13,12 @@ import {
   IdempotencyKeySchema,
   QuotedVersionSchema,
 } from '../request-navigation-security.ts';
+import { refineConditionalIfMatch } from './conditional-if-match.ts';
+import { CmsLineageIdSchema, CmsTemplateKeySchema } from './key-grammar.ts';
 
-/** CMS-03C-01 template keys are immutable across versioned definitions. */
-export const CmsTemplateKeySchema = z
-  .string()
-  .regex(/^[a-z][a-z0-9-]{1,63}$/u, 'template_key_invalid');
+// The key grammar (including the reserved set, E13) has one definition; the
+// public name stays exported from here for the lazy browser validators.
+export { CmsTemplateKeySchema };
 
 const TemplateSlotKeySchema = z
   .string()
@@ -103,11 +104,13 @@ const ReservedRegionsSchema = z
     });
   });
 
+/**
+ * E4: the BE04c deliverable audience grammar, `^[a-z0-9_-]{1,48}$`, matched as
+ * submitted and never trimmed, so a padded or mixed-case audience is refused.
+ */
 const SafeAudienceSchema = z
   .string()
-  .min(1)
-  .max(64)
-  .refine((value) => !/[<>{}]/u.test(value), 'audience_invalid');
+  .regex(/^[a-z0-9_-]{1,48}$/u, 'audience_invalid');
 
 export const TemplateVersionRequestSchema = z.strictObject({
   templateKey: CmsTemplateKeySchema,
@@ -157,11 +160,16 @@ export const TemplateVersionHeadersSchema = z.strictObject({
   ifMatch: QuotedVersionSchema.optional(),
 });
 
-/** OpenAPI transport shape; If-Match is required only for an existing version. */
-export const TemplateVersionApiRequestSchema = z.strictObject({
-  headers: TemplateVersionHeadersSchema,
-  body: TemplateVersionRequestSchema,
-});
+/**
+ * OpenAPI transport shape; If-Match is absent on a first version and equals
+ * the parent `expectedVersion` on a successor.
+ */
+export const TemplateVersionApiRequestSchema = z
+  .strictObject({
+    headers: TemplateVersionHeadersSchema,
+    body: TemplateVersionRequestSchema,
+  })
+  .superRefine(refineConditionalIfMatch);
 
 export const TemplateVersionResourceSchema = z.strictObject({
   ...resourceMetaShape,
@@ -175,6 +183,7 @@ export const TemplateVersionResourceSchema = z.strictObject({
     'retired',
     'blocked',
   ]),
+  templateId: CmsLineageIdSchema,
   templateKey: CmsTemplateKeySchema,
   templateVersion: z.number().int().positive(),
   compatibleTypeIds: z.array(CmsUuidSchema).max(64),

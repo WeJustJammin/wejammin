@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { refineIfMatchEqualsExpectedVersion } from '../cms-editorial/if-match.ts';
 import {
   CmsUuidSchema,
   CmsVersionSchema,
@@ -66,12 +67,17 @@ export const RelatedContentHeadersSchema = z.strictObject({
   ifMatch: QuotedVersionSchema,
 });
 
-/** OpenAPI transport shape for the canonical CMS-03C-05 operation. */
-export const RelatedContentApiRequestSchema = z.strictObject({
-  entryId: CmsUuidSchema,
-  headers: RelatedContentHeadersSchema,
-  body: RelatedContentRuleRequestSchema,
-});
+/**
+ * OpenAPI transport shape for the canonical CMS-03C-05 operation. The strong
+ * `If-Match` is the source entry `version`, the body `expectedVersion`.
+ */
+export const RelatedContentApiRequestSchema = z
+  .strictObject({
+    entryId: CmsUuidSchema,
+    headers: RelatedContentHeadersSchema,
+    body: RelatedContentRuleRequestSchema,
+  })
+  .superRefine(refineIfMatchEqualsExpectedVersion);
 
 /** A target remains subject to authorized public projection at read time. */
 export const RelatedContentResourceSchema = z.strictObject({

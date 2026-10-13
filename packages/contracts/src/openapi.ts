@@ -81,7 +81,57 @@ import {
 import {
   CompositionInstanceResourceSchema,
   PatternInstanceApiRequestSchema,
+  PatternPlacementResourceSchema,
 } from './cms-composition/pattern-instance.ts';
+import {
+  GovernedReviewResourceSchema,
+  GovernedReviewSubmissionApiRequestSchema,
+} from './cms-composition/governed-review.ts';
+import { GovernedDecisionApiRequestSchema } from './cms-composition/governed-decision.ts';
+import {
+  GovernedReviewAssignmentApiRequestSchema,
+  GovernedReviewAssignmentResourceSchema,
+} from './cms-composition/governed-assignment.ts';
+import {
+  GovernedActivationApiRequestSchema,
+  GovernedActivationResourceSchema,
+} from './cms-composition/governed-activation.ts';
+import {
+  GovernedReviewDetailApiRequestSchema,
+  GovernedReviewDetailResourceSchema,
+  GovernedReviewQueueApiRequestSchema,
+  GovernedReviewQueuePageSchema,
+} from './cms-composition/governed-review-read.ts';
+import {
+  PatternLatestApiRequestSchema,
+  PatternVersionApiRequestSchema,
+  PatternVersionDetailSchema,
+  PatternVersionResourceSchema,
+} from './cms-composition/pattern-version.ts';
+import {
+  PatternSelectorApiRequestSchema,
+  PatternSelectorPageSchema,
+} from './cms-composition/pattern-selector.ts';
+import {
+  CompositionUpdateApiRequestSchema,
+  CompositionUpdateDiffApiRequestSchema,
+  CompositionUpdateDiffResourceSchema,
+  CompositionUpdateResourceSchema,
+} from './cms-composition/pattern-update.ts';
+import {
+  TaxonomyVersionApiRequestSchema,
+  TaxonomyVersionResourceSchema,
+  TaxonomyVersionsApiRequestSchema,
+  TaxonomyVersionsPageSchema,
+} from './cms-composition/taxonomy-version.ts';
+import {
+  TaxonomySelectorApiRequestSchema,
+  TaxonomySelectorPageSchema,
+} from './cms-composition/taxonomy-selector.ts';
+import {
+  TaxonomyTermListApiRequestSchema,
+  TaxonomyTermListPageSchema,
+} from './cms-composition/taxonomy-term-list.ts';
 import {
   AuthCallbackApiRequestSchema,
   AuthMergePathSchema,
@@ -359,6 +409,36 @@ const schemaContracts = {
   TaxonomyTermResourceSchema,
   PatternInstanceApiRequestSchema,
   CompositionInstanceResourceSchema,
+  PatternPlacementResourceSchema,
+  GovernedReviewSubmissionApiRequestSchema,
+  GovernedReviewResourceSchema,
+  GovernedDecisionApiRequestSchema,
+  GovernedReviewAssignmentApiRequestSchema,
+  GovernedReviewAssignmentResourceSchema,
+  GovernedActivationApiRequestSchema,
+  GovernedActivationResourceSchema,
+  GovernedReviewDetailApiRequestSchema,
+  GovernedReviewDetailResourceSchema,
+  GovernedReviewQueueApiRequestSchema,
+  GovernedReviewQueuePageSchema,
+  PatternVersionApiRequestSchema,
+  PatternVersionResourceSchema,
+  PatternLatestApiRequestSchema,
+  PatternVersionDetailSchema,
+  PatternSelectorApiRequestSchema,
+  PatternSelectorPageSchema,
+  CompositionUpdateDiffApiRequestSchema,
+  CompositionUpdateDiffResourceSchema,
+  CompositionUpdateApiRequestSchema,
+  CompositionUpdateResourceSchema,
+  TaxonomyVersionApiRequestSchema,
+  TaxonomyVersionResourceSchema,
+  TaxonomySelectorApiRequestSchema,
+  TaxonomySelectorPageSchema,
+  TaxonomyVersionsApiRequestSchema,
+  TaxonomyVersionsPageSchema,
+  TaxonomyTermListApiRequestSchema,
+  TaxonomyTermListPageSchema,
   Cfg05b06MfaFactorResetRequestSchema,
   Cfg05b06MfaFactorResetResponseSchema,
   Cfg05b07CapabilitySnapshotResponseSchema,
@@ -451,6 +531,21 @@ const schemaIo = {
   RelatedContentApiRequestSchema: 'input',
   TaxonomyTermActionApiRequestSchema: 'input',
   PatternInstanceApiRequestSchema: 'input',
+  GovernedReviewSubmissionApiRequestSchema: 'input',
+  GovernedDecisionApiRequestSchema: 'input',
+  GovernedReviewAssignmentApiRequestSchema: 'input',
+  GovernedActivationApiRequestSchema: 'input',
+  GovernedReviewDetailApiRequestSchema: 'input',
+  GovernedReviewQueueApiRequestSchema: 'input',
+  PatternVersionApiRequestSchema: 'input',
+  PatternLatestApiRequestSchema: 'input',
+  PatternSelectorApiRequestSchema: 'input',
+  CompositionUpdateDiffApiRequestSchema: 'input',
+  CompositionUpdateApiRequestSchema: 'input',
+  TaxonomyVersionApiRequestSchema: 'input',
+  TaxonomySelectorApiRequestSchema: 'input',
+  TaxonomyVersionsApiRequestSchema: 'input',
+  TaxonomyTermListApiRequestSchema: 'input',
   Cfg05b06MfaFactorResetRequestSchema: 'input',
   UploadAdmissionRequestSchema: 'input',
   UploadCompletionRequestSchema: 'input',

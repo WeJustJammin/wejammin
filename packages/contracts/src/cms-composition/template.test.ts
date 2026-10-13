@@ -31,6 +31,7 @@ const request = {
   expectedVersion: null,
 } as const;
 
+const lineageId = '123e4567-e89b-42d3-a456-426614174002';
 const resource = {
   id: templateId,
   version: '1',
@@ -38,6 +39,7 @@ const resource = {
   createdAt: '2026-09-27T12:00:00Z',
   updatedAt: '2026-09-27T12:00:00Z',
   state: 'draft',
+  templateId: lineageId,
   templateKey: 'profile-header',
   templateVersion: 1,
   compatibleTypeIds: [typeId],

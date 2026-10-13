@@ -1,3 +1,5 @@
+import { cmsCompositionRouteDefinitions } from './openapi-definitions-cms-composition.mjs';
+
 export const EMPTY_REQUEST_SCHEMA = 'EmptyRequestSchema';
 
 const identityResponse = (
@@ -2475,7 +2477,7 @@ export const routeDefinitions = {
   'CMS-03C-02': {
     responses: contentSchemaRegistryResponses(
       [201],
-      'Immutable pattern instance created on an authorized draft',
+      'Pattern placement: one immutable composition row per block root, created on an authorized draft',
       [
         { status: 400, description: 'Composition request is malformed' },
         { status: 401, description: 'Authentication is required' },
@@ -2574,6 +2576,7 @@ export const routeDefinitions = {
       'mutation',
     ),
   },
+  ...cmsCompositionRouteDefinitions(contentSchemaRegistryResponses),
   healthRead: {
     responses: [
       { status: '200', description: 'Process is healthy', schema: 'success' },

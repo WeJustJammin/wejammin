@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  RelatedContentApiRequestSchema,
   RelatedContentHeadersSchema,
   RelatedContentPathSchema,
   RelatedContentRuleRequestSchema,
@@ -163,5 +164,33 @@ describe('CMS-03C-05 related-content wire contract', () => {
       expect(RelatedContentResourceSchema.safeParse(candidate).success).toBe(
         false,
       );
+  });
+});
+
+describe('CMS-03C-05 If-Match operand', () => {
+  const headers = {
+    contentType: 'application/json',
+    idempotencyKey: 'related-rule-0001',
+    ifMatch: '"1"',
+  };
+
+  it('[P2-S12-AC-061] ties the strong If-Match to the source entry version expectedVersion, reported at headers.ifMatch', () => {
+    expect(
+      RelatedContentApiRequestSchema.safeParse({
+        entryId: ENTRY_ID,
+        headers,
+        body: request,
+      }).success,
+    ).toBe(true);
+    const mismatch = RelatedContentApiRequestSchema.safeParse({
+      entryId: ENTRY_ID,
+      headers: { ...headers, ifMatch: '"2"' },
+      body: request,
+    });
+    expect(mismatch.success).toBe(false);
+    if (!mismatch.success)
+      expect(
+        mismatch.error.issues.map((issue) => issue.path.join('.')),
+      ).toEqual(['headers.ifMatch']);
   });
 });
