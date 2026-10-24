@@ -5143,7 +5143,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/contracts/phase-02-slice-11-sql-parity.test.ts',
             title:
-              '[P2-S11-AC-093] the SQL preflight registry seed equals CMS_PREFLIGHT_REGISTRY seeds each category with the provider key, kind and reference kind the contracts declare',
+              '[P2-S11-AC-093] the SQL preflight registry seed equals CMS_PREFLIGHT_REGISTRY seeds each category with the provider key, kind and reference kind the contracts declare, a newer row standing for the reference gate it replaced',
           },
           {
             tool: 'pgtap',
@@ -5184,13 +5184,33 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
             title:
-              'registry version 2 naming preflight.contract at provider version 2 is unavailable (provider_unavailable) although every v1 contract check passes, and marks no other category [P2-S11-AC-093]',
+              'a newer registry row naming preflight.contract at provider version 2 is unavailable (provider_unavailable) although every v1 contract check passes, and marks no other category [P2-S11-AC-093]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
             title:
-              'control: registry version 2 that still names provider version 1 is the implemented provider and passes [P2-S11-AC-093]',
+              'control: a newer registry row that still names provider version 1 is the implemented provider and passes [P2-S11-AC-093]',
+          },
+          // Slice 12 registered two providers this way (DEC-199 pattern, P2-S12-AC-240 locale): the legacy pin reaches the
+          // newer pattern row, and the contracts registry replaces the seeded reference gate for exactly those categories.
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
+            title:
+              'the legacy pin reaches the current pattern provider and fails only its stale registry digest [DEC-199; P2-S11-AC-093]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
+            title:
+              'the pattern provider result carries exactly one offending live pin [DEC-199; P2-S11-AC-093]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-sql-parity.test.ts',
+            title:
+              '[P2-S11-AC-093] the SQL preflight registry seed equals CMS_PREFLIGHT_REGISTRY [P2-S12-AC-241] replaces the seeded reference gate only for categories whose provider a later slice registered',
           },
           {
             tool: 'pgtap',
@@ -5211,11 +5231,14 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       {
         text: 'Publication preflight registry (D19): the generic `preflight.reference_gate` serves the categories `pattern`, `taxonomy`, `privacy`, `media`, `route` and `locale`',
         citations: [
+          // The Slice 11 seed rows still serve all six categories with the generic gate (the registry_schema assertions find
+          // all six seeded reference-gate rows). Slice 12 registered newer rows for pattern (DEC-199) and locale
+          // (P2-S12-AC-240), as P2-S11-AC-093 provides, so the current contracts registry serves the other four.
           {
             tool: 'vitest',
             file: 'packages/contracts/src/cms-editorial/preflight.test.ts',
             title:
-              '[P2-S11-AC-093] publication preflight registry (D19) serves the six unbuilt domains with the generic reference gate and its reference kind',
+              '[P2-S11-AC-093] publication preflight registry (D19) serves the domains whose providers are not registered yet with the generic reference gate and its reference kind',
           },
           {
             tool: 'pgtap',
@@ -5244,12 +5267,6 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
             title:
-              'a composition instance naming a PatternVersion fails the pattern gate with provider_unbuilt_reference and nothing else [P2-S11-AC-094]',
-          },
-          {
-            tool: 'pgtap',
-            file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
-            title:
               'a recorded taxonomy version fails the taxonomy gate [P2-S11-AC-094]',
           },
           {
@@ -5274,7 +5291,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
             title:
-              'the gate result carries the reference count [P2-S11-AC-094]',
+              'the remaining generic taxonomy reference gate carries the exact reference count [P2-S11-AC-094]',
           },
           {
             tool: 'pgtap',
@@ -5331,7 +5348,7 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
             title:
-              'a schema that declares a no_fallback field is a locale reference even for a source-locale revision [P2-S11-AC-094]',
+              "a source-locale revision that holds no value for the schema's no_fallback field fails the locale gate with no_fallback_missing (cms.locale.no_fallback_gate replaces the reference gate, P2-S12-AC-240) [P2-S11-AC-094]",
           },
           {
             tool: 'pgtap',

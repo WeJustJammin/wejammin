@@ -78,6 +78,51 @@ describe('evidence guard: a citation names exactly one well-formed test', () => 
     }
   });
 
+  it('accepts a bracketed dynamic-route segment as a path character', () => {
+    // Astro dynamic routes: apps/web/src/pages/api/v1/cms/entries/[entryId]/...
+    // The fixture world has no such file, so the guard must get past the path
+    // grammar and stop at the existence check, not at "repository-relative".
+    for (const file of [
+      'apps/web/src/pages/api/v1/cms/entries/[entryId]/related.test.ts',
+      'apps/web/src/pages/[...slug]/page.test.ts',
+      'apps/web/src/pages/[a]/[b]/c.test.ts',
+    ]) {
+      const problems = problemsOf(withAlpha({ ...ALPHA, file }));
+      expect(some(problems, AC, 'repository-relative'), file).toBe(false);
+      expect(some(problems, AC, 'does not exist'), file).toBe(true);
+    }
+  });
+
+  it('keeps every other glob, traversal and control character rejected', () => {
+    for (const file of [
+      '/apps/x/[id]/a.test.ts',
+      '../[id]/a.test.ts',
+      'apps/[id]/../x/a.test.ts',
+      'apps\\x\\[id]\\a.test.ts',
+      './apps/x/[id]/a.test.ts',
+      'apps/x/[id] /a.test.ts',
+      'apps/x/[i d]/a.test.ts',
+      'apps/x/*/a.test.ts',
+      'apps/x/[id]/*.test.ts',
+      'apps/x/[id]/a?.test.ts',
+      'apps/x/{a,b}/a.test.ts',
+      'apps/x/[id]/a\u0000.test.ts',
+      'apps/x/[id]/a\t.test.ts',
+      'apps/x/[id]/a\n.test.ts',
+      'apps/x/[id]/a\u007f.test.ts',
+      'apps/x/[id]/a.test.ts\u0085',
+    ]) {
+      expect(
+        some(
+          problemsOf(withAlpha({ ...ALPHA, file })),
+          AC,
+          'repository-relative',
+        ),
+        JSON.stringify(file),
+      ).toBe(true);
+    }
+  });
+
   it('rejects a file that does not exist', () => {
     expect(
       some(

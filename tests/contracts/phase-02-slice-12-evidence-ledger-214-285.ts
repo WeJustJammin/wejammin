@@ -5,29 +5,45 @@ import type { EvidenceLedgerEntry } from './phase-02-evidence-ledger';
 export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   {
     criterion: 'P2-S12-AC-214',
-    text: 'Pattern update `accept`: for each listed instance a path changed only by the new version adopts it, a local override on a path the new version did not change is retained, every collision takes the explicit `yours` or `theirs` choice, and the command appends an `active` row pinned to the target version.',
+    text: "Pattern update `accept`: for each listed instance a listed path that is not a collision adopts the target value, a local override on a path the target did not change is retained, every collision takes the explicit `yours` or `theirs` choice (on a `props` collision `theirs` takes the target `props` and `yours` keeps the override; on a `structure` collision `theirs` adopts the target's block identity and `children` there, keeping that path's override only when the target left its `props` unchanged), and the command appends an `active` row pinned to the target version whose kept overrides each name a node of the target tree; on a `removed_root` collision `theirs` appends a `retired` row, and `yours` on a `structure` or `removed_root` collision appends a `detached` row materializing the tree every explicit choice resolves to (an ordinary `detach` copies the current effective content unchanged instead), so no choice is discarded and no row is ever left linked and pinned to a version whose forest lacks its block root; a complete answer set that cannot form one consistent reachable tree is refused atomically 422 `COMPOSITION_VALIDATION_FAILED`; accept never creates a row for a block root the target adds (DEC-193).",
     clauses: [
       {
-        text: 'Pattern update `accept`: for each listed instance a path changed only by the new version adopts it, a local override on a path the new version did not change is retained, every collision takes the explicit `yours` or `theirs` choice, and the command appends an `active` row pinned to the target version.',
+        text: "Pattern update `accept`: for each listed instance a listed path that is not a collision adopts the target value, a local override on a path the target did not change is retained, every collision takes the explicit `yours` or `theirs` choice (on a `props` collision `theirs` takes the target `props` and `yours` keeps the override; on a `structure` collision `theirs` adopts the target's block identity and `children` there, keeping that path's override only when the target left its `props` unchanged), and the command appends an `active` row pinned to the target version whose kept overrides each name a node of the target tree;",
+        citations: [],
+      },
+      {
+        text: 'on a `removed_root` collision `theirs` appends a `retired` row, and `yours` on a `structure` or `removed_root` collision appends a `detached` row materializing the tree every explicit choice resolves to (an ordinary `detach` copies the current effective content unchanged instead), so no choice is discarded and no row is ever left linked and pinned to a version whose forest lacks its block root;',
+        citations: [],
+      },
+      {
+        text: 'a complete answer set that cannot form one consistent reachable tree is refused atomically 422 `COMPOSITION_VALIDATION_FAILED`;',
+        citations: [],
+      },
+      {
+        text: 'accept never creates a row for a block root the target adds (DEC-193).',
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: the accept command (CMS-03C-15, RPC cms_apply_pattern_update with the three-way merge over pending_diff instances) is not built.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-215',
-    text: "Pattern update `detach`: the command appends a `detached` row that materializes the instance's current effective content (the pinned tree plus its overrides) as local props and stops the instance receiving updates, and it is admitted for any linked instance.",
+    text: "Pattern update `detach`: the command appends a `detached` row that materializes the instance's current effective content (the full subtree of its block root in the pinned version, nested pattern references expanded in place, every override applied) as a detached local block tree in `detached_tree`, bounded by the 512-node pattern limit with no key-count refusal, keeps the pin of the row it follows as provenance only and stops the instance receiving updates; it is admitted for any linked pattern-origin row, including a `retired` one, and the render plan, restore and the revision-append carry-over resolve the tree (DEC-193).",
     clauses: [
       {
-        text: "Pattern update `detach`: the command appends a `detached` row that materializes the instance's current effective content (the pinned tree plus its overrides) as local props and stops the instance receiving updates, and it is admitted for any linked instance.",
+        text: "Pattern update `detach`: the command appends a `detached` row that materializes the instance's current effective content (the full subtree of its block root in the pinned version, nested pattern references expanded in place, every override applied) as a detached local block tree in `detached_tree`, bounded by the 512-node pattern limit with no key-count refusal, keeps the pin of the row it follows as provenance only and stops the instance receiving updates;",
+        citations: [],
+      },
+      {
+        text: 'it is admitted for any linked pattern-origin row, including a `retired` one, and the render plan, restore and the revision-append carry-over resolve the tree (DEC-193).',
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: the detach command (CMS-03C-15 action detach, RPC cms_apply_pattern_update) is not built.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-216',
@@ -57,7 +73,7 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-218',
-    text: "Pattern insertion rows (DEC-175, DEC-181, DEC-185): the request `slotPath` must exist in the revision's template (or be a root path when the entry has no template); a top-level nested pattern reference (`kind: pattern`) in the pinned forest is expanded at placement into that pattern's own block roots, recursively, so every row carries a block; one placement writes one append-only row per block root of the pinned pattern version's forest after that expansion, one or more rows (at most 512, the node cap after expansion) in one transaction and all-or-nothing, at consecutive `position` values in forest order starting one above the greatest `position` of the revision's slot (0 for an empty slot) under the revision/slot lock (DEC-185), and answers 201 `PatternPlacementResource`, an `items` list of one or more `CompositionInstanceResource` in position order; each row stays pinned to the placed `(patternId, patternVersion)`, carries its block root's block identity in `block_key` and `block_version` with that root's `key` as the suffix of its `path`, keeps the nodes below a block root inside the pinned tree and stores the server-recomputed digest, the link mode and the `overrides` that lie under its root; `overrides` keys are normalized node paths under the inserted root (`/{nodeKey}(/{nodeKey})*`, at most 512 characters) that each name a node of the pinned tree, any other key being 422 `COMPOSITION_VALIDATION_FAILED` at `/overrides`; `(revision_id, path)` is unique per version, and an override collision produces `pending_diff` and never overwrites.",
+    text: "Pattern insertion rows (DEC-175, DEC-181, DEC-185): the request `slotPath` must exist in the revision's template (or be a root path when the entry has no template); a top-level nested pattern reference (`kind: pattern`) in the pinned forest is expanded at placement into that pattern's own block roots, recursively, so every row carries a block; one placement writes one append-only row per block root of the pinned pattern version's forest after that expansion, one or more rows (at most 512, the node cap after expansion) in one transaction and all-or-nothing, at consecutive `position` values in forest order starting one above the greatest `position` of the revision's slot (0 for an empty slot) under the revision/slot lock (DEC-185), and answers 201 `PatternPlacementResource`, an `items` list of one or more `CompositionInstanceResource` in position order; each row stays pinned to the placed `(patternId, patternVersion)`, carries its block root's block identity in `block_key` and `block_version` with that root's `key` as the suffix of its `path`, keeps the nodes below a block root inside the pinned tree and stores the server-recomputed digest, the link mode and the `overrides` that lie under its root; `overrides` keys are normalized node paths under the inserted root (`/{nodeKey}(/{nodeKey})*`, at most 512 characters) that each name a node of the pinned tree, any other key being 422 `COMPOSITION_VALIDATION_FAILED` at `/overrides`; `(revision_id, path)` is unique per version, and an override collision produces `pending_diff` and never overwrites; an optional `roots` places only the named block roots (how the author places the block roots a newer version adds, DEC-193), a path whose newest row is not `retired` is occupied (409 `COMPOSITION_VERSION_CONFLICT`, nothing written), and a path whose newest row is `retired` is free, the placed row being that path's next version at its kept position (DEC-185, DEC-193).",
     clauses: [
       {
         text: "Pattern insertion rows (DEC-175, DEC-181, DEC-185): the request `slotPath` must exist in the revision's template (or be a root path when the entry has no template);",
@@ -91,13 +107,17 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'and an override collision produces `pending_diff` and never overwrites.',
+        text: 'and an override collision produces `pending_diff` and never overwrites;',
+        citations: [],
+      },
+      {
+        text: "an optional `roots` places only the named block roots (how the author places the block roots a newer version adds, DEC-193), a path whose newest row is not `retired` is occupied (409 `COMPOSITION_VERSION_CONFLICT`, nothing written), and a path whose newest row is `retired` is free, the placed row being that path's next version at its kept position (DEC-185, DEC-193).",
         citations: [],
       },
     ],
     status: 'partial',
     limitation:
-      'Text resynced to the tracker after DEC-185 (2026-10-13). Unproven clauses: "Pattern insertion rows (DEC-175, DEC-181, DEC-185): the request `slotPath` must exist in the revision\'s template (or be …"; "a top-level nested pattern reference (`kind: pattern`) in the pinned forest is expanded at placement into that pattern\'s…"; "one placement writes one append-only row per block root of the pinned pattern version\'s forest after that expansion, one…"; "each row stays pinned to the placed `(patternId, patternVersion)`, carries its block root\'s block identity in `block_key…"; "`overrides` keys are normalized node paths under the inserted root (`/{nodeKey}(/{nodeKey})*`, at most 512 characters) t…"; "and an override collision produces `pending_diff` and never overwrites.". Earlier reading: Uncited: slotPath existence in the template or root path; nested pattern expansion into block roots; one append-only row per block root (at most 512, all-or-nothing, 201 PatternPlacementResource items); per-row pin, block identity, path suffix, digest, link mode and overrides; normalized override keys with 422 COMPOSITION_VALIDATION_FAILED at /overrides; the override collision producing pending_diff. Only the (revision_id, path, version) unique index is asserted.',
+      'Approved claim amended; only unchanged clauses retain prior citations. All added or changed obligations remain uncited and unverified; native/SQL/browser gates are not complete.',
   },
   {
     criterion: 'P2-S12-AC-219',
@@ -538,29 +558,85 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-237',
-    text: "Locale event identity (D12): every locale variant and every stale row is a version of the locale aggregate `(entry, locale)`, and the outbox identity of `cms.localization.changed.v1` is aggregateType `cms.locale_variant`, aggregateId a UUIDv5 over the entry id and locale under the fixed namespace `cms.locale.aggregate.v1`, and aggregateVersion the variant row's `version`, so that the author RPC and the fan-out writer never share a dedupe key.",
+    text: "Locale event identity (D12): every locale variant and every stale row is a version of the locale aggregate `(entry, locale)`, and the outbox identity of `cms.localization.changed.v1` is aggregateType `cms_locale_variant`, aggregateId a UUIDv5 over the entry id and locale under the fixed namespace `cms.locale.aggregate.v1`, and aggregateVersion the variant row's `version`, so that the author RPC and the fan-out writer never share a dedupe key.",
     clauses: [
       {
-        text: "Locale event identity (D12): every locale variant and every stale row is a version of the locale aggregate `(entry, locale)`, and the outbox identity of `cms.localization.changed.v1` is aggregateType `cms.locale_variant`, aggregateId a UUIDv5 over the entry id and locale under the fixed namespace `cms.locale.aggregate.v1`, and aggregateVersion the variant row's `version`, so that the author RPC and the fan-out writer never share a dedupe key.",
+        text: "Locale event identity (D12): every locale variant and every stale row is a version of the locale aggregate `(entry, locale)`, and the outbox identity of `cms.localization.changed.v1` is aggregateType `cms_locale_variant`, aggregateId a UUIDv5 over the entry id and locale under the fixed namespace `cms.locale.aggregate.v1`, and aggregateVersion the variant row's `version`, so that the author RPC and the fan-out writer never share a dedupe key.",
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: locale events still use aggregate type cms_content_entry and the entry id; no UUIDv5 locale aggregate or cms.locale_variant identity exists.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-238',
-    text: 'Preflight provider `cms.pattern.active_digest` version 1 (category `pattern`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate`, requires every PatternVersion in the manifest to be `active` with an equal `content_hash` and the `blockRegistryDigest` recomputed over the reachable set to equal the frozen one, and fails with the reasons `pattern_not_active` and `pattern_digest_changed`.',
+    text: 'Preflight provider `cms.pattern.active_digest` version 1 (category `pattern`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate`. Live pinned PatternVersions require active state, equal frozen content hashes and equal recomputed reachable block-registry digests; every reached pinned nested version must also remain active and satisfy the existing graph compatibility rule (DEC-199). Failure reasons are `pattern_not_active`, `nested_pattern_not_active`, `pattern_digest_changed` and `pattern_block_rules_violated` (DEC-210). A nonnull canonical detached tree validates its own blocks/digest without reopening its retained pattern provenance; NULL-tree linked/legacy detached rows keep live checks, and mixed live/provenance use still validates the live use. Manifest provenance identities are retained (DEC-193).',
     clauses: [
       {
-        text: 'Preflight provider `cms.pattern.active_digest` version 1 (category `pattern`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate`, requires every PatternVersion in the manifest to be `active` with an equal `content_hash` and the `blockRegistryDigest` recomputed over the reachable set to equal the frozen one, and fails with the reasons `pattern_not_active` and `pattern_digest_changed`.',
+        text: 'Preflight provider `cms.pattern.active_digest` version 1 (category `pattern`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate`.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/preflight-pattern-provider.test.ts',
+            title:
+              'BE03c pattern preflight provider (DEC-199) keeps the main registry and Slice 12 provider catalog on one active-digest row',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/preflight-providers.test.ts',
+            title:
+              'Preflight providers registered by Slice 12 (BE03c) [P2-S12-AC-241] registers exactly the pattern, taxonomy and locale providers, each replacing a reference gate',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-sql-parity.test.ts',
+            title:
+              '[P2-S11-AC-093] the SQL preflight registry seed equals CMS_PREFLIGHT_REGISTRY [P2-S12-AC-241] replaces the seeded reference gate only for categories whose provider a later slice registered',
+          },
+        ],
+      },
+      {
+        text: 'Live pinned PatternVersions require active state, equal frozen content hashes and equal recomputed reachable block-registry digests;',
+        citations: [],
+      },
+      {
+        text: 'every reached pinned nested version must also remain active and satisfy the existing graph compatibility rule (DEC-199).',
+        citations: [],
+      },
+      {
+        text: 'Failure reasons are `pattern_not_active`, `nested_pattern_not_active`, `pattern_digest_changed` and `pattern_block_rules_violated` (DEC-210).',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/preflight-pattern-provider.test.ts',
+            title:
+              'BE03c pattern preflight provider (DEC-199) parses every closed pattern reason through result, report and refusal contracts',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/preflight-providers.test.ts',
+            title:
+              'Preflight providers registered by Slice 12 (BE03c) [P2-S12-AC-238] closes the pattern provider to its own failure reasons',
+          },
+        ],
+      },
+      {
+        text: 'A nonnull canonical detached tree validates its own blocks/digest without reopening its retained pattern provenance;',
+        citations: [],
+      },
+      {
+        text: 'NULL-tree linked/legacy detached rows keep live checks, and mixed live/provenance use still validates the live use.',
+        citations: [],
+      },
+      {
+        text: 'Manifest provenance identities are retained (DEC-193).',
         citations: [],
       },
     ],
-    status: 'unverified',
+    status: 'partial',
     limitation:
-      'No test can exist yet: the cms.pattern.active_digest provider and its registry row are not built.',
+      'Unproven at the Vitest layer: clauses 1, 2 and 4-6 (live pinned versions require active state, equal frozen content hashes and equal recomputed digests; nested recursion DEC-199; canonical detached tree and NULL-tree legacy rows; manifest provenance identities) are pgTAP behaviour of the unpromoted pattern provider migration (authored, UNRUN). Cited: the registry row for cms.pattern.active_digest as a newer row replacing preflight.reference_gate (contract registry tests plus the SQL seed parity test) and the closed failure reasons pattern_not_active, nested_pattern_not_active and pattern_digest_changed.',
   },
   {
     criterion: 'P2-S12-AC-239',
@@ -577,29 +653,46 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-240',
-    text: "Preflight provider `cms.locale.no_fallback_gate` version 1 (category `locale`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate` and evaluates every `no_fallback` field of the revision's schema for the revision's locale in one statement: every blocking resolution fails the category with `no_fallback_missing` or `no_fallback_stale`, a revision whose locale variant is not in effective state `approved` or `published` fails with `locale_variant_not_approved`, and otherwise the category passes; the `route`, `media` and `privacy` categories stay on the reference gate.",
+    text: "Preflight provider `cms.locale.no_fallback_gate` version 1 (category `locale`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate` and evaluates every `no_fallback` field of the revision's schema for the revision's locale in one statement: every blocking resolution fails the category with `no_fallback_missing` or `no_fallback_stale`, in the `schedule`, `publish` and `execute` phases a revision whose locale variant is not in effective state `approved`, `scheduled` or `published` fails with `locale_variant_not_approved` (never at `submit`; a missing value outranks a stale one, which outranks the approval check; DEC-192), and otherwise the category passes; the `route`, `media` and `privacy` categories stay on the reference gate.",
     clauses: [
       {
-        text: "Preflight provider `cms.locale.no_fallback_gate` version 1 (category `locale`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate` and evaluates every `no_fallback` field of the revision's schema for the revision's locale in one statement: every blocking resolution fails the category with `no_fallback_missing` or `no_fallback_stale`, a revision whose locale variant is not in effective state `approved` or `published` fails with `locale_variant_not_approved`, and otherwise the category passes; the `route`, `media` and `privacy` categories stay on the reference gate.",
+        text: "Preflight provider `cms.locale.no_fallback_gate` version 1 (category `locale`, `database`) is registered by forward migration as a newer registry row replacing `preflight.reference_gate` and evaluates every `no_fallback` field of the revision's schema for the revision's locale in one statement: every blocking resolution fails the category with `no_fallback_missing` or `no_fallback_stale`, in the `schedule`, `publish` and `execute` phases a revision whose locale variant is not in effective state `approved`, `scheduled` or `published` fails with `locale_variant_not_approved` (never at `submit`; a missing value outranks a stale one, which outranks the approval check; DEC-192), and otherwise the category passes;",
         citations: [],
       },
+      {
+        text: 'the `route`, `media` and `privacy` categories stay on the reference gate.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-11-sql-parity.test.ts',
+            title:
+              '[P2-S11-AC-093] the SQL preflight registry seed equals CMS_PREFLIGHT_REGISTRY [P2-S12-AC-241] replaces the seeded reference gate only for categories whose provider a later slice registered',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/preflight.test.ts',
+            title:
+              '[P2-S11-AC-093] publication preflight registry (D19) [P2-S12-AC-240][P2-S12-AC-241] registers cms.locale.no_fallback_gate version 1 for the locale category as registry version 2 with its three closed reasons',
+          },
+        ],
+      },
     ],
-    status: 'unverified',
+    status: 'partial',
     limitation:
-      'No test can exist yet: the cms.locale.no_fallback_gate provider and cms_resolve_locale_field (CMS-03C-20) are not built.',
+      'Unproven at the Vitest layer: clause 0 (the no_fallback_gate evaluates every no_fallback field in one statement, blocking resolutions fail with no_fallback_missing or no_fallback_stale, the schedule/publish/execute approval check, never at submit, ordering per DEC-192) is pgTAP behaviour of an unpromoted migration; the contract only registers the gate descriptor and its closed reasons. Clause 1 (the route, media and privacy categories stay on the reference gate) is cited from the preflight registry contract and the SQL seed parity test, which replaces the reference gate only for categories whose provider a later slice registered.',
   },
   {
     criterion: 'P2-S12-AC-241',
-    text: "Preflight dispatch: each Slice 12 provider is implemented in the deployed preflight evaluation before its registry row is inserted, so that no category evaluates `unavailable` with `provider_unavailable` because its provider is not implemented, and the contracts' per-category closed reason sets and the fixed reason copy accept exactly the reasons of `cms.pattern.active_digest`, `cms.taxonomy.assignment_integrity` and `cms.locale.no_fallback_gate`.",
+    text: "Preflight dispatch: each Slice 12 provider is implemented in the deployed preflight evaluation before its registry row is inserted, so that no category evaluates `unavailable` with `provider_unavailable` because its provider is not implemented, and the contracts' per-category closed reason sets and the fixed reason copy accept exactly the reasons of `cms.pattern.active_digest` (including `pattern_not_active`, `nested_pattern_not_active` and `pattern_digest_changed`, DEC-199), `cms.taxonomy.assignment_integrity` and `cms.locale.no_fallback_gate`.",
     clauses: [
       {
-        text: "Preflight dispatch: each Slice 12 provider is implemented in the deployed preflight evaluation before its registry row is inserted, so that no category evaluates `unavailable` with `provider_unavailable` because its provider is not implemented, and the contracts' per-category closed reason sets and the fixed reason copy accept exactly the reasons of `cms.pattern.active_digest`, `cms.taxonomy.assignment_integrity` and `cms.locale.no_fallback_gate`.",
+        text: "Preflight dispatch: each Slice 12 provider is implemented in the deployed preflight evaluation before its registry row is inserted, so that no category evaluates `unavailable` with `provider_unavailable` because its provider is not implemented, and the contracts' per-category closed reason sets and the fixed reason copy accept exactly the reasons of `cms.pattern.active_digest` (including `pattern_not_active`, `nested_pattern_not_active` and `pattern_digest_changed`, DEC-199), `cms.taxonomy.assignment_integrity` and `cms.locale.no_fallback_gate`.",
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: no Slice 12 provider is implemented, so neither the dispatch order nor the closed per-category reason sets and copy exist.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-242',
@@ -616,16 +709,32 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-243',
-    text: "Restore of composition instances (DEC-141): `cms_restore_revision` carries the source revision's `active` composition instances into the new draft revision, each keeping its path and link mode and re-pinned to the current registry, so that a pinned block version that is `withdrawn` fails the restore 409 `migration_chain_incomplete`, a pinned pattern version that is no longer `active` fails it the same way unless the instance is `detached`, and a slot path absent from the current compatible template fails it 409 `template_incompatible`, with nothing fabricated.",
+    text: "Restore of composition instances (DEC-141, DEC-201): `cms_restore_revision` selects the named source revision's newest row at each path before eligibility and carries only its `active` rows into the new draft revision. A copied child's recorded parent is resolved within that source owner/revision by logical path to the newest eligible active copied parent, including historical parent references; an excluded parent or collapsed cycle refuses the entire restore atomically, without resurrecting history, dropping/detaching a child, fabricating topology or retaining a cross-revision edge. Fresh parent-first copies have immediate `carried_from_id` provenance, keep path, position, link mode and detached local block tree (DEC-193), and are re-pinned to the current registry, so that a pinned block version, or a block of a detached tree, that is `withdrawn` fails the restore 409 `migration_chain_incomplete`, a pinned pattern version that is no longer `active` fails it the same way unless the instance is `detached`, and a slot path absent from the current compatible template fails it 409 `template_incompatible`, with nothing fabricated. Pending/draft heads are not carried.",
     clauses: [
       {
-        text: "Restore of composition instances (DEC-141): `cms_restore_revision` carries the source revision's `active` composition instances into the new draft revision, each keeping its path and link mode and re-pinned to the current registry, so that a pinned block version that is `withdrawn` fails the restore 409 `migration_chain_incomplete`, a pinned pattern version that is no longer `active` fails it the same way unless the instance is `detached`, and a slot path absent from the current compatible template fails it 409 `template_incompatible`, with nothing fabricated.",
+        text: "Restore of composition instances (DEC-141, DEC-201): `cms_restore_revision` selects the named source revision's newest row at each path before eligibility and carries only its `active` rows into the new draft revision.",
+        citations: [],
+      },
+      {
+        text: "A copied child's recorded parent is resolved within that source owner/revision by logical path to the newest eligible active copied parent, including historical parent references;",
+        citations: [],
+      },
+      {
+        text: 'an excluded parent or collapsed cycle refuses the entire restore atomically, without resurrecting history, dropping/detaching a child, fabricating topology or retaining a cross-revision edge.',
+        citations: [],
+      },
+      {
+        text: 'Fresh parent-first copies have immediate `carried_from_id` provenance, keep path, position, link mode and detached local block tree (DEC-193), and are re-pinned to the current registry, so that a pinned block version, or a block of a detached tree, that is `withdrawn` fails the restore 409 `migration_chain_incomplete`, a pinned pattern version that is no longer `active` fails it the same way unless the instance is `detached`, and a slot path absent from the current compatible template fails it 409 `template_incompatible`, with nothing fabricated.',
+        citations: [],
+      },
+      {
+        text: 'Pending/draft heads are not carried.',
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: cms_restore_revision does not carry composition instances.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-244',
@@ -642,16 +751,32 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-245',
-    text: "Revision append carry-over (DEC-141): the Slice 12 migration extends `cms_create_revision`, `cms_resolve_conflict` and `cms_restore_revision` so that each carries the base revision's `active` composition instances into the new revision as append-only rows with `carried_from_id` provenance unless the command's pointers explicitly change them, so that an autosave never drops a composition.",
+    text: "Revision append carry-over (DEC-141, DEC-198, DEC-200): `cms_create_revision` (from its base revision) and `cms_resolve_conflict` (from the current draft `theirs`, never the conflict base, DEC-209) select newest-per-path source rows before eligibility and carry both `active` and `pending_diff` compositions as fresh append-only rows with immediate `carried_from_id` provenance, parent remapping by the owner/revision-bound source parent path to its newest eligible copied head (DEC-200), with atomic whole-command refusal if no eligible parent remains or the remapped graph is unrepresentable, unchanged position, bindings, overrides and full detached local tree (DEC-193). Pending state, existing pin and `pending_pattern_version` survive unchanged; autosave neither drops visible content nor accepts/clears the unanswered update or resurrects older active history. Explicit command pointers retain their defined exception. Restore separately translates the named source's eligible `active` rows under AC243, not the current draft or this pending-row expansion.",
     clauses: [
       {
-        text: "Revision append carry-over (DEC-141): the Slice 12 migration extends `cms_create_revision`, `cms_resolve_conflict` and `cms_restore_revision` so that each carries the base revision's `active` composition instances into the new revision as append-only rows with `carried_from_id` provenance unless the command's pointers explicitly change them, so that an autosave never drops a composition.",
+        text: 'Revision append carry-over (DEC-141, DEC-198, DEC-200): `cms_create_revision` (from its base revision) and `cms_resolve_conflict` (from the current draft `theirs`, never the conflict base, DEC-209) select newest-per-path source rows before eligibility and carry both `active` and `pending_diff` compositions as fresh append-only rows with immediate `carried_from_id` provenance, parent remapping by the owner/revision-bound source parent path to its newest eligible copied head (DEC-200), with atomic whole-command refusal if no eligible parent remains or the remapped graph is unrepresentable, unchanged position, bindings, overrides and full detached local tree (DEC-193).',
+        citations: [],
+      },
+      {
+        text: 'Pending state, existing pin and `pending_pattern_version` survive unchanged;',
+        citations: [],
+      },
+      {
+        text: 'autosave neither drops visible content nor accepts/clears the unanswered update or resurrects older active history.',
+        citations: [],
+      },
+      {
+        text: 'Explicit command pointers retain their defined exception.',
+        citations: [],
+      },
+      {
+        text: "Restore separately translates the named source's eligible `active` rows under AC243, not the current draft or this pending-row expansion.",
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: cms_create_revision, cms_resolve_conflict and cms_restore_revision carry no composition instances and cms_composition_instances has no carried_from_id.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-246',
@@ -668,55 +793,55 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-247',
-    text: 'Render plan (DEC-165 receiving obligation, DEC-185): `platform_private.cms_revision_render_plan` takes, for each `(revision_id, path)`, the current (highest `version`) composition instance in state `draft`, `active` or `pending_diff` in template slot order, then `position` (so the rows of one placement render in forest order and two placements in one slot stay grouped), then path (bytewise) and id, renders a `pending_diff` instance from its pinned version, reads each block-root row of a pattern placement as one block at its own `path` (DEC-175, DEC-181) and excludes `superseded` and `retired` rows, so that the accessibility checker input and the projection compiler read one derivation of what readers get, and field placement changes only if a field-to-slot binding is introduced (none is: template `bindings` map named keys to domain projections).',
+    text: 'Render plan (DEC-165 receiving obligation, DEC-185): `platform_private.cms_revision_render_plan` takes, for each `(revision_id, path)`, the current (highest `version`) composition instance in state `draft`, `active` or `pending_diff` in template slot order, then `position` (so the rows of one placement render in forest order and two placements in one slot stay grouped), then path (bytewise) and id, renders a `pending_diff` instance from its pinned version, renders a row that carries a nonnull `detached_tree` from that tree, never from its provenance pin or overrides, while a plain `detached` row with a NULL `detached_tree` keeps its defined pinned render and checker behavior (DEC-193), reads each block-root row of a pattern placement as one block root at its own `path` (DEC-175, DEC-181), followed by the descendant blocks of its effective tree at `/composition/{rowId}/nodes/{i}` in canonical preorder (DEC-214), and excludes `superseded` and `retired` rows, so that the accessibility checker input and the projection compiler read one derivation of what readers get, and field placement changes only if a field-to-slot binding is introduced (none is: template `bindings` map named keys to domain projections).',
     clauses: [
       {
-        text: 'Render plan (DEC-165 receiving obligation, DEC-185): `platform_private.cms_revision_render_plan` takes, for each `(revision_id, path)`, the current (highest `version`) composition instance in state `draft`, `active` or `pending_diff` in template slot order, then `position` (so the rows of one placement render in forest order and two placements in one slot stay grouped), then path (bytewise) and id, renders a `pending_diff` instance from its pinned version, reads each block-root row of a pattern placement as one block at its own `path` (DEC-175, DEC-181) and excludes `superseded` and `retired` rows, so that the accessibility checker input and the projection compiler read one derivation of what readers get, and field placement changes only if a field-to-slot binding is introduced (none is: template `bindings` map named keys to domain projections).',
+        text: 'Render plan (DEC-165 receiving obligation, DEC-185): `platform_private.cms_revision_render_plan` takes, for each `(revision_id, path)`, the current (highest `version`) composition instance in state `draft`, `active` or `pending_diff` in template slot order, then `position` (so the rows of one placement render in forest order and two placements in one slot stay grouped), then path (bytewise) and id, renders a `pending_diff` instance from its pinned version, renders a row that carries a nonnull `detached_tree` from that tree, never from its provenance pin or overrides, while a plain `detached` row with a NULL `detached_tree` keeps its defined pinned render and checker behavior (DEC-193), reads each block-root row of a pattern placement as one block root at its own `path` (DEC-175, DEC-181), followed by the descendant blocks of its effective tree at `/composition/{rowId}/nodes/{i}` in canonical preorder (DEC-214), and excludes `superseded` and `retired` rows, so that the accessibility checker input and the projection compiler read one derivation of what readers get, and field placement changes only if a field-to-slot binding is introduced (none is: template `bindings` map named keys to domain projections).',
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'Text resynced to the tracker after DEC-185 (2026-10-13). No clause is proven yet: "Render plan (DEC-165 receiving obligation, DEC-185): `platform_private.cms_revision_render_plan` takes, for each `(revis…". Earlier reading: No test can exist yet for the Slice 12 derivation: the render plan still reads only draft and active rows, with no highest-version selection, pending_diff rendering or block-root rows. The Slice 11 test orders two blocks by path inside one slot only.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-248',
-    text: "Event relay (DEC-166 receiving obligation): Slice 12's forward migration makes every Slice 12 event claimable by the outbox relay under the exact aggregate type its producer writes, including `cms.locale_variant` for `cms.localization.changed.v1` and the aggregate types of `cms.template.activated.v1`, `cms.pattern.activated.v1` and `cms.taxonomy.changed.v1` (`cms_template_version`, `cms_pattern_version`, `cms_taxonomy_version` and `cms_term`, DEC-180 G3), and registers the `cms.pattern.` and `cms.taxonomy.` producer prefixes only as insert-if-absent, so that no claimed event has an unregistered producer or an unlisted aggregate type.",
+    text: "Event relay (DEC-166 receiving obligation): Slice 12's forward migration makes every Slice 12 event claimable by the outbox relay under the exact aggregate type its producer writes, including `cms_locale_variant` for `cms.localization.changed.v1` and the aggregate types of `cms.template.activated.v1`, `cms.pattern.activated.v1` and `cms.taxonomy.changed.v1` (`cms_template_version`, `cms_pattern_version`, `cms_taxonomy_version` and `cms_term`, DEC-180 G3), and registers the `cms.pattern.` and `cms.taxonomy.` producer prefixes only as insert-if-absent, so that no claimed event has an unregistered producer or an unlisted aggregate type.",
     clauses: [
       {
-        text: "Event relay (DEC-166 receiving obligation): Slice 12's forward migration makes every Slice 12 event claimable by the outbox relay under the exact aggregate type its producer writes, including `cms.locale_variant` for `cms.localization.changed.v1` and the aggregate types of `cms.template.activated.v1`, `cms.pattern.activated.v1` and `cms.taxonomy.changed.v1` (`cms_template_version`, `cms_pattern_version`, `cms_taxonomy_version` and `cms_term`, DEC-180 G3), and registers the `cms.pattern.` and `cms.taxonomy.` producer prefixes only as insert-if-absent, so that no claimed event has an unregistered producer or an unlisted aggregate type.",
+        text: "Event relay (DEC-166 receiving obligation): Slice 12's forward migration makes every Slice 12 event claimable by the outbox relay under the exact aggregate type its producer writes, including `cms_locale_variant` for `cms.localization.changed.v1` and the aggregate types of `cms.template.activated.v1`, `cms.pattern.activated.v1` and `cms.taxonomy.changed.v1` (`cms_template_version`, `cms_pattern_version`, `cms_taxonomy_version` and `cms_term`, DEC-180 G3), and registers the `cms.pattern.` and `cms.taxonomy.` producer prefixes only as insert-if-absent, so that no claimed event has an unregistered producer or an unlisted aggregate type.",
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: the relay still pins cms.localization.changed.v1 to cms_content_entry and accepts any registry-key aggregate for the three Slice 12 events.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-249',
-    text: "Activation events: `cms.template.activated.v1` `{ templateId, templateVersionId }` and `cms.pattern.activated.v1` `{ patternId, patternVersionId }` (a new event type registered by Slice 12) are emitted exactly once by CMS-03C-09 only on a committed immediate activation, a committed retirement (naming the retired version) or a committed scheduled execution, in the transaction with the switch and the audit record, have the outbox identity of the switched subject version row (aggregateType `cms_template_version` or `cms_pattern_version`, aggregateId the activated or retired version id, aggregateVersion that row's `version` after the switch, DEC-180 G3) so that every committed command has a unique triple, carry identifiers only (no content values, labels, locale text, target names, secrets, tokens or authority), and are not emitted for a schedule acceptance, a refusal or a governed review state change.",
+    text: "Activation events: `cms.template.activated.v1` `{ templateId, templateVersionId }` and `cms.pattern.activated.v1` `{ patternId, patternVersionId }` (a new event type registered by Slice 12) are emitted exactly once by CMS-03C-09 only on a committed immediate activation, a committed retirement (naming the retired version) or a committed scheduled execution, in the transaction with the switch and the audit record, have the outbox identity of the switched subject version row (aggregateType `cms_template_version` or `cms_pattern_version`, aggregateId the activated or retired version id, aggregateVersion that row's `lifecycle_version` after the switch, DEC-188 (correcting DEC-180 G3)) so that every committed command has a unique triple, carry identifiers only (no content values, labels, locale text, target names, secrets, tokens or authority), and are not emitted for a schedule acceptance, a refusal or a governed review state change.",
     clauses: [
       {
-        text: "Activation events: `cms.template.activated.v1` `{ templateId, templateVersionId }` and `cms.pattern.activated.v1` `{ patternId, patternVersionId }` (a new event type registered by Slice 12) are emitted exactly once by CMS-03C-09 only on a committed immediate activation, a committed retirement (naming the retired version) or a committed scheduled execution, in the transaction with the switch and the audit record, have the outbox identity of the switched subject version row (aggregateType `cms_template_version` or `cms_pattern_version`, aggregateId the activated or retired version id, aggregateVersion that row's `version` after the switch, DEC-180 G3) so that every committed command has a unique triple, carry identifiers only (no content values, labels, locale text, target names, secrets, tokens or authority), and are not emitted for a schedule acceptance, a refusal or a governed review state change.",
+        text: "Activation events: `cms.template.activated.v1` `{ templateId, templateVersionId }` and `cms.pattern.activated.v1` `{ patternId, patternVersionId }` (a new event type registered by Slice 12) are emitted exactly once by CMS-03C-09 only on a committed immediate activation, a committed retirement (naming the retired version) or a committed scheduled execution, in the transaction with the switch and the audit record, have the outbox identity of the switched subject version row (aggregateType `cms_template_version` or `cms_pattern_version`, aggregateId the activated or retired version id, aggregateVersion that row's `lifecycle_version` after the switch, DEC-188 (correcting DEC-180 G3)) so that every committed command has a unique triple, carry identifiers only (no content values, labels, locale text, target names, secrets, tokens or authority), and are not emitted for a schedule acceptance, a refusal or a governed review state change.",
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: CMS-03C-09 activation, retirement and scheduled execution are not built, so cms.template.activated.v1 and cms.pattern.activated.v1 have no producer.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-250',
-    text: "Taxonomy changed event: `cms.taxonomy.changed.v1` `{ taxonomyId, taxonomyVersionId }` is emitted once per committed CMS-03C-03 term action (carrying the vocabulary's active version id) and by CMS-03C-09 after a taxonomy-version activation or retirement, as an identifier-only event whose outbox identity is the term row for a term action (aggregateType `cms_term`, aggregateId the term id, aggregateVersion the term `version` after the action) and the subject version row for an activation or retirement (aggregateType `cms_taxonomy_version`, aggregateId the version id, aggregateVersion that row's `version` after the switch, DEC-180 G3), and whose consumers refetch aliases and terms under their own authority.",
+    text: "Taxonomy changed event: `cms.taxonomy.changed.v1` `{ taxonomyId, taxonomyVersionId }` is emitted once per committed CMS-03C-03 term action (carrying the vocabulary's active version id) and by CMS-03C-09 after a taxonomy-version activation or retirement, as an identifier-only event whose outbox identity is the term row for a term action (aggregateType `cms_term`, aggregateId the term id, aggregateVersion the term `version` after the action) and the subject version row for an activation or retirement (aggregateType `cms_taxonomy_version`, aggregateId the version id, aggregateVersion that row's `lifecycle_version` after the switch, DEC-188 (correcting DEC-180 G3)), and whose consumers refetch aliases and terms under their own authority.",
     clauses: [
       {
-        text: "Taxonomy changed event: `cms.taxonomy.changed.v1` `{ taxonomyId, taxonomyVersionId }` is emitted once per committed CMS-03C-03 term action (carrying the vocabulary's active version id) and by CMS-03C-09 after a taxonomy-version activation or retirement, as an identifier-only event whose outbox identity is the term row for a term action (aggregateType `cms_term`, aggregateId the term id, aggregateVersion the term `version` after the action) and the subject version row for an activation or retirement (aggregateType `cms_taxonomy_version`, aggregateId the version id, aggregateVersion that row's `version` after the switch, DEC-180 G3), and whose consumers refetch aliases and terms under their own authority.",
+        text: "Taxonomy changed event: `cms.taxonomy.changed.v1` `{ taxonomyId, taxonomyVersionId }` is emitted once per committed CMS-03C-03 term action (carrying the vocabulary's active version id) and by CMS-03C-09 after a taxonomy-version activation or retirement, as an identifier-only event whose outbox identity is the term row for a term action (aggregateType `cms_term`, aggregateId the term id, aggregateVersion the term `version` after the action) and the subject version row for an activation or retirement (aggregateType `cms_taxonomy_version`, aggregateId the version id, aggregateVersion that row's `lifecycle_version` after the switch, DEC-188 (correcting DEC-180 G3)), and whose consumers refetch aliases and terms under their own authority.",
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: neither the term action RPC nor CMS-03C-09 exists, so cms.taxonomy.changed.v1 has no producer.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-251',
@@ -811,10 +936,14 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-258',
-    text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`, `carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance, `position integer NOT NULL` records the authored order of a row within its `(revision_id, slot_key)` (a placement takes consecutive values in forest order appended after the slot's greatest, the forward migration backfills every existing row, and accept, detach, the linked-update scan, restore and carry-over copy it unchanged, DEC-185), and every instance version is append-only with `updated_at = created_at` and UPDATE and DELETE rejected.",
+    text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`, `carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance, `position integer NOT NULL` records the authored order of a row within its `(revision_id, slot_key)` (a placement takes consecutive values in forest order appended after the slot's greatest, the forward migration backfills every existing row, and accept, detach, the linked-update scan, restore and carry-over copy it unchanged, DEC-185), `detached_tree jsonb` is null or, only on a `detached` row whose `props` is `{}`, a `{ format: 'cms.detached_tree.v1', nodes: [...] }` preorder snapshot of 1–512 nodes `{ parent, keySegments, blockKey, blockVersion, props }` whose index-0 node is the row's block root, with relative key segments preserving reference namespaces and effective props copied exactly (DEC-193), and every instance version is append-only with `updated_at = created_at` and UPDATE and DELETE rejected.",
     clauses: [
       {
         text: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `state = 'pending_diff'`, `carried_from_id uuid` references `cms_composition_instances(id)` as the revision-append and restore carry-over provenance, `position integer NOT NULL` records the authored order of a row within its `(revision_id, slot_key)` (a placement takes consecutive values in forest order appended after the slot's greatest, the forward migration backfills every existing row, and accept, detach, the linked-update scan, restore and carry-over copy it unchanged, DEC-185),",
+        citations: [],
+      },
+      {
+        text: "`detached_tree jsonb` is null or, only on a `detached` row whose `props` is `{}`, a `{ format: 'cms.detached_tree.v1', nodes: [...] }` preorder snapshot of 1–512 nodes `{ parent, keySegments, blockKey, blockVersion, props }` whose index-0 node is the row's block root, with relative key segments preserving reference namespaces and effective props copied exactly (DEC-193),",
         citations: [],
       },
       {
@@ -835,7 +964,7 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Text resynced to the tracker after DEC-185 (2026-10-13). Unproven clauses: "Persistence `cms_composition_instances` (Slice 12 delta): `pending_pattern_version integer` is non-null exactly when `st…". Earlier reading: Uncited: pending_pattern_version non-null exactly when state is pending_diff, and carried_from_id referencing cms_composition_instances(id). Caveat on the cited clause: the DELETE rejection and the updated_at = created_at CHECK have no direct assertion (UPDATE rejection and the guard trigger are asserted).',
+      'Approved claim amended; only unchanged clauses retain prior citations. All added or changed obligations remain uncited and unverified; native/SQL/browser gates are not complete.',
   },
   {
     criterion: 'P2-S12-AC-259',
@@ -900,10 +1029,10 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-261',
-    text: 'RPC and grant inventory: all fifteen 03c tables use forced RLS with no direct write grants for `authenticated` and `anon`; the named RPCs are the five original commands (`cms_define_template`, `cms_insert_pattern_instance`, `cms_act_taxonomy_term`, `cms_author_locale_variant`, `cms_curate_related_content`) plus `cms_template_latest`, `cms_pattern_latest`, `cms_list_taxonomy_versions`, `cms_list_taxonomy_terms`, `cms_submit_governed_review`, `cms_record_governed_decision`, `cms_assign_governed_reviewer`, `cms_activate_governed_subject`, `cms_get_governed_review`, `cms_list_governed_reviews`, `cms_create_pattern_version`, `cms_list_pattern_selector`, `cms_get_instance_update_diff`, `cms_apply_pattern_update`, `cms_create_taxonomy_version` and `cms_list_taxonomy_selector`, with the internal RPCs `cms_canonical_taxonomy_match`, `cms_claim_due_governed_activations`, `cms_execute_governed_activation`, `cms_resolve_locale_field`, `cms_related_content_public_targets`, `cms_resolve_taxonomy_version`, `cms_invalidate_governed_reviews_for_person` and `cms_recheck_governed_reviews(kind, ref_id, batch)` and the job handlers `cms.pattern.linked_update_scan` and `cms.governed_review.recheck` (typed platform-queue messages) and `cms.taxonomy.merge_converge` (a BE00 jobs row); every SECURITY DEFINER function is schema-qualified with an empty `search_path`, has PUBLIC execute revoked and named grants only, and has positive and negative grant tests.',
+    text: 'RPC and grant inventory: all fifteen 03c tables and the support table `platform_private.taxonomy_merge_recoveries` use forced RLS with no direct write grants for `authenticated` and `anon`; the named RPCs are the five original commands (`cms_define_template`, `cms_insert_pattern_instance`, `cms_act_taxonomy_term`, `cms_author_locale_variant`, `cms_curate_related_content`) plus `cms_template_latest`, `cms_pattern_latest`, `cms_list_taxonomy_versions`, `cms_list_taxonomy_terms`, `cms_submit_governed_review`, `cms_record_governed_decision`, `cms_assign_governed_reviewer`, `cms_activate_governed_subject`, `cms_get_governed_review`, `cms_list_governed_reviews`, `cms_create_pattern_version`, `cms_list_pattern_selector`, `cms_get_instance_update_diff`, `cms_apply_pattern_update`, `cms_create_taxonomy_version`, `cms_list_taxonomy_selector`, `cms_get_related_content`, `cms_get_locale_variant` and `cms_list_composition_instances`, with the internal RPCs `cms_canonical_taxonomy_match`, `cms_claim_due_governed_activations`, `cms_execute_governed_activation`, `cms_resolve_locale_field`, `cms_related_content_public_targets`, `cms_resolve_taxonomy_version`, `cms_invalidate_governed_reviews_for_person`, `cms_recheck_governed_reviews(p_request jsonb)`, `cms_governed_recheck_resolve_event`, `cms_scan_linked_pattern_updates`, `cms_linked_scan_resolve_event`, `cms_reconcile_taxonomy_merge_converge` and `cms_locale_observability_read` and the job handlers `cms.pattern.linked_update_scan` and `cms.governed_review.recheck` (typed platform-queue messages) and `cms.taxonomy.merge_converge` (a BE00 jobs row); every SECURITY DEFINER function is schema-qualified with an empty `search_path`, has PUBLIC execute revoked and named grants only, and has positive and negative grant tests.',
     clauses: [
       {
-        text: 'RPC and grant inventory: all fifteen 03c tables use forced RLS with no direct write grants for `authenticated` and `anon`; the named RPCs are the five original commands (`cms_define_template`, `cms_insert_pattern_instance`, `cms_act_taxonomy_term`, `cms_author_locale_variant`, `cms_curate_related_content`) plus `cms_template_latest`, `cms_pattern_latest`, `cms_list_taxonomy_versions`, `cms_list_taxonomy_terms`, `cms_submit_governed_review`, `cms_record_governed_decision`, `cms_assign_governed_reviewer`, `cms_activate_governed_subject`, `cms_get_governed_review`, `cms_list_governed_reviews`, `cms_create_pattern_version`, `cms_list_pattern_selector`, `cms_get_instance_update_diff`, `cms_apply_pattern_update`, `cms_create_taxonomy_version` and `cms_list_taxonomy_selector`, with the internal RPCs `cms_canonical_taxonomy_match`, `cms_claim_due_governed_activations`, `cms_execute_governed_activation`, `cms_resolve_locale_field`, `cms_related_content_public_targets`, `cms_resolve_taxonomy_version`, `cms_invalidate_governed_reviews_for_person` and `cms_recheck_governed_reviews(kind, ref_id, batch)` and the job handlers `cms.pattern.linked_update_scan` and `cms.governed_review.recheck` (typed platform-queue messages) and `cms.taxonomy.merge_converge` (a BE00 jobs row); every SECURITY DEFINER function is schema-qualified with an empty `search_path`, has PUBLIC execute revoked and named grants only, and has positive and negative grant tests.',
+        text: 'RPC and grant inventory: all fifteen 03c tables and the support table `platform_private.taxonomy_merge_recoveries` use forced RLS with no direct write grants for `authenticated` and `anon`; the named RPCs are the five original commands (`cms_define_template`, `cms_insert_pattern_instance`, `cms_act_taxonomy_term`, `cms_author_locale_variant`, `cms_curate_related_content`) plus `cms_template_latest`, `cms_pattern_latest`, `cms_list_taxonomy_versions`, `cms_list_taxonomy_terms`, `cms_submit_governed_review`, `cms_record_governed_decision`, `cms_assign_governed_reviewer`, `cms_activate_governed_subject`, `cms_get_governed_review`, `cms_list_governed_reviews`, `cms_create_pattern_version`, `cms_list_pattern_selector`, `cms_get_instance_update_diff`, `cms_apply_pattern_update`, `cms_create_taxonomy_version`, `cms_list_taxonomy_selector`, `cms_get_related_content`, `cms_get_locale_variant` and `cms_list_composition_instances`, with the internal RPCs `cms_canonical_taxonomy_match`, `cms_claim_due_governed_activations`, `cms_execute_governed_activation`, `cms_resolve_locale_field`, `cms_related_content_public_targets`, `cms_resolve_taxonomy_version`, `cms_invalidate_governed_reviews_for_person`, `cms_recheck_governed_reviews(p_request jsonb)`, `cms_governed_recheck_resolve_event`, `cms_scan_linked_pattern_updates`, `cms_linked_scan_resolve_event`, `cms_reconcile_taxonomy_merge_converge` and `cms_locale_observability_read` and the job handlers `cms.pattern.linked_update_scan` and `cms.governed_review.recheck` (typed platform-queue messages) and `cms.taxonomy.merge_converge` (a BE00 jobs row); every SECURITY DEFINER function is schema-qualified with an empty `search_path`, has PUBLIC execute revoked and named grants only, and has positive and negative grant tests.',
         citations: [],
       },
     ],
@@ -991,16 +1120,16 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-268',
-    text: "Definition review pages: `/app/cms-content-modeling/definition-reviews` and `/app/cms-content-modeling/definition-reviews/:reviewId` are protected server-first pages (`CmsGovernedReviewQueue`, `CmsGovernedReviewDetail`, `CmsGovernedDecisionForm`, owner `CmsGovernedAssignmentForm`, `CmsGovernedActivationForm`): the server verifies session, expiry and acting context (303 sign-in redirect), malformed ids or keys are 400, a concealed or absent target is a disclosure-safe 404, a visible target without the capability is 403, the decision form renders only with an effective assignment, the assignment form only for the owner, the activation form only for the subject's owner-capability holder on an `approved` or `blocked` version, `GovernedReviewQueueQuery` owns `scope`, `state`, `subjectKind`, `limit` and `cursor` in URL state, and the detail URL carries only the immutable `reviewId`.",
+    text: "Definition review pages: `/app/cms-content-modeling/definition-reviews` and `/app/cms-content-modeling/definition-reviews/:reviewId` are protected server-first pages (`CmsGovernedReviewQueue`, `CmsGovernedReviewDetail`, `CmsGovernedDecisionForm`, owner `CmsGovernedAssignmentForm`, `CmsGovernedActivationForm`): the server verifies session, expiry and acting context (303 sign-in redirect), malformed ids or keys are 400, a concealed or absent target is a disclosure-safe 404, a visible target without the capability is 403, the decision form renders only with an effective assignment, the assignment form only for the owner, the activation form only for the subject's owner-capability holder, offering _Activate_ and _Schedule_ on an `approved` or `blocked` version and _Retire_ on an `active` version when the server permits it, `GovernedReviewQueueQuery` owns `scope`, `state`, `subjectKind`, `limit` and `cursor` in URL state, and the detail URL carries only the immutable `reviewId`.",
     clauses: [
       {
-        text: "Definition review pages: `/app/cms-content-modeling/definition-reviews` and `/app/cms-content-modeling/definition-reviews/:reviewId` are protected server-first pages (`CmsGovernedReviewQueue`, `CmsGovernedReviewDetail`, `CmsGovernedDecisionForm`, owner `CmsGovernedAssignmentForm`, `CmsGovernedActivationForm`): the server verifies session, expiry and acting context (303 sign-in redirect), malformed ids or keys are 400, a concealed or absent target is a disclosure-safe 404, a visible target without the capability is 403, the decision form renders only with an effective assignment, the assignment form only for the owner, the activation form only for the subject's owner-capability holder on an `approved` or `blocked` version, `GovernedReviewQueueQuery` owns `scope`, `state`, `subjectKind`, `limit` and `cursor` in URL state, and the detail URL carries only the immutable `reviewId`.",
+        text: "Definition review pages: `/app/cms-content-modeling/definition-reviews` and `/app/cms-content-modeling/definition-reviews/:reviewId` are protected server-first pages (`CmsGovernedReviewQueue`, `CmsGovernedReviewDetail`, `CmsGovernedDecisionForm`, owner `CmsGovernedAssignmentForm`, `CmsGovernedActivationForm`): the server verifies session, expiry and acting context (303 sign-in redirect), malformed ids or keys are 400, a concealed or absent target is a disclosure-safe 404, a visible target without the capability is 403, the decision form renders only with an effective assignment, the assignment form only for the owner, the activation form only for the subject's owner-capability holder, offering _Activate_ and _Schedule_ on an `approved` or `blocked` version and _Retire_ on an `active` version when the server permits it, `GovernedReviewQueueQuery` owns `scope`, `state`, `subjectKind`, `limit` and `cursor` in URL state, and the detail URL carries only the immutable `reviewId`.",
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No test can exist yet: the page and its islands do not exist (definition-reviews and definition-reviews/:reviewId with the queue, detail, decision, assignment and activation components).',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-269',
@@ -1069,10 +1198,10 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-274',
-    text: 'Typed refusals: within the Slice 12 catalogs a refusal carries exactly one lowercase `details.reasonCode` from the closed list (`capability_missing`, `separation_of_duties`, `subject_not_submittable`, `review_not_open`, `duplicate_decision`, `specialist_slot_unsatisfiable`, `reviewer_not_eligible`, `assignment_exists`, `assignment_limit`, `dependency_changed`, `subject_not_activatable`, `subject_not_retirable`, `activation_conflict`, `schedule_exists`, `revision_not_editable`, `pattern_cycle`, `diff_has_collisions`, `taxonomy_not_active`, `locale_limit_reached`, `FALLBACK_CHAIN_MISMATCH`, `key_reserved`, `pattern_version_not_active`, `pattern_incompatible`, `nested_pattern_not_active`, `pattern_depth_exceeded`, `pattern_nodes_exceeded`, `diff_too_large`, `canonical_overlap`, `canonical_source_unavailable`, `term_unavailable`, `derived_rule_unknown`, `related_target_ineligible` and the 03b time tokens, each keeping the single status the catalog lists it under: `pattern_version_not_active`, `pattern_incompatible` and `nested_pattern_not_active` are 422 and every governed 409 is `GOVERNED_REVIEW_VERSION_CONFLICT`) plus only the members named for it, a provider timeout or fault is 503 `DEPENDENCY_UNAVAILABLE` and never a success-shaped body, and an unmapped status or a message not generated by its operation catalog is a contract failure treated as 500 `INTERNAL_ERROR` without leaking the original payload.',
+    text: 'Typed refusals: within the Slice 12 catalogs a refusal carries exactly one lowercase `details.reasonCode` from the closed list (`capability_missing`, `separation_of_duties`, `subject_not_submittable`, `review_not_open`, `duplicate_decision`, `specialist_slot_unsatisfiable`, `reviewer_not_eligible`, `assignment_exists`, `assignment_limit`, `dependency_changed`, `subject_not_activatable`, `subject_not_retirable`, `activation_conflict`, `schedule_exists`, `revision_not_editable`, `pattern_cycle`, `diff_has_collisions`, `taxonomy_not_active`, `locale_limit_reached`, `FALLBACK_CHAIN_MISMATCH`, `key_reserved`, `pattern_version_not_active`, `pattern_incompatible`, `nested_pattern_not_active`, `pattern_depth_exceeded`, `pattern_nodes_exceeded`, `diff_too_large`, `canonical_overlap`, `canonical_source_unavailable`, `term_unavailable`, `derived_rule_unknown`, `related_target_ineligible`, `block_rules_violated` (DEC-210) and the 03b time tokens, each keeping the single status the catalog lists it under: `pattern_version_not_active`, `pattern_incompatible` and `nested_pattern_not_active` are 422 and every governed 409 is `GOVERNED_REVIEW_VERSION_CONFLICT`) plus only the members named for it, a provider timeout or fault is 503 `DEPENDENCY_UNAVAILABLE` and never a success-shaped body, and an unmapped status or a message not generated by its operation catalog is a contract failure treated as 500 `INTERNAL_ERROR` without leaking the original payload.',
     clauses: [
       {
-        text: 'Typed refusals: within the Slice 12 catalogs a refusal carries exactly one lowercase `details.reasonCode` from the closed list (`capability_missing`, `separation_of_duties`, `subject_not_submittable`, `review_not_open`, `duplicate_decision`, `specialist_slot_unsatisfiable`, `reviewer_not_eligible`, `assignment_exists`, `assignment_limit`, `dependency_changed`, `subject_not_activatable`, `subject_not_retirable`, `activation_conflict`, `schedule_exists`, `revision_not_editable`, `pattern_cycle`, `diff_has_collisions`, `taxonomy_not_active`, `locale_limit_reached`, `FALLBACK_CHAIN_MISMATCH`, `key_reserved`, `pattern_version_not_active`, `pattern_incompatible`, `nested_pattern_not_active`, `pattern_depth_exceeded`, `pattern_nodes_exceeded`, `diff_too_large`, `canonical_overlap`, `canonical_source_unavailable`, `term_unavailable`, `derived_rule_unknown`, `related_target_ineligible` and the 03b time tokens, each keeping the single status the catalog lists it under: `pattern_version_not_active`, `pattern_incompatible` and `nested_pattern_not_active` are 422 and every governed 409 is `GOVERNED_REVIEW_VERSION_CONFLICT`) plus only the members named for it, a provider timeout or fault is 503 `DEPENDENCY_UNAVAILABLE` and never a success-shaped body, and an unmapped status or a message not generated by its operation catalog is a contract failure treated as 500 `INTERNAL_ERROR` without leaking the original payload.',
+        text: 'Typed refusals: within the Slice 12 catalogs a refusal carries exactly one lowercase `details.reasonCode` from the closed list (`capability_missing`, `separation_of_duties`, `subject_not_submittable`, `review_not_open`, `duplicate_decision`, `specialist_slot_unsatisfiable`, `reviewer_not_eligible`, `assignment_exists`, `assignment_limit`, `dependency_changed`, `subject_not_activatable`, `subject_not_retirable`, `activation_conflict`, `schedule_exists`, `revision_not_editable`, `pattern_cycle`, `diff_has_collisions`, `taxonomy_not_active`, `locale_limit_reached`, `FALLBACK_CHAIN_MISMATCH`, `key_reserved`, `pattern_version_not_active`, `pattern_incompatible`, `nested_pattern_not_active`, `pattern_depth_exceeded`, `pattern_nodes_exceeded`, `diff_too_large`, `canonical_overlap`, `canonical_source_unavailable`, `term_unavailable`, `derived_rule_unknown`, `related_target_ineligible`, `block_rules_violated` (DEC-210) and the 03b time tokens, each keeping the single status the catalog lists it under: `pattern_version_not_active`, `pattern_incompatible` and `nested_pattern_not_active` are 422 and every governed 409 is `GOVERNED_REVIEW_VERSION_CONFLICT`) plus only the members named for it, a provider timeout or fault is 503 `DEPENDENCY_UNAVAILABLE` and never a success-shaped body, and an unmapped status or a message not generated by its operation catalog is a contract failure treated as 500 `INTERNAL_ERROR` without leaking the original payload.',
         citations: [],
       },
     ],
@@ -1263,7 +1392,14 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'revocation,',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-locale-variant.apispec.ts',
+            title:
+              'CMS-03C-04 author a locale variant through the real stack [P2-S12-AC-055] no session is 401, no author capability is 403 before the database, a revoked database grant is 403 from the database, and none writes',
+          },
+        ],
       },
       {
         text: 'deletion,',
@@ -1276,7 +1412,7 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Uncited: revocation, deletion and cascade failure-and-recovery for CMS-03C-04 (no test revokes authority mid-flight, deletes a source, or drives the stale cascade through to recovery by revalidation, which is not built). Caveat on the cited clauses: they prove the refusal and that nothing is written; the recovery path in the browser flow is not exercised.',
+      'Unproven: clause 3 ("deletion": no test deletes or archives a source mid-flow and recovers; the concealed absent-source 404 is only an analogue) and clause 4 ("cascade": the stale fan-out and revalidation are database-level and the browser recovery flow is unbuilt). Clause 2 ("revocation") is cited from the real-stack case in which a revoked database grant is a 403 from the database and nothing is written; entry-assignment revocation (as opposed to the capability grant) is not asserted; the apispec case has no receipt yet (shared Supabase stack run).',
   },
   {
     criterion: 'P2-S12-AC-282',

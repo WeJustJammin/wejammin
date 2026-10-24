@@ -6,6 +6,7 @@ import {
   CMS_PREFLIGHT_REGISTRY,
   CMS_PUBLICATION_SETTINGS_KEYS,
   CMS_PUBLICATION_SETTINGS_REGISTRY_VERSION,
+  CMS_SLICE_12_PREFLIGHT_PROVIDERS,
   CMS_TZDB_SHA256,
   CMS_TZDB_VERSION,
   DependencyManifestSchema,
@@ -193,9 +194,24 @@ describe('[P2-S11-AC-093] the SQL preflight registry seed equals CMS_PREFLIGHT_R
     ]);
   });
 
-  it('seeds each category with the provider key, kind and reference kind the contracts declare', () => {
+  // BE03c "Preflight providers registered by Slice 12": a later slice registers its provider by a strictly newer
+  // row that replaces `preflight.reference_gate` of its category (BE03b registry rule, 20261005017060).  The
+  // seed is therefore the DEC-134 view of the contracts registry: a registry-version-2 row stands for the
+  // reference gate it replaced.
+  const seedView = CMS_PREFLIGHT_REGISTRY.map((row) =>
+    row.registryVersion === '1'
+      ? row
+      : {
+          ...row,
+          providerKey: 'preflight.reference_gate',
+          providerKind: 'reference_gate',
+          referenceKind: row.category,
+        },
+  );
+
+  it('seeds each category with the provider key, kind and reference kind the contracts declare, a newer row standing for the reference gate it replaced', () => {
     expect(rows).toEqual(
-      CMS_PREFLIGHT_REGISTRY.map(
+      seedView.map(
         ({ category, providerKey, providerKind, referenceKind }) => ({
           category,
           providerKey,
@@ -206,11 +222,52 @@ describe('[P2-S11-AC-093] the SQL preflight registry seed equals CMS_PREFLIGHT_R
     );
   });
 
+  it('[P2-S12-AC-241] replaces the seeded reference gate only for categories whose provider a later slice registered', () => {
+    const newer = CMS_PREFLIGHT_REGISTRY.filter(
+      (row) => row.registryVersion === '2',
+    );
+    // BE03c "Preflight providers registered by Slice 12" lists three providers (pattern, taxonomy,
+    // locale), each a newer registry row. The contracts registry holds a newer row for each provider
+    // registered so far: pattern (cms.pattern.active_digest, promoted 20261016044400) and locale. The
+    // taxonomy provider (P2-S12-AC-239, cms.taxonomy.assignment_integrity) is specified but not yet
+    // registered anywhere (no migration, no contracts row), so its category is still the reference
+    // gate here; this test fails the day its row lands, forcing this list to become all three.
+    expect(newer.map((row) => row.category)).toEqual(['pattern', 'locale']);
+    expect(
+      CMS_PREFLIGHT_REGISTRY.find((row) => row.category === 'taxonomy'),
+    ).toMatchObject({
+      registryVersion: '1',
+      providerKey: 'preflight.reference_gate',
+    });
+    for (const provider of CMS_SLICE_12_PREFLIGHT_PROVIDERS) {
+      const row = newer.find((entry) => entry.category === provider.category);
+      if (row === undefined) {
+        expect(provider.category, 'provider not yet registered').toBe(
+          'taxonomy',
+        );
+        continue;
+      }
+      expect(row).toMatchObject({
+        providerKey: provider.providerKey,
+        providerVersion: provider.providerVersion,
+        providerKind: provider.providerKind,
+        ownerSlice: provider.ownerSlice,
+      });
+    }
+    for (const row of newer) {
+      expect(row.providerKind).toBe('database');
+      expect(row.referenceKind).toBeNull();
+      expect(
+        rows.find((seeded) => seeded.category === row.category)?.providerKey,
+      ).toBe('preflight.reference_gate');
+    }
+  });
+
   it('seeds registry version 1 and provider version 1 for every row', () => {
     expect(seed).toMatch(/'seeded',\s*1,\s*member\.category/u);
     expect(seed).toMatch(/member\.provider_key,\s*1,/u);
     for (const row of CMS_PREFLIGHT_REGISTRY) {
-      expect(row.registryVersion).toBe('1');
+      expect(['1', '2']).toContain(row.registryVersion);
       expect(row.providerVersion).toBe('1');
     }
   });

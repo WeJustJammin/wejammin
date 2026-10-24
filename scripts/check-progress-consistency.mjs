@@ -317,7 +317,7 @@ if (existsSync(SPEC_PIPELINE_PATH)) {
 // ----- Cross-check the active Phase 2 completion policy -----
 // Slice 09 keeps all 1239 authored IDs for traceability. AC266 (DEC-101),
 // AC209/AC211 (DEC-104), and AC265 (DEC-105) remain unchecked acceptance gates
-// outside the 1235-item Slice 09 and 3310-item Phase 2 implementation denominators.
+// outside the 1235-item Slice 09 and 3321-item Phase 2 implementation denominators.
 // The 2026-09-30 activation re-audit reopened 17 active Slice 09 criteria,
 // which are now verified. The separately reopened AC250 (a disclosure clause, not
 // private-binding proof) was Chrome-verified on 2026-10-01 and closed. The
@@ -388,9 +388,9 @@ const checkPhaseTwoCompletionPolicy = () => {
   assertPolicy('index.md', indexHeader, [
     {
       pattern:
-        /\*\*Phase 2 criteria\*\*:\s*3,310\s+active\s*\/\s*3,314\s+authored/iu,
+        /\*\*Phase 2 criteria\*\*:\s*3,321\s+active\s*\/\s*3,325\s+authored/iu,
       message:
-        'index.md must publish the 3,310 active / 3,314 authored Phase 2 denominator',
+        'index.md must publish the 3,321 active / 3,325 authored Phase 2 denominator',
     },
     {
       pattern: withVerified(
@@ -410,9 +410,9 @@ const checkPhaseTwoCompletionPolicy = () => {
   assertPolicy('phases/phase-02.md', phaseHeader, [
     {
       pattern:
-        /\*\*Criteria[^:]*\*\*:\s*3,310\s+active\s*\/\s*3,314\s+authored/iu,
+        /\*\*Criteria[^:]*\*\*:\s*3,321\s+active\s*\/\s*3,325\s+authored/iu,
       message:
-        'phase-02.md must publish the 3,310 active / 3,314 authored Phase 2 denominator',
+        'phase-02.md must publish the 3,321 active / 3,325 authored Phase 2 denominator',
     },
     {
       pattern: withVerified(
@@ -434,14 +434,12 @@ const checkPhaseTwoCompletionPolicy = () => {
         'phase-02.md must classify AC209 as a production-rollout/post-deployment gate that gates alerting readiness, not launch',
     },
     {
-      pattern:
-        /AC211[\s\S]{0,400}post-launch operational SLO acceptance/iu,
+      pattern: /AC211[\s\S]{0,400}post-launch operational SLO acceptance/iu,
       message:
         'phase-02.md must classify AC211 as post-launch operational SLO acceptance',
     },
     {
-      pattern:
-        /AC266[\s\S]{0,400}mandatory pre-release gate/iu,
+      pattern: /AC266[\s\S]{0,400}mandatory pre-release gate/iu,
       message:
         'phase-02.md must retain AC266 as the pre-release production-readiness/release gate',
     },
@@ -553,9 +551,9 @@ const checkPhaseTwoCompletionPolicy = () => {
           'spec-pipeline.md NEXT must publish Slice 09 as <verified>/1235 active',
       },
       {
-        pattern: /3,310 active criteria/iu,
+        pattern: /3,321 active criteria/iu,
         message:
-          'spec-pipeline.md NEXT must publish the 3,310 active Phase 2 criteria count',
+          'spec-pipeline.md NEXT must publish the 3,321 active Phase 2 criteria count',
       },
       {
         pattern: /Slice 10 implementation is unblocked/iu,

@@ -42,7 +42,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
             title:
-              'CMS-03C-01 rejects a registered block absent from the active type renderer',
+              'CMS-03C-01 rejects a registered block whose compiler range excludes the active type compiler_version',
           },
           {
             tool: 'pgtap',
@@ -277,7 +277,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "complete the declared happy path". Each layer is proven separately: the Worker route returns the 201 resource from a stubbed port (template-routes.test.ts), the production adapter posts the named RPC against a mocked fetch, the RPC creates the draft in pgTAP (phase_02_slice_12_template_authority.sql) and the browser flow runs against an in-memory fixture (tests/e2e/support/cms-template-fixture.ts says it does not claim Supabase RPC, RLS or hosted acceptance). No test drives POST /api/v1/cms/templates/versions through the production Worker and PostgREST into the database and checks the 201 body, ETag and committed rows together.',
+      'Unproven for citation purposes: none by assertion. The only remaining clause, "and complete the declared happy path", is proven at the composed Worker, Kong/PostgREST and database layer by two tests in tests/postgrest/phase-02-slice-12-template-version.apispec.ts (strict 201 draft with strong ETag, audit 1 / outbox 0, committed row; successor version 2 naming its parent) but those tests only run on the shared local Supabase stack and have no receipt yet, so the citation is held until root regenerates receipts. The browser happy path against the real stack is not covered (the real-route Playwright spec covers the conflict/rebase path only).',
   },
   {
     criterion: 'P2-S12-AC-005',
@@ -399,7 +399,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "every invalid request value". Two locked value rules are not enforced anywhere: the reserved template keys context, versions and new (E13, 422 key_reserved at /templateKey) and the audience grammar ^[a-z0-9_-]{1,48}$ matched as submitted (E4); the contract and the SQL check still accept any audience of 1-64 bytes without <>{} and reject only the Slice 09 reserved-concept list. The database refuses a bad value with a bare VALIDATION_FAILED token; the field pointer and code are produced by the Zod schema in the Worker, so a value that passes Zod but fails the SQL manifest check has no pinned pointer.',
+      'Unproven for citation purposes: none by assertion. The clause "and every invalid request value" is proven for the enumerated classes (reserved template keys context, versions and new; audience outside ^[a-z0-9_-]{1,48}$; a compatible type that is not the caller active type; a reserved concept key) by the real-stack apispec cases and the Worker route E4 test, but no test enumerates every invalid value of every field, a value that passes Zod and fails the SQL manifest check has no pinned pointer, and the apispec cases have no receipt yet (shared Supabase stack), so the citation is held until root regenerates receipts.',
   },
   {
     criterion: 'P2-S12-AC-006',
@@ -507,7 +507,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "404 boundary". POST /api/v1/cms/templates/versions with a hidden or foreign-owner parent template (If-Match naming a version the caller cannot see) answering the concealed 404 is not asserted anywhere: the Worker route test only normalizes a stubbed 404 port failure, and the pgTAP files test the concealed 404 for the latest-definition read (template_detail.sql) but not for the write. Ownership across two owners is also not exercised for the write: no fixture has a second owner holding a template of the same key. The 401/403/RLS evidence is Worker route (stubbed session) plus RPC-level pgTAP; no composed Worker to PostgREST test.',
+      'Unproven for citation purposes: none by assertion. The clause "and 404 boundary" (concealed 404 TEMPLATE_NOT_FOUND for a successor of a key only another owner holds, identical to an unused key, no row written) is proven through the real Worker, PostgREST and database stack by one apispec case, which has no receipt yet (shared Supabase stack run); the citation is held until root regenerates receipts. The 401/403/RLS evidence is Worker route (stubbed session) plus RPC-level pgTAP plus the real-stack authority case.',
   },
   {
     criterion: 'P2-S12-AC-007',
@@ -805,7 +805,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "timeout". The locked BE03c catalog maps 502, 503 and 504 all to DEPENDENCY_UNAVAILABLE (reconciled 2026-10-02, DEC-172, DEC-179), but the Worker still emits DEPENDENCY_INVALID_RESPONSE for 502 and DEPENDENCY_DEADLINE_EXCEEDED for 504 (apps/worker/src/cms-composition/template-shared.ts ERROR_CODES); every deadline test (the 504 port normalization, the stalled-RPC-body case) asserts the old name, so no test proves the catalogued timeout mapping. The "dependency" clause cites only the 503 DEPENDENCY_UNAVAILABLE cases for the same reason; the 502 response-contract cases assert the non-catalog name and are not cited. The web relay and the browser submit mapper accept the same non-catalog names (cms-template-designer-submit.ts, cms-composition-platform-mutation.ts).',
+      'Unproven for citation purposes: none by assertion. The clause "timeout" is proven by the route-deadline Worker test (15 s deadline answers 504 DEPENDENCY_UNAVAILABLE with the bound message) and the real-stack apispec case (a never-answering dependency is 503 DEPENDENCY_UNAVAILABLE with no row written); the apispec case has no receipt yet (shared Supabase stack run), so the citation is held until root regenerates receipts. The 502 and 504 catalogued mappings are asserted by the dependency-unavailable Worker suite.',
   },
   {
     criterion: 'P2-S12-AC-009',
@@ -922,7 +922,26 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and success contracts',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/pattern-instance.test.ts',
+            title:
+              'PatternPlacementResource (CMS-03C-02 201, DEC-175, DEC-181) [P2-S12-AC-010] answers an items list of one or more rows, at most 512 after expansion',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/pattern-instance.test.ts',
+            title:
+              'PatternPlacementResource (CMS-03C-02 201, DEC-175, DEC-181) [P2-S12-AC-010] holds every row to the closed CompositionInstanceResource',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-placement-http.test.ts',
+            title:
+              'PatternPlacementResource cardinality (schema control, DEC-175/DEC-181) [P2-S12-AC-010] accepts 1 and 512 rows and refuses 0 and 513',
+          },
+        ],
       },
       {
         text: 'and complete the declared happy path',
@@ -930,12 +949,25 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'CMS-03C-02 — CMS-12 — POST /api/v1/cms/compositions/pattern-instances — PatternInstanceRequest → 201 PatternPlacementResource.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-pattern-openapi.test.ts',
+            title:
+              'Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-010] answers CMS-03C-02 with the PatternPlacementResource items list, not a single row',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/production-worker-runtime-cms-composition.test.ts',
+            title:
+              'production Worker runtime CMS composition injects the pattern instance adapter and mounts CMS-03C-02',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven: "success contracts", "complete the declared happy path" and the registry row "→ 201 PatternPlacementResource". No PatternPlacementResource exists anywhere in the code: the registry row, the Worker route and the web proxy still return the single-row CompositionInstanceResource (packages/contracts/src/cms-composition/pattern-instance.ts, platform-registries.ts successSchema CompositionInstanceResourceSchema), not the DEC-175/DEC-181 items list of 1..512 rows per block root. The private RPC cms_insert_pattern_instance is not deployed: the production adapter answers 503 for a missing function (cms-composition-production-pattern.ts), so no request can complete. There is no phase-02-slice-12 pattern OpenAPI test (template, taxonomy, locale and related-content each have one).',
+      'Unproven: "complete the declared happy path". The PatternPlacementResource success contract and the registry row now exist (contract, OpenAPI, Worker, web proxy, RPC; the legacy single-row body fails closed), but no composed Worker to Kong/PostgREST to database case exists for CMS-03C-02 (tests/postgrest has apispec files for template and locale only), and the Worker (stubbed port) and web proxy 201 cases prove halves of the path, not the whole; the RPC half is pgTAP (not cited here).',
   },
   {
     criterion: 'P2-S12-AC-011',
@@ -1003,7 +1035,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "every invalid request value" and "the exact stable field violation". The contract tests assert only that bad values fail to parse (safeParse().success false) and the route test asserts only the HTTP status, so no test pins a violation pointer or code for the pattern request. The semantic value rules are not implemented because the RPC is absent: current draft revision (409 revision_not_editable), an active compatible PatternVersion (422 pattern_version_not_active or pattern_incompatible), node-path override keys (DEC-175), graph, depth and node limits. "No state mutation" is shown only as the port not being called; no database state is observed.',
+      'Unproven for citation purposes: none by assertion. "every invalid request value" and "the exact stable field violation" are cited at the contract layer (wire contract rejects caller authority, unknown fields, bad ids, versions, mode, path, digest; override keys report exactly /overrides), but those citations are held: the pointers per value of the RPC are pgTAP (not cited this pass), no composed Worker-to-database case pins the HTTP body pointer, and no test enumerates every value of every field.',
   },
   {
     criterion: 'P2-S12-AC-012',
@@ -1109,7 +1141,14 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'If-Match or CAS',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/pattern-instance.test.ts',
+            title:
+              'CMS-03C-02 pattern-instance wire contract [P2-S12-AC-013] ties the strong If-Match to the entry aggregate expectedVersion in the transport view',
+          },
+        ],
       },
       {
         text: 'duplicate, replay',
@@ -1179,7 +1218,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "enforce declared idempotency", "If-Match or CAS", "duplicate, replay" and "concurrency rules". These are database behaviors of cms_insert_pattern_instance (revision CAS, unique revision and path per row, all-or-nothing placement, exact-repeat replay, a changed body under the same key answering 409), and the RPC does not exist. The Worker validates the header shapes and forwards the precondition to a stubbed port; that is not enforcement. Rate, deadline, no-store and query refusal are proven at the Worker boundary only (120/min/user, 240/min/party asserted against a stubbed limiter).',
+      'Unproven at the Vitest layer: "enforce declared idempotency", "duplicate, replay" and "concurrency rules". These are database behaviours of cms_insert_pattern_instance (exact replay returns the stored 201 and ETag, changed body under the same key is 409, occupied path is CONFLICT) proven in pgTAP only, and the concurrent forms (two simultaneous placements, deadlock conversion) need a race module that does not exist. "If-Match or CAS" is cited at the transport contract only (the strong If-Match must equal the entry expectedVersion, reported at headers.ifMatch); the stale-version 409 itself is RPC behaviour. Rate, deadline, no-store and query refusal are Worker-boundary evidence against stubbed ports.',
   },
   {
     criterion: 'P2-S12-AC-014',
@@ -1210,14 +1249,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'dependency',
-        citations: [
-          {
-            tool: 'vitest',
-            file: 'apps/worker/src/cms-composition-production-pattern.test.ts',
-            title:
-              'CMS-03C-02 production pattern adapter treats a missing private RPC as unavailable rather than a hidden composition',
-          },
-        ],
+        citations: [],
       },
       {
         text: 'timeout',
@@ -1265,7 +1297,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "timeout". The locked catalog maps 502, 503 and 504 to DEPENDENCY_UNAVAILABLE; the pattern route still emits DEPENDENCY_INVALID_RESPONSE (502) and DEPENDENCY_DEADLINE_EXCEEDED (504) (apps/worker/src/cms-composition/pattern-instance-contracts.ts ERROR_CODES), and the deadline tests assert the old 504 name. The "dependency" clause cites only the 503 case. The domain failures (409 cycle, slot or CAS conflict, 422 graph) cannot originate: the private RPC is not deployed, so the mapping is exercised only with stubbed provider failures.',
+      'Unproven for citation purposes: none by assertion. The clauses "dependency" (502, 503, a throwing port and a malformed envelope answer DEPENDENCY_UNAVAILABLE with the bound message) and "timeout" (15 s route deadline answers 504; the production adapter applies the deadline to private error and success body reads) are proven at the Worker route and adapter against stubbed ports, but those citations are held: no composed Worker to PostgREST to database case exists for CMS-03C-02 and no native, SQL, browser or hosted acceptance is established.',
   },
   {
     criterion: 'P2-S12-AC-015',
@@ -1395,7 +1427,14 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and every invalid request value',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/taxonomy-term.test.ts',
+            title:
+              'CMS-03C-03 taxonomy-term wire contract rejects unknown fields, invented actions, invalid identity, keys, and versions',
+          },
+        ],
       },
       {
         text: 'with the exact stable field violation',
@@ -1432,7 +1471,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "every invalid request value" and "the exact stable field violation". Only the unknown-field violation is pinned (path /injectedOwner, code unknown_field); the contract tests assert parse failure as a boolean. The semantic rules are not implemented: the vocabulary must have an active TaxonomyVersion (409 taxonomy_not_active), a parentId other than null requires shape hierarchical, a survivor cannot be self, cyclic or merged (the database guards exist at table level, but no action RPC maps them to a 422/409 with a pointer). "No state mutation" is shown only as the port not being called.',
+      'Unproven: "the exact stable field violation". "every invalid request value" is cited at the wire-contract layer (unknown fields, invented actions, identity, keys and versions are refused) as boolean parse failures; the exact pointer per refusal (/action, /parentId, /survivorId, ...) is pinned in pgTAP (not cited this pass), and the Worker test only relays a port-supplied pointer. "No state mutation" rests on the port not being called plus pgTAP.',
   },
   {
     criterion: 'P2-S12-AC-018',
@@ -1531,7 +1570,14 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'If-Match or CAS',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/taxonomy-term.test.ts',
+            title:
+              'CMS-03C-03 If-Match operand [P2-S12-AC-019] ties the strong If-Match to the active taxonomy version expectedVersion, reported at headers.ifMatch',
+          },
+        ],
       },
       {
         text: 'duplicate',
@@ -1606,7 +1652,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "enforce declared idempotency", "If-Match or CAS", "replay" and "concurrency rules". They are behaviors of the absent cms_act_taxonomy_term RPC (term lock, CAS on the active taxonomy version, unique survivor and redirect, exact-repeat replay, same key with another body answering 409). The Worker checks that If-Match is strong and equals expectedVersion and forwards it to a stubbed port; the term-version columns exist, but no test shows a stale version refused. "duplicate" is shown only as a table-level unique stable term key. Rate, deadline, no-store and query refusal are Worker-boundary tests against stubbed dependencies.',
+      'Unproven at the Vitest layer: "enforce declared idempotency", "replay" and "concurrency rules". They are behaviours of cms_act_taxonomy_term (same-key exact replay, IDEMPOTENCY_MISMATCH, term lock and active-version CAS) proven in pgTAP only; no race module covers two concurrent term actions. "If-Match or CAS" is cited at the transport contract only (the strong If-Match must equal the active taxonomy version expectedVersion, reported at headers.ifMatch); the stale-operand 409 itself is RPC behaviour. "duplicate" rests on a table-level unique key; rate, deadline, no-store and query refusal are Worker-boundary tests against stubbed dependencies.',
   },
   {
     criterion: 'P2-S12-AC-020',
@@ -1632,12 +1678,6 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       {
         text: 'dependency',
         citations: [
-          {
-            tool: 'vitest',
-            file: 'apps/worker/src/cms-composition-production-taxonomy.test.ts',
-            title:
-              'CMS-03C-03 production taxonomy boundary admits a valid curator but refuses mutation while canonical source and RPC are absent',
-          },
           {
             tool: 'vitest',
             file: 'apps/worker/src/cms-composition-production-taxonomy.test.ts',
@@ -1685,7 +1725,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "timeout" and "preserve safe recovery". The taxonomy route emits DEPENDENCY_INVALID_RESPONSE (502) and DEPENDENCY_DEADLINE_EXCEEDED (504) (apps/worker/src/cms-composition/taxonomy-contracts.ts ERROR_CODES) where the locked catalog requires DEPENDENCY_UNAVAILABLE, and the 15-second deadline test asserts the old 504 name. The declared domain failures (term, merge, CAS, idempotency conflicts, canonical_source_unavailable) have no producer: the RPC is absent and the production port is a fail-closed 503, so the domain-failure mapping runs only on stubbed provider errors.',
+      'Unproven for citation purposes: none by assertion. "timeout" (the 15 s route deadline answers 504 DEPENDENCY_UNAVAILABLE, the production port aborts a non-settling transport at its deadline without retrying) and "preserve safe recovery" (a throwing dependency is a retryable 503 and the mutation is not retried, the 429 carries second-granularity reset and matching headers, the term form keeps its entries and says the service is unavailable) are proven at the Worker, adapter and component layers against stubbed dependencies; the citations are held and no native, SQL, browser or hosted acceptance is established.',
   },
   {
     criterion: 'P2-S12-AC-021',
@@ -1821,7 +1861,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "not a reserved key (`context`, `versions`, `new`)" (E13, 422 key_reserved at /templateKey). No contract schema, SQL CHECK or test refuses those three keys: CmsTemplateKeySchema (packages/contracts/src/cms-composition/template.ts) is the bare regex, and the SQL manifest check calls platform_private.cms_reserved_key, which lists the Slice 09 reserved concepts (user, party, profile, ...), not context, versions or new. Also not implemented: per-owner uniqueness (E14): cms_template_versions still has the global UNIQUE (template_key, version) (20260927200000_cms_template_authority.sql line 178) and carries no lineage templateId, so the cited "never reused" proof is the stricter global rule; a key held by another owner still collides.',
+      'Unproven for citation purposes: none by assertion. The reserved keys context, versions and new (E13) are refused with key_reserved at /templateKey in the Zod contract, at the Worker route before the port, and through the real stack (422, no row); the real-stack citation has no receipt yet (shared Supabase stack run), so the clause citations are held until root regenerates receipts. Per-owner uniqueness (E14) and the "never reused" triple are pgTAP/apispec evidence cited under the other clauses.',
   },
   {
     criterion: 'P2-S12-AC-023',
@@ -2025,7 +2065,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: the audience grammar `^[a-z0-9_-]{1,48}$` matched as submitted and never trimmed (E4, the BE04c grammar). SafeAudienceSchema (packages/contracts/src/cms-composition/template.ts) accepts any string of 1-64 characters without <, >, { or }, and the SQL manifest check accepts 1-64 octets with the same exclusion (20261002210000_cms_reserved_concept_block_template_keys.sql); the only audience assertion rejects the string <script>. Upper-case, spaces, padding and 49-64 character audiences are accepted today and no test says otherwise.',
+      'Unproven for citation purposes: none by assertion. The audience grammar ^[a-z0-9_-]{1,48}$ matched as submitted and never trimmed is enforced and asserted in the Zod contract, at the Worker route (422 at /audience before the port) and through the real stack (422, no row, a 48-character audience accepted); the real-stack citation has no receipt yet (shared Supabase stack run), so the clause citations are held until root regenerates receipts.',
   },
   {
     criterion: 'P2-S12-AC-026',
@@ -2097,20 +2137,50 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '422.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-instance-reasons.test.ts',
+            title:
+              'CMS-03C-02 route typed Slice 12 refusals publishes pattern_incompatible as 422 COMPOSITION_VALIDATION_FAILED with exactly its reasonCode',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-instance-reasons.test.ts',
+            title:
+              'CMS-03C-02 route typed Slice 12 refusals publishes pattern_version_not_active as 422 COMPOSITION_VALIDATION_FAILED with exactly its reasonCode',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven: "naming an active PatternVersion of that lineage whose compatibleTypeIds lists the revision content type" with the typed 422 pattern_version_not_active or pattern_incompatible, and the 422 status itself. cms_pattern_versions has no compatible_type_ids column, no activation path (CMS-03C-09) and no pattern create (CMS-03C-12), so an active, compatible pattern version cannot exist; the Worker never produces these reason codes. Only the positive-integer version and the closed linked/detached mode are tested, as parse booleans.',
+      'Unproven at the Vitest layer: "naming an active PatternVersion of that lineage whose compatibleTypeIds lists the revision content type". The rule is enforced by cms_insert_pattern_instance (pgTAP, not cited this pass); the Worker tests relay stubbed typed refusals and only prove the 422 status and exact reasonCode publication for pattern_version_not_active and pattern_incompatible.',
   },
   {
     criterion: 'P2-S12-AC-028',
-    text: 'Enforce CMS-03C-02: slotPath/overrides; normalized path 1–512 chars; strict overrides max 64 keys/8 depth; 422.',
+    text: 'Enforce CMS-03C-02: slotPath/overrides/roots; normalized path 1–512 chars; strict overrides max 64 keys/8 depth; optional `roots` of 1–512 unique key chains, each a block root of the pinned forest after top-level expansion (else 422 at `/roots/{n}`), placing only the named roots, an `overrides` key under no named root being 422 at `/overrides` (DEC-193); 422.',
     clauses: [
       {
-        text: 'Enforce CMS-03C-02: slotPath/overrides; normalized',
+        text: 'Enforce CMS-03C-02: slotPath/overrides/roots;',
         citations: [],
+      },
+      {
+        text: 'normalized',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/pattern-instance.test.ts',
+            title:
+              'CMS-03C-02 pattern-instance wire contract [P2-S12-AC-028] accepts only normalized node paths as override keys and reports any other key at /overrides',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-placement-http.test.ts',
+            title:
+              'CMS-03C-02 pattern placement at the HTTP app.request boundary [P2-S12-AC-218] refuses a non-normalized row path at the route',
+          },
+        ],
       },
       {
         text: 'path 1–512 chars',
@@ -2122,6 +2192,10 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
               'CMS-03C-02 pattern-instance wire contract rejects caller authority, unknown fields, bad ids, versions, mode, path, and digest',
           },
         ],
+      },
+      {
+        text: ';',
+        citations: [],
       },
       {
         text: 'strict overrides max 64 keys/8 depth',
@@ -2141,6 +2215,14 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
+        text: ';',
+        citations: [],
+      },
+      {
+        text: 'optional `roots` of 1–512 unique key chains, each a block root of the pinned forest after top-level expansion (else 422 at `/roots/{n}`), placing only the named roots, an `overrides` key under no named root being 422 at `/overrides` (DEC-193);',
+        citations: [],
+      },
+      {
         text: '422.',
         citations: [
           {
@@ -2154,7 +2236,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "normalized" slotPath and the node-path form of override keys. The contract only requires a leading slash, 1-512 characters and no control character (hasSafeSlotPath); it does not normalize or reject empty segments, dot segments or a trailing slash, and the DEC-175 rule that override keys are normalized node paths under the inserted root, each naming a node of the pinned pattern tree, is not enforced (no pattern tree is read). The 422 evidence is limited to the unknown-field case in the route test.',
+      'Unproven at the Vitest layer: the label fragment "Enforce CMS-03C-02: slotPath/overrides/roots;", the two bare ";" separator fragments (carry no assertion of their own) and the DEC-193 `roots` clause: the contract accepts an omitted or 1-512 unique roots list and the Worker forwards a stubbed selected set, but the rule that each root is a block root of the pinned forest (422 at /roots/{n}), that only named roots are placed and that an overrides key under no named root is 422 at /overrides is decided by cms_insert_pattern_instance (pgTAP, not cited this pass). "normalized" is cited from the override-key contract test and the route refusal of a non-normalized row path.',
   },
   {
     criterion: 'P2-S12-AC-029',
@@ -2418,7 +2500,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "source revision must exist and be readable". The RPC tests cover a concealed foreign entry (404) and a source hash that is false or stale, but no case names a sourceRevisionId that is absent, belongs to another entry or is not readable by the caller and expects NOT_FOUND / LOCALE_SOURCE_NOT_FOUND. The 404 evidence for an unknown locale is likewise absent.',
+      'Unproven for citation purposes: none by assertion. "source revision must exist and be readable" is proven through the real Worker, PostgREST and database stack (an absent source revision and an entry another owner holds are the same concealed 404 LOCALE_SOURCE_NOT_FOUND); the apispec case has no receipt yet (shared Supabase stack run), so the citation is held until root regenerates receipts. The 404 for an unknown locale remains unasserted.',
   },
   {
     criterion: 'P2-S12-AC-034',
@@ -2491,7 +2573,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
           },
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-refusals.test.ts',
             title:
               'CMS-03C-04 locale authoring route returns the active chain on a fallback-chain mismatch and nothing else',
           },
@@ -2681,7 +2763,20 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '`key` a member of the code-owned rule registry (`shared-terms`, `same-type-recent`), `version` its registered version, `reasonCode` an equality expectation of the registry value',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/related-public-target.test.ts',
+            title:
+              'CMS-03C-21 related public targets (D11, OD-5) [P2-S12-AC-229] holds the code-owned rule registry to shared-terms and same-type-recent at version 1',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/related-public-target.test.ts',
+            title:
+              'CMS-03C-21 related public targets (D11, OD-5) [P2-S12-AC-229] resolves an unknown rule key or version to nothing and never inherits a prototype member',
+          },
+        ],
       },
       {
         text: '`maxCandidates` 1–128',
@@ -2723,7 +2818,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: the code-owned rule registry (shared-terms, same-type-recent), the registered version, the reasonCode equality expectation and the 422 derived_rule_unknown. The contract only checks the key against the grammar ^[a-z][a-z0-9_-]{1,63}$, the version as a positive decimal and the reasonCode against a free-form grammar, so any well-formed key is accepted; no registry exists in code and derived_rule_unknown appears nowhere. The no-arbitrary-expression rule is proven by the strict object (an unknown member such as privateQuery is rejected).',
+      'Unproven at the Vitest layer: "(an unknown key or version is 422 derived_rule_unknown)". The code-owned registry (shared-terms and same-type-recent at version 1, reasonCode equality value) and the null resolution of an unknown key or version (including prototype keys) are cited from the contract tests, but the 422 derived_rule_unknown at /derivedRule/key is decided by the RPC (pgTAP, not cited this pass) and the Worker and adapter tests only relay a stubbed refusal.',
   },
   {
     criterion: 'P2-S12-AC-038',
@@ -2837,7 +2932,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
           },
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-binding-and-order.test.ts',
             title:
               'BE00 step 2 body ceiling on the CMS locale route refuses a streamed body over the ceiling that declared no length',
           },
@@ -2992,7 +3087,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
             title:
-              'CMS-03C-01 rejects a registered block absent from the active type renderer',
+              'CMS-03C-01 rejects a registered block whose compiler range excludes the active type compiler_version',
           },
           {
             tool: 'pgtap',
@@ -3804,7 +3899,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
           },
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-binding-and-order.test.ts',
             title:
               'CMS-03C-04 locale authoring route does not accept success for another state, entry, locale, source or fallback',
           },
@@ -3889,7 +3984,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "as 201 (... staleFieldIds, which is empty unless state is stale)". LocaleVariantResourceSchema has no staleFieldIds member and the RPC response carries none (supabase/migrations/20261002167000_cms_locale_author_active_configuration.sql builds the resource without it); the variant state returned is always draft, so untranslated, review, approved and stale are never produced by this command. The 201 body is shown through a stubbed port (Worker route test) and through partial field assertions on the RPC response (pgTAP); no test drives the production Worker through PostgREST to the database and validates the real body against the strict schema.',
+      'Unproven for citation purposes: none by assertion. The 201 LocaleVariantResource members (closed state, entryId, revisionId, locale, sourceRevisionId, fallbackChain, noFallbackFieldIds, required staleFieldIds) are asserted in the wire contract and through the real Worker, PostgREST and database stack (strict 201 draft parsed by LocaleVariantResourceSchema, aggregate ETag, one audit, one outbox); the real-stack citation has no receipt yet (shared Supabase stack run), so the clause citations are held until root regenerates receipts.',
   },
   {
     criterion: 'P2-S12-AC-055',
@@ -3957,7 +4052,14 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'locale or source revision is 404 `LOCALE_SOURCE_NOT_FOUND`',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-locale-variant.apispec.ts',
+            title:
+              'CMS-03C-04 author a locale variant through the real stack [P2-S12-AC-055] an absent source revision and an entry another owner holds are the same 404 LOCALE_SOURCE_NOT_FOUND',
+          },
+        ],
       },
       {
         text: 'a visible entry without edit assignment is 403 `LOCALE_FORBIDDEN`',
@@ -4012,7 +4114,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "on a source revision the caller can read", a hidden or absent locale or source revision answering 404 LOCALE_SOURCE_NOT_FOUND, and "never borrows another jurisdiction text". No RPC case names an absent, foreign or unreadable sourceRevisionId or an unsupported locale on the path and expects the concealed 404 (the concealment test is for another tenant entry); nothing asserts that a missing value is not filled from a different locale variant (the nearest assertion is that a variant cannot target its own source locale). The server-derived context is proven against a mocked fetch (adapter tests) and an RPC called with hand-built context (pgTAP), not composed.',
+      'Unproven: "on a source revision the caller can read" (no test supplies a source revision that exists but is hidden from the caller; only an absent one is concealed) and "never borrows another jurisdiction text" (pgTAP only). "locale or source revision is 404 LOCALE_SOURCE_NOT_FOUND" is cited through the real stack for an absent source revision and a foreign-owner entry (same 404); a hidden or absent locale is not asserted there, and the apispec case has no receipt yet (shared Supabase stack run).',
   },
   {
     criterion: 'P2-S12-AC-056',
@@ -4086,7 +4188,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
           },
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-refusals.test.ts',
             title:
               'CMS-03C-04 locale authoring route checks both rate buckets, validates decisions, and returns Retry-After',
           },
@@ -4103,7 +4205,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         citations: [
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-binding-and-order.test.ts',
             title:
               'CMS-03C-04 locale authoring route fences rejected ports, thrown ports, and a deadline without provider prose',
           },
@@ -4242,7 +4344,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
           },
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-refusals.test.ts',
             title:
               'CMS-03C-04 locale authoring route returns the active chain on a fallback-chain mismatch and nothing else',
           },
@@ -4292,13 +4394,13 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         citations: [
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-refusals.test.ts',
             title:
               'CMS-03C-04 locale authoring route checks both rate buckets, validates decisions, and returns Retry-After',
           },
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-binding-and-order.test.ts',
             title:
               'CMS-03C-04 locale authoring route publishes the BE00 429 contract with second-granularity reset and matching headers',
           },
@@ -4313,7 +4415,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         citations: [
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-binding-and-order.test.ts',
             title:
               'CMS-03C-04 locale authoring route normalizes unexpected execution exceptions to a scrubbed 500',
           },
@@ -4324,7 +4426,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         citations: [
           {
             tool: 'vitest',
-            file: 'apps/worker/src/cms-composition/locale-routes.test.ts',
+            file: 'apps/worker/src/cms-composition/locale-routes-refusals.test.ts',
             title:
               'CMS-03C-04 locale authoring route scrubs all provider status codes and unsafe details',
           },
@@ -4376,7 +4478,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "a schema or RPC deadline (502/503/504 DEPENDENCY_UNAVAILABLE)". The locked catalog maps all three to DEPENDENCY_UNAVAILABLE, but the locale route emits DEPENDENCY_INVALID_RESPONSE for 502 and DEPENDENCY_DEADLINE_EXCEEDED for 504 (apps/worker/src/cms-composition/locale-routes-support.ts ERROR_CODES) and the 502 and deadline tests assert the old names; the browser proxy and the web accept the same names. The 404 and 409 mappings are shown from tokens a stub or a hand-built RPC call produces; an absent source revision and a duplicate locale are never produced by the database in a test.',
+      'Unproven for citation purposes: none by assertion. "a schema or RPC deadline (502/503/504 DEPENDENCY_UNAVAILABLE)" is proven by the Worker dependency-unavailable suite (15 s deadline answers 504, a 503 port failure and a malformed envelope 502 answer DEPENDENCY_UNAVAILABLE with the bound message) and through the real stack (a never-answering dependency is a 503 with no write); the real-stack citation has no receipt yet (shared Supabase stack run), so the clause citations are held until root regenerates receipts.',
   },
   {
     criterion: 'P2-S12-AC-058',
@@ -4477,20 +4579,20 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: "as 201 (state active or revoked, ... eligibleCount 0-128)". Nothing produces a related-content rule: the production port is a fail-closed 503 (apps/worker/src/cms-composition-production-related.ts actRelatedContent returns unavailable) because the owner-controlled eligible-target projection, the rule source and the atomic RPC cms_curate_related_content are not specified or deployed; the 201 is reachable only from a stubbed port in the route tests. eligibleCount is a contract field with no computation behind it.',
+      'Unproven for citation purposes: none by assertion. The 201 RelatedContentResource members (state active or revoked, sourceEntryId, pins, exclusions, derivedRule key and version or null, eligibleCount 0-128) are asserted in the wire contract and the generated OpenAPI document, so the clause citations are held with the existing ones until root regenerates receipts and decides promotion; the server production of that body is RPC/pgTAP (not cited this pass) and no composed Worker to database case exists for CMS-03C-05. One existing citation (the related-content page route test under apps/web/src/pages/api/v1/cms/entries/[entryId]/) is not a repository-relative path the guard accepts (brackets are outside its path charset) and needs a decision from root.',
   },
   {
     criterion: 'P2-S12-AC-060',
-    text: 'CMS-03C-05 serves only an assigned CMS author or editor who can edit the source entry: a hidden source or target is 404 `RELATED_CONTENT_NOT_FOUND`, a visible source without edit assignment is 403 `RELATED_CONTENT_FORBIDDEN`, a recommendation never grants access to a target the caller could not already read, and the stored rule carries no authority.',
+    text: 'CMS-03C-05 serves only an assigned CMS author or editor who can edit the source entry: a hidden or absent source is 404 `RELATED_CONTENT_NOT_FOUND`, a hidden, absent or ineligible target is the uniform 422 `related_target_ineligible`, a visible source without edit assignment is 403 `RELATED_CONTENT_FORBIDDEN`, a recommendation never grants access to a target the caller could not already read, and the stored rule carries no authority.',
     clauses: [
       {
-        text: 'CMS-03C-05 serves only an assigned CMS author or editor who can edit the source entry: a hidden source or target is 404 `RELATED_CONTENT_NOT_FOUND`, a visible source without edit assignment is 403 `RELATED_CONTENT_FORBIDDEN`, a recommendation never grants access to a target the caller could not already read, and the stored rule carries no authority.',
+        text: 'CMS-03C-05 serves only an assigned CMS author or editor who can edit the source entry: a hidden or absent source is 404 `RELATED_CONTENT_NOT_FOUND`, a hidden, absent or ineligible target is the uniform 422 `related_target_ineligible`, a visible source without edit assignment is 403 `RELATED_CONTENT_FORBIDDEN`, a recommendation never grants access to a target the caller could not already read, and the stored rule carries no authority.',
         citations: [],
       },
     ],
     status: 'unverified',
     limitation:
-      'No database decision exists for this operation: there is no related-content RPC, so the assignment check on the source entry, the 404 for a hidden source or target and the 403 for a visible source without edit assignment are never produced. The Worker gates only on the cms.author/cms.editor capability and maps stubbed port failures. The stored-rule table is append-only and binds a real source entry (locale_related_authority.sql), but no test shows a recommendation not granting access to an unreadable target or a rule carrying no authority.',
+      'Approved claim amended; no test is cited for this criterion yet. Native/SQL/browser acceptance remains unverified.',
   },
   {
     criterion: 'P2-S12-AC-061',
@@ -4715,7 +4817,38 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a target projection or RPC deadline (502/503/504 `DEPENDENCY_UNAVAILABLE`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts',
+            title:
+              "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-05 related content' a port failure of 503 answers that status as DEPENDENCY_UNAVAILABLE with the bound message and closed details",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts',
+            title:
+              "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-05 related content' a port that throws answers 503 DEPENDENCY_UNAVAILABLE without its prose",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts',
+            title:
+              "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-05 related content' a malformed port envelope answers 502 DEPENDENCY_UNAVAILABLE",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts',
+            title:
+              "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-05 related content' the 15-second route deadline answers 504 DEPENDENCY_UNAVAILABLE",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-related.test.ts',
+            title:
+              'CMS-03C-05 production related-content adapter maps provider outages and deadlines to 503 and 504',
+          },
+        ],
       },
       {
         text: 'and an internal failure (500)',
@@ -4756,7 +4889,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven: the "502/503/504 DEPENDENCY_UNAVAILABLE" deadline mapping (related-content-response.ts emits DEPENDENCY_INVALID_RESPONSE for 502 and DEPENDENCY_DEADLINE_EXCEEDED for 504, contrary to the locked catalog), "commits no mutation on unresolved target authorization" and the public-projection drop-out. There is no related-content mutation and no CMS-03C-21 projection (platform_private.cms_related_content_public_targets), so no target-authorization, no-mutation or later-unpublish behavior exists to test. The status mappings are exercised only with stubbed port failures.',
+      'Unproven at the Vitest layer: "commits no mutation on unresolved target authorization" (the eligibility check inside the RPC transaction is pgTAP; the Worker test only fails closed against a stubbed port) and "lets a target that later becomes private or unpublished drop out of the public projection while the rule history stays private" (the public-target recompute is pgTAP only). The "502/503/504 DEPENDENCY_UNAVAILABLE" deadline mapping is cited from the Worker dependency-unavailable suite (503 port failure, throwing port, malformed envelope 502, 15 s deadline 504) and the production adapter outage/deadline mapping; no real-stack case exists for CMS-03C-05.',
   },
   {
     criterion: 'P2-S12-AC-063',
@@ -4860,7 +4993,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'unverified',
     limitation:
-      'No governed review exists in the code: a search of apps, packages, supabase and tests for governed-reviews, GovernedReview, governed_review and CMS-03C-06 through CMS-03C-11 finds only the ledger and tracker text. The decision route, GovernedDecisionRequest contract, the recorded-decision count and the step-up requirement (unconditional MFA for CMS-03C-07) are all unimplemented.',
+      'Unproven for citation purposes: none by assertion. The whole clause (strict GovernedDecisionRequest, 200 strict GovernedReviewResource with the decision counted, capability and stepUpAt refused as unknown keys with 422, generated OpenAPI and registry row) is proven by the contract, Worker route and OpenAPI tests listed, but the clause is a single sentence and the Worker tests run against a stubbed RPC reply, so the citations are held until root regenerates receipts and decides promotion; the recorded-decision count itself is RPC/pgTAP (not cited this pass).',
   },
   {
     criterion: 'P2-S12-AC-071',
@@ -4873,6 +5006,6 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'unverified',
     limitation:
-      'No governed review exists in the code: a search of apps, packages, supabase and tests for governed-reviews, GovernedReview, governed_review and CMS-03C-06 through CMS-03C-11 finds only the ledger and tracker text. The SafeText reason grammar for governed decisions (the 03b SafeText grammar exists for CMS-03B review decisions only) and the path/body reviewId equality rule have no CMS-03C-07 implementation or test.',
+      'Unproven for citation purposes: none by assertion. The path/body reviewId equality (422 at /reviewId), the approve/reject enum, the 1-2000 code point NFC reason grammar, expectedVersion equal to the strong If-Match and the refused capability/stepUpAt keys are asserted in the contract and Worker input tests listed; the clause is one sentence and the Worker tests run against a stubbed RPC, so the citations are held until root regenerates receipts and decides promotion.',
   },
 ];

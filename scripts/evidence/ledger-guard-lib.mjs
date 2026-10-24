@@ -31,7 +31,9 @@ const TOOL_FILES = Object.freeze({
   playwright: /\.spec\.ts$/u,
   race: /^supabase\/tests\/.+\.mjs$/u,
 });
-const CITATION_PATH = /^[A-Za-z0-9_.@+/-]+$/u;
+// `[` and `]` are path characters: Astro dynamic routes are directories such as
+// `[entryId]` and `[...slug]`. Every other glob metacharacter stays rejected.
+const CITATION_PATH = /^[A-Za-z0-9_.@+/[\]-]+$/u;
 // What a file-level verdict looks like when someone pastes it as a "test title".
 const FILE_VERDICT_TITLES = [
   /\S+\.(?:sql|sqlinc|mjs|tsx?)\s*\.{2,}\s*\S*/u,
