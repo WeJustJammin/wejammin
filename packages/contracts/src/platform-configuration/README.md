@@ -21,6 +21,9 @@ change review, activation, rollback, and identifier-only configuration events.
 - `primitives.ts` owns bounded identifiers, JSON, scopes, and intervals.
 - `settings.ts` is the public CFG-05A barrel. Focused definition, effective-value,
   and change modules own CFG-05A-01 through CFG-05A-04 request/response schemas.
+- `validators.ts`, exported as `@wejammin/contracts/platform-configuration/validators`,
+  is the narrow lazy browser entry for the original effective-value response
+  schema. It exports no other validator or private receiving contract.
 - `telemetry.ts` is the public union barrel for the strict, redacted
   CFG-05A-01 through CFG-05A-07 observability envelopes. Focused definition,
   change, runtime, and common modules own the schemas; producers outside the

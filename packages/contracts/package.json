@@ -7,6 +7,7 @@
   "exports": {
     ".": "./src/index.ts",
     "./client": "./src/client.ts",
+    "./platform-configuration/validators": "./src/platform-configuration/validators.ts",
     "./content-schema-registry/validators": "./src/content-schema-registry/validators.ts",
     "./time-authority": "./src/cms-editorial/time-authority/index.ts",
     "./cms-editorial/validators": "./src/cms-editorial/validators.ts"

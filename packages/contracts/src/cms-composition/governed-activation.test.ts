@@ -47,6 +47,7 @@ const resource = {
   subjectId: uid(51),
   lineageId: uid(52),
   subjectVersion: 3,
+  supersededVersion: 2,
   action: 'activate',
   subjectState: 'active',
   activatedAt: instant,
@@ -55,6 +56,7 @@ const resource = {
 } as const;
 const scheduledResource = {
   ...resource,
+  supersededVersion: null,
   action: 'schedule',
   subjectState: 'scheduled',
   activatedAt: null,
@@ -63,6 +65,7 @@ const scheduledResource = {
 } as const;
 const retiredResource = {
   ...resource,
+  supersededVersion: null,
   action: 'retire',
   subjectState: 'retired',
   eventType: 'cms.template.activated.v1',
@@ -284,9 +287,57 @@ describe('GovernedActivationResource', () => {
       { ...resource, ownerId: uid(1) },
       { ...resource, contentHash: hash },
       without(resource, 'eventType'),
+      without(resource, 'supersededVersion'),
       without(resource, 'scheduledForUtc'),
       without(resource, 'lineageId'),
     ])
       expect(isRefused(GovernedActivationResourceSchema, candidate)).toBe(true);
+  });
+
+  it('[P2-S12-AC-082] carries the superseded definition version as a nullable positive integer (DEC-191)', () => {
+    for (const supersededVersion of [1, 2, 41])
+      expect(
+        GovernedActivationResourceSchema.parse({
+          ...resource,
+          supersededVersion,
+        }).supersededVersion,
+      ).toBe(supersededVersion);
+    // A lineage's first activation supersedes nothing.
+    expect(
+      GovernedActivationResourceSchema.parse({
+        ...resource,
+        supersededVersion: null,
+      }).supersededVersion,
+    ).toBeNull();
+    for (const supersededVersion of [
+      0,
+      -1,
+      1.5,
+      '2',
+      true,
+      undefined,
+      Number.NaN,
+    ])
+      expect(
+        issuePaths(GovernedActivationResourceSchema, {
+          ...resource,
+          supersededVersion,
+        }),
+      ).toContain('supersededVersion');
+  });
+
+  it('[P2-S12-AC-082] names a superseded version only on an immediate activation (DEC-191: null for schedule and retire)', () => {
+    expect(
+      issuePaths(GovernedActivationResourceSchema, {
+        ...scheduledResource,
+        supersededVersion: 2,
+      }),
+    ).toEqual(['supersededVersion']);
+    expect(
+      issuePaths(GovernedActivationResourceSchema, {
+        ...retiredResource,
+        supersededVersion: 2,
+      }),
+    ).toEqual(['supersededVersion']);
   });
 });

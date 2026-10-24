@@ -12,7 +12,10 @@ describe('BE03c Slice 12 typed refusals per operation', () => {
     'CMS-03C-02': 'P2-S12-AC-014',
     'CMS-03C-03': 'P2-S12-AC-020',
     'CMS-03C-04': 'P2-S12-AC-057',
+    cmsLocaleVariantRead: 'P2-S12-AC-057',
+    cmsCompositionInstancesRead: 'P2-S12-AC-269',
     'CMS-03C-05': 'P2-S12-AC-062',
+    cmsRelatedContentRead: 'P2-S12-AC-062',
     'CMS-03C-06': 'P2-S12-AC-068',
     'CMS-03C-07': 'P2-S12-AC-074',
     'CMS-03C-08': 'P2-S12-AC-080',
@@ -45,6 +48,7 @@ describe('BE03c Slice 12 typed refusals per operation', () => {
       'pattern_version_not_active',
       'pattern_incompatible',
       'nested_pattern_not_active',
+      'block_rules_violated',
     ],
     'CMS-03C-03': [
       'capability_missing',
@@ -106,15 +110,18 @@ describe('BE03c Slice 12 typed refusals per operation', () => {
       'nested_pattern_not_active',
       'pattern_depth_exceeded',
       'pattern_nodes_exceeded',
+      'block_rules_violated',
     ],
     'CMS-03C-13': ['capability_missing'],
     'CMS-03C-14': ['capability_missing', 'diff_too_large'],
     'CMS-03C-15': [
       'capability_missing',
+      'revision_not_editable',
       'diff_has_collisions',
       'pattern_version_not_active',
       'pattern_incompatible',
       'nested_pattern_not_active',
+      'block_rules_violated',
     ],
     'CMS-03C-16': ['capability_missing'],
     'CMS-03C-17': ['capability_missing'],
@@ -122,9 +129,12 @@ describe('BE03c Slice 12 typed refusals per operation', () => {
     cmsPatternLatestRead: ['capability_missing'],
     cmsTaxonomyVersionsRead: ['capability_missing'],
     cmsTaxonomyTermsRead: ['capability_missing'],
+    cmsRelatedContentRead: ['capability_missing'],
+    cmsLocaleVariantRead: ['capability_missing'],
+    cmsCompositionInstancesRead: ['capability_missing'],
   } as const;
 
-  it('[P2-S12-AC-274] names an allowlist for exactly the 21 Slice 12 operations of the error catalog', () => {
+  it('[P2-S12-AC-274] names an allowlist for exactly the 24 Slice 12 operations of the error catalog', () => {
     expect(Object.keys(CMS_SLICE_12_OPERATION_REASONS).sort()).toEqual(
       Object.keys(EXPECTED_REASONS).sort(),
     );

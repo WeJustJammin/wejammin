@@ -135,6 +135,7 @@ describe('BE03c normative application error catalog', () => {
       'CMS-03C-14',
       'CMS-03C-15',
       'cmsPatternLatestRead',
+      'cmsCompositionInstancesRead',
     ] as const)
       expect(CMS_03C_OPERATION_CATALOG[id], id).toBe('composition');
     for (const id of [
@@ -146,7 +147,11 @@ describe('BE03c normative application error catalog', () => {
     ] as const)
       expect(CMS_03C_OPERATION_CATALOG[id], id).toBe('taxonomy');
     expect(CMS_03C_OPERATION_CATALOG['CMS-03C-04']).toBe('locale');
+    expect(CMS_03C_OPERATION_CATALOG.cmsLocaleVariantRead).toBe('locale');
     expect(CMS_03C_OPERATION_CATALOG['CMS-03C-05']).toBe('relatedContent');
+    expect(CMS_03C_OPERATION_CATALOG.cmsRelatedContentRead).toBe(
+      'relatedContent',
+    );
     for (const id of [
       'CMS-03C-06',
       'CMS-03C-07',
@@ -156,7 +161,7 @@ describe('BE03c normative application error catalog', () => {
       'CMS-03C-11',
     ] as const)
       expect(CMS_03C_OPERATION_CATALOG[id], id).toBe('governedReview');
-    expect(Object.keys(CMS_03C_OPERATION_CATALOG)).toHaveLength(21);
+    expect(Object.keys(CMS_03C_OPERATION_CATALOG)).toHaveLength(24);
   });
 
   it('[P2-S12-AC-274] resolves a status to the catalog code of an operation and refuses a status outside the catalog', () => {

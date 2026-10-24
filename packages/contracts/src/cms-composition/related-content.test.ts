@@ -4,6 +4,9 @@ import {
   RelatedContentApiRequestSchema,
   RelatedContentHeadersSchema,
   RelatedContentPathSchema,
+  RelatedContentReadApiRequestSchema,
+  RelatedContentRuleReadSchema,
+  relatedRuleReadAnswersEntry,
   RelatedContentRuleRequestSchema,
   RelatedContentResourceSchema,
 } from './related-content';
@@ -192,5 +195,103 @@ describe('CMS-03C-05 If-Match operand', () => {
       expect(
         mismatch.error.issues.map((issue) => issue.path.join('.')),
       ).toEqual(['headers.ifMatch']);
+  });
+});
+
+describe('cmsRelatedContentRead wire contract (DEC-195)', () => {
+  it('addresses the source entry by path only and refuses every other member', () => {
+    expect(
+      RelatedContentReadApiRequestSchema.parse({ entryId: ENTRY_ID }),
+    ).toEqual({ entryId: ENTRY_ID });
+    for (const candidate of [
+      {},
+      { entryId: 'private' },
+      { entryId: ENTRY_ID, cursor: 'x' },
+      { entryId: ENTRY_ID, limit: 10 },
+      { entryId: ENTRY_ID, pins: [] },
+      { entryId: ENTRY_ID, ownerId: ENTRY_ID },
+    ])
+      expect(
+        RelatedContentReadApiRequestSchema.safeParse(candidate).success,
+      ).toBe(false);
+  });
+
+  it('answers the current rule as the CMS-03C-05 resource, or an explicit null', () => {
+    expect(RelatedContentRuleReadSchema.parse({ rule: resource })).toEqual({
+      rule: resource,
+    });
+    expect(RelatedContentRuleReadSchema.parse({ rule: null })).toEqual({
+      rule: null,
+    });
+  });
+
+  it('refuses a missing, extra, undefined or malformed rule member', () => {
+    for (const candidate of [
+      {},
+      { rule: undefined },
+      { rule: null, extra: true },
+      { rule: resource, etag: '"2"' },
+      { rule: { ...resource, ownerId: ENTRY_ID } },
+      { rule: { ...resource, eligibleCount: 129 } },
+      {
+        rule: { ...resource, pins: Array.from({ length: 33 }, () => TARGET_A) },
+      },
+      { rule: { ...resource, state: 'hidden' } },
+      { rule: [resource] },
+      null,
+      [],
+    ])
+      expect(RelatedContentRuleReadSchema.safeParse(candidate).success).toBe(
+        false,
+      );
+  });
+
+  it('returns pins and exclusions as stored, never reordered or filtered', () => {
+    const stored = { ...resource, pins: [TARGET_B, TARGET_A], exclusions: [] };
+    expect(
+      RelatedContentRuleReadSchema.parse({ rule: stored }).rule?.pins,
+    ).toEqual([TARGET_B, TARGET_A]);
+  });
+});
+
+describe('relatedRuleReadAnswersEntry (DEC-195)', () => {
+  const answers = (value: unknown, entryId = ENTRY_ID) =>
+    relatedRuleReadAnswersEntry(
+      RelatedContentRuleReadSchema.parse(value),
+      entryId,
+    );
+
+  it('accepts null and an active rule of this entry, whatever the id case', () => {
+    expect(answers({ rule: null })).toBe(true);
+    expect(answers({ rule: resource })).toBe(true);
+    expect(answers({ rule: resource }, ENTRY_ID.toUpperCase())).toBe(true);
+  });
+
+  it("refuses another entry's rule and a revoked rule", () => {
+    const other = '50000000-0000-4000-8000-000000000005';
+    expect(answers({ rule: { ...resource, sourceEntryId: other } })).toBe(
+      false,
+    );
+    expect(
+      answers({ rule: { ...resource, state: 'revoked', derivedRule: null } }),
+    ).toBe(false);
+    expect(answers({ rule: resource }, other)).toBe(false);
+  });
+
+  it('refuses a pin that is also an exclusion, compared case-insensitively', () => {
+    expect(
+      answers({
+        rule: { ...resource, pins: [TARGET_A], exclusions: [TARGET_A] },
+      }),
+    ).toBe(false);
+    expect(
+      answers({
+        rule: {
+          ...resource,
+          pins: [TARGET_A.toUpperCase()],
+          exclusions: [TARGET_A],
+        },
+      }),
+    ).toBe(false);
   });
 });

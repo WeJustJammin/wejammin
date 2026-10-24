@@ -71,8 +71,14 @@ import {
   LocaleVariantResourceSchema,
 } from './cms-composition/locale-variant.ts';
 import {
+  LocaleVariantReadApiRequestSchema,
+  LocaleVariantReadSchema,
+} from './cms-composition/locale-variant-read.ts';
+import {
   RelatedContentApiRequestSchema,
+  RelatedContentReadApiRequestSchema,
   RelatedContentResourceSchema,
+  RelatedContentRuleReadSchema,
 } from './cms-composition/related-content.ts';
 import {
   TaxonomyTermActionApiRequestSchema,
@@ -83,6 +89,10 @@ import {
   PatternInstanceApiRequestSchema,
   PatternPlacementResourceSchema,
 } from './cms-composition/pattern-instance.ts';
+import {
+  CompositionInstancePageSchema,
+  CompositionInstancesReadApiRequestSchema,
+} from './cms-composition/composition-instances-read.ts';
 import {
   GovernedReviewResourceSchema,
   GovernedReviewSubmissionApiRequestSchema,
@@ -403,13 +413,19 @@ const schemaContracts = {
   TemplateVersionDetailSchema,
   LocaleVariantApiRequestSchema,
   LocaleVariantResourceSchema,
+  LocaleVariantReadApiRequestSchema,
+  LocaleVariantReadSchema,
   RelatedContentApiRequestSchema,
   RelatedContentResourceSchema,
+  RelatedContentReadApiRequestSchema,
+  RelatedContentRuleReadSchema,
   TaxonomyTermActionApiRequestSchema,
   TaxonomyTermResourceSchema,
   PatternInstanceApiRequestSchema,
   CompositionInstanceResourceSchema,
   PatternPlacementResourceSchema,
+  CompositionInstancesReadApiRequestSchema,
+  CompositionInstancePageSchema,
   GovernedReviewSubmissionApiRequestSchema,
   GovernedReviewResourceSchema,
   GovernedDecisionApiRequestSchema,
@@ -528,9 +544,12 @@ const schemaIo = {
   TemplateVersionApiRequestSchema: 'input',
   TemplateLatestApiRequestSchema: 'input',
   LocaleVariantApiRequestSchema: 'input',
+  LocaleVariantReadApiRequestSchema: 'input',
   RelatedContentApiRequestSchema: 'input',
+  RelatedContentReadApiRequestSchema: 'input',
   TaxonomyTermActionApiRequestSchema: 'input',
   PatternInstanceApiRequestSchema: 'input',
+  CompositionInstancesReadApiRequestSchema: 'input',
   GovernedReviewSubmissionApiRequestSchema: 'input',
   GovernedDecisionApiRequestSchema: 'input',
   GovernedReviewAssignmentApiRequestSchema: 'input',

@@ -14,7 +14,10 @@ import {
   IdempotencyKeySchema,
   QuotedVersionSchema,
 } from '../request-navigation-security.ts';
-import { PatternNodePathSchema } from './key-grammar.ts';
+import {
+  ExpandedPatternNodePathSchema,
+  PatternNodePathSchema,
+} from './key-grammar.ts';
 
 const hasSafeSlotPath = (value: string): boolean =>
   value.startsWith('/') &&
@@ -66,6 +69,13 @@ export const PatternInstanceRequestSchema = z.strictObject({
     .max(512)
     .refine(hasSafeSlotPath, 'slot_path_invalid'),
   overrides: PatternPlacementOverridesSchema,
+  /** DEC-193: select expanded block roots; the server places them in forest order. */
+  roots: z
+    .array(ExpandedPatternNodePathSchema)
+    .min(1)
+    .max(CMS_PLACEMENT_MAX_ROWS)
+    .refine((roots) => new Set(roots).size === roots.length, 'roots_duplicate')
+    .optional(),
   blockRegistryDigest: CmsHashSchema.optional(),
   expectedVersion: CmsVersionSchema,
 });
@@ -147,11 +157,12 @@ const checkPlacement = (
         message: 'placement_row_duplicate',
       });
     ids.add(row.id);
-    if (row.position !== first.position + index)
+    const previous = items[index - 1];
+    if (previous !== undefined && row.position <= previous.position)
       context.addIssue({
         code: 'custom',
         path: ['items', index, 'position'],
-        message: 'placement_positions_must_be_consecutive',
+        message: 'placement_positions_must_be_strictly_increasing',
       });
   });
 };
@@ -160,9 +171,11 @@ const checkPlacement = (
  * DEC-175, DEC-181: a placement writes one `CompositionInstance` row per block
  * root of the pinned forest after top-level nested pattern references are
  * expanded into that pattern's own block roots, so the 201 is a list of one or
- * more rows, at most 512 (the node cap after expansion), in position order and
- * at consecutive positions, as `CompositionUpdateResource` is a list for
- * CMS-03C-15.
+ * more rows, at most 512 (the node cap after expansion), in strictly increasing
+ * position order, as `CompositionUpdateResource` is a list for CMS-03C-15.
+ * Re-placed retired paths retain positions while new paths append above the
+ * slot maximum (DEC-193), so gaps are valid. The server proves allocation from
+ * forest and path history; these public rows only expose ordered positions.
  */
 export const PatternPlacementResourceSchema = z
   .strictObject({

@@ -65,7 +65,10 @@ describe('[P2-S11-AC-093] the closed failed and unavailable reason sets (DEC-160
       'blocking_finding',
     ]);
     expect(cmsPreflightFailedReasons('pattern')).toEqual([
-      'provider_unbuilt_reference',
+      'pattern_not_active',
+      'pattern_digest_changed',
+      'nested_pattern_not_active',
+      'pattern_block_rules_violated',
     ]);
     expect(cmsPreflightFailedReasons('schema')).toEqual([
       'schema_not_active',

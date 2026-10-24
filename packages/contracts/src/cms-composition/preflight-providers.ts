@@ -29,7 +29,12 @@ export const CMS_SLICE_12_PREFLIGHT_PROVIDERS = [
     providerKey: 'cms.pattern.active_digest',
     providerVersion: '1',
     providerKind: 'database',
-    reasonCodes: ['pattern_not_active', 'pattern_digest_changed'],
+    reasonCodes: [
+      'pattern_not_active',
+      'pattern_digest_changed',
+      'nested_pattern_not_active',
+      'pattern_block_rules_violated',
+    ],
   },
   {
     category: 'taxonomy',

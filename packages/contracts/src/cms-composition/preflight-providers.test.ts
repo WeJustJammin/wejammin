@@ -33,7 +33,12 @@ describe('Preflight providers registered by Slice 12 (BE03c)', () => {
     [
       'pattern',
       'P2-S12-AC-238',
-      ['pattern_not_active', 'pattern_digest_changed'],
+      [
+        'pattern_not_active',
+        'pattern_digest_changed',
+        'nested_pattern_not_active',
+        'pattern_block_rules_violated',
+      ],
     ],
     [
       'taxonomy',

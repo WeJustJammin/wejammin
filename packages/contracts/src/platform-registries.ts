@@ -1925,6 +1925,19 @@ export const platformRegistrySet = createRegistrySet({
         'caller may translate only its authorized source revision and locale',
     },
     {
+      ...slice12AuthorReadRoute,
+      method: 'GET',
+      path: '/api/v1/cms/entries/{entryId}/locales/{locale}',
+      operationId: 'cmsLocaleVariantRead',
+      rateClass: 'cms-locale-read',
+      rateLimit: 300,
+      partyRateLimit: 600,
+      requestSchema: 'LocaleVariantReadApiRequestSchema',
+      successSchema: 'LocaleVariantReadSchema',
+      bolaTest:
+        'caller reads the variant only of an entry it may edit; hidden or an unsupported locale is 404, visible without edit is 403',
+    },
+    {
       ...editorialRouteDefaults,
       method: 'POST',
       path: '/api/v1/cms/entries/{entryId}/related-content',
@@ -1949,6 +1962,19 @@ export const platformRegistrySet = createRegistrySet({
       successSchema: 'RelatedContentResourceSchema',
       bolaTest:
         'caller may curate related targets only within its authorized source entry',
+    },
+    {
+      ...slice12AuthorReadRoute,
+      method: 'GET',
+      path: '/api/v1/cms/entries/{entryId}/related-content',
+      operationId: 'cmsRelatedContentRead',
+      rateClass: 'cms-related-content-read',
+      rateLimit: 300,
+      partyRateLimit: 600,
+      requestSchema: 'RelatedContentReadApiRequestSchema',
+      successSchema: 'RelatedContentRuleReadSchema',
+      bolaTest:
+        'caller reads the saved rule only of a source entry it may edit; hidden is 404, visible without edit is 403',
     },
     {
       ...slice12DefinitionRoute,
@@ -2141,6 +2167,19 @@ export const platformRegistrySet = createRegistrySet({
       successSchema: 'CompositionUpdateDiffResourceSchema',
       bolaTest:
         'caller may read the diff only of an instance on an assigned revision; hidden is 404',
+    },
+    {
+      ...slice12AuthorReadRoute,
+      method: 'GET',
+      path: '/api/v1/cms/entries/{entryId}/compositions',
+      operationId: 'cmsCompositionInstancesRead',
+      rateClass: 'cms-composition-instances-read',
+      rateLimit: 300,
+      partyRateLimit: 600,
+      requestSchema: 'CompositionInstancesReadApiRequestSchema',
+      successSchema: 'CompositionInstancePageSchema',
+      bolaTest:
+        'caller lists the instances only of an entry it may edit; hidden is 404, visible without edit is 403',
     },
     {
       ...editorialRouteDefaults,

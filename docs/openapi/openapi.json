@@ -26301,6 +26301,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Context read rate limit exceeded",
             "headers": {
@@ -26901,6 +26911,16 @@
                           "$ref": "#/components/schemas/PatternInstanceApiRequest/definitions/__schema0"
                         }
                       ]
+                    }
+                  },
+                  "roots": {
+                    "minItems": 1,
+                    "maxItems": 512,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "maxLength": 4680,
+                      "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
                     }
                   },
                   "blockRegistryDigest": {
@@ -27638,6 +27658,16 @@
               }
             }
           },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
           "429": {
             "description": "Template read rate limit exceeded",
             "headers": {
@@ -28089,6 +28119,268 @@
         }
       }
     },
+    "/api/v1/cms/entries/{entryId}/locales/{locale}": {
+      "get": {
+        "operationId": "cmsLocaleVariantRead",
+        "deprecated": false,
+        "x-auth-class": "editorial_author",
+        "x-capabilities": [
+          "cms.author",
+          "cms.editor"
+        ],
+        "x-capability-mode": "any_of",
+        "x-step-up": "none",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "cms-locale-read",
+        "x-rate-limit": {
+          "class": "cms-locale-read",
+          "limit": 300,
+          "partyLimit": 600,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_1",
+        "x-csrf": "none",
+        "x-idempotency": "none",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "Editorial",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "LocaleVariantReadApiRequestSchema",
+        "x-success-schema": "LocaleVariantReadSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller reads the variant only of an entry it may edit; hidden or an unsupported locale is 404, visible without edit is 403",
+        "parameters": [
+          {
+            "name": "entryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "locale",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current locale variant of the entry with its stored values, field resolutions and the active fallback order",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LocaleVariantRead"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Locale variant request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Entry is visible but the caller cannot edit it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entry is absent or concealed, or the locale is not supported by the active version",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Locale variant rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Locale variant request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cms/entries/{entryId}/related-content": {
       "post": {
         "operationId": "CMS-03C-05",
@@ -28432,6 +28724,257 @@
           },
           "504": {
             "description": "Editorial dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "cmsRelatedContentRead",
+        "deprecated": false,
+        "x-auth-class": "editorial_author",
+        "x-capabilities": [
+          "cms.author",
+          "cms.editor"
+        ],
+        "x-capability-mode": "any_of",
+        "x-step-up": "none",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "cms-related-content-read",
+        "x-rate-limit": {
+          "class": "cms-related-content-read",
+          "limit": 300,
+          "partyLimit": 600,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_1",
+        "x-csrf": "none",
+        "x-idempotency": "none",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "Editorial",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "RelatedContentReadApiRequestSchema",
+        "x-success-schema": "RelatedContentRuleReadSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller reads the saved rule only of a source entry it may edit; hidden is 404, visible without edit is 403",
+        "parameters": [
+          {
+            "name": "entryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Current related-content rule of the source entry, or null when none is active",
+            "headers": {
+              "ETag": {
+                "description": "Strong validator for the authorized job representation.",
+                "schema": {
+                  "type": "string"
+                }
+              },
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RelatedContentRuleRead"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Related content request is malformed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Source entry is visible but the caller cannot edit it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Source entry is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Related content rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Related content request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Dependency timed out",
             "content": {
               "application/json": {
                 "schema": {
@@ -31753,6 +32296,280 @@
         }
       }
     },
+    "/api/v1/cms/entries/{entryId}/compositions": {
+      "get": {
+        "operationId": "cmsCompositionInstancesRead",
+        "deprecated": false,
+        "x-auth-class": "editorial_author",
+        "x-capabilities": [
+          "cms.author",
+          "cms.editor"
+        ],
+        "x-capability-mode": "any_of",
+        "x-step-up": "none",
+        "x-cors": "cms-console",
+        "x-audience": "browser",
+        "x-cache-class": "no_store",
+        "x-cache-control": "no-store",
+        "x-timeout-ms": 8000,
+        "x-rate-class": "cms-composition-instances-read",
+        "x-rate-limit": {
+          "class": "cms-composition-instances-read",
+          "limit": 300,
+          "partyLimit": 600,
+          "windowSeconds": 60,
+          "scope": "user"
+        },
+        "x-slo-tier": "tier_1",
+        "x-csrf": "none",
+        "x-idempotency": "none",
+        "x-if-match": "none",
+        "x-raw-body-signature": "none",
+        "x-criticality": "high",
+        "x-owner": "Editorial",
+        "x-runbook": "docs/runbooks/platform/operational-endpoints.md",
+        "x-request-schema": "CompositionInstancesReadApiRequestSchema",
+        "x-success-schema": "CompositionInstancePageSchema",
+        "x-error-schemas": [
+          "ApiErrorSchema"
+        ],
+        "x-bola-test": "caller lists the instances only of an entry it may edit; hidden is 404, visible without edit is 403",
+        "parameters": [
+          {
+            "name": "entryId",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            }
+          },
+          {
+            "name": "cursor",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 512
+                },
+                {
+                  "type": "null"
+                }
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 50
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Page of the newest draft, active and pending-diff composition rows of the entry current draft revision, in render order",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CompositionInstancePage"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Entry id, limit or cursor is malformed, or the signed cursor is tampered, expired, over-lived or not issued to this caller for this entry and draft revision",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Authentication is required",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Entry is visible but the caller cannot edit it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Entry is absent or concealed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "415": {
+            "description": "Request media type is unsupported",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Composition instances rate limit exceeded",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Composition instances request failed safely",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "502": {
+            "description": "Dependency returned invalid data",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "503": {
+            "description": "Dependency unavailable",
+            "headers": {
+              "RateLimit-Limit": {
+                "description": "Maximum reads permitted in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Remaining": {
+                "description": "Reads remaining in the window.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "RateLimit-Reset": {
+                "description": "UTC epoch second when the window resets.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              },
+              "Retry-After": {
+                "description": "Seconds until another read may be attempted.",
+                "schema": {
+                  "type": "integer",
+                  "minimum": 0
+                }
+              }
+            },
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          },
+          "504": {
+            "description": "Dependency timed out",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/cms/compositions/pattern-updates": {
       "post": {
         "operationId": "CMS-03C-15",
@@ -31858,8 +32675,8 @@
                                 "properties": {
                                   "path": {
                                     "type": "string",
-                                    "maxLength": 512,
-                                    "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*$"
+                                    "maxLength": 4680,
+                                    "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
                                   },
                                   "choice": {
                                     "type": "string",
@@ -31929,8 +32746,8 @@
                                 "properties": {
                                   "path": {
                                     "type": "string",
-                                    "maxLength": 512,
-                                    "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*$"
+                                    "maxLength": 4680,
+                                    "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
                                   },
                                   "choice": {
                                     "type": "string",
@@ -37038,6 +37855,10 @@
                   "format": "uuid",
                   "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
                 },
+                "typeKey": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9_]{1,63}$"
+                },
                 "label": {
                   "type": "string",
                   "minLength": 1,
@@ -37236,6 +38057,7 @@
               "required": [
                 "contentTypeId",
                 "contentTypeVersionId",
+                "typeKey",
                 "label",
                 "sourceLocale",
                 "defaultLocale",
@@ -37263,6 +38085,10 @@
                     "type": "string",
                     "format": "uuid",
                     "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "typeKey": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_]{1,63}$"
                   },
                   "label": {
                     "type": "string",
@@ -37462,6 +38288,7 @@
                 "required": [
                   "contentTypeId",
                   "contentTypeVersionId",
+                  "typeKey",
                   "label",
                   "sourceLocale",
                   "defaultLocale",
@@ -48601,6 +49428,301 @@
         ],
         "additionalProperties": false
       },
+      "LocaleVariantReadApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "locale": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+          }
+        },
+        "required": [
+          "entryId",
+          "locale"
+        ],
+        "additionalProperties": false
+      },
+      "LocaleVariantRead": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "locale": {
+            "type": "string",
+            "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+          },
+          "activeFallbackChain": {
+            "maxItems": 16,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+            }
+          },
+          "variant": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "version": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,18}$"
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "untranslated",
+                      "draft",
+                      "review",
+                      "approved",
+                      "stale"
+                    ]
+                  },
+                  "entryId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "revisionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "locale": {
+                    "type": "string",
+                    "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                  },
+                  "sourceRevisionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "fallbackChain": {
+                    "maxItems": 16,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                    }
+                  },
+                  "noFallbackFieldIds": {
+                    "maxItems": 128,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "staleFieldIds": {
+                    "maxItems": 128,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  }
+                },
+                "required": [
+                  "id",
+                  "version",
+                  "contentHash",
+                  "createdAt",
+                  "updatedAt",
+                  "state",
+                  "entryId",
+                  "revisionId",
+                  "locale",
+                  "sourceRevisionId",
+                  "fallbackChain",
+                  "noFallbackFieldIds",
+                  "staleFieldIds"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "fields": {
+            "maxItems": 128,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fieldId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "value": {
+                  "allOf": [
+                    {
+                      "$ref": "#/components/schemas/LocaleVariantRead/definitions/__schema0"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "fieldId",
+                "value"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "resolutions": {
+            "maxItems": 128,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "fieldId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "locale": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "none",
+                    "localized",
+                    "no_fallback"
+                  ]
+                },
+                "outcome": {
+                  "type": "string",
+                  "enum": [
+                    "resolved",
+                    "missing"
+                  ]
+                },
+                "provenance": {
+                  "type": "string",
+                  "enum": [
+                    "authored",
+                    "localized_fallback",
+                    "missing"
+                  ]
+                },
+                "resolvedFromLocale": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "pattern": "^[A-Za-z]{2,8}(?:-[A-Za-z0-9]{1,8})*$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "stale": {
+                  "type": "boolean"
+                },
+                "blocking": {
+                  "type": "boolean"
+                },
+                "reasonCode": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "no_fallback_missing",
+                        "no_fallback_stale"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "fieldId",
+                "locale",
+                "mode",
+                "outcome",
+                "provenance",
+                "resolvedFromLocale",
+                "stale",
+                "blocking",
+                "reasonCode"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "locale",
+          "activeFallbackChain",
+          "variant",
+          "fields",
+          "resolutions"
+        ],
+        "additionalProperties": false,
+        "definitions": {
+          "__schema0": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              },
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LocaleVariantRead/definitions/__schema0"
+                }
+              },
+              {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string"
+                },
+                "additionalProperties": {
+                  "$ref": "#/components/schemas/LocaleVariantRead/definitions/__schema0"
+                }
+              }
+            ]
+          }
+        }
+      },
       "RelatedContentApiRequest": {
         "$schema": "http://json-schema.org/draft-07/schema#",
         "type": "object",
@@ -48821,6 +49943,140 @@
           "exclusions",
           "derivedRule",
           "eligibleCount"
+        ],
+        "additionalProperties": false
+      },
+      "RelatedContentReadApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          }
+        },
+        "required": [
+          "entryId"
+        ],
+        "additionalProperties": false
+      },
+      "RelatedContentRuleRead": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "rule": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "id": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "version": {
+                    "type": "string",
+                    "pattern": "^[1-9][0-9]{0,18}$"
+                  },
+                  "contentHash": {
+                    "type": "string",
+                    "pattern": "^[a-f0-9]{64}$"
+                  },
+                  "createdAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "updatedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                  },
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "active",
+                      "revoked"
+                    ]
+                  },
+                  "sourceEntryId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "pins": {
+                    "maxItems": 32,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "exclusions": {
+                    "maxItems": 64,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    }
+                  },
+                  "derivedRule": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "key": {
+                            "type": "string",
+                            "pattern": "^[a-z][a-z0-9_-]{1,63}$"
+                          },
+                          "version": {
+                            "type": "string",
+                            "pattern": "^[1-9][0-9]{0,18}$"
+                          }
+                        },
+                        "required": [
+                          "key",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "eligibleCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 128
+                  }
+                },
+                "required": [
+                  "id",
+                  "version",
+                  "contentHash",
+                  "createdAt",
+                  "updatedAt",
+                  "state",
+                  "sourceEntryId",
+                  "pins",
+                  "exclusions",
+                  "derivedRule",
+                  "eligibleCount"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "rule"
         ],
         "additionalProperties": false
       },
@@ -49126,6 +50382,16 @@
                       "$ref": "#/components/schemas/PatternInstanceApiRequest/definitions/__schema0"
                     }
                   ]
+                }
+              },
+              "roots": {
+                "minItems": 1,
+                "maxItems": 512,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "maxLength": 4680,
+                  "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
                 }
               },
               "blockRegistryDigest": {
@@ -49461,6 +50727,214 @@
         },
         "required": [
           "items"
+        ],
+        "additionalProperties": false
+      },
+      "CompositionInstancesReadApiRequest": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "entryId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "query": {
+            "type": "object",
+            "properties": {
+              "cursor": {
+                "anyOf": [
+                  {
+                    "type": "string",
+                    "maxLength": 512
+                  },
+                  {
+                    "type": "null"
+                  }
+                ]
+              },
+              "limit": {
+                "default": 25,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 50
+              }
+            },
+            "additionalProperties": false
+          }
+        },
+        "required": [
+          "entryId",
+          "query"
+        ],
+        "additionalProperties": false
+      },
+      "CompositionInstancePage": {
+        "$schema": "http://json-schema.org/draft-07/schema#",
+        "type": "object",
+        "properties": {
+          "revisionId": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "uuid",
+                "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "items": {
+            "maxItems": 50,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "version": {
+                  "type": "string",
+                  "pattern": "^[1-9][0-9]{0,18}$"
+                },
+                "contentHash": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d(?::[0-5]\\d(?:\\.\\d+)?)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+                },
+                "state": {
+                  "type": "string",
+                  "enum": [
+                    "draft",
+                    "active",
+                    "pending_diff",
+                    "superseded",
+                    "retired"
+                  ]
+                },
+                "revisionId": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "path": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 512
+                },
+                "position": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 2147483647
+                },
+                "blockKey": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9._-]{0,95}$"
+                },
+                "blockVersion": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 9007199254740991
+                },
+                "patternId": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "format": "uuid",
+                      "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "patternVersion": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "exclusiveMinimum": 0,
+                      "maximum": 9007199254740991
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "blockRegistryDigest": {
+                  "type": "string",
+                  "pattern": "^[a-f0-9]{64}$"
+                },
+                "linkMode": {
+                  "type": "string",
+                  "enum": [
+                    "linked",
+                    "detached"
+                  ]
+                },
+                "conflictState": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "none",
+                        "pending_diff"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "contentHash",
+                "createdAt",
+                "updatedAt",
+                "state",
+                "revisionId",
+                "path",
+                "position",
+                "blockKey",
+                "blockVersion",
+                "patternId",
+                "patternVersion",
+                "blockRegistryDigest",
+                "linkMode",
+                "conflictState"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "nextCursor": {
+            "anyOf": [
+              {
+                "type": "string",
+                "maxLength": 512
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "revisionId",
+          "items",
+          "nextCursor"
         ],
         "additionalProperties": false
       },
@@ -50171,6 +51645,18 @@
             "exclusiveMinimum": 0,
             "maximum": 9007199254740991
           },
+          "supersededVersion": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "exclusiveMinimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "action": {
             "type": "string",
             "enum": [
@@ -50234,6 +51720,7 @@
           "subjectId",
           "lineageId",
           "subjectVersion",
+          "supersededVersion",
           "action",
           "subjectState",
           "activatedAt",
@@ -50616,6 +52103,52 @@
                 "retire"
               ]
             }
+          },
+          "activationSchedule": {
+            "anyOf": [
+              {
+                "readOnly": true,
+                "type": "object",
+                "properties": {
+                  "state": {
+                    "type": "string",
+                    "enum": [
+                      "pending",
+                      "executing",
+                      "completed",
+                      "failed_retryable",
+                      "blocked",
+                      "cancelled"
+                    ]
+                  },
+                  "reasonCode": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "approval_invalidated",
+                          "dependency_changed",
+                          "activation_authority_ended",
+                          "canonical_source_unavailable",
+                          "retries_exhausted"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "state",
+                  "reasonCode"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         },
         "required": [
@@ -50647,7 +52180,8 @@
           "assignments",
           "myAssignment",
           "subjectState",
-          "permittedNextActions"
+          "permittedNextActions",
+          "activationSchedule"
         ],
         "additionalProperties": false
       },
@@ -51563,6 +53097,11 @@
             ],
             "additionalProperties": false
           },
+          "slotPath": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 512
+          },
           "targetPatternVersion": {
             "type": "integer",
             "exclusiveMinimum": 0,
@@ -51576,17 +53115,54 @@
               "properties": {
                 "path": {
                   "type": "string",
-                  "maxLength": 512,
-                  "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*$"
+                  "maxLength": 4680,
+                  "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
                 },
                 "base": {
                   "anyOf": [
                     {
-                      "allOf": [
-                        {
-                          "$ref": "#/components/schemas/CompositionUpdateDiffResource/definitions/__schema0"
+                      "type": "object",
+                      "properties": {
+                        "blockKey": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9._-]{0,95}$"
+                        },
+                        "blockVersion": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 2147483647
+                        },
+                        "props": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "maxLength": 128
+                          },
+                          "additionalProperties": {
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/CompositionUpdateDiffResource/definitions/__schema0"
+                              }
+                            ]
+                          }
+                        },
+                        "children": {
+                          "maxItems": 512,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 4680,
+                            "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
+                          }
                         }
-                      ]
+                      },
+                      "required": [
+                        "blockKey",
+                        "blockVersion",
+                        "props",
+                        "children"
+                      ],
+                      "additionalProperties": false
                     },
                     {
                       "type": "null"
@@ -51596,11 +53172,48 @@
                 "theirs": {
                   "anyOf": [
                     {
-                      "allOf": [
-                        {
-                          "$ref": "#/components/schemas/CompositionUpdateDiffResource/definitions/__schema0"
+                      "type": "object",
+                      "properties": {
+                        "blockKey": {
+                          "type": "string",
+                          "pattern": "^[a-z][a-z0-9._-]{0,95}$"
+                        },
+                        "blockVersion": {
+                          "type": "integer",
+                          "exclusiveMinimum": 0,
+                          "maximum": 2147483647
+                        },
+                        "props": {
+                          "type": "object",
+                          "propertyNames": {
+                            "type": "string",
+                            "maxLength": 128
+                          },
+                          "additionalProperties": {
+                            "allOf": [
+                              {
+                                "$ref": "#/components/schemas/CompositionUpdateDiffResource/definitions/__schema0"
+                              }
+                            ]
+                          }
+                        },
+                        "children": {
+                          "maxItems": 512,
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "maxLength": 4680,
+                            "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
+                          }
                         }
-                      ]
+                      },
+                      "required": [
+                        "blockKey",
+                        "blockVersion",
+                        "props",
+                        "children"
+                      ],
+                      "additionalProperties": false
                     },
                     {
                       "type": "null"
@@ -51623,6 +53236,21 @@
                 },
                 "collision": {
                   "type": "boolean"
+                },
+                "collisionKind": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "removed_root",
+                        "structure",
+                        "props"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
                 }
               },
               "required": [
@@ -51630,7 +53258,37 @@
                 "base",
                 "theirs",
                 "yours",
-                "collision"
+                "collision",
+                "collisionKind"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "newRoots": {
+            "maxItems": 512,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "rootPath": {
+                  "type": "string",
+                  "maxLength": 4680,
+                  "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
+                },
+                "blockKey": {
+                  "type": "string",
+                  "pattern": "^[a-z][a-z0-9._-]{0,95}$"
+                },
+                "blockVersion": {
+                  "type": "integer",
+                  "exclusiveMinimum": 0,
+                  "maximum": 2147483647
+                }
+              },
+              "required": [
+                "rootPath",
+                "blockKey",
+                "blockVersion"
               ],
               "additionalProperties": false
             }
@@ -51646,8 +53304,10 @@
         },
         "required": [
           "instance",
+          "slotPath",
           "targetPatternVersion",
           "paths",
+          "newRoots",
           "collisionCount",
           "bulkEligible"
         ],
@@ -51756,8 +53416,8 @@
                             "properties": {
                               "path": {
                                 "type": "string",
-                                "maxLength": 512,
-                                "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*$"
+                                "maxLength": 4680,
+                                "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
                               },
                               "choice": {
                                 "type": "string",
@@ -51827,8 +53487,8 @@
                             "properties": {
                               "path": {
                                 "type": "string",
-                                "maxLength": 512,
-                                "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*$"
+                                "maxLength": 4680,
+                                "pattern": "^\\/[a-z][a-z0-9_-]{0,63}(?:\\/[a-z][a-z0-9_-]{0,63})*(?![\\s\\S])"
                               },
                               "choice": {
                                 "type": "string",

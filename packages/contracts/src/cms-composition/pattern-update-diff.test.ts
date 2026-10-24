@@ -22,25 +22,35 @@ const instance = {
   linkMode: 'linked',
   pinnedPatternVersion: 2,
 } as const;
+const nodeValue = (props: Record<string, unknown>) => ({
+  blockKey: 'profile.header',
+  blockVersion: 1,
+  props,
+  children: [],
+});
 const diff = {
   instance,
+  slotPath: '/header/0',
   targetPatternVersion: 3,
   paths: [
     {
       path: '/hero',
-      base: { text: 'Old' },
-      theirs: { text: 'New' },
+      base: nodeValue({ text: 'Old' }),
+      theirs: nodeValue({ text: 'New' }),
       yours: null,
       collision: false,
+      collisionKind: null,
     },
     {
       path: '/hero/cta',
-      base: { label: 'Go' },
-      theirs: { label: 'Start' },
+      base: nodeValue({ label: 'Go' }),
+      theirs: nodeValue({ label: 'Start' }),
       yours: { label: 'Begin' },
       collision: true,
+      collisionKind: 'props',
     },
   ],
+  newRoots: [],
   collisionCount: 1,
   bulkEligible: false,
 } as const;
@@ -68,8 +78,10 @@ describe('CMS-03C-14 update diff contract', () => {
   it('[P2-S12-AC-114] answers an instance with no newer compatible version as an empty diff at its pinned version', () => {
     const empty = {
       instance,
+      slotPath: '/header/0',
       targetPatternVersion: 2,
       paths: [],
+      newRoots: [],
       collisionCount: 0,
       bulkEligible: false,
     };
@@ -119,7 +131,7 @@ describe('CMS-03C-14 update diff contract', () => {
         ...clean,
         bulkEligible: false,
       }).success,
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it('[P2-S12-AC-113] bounds the diff at 128 unique node paths, 256 KiB, and bounded JSON values that are null when absent', () => {
@@ -127,9 +139,10 @@ describe('CMS-03C-14 update diff contract', () => {
       Array.from({ length: count }, (_, index) => ({
         path: `/node${index}`,
         base: null,
-        theirs: { n: index },
+        theirs: nodeValue({ n: index }),
         yours: null,
         collision: false,
+        collisionKind: null,
       }));
     expect(
       CompositionUpdateDiffResourceSchema.safeParse({
@@ -168,15 +181,17 @@ describe('CMS-03C-14 update diff contract', () => {
           ...diff,
           paths: [path],
           collisionCount: 0,
+          bulkEligible: true,
         }),
       ).toBe(true);
     // 256 KiB total: 128 values of 2,100 characters are ~269 KiB.
     const heavy = Array.from({ length: 128 }, (_, index) => ({
       path: `/node${index}`,
       base: null,
-      theirs: 'x'.repeat(2_100),
+      theirs: nodeValue({ text: 'x'.repeat(2_100) }),
       yours: null,
       collision: false,
+      collisionKind: null,
     }));
     expect(
       issueMessages(CompositionUpdateDiffResourceSchema, {

@@ -16,6 +16,9 @@ Shared grammar and vocabularies
   taxonomy version.
 - `refusals.ts` is the closed catalog of Slice 12 typed refusal tokens (403, 409,
   422), the tokens each operation may publish and the `details` shape per token.
+- `block-rules-refusal.ts` (DEC-210) is the pointer grammar of the `block_rules_violated` 422 per operation
+  (CMS-03C-12 `/blockTree/...` node, CMS-03C-02 `/roots` or `/patternVersion`, CMS-03C-15 `/instances/{i}[/choices]`)
+  and the one projection of a refusal onto it, shared by the Worker and the web proxies.
 - `error-catalog.ts` (zod-free) maps each HTTP status to the application code of
   the six 03c catalogs and generates the catalog message.
 - `conditional-if-match.ts` is the `If-Match` rule of a lineage create: absent on
@@ -28,8 +31,17 @@ Operations CMS-03C-01 to CMS-03C-05 (shipped in Slices 09/12)
 - `pattern-instance.ts`: CMS-03C-02 request (overrides keyed by node path),
   headers, the closed `CompositionInstanceResource` (with `position`) and the
   `PatternPlacementResource` items list (1 to 512 rows, DEC-175/181/185).
+- `composition-instances-read.ts`: the `cmsCompositionInstancesRead` path and query request
+  (`cursor`, `limit` 1-50 default 25) and `CompositionInstancePage` (`{ revisionId | null,
+items: CompositionInstanceResource[] <= 50, nextCursor }`, live heads only, DEC-206 as aligned to BE00) and
+  `compositionInstancesPageHonours` (no more items than `limit`, a cursor only after a full page).
 - `taxonomy-term.ts`, `locale-variant.ts`, `related-content.ts`: CMS-03C-03, -04
-  and -05 (variant `staleFieldIds`, DEC-121).
+  and -05 (variant `staleFieldIds`, DEC-121). `related-content.ts` also holds the
+  `cmsRelatedContentRead` path request and `RelatedContentRuleRead`
+  (`{ rule: RelatedContentResource | null }`, DEC-195).
+- `locale-variant-read.ts`: the `cmsLocaleVariantRead` path request and `LocaleVariantRead`
+  (`{ locale, activeFallbackChain, variant: LocaleVariantResource | null, fields, resolutions }`,
+  DEC-205), with `localeVariantReadAnswers` as the one same-entry/same-locale check.
 
 Governed review set (CMS-03C-06 to CMS-03C-11, DEC-137)
 
@@ -37,6 +49,10 @@ Governed review set (CMS-03C-06 to CMS-03C-11, DEC-137)
   `governed-decision.ts` (CMS-03C-07), `governed-assignment.ts` (CMS-03C-08),
   `governed-activation.ts` (CMS-03C-09 and the `ScheduledInstant`),
   `governed-review-read.ts` (CMS-03C-10 detail and CMS-03C-11 queue).
+- DEC-191 read members: `GovernedActivationResource.supersededVersion` (the replaced
+  definition version; null unless the action is `activate`) and
+  `GovernedReviewDetailResource.activationSchedule` (`{state, reasonCode}` or null; the
+  reason is set exactly for a blocked or cancelled schedule). Both are required keys.
 
 Patterns, taxonomy and reads (CMS-03C-12 to CMS-03C-17 and the supporting reads)
 

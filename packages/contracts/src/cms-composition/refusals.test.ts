@@ -74,6 +74,7 @@ describe('BE03c Slice 12 typed refusals (closed reason-token sets)', () => {
         'nested_pattern_not_active',
         'pattern_depth_exceeded',
         'pattern_nodes_exceeded',
+        'block_rules_violated',
         'diff_too_large',
         'canonical_overlap',
         'canonical_source_unavailable',
@@ -274,6 +275,32 @@ describe('BE03c Slice 12 typed refusals (closed reason-token sets)', () => {
     expect(
       refused(CmsSlice12RefusalDetailsSchema, {
         reasonCode: 'FALLBACK_CHAIN_MISMATCH',
+      }),
+    ).toBe(true);
+  });
+
+  it('[P2-S12-AC-274] types block_rules_violated as one 422 token with bounded RFC 6901 violations (DEC-210)', () => {
+    expect(cmsSlice12ReasonStatus('block_rules_violated')).toBe(422);
+    const violation = {
+      path: '/instances/0/choices',
+      code: 'block_rules_violated',
+      message: 'The value is invalid.',
+    };
+    expect(
+      CmsSlice12RefusalDetailsSchema.parse({
+        reasonCode: 'block_rules_violated',
+        violations: [violation],
+      }),
+    ).toEqual({ reasonCode: 'block_rules_violated', violations: [violation] });
+    expect(
+      CmsSlice12RefusalDetailsSchema.safeParse({
+        reasonCode: 'block_rules_violated',
+      }).success,
+    ).toBe(true);
+    expect(
+      refused(CmsSlice12RefusalDetailsSchema, {
+        reasonCode: 'block_rules_violated',
+        domain: 'role',
       }),
     ).toBe(true);
   });

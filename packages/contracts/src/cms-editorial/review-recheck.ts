@@ -64,7 +64,7 @@ export const REVIEW_RECHECK_SOURCES = {
   'cms.localization.changed.v1': {
     kind: 'locale_source',
     producer: 'cms.composition',
-    aggregateType: 'cms_content_entry',
+    aggregateType: 'cms_locale_variant',
   },
   'cms.block.lifecycle.changed.v1': {
     kind: 'block',

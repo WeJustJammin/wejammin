@@ -106,6 +106,10 @@ export const GovernedActivationEventTypeSchema = z.enum([
  * `GovernedActivationResource`: the state the command left the subject in.
  * `eventType` is set only on a committed immediate activation or retirement and
  * names the event of the subject's kind; a scheduled acceptance emits nothing.
+ * `supersededVersion` (DEC-191) is the immutable definition `version` of the
+ * lineage's previously active version that a committed immediate activation
+ * superseded; it is null for a schedule, a retirement and a lineage's first
+ * activation.
  */
 export const GovernedActivationResourceSchema = z
   .strictObject({
@@ -115,6 +119,7 @@ export const GovernedActivationResourceSchema = z
     subjectId: CmsUuidSchema,
     lineageId: CmsUuidSchema,
     subjectVersion: z.number().int().positive(),
+    supersededVersion: z.number().int().positive().nullable(),
     action: z.enum(['activate', 'schedule', 'retire']),
     subjectState: z.enum(['active', 'scheduled', 'retired']),
     activatedAt: CmsInstantSchema.nullable(),
@@ -138,6 +143,12 @@ export const GovernedActivationResourceSchema = z
         code: 'custom',
         path: ['scheduledForUtc'],
         message: 'scheduledForUtc exists exactly for a scheduled activation',
+      });
+    if (value.action !== 'activate' && value.supersededVersion !== null)
+      context.addIssue({
+        code: 'custom',
+        path: ['supersededVersion'],
+        message: 'only an immediate activation supersedes a version',
       });
     if (value.action === 'activate' && value.activatedAt === null)
       context.addIssue({

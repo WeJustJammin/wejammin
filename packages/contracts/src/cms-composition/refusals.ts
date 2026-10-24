@@ -74,6 +74,7 @@ export const CMS_SLICE_12_VALIDATION_REASONS = [
   'nested_pattern_not_active',
   'pattern_depth_exceeded',
   'pattern_nodes_exceeded',
+  'block_rules_violated',
   'diff_too_large',
   'canonical_overlap',
   'canonical_source_unavailable',
@@ -108,6 +109,14 @@ const pattern422 = [
 ] as const;
 
 /**
+ * DEC-210 (BE03c "Block composition rules"): the registry `allowedChildren` and
+ * `slotRules` of a pinned block version are enforced at the pattern save
+ * (CMS-03C-12), the placement (CMS-03C-02) and the accept/detach (CMS-03C-15);
+ * the one 422 token names the operation's pointer in `details.violations`.
+ */
+const blockRules422 = ['block_rules_violated'] as const;
+
+/**
  * The tokens each 03c operation may publish, derived from the route field
  * validation matrix and the contract and error matrix. `term_unavailable` is a
  * 03b taxonomy field-value refusal and belongs to no 03c operation.
@@ -124,6 +133,7 @@ export const CMS_SLICE_12_OPERATION_REASONS = {
     'pattern_cycle',
     'block_registry_digest_mismatch',
     ...pattern422,
+    ...blockRules422,
   ],
   'CMS-03C-03': [
     'capability_missing',
@@ -183,16 +193,31 @@ export const CMS_SLICE_12_OPERATION_REASONS = {
     'pattern_depth_exceeded',
     'pattern_nodes_exceeded',
     ...pattern422,
+    ...blockRules422,
   ],
   'CMS-03C-13': ['capability_missing'],
   'CMS-03C-14': ['capability_missing', 'diff_too_large'],
-  'CMS-03C-15': ['capability_missing', 'diff_has_collisions', ...pattern422],
+  // FE03 885 and P2-S12-AC-123: CMS-03C-15 publishes `revision_not_editable` (409, BE03c 1304) when the instance's revision is no
+  // longer the entry's editable draft; the front end keeps the author's choices on it.
+  'CMS-03C-15': [
+    'capability_missing',
+    'revision_not_editable',
+    'diff_has_collisions',
+    ...pattern422,
+    ...blockRules422,
+  ],
   'CMS-03C-16': ['capability_missing'],
   'CMS-03C-17': ['capability_missing'],
   cmsTemplateLatestRead: ['capability_missing'],
   cmsPatternLatestRead: ['capability_missing'],
   cmsTaxonomyVersionsRead: ['capability_missing'],
   cmsTaxonomyTermsRead: ['capability_missing'],
+  // DEC-195: a visible source without edit is the one 403; no other typed token.
+  cmsRelatedContentRead: ['capability_missing'],
+  // DEC-205: a visible entry without edit is the one 403; no other typed token.
+  cmsLocaleVariantRead: ['capability_missing'],
+  // DEC-206: a visible entry without edit is the one 403; no other typed token.
+  cmsCompositionInstancesRead: ['capability_missing'],
 } as const satisfies Readonly<Record<string, readonly CmsSlice12ReasonCode[]>>;
 
 const ViolationsSchema = z.array(CmsViolationSchema).max(50).readonly();
@@ -241,6 +266,7 @@ export const CmsCompositionRefusalDetailsSchema = z.discriminatedUnion(
     plainDetails('nested_pattern_not_active'),
     plainDetails('pattern_depth_exceeded'),
     plainDetails('pattern_nodes_exceeded'),
+    plainDetails('block_rules_violated'),
     plainDetails('diff_too_large'),
     plainDetails('term_unavailable'),
     plainDetails('derived_rule_unknown'),

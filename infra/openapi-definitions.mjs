@@ -2404,6 +2404,7 @@ export const routeDefinitions = {
           status: 403,
           description: 'Template designer capability is forbidden',
         },
+        { status: 415, description: 'Request media type is unsupported' },
         { status: 429, description: 'Context read rate limit exceeded' },
         { status: 500, description: 'Context read failed safely' },
         {
@@ -2427,6 +2428,7 @@ export const routeDefinitions = {
           description: 'Template designer capability is forbidden',
         },
         { status: 404, description: 'Template is absent or not visible' },
+        { status: 415, description: 'Request media type is unsupported' },
         { status: 429, description: 'Template read rate limit exceeded' },
         { status: 500, description: 'Template read failed safely' },
         { status: 502, description: 'Template detail returned invalid data' },

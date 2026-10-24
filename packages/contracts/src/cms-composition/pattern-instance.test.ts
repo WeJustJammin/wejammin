@@ -354,17 +354,14 @@ describe('PatternPlacementResource (CMS-03C-02 201, DEC-175, DEC-181)', () => {
       ).toEqual(['items.1']);
   });
 
-  it('[P2-S12-AC-218] gives every row its own path and consecutive positions in forest order', () => {
+  it('[P2-S12-AC-218] gives every row its own path and returns rows in position order', () => {
     expect(
       issuePaths(PatternPlacementResourceSchema, {
         items: [row(0), { ...row(1), path: row(0).path }],
       }),
     ).toEqual(['items.1.path']);
-    expect(
-      issuePaths(PatternPlacementResourceSchema, {
-        items: [row(0), { ...row(1), position: 2 }],
-      }),
-    ).toEqual(['items.1.position']);
+    const sparse = { items: [row(0), { ...row(1), position: 2 }] };
+    expect(PatternPlacementResourceSchema.parse(sparse)).toEqual(sparse);
     expect(
       issuePaths(PatternPlacementResourceSchema, {
         items: [row(1), row(0)],

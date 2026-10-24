@@ -1,101 +1,24 @@
 import { describe, expect, it } from 'vitest';
 
 import {
+  emptyResource,
+  leakedKeys,
+  protectedPolicy,
+  schemaArtifact,
+  selectedResource,
+  selectedType,
+  uuid,
+  validField,
+  validType,
+  validatorEvidence,
+  withoutDefaultValue,
+} from './authoring-context-fixtures.test-support';
+import {
   AuthoringContextFieldSchema,
   AuthoringContextQuerySchema,
-  AuthoringContextReadSchema,
   AuthoringContextResourceSchema,
   AuthoringContextTypeSchema,
 } from './index';
-
-const uuid = '123e4567-e89b-42d3-a456-426614174000';
-const uuid2 = '123e4567-e89b-42d3-a456-426614174001';
-const uuid3 = '123e4567-e89b-42d3-a456-426614174002';
-const uuid4 = '123e4567-e89b-42d3-a456-426614174003';
-const hash = 'a'.repeat(64);
-
-const schemaArtifact = {
-  id: uuid3,
-  contentTypeVersionId: uuid2,
-  artifactHash: hash,
-  compilerVersion: '1.0.0',
-  zodContractRef: 'cms.article.v1',
-} as const;
-
-const validatorEvidence = { key: 'cms.slug', version: '1' } as const;
-
-const ordinaryPolicy = {
-  key: 'cms.publish',
-  version: '1',
-  policyHash: hash,
-  riskClass: 'ordinary',
-  requiredDecisionCount: 1,
-  requiredCapabilities: [],
-  approvalEvidenceHash: hash,
-} as const;
-
-const protectedPolicy = {
-  ...ordinaryPolicy,
-  riskClass: 'protected',
-  requiredDecisionCount: 2,
-  requiredCapabilities: ['cms.publisher'],
-} as const;
-
-const validType = {
-  contentTypeId: uuid,
-  contentTypeVersionId: uuid2,
-  label: 'Article',
-  sourceLocale: 'en-US',
-  defaultLocale: 'en-US',
-  supportedLocales: ['en-US'],
-  schemaArtifact,
-  validatorRefs: [validatorEvidence],
-  workflowPolicy: ordinaryPolicy,
-  activationEvidence: ordinaryPolicy,
-} as const;
-
-const selectedType = { ...validType } as const;
-
-const validField = {
-  stableFieldId: uuid4,
-  key: 'display_name',
-  kind: 'short_text',
-  constraints: { minLength: 1 },
-  required: true,
-  defaultMode: 'none',
-  localizationMode: 'none',
-  editorConfig: { label: 'Display name', order: 0 },
-  relationDefinition: null,
-} as const;
-
-const emptyResource = {
-  creatableTypes: [validType],
-  selectedType: null,
-  fields: [],
-} as const;
-
-const selectedResource = {
-  creatableTypes: [validType],
-  selectedType,
-  fields: [validField],
-} as const;
-
-/** The canonical field row with the optional defaultValue member removed. */
-const withoutDefaultValue = (): Record<string, unknown> => {
-  const clone: Record<string, unknown> = { ...validField };
-  delete clone.defaultValue;
-  return clone;
-};
-
-const leakedKeys = [
-  'ownerId',
-  'assigneeId',
-  'createdByPersonId',
-  'actingPartyId',
-  'registryPrivate',
-  'cmsSchemaRegistryRead',
-  'extra',
-] as const;
 
 describe('CMS-03B-14 authoring-context query', () => {
   it('binds an optional content type version id and nothing else', () => {
@@ -457,84 +380,5 @@ describe('CMS-03B-14 authoring-context resource', () => {
           [leaked]: uuid,
         }).success,
       ).toBe(false);
-  });
-});
-
-describe('CMS-03B-14 authoring-context read precedence', () => {
-  it('reads the creatable set with no selection and no returned fields', () => {
-    expect(
-      AuthoringContextReadSchema.parse({ query: {}, resource: emptyResource }),
-    ).toEqual({ query: {}, resource: emptyResource });
-  });
-
-  it('reads the selected projection when the version id is present', () => {
-    expect(
-      AuthoringContextReadSchema.safeParse({
-        query: { contentTypeVersionId: uuid2 },
-        resource: selectedResource,
-      }).success,
-    ).toBe(true);
-  });
-
-  it('forces selectedType null and empty fields when the version id is absent', () => {
-    expect(
-      AuthoringContextReadSchema.safeParse({
-        query: {},
-        resource: { creatableTypes: [validType], selectedType, fields: [] },
-      }).success,
-    ).toBe(false);
-    expect(
-      AuthoringContextReadSchema.safeParse({
-        query: {},
-        resource: {
-          creatableTypes: [validType],
-          selectedType: null,
-          fields: [validField],
-        },
-      }).success,
-    ).toBe(false);
-  });
-
-  it('forces a non-null selected type that matches the requested version', () => {
-    expect(
-      AuthoringContextReadSchema.safeParse({
-        query: { contentTypeVersionId: uuid2 },
-        resource: {
-          creatableTypes: [validType],
-          selectedType: null,
-          fields: [],
-        },
-      }).success,
-    ).toBe(false);
-    expect(
-      AuthoringContextReadSchema.safeParse({
-        query: { contentTypeVersionId: uuid3 },
-        resource: selectedResource,
-      }).success,
-    ).toBe(false);
-  });
-
-  it('refuses unknown keys and caller-supplied authority on the read envelope', () => {
-    const read = { query: {}, resource: emptyResource };
-    for (const leaked of leakedKeys)
-      expect(
-        AuthoringContextReadSchema.safeParse({ ...read, [leaked]: uuid })
-          .success,
-      ).toBe(false);
-  });
-
-  it('validates nested evidence through the read envelope', () => {
-    expect(
-      AuthoringContextReadSchema.safeParse({
-        query: { contentTypeVersionId: uuid2 },
-        resource: {
-          ...selectedResource,
-          selectedType: {
-            ...selectedType,
-            schemaArtifact: { ...schemaArtifact, artifactHash: 'short' },
-          },
-        },
-      }).success,
-    ).toBe(false);
   });
 });

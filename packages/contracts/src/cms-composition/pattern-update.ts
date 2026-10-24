@@ -1,6 +1,5 @@
 import { z } from 'zod';
 
-import { JsonValueSchema } from '../api-error.ts';
 import { refineIfMatchEqualsExpectedVersion } from '../cms-editorial/if-match.ts';
 import {
   CmsUuidSchema,
@@ -10,34 +9,27 @@ import {
   IdempotencyKeySchema,
   QuotedVersionSchema,
 } from '../request-navigation-security.ts';
-import { PatternNodePathSchema } from './key-grammar.ts';
+import { ExpandedPatternNodePathSchema } from './key-grammar.ts';
 import { CompositionInstanceResourceSchema } from './pattern-instance.ts';
+
+export * from './pattern-update-diff.ts';
 
 /*
  * Linked update (D9, OD-2): CMS-03C-14 returns the three-way diff of one
- * instance, CMS-03C-15 accepts the new pattern version or detaches. A path is a
- * collision when the local override differs from the base and the new version
- * also changed it. An unanswered update overwrites nothing.
+ * instance, CMS-03C-15 accepts the new pattern version or detaches. A removed
+ * block root or structural change collides even without a local override;
+ * changed props collide when the local override differs from the base.
+ * An unanswered update overwrites nothing (DEC-193).
  */
 
-export const CMS_UPDATE_DIFF_MAX_PATHS = 128;
-export const CMS_UPDATE_DIFF_MAX_BYTES = 262_144;
 export const CMS_UPDATE_MAX_INSTANCES = 32;
 export const CMS_UPDATE_MAX_CHOICES = 128;
 
 const PositiveInt32Schema = z.number().int().positive().max(2_147_483_647);
-const InstanceStateSchema = z.enum([
-  'draft',
-  'active',
-  'pending_diff',
-  'superseded',
-  'retired',
-]);
-const LinkModeSchema = z.enum(['linked', 'detached']);
 
-/** `yours` keeps the local override, `theirs` takes the new pattern value. */
+/** DEC-193: `yours` selects the local node/props; `theirs` selects the target. */
 export const PatternUpdateChoiceSchema = z.strictObject({
-  path: PatternNodePathSchema,
+  path: ExpandedPatternNodePathSchema,
   choice: z.enum(['yours', 'theirs']),
 });
 
@@ -137,104 +129,10 @@ export const CompositionUpdateResourceSchema = z.strictObject({
     .max(CMS_UPDATE_MAX_INSTANCES),
 });
 
-/** CMS-03C-14 is addressed entirely by path: any query key is a 400. */
-export const CompositionUpdateDiffApiRequestSchema = z.strictObject({
-  instanceId: CmsUuidSchema,
-  query: z.strictObject({}),
-});
-
-const CompositionUpdateDiffPathSchema = z.strictObject({
-  path: PatternNodePathSchema,
-  /** The pinned pattern value, the new active value and the local override; null when absent. */
-  base: JsonValueSchema.nullable(),
-  theirs: JsonValueSchema.nullable(),
-  yours: JsonValueSchema.nullable(),
-  collision: z.boolean(),
-});
-
-/**
- * CMS-03C-14 200 body. An instance with no newer `active` compatible version is
- * not an error: `paths` is empty, `collisionCount` 0, `bulkEligible` false and
- * `targetPatternVersion` equals `pinnedPatternVersion` (DEC-180 G4). A diff
- * over 128 paths or 256 KiB is 422 `diff_too_large`.
- */
-export const CompositionUpdateDiffResourceSchema = z
-  .strictObject({
-    instance: z.strictObject({
-      id: CmsUuidSchema,
-      version: CmsVersionSchema,
-      revisionId: CmsUuidSchema,
-      path: z.string().max(512),
-      state: InstanceStateSchema,
-      linkMode: LinkModeSchema,
-      pinnedPatternVersion: PositiveInt32Schema,
-    }),
-    targetPatternVersion: PositiveInt32Schema,
-    paths: z
-      .array(CompositionUpdateDiffPathSchema)
-      .max(CMS_UPDATE_DIFF_MAX_PATHS),
-    collisionCount: z.number().int().min(0).max(CMS_UPDATE_DIFF_MAX_PATHS),
-    bulkEligible: z.boolean(),
-  })
-  .superRefine((value, context) => {
-    const seen = new Set<string>();
-    value.paths.forEach((entry, index) => {
-      if (seen.has(entry.path))
-        context.addIssue({
-          code: 'custom',
-          path: ['paths', index, 'path'],
-          message: 'diff_path_duplicate',
-        });
-      seen.add(entry.path);
-    });
-    const collisions = value.paths.filter((entry) => entry.collision).length;
-    if (value.collisionCount !== collisions)
-      context.addIssue({
-        code: 'custom',
-        path: ['collisionCount'],
-        message: 'collisionCount equals the paths flagged as collisions',
-      });
-    if (value.targetPatternVersion < value.instance.pinnedPatternVersion)
-      context.addIssue({
-        code: 'custom',
-        path: ['targetPatternVersion'],
-        message: 'the target version is never below the pinned version',
-      });
-    if (
-      value.targetPatternVersion === value.instance.pinnedPatternVersion &&
-      value.paths.length > 0
-    )
-      context.addIssue({
-        code: 'custom',
-        path: ['paths'],
-        message: 'an instance with no newer version has an empty diff',
-      });
-    if (
-      value.bulkEligible &&
-      (value.collisionCount > 0 ||
-        value.paths.length === 0 ||
-        value.targetPatternVersion === value.instance.pinnedPatternVersion)
-    )
-      context.addIssue({
-        code: 'custom',
-        path: ['bulkEligible'],
-        message:
-          'bulk acceptance needs a newer version with changed paths and no collision',
-      });
-    if (
-      new TextEncoder().encode(JSON.stringify(value)).byteLength >
-      CMS_UPDATE_DIFF_MAX_BYTES
-    )
-      context.addIssue({ code: 'custom', message: 'diff_too_large' });
-  });
-
 export type PatternUpdateChoice = z.infer<typeof PatternUpdateChoiceSchema>;
 export type CompositionUpdateRequest = z.infer<
   typeof CompositionUpdateRequestSchema
 >;
 export type CompositionUpdateResource = z.infer<
   typeof CompositionUpdateResourceSchema
->;
-export type CompositionUpdateDiffResource = z.infer<
-  typeof CompositionUpdateDiffResourceSchema
 >;

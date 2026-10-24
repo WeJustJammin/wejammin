@@ -74,8 +74,8 @@ export const PatternNodeKeySchema = z
 
 /**
  * A normalized node path under an inserted pattern root (DEC-175):
- * `/{nodeKey}(/{nodeKey})*`, at most 512 characters. The same grammar names an
- * `overrides` key and a `PatternUpdateChoice.path`.
+ * `/{nodeKey}(/{nodeKey})*`, at most 512 characters. This grammar names a
+ * placement `overrides` key. Expanded public addresses have their own bound.
  */
 export const PatternNodePathSchema = z
   .string()
@@ -85,6 +85,26 @@ export const PatternNodePathSchema = z
     'node_path_invalid',
   );
 
+/**
+ * DEC-193: a full address in an expanded pattern forest, without encoding or
+ * shortening: 1-72 ASCII key segments, at most 4680 characters. Only public
+ * diff, choice and root addresses use this bound; stored paths stay unchanged.
+ */
+export const ExpandedPatternNodePathSchema = z
+  .string()
+  .max(4_680, 'expanded_node_path_too_long')
+  .regex(
+    /^\/[a-z][a-z0-9_-]{0,63}(?:\/[a-z][a-z0-9_-]{0,63})*(?![\s\S])/u,
+    'expanded_node_path_invalid',
+  )
+  .refine(
+    (value) => value.split('/').length - 1 <= 72,
+    'at most 72 key segments',
+  );
+
 export type CmsTemplateKey = z.infer<typeof CmsTemplateKeySchema>;
 export type CmsPatternKey = z.infer<typeof CmsPatternKeySchema>;
 export type CmsTaxonomyKey = z.infer<typeof CmsTaxonomyKeySchema>;
+export type ExpandedPatternNodePath = z.infer<
+  typeof ExpandedPatternNodePathSchema
+>;

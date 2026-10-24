@@ -103,3 +103,49 @@ export type RelatedContentHeaders = z.infer<typeof RelatedContentHeadersSchema>;
 export type RelatedContentResource = z.infer<
   typeof RelatedContentResourceSchema
 >;
+
+/**
+ * `cmsRelatedContentRead` addressing (DEC-195, BE03c "Route field validation"):
+ * the source entry by path only. Strict: no query key, header-derived or body
+ * member, so every caller context stays server-side.
+ */
+export const RelatedContentReadApiRequestSchema = z.strictObject({
+  entryId: CmsUuidSchema,
+});
+
+/**
+ * `cmsRelatedContentRead` answer (DEC-195): the source entry's current active
+ * rule exactly as CMS-03C-05 returns it, with pins and exclusions as stored
+ * (never target projections), or `null` when no rule is active.
+ */
+export const RelatedContentRuleReadSchema = z.strictObject({
+  rule: RelatedContentResourceSchema.nullable(),
+});
+
+export type RelatedContentReadApiRequest = z.infer<
+  typeof RelatedContentReadApiRequestSchema
+>;
+export type RelatedContentRuleRead = z.infer<
+  typeof RelatedContentRuleReadSchema
+>;
+
+/**
+ * DEC-195: whether a parsed `cmsRelatedContentRead` answer is the rule of THIS entry. `null` always is. A rule must be
+ * `active` (a revoked set reads as `null`), name the entry as its source, and hold no pin that
+ * is also an exclusion (CMS-03C-05 refuses `pin_exclusion_overlap`, so no stored rule can). Ids compare case-insensitively.
+ * The Worker, the first-party proxy and the page loader all verify an answer through this one rule.
+ */
+export const relatedRuleReadAnswersEntry = (
+  read: RelatedContentRuleRead,
+  entryId: string,
+): boolean => {
+  const rule = read.rule;
+  if (rule === null) return true;
+  const entry = entryId.toLowerCase();
+  const excluded = new Set(rule.exclusions.map((id) => id.toLowerCase()));
+  return (
+    rule.state === 'active' &&
+    rule.sourceEntryId.toLowerCase() === entry &&
+    !rule.pins.some((id) => excluded.has(id.toLowerCase()))
+  );
+};

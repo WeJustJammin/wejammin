@@ -171,6 +171,41 @@ export const cmsCompositionRouteDefinitions = (responses) => ({
       'entity',
     ),
   },
+  cmsLocaleVariantRead: {
+    responses: responses(
+      [200],
+      'Current locale variant of the entry with its stored values, field resolutions and the active fallback order',
+      errors('Locale variant', BOUNDED_READ_STATUSES, {
+        403: 'Entry is visible but the caller cannot edit it',
+        404: 'Entry is absent or concealed, or the locale is not supported by the active version',
+      }),
+      'entity',
+    ),
+  },
+  cmsRelatedContentRead: {
+    responses: responses(
+      [200],
+      'Current related-content rule of the source entry, or null when none is active',
+      errors('Related content', BOUNDED_READ_STATUSES, {
+        403: 'Source entry is visible but the caller cannot edit it',
+        404: 'Source entry is absent or concealed',
+      }),
+      'entity',
+    ),
+  },
+  cmsCompositionInstancesRead: {
+    responses: responses(
+      [200],
+      'Page of the newest draft, active and pending-diff composition rows of the entry current draft revision, in render order',
+      errors('Composition instances', BOUNDED_READ_STATUSES, {
+        400: 'Entry id, limit or cursor is malformed, or the signed cursor is tampered, expired, over-lived or not issued to this caller for this entry and draft revision',
+        403: 'Entry is visible but the caller cannot edit it',
+        404: 'Entry is absent or concealed',
+      }),
+      // BE03c L182: "no entity tag" (the Worker answers with `NO_ETAG`), so no ETag header.
+      'unversioned',
+    ),
+  },
   'CMS-03C-13': {
     responses: responses(
       [200],

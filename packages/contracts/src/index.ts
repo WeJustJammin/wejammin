@@ -1,6 +1,7 @@
 export * from './api-error.ts';
 export * from './authentication.ts';
 export * from './cms-composition/index.ts';
+export * from './cms-delivery/index.ts';
 export * from './cms-editorial/index.ts';
 export * from './consumer-queue-events.ts';
 export * from './content-schema-registry/index.ts';

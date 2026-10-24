@@ -10,6 +10,7 @@ import {
   CmsUuidSchema,
   CmsVersionSchema,
 } from '../content-schema-registry/primitives.ts';
+import { CMS_GOVERNED_SCHEDULE_BLOCK_REASONS } from './governed-activation-job.ts';
 import {
   GovernedReviewStateSchema,
   GovernedRiskClassSchema,
@@ -60,6 +61,43 @@ export const GovernedAssignmentSummarySchema =
 const uniqueBy = <T>(items: readonly T[], key: (item: T) => string): boolean =>
   new Set(items.map(key)).size === items.length;
 
+/** The six states of a `cms_governed_activation_schedules` row (BE03c). */
+export const GovernedActivationScheduleStateSchema = z.enum([
+  'pending',
+  'executing',
+  'completed',
+  'failed_retryable',
+  'blocked',
+  'cancelled',
+]);
+
+/** The closed `reason_code` vocabulary of a blocked or cancelled schedule (BE03c). */
+export const GovernedActivationScheduleReasonSchema = z.enum(
+  CMS_GOVERNED_SCHEDULE_BLOCK_REASONS,
+);
+
+/**
+ * DEC-191: the review's most recent activation schedule as its state and closed
+ * reason. `reasonCode` is set exactly when the state is `blocked` or `cancelled`
+ * (the table CHECK `(state IN ('blocked','cancelled')) = (reason_code IS NOT NULL)`).
+ */
+export const GovernedActivationScheduleSummarySchema = z
+  .strictObject({
+    state: GovernedActivationScheduleStateSchema,
+    reasonCode: GovernedActivationScheduleReasonSchema.nullable(),
+  })
+  .superRefine((value, context) => {
+    const closed = value.state === 'blocked' || value.state === 'cancelled';
+    if (closed !== (value.reasonCode !== null))
+      context.addIssue({
+        code: 'custom',
+        path: ['reasonCode'],
+        message:
+          'reasonCode exists exactly for a blocked or cancelled schedule',
+      });
+  })
+  .readonly();
+
 /** `GovernedReviewDetailResource` (CMS-03C-10). */
 export const GovernedReviewDetailResourceSchema = z
   .strictObject({
@@ -97,6 +135,8 @@ export const GovernedReviewDetailResourceSchema = z
       .max(6)
       .refine((actions) => uniqueBy(actions, String), 'actions_must_be_unique')
       .readonly(),
+    /** DEC-191: the most recent activation schedule of this review, or null when it has none. */
+    activationSchedule: GovernedActivationScheduleSummarySchema.nullable(),
   })
   .superRefine((value, context) => {
     checkGovernedReview(value, context);
@@ -235,6 +275,9 @@ export const GovernedReviewQueuePageSchema = z
 
 export type GovernedReviewDetailResource = z.infer<
   typeof GovernedReviewDetailResourceSchema
+>;
+export type GovernedActivationScheduleSummary = z.infer<
+  typeof GovernedActivationScheduleSummarySchema
 >;
 export type GovernedReviewQueueQuery = z.infer<
   typeof GovernedReviewQueueQuerySchema
