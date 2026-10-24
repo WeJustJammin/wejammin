@@ -230,12 +230,13 @@ export const createProductionJobEffectDispatcher =
             : control === undefined
               ? await dependencies.prepareSchemaDryRun(input)
               : await dependencies.prepareSchemaDryRun(input, control);
-        if (!validResult(result) || !CMS_DISPOSITIONS.has(result.state))
-          return cmsUnavailable(context);
-        // Backstop: the queue dead-letters the message after the last delivery, so a Job left `queued`
-        // would never settle. The real callback has already rolled its plan back before it gets here.
-        return result.state === 'queued' &&
-          isFinalDelivery(deliveryAttemptOf(context?.deliveryAttempt))
+        // A result outside the closed set is the family's refusal. Backstop: the queue dead-letters the message
+        // after the last delivery, so a Job left `queued` would never settle (the real callback has already
+        // rolled its plan back before it gets here), so `queued` on the final delivery is the same refusal.
+        return !validResult(result) ||
+          !CMS_DISPOSITIONS.has(result.state) ||
+          (result.state === 'queued' &&
+            isFinalDelivery(deliveryAttemptOf(context?.deliveryAttempt)))
           ? cmsUnavailable(context)
           : result;
       } catch {

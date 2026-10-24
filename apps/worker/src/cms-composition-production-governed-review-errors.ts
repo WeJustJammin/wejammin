@@ -69,7 +69,8 @@ export const governedRpcError = (
       ).includes(reason.data)
     )
       return failure(500);
-    const detail = isRecord(payload) ? payload.details : null;
+    // A reason token is only parsed from a record whose `code` is P0001, so `payload` is a record here.
+    const detail = (payload as Readonly<Record<string, unknown>>).details;
     if (reason.data === 'expiry_out_of_bounds')
       // The member the bound applies to travels as a JSON pointer array DETAIL.
       return failure(cmsSlice12ReasonStatus(reason.data), {

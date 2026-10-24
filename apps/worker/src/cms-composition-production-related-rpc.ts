@@ -56,9 +56,10 @@ export const relatedRpcError = (
       ).includes(reason.data)
     )
       return failure(500);
+    // `reason.success` means `payload` is a platform raise (a record), so its DETAIL is readable.
     const violations = POINTER_REASONS.has(reason.data)
       ? violationsFromDetailText(
-          isRecord(payload) ? payload.details : null,
+          (payload as Readonly<Record<string, unknown>>).details,
           reason.data,
         )
       : [];

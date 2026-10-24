@@ -171,8 +171,9 @@ const parseQueue = (request: Request): Parsed<GovernedReviewQueueQuery> => {
     ...(limit === undefined ? {} : { limit: Number(limit) }),
   });
   if (parsed.success) return { ok: true, value: parsed.data };
-  const member = String(parsed.error.issues[0]?.path[0] ?? '');
-  return outOfBounds(QUERY_KEYS.has(member) ? member : '');
+  // The schema is a strict object over exactly QUERY_KEYS and unknown keys were refused above, so a failed
+  // parse always carries a first issue whose path starts at one of those members.
+  return outOfBounds(String(parsed.error.issues[0]!.path[0]));
 };
 
 /** CMS-03C-10 and CMS-03C-11 (BE03c rows 172, 173). */

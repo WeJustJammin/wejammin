@@ -75,11 +75,12 @@ const patternRpcError = (
     )
       return failure(500);
     // DEC-210: the one reason that relays its pointer, the offending node of the request `blockTree`.
+    // A reason token is only parsed from a record whose `code` is P0001, so `payload` is a record here.
     if (reason.data === BLOCK_RULES_REASON)
       return failure(
         cmsSlice12ReasonStatus(reason.data),
         blockRulesDetails(
-          isRecord(payload) ? payload.details : undefined,
+          (payload as Readonly<Record<string, unknown>>).details,
           'CMS-03C-12',
         ),
       );

@@ -104,6 +104,7 @@ const BY_OPERATION: Readonly<
   },
 };
 
+// `tokenOf` returns a token only for a record payload, so every `payload` below a non-null token is a record.
 export const patternUpdateRpcFailure = (
   operation: PatternUpdateOperation,
   status: number,
@@ -126,7 +127,7 @@ export const patternUpdateRpcFailure = (
       cmsSlice12ReasonStatus(reason.data),
       reason.data === BLOCK_RULES_REASON
         ? blockRulesDetails(
-            isRecord(payload) ? payload.details : undefined,
+            (payload as Readonly<Record<string, unknown>>).details,
             'CMS-03C-15',
           )
         : { reasonCode: reason.data },
@@ -139,5 +140,5 @@ export const patternUpdateRpcFailure = (
       : undefined;
   return refusal === undefined
     ? failure(500)
-    : refusal(isRecord(payload) ? payload.details : undefined);
+    : refusal((payload as Readonly<Record<string, unknown>>).details);
 };

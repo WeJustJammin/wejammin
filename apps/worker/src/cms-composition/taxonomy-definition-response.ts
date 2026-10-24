@@ -258,7 +258,7 @@ export const taxonomyOperation = async (
       operationId === 'CMS-03C-16' ? 15000 : 8000,
     ),
   );
-  let remove: () => void = () => {};
+  let remove!: () => void;
   const aborted = new Promise<Response>((resolve) => {
     const abort = () =>
       resolve(taxonomyError(request, deps, requestId, failure(504, {}, 5)));

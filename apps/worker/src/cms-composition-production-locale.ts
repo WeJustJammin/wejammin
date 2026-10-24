@@ -80,10 +80,9 @@ const LOCALE_CATALOG: Readonly<Record<number, string>> = {
  * canonical shape is carried; anything else is dropped, never repaired.
  */
 const mismatchDetails = (
-  payload: unknown,
+  payload: Readonly<Record<string, unknown>>,
 ): Readonly<Record<string, unknown>> => {
-  if (typeof payload !== 'object' || payload === null) return {};
-  let source: unknown = (payload as { details?: unknown }).details ?? payload;
+  let source: unknown = payload.details ?? payload;
   if (typeof source === 'string') {
     try {
       source = JSON.parse(source) as unknown;
@@ -117,7 +116,12 @@ const localeFailure = (
     ? {
         ...failure,
         code,
-        details: { ...failure.details, ...mismatchDetails(payload) },
+        // A 409 exists only for a record payload: the shared mapper reaches it through a product token read from a
+        // record (`carriesProductToken`, `codeFromRpcError`), and every non-record payload maps to 4xx-500 or 5xx.
+        details: {
+          ...failure.details,
+          ...mismatchDetails(payload as Readonly<Record<string, unknown>>),
+        },
       }
     : { ...failure, code };
 };
