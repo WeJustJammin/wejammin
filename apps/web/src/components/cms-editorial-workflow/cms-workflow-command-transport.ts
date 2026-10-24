@@ -87,7 +87,9 @@ export type WorkflowCommandResult<TResource> =
         | 'csrf_missing'
         | 'request_invalid'
         /** The lazily loaded validators could not be fetched: nothing was sent. */
-        | 'validators_unavailable';
+        | 'validators_unavailable'
+        /** A lazily loaded module of the send (this transport) could not be fetched: nothing was sent. */
+        | 'module_unavailable';
     };
 
 const UNKNOWN_OUTCOME_HEADER = 'x-cms-editorial-outcome';

@@ -8,6 +8,9 @@ import CmsEditorialEntryEditUnavailable from '../../../../components/cms-editori
 import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
 import { createCmsEditorialPageReads } from '../../../../components/cms-editorial-pages/cms-editorial-page-reads';
 import { loadEntryEditPage } from '../../../../components/cms-editorial-pages/load-entry-edit-page';
+import { compositionPagePath } from '../../../../components/cms-composition-instances/composition-path';
+import CmsEntryTranslateLinks from '../../../../components/cms-locale/CmsEntryTranslateLinks';
+import { relatedContentPagePath } from '../../../../components/cms-related-content/related-content-path';
 
 export const prerender = false;
 
@@ -32,6 +35,8 @@ const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
 const heading =
   outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
 const workflowPath = cmsEditorialAppWorkflowPath(Astro.params.entryId ?? '');
+const relatedPath = relatedContentPagePath(Astro.params.entryId ?? '');
+const compositionPath = compositionPagePath(Astro.params.entryId ?? '');
 ---
 
 <CmsEditorialDocument
@@ -50,6 +55,17 @@ const workflowPath = cmsEditorialAppWorkflowPath(Astro.params.entryId ?? '');
             <a href={workflowPath}>Review and publish</a>
           </p>
         )}
+        {relatedPath !== null && (
+          <p>
+            <a href={relatedPath}>Related content</a>
+          </p>
+        )}
+        {compositionPath !== null && (
+          <p>
+            <a href={compositionPath}>Composition</a>
+          </p>
+        )}
+        <CmsEntryTranslateLinks links={outcome.view.translateLinks} />
         <CmsEditorialEntryEditorIsland init={outcome.view.init} client:load />
       </>
     ) : (

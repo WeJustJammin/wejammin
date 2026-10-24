@@ -1,6 +1,6 @@
 import AxeBuilder from '@axe-core/playwright';
 
-import { expect, test } from '@playwright/test';
+import { expect, test, type Locator, type Page } from '@playwright/test';
 
 import { authenticateLocalSession } from './support/local-signed-session';
 
@@ -68,8 +68,15 @@ test('CMS-11 keeps a stale tab’s unsent values through a real-route conflict a
   const firstResult = await firstPost;
   expect(firstResult.status()).toBe(201);
   expect(firstResult.request().headers()['if-match']).toBe('"1"');
-  await expect(page.getByRole('status')).toContainText('Draft version saved.');
-  await expect(page.getByRole('status')).toContainText('version 2');
+  // The page carries several polite status regions (the designer's, the template rate-limit notice and the
+  // governed review panel's two), so the saved-draft announcement is found by its text, not by role alone.
+  const savedStatus = (templatePage: Page): Locator =>
+    templatePage
+      .getByRole('status')
+      .filter({ hasText: 'Draft version saved.' });
+  await expect(savedStatus(page)).toHaveCount(1);
+  await expect(savedStatus(page)).toContainText('Draft version saved.');
+  await expect(savedStatus(page)).toContainText('version 2');
 
   const stalePost = stalePage.waitForResponse(
     (response) =>
@@ -117,7 +124,7 @@ test('CMS-11 keeps a stale tab’s unsent values through a real-route conflict a
   const rebasedResult = await rebasedPost;
   expect(rebasedResult.status()).toBe(201);
   expect(rebasedResult.request().headers()['if-match']).toBe('"2"');
-  await expect(stalePage.getByRole('status')).toContainText('version 3');
+  await expect(savedStatus(stalePage)).toContainText('version 3');
   const axe = await new AxeBuilder({ page: stalePage }).analyze();
   expect(
     axe.violations.filter(

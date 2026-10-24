@@ -1,4 +1,4 @@
-import type { CmsEditorialResultSummary } from './cms-editorial-result-handoff';
+import type { CmsEditorialResultSummary } from './cms-editorial-result-types';
 import { type JsonValue } from '@wejammin/contracts';
 
 import { CmsEditorialEntryCreateRequestSchema } from './cms-editorial-entry-create';
@@ -52,6 +52,12 @@ export type CmsEditorialEntryCreateSubmitResult =
   | { readonly status: 'refused'; readonly message: string }
   | {
       readonly status: 'invalid';
+      /**
+       * True only for a verified 422 VALIDATION_FAILED that names the taxonomy
+       * `term_unavailable` reason; it is the sole refusal that re-reads the
+       * selector. Any other status or reason leaves it false.
+       */
+      readonly taxonomyUnavailable: boolean;
       readonly message: string;
       readonly reasonCode: string | null;
       readonly violations: readonly CmsEditorialViolation[];
@@ -63,6 +69,8 @@ export type CmsEditorialEntryCreateSubmitResult =
       readonly retryable: boolean;
       readonly outcomeUnknown: boolean;
       readonly unauthenticated: boolean;
+      /** Internal form-focus instruction, never a public error member. */
+      readonly setupSummary?: boolean;
       readonly retryAfterSeconds: number | null;
       readonly idempotencyKey: string;
     }
@@ -83,9 +91,9 @@ const refused = (message: string): CmsEditorialEntryCreateSubmitResult => ({
 const STATUS_COPY: Readonly<Record<string, string>> = {
   UNAUTHENTICATED: 'Your session expired. Sign in again to create this entry.',
   FORBIDDEN: 'You cannot create entries of this type.',
-  NOT_FOUND: 'This content type is not available.',
+  NOT_FOUND: 'This entry cannot be created with the selected setup.',
   CONFLICT:
-    'This content type changed after the form loaded. Reload the page and try again.',
+    'The entry setup changed. Review the available options and try again.',
   UNSUPPORTED_MEDIA_TYPE: 'The create request format is not supported.',
 };
 
@@ -143,16 +151,29 @@ export const submitCmsEditorialEntryCreate = async (
         edgeCount: null,
       },
     };
-  if (result.outcome === 'validation')
+  if (result.outcome === 'validation') {
+    const setupValidation =
+      result.status === 422 &&
+      result.errorCode === 'VALIDATION_FAILED' &&
+      result.reasonCode === null &&
+      result.errorDetails.length === 1 &&
+      result.errorDetails[0] === '/contentTypeVersionId';
     return {
       status: 'invalid',
+      taxonomyUnavailable:
+        result.status === 422 &&
+        result.errorCode === 'VALIDATION_FAILED' &&
+        result.reasonCode === 'term_unavailable',
       message:
         cmsEditorialReasonMessage(result.reasonCode) ??
-        'Check the highlighted fields.',
+        (setupValidation
+          ? 'The entry setup could not be validated. Review the available options.'
+          : 'Check the highlighted fields.'),
       reasonCode: result.reasonCode,
       violations: cmsEditorialViolationsFrom(result.errorDetails),
       idempotencyKey: result.idempotencyKey,
     };
+  }
   const retained = result.idempotencyKey === idempotencyKey;
   return {
     status: 'error',
@@ -170,6 +191,10 @@ export const submitCmsEditorialEntryCreate = async (
     retryable: result.retryable,
     outcomeUnknown: result.outcomeUnknown,
     unauthenticated: result.errorCode === 'UNAUTHENTICATED',
+    ...(!result.outcomeUnknown &&
+    (result.errorCode === 'NOT_FOUND' || result.errorCode === 'CONFLICT')
+      ? { setupSummary: true }
+      : {}),
     retryAfterSeconds: result.retryAfterSeconds,
     idempotencyKey: retained ? idempotencyKey : result.idempotencyKey,
   };

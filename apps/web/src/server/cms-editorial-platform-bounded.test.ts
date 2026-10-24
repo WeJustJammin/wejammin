@@ -3,6 +3,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   cmsEditorialBoundedRequestJson,
   cmsEditorialBoundedResponseJson,
+  cmsPatternPlacementBoundedResponseJson,
 } from './cms-editorial-platform-bounded';
 import { forwardCmsEditorialEntryCreateMutation } from './cms-editorial-platform-mutation';
 import { forwardCmsEditorialEntryDraftDetailRead } from './cms-editorial-platform-reads';
@@ -191,5 +192,80 @@ describe('cms-editorial proxies refuse malformed UTF-8', () => {
       uuid,
     );
     expect(response.status).toBe(502);
+  });
+});
+
+/*
+ * DEC-188/DEC-189: the CMS-03C-02 success reader is the one response ceiling
+ * exception at 1 MiB. It shares the ordinary reader's fatal UTF-8 decode and
+ * over-cap refusal/cancel, and leaves the ordinary response reader at 256 KiB.
+ */
+const streamOf = (chunks: readonly Uint8Array[], contentLength?: number) => {
+  const body = new ReadableStream<Uint8Array>({
+    start(controller) {
+      for (const chunk of chunks) controller.enqueue(chunk);
+      controller.close();
+    },
+  });
+  const headers = new Headers({ 'content-type': 'application/json' });
+  if (contentLength !== undefined)
+    headers.set('content-length', String(contentLength));
+  return new Response(body, { status: 200, headers });
+};
+
+const paddedJson = (totalBytes: number): Uint8Array[] => {
+  const enc = new TextEncoder();
+  const prefix = '{"pad":"';
+  const suffix = '"}';
+  return [
+    enc.encode(prefix),
+    enc.encode('x'.repeat(totalBytes - prefix.length - suffix.length)),
+    enc.encode(suffix),
+  ];
+};
+
+describe('cmsPatternPlacementBoundedResponseJson budget', () => {
+  it('accepts exactly 1 MiB and refuses one byte over', async () => {
+    const exact = await cmsPatternPlacementBoundedResponseJson(
+      streamOf(paddedJson(1_048_576)),
+    );
+    expect(exact.ok).toBe(true);
+    const over = await cmsPatternPlacementBoundedResponseJson(
+      streamOf(paddedJson(1_048_577)),
+    );
+    expect(over.ok).toBe(false);
+  });
+
+  it('refuses a declared length over the budget and cancels an over-cap stream', async () => {
+    const declared = await cmsPatternPlacementBoundedResponseJson(
+      streamOf(paddedJson(64), 1_048_577),
+    );
+    expect(declared.ok).toBe(false);
+    let cancelled = false;
+    const body = new ReadableStream<Uint8Array>({
+      start(controller) {
+        controller.enqueue(new TextEncoder().encode('{"pad":"'));
+        controller.enqueue(new Uint8Array(1_048_600));
+      },
+      cancel() {
+        cancelled = true;
+      },
+    });
+    const streamed = await cmsPatternPlacementBoundedResponseJson(
+      new Response(body, { status: 200 }),
+    );
+    expect(streamed.ok).toBe(false);
+    expect(cancelled).toBe(true);
+  });
+
+  it('decodes fatal UTF-8 and leaves the ordinary response reader at 256 KiB', async () => {
+    const bad = new Response(new Uint8Array([0x7b, 0x22, 0xff, 0x22, 0x7d]), {
+      status: 200,
+    });
+    expect((await cmsPatternPlacementBoundedResponseJson(bad)).ok).toBe(false);
+    const within = new Response(JSON.stringify({ ok: true }), { status: 200 });
+    expect((await cmsEditorialBoundedResponseJson(within)).ok).toBe(true);
+    const over = new Response(new Uint8Array(262_145), { status: 200 });
+    expect((await cmsEditorialBoundedResponseJson(over)).ok).toBe(false);
   });
 });

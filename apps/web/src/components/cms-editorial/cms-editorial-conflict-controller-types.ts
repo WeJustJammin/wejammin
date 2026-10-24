@@ -1,5 +1,5 @@
 import type { JsonValue } from '@wejammin/contracts';
-import type { CmsEditorialResultSummary } from './cms-editorial-result-handoff';
+import type { CmsEditorialResultSummary } from './cms-editorial-result-types';
 
 import type { CmsFieldDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
 import type {

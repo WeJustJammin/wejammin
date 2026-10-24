@@ -9,7 +9,12 @@ import {
 } from '@wejammin/contracts';
 
 import CmsTemplateEditDesigner from '../../../../components/cms-composition/CmsTemplateEditDesigner';
+import { cmsTemplateUnavailableCopy } from '../../../../components/cms-composition/cms-template-unavailable-copy';
+import CmsGovernedTemplatePanel from '../../../../components/cms-governed-review/CmsGovernedTemplatePanel';
+import { createCmsGovernedPageReads } from '../../../../components/cms-governed-review/governed-review-page-reads';
+import { loadGovernedSubjectReview } from '../../../../components/cms-governed-review/load-governed-subject-review';
 import '../../../../components/cms-composition/cms-template-designer.css';
+import '../../../../styles/cms-danger-action.css';
 import { readCmsTemplateContext } from '../../../../server/cms-composition-platform-context';
 import { readCmsTemplateDetail } from '../../../../server/cms-composition-platform-detail';
 import { cmsEditorialCsrfCookie } from '../../../../server/cms-editorial-platform-shared';
@@ -67,6 +72,20 @@ if (selector.ok && latest.ok) {
   }
 }
 
+// FE03 :877, :1066: the panel shows the version's review summary and links to the review itself.
+const panelReview =
+  detail === null
+    ? null
+    : await loadGovernedSubjectReview({
+        request: Astro.request,
+        reads: createCmsGovernedPageReads(env.PLATFORM_API),
+        subject: {
+          kind: 'template_version',
+          key: detail.templateKey,
+          version: detail.templateVersion,
+        },
+      });
+
 const unavailable = detail === null || context === null;
 const failure = latest.ok ? selector : latest;
 if (unavailable) {
@@ -82,16 +101,7 @@ if (unavailable) {
     Astro.response.headers.set('Retry-After', retryAfter);
 }
 const csrfToken = cmsEditorialCsrfCookie(Astro.request) ?? '';
-const unavailableCopy =
-  templateKey === null
-    ? 'This template is not available.'
-    : failure.status === 403
-      ? 'Template designer access is required for the current acting context.'
-      : failure.status === 404
-        ? 'This template is unavailable to the current acting context.'
-        : failure.status === 429
-          ? 'Template choices are temporarily rate-limited. Wait and reload.'
-          : 'The template or its choices are unavailable. Reload when the service is ready.';
+const unavailableCopy = cmsTemplateUnavailableCopy(templateKey, failure.status);
 ---
 
 <html lang="en">
@@ -160,6 +170,21 @@ const unavailableCopy =
             context={context}
             detail={detail}
             csrfToken={csrfToken}
+            client:load
+          />
+        ) : null
+      }
+      {
+        detail !== null ? (
+          <CmsGovernedTemplatePanel
+            detail={{
+              id: detail.id,
+              contentHash: detail.contentHash,
+              templateKey: detail.templateKey,
+              templateVersion: detail.templateVersion,
+              state: detail.state,
+            }}
+            review={panelReview}
             client:load
           />
         ) : null

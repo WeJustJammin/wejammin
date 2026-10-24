@@ -1,5 +1,9 @@
 import { addClientBindingIdHeader } from '../../lib/client-binding';
 import {
+  rateLimitWaitSeconds,
+  retryingSafeRead,
+} from '../../lib/safe-read-retry';
+import {
   loadCmsValidators,
   loadedCmsValidators,
   type CmsValidators,
@@ -25,28 +29,50 @@ export interface ReviewerOption {
 
 export type ReviewerOptionsResult =
   | { readonly kind: 'ok'; readonly options: readonly ReviewerOption[] }
-  | { readonly kind: 'unavailable' };
+  | {
+      readonly kind: 'unavailable';
+      /**
+       * Present only for a 429 (FE03 :1172): the wait the server stated (null when none), after
+       * which the form reads the choices again.
+       */
+      readonly rateLimit?: { readonly retryAfterSeconds: number | null };
+    };
 
 const BASE =
   '/api/v1/cms/capability-grants?capability=cms.reviewer&state=active&limit=100';
 const MAX_PAGES = 5;
 
-const readPage = async (
-  path: string,
-  fetcher: Fetcher,
-): Promise<
-  ReturnType<CmsValidators['CmsCapabilityGrantListPageSchema']['safeParse']>
-> => {
-  const response = await fetcher(
-    path,
-    await addClientBindingIdHeader(path, {
-      method: 'GET',
-      credentials: 'same-origin',
-      cache: 'no-store',
-      redirect: 'manual',
-      headers: { accept: 'application/json' },
-    }),
+type Page =
+  | {
+      readonly kind: 'page';
+      readonly parsed: ReturnType<
+        CmsValidators['CmsCapabilityGrantListPageSchema']['safeParse']
+      >;
+    }
+  | {
+      readonly kind: 'rate-limited';
+      readonly retryAfterSeconds: number | null;
+    };
+
+const readPage = async (path: string, fetcher: Fetcher): Promise<Page> => {
+  // FE03 :1173: a 502/503/504 the BE declares safe is retried twice (250 ms, 750 ms).
+  const response = await retryingSafeRead(async () =>
+    fetcher(
+      path,
+      await addClientBindingIdHeader(path, {
+        method: 'GET',
+        credentials: 'same-origin',
+        cache: 'no-store',
+        redirect: 'manual',
+        headers: { accept: 'application/json' },
+      }),
+    ),
   );
+  if (response.status === 429)
+    return {
+      kind: 'rate-limited',
+      retryAfterSeconds: await rateLimitWaitSeconds(response),
+    };
   let body: unknown = null;
   try {
     body = await response.json();
@@ -54,9 +80,12 @@ const readPage = async (
     // An unreadable body fails the strict parse below.
   }
   const validators = loadedCmsValidators() ?? (await loadCmsValidators());
-  return validators.CmsCapabilityGrantListPageSchema.safeParse(
-    response.ok ? body : null,
-  );
+  return {
+    kind: 'page',
+    parsed: validators.CmsCapabilityGrantListPageSchema.safeParse(
+      response.ok ? body : null,
+    ),
+  };
 };
 
 export const loadReviewerOptions = async (
@@ -66,12 +95,18 @@ export const loadReviewerOptions = async (
   let cursor: string | null = null;
   try {
     for (let pages = 0; pages < MAX_PAGES; pages += 1) {
-      const parsed = await readPage(
+      const answer = await readPage(
         cursor === null ? BASE : `${BASE}&cursor=${encodeURIComponent(cursor)}`,
         fetcher,
       );
-      if (!parsed.success) return { kind: 'unavailable' };
-      for (const item of parsed.data.items)
+      if (answer.kind === 'rate-limited')
+        return {
+          kind: 'unavailable',
+          rateLimit: { retryAfterSeconds: answer.retryAfterSeconds },
+        };
+      if (!answer.parsed.success) return { kind: 'unavailable' };
+      const page = answer.parsed.data;
+      for (const item of page.items)
         if (
           item.capability === 'cms.reviewer' &&
           item.state === 'active' &&
@@ -81,7 +116,7 @@ export const loadReviewerOptions = async (
             personId: item.subjectPersonId,
             endsAt: item.endsAt,
           });
-      cursor = parsed.data.nextCursor;
+      cursor = page.nextCursor;
       if (cursor === null) break;
     }
   } catch {

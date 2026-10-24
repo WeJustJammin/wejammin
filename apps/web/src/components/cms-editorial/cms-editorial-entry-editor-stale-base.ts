@@ -1,7 +1,10 @@
 import { draftValuesFromDetail } from './cms-editorial-draft-values';
 import type { CmsEditorialEntryRevisionRequest } from './cms-editorial-contracts';
 import type { CmsEditorialEditorContext } from './cms-editorial-entry-editor-context';
-import { SAVE_COPY } from './cms-editorial-entry-editor-outcomes';
+import {
+  SAVE_COPY,
+  readWaitingMessage,
+} from './cms-editorial-entry-editor-outcomes';
 import {
   CMS_EDITORIAL_REBASE_BACKOFF_MS,
   divergentCmsEditorialFieldIds,
@@ -19,11 +22,68 @@ export const createCmsEditorialStaleBaseFlow = (
   ctx: CmsEditorialEditorContext,
   resend: () => Promise<unknown>,
 ) => {
+  const stopRebaseLimited = (message: string): void => {
+    ctx.paused = true;
+    ctx.rebaseLimited = true;
+    ctx.readWait = false;
+    ctx.clearTimer();
+    ctx.set({
+      phase: 'sync-conflict',
+      alert: true,
+      unsentCount: ctx.changed().length,
+      message,
+    });
+  };
+
+  /**
+   * FE03 :1172-1173: a 429 on the draft READ waits for `Retry-After`, says so, and
+   * reads again. The save command is never re-sent for it (the base is still
+   * stale): only the bounded rebase after a successful read sends it. Every
+   * limited read spends one unit of the same rebase budget (M2), so a read
+   * that keeps answering 429 ends in an explicit, author-resumable state.
+   */
+  const waitOutReadLimit = (
+    request: CmsEditorialEntryRevisionRequest,
+    seconds: number | null,
+  ): void => {
+    ctx.rebases += 1;
+    if (ctx.rebases > CMS_EDITORIAL_REBASE_BACKOFF_MS.length) {
+      stopRebaseLimited(SAVE_COPY.readLimit);
+      return;
+    }
+    ctx.readWait = true;
+    ctx.set({
+      phase: 'waiting',
+      alert: false,
+      retryAfterSeconds: seconds,
+      message: readWaitingMessage(seconds),
+    });
+    ctx.clearTimer();
+    ctx.timer = ctx.clock.setTimer(
+      () => {
+        ctx.timer = null;
+        ctx.readWait = false;
+        if (ctx.disposed) return;
+        // The re-read holds the send gate like a save does; the rebase it may
+        // lead to releases it itself before sending.
+        ctx.inFlight = true;
+        void handleConflict(request).finally(() => {
+          ctx.inFlight = false;
+        });
+      },
+      (seconds ?? 5) * 1_000,
+    );
+  };
+
   const handleConflict = async (
     request: CmsEditorialEntryRevisionRequest,
   ): Promise<void> => {
-    const detail = await ctx.readCurrent();
-    if (detail === null) {
+    const current = await ctx.readCurrent();
+    if (current.kind === 'rate-limited') {
+      waitOutReadLimit(request, current.retryAfterSeconds);
+      return;
+    }
+    if (current.kind !== 'ok') {
       ctx.paused = true;
       ctx.set({
         phase: 'sync-conflict',
@@ -32,6 +92,7 @@ export const createCmsEditorialStaleBaseFlow = (
       });
       return;
     }
+    const detail = current.detail;
     const sync = {
       expectedVersion: request.expectedVersion,
       currentVersion: detail.entry.version,
@@ -77,15 +138,7 @@ export const createCmsEditorialStaleBaseFlow = (
     ctx.rebases += 1;
     const delay = CMS_EDITORIAL_REBASE_BACKOFF_MS[ctx.rebases - 1];
     if (delay === undefined) {
-      ctx.paused = true;
-      ctx.rebaseLimited = true;
-      ctx.clearTimer();
-      ctx.set({
-        phase: 'sync-conflict',
-        alert: true,
-        unsentCount: ctx.changed().length,
-        message: SAVE_COPY.rebaseLimit,
-      });
+      stopRebaseLimited(SAVE_COPY.rebaseLimit);
       return;
     }
     if (delay === 0) {

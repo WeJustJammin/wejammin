@@ -40,6 +40,16 @@ do not own API policy, persistence, or provider credentials.
   `withCmsValidators(use, unavailable)` (form handlers), and a control receiving
   focus calls `warmCmsValidators`. A cold route load fetches none of it.
 
+- `safe-read-retry.ts` — the FE03 :1172-1173 network contract of a safe protected read.
+  `retryingSafeRead`: a 502, 503 or 504 whose ApiError declares `details.retryable` is retried
+  twice, after 250 ms and 750 ms, and the last answer is returned for the caller's degraded
+  state. `rateLimitWaitSeconds` / `rateLimitMessage`: a 429's `Retry-After` (or the ApiError's
+  `details.retryAfterSeconds`; 1 to 86400 whole seconds; leading zeros such as `007` are well-formed per RFC 9110 delay-seconds; a disagreeing pair is unstated) and the
+  sentence that announces it and says the input is kept. Reads only: a mutation reconciles and
+  reuses its idempotency key. Used by the taxonomy, pattern, editorial, workflow and grant reads;
+  a new browser read of a CMS surface wraps its fetch in `retryingSafeRead` and reads a 429
+  with `rateLimitWaitSeconds`.
+
 ## Ownership
 
 This directory owns web transport adapters and presentation-facing helpers.

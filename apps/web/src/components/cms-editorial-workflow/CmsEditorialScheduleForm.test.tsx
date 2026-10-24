@@ -2,6 +2,7 @@
 import { loadPinnedTimeAuthority } from '@wejammin/contracts/time-authority';
 import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from './cms-workflow-answer-machinery.test-support';
 
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
 import {
@@ -26,6 +27,8 @@ import {
   jsonResponse,
   scheduleResourceFixture,
 } from './cms-workflow-fixtures.test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
 
 // axe runs and the 218 KB tz snapshot are slow on a loaded host; waits are
 // conditions, not budgets (the specs assert the real budgets elsewhere).

@@ -1,6 +1,7 @@
 import * as React from 'react';
 import type { TemplateVersionResource } from '@wejammin/contracts';
 
+import { PATTERN_REFUSAL_COPY } from '../cms-pattern-designer/pattern-designer-reasons';
 import type { CmsTemplateSubmitResult } from './cms-template-designer-submit';
 
 export type CmsTemplateFormStatus =
@@ -21,6 +22,10 @@ const statusCopy = (
     return mode === 'successor'
       ? 'The result is unknown. Check the latest version before retrying; these unchanged values will reuse the same idempotency key.'
       : 'The result is unknown. Check for an existing draft before retrying; a retry of these unchanged values will reuse the same idempotency key.';
+  // FE03 names no template-designer copy for the CMS-03C-01 token; the pattern designer's fixed copy for the same token
+  // (FE03 line 883, CMS-03C-12 row) applies. Never taken from the response.
+  if (result.kind === 'conflict' && result.reasonCode !== undefined)
+    return PATTERN_REFUSAL_COPY[result.reasonCode];
   if (result.kind === 'conflict')
     return mode === 'successor'
       ? 'The server reported a conflict. Check the latest version and explicitly reconcile your unsent values before another submit.'

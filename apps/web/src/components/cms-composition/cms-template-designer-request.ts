@@ -18,6 +18,19 @@ export type CmsTemplateRequestValidators = Pick<
   | 'TemplateVersionRequestSchema'
 >;
 
+/** A named content type the selector context no longer offers; the form lists it so it can be cleared. */
+export const CMS_TEMPLATE_TYPE_UNAVAILABLE_MESSAGE =
+  'A chosen content type is no longer active. Clear the box marked "no longer available", then save.';
+
+/** Content types a version names that the selector context no longer offers (first-seen order). */
+export const cmsTemplateUnavailableTypeIds = (
+  named: readonly string[],
+  context: Pick<TemplateDesignerContext, 'contentTypes'>,
+): string[] => {
+  const available = new Set(context.contentTypes.map((type) => type.id));
+  return [...new Set(named)].filter((id) => !available.has(id));
+};
+
 const PROTECTED_REGIONS = [
   'header',
   'now',
@@ -89,14 +102,13 @@ export const buildCmsTemplateDraftRequest = (
   const allowedTypeIds = new Set(
     checkedContext.data.contentTypes.map((type) => type.id),
   );
-  if (
-    fields.compatibleTypeIds.length === 0 ||
-    fields.compatibleTypeIds.some((id) => !allowedTypeIds.has(id))
-  )
+  if (fields.compatibleTypeIds.length === 0)
     return {
       ok: false,
       message: 'Choose at least one available active content type.',
     };
+  if (fields.compatibleTypeIds.some((id) => !allowedTypeIds.has(id)))
+    return { ok: false, message: CMS_TEMPLATE_TYPE_UNAVAILABLE_MESSAGE };
 
   const blockByRef = new Map(
     checkedContext.data.registeredBlocks.map((block) => [

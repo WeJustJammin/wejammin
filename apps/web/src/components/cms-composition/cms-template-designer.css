@@ -188,6 +188,11 @@
   color: var(--cms-surface);
 }
 
+.cms-template-designer button.cms-template-successor-commit {
+  box-sizing: border-box;
+  inline-size: min(100%, 18rem);
+}
+
 .cms-template-designer button:disabled {
   cursor: not-allowed;
   opacity: 0.6;

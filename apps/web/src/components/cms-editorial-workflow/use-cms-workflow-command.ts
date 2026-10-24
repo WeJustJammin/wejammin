@@ -7,10 +7,8 @@ import {
   type CommandState,
   type WorkflowCommandController,
 } from './cms-workflow-command-controller';
-import {
-  sendWorkflowCommand,
-  type WorkflowTransportEnvironment,
-} from './cms-workflow-command-transport';
+import { sendWorkflowCommandLazily } from './cms-workflow-answer-machinery';
+import type { WorkflowTransportEnvironment } from './cms-workflow-command-transport';
 
 /** A printable, unguessable `Idempotency-Key` (8-128 characters). */
 export const newIdempotencyKey = (): string => {
@@ -69,8 +67,11 @@ export const useWorkflowCommand = <TPath, TBody, TResource>(
       operationId: input.spec.operationId,
       ...(input.draftKey === undefined ? {} : { draftKey: input.draftKey }),
       ids: input.ids,
+      // The transport (request building, answer parsing, step-up classification) loads with the
+      // first send, not with the form (AC-106); a send is already asynchronous. If it cannot load
+      // nothing was sent: the result says so and the form stays usable.
       send: (request) =>
-        sendWorkflowCommand(input.spec, request, environment?.transport),
+        sendWorkflowCommandLazily(input.spec, request, environment?.transport),
       refetch: () => latest.current.refetch(),
       onCommitted: (resource) => latest.current.onCommitted(resource),
       navigate:

@@ -5,6 +5,10 @@ import type {
 
 import { addClientBindingIdHeader } from '../../lib/client-binding';
 import {
+  rateLimitWaitSeconds,
+  retryingSafeRead,
+} from '../../lib/safe-read-retry';
+import {
   loadCmsValidators,
   loadedCmsValidators,
   type CmsValidators,
@@ -28,7 +32,15 @@ export type CanonicalReadResult<T> =
   | { readonly kind: 'signed-out' }
   /** 403 or 404: one identical non-disclosing state; protected data is removed. */
   | { readonly kind: 'gone' }
-  | { readonly kind: 'degraded'; readonly requestId: string | null };
+  | {
+      readonly kind: 'degraded';
+      readonly requestId: string | null;
+      /**
+       * Present only for a 429 (FE03 :1172): the wait the server stated (null when none), so the
+       * surface announces it, keeps the person's input and reads again once it has elapsed.
+       */
+      readonly rateLimit?: { readonly retryAfterSeconds: number | null };
+    };
 
 const STRONG_ETAG = /^"[\x21\x23-\x7e]{1,256}"$/u;
 
@@ -39,15 +51,18 @@ const read = async <T>(
 ): Promise<CanonicalReadResult<T>> => {
   let response: Response;
   try {
-    response = await fetcher(
-      path,
-      await addClientBindingIdHeader(path, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        redirect: 'manual',
-        headers: { accept: 'application/json' },
-      }),
+    // FE03 :1173: a 502/503/504 the BE declares safe is retried twice (250 ms, 750 ms).
+    response = await retryingSafeRead(async () =>
+      fetcher(
+        path,
+        await addClientBindingIdHeader(path, {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          redirect: 'manual',
+          headers: { accept: 'application/json' },
+        }),
+      ),
     );
   } catch {
     return { kind: 'degraded', requestId: null };
@@ -78,10 +93,14 @@ const read = async <T>(
     if (resource !== null) return { kind: 'ok', resource };
   }
   const error = validators.ApiErrorSchema.safeParse(body);
-  return {
-    kind: 'degraded',
-    requestId: error.success ? error.data.requestId : null,
-  };
+  const requestId = error.success ? error.data.requestId : null;
+  if (response.status === 429)
+    return {
+      kind: 'degraded',
+      requestId,
+      rateLimit: { retryAfterSeconds: await rateLimitWaitSeconds(response) },
+    };
+  return { kind: 'degraded', requestId };
 };
 
 /** CMS-03B-15 through the first-party proxy; `revisionId` null reads the current draft. */

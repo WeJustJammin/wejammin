@@ -96,7 +96,10 @@ describe('CmsFieldValueView', () => {
     expect(out.match(/<li>/gu)).toHaveLength(2);
   });
 
-  it('says plainly when a kind has no representation here', () => {
-    expect(html('topics', { termIds: [] })).toContain('Not available');
+  it('says plainly when a kind has no representation, and reads an empty taxonomy in words', () => {
+    expect(
+      html('cover', { assetId: fieldUuid(1), assetVersion: '1' }),
+    ).toContain('Not available');
+    expect(html('topics', { termIds: [] })).toContain('No selected terms');
   });
 });

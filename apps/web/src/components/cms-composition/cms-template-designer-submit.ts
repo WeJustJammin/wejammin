@@ -20,7 +20,12 @@ export type CmsTemplateSubmitValidators = Pick<
 
 export type CmsTemplateSubmitResult =
   | { readonly kind: 'created'; readonly resource: TemplateVersionResource }
-  | { readonly kind: 'conflict'; readonly status: 409 }
+  | {
+      readonly kind: 'conflict';
+      readonly status: 409;
+      /** Present only for the closed CMS-03C-01 token (BE03c 1273, DEC-186 item 2). */
+      readonly reasonCode?: typeof DIGEST_MISMATCH_REASON;
+    }
   | {
       readonly kind: 'rejected';
       readonly status:
@@ -29,6 +34,8 @@ export type CmsTemplateSubmitResult =
     }
   | { readonly kind: 'uncertain' };
 
+/** The one 409 reason CMS-03C-01 publishes; the browser reads it by exact match and never loads zod for it. */
+export const DIGEST_MISMATCH_REASON = 'block_registry_digest_mismatch';
 const REJECTED_STATUSES = new Set([
   400, 401, 403, 404, 415, 422, 429, 500, 502, 503, 504,
 ]);
@@ -101,7 +108,10 @@ const submitCmsTemplateVersion = async (
   if (response.status === 409 || REJECTED_STATUSES.has(response.status)) {
     const error = await readExpectedApiError(validators, response);
     if (error === null) return { kind: 'uncertain' };
-    if (response.status === 409) return { kind: 'conflict', status: 409 };
+    if (response.status === 409)
+      return error.details.reasonCode === DIGEST_MISMATCH_REASON
+        ? { kind: 'conflict', status: 409, reasonCode: DIGEST_MISMATCH_REASON }
+        : { kind: 'conflict', status: 409 };
     if (response.status === 429) {
       const retryAfter = response.headers.get('retry-after');
       if (retryAfter === null || !/^[1-9]\d{0,4}$/u.test(retryAfter))

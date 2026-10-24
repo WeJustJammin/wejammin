@@ -32,6 +32,11 @@ import {
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
 import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
+import {
+  ENTRY_ID,
+  apiError,
+  created,
+} from './cms-editorial-create-island-responses.test-support';
 import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
 import CmsEditorialEntryCreateIsland from './CmsEditorialEntryCreateIsland';
 import { takeCmsEditorialResult } from './cms-editorial-result-handoff';
@@ -40,54 +45,10 @@ beforeAll(enableReactAct);
 beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 
-const ENTRY_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132dc';
-const REQUEST_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132e9';
-const HASH = 'a'.repeat(64);
-const INSTANT = '2026-10-05T00:00:00+00:00';
-
 type Fetcher = (
   input: RequestInfo | URL,
   init?: RequestInit,
 ) => Promise<Response>;
-
-const created = (): Response =>
-  new Response(
-    JSON.stringify({
-      entry: {
-        id: ENTRY_ID,
-        version: '1',
-        createdAt: INSTANT,
-        updatedAt: INSTANT,
-      },
-      revision: {
-        id: '018f0c45-73fe-7dc2-9c09-68f7ecf132dd',
-        version: '1',
-        createdAt: INSTANT,
-        updatedAt: INSTANT,
-      },
-      revisionNumber: '1',
-      lifecycle: 'active',
-      state: 'draft',
-      locale: 'en-US',
-      contentHash: HASH,
-      validationState: 'valid',
-    }),
-    {
-      status: 201,
-      headers: {
-        'content-type': 'application/json',
-        location: `/api/v1/cms/entries/${ENTRY_ID}`,
-        etag: '"1"',
-        'cache-control': 'no-store',
-      },
-    },
-  );
-
-const apiError = (status: number, code: string, details: unknown = {}) =>
-  new Response(
-    JSON.stringify({ code, message: 'Safe.', requestId: REQUEST_ID, details }),
-    { status, headers: { 'content-type': 'application/json' } },
-  );
 
 beforeEach(() => {
   document.cookie = 'wj_csrf=csrf-token';
@@ -121,6 +82,15 @@ const submitForm = async (container: HTMLElement): Promise<void> => {
   await flush();
 };
 
+/** Only the create POSTs: the taxonomy field also reads its selector with GET. */
+const postsOf = (fetcher: {
+  readonly mock: { readonly calls: readonly unknown[][] };
+}): Array<[string, RequestInit]> =>
+  fetcher.mock.calls.filter(
+    (call) =>
+      ((call[1] as RequestInit | undefined)?.method ?? 'GET') === 'POST',
+  ) as unknown as Array<[string, RequestInit]>;
+
 describe('CmsEditorialEntryCreateIsland: rendering', () => {
   it('renders a native control per kind and a typed unavailable state where nothing can be authored', () => {
     const { container } = render(vi.fn());
@@ -130,7 +100,11 @@ describe('CmsEditorialEntryCreateIsland: rendering', () => {
     expect(container.textContent).toContain(
       'Links can be added after the entry is created.',
     );
-    expect(container.textContent).toContain('Taxonomy terms cannot be set yet');
+    // The taxonomy field is now a live selector group, not a typed notice.
+    expect(container.textContent).not.toContain(
+      'Taxonomy terms cannot be set yet',
+    );
+    expect(container.textContent).toContain('Topics');
     expect(container.textContent).toContain('Media cannot be set yet');
     // No JSON box anywhere.
     for (const area of Array.from(container.querySelectorAll('textarea')))
@@ -163,11 +137,9 @@ describe('CmsEditorialEntryCreateIsland: rendering', () => {
       'Untitled',
     );
     await submitForm(container);
-    const body = JSON.parse(
-      String(
-        (fetcher.mock.calls[0] as unknown as [string, RequestInit])[1].body,
-      ),
-    ) as { values: Record<string, unknown> };
+    const body = JSON.parse(String(postsOf(fetcher)[0]![1].body)) as {
+      values: Record<string, unknown>;
+    };
     expect(body.values).toEqual({ [fieldUuid(1)]: 'Untitled' });
   });
 });
@@ -177,7 +149,7 @@ describe('CmsEditorialEntryCreateIsland: local validation', () => {
     const fetcher = vi.fn();
     const { container } = render(fetcher as unknown as Fetcher);
     await submitForm(container);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(postsOf(fetcher)).toHaveLength(0);
     const summary = container.querySelector<HTMLElement>(
       '[data-cms-editorial-validation-summary]',
     );
@@ -213,11 +185,8 @@ describe('CmsEditorialEntryCreateIsland: submit', () => {
       'Launch notes',
     );
     await submitForm(container);
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    const [url, init] = fetcher.mock.calls[0] as unknown as [
-      string,
-      RequestInit,
-    ];
+    expect(postsOf(fetcher)).toHaveLength(1);
+    const [url, init] = postsOf(fetcher)[0]!;
     expect(url).toBe('/api/v1/cms/entries');
     const headers = new Headers(init.headers);
     expect(headers.get('x-csrf-token')).toBe('csrf-token');
@@ -286,11 +255,9 @@ describe('CmsEditorialEntryCreateIsland: submit', () => {
       select.dispatchEvent(new Event('change', { bubbles: true }));
     });
     await submitForm(container);
-    const body = JSON.parse(
-      String(
-        (fetcher.mock.calls[0] as unknown as [string, RequestInit])[1].body,
-      ),
-    ) as { locale: string };
+    const body = JSON.parse(String(postsOf(fetcher)[0]![1].body)) as {
+      locale: string;
+    };
     expect(body.locale).toBe('fr-FR');
   });
 });
@@ -334,14 +301,17 @@ describe('CmsEditorialEntryCreateIsland: failures keep the work', () => {
 
   it('on a lost response locks the form, keeps the key, and replays the identical request', async () => {
     const calls: Array<{ key: string | null; body: string }> = [];
-    let attempt = 0;
+    let posts = 0;
     const fetcher: Fetcher = async (_input, init) => {
+      // Only the create POST is counted: the taxonomy field reads its selector too.
+      if ((init?.method ?? 'GET') !== 'POST')
+        return new Response('{}', { status: 503 });
       calls.push({
         key: new Headers(init?.headers).get('idempotency-key'),
         body: String(init?.body),
       });
-      attempt += 1;
-      if (attempt === 1) throw new TypeError('Failed to fetch');
+      posts += 1;
+      if (posts === 1) throw new TypeError('Failed to fetch');
       return created();
     };
     const { container, navigate } = render(fetcher);
@@ -398,7 +368,7 @@ describe('CmsEditorialEntryCreateIsland: text the database cannot store', () => 
       'broken \uD800 text',
     );
     await submitForm(container);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(postsOf(fetcher)).toHaveLength(0);
     const summary = container.querySelector<HTMLElement>(
       '[data-cms-editorial-validation-summary]',
     );
@@ -413,12 +383,12 @@ describe('CmsEditorialEntryCreateIsland: text the database cannot store', () => 
       'null \u0000 byte',
     );
     await submitForm(container);
-    expect(fetcher).not.toHaveBeenCalled();
+    expect(postsOf(fetcher)).toHaveLength(0);
     await typeInto(
       byLabel<HTMLTextAreaElement>(container, 'Blurb'),
       'fixed \u{1F600}',
     );
     await submitForm(container);
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(postsOf(fetcher)).toHaveLength(1);
   });
 });

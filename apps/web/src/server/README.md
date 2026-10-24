@@ -164,11 +164,61 @@ fails closed (`docs/runbooks/platform/cms-editorial.md`).
   catalog and bounded reconciliation facts. The endpoint lives at
   `pages/api/v1/cms/entries/[entryId]/locales/[locale]/variants.ts`; this
   transport does not constitute a CMS-15 authoring UI or hosted proof.
+- `cms-composition-platform-locale-read.ts` — `cmsLocaleVariantRead` (DEC-205), the read behind the translation form:
+  the strict path, no body or precondition, a 200 bound to the entry and locale asked for, and the page's edit-authority
+  gate (403 for a visible entry the account cannot edit, 404 for a hidden one or an unsupported locale).
+- `cms-composition-instances-list.ts` — `cmsCompositionInstancesRead` (DEC-206): the instances of the entry's current
+  draft revision; an optional opaque signed `cursor` (1-512 characters) and `limit` (1-50, default 25) are the only queries.
+- `cms-composition-instances-selector.ts` — CMS-03C-13 read (query allowlist: one UUID, an optional bounded cursor, a
+  1-50 limit; keyset order and cursor verification before a 200 is relayed).
+- `cms-composition-instances-diff.ts` — CMS-03C-14 read: path-only (any query, body or header the operation does not
+  name never reaches the Worker), strict 128-path / 256 KiB resource, the entity tag is the instance version.
+- `cms-composition-instances-update.ts` with `cms-composition-instances-update-answer.ts` — CMS-03C-15: the request
+  binding of the 200 (one row per requested instance, in request order, DEC-193 choice backing) and the unknown-outcome
+  marker for a success the proxy cannot verify.
+- `cms-composition-instances-errors.ts` — the shared error edge of the four above: an upstream refusal is relayed only
+  when its code is the catalog code of its status; details are rebuilt from an allowlist and the rest is dropped.
 - `cms-composition-platform-pattern.ts` — CMS-03C-02 first-party insertion
   proxy. It validates same-origin CSRF, strong precondition and idempotency
   headers, a bounded strict body, and the private Worker's exact 201 resource
   and ETag. It filters upstream errors and cannot author or activate pattern
-  sources; the named private insertion RPC is not yet implemented.
+  sources; the private insertion RPC `cms_insert_pattern_instance` is promoted
+  (migration `20261014110300`) and is reached only through the Worker.
+  `cms-composition-platform-pattern-details.ts` holds its error-detail
+  allowlist: one BE03c 1304 `reasonCode` of the CMS-03C-02 list on its own
+  status, or bounded 422 violations (tested in
+  `cms-composition-platform-pattern-reasons.test.ts`).
+- `cms-composition-platform-capability.ts` — the 03c 403 relay filter
+  (hardening-4). Every 03c operation gives its 403 exactly one lowercase token,
+  `capability_missing` (`CMS_SLICE_12_OPERATION_REASONS`, BE03c 1304); the filter
+  relays it only when the upstream names a token this operation publishes and
+  otherwise relays `{}`. It never repairs the pre-contract `CAPABILITY_REQUIRED`,
+  another operation's token or an untyped 403.
+- `cms-governed-review-platform-command.ts` with
+  `cms-governed-review-platform-command-specs.ts` — the CMS-03C-06 to -09
+  governed-review command proxies. The CMS-03C-09 activation, scheduling and
+  retirement proxy is the `ACTIVATE` spec, served at
+  `pages/api/v1/cms/governed-reviews/[reviewId]/activation.ts`; step-up and the
+  owner capability stay with the Worker. Errors are rebuilt by
+  `cms-governed-review-platform-errors.ts`.
+- `cms-taxonomy-platform-write.ts`, `cms-taxonomy-platform-term-action.ts` and
+  `cms-taxonomy-platform-read.ts` — the vocabulary proxies behind
+  `pages/api/v1/cms/taxonomies/`: CMS-03C-16 (version create and successor),
+  CMS-03C-03 (term create, rename, alias, deprecate and merge), and the reads
+  `cmsTaxonomyVersionsRead`, `cmsTaxonomyTermsRead` and CMS-03C-17 (selector). Each
+  binds a success to the request that asked for it (identity, ETag, order, bounds)
+  and relays only catalog errors: `cms-taxonomy-platform-errors.ts` rebuilds the
+  code and message from the taxonomy catalog and
+  `cms-taxonomy-platform-details.ts` publishes only the closed `details` of each
+  status (the operation's own `reasonCode` members, request pointers, rate hints,
+  the bounded dependency details; a 403 is `capability_missing` alone).
+- `cms-composition-platform-conflict.ts` — the template relay's 409 filter (`conflictReasonDetails`): the closed
+  `block_registry_digest_mismatch` of CMS-03C-01 (BE03c 1273, DEC-186) is relayed as `{ reasonCode }` alone, only when the
+  operation's `CMS_SLICE_12_OPERATION_REASONS` row carries it; any other 409 keeps the version pair.
+- `cms-composition-platform-dependency.ts` — the shared BE00 172 details
+  (`dependencyClass: 'cms_composition'`, `retryable: true`) that the four
+  `cms-composition-platform-{mutation,pattern,locale,related}.ts` relays and the
+  vocabulary relays use for every 502/503/504, relayed or relay-local.
 
 The hardening suite for the CMS-03B-10 create and CMS-03B-11 draft-read
 proxies is split under the same cap into

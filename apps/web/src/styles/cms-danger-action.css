@@ -1,0 +1,30 @@
+/*
+ * The one destructive-button treatment of every CMS surface (DESIGN.md, Components > Buttons):
+ * Danger only on a genuinely destructive action whose label names its consequence. Add
+ * `class="cms-danger-action"` to a `<button>`; the 44px target, the focus ring and the disabled look
+ * stay those of the page's own buttons.
+ *
+ * Loaded by every CMS page (the editorial document shell and each page that has its own shell) and
+ * scoped to the `<main>` of the three CMS layouts. It is deliberately unlayered, so it outranks the
+ * `@layer components` editorial rules, and the id inside `:is(...)` outranks the unlayered
+ * registry, grant and template stylesheets. A new CMS layout adds its `<main>` id here.
+ */
+/* The registry and template pages do not load the shared UI tokens, so the danger colour and the
+   panel colour it sits on are defined here; the fallback is the UI `--color-panel` value. */
+:root {
+  --cms-danger: oklch(45% 0.18 25);
+  --cms-danger-surface: var(--color-panel, oklch(98% 0.003 350));
+}
+
+:is(#cms-editorial-main, #content-schema-registry-main, #cms-template-main)
+  button[type].cms-danger-action {
+  border-color: var(--cms-danger);
+  background: var(--cms-danger-surface);
+  color: var(--cms-danger);
+}
+
+:is(#cms-editorial-main, #content-schema-registry-main, #cms-template-main)
+  button[type].cms-danger-action:hover:not(:disabled) {
+  background: var(--cms-danger);
+  color: var(--cms-danger-surface);
+}

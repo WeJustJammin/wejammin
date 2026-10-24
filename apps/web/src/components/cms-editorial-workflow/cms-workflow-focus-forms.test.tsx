@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from './cms-workflow-answer-machinery.test-support';
 
 import {
   buttonNamed,
@@ -20,6 +21,8 @@ import {
   release,
   settle,
 } from './cms-workflow-focus.test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
 
 // The Time authority snapshot is 218 KB; waits are conditions, not budgets.
 vi.setConfig({ testTimeout: 90_000 });

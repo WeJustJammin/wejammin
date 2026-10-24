@@ -55,6 +55,7 @@ export const editorInit = (
   baseRevision: '2',
   locale: 'en-US',
   schemaVersionId: SCHEMA_VERSION_ID,
+  typeKey: 'article',
   lifecycle: 'active',
   state: 'draft',
   validationState: 'valid',

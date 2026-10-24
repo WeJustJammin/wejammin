@@ -15,6 +15,10 @@ the field definitions (03a), the value grammar the database enforces, the
 authoring context read, or any request: hosts (the create island, the editor
 controller, the conflict controller) own state and submission. Local validation
 mirrors `cms_field_kind_value_shape`; the server stays the authority.
+The one scoped exception is read-only: the connected taxonomy field
+(`CmsTaxonomyFieldConnected.tsx` over `cms-taxonomy-field-connection.ts`) owns the
+protected CMS-03C-17 selector GET for a taxonomy field, while the host still owns
+the value, the draft state and every mutation — a read never writes a value.
 
 ## Module map
 
@@ -25,13 +29,50 @@ mirrors `cms_field_kind_value_shape`; the server stays the authority.
   keeps the descriptor types and the zod-free helpers.
 - `cms-field-descriptor.ts` — the descriptor types and helpers; the decode of
   kind (scalar, rich_text, list with `itemKind`, DEC-133 object with its declared
-  `properties[]`, relation with its definition bounds, taxonomy/media/unsupported
-  as an unavailable state). Labels and help come from `editorConfig`; the object
-  structure declares no per-property label, so the label is derived from the
-  stable key and the description from the declared constraints.
+  `properties[]`, relation with its definition bounds, taxonomy as a
+  selector-backed descriptor, and media/unsupported as the typed unavailable
+  state). Labels and help come from `editorConfig`; the object structure declares
+  no per-property label, so the label is derived from the stable key and the
+  description from the declared constraints.
 - `cms-field-value*.ts` — validation (`validateCmsFieldValue`), emptiness,
   initial values and the datetime control conversion. Lengths count Unicode
   characters; dates must be real; an invalid rich text document is not "empty".
+- `cms-field-taxonomy-value.ts` — the `taxonomy` value mirror of the database's
+  `cms_field_kind_value_shape`: exactly `{ termIds: UUID[] }` bounded at 128,
+  with the emptiness and validation branches. The server stays the authority for
+  term eligibility.
+- `cms-taxonomy-field-level.ts` — the level text of one selector term, derived
+  from the page alone. Because the selector carries no depth and a page is
+  bounded, a level is stated only when the whole ancestry is present on the page
+  and in the same vocabulary; anything else — an ancestor the page does not carry,
+  a chain that leaves the page or a cycle — states "Level unavailable" rather than
+  an invented depth, and a flat vocabulary states no level.
+- `cms-taxonomy-selector-read.ts` and `cms-taxonomy-selector-read-rules.ts` — the
+  protected browser transport of the CMS-03C-17 selector read plus its zod-free
+  query and page rules. The read carries no mutation authority; it retries only a
+  declared 502/503/504, returns a 429's stated wait as metadata and never
+  auto-retries it (the connection above owns that wait), and accepts a 200 only as
+  the strict, `no-store` page of this request.
+- `CmsTaxonomyFieldEditor.tsx` — the `taxonomy` control: a bounded labelled
+  multi-select over the CMS-03C-17 selector page (`termIds`, at most 128),
+  keyboard reachable, with the typed refusal announced.
+- `cms-taxonomy-field-connection.ts` — the connected read hook of the CMS-03C-17
+  selector: its dependencies are the scope (the server-derived `typeKey`, the decoded
+  descriptor's `key` and the `locale`), an injected fetcher and a reload token.
+  A scope change drops the shown page at once; a same-scope reload keeps the last
+  verified page but marks it
+  stale, so its choices stay closed. Every read is abort- and generation-fenced,
+  so a superseded answer changes nothing. The hook owns the pagination (first /
+  next / start again), the retained disabled page while a reload is in flight, and
+  the 429 wait: it holds a stated wait closed until it elapses and exposes the
+  retry as a manual command. A verified empty page is kept rather than dropped, so its
+  announced selection count and the explicit Clear selection command stay available
+  without any automatic value change. A read never writes a value.
+- `CmsTaxonomyFieldConnected.tsx` — the connected taxonomy field: the
+  presentational `CmsTaxonomyFieldEditor` over the verified page, with the host
+  still owning the value. The commands below the group are the only controls; they
+  render according to the page state and are disabled during a stated wait, and no
+  automatic GET is issued.
 - `CmsFieldEditor.tsx` — the dispatcher: persistent label (`CmsFieldFrame`),
   help text, the declared constraints as a description, linked errors.
   `CmsScalarControl` (text, long text, boolean, integer, decimal, date, datetime,
@@ -43,7 +84,7 @@ mirrors `cms_field_kind_value_shape`; the server stays the authority.
 - `CmsFieldErrorSummary.tsx` and `cms-field-focus.ts` — the linked error summary;
   a link moves focus to the control (`field-<stableFieldId>`).
 - `CmsFieldValueView.tsx` — a typed read-only rendering (text, numbers, dates,
-  rich text through the typed renderer, lists, objects, relations).
+  rich text through the typed renderer, lists, objects, relations, taxonomy).
 - `*.test-support.ts(x)` — shared fixtures (parsed through the real contract
   schemas) and a native-DOM driver for jsdom tests.
 
@@ -61,6 +102,21 @@ emit a value the control could not parse, and keep files within the size limits
 Ids are `field-<stableFieldId>` (control), `field-<id>-group`, `-help`, `-hint`
 and `-errors`. The stable field id is the only request key. Errors are text and
 carry `aria-invalid`; colour is never the only signal.
+
+## Contract status
+
+The projected field definitions come from the CMS-03B-14 `AuthoringContextType`,
+which now carries a required, response-only `typeKey` — the owning content
+type's stable key, derived server-side. The projection migration and its pgTAP
+coverage are **UNRUN** (native/database prerequisites blocked), and the
+`taxonomy` editor consumes the CMS-03C-17 selector read; the connected selector
+source is implemented with focused local tests and the required database, browser
+and Slice 12 gates are still held. Selector-backed frontend editing does not
+prove non-empty taxonomy write acceptance: the SQL write path
+still refuses a non-empty taxonomy value with `taxonomy_source_unavailable` until
+a Slice 12 registration is implemented and verified. This directory therefore
+claims no gate or acceptance-criteria pass and no database, browser or Slice 12
+result.
 
 ## Related links
 

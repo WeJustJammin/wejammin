@@ -135,7 +135,17 @@ describe('revisions.astro response invariants', () => {
     expect(source).toContain('<CmsEditorialDocument');
     expect(source).not.toContain('<script');
     expect(source).not.toContain('set:html');
-    expect(shell).toContain('src="../../lib/cms-editorial-page-actions.ts"');
+    // The revision history holds the restore review, so it asks the shell for the page actions.
+    expect(source).toMatch(/<CmsEditorialDocument[^>]*\bpageActions\b/u);
+    expect(shell).toContain('<CmsEditorialPageActions');
+    expect(
+      readFileSync(
+        fromHere(
+          '../../../../components/cms-editorial/CmsEditorialPageActions.astro',
+        ),
+        'utf8',
+      ),
+    ).toContain('src="../../lib/cms-editorial-page-actions.ts"');
     expect(shell).toContain('src="../../lib/route-heading-focus.ts"');
     expect(shell).toContain('src="../../lib/auth-scope-sync.ts"');
   });

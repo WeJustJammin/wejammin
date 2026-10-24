@@ -1,0 +1,70 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialDocument from '../../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import { cmsEditorialAppEntryPath } from '../../../../../components/cms-editorial/cms-editorial-app-routes';
+import CmsEditorialPageNotice from '../../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import CmsRelatedContentForm from '../../../../../components/cms-related-content/CmsRelatedContentForm';
+import '../../../../../components/cms-related-content/cms-related-content.css';
+import { loadRelatedContentPage } from '../../../../../components/cms-related-content/load-related-content-page';
+import { createRelatedContentPageReads } from '../../../../../components/cms-related-content/related-content-page-reads';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (Astro.request.method !== 'GET') {
+  return new Response('Method not allowed', {
+    status: 405,
+    headers: { allow: 'GET', 'cache-control': 'no-store' },
+  });
+}
+
+/*
+ * Protected related-content page for CMS-03C-05 (FE03 :1072). All behavior lives in the tested loader
+ * and island: the loader verifies the entry (CMS-03B-11) and the readable entries (CMS-03B-13) and
+ * returns one view, one closed state or a sign-in redirect. Pins and exclusions are form state in the
+ * island and never reach the URL: any query on this address is a 400.
+ */
+const entryId = Astro.params.entryId ?? '';
+const outcome = await loadRelatedContentPage({
+  request: Astro.request,
+  entryId,
+  reads: createRelatedContentPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+const entryPath = cmsEditorialAppEntryPath(entryId);
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Pin and exclude related entries and choose a derived rule."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <>
+        {entryPath !== null && (
+          <p>
+            <a href={entryPath}>Back to the draft</a>
+          </p>
+        )}
+        <CmsRelatedContentForm
+          entry={outcome.view.entry}
+          rule={outcome.view.rule}
+          candidates={outcome.view.candidates}
+          returnTo={outcome.view.path}
+          csrfToken={outcome.view.csrfToken}
+          client:load
+        />
+      </>
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

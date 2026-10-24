@@ -2,7 +2,7 @@ import * as React from 'react';
 
 import { emptyParagraphBlock, type EditorBlock } from './cms-rich-text-blocks';
 import type { RichTextV1Document } from './cms-rich-text-contracts';
-import { CMS_EDITORIAL_REASON_COPY } from '../cms-editorial/cms-editorial-reason-copy';
+import { RICH_TEXT_NOT_CANONICAL_COPY } from '../cms-editorial/cms-rich-text-refusal-copy';
 import CmsRichTextEditorBlock from './CmsRichTextEditorBlock';
 import CmsRichTextRenderer from './CmsRichTextRenderer';
 import { useCmsRichTextBlocks } from './use-cms-rich-text-blocks';
@@ -122,7 +122,7 @@ const CmsRichTextEditor = ({
           <p role="alert" data-reason={error.code}>
             {error.code === 'rich_text_unsafe_link'
               ? 'That link is not allowed. ' + (error.detail ?? '')
-              : `${CMS_EDITORIAL_REASON_COPY.rich_text_not_canonical} (${error.code})`}
+              : `${RICH_TEXT_NOT_CANONICAL_COPY} (${error.code})`}
           </p>
         ) : null}
       </fieldset>

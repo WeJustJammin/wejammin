@@ -29,6 +29,16 @@ Worker and the proxies.
 - `load-entry-list-page.ts`, `load-entry-create-page.ts`,
   `load-entry-edit-page.ts`, `load-conflict-page.ts`,
   `load-revision-history-page.ts` — one per route.
+- The conflict page accepts no query keys and rejects them before any read.
+  Its field definitions must satisfy `AuthoringContextReadSchema` for the
+  conflict's exact `theirs.schemaVersionId`, in addition to the same binding
+  already enforced by the proxy and Worker. The boundary suite keeps valid but
+  unselected or wrong-version resources from becoming a form.
+- For a divergent taxonomy field only, `cms-conflict-taxonomy-context.ts` binds
+  the existing workflow read to the conflict's entry and exact immutable
+  `theirs` revision (ID, number, schema version and hash). Its locale and the
+  authoring type key form the JSON-only selector context; no current-draft or
+  default-locale fallback is used. Other conflicts need no extra read.
 - `load-workflow-page.ts`, `load-review-detail-page.ts`,
   `load-review-queue-page.ts` — the Slice 11 routes (CMS-03B-15, -16, -17); the
   queue restarts from the first page after a refused cursor like the entry list.

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { TemplateVersionDetail } from '@wejammin/contracts';
 
+import { rateLimitMessage } from '../../lib/rate-limit-message';
 import type { CmsTemplateFormStatus } from './CmsTemplateStatus';
 import type {
   EditableBinding,
@@ -8,6 +9,8 @@ import type {
 } from './cms-template-designer-form-types';
 import { readLatestCmsTemplateVersion } from './cms-template-edit-reconcile';
 import { templateDetailToDraftFields } from './cms-template-designer-request';
+import { useCmsTemplateRateWait } from './cms-template-rate-wait';
+import { useTemplateUnknownAttempt } from './use-template-unknown-attempt';
 
 /** A same-number parent is canonical only when its immutable identity matches. */
 export const cmsTemplateLatestIdentityValid = (
@@ -50,11 +53,44 @@ export const useCmsTemplateEditState = (detail: TemplateVersionDetail) => {
   });
   const [latest, setLatest] = useState<TemplateVersionDetail | null>(null);
   const [latestError, setLatestError] = useState('');
-  const [checkingLatest, setCheckingLatest] = useState(false);
+  // FE03 :1172: a 429 of the read is announced politely, not as an alert, and keeps the check
+  // off until the stated Retry-After has elapsed; the unsent values are never touched.
+  const [latestRateLimited, setLatestRateLimited] = useState(false);
+  const [latestRetryAt, setLatestRetryAt] = useState<number | null>(null);
+  const [latestRemaining, setLatestRemaining] = useState<number | null>(null);
+  const readWait = useCmsTemplateRateWait();
+  const startReadWait = readWait.start;
   const summaryRef = useRef<HTMLDivElement>(null);
-  const attemptRef = useRef<{ body: string; key: string } | null>(null);
-  const confirmedConflict =
-    status.kind === 'result' && status.result.kind === 'conflict';
+  const attempt = useTemplateUnknownAttempt(detail, setStatus);
+
+  useEffect(() => {
+    if (!latestRateLimited || latestRetryAt === null || !readWait.waiting)
+      return;
+    let active = true;
+    let timer: ReturnType<typeof setInterval> | null = null;
+    const update = (): void => {
+      if (!active) return;
+      const remaining = Math.max(
+        0,
+        Math.ceil((latestRetryAt - Date.now()) / 1_000),
+      );
+      setLatestRemaining(remaining);
+      if (remaining === 0) {
+        if (timer !== null) clearInterval(timer);
+        window.removeEventListener('focus', update);
+        document.removeEventListener('visibilitychange', update);
+      }
+    };
+    timer = setInterval(update, 1_000);
+    window.addEventListener('focus', update);
+    document.addEventListener('visibilitychange', update);
+    return () => {
+      active = false;
+      if (timer !== null) clearInterval(timer);
+      window.removeEventListener('focus', update);
+      document.removeEventListener('visibilitychange', update);
+    };
+  }, [latestRateLimited, latestRetryAt, readWait.waiting]);
 
   useEffect(() => {
     if (status.kind !== 'idle' && status.kind !== 'pending')
@@ -62,26 +98,46 @@ export const useCmsTemplateEditState = (detail: TemplateVersionDetail) => {
   }, [status]);
 
   const checkLatest = useCallback(async (): Promise<void> => {
-    if (checkingLatest) return;
-    setCheckingLatest(true);
+    if (readWait.waiting) return;
+    const token = attempt.beginRead();
+    if (token === null) return;
     setLatestError('');
+    setLatestRateLimited(false);
+    setLatestRetryAt(null);
+    setLatestRemaining(null);
+    setLatest(null);
     const result = await readLatestCmsTemplateVersion(detail.templateKey);
-    setCheckingLatest(false);
+    if (!attempt.finishRead(token)) return;
     if (result.kind === 'loaded') {
-      if (!cmsTemplateLatestIdentityValid(baseDetail, result.detail)) {
+      const originalBase = attempt.baseForRead(baseDetail);
+      if (
+        !cmsTemplateLatestIdentityValid(originalBase, result.detail) ||
+        result.detail.templateKey !== originalBase.templateKey ||
+        result.detail.templateId !== originalBase.templateId
+      ) {
         setLatest(null);
         setLatestError('The latest version could not be verified. Reload.');
         return;
       }
-      // A definite 409 ends this logical attempt. Once an explicit protected
-      // read confirms the same parent, the next submit needs a new key; an
-      // uncertain response must keep its key for safe replay.
-      if (result.detail.version === baseDetail.version && confirmedConflict)
-        attemptRef.current = null;
+      attempt.verified(result.detail);
       setLatest(result.detail);
       return;
     }
     setLatest(null);
+    if (result.kind === 'rejected' && result.status === 429) {
+      const seconds = result.retryAfterSeconds;
+      setLatestRemaining(seconds ?? null);
+      setLatestRetryAt(
+        seconds === undefined ? null : Date.now() + seconds * 1_000,
+      );
+      if (result.retryAfterSeconds !== undefined) {
+        attempt.waitForRead(result.retryAfterSeconds);
+        startReadWait(result.retryAfterSeconds);
+      }
+      setLatestRateLimited(true);
+      setLatestError(rateLimitMessage(result.retryAfterSeconds ?? null));
+      return;
+    }
     setLatestError(
       result.kind === 'rejected' && result.status === 401
         ? 'Your session expired. Sign in again.'
@@ -91,26 +147,26 @@ export const useCmsTemplateEditState = (detail: TemplateVersionDetail) => {
             ? 'This template is unavailable to the current acting context.'
             : 'The latest version is unavailable. Wait and try again.',
     );
-  }, [baseDetail, checkingLatest, confirmedConflict, detail.templateKey]);
+  }, [
+    baseDetail,
+    attempt,
+    detail.templateKey,
+    startReadWait,
+    readWait.waiting,
+  ]);
 
   const useLatestAsParent = useCallback((): void => {
     if (latest === null || BigInt(latest.version) <= BigInt(baseDetail.version))
       return;
+    if (!attempt.rebase()) return;
     setBaseDetail(latest);
     setLatest(null);
     setLatestError('');
-    attemptRef.current = null;
+    setLatestRateLimited(false);
+    setLatestRetryAt(null);
+    setLatestRemaining(null);
     setStatus({ kind: 'idle' });
-  }, [baseDetail.version, latest]);
-
-  const beginAttempt = useCallback((serializedBody: string): string => {
-    const existing = attemptRef.current;
-    if (existing !== null && existing.body === serializedBody)
-      return existing.key;
-    const key = crypto.randomUUID();
-    attemptRef.current = { body: serializedBody, key };
-    return key;
-  }, []);
+  }, [attempt, baseDetail.version, latest]);
 
   return {
     baseDetail,
@@ -130,10 +186,20 @@ export const useCmsTemplateEditState = (detail: TemplateVersionDetail) => {
     setStatus,
     summaryRef,
     latest,
-    latestError,
-    checkingLatest,
+    latestError:
+      latestRateLimited && latestRemaining !== null
+        ? readWait.waiting && latestRemaining > 0
+          ? rateLimitMessage(latestRemaining)
+          : ''
+        : latestError,
+    latestRateLimited,
+    /** True while a 429's stated wait has not elapsed: the check stays off. */
+    latestWaiting: readWait.waiting,
+    checkingLatest: attempt.checking,
     checkLatest,
     useLatestAsParent,
-    beginAttempt,
+    submit: attempt.submit,
+    writeBlocked: attempt.blocked,
+    writePending: attempt.pending,
   };
 };

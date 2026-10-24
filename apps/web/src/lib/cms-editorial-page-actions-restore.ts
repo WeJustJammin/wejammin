@@ -1,8 +1,6 @@
 import { cmsEditorialAppEntryPath } from '../components/cms-editorial/cms-editorial-app-routes';
-import {
-  saveCmsEditorialResult,
-  type CmsEditorialResultSummary,
-} from '../components/cms-editorial/cms-editorial-result-handoff';
+import { saveCmsEditorialResult } from '../components/cms-editorial/cms-editorial-result-save';
+import type { CmsEditorialResultSummary } from '../components/cms-editorial/cms-editorial-result-types';
 import { submitCmsEditorialRestoreForm } from '../components/cms-editorial/cms-editorial-restore-submit';
 import { announce, focusStorage } from './cms-editorial-page-actions-dom';
 import {

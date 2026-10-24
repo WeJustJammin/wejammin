@@ -113,7 +113,15 @@ describe('CMS-11 template designer interaction', () => {
     );
     expect(keys).toEqual(['draft-attempt-001', 'draft-attempt-001']);
     expect(container.textContent).toContain(`Template ID ${TEMPLATE_ID}`);
-    root.unmount();
+    const errorSpy = vi.spyOn(console, 'error');
+    try {
+      await act(async () => {
+        root.unmount();
+      });
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it('keeps a rate-limited draft disabled until the verified Retry-After elapses', async () => {

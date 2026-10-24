@@ -105,6 +105,30 @@ describe('CMS-11 template draft request', () => {
     });
   });
 
+  it('names an unavailable content type separately from an empty choice', () => {
+    expect(
+      buildCmsTemplateDraftRequest(
+        validators,
+        { ...fields, compatibleTypeIds: [TYPE_ID, OTHER_ID] },
+        context,
+      ),
+    ).toEqual({
+      ok: false,
+      message:
+        'A chosen content type is no longer active. Clear the box marked "no longer available", then save.',
+    });
+    expect(
+      buildCmsTemplateDraftRequest(
+        validators,
+        { ...fields, compatibleTypeIds: [] },
+        context,
+      ),
+    ).toEqual({
+      ok: false,
+      message: 'Choose at least one available active content type.',
+    });
+  });
+
   it('refuses a content type or block absent from the protected projection', () => {
     expect(
       buildCmsTemplateDraftRequest(

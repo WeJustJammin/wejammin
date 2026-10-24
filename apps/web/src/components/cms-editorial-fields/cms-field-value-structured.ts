@@ -16,7 +16,7 @@ import type {
   CmsRichTextDescriptor,
   CmsScalarConstraints,
 } from './cms-field-descriptor';
-import { CMS_EDITORIAL_REASON_COPY } from '../cms-editorial/cms-editorial-reason-copy';
+import { RICH_TEXT_NOT_CANONICAL_COPY } from '../cms-editorial/cms-rich-text-refusal-copy';
 import { cmsIssue, type CmsFieldIssue } from './cms-field-issue';
 import {
   cmsCharacterCount,
@@ -45,12 +45,7 @@ const richTextIssues = (
   // The refusal carries the token PostgreSQL emits (AC-084), with the one fixed
   // copy every layer shows for it.
   if (!isRichTextDocument(value))
-    return [
-      cmsIssue(
-        RICH_TEXT_NOT_CANONICAL,
-        CMS_EDITORIAL_REASON_COPY[RICH_TEXT_NOT_CANONICAL],
-      ),
-    ];
+    return [cmsIssue(RICH_TEXT_NOT_CANONICAL, RICH_TEXT_NOT_CANONICAL_COPY)];
   const total = richTextDocumentCharacters(value);
   const issues: CmsFieldIssue[] = [];
   if (constraints.minLength !== undefined && total < constraints.minLength)

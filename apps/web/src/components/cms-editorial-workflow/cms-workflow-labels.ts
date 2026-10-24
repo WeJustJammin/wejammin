@@ -57,6 +57,12 @@ const FAILED_REASON_COPY: Readonly<Record<string, string>> = {
   template_changed: 'The template changed since this draft was saved.',
   block_withdrawn: 'A block used here was withdrawn.',
   block_digest_changed: 'A block used here changed since this draft was saved.',
+  pattern_not_active: 'A pattern used here is not active.',
+  pattern_digest_changed:
+    'A pattern used here changed since this draft was saved.',
+  nested_pattern_not_active: 'A nested pattern used here is not active.',
+  pattern_block_rules_violated:
+    'A pattern used here breaks the composition rules of its blocks.',
   settings_changed:
     'The publication settings changed since this draft was saved.',
   relation_target_unavailable: 'A related entry is not available.',
@@ -72,6 +78,11 @@ const FAILED_REASON_COPY: Readonly<Record<string, string>> = {
   publisher_authority_ended: 'The publisher’s authority has ended.',
   provider_unbuilt_reference:
     'Checks for this reference type are not available yet.',
+  no_fallback_missing:
+    'A field that cannot fall back to another locale has no value in this locale.',
+  no_fallback_stale:
+    'A field that cannot fall back to another locale is out of date with its source.',
+  locale_variant_not_approved: 'The locale variant has not been approved.',
 };
 
 const GENERIC_FAILED = 'This check did not pass.';

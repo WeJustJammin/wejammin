@@ -1,3 +1,4 @@
+import { retryable } from './retryable-import';
 import type * as CmsValidatorModule from '@wejammin/contracts/cms-editorial/validators';
 
 /**
@@ -23,8 +24,9 @@ export type CmsValidators = typeof CmsValidatorModule;
 
 type Loader = () => Promise<CmsValidators>;
 
-const defaultLoader: Loader = () =>
-  import('@wejammin/contracts/cms-editorial/validators');
+const defaultLoader: Loader = retryable(
+  () => import('@wejammin/contracts/cms-editorial/validators'),
+);
 
 let loader: Loader = defaultLoader;
 let loaded: CmsValidators | null = null;

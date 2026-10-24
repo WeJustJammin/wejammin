@@ -1,17 +1,27 @@
+import { retryable } from '../../lib/retryable-import';
 import type { JsonValue } from '@wejammin/contracts';
 
+import { rateLimitMessage } from '../../lib/rate-limit-message';
 import type { CmsFieldDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
 import { createCmsEditorialAutosaveScheduler } from './cms-editorial-autosave';
 import {
   createCmsEditorialEditorContext,
   type CmsEditorialEntryEditorDeps,
 } from './cms-editorial-entry-editor-context';
-import { createCmsEditorialSaveFlow } from './cms-editorial-entry-editor-save';
+import type { CmsEditorialSaveFlow } from './cms-editorial-entry-editor-save';
 import type { CmsEditorialEditorState } from './cms-editorial-entry-editor-state';
 import { cmsEditorialAutosaveStatusMessage } from './cms-editorial-runtime-dom-feedback';
 
 export type { CmsEditorialEntryEditorDeps } from './cms-editorial-entry-editor-context';
-export { CMS_EDITORIAL_RECONCILE_DELAY_MS } from './cms-editorial-entry-editor-save';
+export { CMS_EDITORIAL_RECONCILE_DELAY_MS } from './cms-editorial-entry-editor-context';
+
+/** The seam a test replaces: the dynamic import of the save flow. */
+export const saveFlowImporters = {
+  flow: retryable(() => import('./cms-editorial-entry-editor-save')),
+};
+
+const SAVE_FLOW_UNAVAILABLE_COPY =
+  'Your changes are kept but not saved. Part of this page could not be loaded, so nothing was sent. Check your connection, then choose Save draft.';
 
 export interface CmsEditorialEntryEditorController {
   readonly descriptors: readonly CmsFieldDescriptor[];
@@ -55,14 +65,42 @@ export const createCmsEditorialEntryEditorController = (
   const scheduler = createCmsEditorialAutosaveScheduler({
     clock: ctx.clock,
     isDirty: () => ctx.changed().length > 0 || ctx.pending !== null,
-    canSave: () => ctx.canEdit && !ctx.paused,
+    // A verified refusal leaves the phase `invalid`. The autosave a prior edit
+    // armed must not resend the refused request; only an explicit Save draft, or
+    // a real edit (which returns the phase to `dirty`), may save again.
+    canSave: () => ctx.canEdit && !ctx.paused && ctx.state.phase !== 'invalid',
     onSave: async () => {
       const outcome = await flow.attempt();
       if (outcome === 'unknown') throw new Error('save outcome unknown');
     },
     onFailure: () => flow.reconcile(),
   });
-  const flow = createCmsEditorialSaveFlow(ctx, scheduler);
+  // The save flow (request building, outcomes, stale-base handling) runs only after the author has
+  // edited, so it loads with the first save, not with the page (P2-S11-AC-106). A chunk that
+  // cannot be fetched is retried by the next save (`retryable-import.ts`) and never rejects into
+  // the autosave timer: the draft stays dirty and the status region says nothing was sent.
+  let created: CmsEditorialSaveFlow | undefined;
+  const guarded = async <T>(
+    run: (loaded: CmsEditorialSaveFlow) => Promise<T>,
+    fallback: T,
+  ): Promise<T> => {
+    let module: Awaited<ReturnType<typeof saveFlowImporters.flow>>;
+    try {
+      module = await saveFlowImporters.flow();
+    } catch {
+      ctx.set({ alert: true, message: SAVE_FLOW_UNAVAILABLE_COPY });
+      return fallback;
+    }
+    created ??= module.createCmsEditorialSaveFlow(ctx, scheduler);
+    return run(created);
+  };
+  const flow: CmsEditorialSaveFlow = {
+    attempt: () => guarded((loaded) => loaded.attempt(), 'stopped'),
+    reconcile: () => {
+      void guarded(async (loaded) => loaded.reconcile(), undefined);
+    },
+    replayPending: () => guarded((loaded) => loaded.replayPending(), undefined),
+  };
   ctx.arm = () => {
     if (ctx.changed().length > 0) scheduler.markDirty();
     else scheduler.markClean();
@@ -142,19 +180,32 @@ export const createCmsEditorialEntryEditorController = (
       await flow.replayPending();
     },
     discardUnsentAndLoadCurrent: async () => {
-      const detail = await ctx.readCurrent();
-      if (detail === null) {
+      const current = await ctx.readCurrent();
+      if (current.kind !== 'ok') {
+        // FE03 :1172: a 429 names the remaining wait; the unsent changes are kept either way.
         ctx.set({
           alert: true,
-          message:
-            'The current version could not be loaded. Your unsent changes are kept; try again.',
+          ...(current.kind === 'rate-limited'
+            ? {
+                retryAfterSeconds: current.retryAfterSeconds,
+                message: rateLimitMessage(current.retryAfterSeconds),
+              }
+            : {
+                retryAfterSeconds: null,
+                message:
+                  'The current version could not be loaded. Your unsent changes are kept; try again.',
+              }),
         });
         return;
       }
+      const detail = current.detail;
       ctx.paused = false;
       ctx.rebaseLimited = false;
       ctx.rebases = 0;
       ctx.pending = null;
+      // A pending wait for a limited read is moot: the current version is here.
+      ctx.readWait = false;
+      ctx.clearTimer();
       ctx.adoptCanonical(detail, () => false, '');
       ctx.settle(false);
     },

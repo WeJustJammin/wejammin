@@ -209,10 +209,22 @@ const summary = (over: Record<string, unknown> = {}) => ({
 const result = (container: HTMLElement): HTMLElement | null =>
   container.querySelector<HTMLElement>('[data-cms-editorial-result]');
 
+/**
+ * The handoff module, then the result panel, are imported after hydration, only when a command
+ * left a result (P2-S11-AC-106).
+ */
+const resultLoaded = async (): Promise<void> => {
+  for (let tick = 0; tick < 3; tick += 1)
+    await act(async () => {
+      await new Promise<void>((resolve) => setTimeout(resolve, 0));
+    });
+};
+
 describe('editor island: the result of the command that opened it (create, resolve, restore)', () => {
-  it('states a restore: new draft, version, the lineage (parents and migration chain) and the next action', () => {
+  it('states a restore: new draft, version, the lineage (parents and migration chain) and the next action', async () => {
     saveCmsEditorialResult(window.sessionStorage, summary() as never);
     const { container } = setup([]);
+    await resultLoaded();
     const panel = result(container);
     expect(panel).not.toBeNull();
     expect(panel?.getAttribute('role')).toBe('status');
@@ -241,7 +253,7 @@ describe('editor island: the result of the command that opened it (create, resol
     );
   });
 
-  it('states a resolved conflict with its two parent revisions and a created entry with none', () => {
+  it('states a resolved conflict with its two parent revisions and a created entry with none', async () => {
     saveCmsEditorialResult(
       window.sessionStorage,
       summary({
@@ -251,6 +263,7 @@ describe('editor island: the result of the command that opened it (create, resol
       }) as never,
     );
     let view = setup([]);
+    await resultLoaded();
     expect(result(view.container)?.querySelector('h2')?.textContent).toBe(
       'Conflict resolved',
     );
@@ -274,6 +287,7 @@ describe('editor island: the result of the command that opened it (create, resol
       }) as never,
     );
     view = setup([]);
+    await resultLoaded();
     expect(result(view.container)?.querySelector('h2')?.textContent).toBe(
       'Entry created',
     );
@@ -282,22 +296,26 @@ describe('editor island: the result of the command that opened it (create, resol
     ).toBeNull();
   });
 
-  it('is shown once: the one-shot is consumed on the first load', () => {
+  it('is shown once: the one-shot is consumed on the first load', async () => {
     saveCmsEditorialResult(window.sessionStorage, summary() as never);
     const first = setup([]);
+    await resultLoaded();
     expect(result(first.container)).not.toBeNull();
     unmountAll();
     document.body.replaceChildren();
     const second = setup([]);
+    await resultLoaded();
     expect(result(second.container)).toBeNull();
   });
 
-  it('ignores a result for another entry, an expired one and a malformed one', () => {
+  it('ignores a result for another entry, an expired one and a malformed one', async () => {
     saveCmsEditorialResult(
       window.sessionStorage,
       summary({ entryId: '018f0c45-73fe-7dc2-9c09-68f7ecf132ff' }) as never,
     );
-    expect(result(setup([]).container)).toBeNull();
+    const other = setup([]);
+    await resultLoaded();
+    expect(result(other.container)).toBeNull();
     unmountAll();
     document.body.replaceChildren();
     saveCmsEditorialResult(
@@ -305,14 +323,18 @@ describe('editor island: the result of the command that opened it (create, resol
       summary() as never,
       Date.now() - 10 * 60_000,
     );
-    expect(result(setup([]).container)).toBeNull();
+    const expired = setup([]);
+    await resultLoaded();
+    expect(result(expired.container)).toBeNull();
     unmountAll();
     document.body.replaceChildren();
     saveCmsEditorialResult(
       window.sessionStorage,
       summary({ revisionNumber: 'nope' }) as never,
     );
-    expect(result(setup([]).container)).toBeNull();
+    const malformed = setup([]);
+    await resultLoaded();
+    expect(result(malformed.container)).toBeNull();
   });
 
   const nextFrame = (): Promise<void> =>
@@ -328,6 +350,7 @@ describe('editor island: the result of the command that opened it (create, resol
     document.getElementById('page-title')?.focus();
     saveCmsEditorialResult(window.sessionStorage, summary() as never);
     const { container } = setup([]);
+    await resultLoaded();
     await act(async () => {
       await nextFrame();
       await nextFrame();

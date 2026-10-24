@@ -12,10 +12,9 @@ import type {
   WorkflowCommandInput,
   WorkflowCommandResult,
 } from './cms-workflow-command-transport';
-import {
-  classifyWorkflowRefusal,
-  type ClassifiedRefusal,
-} from './cms-workflow-refusal';
+import { classifyRefusalLazily } from './cms-workflow-answer-machinery';
+import { MODULE_UNAVAILABLE_COPY } from '../../lib/module-unavailable';
+import type { ClassifiedRefusal } from './cms-workflow-refusal';
 
 /**
  * The state machine behind every Slice 11 command form. It owns what no field
@@ -121,6 +120,7 @@ const LOCAL_REFUSAL_MESSAGES: Readonly<
   csrf_missing: MISSING_TOKEN,
   request_invalid: INVALID_REQUEST,
   validators_unavailable: VALIDATORS_UNAVAILABLE,
+  module_unavailable: MODULE_UNAVAILABLE_COPY,
 };
 
 const localRefusal = (
@@ -230,7 +230,9 @@ export const createWorkflowCommandController = <TPath, TBody, TResource>(
         return;
       case 'refused': {
         lastRequest = null;
-        const refusal = classifyWorkflowRefusal(
+        // The fixed refusal copy loads with the first refusal, not with the form (AC-106); if
+        // it cannot load the person still gets a fixed sentence and a usable form.
+        const refusal = await classifyRefusalLazily(
           options.operationId,
           result.refusal,
         );

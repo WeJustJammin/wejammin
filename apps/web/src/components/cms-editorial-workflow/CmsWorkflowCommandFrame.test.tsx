@@ -260,6 +260,26 @@ describe('CmsWorkflowCommandFrame', () => {
     expect(ready.actions.retry).toHaveBeenCalledTimes(1);
   });
 
+  it('gives the check-the-current-state control a stable id and data hook (no text lookup)', () => {
+    const { container } = mount(state({ phase: 'unknown' }));
+    const check = buttonNamed(container, 'Check the current state');
+    expect(check.id).toBe('form-title-check');
+    expect(check.hasAttribute('data-cms-workflow-check')).toBe(true);
+    expect(
+      container.querySelectorAll('[data-cms-workflow-check]'),
+    ).toHaveLength(1);
+    expect(
+      buttonNamed(container, 'Retry the same request').hasAttribute(
+        'data-cms-workflow-check',
+      ),
+    ).toBe(false);
+  });
+
+  it('renders the check control only for an unknown outcome', () => {
+    const { container } = mount(state({ phase: 'committed' }));
+    expect(container.querySelector('#form-title-check')).toBeNull();
+  });
+
   it('opens the sync conflict after a step-up return with a changed version', async () => {
     const { container, actions } = mount(
       state({

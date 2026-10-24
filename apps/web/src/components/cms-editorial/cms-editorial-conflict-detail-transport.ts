@@ -5,6 +5,10 @@ import {
 } from '@wejammin/contracts';
 
 import { addClientBindingIdHeader } from '../../lib/client-binding';
+import {
+  rateLimitWaitSeconds,
+  retryingSafeRead,
+} from '../../lib/safe-read-retry';
 
 type Fetcher = (
   input: RequestInfo | URL,
@@ -24,6 +28,8 @@ export type CmsEditorialConflictReadOutcome =
 export interface CmsEditorialConflictDetailReadResult {
   readonly outcome: CmsEditorialConflictReadOutcome;
   readonly resource: ConflictDetailResource | null;
+  /** The wait a 429 asked for (FE03 :1172), whole seconds; null when none was stated or it is not a 429. */
+  readonly retryAfterSeconds: number | null;
 }
 
 const outcomeForStatus = (status: number): CmsEditorialConflictReadOutcome => {
@@ -53,37 +59,45 @@ export const executeCmsEditorialConflictDetailRead = async (input: {
     !CmsUuidSchema.safeParse(input.entryId).success ||
     !CmsUuidSchema.safeParse(input.conflictId).success
   )
-    return { outcome: 'validation', resource: null };
+    return { outcome: 'validation', resource: null, retryAfterSeconds: null };
   const baseFetcher = input.fetcher ?? fetch;
   const fetcher: Fetcher = async (request, init) =>
     baseFetcher(request, await addClientBindingIdHeader(request, init));
   let response: Response;
   try {
-    response = await fetcher(
-      `${input.basePath}/${input.entryId}/conflicts/${input.conflictId}`,
-      {
-        method: 'GET',
-        credentials: 'same-origin',
-        redirect: 'manual',
-        cache: 'no-store',
-        headers: { accept: 'application/json' },
-      },
+    // FE03 :1173: a 502/503/504 the BE declares safe is retried twice (250 ms, 750 ms).
+    response = await retryingSafeRead(() =>
+      fetcher(
+        `${input.basePath}/${input.entryId}/conflicts/${input.conflictId}`,
+        {
+          method: 'GET',
+          credentials: 'same-origin',
+          redirect: 'manual',
+          cache: 'no-store',
+          headers: { accept: 'application/json' },
+        },
+      ),
     );
   } catch {
-    return { outcome: 'degraded', resource: null };
+    return { outcome: 'degraded', resource: null, retryAfterSeconds: null };
   }
   if (response.status !== 200)
-    return { outcome: outcomeForStatus(response.status), resource: null };
+    return {
+      outcome: outcomeForStatus(response.status),
+      resource: null,
+      retryAfterSeconds:
+        response.status === 429 ? await rateLimitWaitSeconds(response) : null,
+    };
   let body: unknown;
   try {
     body = await response.clone().json();
   } catch {
-    return { outcome: 'unknown', resource: null };
+    return { outcome: 'unknown', resource: null, retryAfterSeconds: null };
   }
   const parsed = ConflictDetailResourceSchema.safeParse(body);
   return parsed.success &&
     parsed.data.entry.id === input.entryId &&
     parsed.data.conflict.id === input.conflictId
-    ? { outcome: 'success', resource: parsed.data }
-    : { outcome: 'unknown', resource: null };
+    ? { outcome: 'success', resource: parsed.data, retryAfterSeconds: null }
+    : { outcome: 'unknown', resource: null, retryAfterSeconds: null };
 };

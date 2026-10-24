@@ -206,6 +206,7 @@ describe('CMS-03C-05 first-party related-content proxy', () => {
       { fetch },
     );
     expect(response.status).toBe(502);
+    expect(response.headers.get('x-cms-editorial-outcome')).toBe('unknown');
     expect(await response.json()).toMatchObject({
       code: 'DEPENDENCY_UNAVAILABLE',
     });
@@ -241,6 +242,235 @@ describe('CMS-03C-05 first-party related-content proxy', () => {
     });
     expect(JSON.stringify(error)).not.toContain('private provider text');
     expect(JSON.stringify(error)).not.toContain('do-not-disclose');
+  });
+
+  describe('the CMS-03C-05 typed 422 (BE03c 385-387, 1417)', () => {
+    const refusal = (details: Record<string, unknown>) =>
+      new Response(
+        JSON.stringify({
+          code: 'RELATED_CONTENT_VALIDATION_FAILED',
+          message: 'private provider text',
+          requestId: '10000000-0000-4000-8000-000000000008',
+          details,
+        }),
+        { status: 422, headers: { 'content-type': 'application/json' } },
+      );
+    const relay = async (details: Record<string, unknown>) => {
+      const response = await forwardCmsRelatedContentMutation(
+        request(),
+        entryId,
+        { fetch: vi.fn(async () => refusal(details)) },
+      );
+      expect(response.status).toBe(422);
+      const error = (await response.json()) as {
+        code: string;
+        details: Record<string, unknown>;
+      };
+      expect(error.code).toBe('RELATED_CONTENT_VALIDATION_FAILED');
+      return error.details;
+    };
+
+    it('relays related_target_ineligible with its row pointers and a fixed message', async () => {
+      expect(
+        await relay({
+          reasonCode: 'related_target_ineligible',
+          violations: [
+            {
+              path: '/pins/1',
+              code: 'related_target_ineligible',
+              message: 'x',
+            },
+            {
+              path: '/exclusions/0',
+              code: 'related_target_ineligible',
+              message: 'private target text',
+            },
+          ],
+          secret: 'do-not-disclose',
+        }),
+      ).toEqual({
+        reasonCode: 'related_target_ineligible',
+        violations: [
+          {
+            path: '/pins/1',
+            code: 'related_target_ineligible',
+            message: 'The value is invalid.',
+          },
+          {
+            path: '/exclusions/0',
+            code: 'related_target_ineligible',
+            message: 'The value is invalid.',
+          },
+        ],
+      });
+    });
+
+    it('relays derived_rule_unknown with its pointer', async () => {
+      expect(
+        await relay({
+          reasonCode: 'derived_rule_unknown',
+          violations: [
+            { path: '/derivedRule/key', code: 'derived_rule_unknown' },
+          ],
+        }),
+      ).toEqual({
+        reasonCode: 'derived_rule_unknown',
+        violations: [
+          {
+            path: '/derivedRule/key',
+            code: 'derived_rule_unknown',
+            message: 'The value is invalid.',
+          },
+        ],
+      });
+    });
+
+    it('relays a token without pointers as the token alone', async () => {
+      expect(await relay({ reasonCode: 'related_target_ineligible' })).toEqual({
+        reasonCode: 'related_target_ineligible',
+      });
+    });
+
+    it('drops a token this operation does not publish, or one on another status, and any other member', async () => {
+      for (const reasonCode of [
+        'pattern_incompatible',
+        'pattern_cycle',
+        'capability_missing',
+        'RELATED_TARGET_INELIGIBLE',
+        'unknown_token',
+      ])
+        expect(await relay({ reasonCode, secret: 'do-not-disclose' })).toEqual(
+          {},
+        );
+    });
+
+    it('relays no token on a 400, which carries no typed refusal', async () => {
+      const response = await forwardCmsRelatedContentMutation(
+        request(),
+        entryId,
+        {
+          fetch: vi.fn(
+            async () =>
+              new Response(
+                JSON.stringify({
+                  code: 'INVALID_REQUEST',
+                  message: 'private provider text',
+                  requestId: '10000000-0000-4000-8000-000000000009',
+                  details: {
+                    reasonCode: 'related_target_ineligible',
+                    violations: [
+                      { path: '/pins/0', code: 'related_target_ineligible' },
+                    ],
+                  },
+                }),
+                {
+                  status: 400,
+                  headers: { 'content-type': 'application/json' },
+                },
+              ),
+          ),
+        },
+      );
+      expect(response.status).toBe(400);
+      expect(((await response.json()) as { details: unknown }).details).toEqual(
+        {},
+      );
+    });
+
+    it('relays no pointer at all without a token this operation publishes', async () => {
+      const violations = [
+        { path: '/pins/0', code: 'related_target_ineligible' },
+      ];
+      expect(await relay({ violations })).toEqual({});
+      expect(
+        await relay({ reasonCode: 'pattern_incompatible', violations }),
+      ).toEqual({});
+    });
+
+    it('keeps at most 16 pointers and drops malformed ones', async () => {
+      const violations = Array.from({ length: 20 }, (_, index) => ({
+        path: `/pins/${index}`,
+        code: 'related_target_ineligible',
+      }));
+      const details = (await relay({
+        reasonCode: 'related_target_ineligible',
+        violations: [
+          { path: 'pins/0', code: 'related_target_ineligible' },
+          { path: '/pins/0', code: 'Not A Token' },
+          { path: '/pins/0' },
+          'text',
+          ...violations,
+        ],
+      })) as { violations: { path: string }[] };
+      expect(details.violations).toHaveLength(16);
+      expect(details.violations[0]?.path).toBe('/pins/0');
+      expect(details.violations[15]?.path).toBe('/pins/15');
+    });
+  });
+
+  it('answers an upstream success it cannot verify as an unknown outcome the browser can replay', async () => {
+    // The write may have committed (BE03c 1502), so the key must survive: the unknown-outcome marker.
+    const unverifiable = [
+      success({ ...resource, sourceEntryId: pinA }),
+      success(resource, '"3"'),
+      success({ ...resource, padding: 'x'.repeat(262_145) }),
+      new Response('not json', {
+        status: 201,
+        headers: { etag: '"2"' },
+      }),
+      new Response(JSON.stringify(resource), { status: 200 }),
+    ];
+    for (const upstream of unverifiable) {
+      const response = await forwardCmsRelatedContentMutation(
+        request(),
+        entryId,
+        { fetch: vi.fn(async () => upstream) },
+      );
+      expect(response.status).toBe(502);
+      expect(response.headers.get('x-cms-editorial-outcome')).toBe('unknown');
+    }
+    // A refusal before any write, or a definite upstream answer, is never marked.
+    const definite = await forwardCmsRelatedContentMutation(
+      request(),
+      entryId,
+      { fetch: vi.fn(async () => success()) },
+    );
+    expect(definite.headers.get('x-cms-editorial-outcome')).toBeNull();
+  });
+
+  it('relays DEPENDENCY_UNAVAILABLE retryable true on every 502/503/504, forged or upstream (BE00 172)', async () => {
+    // Each row pins the status the relay must answer: an upstream 502/503/504 keeps its own status, an
+    // oversized 201 is a local 502 (BE03c 408).
+    const responses: ReadonlyArray<readonly [Response, number]> = [
+      ...([502, 503, 504] as const).map(
+        (status) =>
+          [
+            new Response(
+              JSON.stringify({
+                code: 'DEPENDENCY_UNAVAILABLE',
+                message: 'private provider text',
+                requestId: '10000000-0000-4000-8000-000000000007',
+                details: { dependencyClass: 'private', retryable: false },
+              }),
+              { status, headers: { 'content-type': 'application/json' } },
+            ),
+            status,
+          ] as const,
+      ),
+      [success({ ...resource, padding: 'x'.repeat(262_145) }), 502],
+    ];
+    for (const [upstream, expectedStatus] of responses) {
+      const response = await forwardCmsRelatedContentMutation(
+        request(),
+        entryId,
+        { fetch: vi.fn(async () => upstream) },
+      );
+      expect(response.status).toBe(expectedStatus);
+      expect(await response.json()).toMatchObject({
+        code: 'DEPENDENCY_UNAVAILABLE',
+        details: { dependencyClass: 'cms_composition', retryable: true },
+      });
+    }
   });
 
   it('fails closed 503 without binding or when the upstream call throws', async () => {

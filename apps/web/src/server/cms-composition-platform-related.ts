@@ -1,13 +1,22 @@
 import {
   ApiErrorSchema,
+  CMS_SLICE_12_OPERATION_REASONS,
+  CmsSlice12ReasonCodeSchema,
   CmsVersionSchema,
   createRequestId,
   RelatedContentHeadersSchema,
   RelatedContentPathSchema,
   RelatedContentResourceSchema,
   RelatedContentRuleRequestSchema,
+  cmsSlice12ReasonStatus,
 } from '@wejammin/contracts';
 
+import { forbiddenDetails } from './cms-composition-platform-capability';
+import { patternInstanceViolations } from './cms-composition-platform-pattern-details';
+import {
+  compositionDependencyDetails,
+  isCompositionDependencyStatus,
+} from './cms-composition-platform-dependency';
 import {
   cmsEditorialBoundedRequestJson,
   cmsEditorialBoundedResponseJson,
@@ -16,6 +25,7 @@ import {
   CMS_EDITORIAL_PLATFORM_API_ORIGIN,
   cmsEditorialCsrfCookie,
   cmsEditorialForwardHeaders,
+  cmsEditorialOutcomeUnknown,
   cmsEditorialPrintableToken,
   cmsEditorialSameOriginRequest,
   isCmsEditorialPlatformBinding,
@@ -42,10 +52,12 @@ const isRelatedContentStatus = (
 ): status is RelatedContentStatus =>
   Object.hasOwn(RELATED_CONTENT_CODES, status);
 
-const relatedContentError = (
+export const relatedContentError = (
   request: Request,
   status: RelatedContentStatus,
-  details: Record<string, unknown> = {},
+  details: Record<string, unknown> = isCompositionDependencyStatus(status)
+    ? { ...compositionDependencyDetails() }
+    : {},
   requestId = createRequestId(request.headers.get('x-request-id') ?? undefined),
   retryAfterSeconds?: number,
 ): Response => {
@@ -73,15 +85,44 @@ const relatedContentError = (
   );
 };
 
+/** BE03c 1323: at most 16 row pointers cross back, as the Worker relay sends them. */
+const MAX_RELATED_VIOLATIONS = 16;
+
+/**
+ * The typed 422 of CMS-03C-05 (BE03c 385-387, 1417): exactly one lowercase `reasonCode` of this operation's
+ * list that carries status 422 (`related_target_ineligible`, `derived_rule_unknown`) and its bounded RFC 6901
+ * pointers (`/pins/{n}`, `/exclusions/{n}`, `/derivedRule/...`) with the fixed message. A token of another
+ * operation or status, any other member and any private text is dropped, never repaired.
+ */
+const validationDetails = (
+  value: Record<string, unknown>,
+): Record<string, unknown> => {
+  const parsed = CmsSlice12ReasonCodeSchema.safeParse(value.reasonCode);
+  const reasonCode =
+    parsed.success &&
+    cmsSlice12ReasonStatus(parsed.data) === 422 &&
+    (
+      CMS_SLICE_12_OPERATION_REASONS['CMS-03C-05'] as readonly string[]
+    ).includes(parsed.data)
+      ? parsed.data
+      : null;
+  const violations = patternInstanceViolations(value).slice(
+    0,
+    MAX_RELATED_VIOLATIONS,
+  );
+  return {
+    ...(reasonCode === null ? {} : { reasonCode }),
+    ...(reasonCode === null || violations.length === 0 ? {} : { violations }),
+  };
+};
+
 const safeErrorDetails = (
   status: RelatedContentStatus,
   value: Record<string, unknown>,
 ): Record<string, unknown> => {
   if (status === 401) return { recoveryAction: 'reauthenticate' };
-  if (status === 403)
-    return value.reasonCode === 'CAPABILITY_REQUIRED'
-      ? { reasonCode: 'CAPABILITY_REQUIRED' }
-      : {};
+  if (status === 403) return forbiddenDetails('CMS-03C-05', value);
+  if (status === 422) return validationDetails(value);
   if (status === 409) {
     const details: Record<string, unknown> = {};
     for (const key of ['expectedVersion', 'currentVersion'] as const)
@@ -102,12 +143,12 @@ const safeErrorDetails = (
     if (resetAt !== null) details.resetAt = resetAt;
     return details;
   }
-  if (status === 502 || status === 503 || status === 504)
-    return { dependencyClass: 'cms_composition', retryable: status !== 502 };
+  if (isCompositionDependencyStatus(status))
+    return { ...compositionDependencyDetails() };
   return {};
 };
 
-const forwardedRelatedContentError = async (
+export const forwardedRelatedContentError = async (
   request: Request,
   upstream: Response,
 ): Promise<Response> => {
@@ -191,14 +232,17 @@ export const forwardCmsRelatedContentMutation = async (
     return relatedContentError(request, 503);
   }
   if (!(upstream instanceof Response)) return relatedContentError(request, 503);
+  // A success the proxy cannot verify may still have committed (BE03c 1502): the marker keeps the browser's
+  // Idempotency-Key and its identical replay (BE03b 1427; the taxonomy and pattern writes do the same).
+  const unverified = (): Response =>
+    cmsEditorialOutcomeUnknown(relatedContentError(request, 502));
   if (!upstream.ok) return forwardedRelatedContentError(request, upstream);
-  if (upstream.status !== 201) return relatedContentError(request, 502);
+  if (upstream.status !== 201) return unverified();
   const responseBody = await cmsEditorialBoundedResponseJson(upstream);
-  if (!responseBody.ok) return relatedContentError(request, 502);
+  if (!responseBody.ok) return unverified();
   const validated = RelatedContentResourceSchema.safeParse(responseBody.value);
   const nextVersion = String(BigInt(parsed.data.expectedVersion) + 1n);
-  if (!CmsVersionSchema.safeParse(nextVersion).success)
-    return relatedContentError(request, 502);
+  if (!CmsVersionSchema.safeParse(nextVersion).success) return unverified();
   const expectedEtag = `"${nextVersion}"`;
   if (
     !validated.success ||
@@ -211,7 +255,7 @@ export const forwardCmsRelatedContentMutation = async (
       (parsed.data.derivedRule === null) ||
     upstream.headers.get('etag') !== expectedEtag
   )
-    return relatedContentError(request, 502);
+    return unverified();
   return new Response(JSON.stringify(validated.data), {
     status: 201,
     headers: {

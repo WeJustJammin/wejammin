@@ -7,6 +7,8 @@ interface Props {
   readonly setTemplateKey: (value: string) => void;
   readonly templateKeyReadOnly?: boolean;
   readonly compatibleTypeIds: readonly string[];
+  /** Content types the edited version names that are no longer active; listed so they can be cleared. */
+  readonly unavailableTypeIds?: readonly string[];
   readonly setCompatibleTypeIds: React.Dispatch<React.SetStateAction<string[]>>;
   readonly locale: string;
   readonly setLocale: (value: string) => void;
@@ -23,6 +25,7 @@ export default function CmsTemplateFields({
   setTemplateKey,
   templateKeyReadOnly = false,
   compatibleTypeIds,
+  unavailableTypeIds = [],
   setCompatibleTypeIds,
   locale,
   setLocale,
@@ -51,6 +54,12 @@ export default function CmsTemplateFields({
       </div>
       <fieldset>
         <legend>Compatible active content types</legend>
+        {unavailableTypeIds.length > 0 ? (
+          <p id="cms-template-types-stale">
+            Marked "no longer available": the version you are editing names a
+            content type that is no longer active. Clear it to save.
+          </p>
+        ) : null}
         {contentTypes.map((type) => (
           <label key={type.id} className="cms-template-designer-choice">
             <input
@@ -66,6 +75,24 @@ export default function CmsTemplateFields({
               }}
             />
             {type.typeKey} · version {type.activeVersion}
+          </label>
+        ))}
+        {unavailableTypeIds.map((id) => (
+          <label key={id} className="cms-template-designer-choice">
+            <input
+              type="checkbox"
+              checked={compatibleTypeIds.includes(id)}
+              aria-describedby="cms-template-types-stale"
+              onChange={(event) => {
+                const checked = event.currentTarget.checked;
+                setCompatibleTypeIds((current) =>
+                  checked
+                    ? [...current, id]
+                    : current.filter((entry) => entry !== id),
+                );
+              }}
+            />
+            Content type {id.slice(0, 8)} · no longer available
           </label>
         ))}
       </fieldset>

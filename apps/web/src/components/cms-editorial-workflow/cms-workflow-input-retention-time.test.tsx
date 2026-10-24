@@ -2,6 +2,7 @@
 import { loadPinnedTimeAuthority } from '@wejammin/contracts/time-authority';
 import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from './cms-workflow-answer-machinery.test-support';
 
 import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
@@ -39,6 +40,8 @@ import {
   scheduleResourceFixture,
   versionSetFixture,
 } from './cms-workflow-fixtures.test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
 
 /*
  * FE03 "retain input" (P2-S11-AC-040, AC-043) for the schedule form and the

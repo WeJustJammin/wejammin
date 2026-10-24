@@ -1,4 +1,8 @@
-import { forgetRestoreDraft } from './cms-editorial-restore-draft';
+import {
+  RESTORE_DRAFT_FORGET_UNAVAILABLE,
+  announce,
+  restoreDraftImporters,
+} from './cms-editorial-page-actions-dom';
 import { clearRestoreFailure } from './cms-editorial-restore-summary';
 
 const REVIEW = 'details[data-cms-editorial-restore-review]';
@@ -27,7 +31,18 @@ const close = (review: HTMLDetailsElement): void => {
       'form[data-cms-editorial-restore]',
     ),
   )) {
-    forgetRestoreDraft(storageOf(review), form);
+    // The draft store loads only on the page that has a restore review (AC-106).
+    const storage = storageOf(review);
+    void restoreDraftImporters
+      .load()
+      .then(({ forgetRestoreDraft }) => forgetRestoreDraft(storage, form))
+      .catch(() =>
+        announce(
+          review.ownerDocument,
+          'data-cms-editorial-restore-status',
+          RESTORE_DRAFT_FORGET_UNAVAILABLE,
+        ),
+      );
     clearRestoreFailure(form);
   }
   review.open = false;

@@ -7,17 +7,14 @@ import type {
 import { warmCmsValidators } from '../../lib/cms-contract-validators';
 import CmsTemplateBindings from './CmsTemplateBindings';
 import CmsTemplateFields from './CmsTemplateFields';
+import CmsTemplateLatestCheck from './CmsTemplateLatestCheck';
 import CmsTemplateLatestVersionPanel from './CmsTemplateLatestVersionPanel';
 import CmsTemplateSlots from './CmsTemplateSlots';
 import CmsTemplateStatus from './CmsTemplateStatus';
 import { useCmsTemplateEditState } from './cms-template-edit-reconcile-state';
-import { buildCmsTemplateSuccessorRequest } from './cms-template-designer-request';
-import { submitCmsTemplateSuccessorDraft } from './cms-template-designer-submit';
+import { cmsTemplateUnavailableTypeIds } from './cms-template-designer-request';
 import { useCmsTemplateRateWait } from './cms-template-rate-wait';
-import {
-  CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE,
-  useCmsTemplateValidators,
-} from './use-cms-template-validators';
+import { useCmsTemplateValidators } from './use-cms-template-validators';
 
 interface Props {
   readonly context: TemplateDesignerContext;
@@ -43,60 +40,25 @@ export default function CmsTemplateEditDesigner({
     slots: state.slots,
     bindings: state.bindings,
   };
-  const hasConflict =
-    state.status.kind === 'result' && state.status.result.kind === 'conflict';
-  const mayRetryConflict = state.latest?.version === state.baseDetail.version;
   const cannotSubmit =
     context.contentTypes.length === 0 ||
     csrfToken.length === 0 ||
-    state.status.kind === 'pending' ||
-    state.status.kind === 'created' ||
-    rateWait.waiting ||
-    (hasConflict && !mayRetryConflict);
+    state.writeBlocked ||
+    rateWait.waiting;
 
   const submit = async (
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
-    if (cannotSubmit || gate.isChecking()) return;
-    // If the lazily loaded schemas cannot be fetched the draft is unchecked.
-    const validators = await gate.obtain();
-    if (validators === null) {
-      state.setStatus({
-        kind: 'validation',
-        message: CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE,
-      });
-      return;
-    }
-    const prepared = buildCmsTemplateSuccessorRequest(
-      validators,
+    if (cannotSubmit) return;
+    await state.submit({
       fields,
       context,
-      state.baseDetail,
-    );
-    if (!prepared.ok) {
-      state.setStatus({ kind: 'validation', message: prepared.message });
-      return;
-    }
-    const key = state.beginAttempt(JSON.stringify(prepared.value));
-    state.setStatus({ kind: 'pending' });
-    const result = await submitCmsTemplateSuccessorDraft(
-      validators,
-      prepared.value,
+      base: state.baseDetail,
       csrfToken,
-      key,
-    );
-    if (
-      result.kind === 'rejected' &&
-      result.status === 429 &&
-      result.retryAfterSeconds !== undefined
-    )
-      rateWait.start(result.retryAfterSeconds);
-    state.setStatus(
-      result.kind === 'created'
-        ? { kind: 'created', resource: result.resource }
-        : { kind: 'result', result },
-    );
+      obtain: gate.obtain,
+      onRateLimit: rateWait.start,
+    });
   };
 
   return (
@@ -118,20 +80,18 @@ export default function CmsTemplateEditDesigner({
         mode="successor"
         returnTo={'/app/cms-content-modeling/templates/' + detail.templateKey}
       />
-      {state.status.kind === 'result' &&
-      (state.status.result.kind === 'conflict' ||
-        state.status.result.kind === 'uncertain') ? (
-        <button
-          type="button"
-          disabled={state.checkingLatest}
-          onClick={() => void state.checkLatest()}
-        >
-          {state.checkingLatest
-            ? 'Checking latest version…'
-            : 'Check latest version'}
-        </button>
-      ) : null}
-      {state.latestError ? <p role="alert">{state.latestError}</p> : null}
+      <CmsTemplateLatestCheck
+        offered={
+          state.status.kind === 'result' &&
+          (state.status.result.kind === 'conflict' ||
+            state.status.result.kind === 'uncertain')
+        }
+        checking={state.checkingLatest}
+        waiting={state.latestWaiting}
+        error={state.latestError}
+        rateLimited={state.latestRateLimited}
+        onCheck={() => void state.checkLatest()}
+      />
       {state.latest !== null ? (
         <CmsTemplateLatestVersionPanel
           latest={state.latest}
@@ -145,11 +105,7 @@ export default function CmsTemplateEditDesigner({
         onFocus={warmCmsValidators}
         noValidate
       >
-        <fieldset
-          disabled={
-            state.status.kind === 'pending' || state.status.kind === 'created'
-          }
-        >
+        <fieldset>
           <legend>Template definition</legend>
           <CmsTemplateFields
             contentTypes={context.contentTypes}
@@ -157,6 +113,13 @@ export default function CmsTemplateEditDesigner({
             setTemplateKey={() => undefined}
             templateKeyReadOnly
             compatibleTypeIds={state.compatibleTypeIds}
+            unavailableTypeIds={cmsTemplateUnavailableTypeIds(
+              [
+                ...state.baseDetail.compatibleTypeIds,
+                ...state.compatibleTypeIds,
+              ],
+              context,
+            )}
             setCompatibleTypeIds={state.setCompatibleTypeIds}
             locale={state.locale}
             setLocale={state.setLocale}
@@ -177,8 +140,16 @@ export default function CmsTemplateEditDesigner({
           <p>
             A saved successor is a private draft, not publication or activation.
           </p>
-          <button type="submit" disabled={cannotSubmit}>
-            Save successor draft
+          <button
+            className="cms-template-successor-commit"
+            type="submit"
+            disabled={cannotSubmit}
+            aria-label="Save successor draft"
+            aria-busy={state.writePending}
+          >
+            {state.writePending
+              ? 'Saving successor draft…'
+              : 'Save successor draft'}
           </button>
         </fieldset>
       </form>

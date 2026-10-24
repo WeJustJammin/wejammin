@@ -122,6 +122,7 @@ export default function CmsCapabilityGrantRevokeConfirmation(
       <div className="content-schema-registry-actions">
         <button
           type="submit"
+          className="cms-danger-action"
           disabled={props.disabled || props.pending || !confirmed}
           aria-describedby={props.disabled ? props.disabledReasonId : undefined}
           aria-busy={props.pending ? 'true' : undefined}

@@ -105,7 +105,9 @@ describe('create form: Create entry stays put while the create is in flight', ()
     await click(create);
     await click(create);
     await flush();
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(
+      fetcher.mock.calls.filter((call) => call[1]?.method === 'POST'),
+    ).toHaveLength(1);
     expect(create.disabled).toBe(false);
     expect(create.getAttribute('aria-busy')).toBe('true');
     expect(document.activeElement).toBe(create);
@@ -124,7 +126,9 @@ describe('create form: Create entry stays put while the create is in flight', ()
     });
     await settle();
     const retry = buttonNamed(container, 'Retry create');
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    expect(
+      fetcher.mock.calls.filter((call) => call[1]?.method === 'POST'),
+    ).toHaveLength(1);
     expect(title.matches(':disabled')).toBe(true);
     expect(document.activeElement).toBe(retry);
   });

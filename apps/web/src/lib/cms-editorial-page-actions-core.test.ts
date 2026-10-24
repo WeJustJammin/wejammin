@@ -499,6 +499,8 @@ describe('restore confirmation: typed failures and the scoped draft', () => {
     // script then installs and recovers the kept confirmation.
     const second = mountReview();
     install(vi.fn());
+    // The recovery loads with the page that holds a restore form (AC-106).
+    await settle();
     expect(second.details.open).toBe(true);
     expect(second.form.dataset.cmsEditorialRestoreIdempotencyKey).toBe(key);
     expect(
@@ -524,6 +526,7 @@ describe('restore confirmation: typed failures and the scoped draft', () => {
     lifetime = new AbortController();
     const second = mountReview('8');
     install(vi.fn());
+    await settle();
     expect(
       second.form.dataset.cmsEditorialRestoreIdempotencyKey,
     ).toBeUndefined();
@@ -543,6 +546,8 @@ describe('restore confirmation: typed failures and the scoped draft', () => {
     (
       form.querySelector('[data-cms-editorial-restore-cancel]') as HTMLElement
     ).click();
+    // Forgetting the draft uses the draft store, which loads with the restore review (AC-106).
+    await settle();
     expect(
       window.sessionStorage.getItem(`wj-step-up-draft:${draftScope()}`),
     ).toBeNull();

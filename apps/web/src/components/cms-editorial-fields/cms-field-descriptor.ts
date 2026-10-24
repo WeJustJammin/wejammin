@@ -78,9 +78,19 @@ export interface CmsRelationDescriptor extends CmsFieldBase {
   readonly ordered: boolean;
 }
 
-/** taxonomy and media have no producer yet; unsupported means unreadable. */
+/**
+ * The taxonomy field: a strict `{ termIds: UUID[] <= 128 }` selection. The
+ * browser mirrors only the shape the database enforces; whether a term is
+ * active, visible to the field and usable for the entry type is the server's
+ * decision (BE03b "Value encodings by field kind").
+ */
+export interface CmsTaxonomyDescriptor extends CmsFieldBase {
+  readonly kind: 'taxonomy';
+}
+
+/** media has no producer yet; unsupported means unreadable. */
 export interface CmsUnavailableDescriptor extends CmsFieldBase {
-  readonly kind: 'taxonomy' | 'media' | 'unsupported';
+  readonly kind: 'media' | 'unsupported';
 }
 
 export type CmsFieldDescriptor =
@@ -89,15 +99,14 @@ export type CmsFieldDescriptor =
   | CmsListDescriptor
   | CmsObjectDescriptor
   | CmsRelationDescriptor
+  | CmsTaxonomyDescriptor
   | CmsUnavailableDescriptor;
 
-/** True for a field with no producer (taxonomy, media) or no usable definition. */
+/** True for a field with no producer (media) or no usable definition. */
 export const isCmsUnavailableDescriptor = (
   descriptor: CmsFieldDescriptor,
 ): descriptor is CmsUnavailableDescriptor =>
-  descriptor.kind === 'taxonomy' ||
-  descriptor.kind === 'media' ||
-  descriptor.kind === 'unsupported';
+  descriptor.kind === 'media' || descriptor.kind === 'unsupported';
 
 /** `release_notes` becomes `Release notes`: a label derived from a stable key. */
 export const humanizeCmsKey = (key: string): string => {

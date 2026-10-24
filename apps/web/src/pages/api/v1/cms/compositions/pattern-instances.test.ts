@@ -28,7 +28,8 @@ const resource = {
   updatedAt: '2026-09-28T14:00:00.000Z',
   state: 'draft',
   revisionId,
-  path: '/primary',
+  path: '/primary/hero0',
+  position: 0,
   blockKey: 'profile.header',
   blockVersion: 1,
   patternId,
@@ -37,6 +38,8 @@ const resource = {
   linkMode: 'linked',
   conflictState: 'none',
 };
+/** BE03c CMS-03C-02 answers 201 `PatternPlacementResource` (DEC-175, DEC-185, DEC-186). */
+const placement = { items: [resource] };
 const request = (
   overrides: { body?: unknown; headers?: Record<string, string> } = {},
 ) =>
@@ -58,7 +61,7 @@ describe('first-party CMS pattern instance endpoint (CMS-03C-02)', () => {
   it('stays dynamic and forwards a validated mutation through the private Worker binding', async () => {
     fetchMock.mockReset();
     fetchMock.mockResolvedValueOnce(
-      new Response(JSON.stringify(resource), {
+      new Response(JSON.stringify(placement), {
         status: 201,
         headers: {
           'content-type': 'application/json',
@@ -71,7 +74,7 @@ describe('first-party CMS pattern instance endpoint (CMS-03C-02)', () => {
     >[0]);
     expect(prerender).toBe(false);
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual(resource);
+    expect(await response.json()).toEqual(placement);
     expect(fetchMock).toHaveBeenCalledTimes(1);
     const forwarded = fetchMock.mock.calls[0]?.[0] as Request;
     expect(forwarded.url).toBe(`https://platform-api.internal${path}`);

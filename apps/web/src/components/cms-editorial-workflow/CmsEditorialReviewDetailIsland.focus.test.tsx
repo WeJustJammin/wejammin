@@ -8,6 +8,7 @@ import {
   it,
   vi,
 } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from './cms-workflow-answer-machinery.test-support';
 
 import {
   buttonNamed,
@@ -42,6 +43,8 @@ import {
   mountReviewIsland,
   ok,
 } from './cms-workflow-island-mount.test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
 
 beforeAll(enableReactAct);
 afterAll(disableReactAct);

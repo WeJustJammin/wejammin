@@ -82,8 +82,14 @@ describe('CMS-11 first-party template mutation boundary', () => {
       [
         403,
         'TEMPLATE_FORBIDDEN',
+        { reasonCode: 'capability_missing', secret: 'private' },
+        { reasonCode: 'capability_missing' },
+      ],
+      [
+        403,
+        'TEMPLATE_FORBIDDEN',
         { reasonCode: 'CAPABILITY_REQUIRED', secret: 'private' },
-        { reasonCode: 'CAPABILITY_REQUIRED' },
+        {},
       ],
       [403, 'TEMPLATE_FORBIDDEN', { reasonCode: 'private' }, {}],
       [404, 'TEMPLATE_NOT_FOUND', { secret: 'private' }, {}],
@@ -111,7 +117,7 @@ describe('CMS-11 first-party template mutation boundary', () => {
         502,
         'DEPENDENCY_UNAVAILABLE',
         { dependencyClass: 'private', retryable: true },
-        { dependencyClass: 'cms_composition', retryable: false },
+        { dependencyClass: 'cms_composition', retryable: true },
       ],
       [
         503,

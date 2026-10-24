@@ -1,5 +1,10 @@
-import { announce, focusStorage } from './cms-editorial-page-actions-dom';
-import { recoverRestoreDrafts } from './cms-editorial-restore-draft';
+import {
+  RESTORE_DRAFT_RECOVERY_UNAVAILABLE,
+  announce,
+  focusStorage,
+  restoreActionImporters,
+  restoreDraftImporters,
+} from './cms-editorial-page-actions-dom';
 import { clearRestoreFailure } from './cms-editorial-restore-summary';
 import { installCmsEditorialRestoreReview } from './cms-editorial-restore-review';
 
@@ -26,7 +31,7 @@ export interface CmsEditorialPageActionsOptions {
   readonly signal?: AbortSignal;
 }
 
-const loadRestoreActions = () => import('./cms-editorial-page-actions-restore');
+const loadRestoreActions = () => restoreActionImporters.load();
 
 export const installCmsEditorialPageActions = (
   documentRef: Document,
@@ -93,7 +98,16 @@ export const installCmsEditorialPageActions = (
     },
   );
   installCmsEditorialRestoreReview(documentRef, options.signal);
-  recoverRestoreDrafts(documentRef, focusStorage(documentRef), (message) =>
-    announce(documentRef, 'data-cms-editorial-restore-status', message),
-  );
+  // Only a page that holds a restore form (the revision history) has a confirmation to recover, so
+  // the recovery and the step-up draft store behind it load there (AC-106).
+  if (documentRef.querySelector('form[data-cms-editorial-restore]') !== null) {
+    const status = (message: string): void =>
+      announce(documentRef, 'data-cms-editorial-restore-status', message);
+    void restoreDraftImporters
+      .load()
+      .then(({ recoverRestoreDrafts }) => {
+        recoverRestoreDrafts(documentRef, focusStorage(documentRef), status);
+      })
+      .catch(() => status(RESTORE_DRAFT_RECOVERY_UNAVAILABLE));
+  }
 };

@@ -5,7 +5,6 @@ import {
   createCmsEditorialConflictController,
   type CmsEditorialConflictController,
 } from './cms-editorial-conflict-controller';
-import { saveCmsEditorialResult } from './cms-editorial-result-handoff';
 import type {
   CmsEditorialConflictResolveInit,
   CmsEditorialConflictState,
@@ -47,10 +46,24 @@ export const useCmsEditorialConflict = (
       init: props.init,
       ...(props.fetcher === undefined ? {} : { fetcher: props.fetcher }),
       onResolved: (path, result) => {
-        if (result !== null)
-          saveCmsEditorialResult(sessionStorageOrNull(), result);
-        markRouteHeadingForFocus(sessionStorageOrNull());
-        (props.navigate ?? ((target) => window.location.assign(target)))(path);
+        const leave = (): void => {
+          markRouteHeadingForFocus(sessionStorageOrNull());
+          (props.navigate ?? ((target) => window.location.assign(target)))(
+            path,
+          );
+        };
+        if (result === null) {
+          leave();
+          return;
+        }
+        // The handoff (and the step-up draft store behind it) loads when a command commits,
+        // not with the page (AC-106); the page still opens when it cannot be fetched.
+        void import('./cms-editorial-result-save')
+          .then(({ saveCmsEditorialResult }) => {
+            saveCmsEditorialResult(sessionStorageOrNull(), result);
+          })
+          .catch(() => undefined)
+          .then(leave);
       },
     }),
   );

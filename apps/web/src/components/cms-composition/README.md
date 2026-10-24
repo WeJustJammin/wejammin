@@ -10,22 +10,46 @@ accepts only a validated `201` draft resource with its matching ETag.
 Colocated tests cover the request builder, transport, server-rendered form,
 and uncertain network retry.
 
+`cms-template-unavailable-copy.ts` holds the fixed sentence of the edit page's "Designer unavailable" region by read
+status (`pages/app/cms-content-modeling/templates/[templateKey].astro`).
+
 `CmsTemplateEditDesigner.tsx` prefills a successor form from the protected
 latest detail, keeps the template key immutable, and sends exact version CAS.
 Its local edit state lives in `cms-template-edit-reconcile-state.ts` (the
-`useCmsTemplateEditState` hook, which owns draft fields, status, and the
-unchanged-body idempotency attempt) and the render-only latest-version
+`useCmsTemplateEditState` hook, which owns draft fields and status) and the render-only latest-version
 comparison panel lives in `CmsTemplateLatestVersionPanel.tsx`.
 `cms-template-edit-reconcile.ts` rechecks the canonical no-store detail after
 conflict or uncertain outcome. The user can compare complete values and
 explicitly rebase without losing local edits; a new idempotency key is used
-only after the parent version or request body changes.
+only after a verified resolution permits a different request or an explicit
+rebase selects a verified newer parent.
+
+`use-template-unknown-attempt.ts` owns an immutable request/body/key/base
+snapshot and a synchronous admission guard, set before lazy validation. A lost
+response blocks every submit path, including native form events, until the
+manual canonical read verifies the original attempt's parent. Failed or
+unverifiable reads and elapsed rate waits cannot resolve that uncertainty.
+Verified not-saved permits unchanged-body replay with its original key; a
+verified newer parent still requires explicit rebase. Local edits remain
+editable and are never overwritten by pending requests or reconciliation.
+Scope generations ignore obsolete validation, POST, and read completions after
+unmount or detail changes; the existing safe-read retry and rate-wait cleanup
+remain in their original helpers.
+
+Only the commit action is disabled during preparation and POST; it exposes
+pending text. The latest-read and reviewer 429 notices retain an initially
+empty polite node and update its text after commit, including a mount that
+already has a limited result. Other latest-read failures remain alerts.
 
 The island is split by concern: `CmsTemplateFields.tsx` renders keys, scoped
 content-type choices, locale, audience, and reserved regions;
 `CmsTemplateSlots.tsx` and `CmsTemplateBindings.tsx` render bounded repeatable
 manifests; `CmsTemplateStatus.tsx` renders focusable outcome feedback.
 `cms-template-designer-form-types.ts` holds only the editable row shapes.
+A content type the edited version names but the protected selector no longer
+offers (`cmsTemplateUnavailableTypeIds`) stays listed in `CmsTemplateFields.tsx`
+as a checked, labelled "no longer available" box, so a successor can clear it
+and be saved instead of dead-ending on a reload that cannot help.
 
 ## Lazy validators
 

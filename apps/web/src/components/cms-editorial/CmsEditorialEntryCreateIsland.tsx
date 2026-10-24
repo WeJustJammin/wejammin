@@ -92,6 +92,12 @@ export default function CmsEditorialEntryCreateIsland(
             readOnlyNotice={
               descriptor.kind === 'relation' ? RELATION_AT_CREATE : undefined
             }
+            taxonomyContext={{
+              typeKey: options.type.typeKey,
+              locale: form.locale,
+              fetcher: options.fetcher,
+              refreshToken: form.taxonomyRefreshToken,
+            }}
             onChange={(value) => form.setValue(descriptor.fieldId, value)}
             onInputError={(message) =>
               form.setInputError(descriptor.fieldId, message)

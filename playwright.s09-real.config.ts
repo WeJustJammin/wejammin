@@ -46,6 +46,7 @@ export default defineConfig({
     'phase-02-slice-12-template-real-route.spec.ts',
     'phase-02-slice-12-template-uncertain-real-route.spec.ts',
     'phase-02-slice-12-locale-real-route.spec.ts',
+    'phase-02-slice-12-governed-review-real-route.spec.ts',
     'phase-02-slice-09-schema-review-real-route.spec.ts',
     'phase-02-slice-09-schema-version-real-route.spec.ts',
     'phase-02-slice-09-capability-grants-real-route.spec.ts',

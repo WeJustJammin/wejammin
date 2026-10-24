@@ -12,6 +12,15 @@ import type {
 } from '@wejammin/contracts';
 
 import {
+  forbiddenDetails,
+  type CapabilityOperationId,
+} from './cms-composition-platform-capability';
+import { conflictReasonDetails } from './cms-composition-platform-conflict';
+import {
+  compositionDependencyDetails,
+  isCompositionDependencyStatus,
+} from './cms-composition-platform-dependency';
+import {
   cmsEditorialBoundedRequestJson,
   cmsEditorialBoundedResponseJson,
 } from './cms-editorial-platform-bounded';
@@ -24,6 +33,7 @@ import {
   cmsEditorialSameOriginRequest,
   isCmsEditorialPlatformBinding,
 } from './cms-editorial-platform-shared';
+import { violationsOf } from './cms-composition-platform-mutation-violations';
 import { relayedResetAt } from './rate-limit-reset-at';
 
 export const CMS_TEMPLATE_DEFINE_PATH = '/api/v1/cms/templates/versions';
@@ -58,7 +68,9 @@ const SAFE_VIOLATION_CODES = new Set([
 export const localError = (
   request: Request,
   status: Status,
-  details: Record<string, unknown> = {},
+  details: Record<string, unknown> = isCompositionDependencyStatus(status)
+    ? { ...compositionDependencyDetails() }
+    : {},
 ): Response => {
   const code = ERROR_CODES[status];
   const requestId = createRequestId(
@@ -81,46 +93,10 @@ export const localError = (
   );
 };
 
-type SchemaIssue = Readonly<{
-  path: readonly PropertyKey[];
-  message: string;
-  code?: string;
-  keys?: readonly string[];
-}>;
-
-/**
- * The bounded RFC 6901 violations of a body the contract refused, exactly as the Worker route
- * reports them (BE03b `issues`): a lowercase machine token, never the submitted value. The codes the
- * relay publishes are filtered by `safeDetails`.
- */
-const violationsOf = (issues: readonly SchemaIssue[]) =>
-  issues
-    .flatMap((issue) =>
-      issue.code === 'unrecognized_keys' && Array.isArray(issue.keys)
-        ? issue.keys.map((key) => ({
-            path: [...issue.path, key],
-            code: 'unknown_field',
-          }))
-        : [
-            {
-              path: [...issue.path],
-              code: /^[a-z][a-z0-9_]{0,63}$/u.test(issue.message)
-                ? issue.message
-                : 'invalid_value',
-            },
-          ],
-    )
-    .slice(0, 50)
-    .map(({ path, code }) => ({
-      path: `/${path
-        .map((part) => String(part).replaceAll('~', '~0').replaceAll('/', '~1'))
-        .join('/')}`,
-      code,
-    }));
-
 const safeDetails = (
   status: Status,
   details: Readonly<Record<string, unknown>>,
+  operationId: CapabilityOperationId = 'CMS-03C-01',
 ): Record<string, unknown> => {
   if (status === 401) return { recoveryAction: 'reauthenticate' };
   if (status === 400 || status === 422) {
@@ -151,11 +127,11 @@ const safeDetails = (
       ? { reasonCode: CMS_KEY_RESERVED_REASON, violations }
       : { violations };
   }
-  if (status === 403)
-    return details.reasonCode === 'CAPABILITY_REQUIRED'
-      ? { reasonCode: 'CAPABILITY_REQUIRED' }
-      : {};
+  if (status === 403) return forbiddenDetails(operationId, details);
   if (status === 409) {
+    // BE03c 1273 / DEC-186: a typed 409 reason names itself and nothing else.
+    const reason = conflictReasonDetails(operationId, details);
+    if (reason !== null) return { ...reason };
     const output: Record<string, unknown> = {};
     for (const key of ['expectedVersion', 'currentVersion'] as const)
       if (
@@ -178,14 +154,19 @@ const safeDetails = (
     if (resetAt !== null) output.resetAt = resetAt;
     return output;
   }
-  if (status === 502 || status === 503 || status === 504)
-    return { dependencyClass: 'cms_composition', retryable: status !== 502 };
+  if (isCompositionDependencyStatus(status))
+    return { ...compositionDependencyDetails() };
   return {};
 };
 
+/**
+ * `operationId` names the contract row that governs the relayed 403 reason: CMS-03C-01 for the define mutation and
+ * the context read (which has no row of its own), `cmsTemplateLatestRead` for the detail read.
+ */
 export const forwardedError = async (
   request: Request,
   upstream: Response,
+  operationId: CapabilityOperationId = 'CMS-03C-01',
 ): Promise<Response> => {
   const status = upstream.status;
   if (!Object.hasOwn(ERROR_CODES, status)) return localError(request, 502);
@@ -212,7 +193,7 @@ export const forwardedError = async (
     JSON.stringify(
       ApiErrorSchema.parse({
         ...parsed.data,
-        details: safeDetails(checkedStatus, parsed.data.details),
+        details: safeDetails(checkedStatus, parsed.data.details, operationId),
       }),
     ),
     { status, headers },
