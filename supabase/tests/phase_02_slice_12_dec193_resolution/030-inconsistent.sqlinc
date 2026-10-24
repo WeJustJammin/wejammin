@@ -1,0 +1,112 @@
+-- Complete answers can select an impossible graph. Reject atomically at the
+-- existing /instances/0/choices pointer, never drop a descendant answer or silently
+-- resurrect a node. The two all-consistent controls discriminate ordinary guards.
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-25 parent excludes explicit present child',b,t,o,
+  '[{"path":"/fork","choice":"theirs"},{"path":"/fork/child","choice":"yours"},{"path":"/fork/add","choice":"theirs"}]',
+  null,'P0001:VALIDATION_FAILED') check_line where name='presence';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-26 parent requires explicit absent child',b,t,o,
+  '[{"path":"/fork/add","choice":"yours"},{"path":"/fork/child","choice":"theirs"},{"path":"/fork","choice":"yours"}]',
+  null,'P0001:VALIDATION_FAILED') check_line where name='presence';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-27 exact coverage refuses an unanswered props collision',b,t,o,
+  '[{"path":"/panel","choice":"theirs"}]',null,'P0001:VALIDATION_FAILED') check_line where name='main';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-28 exact coverage refuses a noncolliding answer',b,t,o,
+  '[{"path":"/panel","choice":"theirs"},{"path":"/panel/leaf","choice":"theirs"},{"path":"/panel/auto","choice":"yours"}]',
+  null,'P0001:VALIDATION_FAILED') check_line where name='main';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-29 a suppressed descendant is not another answerable collision',b,t,o,
+  '[{"path":"/fork","choice":"yours"},{"path":"/fork/child","choice":"yours"},{"path":"/fork/add","choice":"yours"},
+    {"path":"/fork/child/deep","choice":"yours"}]',null,'P0001:VALIDATION_FAILED') check_line where name='presence';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-30 duplicate selectors are not sequential last-answer-wins patches',b,t,o,
+  '[{"path":"/panel","choice":"yours"},{"path":"/panel","choice":"theirs"},{"path":"/panel/leaf","choice":"theirs"}]',
+  null,'P0001:VALIDATION_FAILED') check_line where name='main';
+select * from pg_temp.s12pu_refused('rs-api-inconsistent-one','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-pc-one','accept',jsonb_build_array(pg_temp.s12pu_target('rs-pc-one','/fork',
+    '[{"path":"/fork","choice":"theirs"},{"path":"/fork/child","choice":"yours"},{"path":"/fork/add","choice":"theirs"}]')),
+    's12rs-inconsistent-one-0001',2),'VALIDATION_FAILED','["/instances/0/choices"]');
+select * from pg_temp.s12pu_refused('rs-api-inconsistent-two','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-pc-two','accept',jsonb_build_array(pg_temp.s12pu_target('rs-pc-two','/fork',
+    '[{"path":"/fork/add","choice":"yours"},{"path":"/fork/child","choice":"theirs"},{"path":"/fork","choice":"yours"}]')),
+    's12rs-inconsistent-two-0001',2),'VALIDATION_FAILED','["/instances/0/choices"]');
+select pg_temp.s12pu_update('rs-api-pc-y',pg_temp.s12pu_update_request('rs-pc-y','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-pc-y','/fork','[{"path":"/fork","choice":"yours"},{"path":"/fork/child","choice":"yours"},{"path":"/fork/add","choice":"yours"}]')),
+  's12rs-pc-y-0001',2));
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_check('rs-api-pc-y','rs-pc-y','/fork',
+  'active','detached',1,'{}',local_tree) check_line where name='presence';
+select pg_temp.s12pu_update('rs-api-pc-t',pg_temp.s12pu_update_request('rs-pc-t','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-pc-t','/fork','[{"path":"/fork/add","choice":"theirs"},{"path":"/fork/child","choice":"theirs"},{"path":"/fork","choice":"theirs"}]')),
+  's12rs-pc-t-0001',2));
+select * from pg_temp.s12rs_check('rs-api-pc-t','rs-pc-t','/fork','active','linked',2,'{}','null');
+
+-- Coverage errors remain distinct from graph consistency errors. In each case
+-- all store images include audit, outbox, idempotency and governed/review rows.
+select * from pg_temp.s12pu_refused('rs-api-missing','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-missing','accept',jsonb_build_array(
+    pg_temp.s12pu_target('rs-missing','/panel')),'s12rs-missing-0001',2),
+  'VALIDATION_FAILED','["/instances/0/choices"]');
+select * from pg_temp.s12pu_refused('rs-api-unknown','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-unknown','accept',jsonb_build_array(pg_temp.s12pu_target('rs-unknown','/panel',
+    '[{"path":"/panel","choice":"theirs"},{"path":"/panel/auto","choice":"yours"}]')),
+    's12rs-unknown-0001',2),'VALIDATION_FAILED','["/instances/0/choices/1/path"]');
+select * from pg_temp.s12pu_refused('rs-api-unlisted','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-unknown','accept',jsonb_build_array(pg_temp.s12pu_target('rs-unknown','/panel',
+    '[{"path":"/panel","choice":"theirs"},{"path":"/panel/missing","choice":"yours"}]')),
+    's12rs-unlisted-0001',2),'VALIDATION_FAILED','["/instances/0/choices/1/path"]');
+select * from pg_temp.s12pu_refused('rs-api-entry-cas','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-stale','accept',jsonb_build_array(pg_temp.s12pu_target('rs-stale','/panel',
+    '[{"path":"/panel","choice":"theirs"}]')),'s12rs-entry-cas-0001',2,'99'),
+  'VERSION_MISMATCH',jsonb_build_object('expectedVersion','99','currentVersion',pg_temp.s12pl_version('rs-stale')));
+select * from pg_temp.s12pu_refused('rs-api-if-match','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-stale','accept',jsonb_build_array(pg_temp.s12pu_target('rs-stale','/panel',
+    '[{"path":"/panel","choice":"theirs"}]')),'s12rs-if-match-0001',2)||'{"ifMatch":"99"}'::jsonb,
+  'INVALID_REQUEST',null);
+select * from pg_temp.s12pu_refused('rs-api-no-newer','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-current','accept',jsonb_build_array(pg_temp.s12pu_target('rs-current','/panel')),
+    's12rs-no-newer-0001',2),'pattern_version_not_active','["/targetPatternVersion"]');
+select * from pg_temp.s12pu_refused('rs-api-wrong-target','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-stale','accept',jsonb_build_array(pg_temp.s12pu_target('rs-stale','/panel',
+    '[{"path":"/panel","choice":"theirs"}]')),'s12rs-wrong-target-0001',1),
+  'pattern_version_not_active','["/targetPatternVersion"]');
+select * from pg_temp.s12pu_refused('rs-api-no-author','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-stale','accept',jsonb_build_array(pg_temp.s12pu_target('rs-stale','/panel',
+    '[{"path":"/panel","choice":"theirs"}]')),'s12rs-no-author-0001',2,null,'designer2'),
+  'capability_missing',null,'designer2');
+select * from pg_temp.s12pu_refused('rs-api-hidden','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-stale','accept',jsonb_build_array(pg_temp.s12pu_target('rs-stale','/panel',
+    '[{"path":"/panel","choice":"theirs"}]')),'s12rs-hidden-0001',2,null,'other'),
+  'NOT_FOUND',null,'other');
+
+-- Actual instance CAS is separate from entry CAS and topology; all other inputs
+-- use the valid all-theirs answer. The expected old row is not addressed again.
+select * from pg_temp.s12pu_refused('rs-api-instance-cas','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-stale','accept',jsonb_build_array(
+    pg_temp.s12pu_target('rs-stale','/panel','[{"path":"/panel","choice":"theirs"}]')||'{"expectedVersion":"7"}'::jsonb),
+    's12rs-instance-cas-0001',2),'VERSION_MISMATCH',jsonb_build_object('expectedVersion','7',
+      'currentVersion','1','instanceId',pg_temp.s12pu_head('rs-stale','/panel')));
+select * from pg_temp.s12pu_refused('rs-api-prior-instance','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-theirs','accept',jsonb_build_array(jsonb_build_object(
+    'instanceId',(select row_value->>'id' from s12rs_initial where tag='rs-theirs' and row_value->>'path'='/panel'),
+    'expectedVersion','1','choices','[]'::jsonb)),'s12rs-prior-instance-0001',2),
+  -- R1-007 (2026-10-22): BE03c 410 and 1416 (DEC-193) answer a named row that is not the newest version of its path
+  -- as 422 COMPOSITION_VALIDATION_FAILED at /instances/{n}/instanceId; 409 is only the stale expectedVersion of the head row
+  -- (rs-api-instance-cas above keeps 409).
+  'VALIDATION_FAILED','["/instances/0/instanceId"]'::jsonb);
+
+-- Retired/detached origin pins are readable provenance, not fabricated no-update
+-- pins or permission to reopen the selected tree through its newer pattern.
+select pg_temp.s12pu_diff_head('rs-api-retired-diff','rs-rm-t','/gone');
+select pg_temp.s12pu_diff_head('rs-api-detached-diff','rs-yours','/panel');
+select check_line.* from (values ('rs-api-retired-diff'),('rs-api-detached-diff')) probes(label)
+cross join lateral (select extensions.is(pg_temp.s12pu_oc(label),'ok',label||': readable pattern-origin row diffs successfully') as tap
+  union all select extensions.is(jsonb_build_object(
+    'pin',pg_temp.s12pu_body(label)#>'{instance,pinnedPatternVersion}',
+    'target',pg_temp.s12pu_body(label)->'targetPatternVersion','slot',pg_temp.s12pu_body(label)->'slotPath',
+    'paths',pg_temp.s12pu_body(label)->'paths','newRoots',pg_temp.s12pu_body(label)->'newRoots',
+    'collisions',pg_temp.s12pu_body(label)->'collisionCount','bulk',pg_temp.s12pu_body(label)->'bulkEligible'),
+    '{"pin":1,"target":1,"slot":"/","paths":[],"newRoots":[],"collisions":0,"bulk":false}'::jsonb,
+    label||': prior positive pin and exact no-update fields, never a target retirement pin')
+  union all select extensions.ok(pg_temp.s12pu_unchanged(label),label||': read changes no store')) check_line;

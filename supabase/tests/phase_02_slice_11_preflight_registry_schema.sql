@@ -26,7 +26,10 @@ as $body$
   select jsonb_build_object(
     'id', gen_random_uuid(),
     'owner_id', '0d6a0d6a-0000-4000-8000-000000000134'::uuid,
-    'state', 'seeded', 'version', 2, 'category', 'pattern',
+    -- Registry version 99, not 2: Slice 12 itself registers registry version 2 of pattern, taxonomy and locale (BE03c 1564,
+    -- "Preflight providers registered by Slice 12"), so a "later slice" fixture must be newer than any row a real slice has
+    -- registered or will register for the category; the insert guard asks only for a strictly newer version.
+    'state', 'seeded', 'version', 99, 'category', 'pattern',
     'owner_slice', 'slice-12', 'provider_key', 'cms.pattern.active_digest',
     'provider_version', 1, 'provider_kind', 'database', 'reference_kind', null,
     'created_at', timestamptz '2026-10-01T14:00:00Z',
@@ -66,13 +69,13 @@ select ok(
 );
 
 select is(
-  (select count(*)::integer from platform_private.cms_preflight_registry),
+  (select count(*)::integer from platform_private.cms_preflight_registry where version = 1),
   17,
   'registry: the migration seeds exactly one row per category [P2-S11-AC-093]'
 );
 
 select is(
-  (select array_agg(category order by category) from platform_private.cms_preflight_registry),
+  (select array_agg(category order by category) from platform_private.cms_preflight_registry where version = 1),
   (select array_agg(c order by c) from unnest(array[
     'contract','schema','template','block','pattern','taxonomy','settings','relation','privacy',
     'security','accessibility','media','route','locale','migration','domain_binding','revocation'

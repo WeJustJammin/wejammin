@@ -1,0 +1,104 @@
+-- CMS-03C-03 rename, alias and deprecate on the term `alpha` of vf (version 1 at the start): the key and the id are stable, labels are
+-- append-only versions, aliases are a bounded union, every accepted action consumes exactly one term version and emits one event.
+-- BE03c 1377 ("rename appends a new label version (the key never changes); alias appends an alias; deprecate moves the term to
+-- deprecated"), 1429 (labels immutable per version), 1539 (term state machine), 1554-1561.  [P2-S12-AC-016, AC-019, AC-021, AC-003]
+create temp table s12tt_alpha_id(id uuid) on commit drop;
+insert into s12tt_alpha_id select pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha');
+select is((select id from s12tt_alpha_id), (pg_temp.s12ga_kept('c-alpha')->>'id')::uuid, 'control: alpha is the term c-alpha created');
+
+select pg_temp.s12tt_act('r-rename', 'owner', pg_temp.s12tt_lineage('vf'), 'rename', 'alpha', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Alpha Prime"},{"locale":"de-DE","label":"Alpha DE"}]'::jsonb));
+select is(pg_temp.s12tt_oc('r-rename'), 'ok', 'rename is accepted [P2-S12-AC-016]');
+select ok(
+  pg_temp.s12ga_body('r-rename')->>'id' = (select id::text from s12tt_alpha_id) and pg_temp.s12ga_body('r-rename')->>'termKey' = 'alpha'
+  and pg_temp.s12ga_body('r-rename')->>'version' = '2' and pg_temp.s12ga_body('r-rename')->>'lifecycle' = 'active'
+  and pg_temp.s12ga_body('r-rename')->>'createdAt' = pg_temp.s12ga_kept('c-alpha')->>'createdAt'
+  and pg_temp.s12ga_body('r-rename')->>'updatedAt' > pg_temp.s12ga_kept('c-alpha')->>'updatedAt'
+  and pg_temp.s12ga_body('r-rename')->>'contentHash' <> pg_temp.s12ga_kept('c-alpha')->>'contentHash',
+  'rename keeps the term id and key, advances the version to 2 and the update instant, and changes the content hash [P2-S12-AC-016]');
+select is(pg_temp.s12tt_labels((select id from s12tt_alpha_id)),
+  '[{"locale":"de-DE","label":"Alpha DE"},{"locale":"en-US","label":"Alpha Prime"},{"locale":"fr-FR","label":"Alpha FR"}]'::jsonb,
+  'the current labels are the new en-US and de-DE versions plus the untouched fr-FR one [P2-S12-AC-016]');
+select ok(
+  (select count(*) = 4 from platform_private.cms_term_labels where term_id = (select id from s12tt_alpha_id))
+  and (select label = 'Alpha' and state = 'active' from platform_private.cms_term_labels
+        where term_id = (select id from s12tt_alpha_id) and locale = 'en-US' and version = 1)
+  and (select label = 'Alpha Prime' from platform_private.cms_term_labels
+        where term_id = (select id from s12tt_alpha_id) and locale = 'en-US' and version = 2)
+  and (select version = 1 from platform_private.cms_term_labels where term_id = (select id from s12tt_alpha_id) and locale = 'de-DE'),
+  'rename appended label versions (en-US 2, de-DE 1) and left the version-1 en-US row unchanged: labels are append-only [P2-S12-AC-016]');
+select ok(
+  (select count(*) = 2 and bool_and(event.aggregate_type = 'cms_term')
+     from platform_private.outbox_events event where event.event_type = 'cms.taxonomy.changed.v1' and event.aggregate_id = (select id from s12tt_alpha_id))
+  and (select aggregate_version = 2 and payload = jsonb_build_object('taxonomyId', pg_temp.s12tt_lineage('vf'),
+                                                 'taxonomyVersionId', pg_temp.s12tt_active_id(pg_temp.s12tt_lineage('vf')))
+         from platform_private.outbox_events where event_type = 'cms.taxonomy.changed.v1' and aggregate_id = (select id from s12tt_alpha_id)
+          and aggregate_version = 2)
+  and (select count(*) = 1 from audit_private.audit_events where action = 'cms.taxonomy.term.rename' and target_id = (select id from s12tt_alpha_id)),
+  'rename committed exactly one more event (aggregate version 2) and one audit record [P2-S12-AC-021]');
+select pg_temp.s12tt_mark('after-rename');
+select pg_temp.s12tt_act('r-rename-replay', 'owner', pg_temp.s12tt_lineage('vf'), 'rename', 'alpha', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Alpha Prime"},{"locale":"de-DE","label":"Alpha DE"}]'::jsonb, 'idempotencyKey', 's12tt-r-rename'));
+select ok(pg_temp.s12ga_body('r-rename-replay') = pg_temp.s12ga_body('r-rename') and pg_temp.s12tt_same('after-rename'),
+  'a same-key rename replay returns the original response and appends no second label, event or audit row [P2-S12-AC-019]');
+
+-- alias ---------------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12tt_act('r-alias', 'owner', pg_temp.s12tt_lineage('vf'), 'alias', 'alpha', '{"aliases":["second","first"]}'::jsonb);
+select ok(pg_temp.s12tt_oc('r-alias') = 'ok' and pg_temp.s12ga_body('r-alias')->>'version' = '3'
+    and (select aliases = '["first", "Initial", "second"]'::jsonb from platform_private.cms_terms where id = (select id from s12tt_alpha_id)),
+  'alias appends only the new aliases to the existing ones (a repeated alias is not duplicated), consuming version 3 [P2-S12-AC-016]');
+select pg_temp.s12tt_act('r-alias-only-known', 'owner', pg_temp.s12tt_lineage('vf'), 'alias', 'alpha', '{"aliases":["first"]}'::jsonb);
+select ok(pg_temp.s12tt_oc('r-alias-only-known') = 'ok' and pg_temp.s12ga_body('r-alias-only-known')->>'version' = '4'
+    and (select aliases = '["first", "Initial", "second"]'::jsonb from platform_private.cms_terms where id = (select id from s12tt_alpha_id)),
+  'an alias action naming only known aliases is still an accepted action (version 4) and changes no alias [P2-S12-AC-016]');
+select pg_temp.s12tt_mark('before-alias-overflow');
+select pg_temp.s12tt_act('r-alias-overflow', 'owner', pg_temp.s12tt_lineage('vf'), 'alias', 'alpha', jsonb_build_object(
+  'aliases', (select jsonb_agg('extra-' || i) from generate_series(1, 62) i)));
+select is(pg_temp.s12tt_oc('r-alias-overflow'), 'P0001:VALIDATION_FAILED#["/aliases"]',
+  'a union of 65 aliases is refused at /aliases: the term holds at most 64 [P2-S12-AC-017]');
+select pg_temp.s12tt_act('r-alias-bytes', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'bytes-probe', jsonb_build_object(
+  'aliases', (select jsonb_agg(repeat('€', 150) || lpad(i::text, 3, '0') order by i) from generate_series(1, 64) i)));
+select is(pg_temp.s12tt_oc('r-alias-bytes'), 'P0001:VALIDATION_FAILED#["/aliases"]',
+  '64 aliases of 160 characters that need more than 16,384 octets are refused at /aliases, not as a raw check violation [P2-S12-AC-017]');
+select ok(pg_temp.s12tt_same('before-alias-overflow'), 'neither alias refusal changed any store [P2-S12-AC-017]');
+
+-- deprecate -----------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12tt_act('r-deprecate', 'owner', pg_temp.s12tt_lineage('vf'), 'deprecate', 'alpha');
+select ok(pg_temp.s12tt_oc('r-deprecate') = 'ok' and pg_temp.s12ga_body('r-deprecate')->>'lifecycle' = 'deprecated'
+    and pg_temp.s12ga_body('r-deprecate')->>'version' = '5' and pg_temp.s12ga_body('r-deprecate')->>'id' = (select id::text from s12tt_alpha_id)
+    and pg_temp.s12ga_body('r-deprecate')->'successorId' = 'null'::jsonb,
+  'deprecate moves the term to deprecated at version 5 with the same id and no successor [P2-S12-AC-016]');
+select ok(
+  (select lifecycle = 'deprecated' and aliases = '["first", "Initial", "second"]'::jsonb from platform_private.cms_terms where id = (select id from s12tt_alpha_id))
+  and pg_temp.s12tt_labels((select id from s12tt_alpha_id))
+        = '[{"locale":"de-DE","label":"Alpha DE"},{"locale":"en-US","label":"Alpha Prime"},{"locale":"fr-FR","label":"Alpha FR"}]'::jsonb,
+  'a deprecated term keeps its aliases and labels: it stays resolvable [P2-S12-AC-016]');
+select pg_temp.s12tt_mark('before-deprecated-faults');
+select pg_temp.s12tt_act('r-deprecate-twice', 'owner', pg_temp.s12tt_lineage('vf'), 'deprecate', 'alpha');
+select pg_temp.s12tt_act('r-create-deprecated-key', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'alpha');
+select is(pg_temp.s12tt_oc('r-deprecate-twice'), 'P0001:CONFLICT', 'deprecating a deprecated term is 409 [P2-S12-AC-016]');
+select is(pg_temp.s12tt_oc('r-create-deprecated-key'), 'P0001:CONFLICT', 'the key of a deprecated term cannot be created again [P2-S12-AC-016]');
+select ok(pg_temp.s12tt_same('before-deprecated-faults'), 'the refusals on a deprecated term changed nothing [P2-S12-AC-016]');
+select pg_temp.s12tt_act('r-rename-deprecated', 'owner', pg_temp.s12tt_lineage('vf'), 'rename', 'alpha', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Alpha Retired"}]'::jsonb));
+select ok(pg_temp.s12tt_oc('r-rename-deprecated') = 'ok' and pg_temp.s12ga_body('r-rename-deprecated')->>'lifecycle' = 'deprecated'
+    and pg_temp.s12ga_body('r-rename-deprecated')->>'version' = '6',
+  'a deprecated term can still be relabelled (decision D3): the lifecycle stays deprecated, the version advances [P2-S12-AC-016]');
+select pg_temp.s12tt_act('r-alias-deprecated', 'owner', pg_temp.s12tt_lineage('vf'), 'alias', 'alpha', '{"aliases":["legacy"]}'::jsonb);
+select ok(pg_temp.s12tt_oc('r-alias-deprecated') = 'ok' and pg_temp.s12ga_body('r-alias-deprecated')->>'version' = '7'
+    and (select aliases ? 'legacy' from platform_private.cms_terms where id = (select id from s12tt_alpha_id)),
+  'a deprecated term can still take an alias [P2-S12-AC-016]');
+
+-- unknown keys ---------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12tt_mark('before-unknown-key');
+select pg_temp.s12tt_act('u-rename', 'owner', pg_temp.s12tt_lineage('vf'), 'rename', 'no-such-term');
+select pg_temp.s12tt_act('u-alias', 'owner', pg_temp.s12tt_lineage('vf'), 'alias', 'no-such-term');
+select pg_temp.s12tt_act('u-deprecate', 'owner', pg_temp.s12tt_lineage('vf'), 'deprecate', 'no-such-term');
+select pg_temp.s12tt_act('u-merge', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'no-such-term', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'ab')));
+select is(array[pg_temp.s12tt_oc('u-rename'), pg_temp.s12tt_oc('u-alias'), pg_temp.s12tt_oc('u-deprecate'), pg_temp.s12tt_oc('u-merge')],
+  array_fill('P0001:NOT_FOUND'::text, array[4]), 'rename, alias, deprecate and merge of an absent term are the concealing 404 [P2-S12-AC-018]');
+select pg_temp.s12tt_act('u-other-vocabulary', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'alpha');
+select is(pg_temp.s12tt_oc('u-other-vocabulary'), 'P0001:NOT_FOUND',
+  'a term key of ANOTHER vocabulary of the same owner is absent here: terms are addressed within the vocabulary [P2-S12-AC-018]');
+select ok(pg_temp.s12tt_same('before-unknown-key'), 'the 404s changed nothing [P2-S12-AC-018]');

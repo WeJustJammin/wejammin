@@ -1,0 +1,77 @@
+-- CMS-03C-09 `activate` on ga1 (ordinary template): the atomic switch, the exact resource, the lifecycle counter, the exactly-once
+-- event and audit, replay, the idempotency mismatch, a second activation and the stale-version retire of the active subject.
+select pg_temp.s12gb_act('a1', 'owner', pg_temp.s12ga_review('ga1'), 'activate');
+select pg_temp.s12ga_keep('a1', 'a1');
+select is(pg_temp.s12ga_out('a1'), 'ok',
+  'the subject owner activates an approved governed review with recent MFA [P2-S12-AC-082]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('a1')),
+  'action,activatedAt,eventType,lineageId,reviewId,reviewVersion,scheduledForUtc,subjectId,subjectKind,subjectState,subjectVersion,supersededVersion',
+  'the 200 body is exactly GovernedActivationResource (12 members, DEC-191 supersededVersion) [P2-S12-AC-082]');
+select ok(
+  pg_temp.s12ga_body('a1')->>'reviewId' = pg_temp.s12ga_review('ga1')::text
+    and pg_temp.s12ga_body('a1')->>'reviewVersion' = '3'
+    and pg_temp.s12ga_body('a1')->>'subjectKind' = 'template_version'
+    and pg_temp.s12ga_body('a1')->>'subjectId' = pg_temp.s12ga_subject('ga1')::text
+    and pg_temp.s12ga_body('a1')->>'lineageId' = pg_temp.s12gb_subj('ga1')->>'template_id'
+    and pg_temp.s12ga_body('a1')->'subjectVersion' = '1'::jsonb
+    and pg_temp.s12ga_body('a1')->>'action' = 'activate'
+    and pg_temp.s12ga_body('a1')->>'subjectState' = 'active'
+    and pg_temp.s12ga_body('a1')->>'activatedAt' = platform_private.auth_iso_time((pg_temp.s12gb_subj('ga1')->>'activated_at')::timestamptz)
+    and pg_temp.s12ga_body('a1')->'scheduledForUtc' = 'null'::jsonb
+    and pg_temp.s12ga_body('a1')->>'eventType' = 'cms.template.activated.v1',
+  'the resource names the review at its advanced version, the subject at its immutable definition number, the active state, the '
+  || 'activation instant and the template activation event [P2-S12-AC-082]');
+select ok(
+  (select subject.state = 'active' and subject.lifecycle_version = 4 and subject.version = 1
+          and subject.activated_at is not null and subject.retired_at is null
+     from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('ga1'))
+  and (select review.state = 'approved' and review.version = 3 and review.activated_at = subject.activated_at
+          and date_trunc('milliseconds', review.decided_at) = (pg_temp.s12ga_body('ap-ga1')->>'decidedAt')::timestamptz
+          and review.recorded_decision_count = 1
+     from platform_private.cms_governed_reviews review
+     join platform_private.cms_template_versions subject on subject.id = review.subject_id
+    where review.id = pg_temp.s12ga_review('ga1')),
+  'activation moves the subject approved -> active (lifecycle 3 -> 4, definition version 1) and records activated_at on the review whose version advances to 3 [P2-S12-AC-082]');
+select ok(
+  (select count(*) = 1 and bool_and(event.event_type = 'cms.template.activated.v1' and event.schema_version = 1
+            and event.aggregate_type = 'cms_template_version' and event.aggregate_version = 4
+            and event.payload = jsonb_build_object('templateId', subject.template_id, 'templateVersionId', subject.id))
+     from platform_private.outbox_events event
+     join platform_private.cms_template_versions subject on subject.id = event.aggregate_id
+    where event.aggregate_id = pg_temp.s12ga_subject('ga1'))
+  and pg_temp.s12gb_audits('cms.governed.activate', 'ga1') = 1,
+  'exactly one cms.template.activated.v1 commits with one audit record: aggregate = the switched subject row at its lifecycle counter 4, '
+  || 'payload = { templateId, templateVersionId } (DEC-180 G3, DEC-188) [P2-S12-AC-082]');
+select ok(exists (select 1 from platform_private.idempotency_records record
+                   where record.operation = 'CMS-03C-09' and record.key_hash = platform_private.cms_key_hash('s12ga-a1')
+                     and record.state = 'completed' and record.response_ref->>'status' = '200'),
+  'the completed idempotency record stores status 200 [P2-S12-AC-086]');
+
+-- ----------------------------------------------------------------------------- replay and mismatch --
+select pg_temp.s12gb_mark('ga1:active', 'ga1');
+select pg_temp.s12gb_act('a1', 'owner', pg_temp.s12ga_review('ga1'), 'activate', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select ok(pg_temp.s12ga_out('a1') = 'ok' and pg_temp.s12ga_body('a1') = pg_temp.s12ga_kept('a1')
+    and pg_temp.s12gb_same('ga1:active', 'ga1') and pg_temp.s12gb_events('ga1') = 1,
+  'an exact same-key replay returns the original response and writes no second event, audit record or state change [P2-S12-AC-086]');
+select pg_temp.s12gb_act('a1', 'owner', pg_temp.s12ga_review('ga1'), 'schedule', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select is(pg_temp.s12ga_out('a1'), 'P0001:IDEMPOTENCY_MISMATCH',
+  'a same-key request with a different action is refused IDEMPOTENCY_MISMATCH [P2-S12-AC-086]');
+select pg_temp.s12gb_act('a1-again', 'owner', pg_temp.s12ga_review('ga1'), 'activate');
+select pg_temp.s12gb_act('a1-again-stale', 'owner', pg_temp.s12ga_review('ga1'), 'activate',
+  jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select pg_temp.s12gb_act('a1-schedule-again', 'owner', pg_temp.s12ga_review('ga1'), 'schedule');
+select is(pg_temp.s12ga_out('a1-again') || '|' || pg_temp.s12ga_out('a1-schedule-again'),
+  'P0001:subject_not_activatable|P0001:subject_not_activatable',
+  'a second activation or schedule of an already active subject, with the current review version, is 409 subject_not_activatable [P2-S12-AC-085]');
+select ok(pg_temp.s12ga_out('a1-again-stale') = 'P0001:VERSION_MISMATCH'
+    and nullif(pg_temp.s12ga_det('a1-again-stale'), '')::jsonb = '{"expectedVersion": "2", "currentVersion": "3"}'::jsonb,
+  'a second activation with the pre-activation version is VERSION_MISMATCH: the activation advanced the review version [P2-S12-AC-085]');
+select pg_temp.s12gb_act('a1-retire-stale', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select ok(pg_temp.s12ga_out('a1-retire-stale') = 'P0001:VERSION_MISMATCH'
+    and nullif(pg_temp.s12ga_det('a1-retire-stale'), '')::jsonb = '{"expectedVersion": "2", "currentVersion": "3"}'::jsonb
+    and pg_temp.s12gb_same('ga1:active', 'ga1') and pg_temp.s12gb_events('ga1') = 1
+    and pg_temp.s12gb_reserved('a1-retire-stale') = 0,
+  'retire of the active subject with the pre-activation review version is VERSION_MISMATCH: the review CAS runs first, nothing changes and nothing is reserved (the retirement itself is 095) [P2-S12-AC-087]');
+select ok(pg_temp.s12gb_same('ga1:active', 'ga1') and pg_temp.s12gb_events('ga1') = 1
+    and pg_temp.s12gb_audits('cms.governed.activate', 'ga1') = 1,
+  'the mismatch, second activation and stale-version retire left the subject, review, event and audit counts exactly as the one activation made them [P2-S12-AC-086]');

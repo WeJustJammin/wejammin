@@ -1,0 +1,159 @@
+-- World of the locale resolver suite (CMS-03C-20).  Include AFTER the Slice 10 RPC fixtures and
+-- phase_02_slice_12_locale_variant/000-helpers.sqlinc.
+--
+-- An ACTIVE `loc12doc` type is created by the real cms_create_type_draft RPC and activated with
+-- the REAL seeded editorial workflow policy member (the same terminal state the Slice 11 world
+-- uses).  Fields: title and summary and nick (short_text, localized), legal and terms (short_text,
+-- no_fallback), slug (short_text, none).  Locales: en-US default; de-DE and fr-FR chain to en-US,
+-- fr-CA chains fr-FR then en-US.  The entry is saved by the real cms_create_entry with every field
+-- but `nick` valued, so `nick` is missing everywhere.
+
+select pg_temp.s10_rpc_as(
+  (select value::uuid from s10_ids where key = 'creatorAuth'),
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+create or replace function pg_temp.l12r_field_def(p_id text, p_key text, p_mode text, p_order integer)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object('stableFieldId', p_id, 'key', p_key, 'kind', 'short_text',
+    'constraints', '{}'::jsonb, 'required', false, 'validatorKey', null, 'validatorVersion', null,
+    'defaultMode', 'none', 'localizationMode', p_mode,
+    'editorConfig', jsonb_build_object('label', initcap(p_key), 'order', p_order), 'lifecycle', 'active')
+$body$;
+
+create temp table l12r_type_created on commit drop as
+select platform_api.cms_create_type_draft(request || jsonb_build_object(
+  'typeKey', 'loc12doc', 'label', 'Locale twelve document',
+  'idempotencyKey', 'l12r-type-create-0001',
+  'supportedLocales', jsonb_build_array('de-DE', 'en-US', 'fr-CA', 'fr-FR'),
+  'fallbackChains', jsonb_build_object(
+    'de-DE', jsonb_build_array('en-US'),
+    'fr-CA', jsonb_build_array('fr-FR', 'en-US'),
+    'fr-FR', jsonb_build_array('en-US')),
+  'fields', jsonb_build_array(
+    pg_temp.l12r_field_def('a9400000-0000-4000-8000-000000001201', 'title', 'localized', 0),
+    pg_temp.l12r_field_def('a9400000-0000-4000-8000-000000001202', 'summary', 'localized', 1),
+    pg_temp.l12r_field_def('a9400000-0000-4000-8000-000000001203', 'legal', 'no_fallback', 2),
+    pg_temp.l12r_field_def('a9400000-0000-4000-8000-000000001204', 'terms', 'no_fallback', 3),
+    pg_temp.l12r_field_def('a9400000-0000-4000-8000-000000001205', 'slug', 'none', 4),
+    pg_temp.l12r_field_def('a9400000-0000-4000-8000-000000001206', 'nick', 'localized', 5)),
+  'relations', '[]'::jsonb
+)) as response
+from s10_type_request;
+
+create temp table l12r_ids on commit drop as
+select 'typeId' as key, response->>'contentTypeId' as value from l12r_type_created
+union all select 'versionId', response->>'id' from l12r_type_created
+union all select 'artifactId', response->>'schemaArtifactId' from l12r_type_created;
+
+select ok(
+  (select count(*) = 3 from l12r_ids)
+    and (select count(*) = 6 from platform_private.cms_field_definition_versions field
+         where field.content_type_version_id = (select value::uuid from l12r_ids where key = 'versionId')),
+  'resolver world: the loc12doc type compiles with six fields (three localized, two no_fallback, one none)'
+);
+
+select set_config('app.cms_rpc', 'true', true);
+create temp table l12r_policy on commit drop as
+select platform_private.cms_workflow_policy_member('editorial', 1) as member;
+update platform_private.cms_content_type_versions
+set state = 'active', version = version + 1,
+    activation_workflow_policy_key = (select member->>'key' from l12r_policy),
+    activation_workflow_policy_version = (select (member->>'version')::bigint from l12r_policy),
+    activation_workflow_policy_hash = (select member->>'policyHash' from l12r_policy),
+    activation_required_decision_count = (select (member->>'requiredDecisionCount')::integer from l12r_policy),
+    activation_required_capabilities = (select member->'requiredCapabilities' from l12r_policy),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = (select value::uuid from l12r_ids where key = 'versionId');
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select value::uuid from l12r_ids where key = 'typeId');
+
+create or replace function pg_temp.l12r_fid(p_key text)
+returns uuid language sql stable as $body$
+  select field.stable_field_id from platform_private.cms_field_definition_versions field
+  where field.content_type_version_id = (select value::uuid from l12r_ids where key = 'versionId')
+    and field.field_key = p_key
+$body$;
+
+create or replace function pg_temp.l12r_values(p_title text, p_summary text, p_legal text, p_terms text, p_slug text)
+returns jsonb
+language sql
+as $body$
+  select jsonb_strip_nulls(jsonb_build_object(
+    pg_temp.l12r_fid('title')::text, p_title, pg_temp.l12r_fid('summary')::text, p_summary,
+    pg_temp.l12r_fid('legal')::text, p_legal, pg_temp.l12r_fid('terms')::text, p_terms,
+    pg_temp.l12r_fid('slug')::text, p_slug))
+$body$;
+
+create temp table l12r_saved on commit drop as
+select platform_api.cms_create_entry(jsonb_build_object(
+  'contentTypeId', (select value::uuid from l12r_ids where key = 'typeId'),
+  'contentTypeVersionId', (select value::uuid from l12r_ids where key = 'versionId'),
+  'locale', 'en-US',
+  'changedPaths', (select jsonb_agg('/fields/' || key order by key)
+                   from jsonb_object_keys(pg_temp.l12r_values('Source title', 'Source summary',
+                     'Source legal', 'Source terms', 'source-slug')) key),
+  'values', pg_temp.l12r_values('Source title', 'Source summary', 'Source legal', 'Source terms', 'source-slug'),
+  'validatorRefs', '[]'::jsonb, 'idempotencyKey', 'l12r-entry-save-0001',
+  'workflowPolicy', platform_private.cms_editorial_workflow_policy_evidence(
+    (select value::uuid from l12r_ids where key = 'versionId')),
+  'activationEvidence', platform_private.cms_type_version_resource(
+    (select value::uuid from l12r_ids where key = 'versionId'))->'activationEvidence',
+  'schemaArtifact', jsonb_build_object('id', artifact.id,
+    'contentTypeVersionId', artifact.content_type_version_id, 'artifactHash', artifact.artifact_hash,
+    'compilerVersion', artifact.compiler_version, 'zodContractRef', artifact.zod_contract_ref)
+)) as response
+from platform_private.cms_schema_artifacts artifact
+where artifact.id = (select value::uuid from l12r_ids where key = 'artifactId');
+
+-- From here the shared locale helpers address this entry.
+update s10_ids set value = (select response#>>'{entry,id}' from l12r_saved) where key = 'entryId';
+
+select ok(
+  (select response#>>'{entry,id}' is not null and response#>>'{revision,id}' is not null from l12r_saved)
+    and pg_temp.l12_entry() = (select (response#>>'{entry,id}')::uuid from l12r_saved)
+    and (select count(*) = 5 from platform_private.cms_entry_field_values value
+         where value.revision_id = pg_temp.l12_source()),
+  'resolver world: the real cms_create_entry saved the source revision with five field values (nick stays unvalued)'
+);
+
+-- A request for this world: the active chain of the locale and both no_fallback ids.
+create or replace function pg_temp.l12r_req(
+  p_locale text, p_fields jsonb, p_key text
+)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.l12_req(p_locale, p_fields, p_key, jsonb_build_object(
+    'fallbackChain', case p_locale
+      when 'fr-CA' then jsonb_build_array('fr-FR', 'en-US')
+      else jsonb_build_array('en-US') end,
+    'noFallbackFieldIds', jsonb_build_array(pg_temp.l12r_fid('legal'), pg_temp.l12r_fid('terms'))))
+$body$;
+
+create or replace function pg_temp.l12r_field_list(p_pairs jsonb)
+returns jsonb
+language sql
+as $body$
+  select coalesce(jsonb_agg(jsonb_build_object('fieldId', pg_temp.l12r_fid(item.key), 'value', item.value)
+                            order by item.key), '[]'::jsonb)
+  from jsonb_each(p_pairs) item
+$body$;
+
+-- The resolution of one field as a compact string 'mode/outcome/provenance/from/stale/blocking/reason'.
+create or replace function pg_temp.l12r_res(p_locale text, p_field text)
+returns text
+language sql
+as $body$
+  select case when result ? '__error' then result->>'__error' else
+    (result->>'mode') || '/' || (result->>'outcome') || '/' || (result->>'provenance') || '/'
+    || coalesce(result->>'resolvedFromLocale', '-') || '/' || (result->>'stale') || '/'
+    || (result->>'blocking') || '/' || coalesce(result->>'reasonCode', '-') end
+  from (select pg_temp.l12_json(format(
+    'select platform_private.cms_resolve_locale_field(%L::uuid, %L, %L::uuid)',
+    pg_temp.l12_entry(), p_locale, pg_temp.l12r_fid(p_field))) as result) resolved
+$body$;

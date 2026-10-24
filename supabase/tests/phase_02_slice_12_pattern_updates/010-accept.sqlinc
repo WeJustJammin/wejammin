@@ -1,0 +1,90 @@
+-- CMS-03C-15 accept: the instance adopts the target version; a path changed only by the new version adopts it, a local override on a path the
+-- new version did not change is retained, every collision needs an explicit yours or theirs choice; it appends an `active` row pinned to the
+-- target version at the instance's position.  BE03c 1367, 400, 1476; AC-118 .. AC-122, AC-258.
+
+-- theirs-only adoption -----------------------------------------------------------------------------------------------------------------
+select pg_temp.s12pu_update('u-ap1', pg_temp.s12pu_update_request('ap1', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap1', '/hero')), 's12pu-ap1-0001', 2));
+select * from pg_temp.s12puc_check('u-ap1', 'ap1', array['/hero'], jsonb_build_array(
+  jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+select ok((select count(*) = 2 and bool_and(version in (1, 2)) from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('ap1') and path = '/hero')
+    and (select count(*) = 1 from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('ap1') and path = '/cta'),
+  'the path /hero now has two version rows; the unanswered /cta still has only its pinned row: an unanswered update overwrites nothing');
+select pg_temp.s12pu_diff_head('u-ap1-after', 'ap1', '/hero');
+select ok(pg_temp.s12pu_body('u-ap1-after')->>'targetPatternVersion' = '2' and pg_temp.s12pu_body('u-ap1-after')#>>'{instance,pinnedPatternVersion}' = '2'
+    and pg_temp.s12pu_body('u-ap1-after')->'paths' = '[]'::jsonb and pg_temp.s12pu_body('u-ap1-after')#>>'{instance,version}' = '2',
+  'after the accept the new head diffs as no-update against pattern version 2');
+
+-- a collision resolved with `yours` keeps the override; the retained override on an unchanged path stays ------------------------------------
+select pg_temp.s12pu_update('u-ap3', pg_temp.s12pu_update_request('ap3', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('ap3', '/hero', '[{"path":"/hero/title","choice":"yours"}]'::jsonb)), 's12pu-ap3-0001', 2));
+select * from pg_temp.s12puc_check('u-ap3', 'ap3', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2',
+  'props', '{"/hero/title":{"title":"MINE"},"/hero/note":{"title":"MY-NOTE"}}'::jsonb)));
+-- ... with `theirs` the colliding override is dropped, the unrelated one stays
+select pg_temp.s12pu_update('u-ap3b', pg_temp.s12pu_update_request('ap3b', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('ap3b', '/hero', '[{"path":"/hero/title","choice":"theirs"}]'::jsonb)), 's12pu-ap3b-0001', 2));
+select * from pg_temp.s12puc_check('u-ap3b', 'ap3b', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2',
+  'props', '{"/hero/note":{"title":"MY-NOTE"}}'::jsonb)));
+-- two collisions, one choice each
+select pg_temp.s12pu_update('u-ap5', pg_temp.s12pu_update_request('ap5', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('ap5', '/hero', '[{"path":"/hero","choice":"yours"},{"path":"/hero/title","choice":"theirs"}]'::jsonb)), 's12pu-ap5-0001', 2));
+select * from pg_temp.s12puc_check('u-ap5', 'ap5', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2',
+  'props', '{"/hero":{"title":"MINE-H"}}'::jsonb)));
+-- an override equal to the base is no collision: the new value is adopted and the redundant override is dropped
+select pg_temp.s12pu_update('u-ap6', pg_temp.s12pu_update_request('ap6', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap6', '/hero')), 's12pu-ap6-0001', 2));
+select * from pg_temp.s12puc_check('u-ap6', 'ap6', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+-- a local override on a root the new version did not change is retained
+select pg_temp.s12pu_update('u-ap15', pg_temp.s12pu_update_request('ap15', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap15', '/cta')), 's12pu-ap15-0001', 2));
+select * from pg_temp.s12puc_check('u-ap15', 'ap15', array['/cta'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2',
+  'props', '{"/cta":{"title":"MY-C"}}'::jsonb)));
+-- an explicit JSON null override is an override: it collides and `yours` keeps it
+select pg_temp.s12pu_update('u-ap16', pg_temp.s12pu_update_request('ap16', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('ap16', '/hero', '[{"path":"/hero/title","choice":"yours"}]'::jsonb)), 's12pu-ap16-0001', 2));
+select * from pg_temp.s12puc_check('u-ap16', 'ap16', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2',
+  'props', '{"/hero/title":null}'::jsonb)));
+
+-- a pending_diff head (what the scan appends): accept answers it with an active row and no pending version
+select pg_temp.s12pu_pending('ap17', '/hero', 2) as pending_row \gset
+select pg_temp.s12pu_update('u-ap17', pg_temp.s12pu_update_request('ap17', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap17', '/hero')), 's12pu-ap17-0001', 2));
+select * from pg_temp.s12puc_check('u-ap17', 'ap17', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+select is((select state || ':' || version::text from platform_private.cms_composition_instances where id = :'pending_row'::uuid), 'pending_diff:2',
+  'the pending_diff row itself is untouched; the accept appended version 3');
+
+-- a root the new version removed (DEC-193): the removal of the instance's own block root is always a `removed_root` collision, so an accept
+-- needs an explicit choice (a missing choice is 422); `theirs` retires the row (still pinned to the version whose forest has the root, never
+-- to the target), `yours` appends a detached copy carrying the resolved tree.  BE03c Linked update (diff, accept, detach).
+select pg_temp.s12pu_update('u-rm1-keep', pg_temp.s12pu_update_request('rm1', 'accept', jsonb_build_array(pg_temp.s12pu_target('rm1', '/keep')), 's12pu-rm1k-0001', 2));
+select * from pg_temp.s12puc_check('u-rm1-keep', 'rm1', array['/keep'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+select * from pg_temp.s12pu_refused('u-rm1-gone-nochoice', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rm1', 'accept', jsonb_build_array(pg_temp.s12pu_target('rm1', '/gone')), 's12pu-rm1g-0001', 2),
+  'VALIDATION_FAILED', '["/instances/0/choices"]'::jsonb);
+select pg_temp.s12pu_update('u-rm1-gone', pg_temp.s12pu_update_request('rm1', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('rm1', '/gone', '[{"path":"/gone","choice":"theirs"}]'::jsonb)), 's12pu-rm1g-0002', 2));
+select * from pg_temp.s12puc_check('u-rm1-gone', 'rm1', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'retired', 'linkMode', 'linked', 'patternVersion', '1')));
+select pg_temp.s12pu_update('u-rm2', pg_temp.s12pu_update_request('rm2', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('rm2', '/gone', '[{"path":"/gone","choice":"theirs"}]'::jsonb)), 's12pu-rm2-0001', 2));
+select * from pg_temp.s12puc_check('u-rm2', 'rm2', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'retired', 'linkMode', 'linked', 'patternVersion', '1')));
+select pg_temp.s12pu_update('u-rm4', pg_temp.s12pu_update_request('rm4', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('rm4', '/gone', '[{"path":"/gone","choice":"yours"}]'::jsonb)), 's12pu-rm4-0001', 2));
+select * from pg_temp.s12puc_check('u-rm4', 'rm4', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', '1',
+  'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'gone', 'G99')]))));
+
+-- chains through a nested pattern reference whose pinned nested version is superseded
+select pg_temp.s12pu_update('u-nest1', pg_temp.s12pu_update_request('nest1', 'accept', jsonb_build_array(pg_temp.s12pu_target('nest1', '/shared/leaf')), 's12pu-nest1-0001', 2));
+select * from pg_temp.s12puc_check('u-nest1', 'nest1', array['/shared/leaf'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+select pg_temp.s12pu_update('u-nest2', pg_temp.s12pu_update_request('nest2', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('nest2', '/shared/leaf', '[{"path":"/shared/leaf","choice":"theirs"}]'::jsonb)), 's12pu-nest2-0001', 2));
+select * from pg_temp.s12puc_check('u-nest2', 'nest2', array['/shared/leaf'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+
+-- the target is the latest active compatible version above the pinned one, not the next number
+select pg_temp.s12pu_update('u-ver1', pg_temp.s12pu_update_request('ver1', 'accept', jsonb_build_array(pg_temp.s12pu_target('ver1', '/item')), 's12pu-ver1-0001', 3));
+select * from pg_temp.s12puc_check('u-ver1', 'ver1', array['/item'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '3', 'props', '{}'::jsonb)));
+select pg_temp.s12pu_update('u-ver2', pg_temp.s12pu_update_request('ver2', 'accept', jsonb_build_array(pg_temp.s12pu_target('ver2', '/item')), 's12pu-ver2-0001', 3));
+select * from pg_temp.s12puc_check('u-ver2', 'ver2', array['/item'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '3', 'props', '{}'::jsonb)));
+
+-- a row in a template slot: the placement prefix is not part of the node chain
+select pg_temp.s12pu_update('u-tpl1', pg_temp.s12pu_update_request('tpl1', 'accept', jsonb_build_array(pg_temp.s12pu_target('tpl1', '/main/hero')), 's12pu-tpl1-0001', 2));
+select * from pg_temp.s12puc_check('u-tpl1', 'tpl1', array['/main/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+
+-- 156 changed paths are not a barrier to accepting: the 128-path bound belongs to the diff read, not to the command
+select pg_temp.s12pu_update('u-wid1', pg_temp.s12pu_update_request('wid1', 'accept', jsonb_build_array(pg_temp.s12pu_target('wid1', '/wide')), 's12pu-wid1-0001', 2));
+select * from pg_temp.s12puc_check('u-wid1', 'wid1', array['/wide'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));

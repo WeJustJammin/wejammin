@@ -1,0 +1,65 @@
+-- Setup for the taxonomy-terms suites.  Real standing grants through CMS-03A-15, then real vocabularies through CMS-03C-16, 06, 08, 07
+-- and 09 under the real service_role:
+--   vf  flat, declares no canonical domain          ACTIVE   the main stage of the term actions
+--   vh  hierarchical, declares the built `role`      ACTIVE   hierarchy and canonical overlap
+--   vd  flat                                         DRAFT    never submitted: `taxonomy_not_active`
+--   vo  flat, owned by the second organization       DRAFT    the cross-owner negative control
+-- Actors: owner (taxonomy curator and receipt owner), rev1 (reviewer, member), rev2 (reviewer and author, member), designer2
+-- (editor, member), rev3 (claims the owner party, NOT a member), other (curator of the second organization: a labelled forgery).
+create temp table s12tt_setup(key text primary key, outcome text not null) on commit drop;
+insert into s12tt_setup(key, outcome) values
+  ('owner:curator', pg_temp.s12ga_grant('owner', 'cms.taxonomy_curator', 1)),
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 1)),
+  ('rev2:author', pg_temp.s12ga_grant('rev2', 'cms.author', 1));
+-- the reviewers act inside the owner party (rev3 only claims it: it has no tenure there)
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2', 'rev3');
+
+-- NEGATIVE-CONTROL AUTHORITY (labelled forgery, as the DEC-108 world labels its second organization's designer): `other` holds the
+-- curator capability in its OWN organization only, so a vocabulary of the owner organization must be concealed from a real curator.
+insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
+select pg_temp.s09d_id('otherOrg'), person_id, 'cms.taxonomy_curator', current_date, current_date + 1, true
+  from s09d_actor where key = 'other';
+update s09d_actor set party_id = pg_temp.s09d_id('otherOrg') where key = 'other';
+
+-- The role provider's source: real facet assertions of real persons (the Shard 01 facet command is not this lane's).
+insert into platform_private.role_facet_assertion(person_id, facet_code, state, source, asserted_at)
+select person_id, facet.code, 'active'::platform_private.facet_state, 'self_asserted'::platform_private.facet_source,
+       clock_timestamp() - interval '1 hour'
+  from s09d_actor actor join (values ('rev3', 'performer'), ('rev3', 'engineer')) facet(actor_key, code) on facet.actor_key = actor.key;
+
+select pg_temp.s12tt_vocab('vf', 'flat');
+select pg_temp.s12tt_vocab('vh', 'hierarchical', '["role"]'::jsonb);
+select pg_temp.s12tt_vocab('vd', 'flat', '[]'::jsonb, false);
+select pg_temp.s12tt_vocab('vo', 'flat', '[]'::jsonb, false, null, '["title"]'::jsonb, 'other');
+
+select ok((select count(*) = 4 and bool_and(outcome = 'OK') from s12tt_setup),
+  'fixture: the curator, two reviewers and the author hold their real CMS-03A-15 grants in the owner organization [P2-S12-AC-016]');
+select ok(
+  (select count(*) = 2 and bool_and(state = 'active' and lifecycle_version = 4)
+     from platform_private.cms_taxonomy_versions where id in (pg_temp.s12tt_lineage('vf'), pg_temp.s12tt_lineage('vh')))
+  and (select count(*) = 2 and bool_and(state = 'draft')
+         from platform_private.cms_taxonomy_versions where id in (pg_temp.s12tt_lineage('vd'), pg_temp.s12tt_lineage('vo')))
+  and (select owner_id from platform_private.cms_taxonomy_versions where id = pg_temp.s12tt_lineage('vo')) = pg_temp.s09d_id('otherOrg')
+  and (select owner_id from platform_private.cms_taxonomy_versions where id = pg_temp.s12tt_lineage('vf')) = pg_temp.s09d_id('ownerOrg'),
+  'fixture: vf and vh are ACTIVE (real create, submit, approval and activation); vd and vo are real DRAFTS; vo belongs to the other organization [P2-S12-AC-016]');
+select ok(
+  (select shape = 'hierarchical' and canonical_overlap_domains = '["role"]'::jsonb and allowlisted_field_keys = '["title"]'::jsonb
+     from platform_private.cms_taxonomy_versions where id = pg_temp.s12tt_lineage('vh'))
+  and (select count(*) = 0 from platform_private.cms_terms)
+  and (select count(*) = 2 from platform_private.role_facet_assertion where state = 'active' and person_id = (select person_id from s09d_actor where key = 'rev3')),
+  'fixture: vh declares the built role domain, no term exists yet and the role provider has two asserted facets (performer, engineer) [P2-S12-AC-137]');
+select ok(
+  pg_temp.s12tt_active(pg_temp.s12tt_lineage('vf')) = '1' and pg_temp.s12tt_active(pg_temp.s12tt_lineage('vd')) is null
+  and pg_temp.s12tt_active(pg_temp.s12tt_lineage('vh')) = '1',
+  'fixture: the active definition version of vf and vh is 1 and vd has none [P2-S12-AC-019]');
+select ok(
+  platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('owner'), 'cms.taxonomy_curator')
+  and not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('designer2'), 'cms.taxonomy_curator')
+  and platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('designer2'), 'cms.editor')
+  and platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('rev2'), 'cms.author')
+  and not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('rev1'), 'cms.author')
+  and not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('owner'), 'cms.author')
+  and not platform_private.cms_entry_tenant_visible(pg_temp.s12ga_auth('rev3'), pg_temp.s09d_id('ownerOrg'))
+  and platform_private.cms_person_holds_capability(pg_temp.s09d_id('otherOrg'), pg_temp.s12ga_person('other'), 'cms.taxonomy_curator'),
+  'fixture: owner is the only curator, designer2 an editor, rev2 an author, rev1 a plain member, rev3 not a member; other curates only its own organization [P2-S12-AC-018]');

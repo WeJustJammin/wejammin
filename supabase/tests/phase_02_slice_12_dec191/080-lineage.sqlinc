@@ -1,0 +1,68 @@
+-- DEC-191 / CMS-03C-09 supersededVersion, lineage shapes where "previously active version" and "previous definition number" differ
+-- (BE03c GovernedActivationResource schema block; FE03 :882).  Include AFTER 000-helpers.sqlinc and the governed-b world.
+create temp table d191_setup(key text primary key, outcome text not null) on commit drop;
+insert into d191_setup(key, outcome) values ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1));
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key = 'rev1';
+
+-- The state and definition number of a template subject, '<state>/<version>'.
+create or replace function pg_temp.d191_shape(p_tag text) returns text language sql stable as $body$
+  select state || '/' || version from platform_private.cms_template_versions where id = pg_temp.s12ga_subject(p_tag) $body$;
+
+-- ---------------------------------------------------------------------------------- sa: v2 never activated, v3 supersedes v1 --
+select pg_temp.s12gb_approved('sa1');
+select pg_temp.s12gb_act('sa1-act', 'owner', pg_temp.s12ga_review('sa1'), 'activate');
+select ok((select outcome = 'OK' from d191_setup where key = 'rev1:reviewer')
+    and pg_temp.s12ga_out('sa1-act') = 'ok' and pg_temp.s12ga_body('sa1-act') ? 'supersededVersion'
+    and pg_temp.s12ga_body('sa1-act')->'supersededVersion' = 'null'::jsonb and pg_temp.d191_shape('sa1') = 'active/1',
+  'fixture: v1 of the lineage sa activated through the real producer (first activation: supersededVersion null) [P2-S12-AC-082]');
+
+select pg_temp.d191_successor('sa2', 'sa1', 'sa1', array['typeA']);
+select pg_temp.d191_successor('sa3', 'sa1', 'sa2', array['typeA']);
+select pg_temp.s12gb_approve('sa3');
+select ok(pg_temp.d191_shape('sa1') = 'active/1' and pg_temp.d191_shape('sa2') = 'review/2' and pg_temp.d191_shape('sa3') = 'approved/3'
+    and (select review.state = 'open' from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('sa2'))
+    and (select review.state = 'approved' from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('sa3')),
+  'fixture: v1 is the lineage''s only active version, v2 was submitted and left in review (never activated), v3 is approved and not yet activated [P2-S12-AC-083]');
+
+select pg_temp.s12gb_act('sa3-act', 'owner', pg_temp.s12ga_review('sa3'), 'activate');
+select ok(pg_temp.s12ga_out('sa3-act') = 'ok' and pg_temp.d191_act_keys('sa3-act') = pg_temp.d191_activation_keys()
+    and pg_temp.s12ga_body('sa3-act')->'subjectVersion' = '3'::jsonb
+    and pg_temp.s12ga_body('sa3-act')->'supersededVersion' = '1'::jsonb
+    and jsonb_typeof(pg_temp.s12ga_body('sa3-act')->'supersededVersion') = 'number',
+  'activating v3 while v2 was never active names the superseded definition version 1, the previously ACTIVE version [P2-S12-AC-083]');
+select ok(pg_temp.s12ga_body('sa3-act')->'supersededVersion' is distinct from '2'::jsonb
+    and pg_temp.d191_shape('sa1') = 'superseded/1' and pg_temp.d191_shape('sa2') = 'review/2' and pg_temp.d191_shape('sa3') = 'active/3'
+    and (pg_temp.s12ga_body('sa3-act')->>'supersededVersion')::bigint
+        = (select version from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('sa1')),
+  'the member is not "the previous definition number" (2): v2 was never activated and v1 is the row that became superseded [P2-S12-AC-083]');
+
+-- ---------------------------------------------------------------------------------- sb: v1 retired, then v2 and v3 --
+select pg_temp.s12gb_approved('sb1');
+select pg_temp.s12gb_act('sb1-act', 'owner', pg_temp.s12ga_review('sb1'), 'activate');
+select pg_temp.s12gb_act('sb1-ret', 'owner', pg_temp.s12ga_review('sb1'), 'retire');
+select ok(pg_temp.s12ga_out('sb1-act') = 'ok' and pg_temp.s12ga_out('sb1-ret') = 'ok'
+    and pg_temp.s12ga_body('sb1-ret')->>'action' = 'retire' and pg_temp.s12ga_body('sb1-ret')->'supersededVersion' = 'null'::jsonb
+    and pg_temp.d191_shape('sb1') = 'retired/1'
+    and not exists (select 1 from platform_private.cms_template_versions where template_key = 's12ga-sb1' and state = 'active'),
+  'fixture: v1 of the lineage sb was activated and then retired; the lineage has no active version [P2-S12-AC-087]');
+
+select pg_temp.d191_successor('sb2', 'sb1', 'sb1', array['typeA']);
+select pg_temp.s12gb_approve('sb2');
+select pg_temp.s12gb_act('sb2-act', 'owner', pg_temp.s12ga_review('sb2'), 'activate');
+select ok(pg_temp.s12ga_out('sb2-act') = 'ok' and pg_temp.d191_act_keys('sb2-act') = pg_temp.d191_activation_keys()
+    and pg_temp.s12ga_body('sb2-act')->'subjectVersion' = '2'::jsonb
+    and pg_temp.s12ga_body('sb2-act') ? 'supersededVersion' and pg_temp.s12ga_body('sb2-act')->'supersededVersion' = 'null'::jsonb
+    and pg_temp.s12ga_body('sb2-act')->>'subjectState' = 'active',
+  'activating v2 after v1 was retired answers supersededVersion null: a retired version is not superseded by it [P2-S12-AC-083]');
+select ok(pg_temp.d191_shape('sb1') = 'retired/1' and pg_temp.d191_shape('sb2') = 'active/2',
+  'the retired v1 stays retired and v2 is the lineage''s active version after that activation [P2-S12-AC-083]');
+
+select pg_temp.d191_successor('sb3', 'sb1', 'sb2', array['typeA']);
+select pg_temp.s12gb_approve('sb3');
+select pg_temp.s12gb_act('sb3-act', 'owner', pg_temp.s12ga_review('sb3'), 'activate');
+select ok(pg_temp.s12ga_out('sb3-act') = 'ok' and pg_temp.d191_act_keys('sb3-act') = pg_temp.d191_activation_keys()
+    and pg_temp.s12ga_body('sb3-act')->'subjectVersion' = '3'::jsonb
+    and pg_temp.s12ga_body('sb3-act')->'supersededVersion' = '2'::jsonb,
+  'activating v3 over the active v2 names 2, not the retired v1 of the same lineage [P2-S12-AC-083]');
+select ok(pg_temp.d191_shape('sb1') = 'retired/1' and pg_temp.d191_shape('sb2') = 'superseded/2' and pg_temp.d191_shape('sb3') = 'active/3',
+  'only v2 became superseded; the retired v1 stayed retired [P2-S12-AC-083]');

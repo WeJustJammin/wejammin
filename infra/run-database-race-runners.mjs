@@ -16,6 +16,15 @@ const repositoryRoot = resolve(dirname(fileURLToPath(import.meta.url)), '..');
  * suites expect absent, and some need an uninitialized owner), so the gate
  * resets before each runner and once more at the end, leaving a clean
  * database for the steps that follow.
+ *
+ * Canonical mode.  The Slice 12 modules also have a root-run ALT mode that asserts an
+ * explicit release and forbids the primary container.  The gate launches every runner
+ * with `WEJAMMIN_CANONICAL_RACE=1` (`raceEnvironment`), the only thing that selects the
+ * canonical mode: the module then targets the container the Slice 10 and 11 modules use
+ * (`S10_RACE_DB_CONTAINER`, `AC217_DB_CONTAINER`, else `supabase_db_wejammin`), refuses
+ * the protected primary checkout, and refuses to run beside an exported ALT release. A
+ * module started by hand without the variable keeps its ALT asserts. See
+ * `infra/database-races/canonical-mode.mjs`. The Slice 9 to 11 modules ignore the variable.
  */
 export const RACE_RUNNERS = [
   'supabase/tests/phase_02_slice_09_dec108/012-concurrent-commands.mjs',
@@ -40,6 +49,39 @@ export const RACE_RUNNERS = [
   'supabase/tests/phase_02_slice_11_races/030-settings-snapshot-race.mjs',
   'supabase/tests/phase_02_slice_11_races/031-dependency-recheck-race.mjs',
   'supabase/tests/phase_02_slice_11_races/032-schedule-sweeper-overlap-race.mjs',
+  'supabase/tests/phase_02_slice_12_dec193_writer.race.mjs',
+  'supabase/tests/phase_02_slice_12_dec194_outer.race.mjs',
+  'supabase/tests/phase_02_slice_12_dec194_sweep.race.mjs',
+  'supabase/tests/phase_02_slice_12_dec199_publication.race.mjs',
+  'supabase/tests/phase_02_slice_12_entry_default_template_lock/020-race.mjs',
+  'supabase/tests/phase_02_slice_12_governed_authority.race.mjs',
+  'supabase/tests/phase_02_slice_12_restore_relation_visibility/020-race.mjs',
+];
+
+/**
+ * Modules under `supabase/tests` that a runner above imports (fixtures, session
+ * kits, assertion groups). They assert nothing on their own, so the gate never
+ * executes them; `tests/contracts/phase-02-slice-09-race-runner-gate.test.ts`
+ * requires every `.mjs` file there to be in exactly one of the two lists and
+ * every support module to be imported by another listed file.
+ */
+export const RACE_SUPPORT_MODULES = [
+  'supabase/tests/phase_02_slice_12_dec193_pattern_currentness/091-publication-race-session-kit.mjs',
+  'supabase/tests/phase_02_slice_12_dec193_pattern_currentness/093-publication-race-effects.mjs',
+  'supabase/tests/phase_02_slice_12_dec193_writer_boundaries/091-race-session-kit.mjs',
+  'supabase/tests/phase_02_slice_12_dec194_sweep/091-race-session-kit.mjs',
+  'supabase/tests/phase_02_slice_12_entry_default_template_lock/030-race-fixture.mjs',
+  'supabase/tests/phase_02_slice_12_entry_default_template_lock/040-race-session.mjs',
+  'supabase/tests/phase_02_slice_12_entry_default_template_lock/050-race-session-support.mjs',
+  'supabase/tests/phase_02_slice_12_entry_default_template_lock/060-race-assertions.mjs',
+  'supabase/tests/phase_02_slice_12_governed_authority/governed-authority-assertions.mjs',
+  'supabase/tests/phase_02_slice_12_governed_authority/governed-authority-execution.mjs',
+  'supabase/tests/phase_02_slice_12_governed_authority/governed-authority-fixture.mjs',
+  'supabase/tests/phase_02_slice_12_governed_authority/governed-authority-kit.mjs',
+  'supabase/tests/phase_02_slice_12_governed_authority/governed-authority-processes.mjs',
+  'supabase/tests/phase_02_slice_12_governed_authority/governed-authority-sessions.mjs',
+  'supabase/tests/phase_02_slice_12_restore_relation_visibility/030-race-fixture.mjs',
+  'supabase/tests/phase_02_slice_12_restore_relation_visibility/040-race-session.mjs',
 ];
 
 /**
@@ -114,6 +156,12 @@ export const runnerVerdict = ({ status, stdout }) => {
   return { passed: status === 0 && assertions > 0, assertions };
 };
 
+/** The environment of every launched runner: the caller's, plus the canonical-mode opt-in. */
+export const raceEnvironment = (env) => ({
+  ...env,
+  WEJAMMIN_CANONICAL_RACE: '1',
+});
+
 const resetDatabase = () => {
   const result = spawnSync('pnpm', ['db:reset'], {
     cwd: repositoryRoot,
@@ -141,6 +189,7 @@ const main = () => {
       [resolve(repositoryRoot, runner)],
       {
         cwd: repositoryRoot,
+        env: raceEnvironment(process.env),
         encoding: 'utf8',
         maxBuffer: 64 * 1024 * 1024,
       },

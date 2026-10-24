@@ -1,0 +1,43 @@
+-- CMS-03C-09 `activate` holds the lineage advisory lock (BE03c 1326 "in one transaction holding the review row and the lineage advisory lock";
+-- Slice 12 lock order row CMS-03C-09/-19: "and last the lineage advisory lock").  Two racing sessions cannot be simulated in one pgTAP
+-- transaction, so the lock is proven from pg_locks inside the producer's own transaction: held by this backend after a committed
+-- activation, not held before it.  The key is the one CMS-03C-19 takes (hashtextextended('cms.governed.lineage:<kind>:<lineage>', 0)),
+-- so the immediate and the scheduled activator serialize on the same lock.  The lost-race refusal (activation_conflict) itself is only
+-- reachable with a second session and stays unproven here.
+select pg_temp.s12gb_approved('gk1');
+select ok(pg_temp.s12gb_rev('gk1')->>'state' = 'approved' and pg_temp.s12gb_rev('gk1')->>'lineage_id' is not null
+    and not pg_temp.s12gb_lineage_lock_held('gk1'),
+  'control: a fresh approved review whose lineage no earlier command of this transaction touched holds no lineage advisory lock yet [P2-S12-AC-087]');
+select pg_temp.s12gb_act('k1', 'owner', pg_temp.s12ga_review('gk1'), 'activate');
+select ok(pg_temp.s12ga_out('k1') = 'ok' and pg_temp.s12ga_body('k1')->>'subjectState' = 'active'
+    and pg_temp.s12gb_lineage_lock_held('gk1'),
+  'a committed immediate activation holds the lineage advisory lock (the CMS-03C-19 key), so concurrent activators of one lineage serialize and the loser is activation_conflict [P2-S12-AC-087]');
+
+-- The conflict re-read under the advisory lock takes no row lock (BE03c 1338: no earlier position after a later one; ruling 1 of fix pass 2).
+-- Under the advisory lock no writer of the lineage's active row can be in flight, so a plain read suffices.  pgTAP has one session, so the
+-- lost-race branch itself is unreachable and a row lock is invisible from one session (see 005), hence the oracles read the function bodies:
+-- (a) the non-locking read helper answers correctly and contains no row-locking clause, with the FOR UPDATE helper as the positive control that
+-- the pattern sees a row lock; (b) no row-locking lineage read follows the advisory lock in either producer; (c) the key is derived once.
+select is(pg_temp.s12gb_read_active('gk1', extensions.gen_random_uuid()), pg_temp.s12ga_subject('gk1'),
+  'cms_governed_read_lineage_active returns the lineage active version when another subject is excluded [P2-S12-AC-087]');
+select ok(to_regprocedure('platform_private.cms_governed_read_lineage_active(text,uuid,uuid)') is not null
+    and pg_temp.s12gb_read_active('gk1', pg_temp.s12ga_subject('gk1')) is null,
+  'cms_governed_read_lineage_active answers NULL when the only active version is the excluded subject [P2-S12-AC-087]');
+select is(pg_temp.s12gb_takes_row_locks('platform_private.cms_governed_read_lineage_active(text,uuid,uuid)'), false,
+  'the body of cms_governed_read_lineage_active takes no row lock [P2-S12-AC-087]');
+select ok(pg_temp.s12gb_takes_row_locks('platform_private.cms_governed_lock_lineage_active(text,uuid,uuid)'),
+  'control: the row-lock pattern recognizes the FOR UPDATE helper cms_governed_lock_lineage_active, so the oracle can see a row lock [P2-S12-AC-087]');
+select ok(pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)') is not null
+    and strpos(pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)'), 'cms_governed_lock_lineage_active') = 0,
+  'cms_activate_governed_subject takes no row-locking lineage read after the advisory lock (BE03c 1338: the advisory lock is the last position) [P2-S12-AC-087]');
+select ok(pg_temp.s12gb_after_advisory('platform_private.cms_execute_governed_activation(jsonb)') is not null
+    and strpos(pg_temp.s12gb_after_advisory('platform_private.cms_execute_governed_activation(jsonb)'), 'cms_governed_lock_lineage_active') = 0,
+  'cms_execute_governed_activation takes no row-locking lineage read after the advisory lock (BE03c 1338) [P2-S12-AC-153]');
+select ok(strpos(pg_temp.s12gb_prosrc('platform_private.cms_governed_lineage_lock_key(text,uuid)'), 'cms.governed.lineage:') > 0
+    and strpos(pg_temp.s12gb_prosrc('platform_private.cms_activate_governed_subject(jsonb)'), 'cms.governed.lineage:') = 0
+    and strpos(pg_temp.s12gb_prosrc('platform_private.cms_execute_governed_activation(jsonb)'), 'cms.governed.lineage:') = 0
+    and strpos(pg_temp.s12gb_prosrc('platform_private.cms_activate_governed_subject(jsonb)'), 'cms_governed_take_lineage_advisory') > 0
+    and strpos(pg_temp.s12gb_prosrc('platform_private.cms_execute_governed_activation(jsonb)'), 'cms_governed_take_lineage_advisory') > 0
+    and strpos(pg_temp.s12gb_prosrc('platform_private.cms_activate_governed_subject(jsonb)'), 'cms_governed_read_lineage_active') > 0
+    and strpos(pg_temp.s12gb_prosrc('platform_private.cms_execute_governed_activation(jsonb)'), 'cms_governed_read_lineage_active') > 0,
+  'the lineage advisory key is derived in one helper (cms_governed_lineage_lock_key) that activate, schedule and the executor all reach through cms_governed_take_lineage_advisory [P2-S12-AC-087]');

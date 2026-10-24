@@ -35,9 +35,8 @@ select platform_api.cms_author_locale_variant(jsonb_build_object(
 )) as response;
 
 -- Recreate pre-migration history in this rolled-back fixture only: a source
--- revision landed before the staleness trigger existed.
-alter table platform_private.cms_entry_revisions
-  disable trigger cms_entry_revisions_locale_stale;
+-- revision landed before the staleness trigger existed (written without the
+-- draft head move that now drives the fan-out, so nothing stales it).
 insert into platform_private.cms_entry_revisions(
   id, owner_id, entry_id, revision_number, schema_version_id,
   template_version_id, taxonomy_version_ids, parent_revision_ids, locale,
@@ -71,8 +70,6 @@ select field.owner_id, 'active', 1,
 from platform_private.cms_entry_field_values field
 where field.revision_id = (select value::uuid from s10_ids where key = 'entryRevisionId')
   and field.field_id = (select value::uuid from s10_ids where key = 'typeFieldId');
-alter table platform_private.cms_entry_revisions
-  enable trigger cms_entry_revisions_locale_stale;
 
 select is(
   (select count(*)::integer from platform_private.cms_locale_variants
@@ -107,7 +104,8 @@ select ok(
   exists (
     select 1 from platform_private.outbox_events event
     where event.event_type = 'cms.localization.changed.v1'
-      and event.aggregate_id = (select value::uuid from s10_ids where key = 'entryId')
+      and event.aggregate_type = 'cms_locale_variant'
+      and event.payload->>'entryId' = (select value from s10_ids where key = 'entryId')
       and event.aggregate_version = 2
       and event.correlation_id = 'a9400000-0000-4000-8000-000000000099'::uuid
   ),
@@ -121,10 +119,9 @@ select is(
   'replaying migration reconciliation is idempotent'
 );
 select is(
-  pg_temp.s10_outbox_count(
-    'cms.localization.changed.v1',
-    (select value::uuid from s10_ids where key = 'entryId')
-  ),
+  (select count(*)::integer from platform_private.outbox_events
+   where event_type = 'cms.localization.changed.v1'
+     and payload->>'entryId' = (select value from s10_ids where key = 'entryId')),
   2,
   'idempotent reconciliation emits no duplicate locale event'
 );

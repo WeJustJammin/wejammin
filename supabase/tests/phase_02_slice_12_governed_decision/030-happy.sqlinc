@@ -1,0 +1,64 @@
+-- CMS-03C-07 happy path on R1 (ordinary, one decision): the approval, the exact resource, the stored decision, the
+-- subject move, the audit, replay and mismatch, and the closed review.
+select pg_temp.s12ga_decide('d1', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Matches the frozen definition.');
+select pg_temp.s12ga_keep('d1', 'd1');
+select is(pg_temp.s12ga_out('d1'), 'ok',
+  'an assigned reviewer holding the standing cms.reviewer grant records an approval with recent MFA [P2-S12-AC-070]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('d1')),
+  'activatedAt,contentHash,createdAt,decidedAt,id,invalidatedReason,lineageId,policyBasisHash,recordedDecisionCount,'
+  || 'requiredCapabilities,requiredDecisionCount,riskClass,state,subjectHash,subjectId,subjectKey,subjectKind,'
+  || 'subjectVersion,submittedAt,updatedAt,version',
+  'the 200 body is exactly GovernedReviewResource (21 members) [P2-S12-AC-070]');
+select ok(
+  pg_temp.s12ga_body('d1')->>'id' = pg_temp.s12ga_review('r1')::text
+    and pg_temp.s12ga_body('d1')->>'state' = 'approved' and pg_temp.s12ga_body('d1')->>'version' = '2'
+    and (pg_temp.s12ga_body('d1')->>'recordedDecisionCount')::integer = 1
+    and (pg_temp.s12ga_body('d1')->>'requiredDecisionCount')::integer = 1
+    and pg_temp.s12ga_body('d1')->>'decidedAt' is not null and pg_temp.s12ga_body('d1')->'invalidatedReason' = 'null'::jsonb
+    and pg_temp.s12ga_body('d1')->'activatedAt' = 'null'::jsonb
+    and pg_temp.s12ga_body('d1')->>'subjectId' = pg_temp.s12ga_subject('r1')::text
+    and pg_temp.s12ga_body('d1')->>'riskClass' = 'ordinary',
+  'the last required approval moves the review to approved at version 2 with the decision counted and decidedAt set [P2-S12-AC-070]');
+select ok(
+  exists (select 1 from platform_private.cms_governed_review_decisions decision
+           join platform_private.cms_governed_reviews review on review.id = decision.review_id
+          where decision.review_id = pg_temp.s12ga_review('r1')
+            and decision.reviewer_person_id = pg_temp.s12ga_person('rev1')
+            and decision.acting_party_id = pg_temp.s12ga_org() and decision.owner_id = pg_temp.s12ga_org()
+            and decision.capability = 'cms.reviewer' and decision.decision = 'approve'
+            and decision.reason = 'Matches the frozen definition.'
+            and decision.comment_hash = encode(sha256(convert_to('Matches the frozen definition.', 'UTF8')), 'hex')
+            and decision.reviewed_hash = review.subject_hash
+            and decision.assignment_id = pg_temp.s12ga_aid(pg_temp.s12ga_review('r1'), 'rev1') and decision.assignment_version = 1
+            and decision.step_up_at between clock_timestamp() - interval '3 minutes' and clock_timestamp()
+            and decision.state = 'recorded' and decision.version = 1),
+  'the decision row stores the server-derived reviewer, satisfied slot, frozen hash, reason hash, assignment and MFA instant [P2-S12-AC-072]');
+select ok(
+  (select subject.state = 'approved' and subject.lifecycle_version = 3 and subject.version = 1
+     from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('r1'))
+  and pg_temp.s12ga_audit('cms.governed.review.decide', (pg_temp.s12ga_drow(pg_temp.s12ga_review('r1'), 'rev1')).id) = 1
+  and (select count(*) from platform_private.outbox_events where aggregate_id in (pg_temp.s12ga_review('r1'), pg_temp.s12ga_subject('r1'))) = 0
+  and exists (select 1 from platform_private.idempotency_records record
+               where record.operation = 'CMS-03C-07' and record.key_hash = platform_private.cms_key_hash('s12ga-d1')
+                 and record.state = 'completed' and record.response_ref->>'status' = '200'),
+  'the approval moves the subject review -> approved (lifecycle 3, definition version 1), writes one audit record, emits '
+  || 'no event and stores status 200 [P2-S12-AC-073]');
+select ok(pg_temp.s12ga_approvals(pg_temp.s12ga_review('r1')) = 1 and pg_temp.s12ga_frozen(pg_temp.s12ga_review('r1')) = 'current',
+  'the live recount shows one qualifying approver and the frozen dependencies are still current [P2-S12-AC-073]');
+
+-- ----------------------------------------------------------------------------- replay and mismatch --
+select pg_temp.s12ga_mark('r1:approved', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_decide('d1', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Matches the frozen definition.',
+  jsonb_build_object('expectedVersion', '1', 'ifMatch', '1'));
+select ok(pg_temp.s12ga_out('d1') = 'ok' and pg_temp.s12ga_body('d1') = pg_temp.s12ga_kept('d1')
+    and pg_temp.s12ga_same('r1:approved', pg_temp.s12ga_review('r1')),
+  'an exact same-key replay returns the original response and writes no second decision, audit record or state change [P2-S12-AC-073]');
+select pg_temp.s12ga_decide('d1', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'A different reason.',
+  jsonb_build_object('expectedVersion', '1', 'ifMatch', '1'));
+select is(pg_temp.s12ga_out('d1'), 'P0001:IDEMPOTENCY_MISMATCH',
+  'a same-key request with a different reason is refused IDEMPOTENCY_MISMATCH [P2-S12-AC-073]');
+select pg_temp.s12ga_decide('closed', 'rev1', pg_temp.s12ga_review('r1'), 'approve');
+select is(pg_temp.s12ga_out('closed'), 'P0001:review_not_open',
+  'a further decision on an approved review is refused review_not_open [P2-S12-AC-074]');
+select ok(pg_temp.s12ga_same('r1:approved', pg_temp.s12ga_review('r1')),
+  'the mismatch and closed-review refusals leave the covered stores identical [P2-S12-AC-074]');

@@ -1,0 +1,156 @@
+-- Storage contracts behind CMS-03C-16 (BE03c:208,215,218-219,1427): per-owner uniqueness (E14), the
+-- stable lineage, immutable definition fields (DEC-188), closed declared domains, and the privilege
+-- closure of the definer boundary. Probes run as the migration owner inside a sub-transaction that
+-- is always rolled back; the RPC context flag is the only thing they set, exactly as a command does.
+-- Nothing here forges an approval, disables a trigger or leaves an active row behind.
+create function pg_temp.s12td_insert_sql(p_extra jsonb) returns text language sql as $body$
+  with merged as (
+    select jsonb_build_object(
+      'id', extensions.gen_random_uuid(),
+      'owner_id', (select value from s12td_ids where key = 'orgA'),
+      'version', 1, 'taxonomy_key', 's12td-probe', 'owner_capability', 'cms.taxonomy_curator',
+      'shape', 'flat', 'allowlisted_type_keys', '["ab"]'::jsonb, 'allowlisted_field_keys', '["ab"]'::jsonb,
+      'content_hash', repeat('c', 64),
+      'created_by', (select value from s12td_ids where key = 'authA')) || coalesce(p_extra, '{}'::jsonb) as v),
+  cols as (select string_agg(quote_ident(k), ', ' order by k) as list from merged, jsonb_object_keys(merged.v) k)
+  select format('insert into platform_private.cms_taxonomy_versions(%s) select %s from '
+    || 'jsonb_populate_record(null::platform_private.cms_taxonomy_versions, %L::jsonb)',
+    cols.list, cols.list, merged.v::text) from merged, cols
+$body$;
+
+select pg_temp.s12td_as('A');
+create temp table s12td_row_ids(label text primary key, id text, lineage text) on commit drop;
+insert into s12td_row_ids
+select label, pg_temp.s12td_body(label)->>'id', pg_temp.s12td_body(label)->>'taxonomyId'
+from (values ('lifecycle-first'), ('successor'), ('third'), ('flat-first'), ('other-owner-same-key')) v(label);
+
+-- Catalog contracts (BE03c:218-219, 1427): E14 and the lineage.
+select is((select count(*)::integer from pg_constraint where conname = 'cms_taxonomy_versions_key_version_key'), 0,
+  'E14: the global (taxonomy_key, version) unique is gone');
+select ok(exists(select 1 from pg_constraint where contype = 'u'
+  and conrelid = 'platform_private.cms_taxonomy_versions'::regclass
+  and pg_get_constraintdef(oid) = 'UNIQUE (owner_id, taxonomy_key, version)'),
+  'E14: (owner_id, taxonomy_key, version) is unique');
+select ok(exists(select 1 from pg_constraint where contype = 'u'
+  and conrelid = 'platform_private.cms_taxonomy_versions'::regclass
+  and pg_get_constraintdef(oid) = 'UNIQUE (taxonomy_id, version)'),
+  'lineage: a version number is unique within its lineage');
+select ok(exists(select 1 from pg_indexes where schemaname = 'platform_private'
+  and tablename = 'cms_taxonomy_versions' and indexdef ~ 'UNIQUE INDEX .* \(taxonomy_id\) WHERE \(state = ''active''::text\)'),
+  'lineage: at most one active version per vocabulary');
+select ok(coalesce((select bool_and(attribute.attnotnull) from pg_attribute attribute
+  where attribute.attrelid = 'platform_private.cms_taxonomy_versions'::regclass
+    and attribute.attname in ('taxonomy_id', 'canonical_overlap_domains', 'lifecycle_version')
+    and not attribute.attisdropped), false)
+  and (select count(*) from pg_attribute attribute
+  where attribute.attrelid = 'platform_private.cms_taxonomy_versions'::regclass
+    and attribute.attname in ('taxonomy_id', 'canonical_overlap_domains', 'lifecycle_version', 'supersedes_id')
+    and not attribute.attisdropped) = 4,
+  'lineage columns exist; lineage id, declared domains and lifecycle counter are mandatory');
+select ok(coalesce(has_table_privilege('wejammin_cms_definer', 'platform_private.cms_taxonomy_versions', 'INSERT')
+  and has_table_privilege('wejammin_cms_definer', 'platform_private.cms_taxonomy_versions', 'SELECT'), false),
+  'the CMS definer role can insert and read taxonomy versions');
+select ok(coalesce((select bool_and(not has_table_privilege(role, 'platform_private.cms_taxonomy_versions',
+    'SELECT, INSERT, UPDATE, DELETE')) from (values ('anon'), ('authenticated'), ('service_role')) r(role)), false),
+  'no API role has a direct table privilege on taxonomy versions');
+
+select ok(coalesce((select bool_and(not has_function_privilege(role, p.oid, 'EXECUTE'))
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'platform_private' and p.proname = 'cms_canonical_domains_valid'), false),
+  role || ' cannot execute the declared-domain validator directly')
+from (values ('anon'), ('authenticated'), ('service_role')) actors(role);
+
+-- Immutable definition fields: every definition column refuses a change on a draft row.
+select is(pg_temp.s12td_attempt(format('update platform_private.cms_taxonomy_versions set %s where id = %L',
+    assignment, (select id from s12td_row_ids where label = 'third'))), 'P0001:CONFLICT',
+  'immutable definition: ' || assignment)
+from (values
+  ('shape = ''hierarchical'''), ('taxonomy_key = ''s12td-renamed'''),
+  ('allowlisted_type_keys = ''["zz"]''::jsonb'), ('allowlisted_field_keys = ''["zz"]''::jsonb'),
+  ('canonical_overlap_domains = ''["role"]''::jsonb'),
+  ('taxonomy_id = extensions.gen_random_uuid()'), ('supersedes_id = null'),
+  ('content_hash = repeat(''b'', 64)'), ('version = 99'), ('created_by = extensions.gen_random_uuid()'),
+  ('owner_id = extensions.gen_random_uuid()'), ('created_at = created_at - interval ''1 day'''),
+  ('lifecycle_version = lifecycle_version + 1'), ('activated_at = now()'), ('retired_at = now()')
+) changes(assignment);
+select is(pg_temp.s12td_attempt(format('delete from platform_private.cms_taxonomy_versions where id = %L',
+  (select id from s12td_row_ids where label = 'third'))), 'P0001:CONFLICT',
+  'a version row is never deleted');
+select is((select id from s12td_row_ids where label = 'third'),
+  (select id::text from platform_private.cms_taxonomy_versions
+   where id::text = (select id from s12td_row_ids where label = 'third')),
+  'probe rollback: the created version still exists unchanged');
+
+-- Stable lineage at the storage layer. Controls prove each refusal is not blanket.
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql('{"taxonomy_key":"s12td-fresh-root"}')),
+  '00000:', 'control: a first version of a new key inserts');
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql('{"taxonomy_key":"s12td-flat","version":99}')),
+  'P0001:VALIDATION_FAILED', 'a second root of an existing (owner, key) is refused');
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql(jsonb_build_object('taxonomy_key', 's12td-lifecycle',
+  'version', 4, 'supersedes_id', (select id from s12td_row_ids where label = 'third'),
+  'taxonomy_id', (select lineage from s12td_row_ids where label = 'third')))),
+  '00000:', 'control: a successor of the latest row with its parent lineage inserts');
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql(jsonb_build_object('taxonomy_key', 's12td-lifecycle',
+  'version', 4, 'supersedes_id', (select id from s12td_row_ids where label = 'third'),
+  'taxonomy_id', extensions.gen_random_uuid()))),
+  'P0001:VALIDATION_FAILED', 'a successor naming a foreign lineage is refused');
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql(jsonb_build_object('taxonomy_key', 's12td-lifecycle',
+  'version', 5, 'supersedes_id', (select id from s12td_row_ids where label = 'third'),
+  'taxonomy_id', (select lineage from s12td_row_ids where label = 'third')))),
+  'P0001:VALIDATION_FAILED', 'a successor that skips a definition number is refused');
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql(jsonb_build_object('taxonomy_key', 's12td-other',
+  'version', 2, 'supersedes_id', (select id from s12td_row_ids where label = 'third'),
+  'taxonomy_id', (select lineage from s12td_row_ids where label = 'third')))),
+  'P0001:VALIDATION_FAILED', 'a successor cannot cross keys');
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql(jsonb_build_object('taxonomy_key', 's12td-flat',
+  'version', 2, 'supersedes_id', (select id from s12td_row_ids where label = 'other-owner-same-key'),
+  'taxonomy_id', (select lineage from s12td_row_ids where label = 'other-owner-same-key')))),
+  'P0001:VALIDATION_FAILED', 'a successor cannot adopt another owner''s parent');
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql('{"taxonomy_key":"s12td-fresh-active","state":"active"}')),
+  'P0001:VALIDATION_FAILED', 'a version cannot be inserted active');
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql(
+  '{"taxonomy_key":"s12td-fresh-counter","lifecycle_version":2}')),
+  'P0001:VALIDATION_FAILED', 'a version cannot be inserted with an advanced lifecycle counter');
+
+-- DEC-135 declared domains: a closed, unique list of at most six.
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql(
+  '{"taxonomy_key":"s12td-fresh-domains","canonical_overlap_domains":["role","gear"]}')),
+  '00000:', 'control: two declared domains insert, whether or not a provider exists');
+select is(pg_temp.s12td_attempt(pg_temp.s12td_insert_sql(
+  jsonb_build_object('taxonomy_key', 's12td-fresh-domains', 'canonical_overlap_domains', domains))),
+  '23514:new row for relation "cms_taxonomy_versions" violates check constraint "'
+  || (select conname from pg_constraint where conrelid = 'platform_private.cms_taxonomy_versions'::regclass
+      and contype = 'c' and pg_get_constraintdef(oid) ~ 'canonical_overlap_domains' limit 1) || '"',
+  'declared domains refuse: ' || label)
+from (values ('unknown member', '["genre"]'::jsonb), ('duplicate', '["role","role"]'::jsonb),
+  ('seven members', '["role","instrument","gear","place","rights","jurisdiction","role"]'::jsonb),
+  ('null member', '[null]'::jsonb), ('object', '{}'::jsonb), ('scalar', '"role"'::jsonb),
+  ('uppercase', '["Role"]'::jsonb)) bad(label, domains);
+
+-- Same definition, same hash, whoever owns it; a changed definition changes the hash.
+select is(pg_temp.s12td_body('other-owner-same-key')->>'contentHash',
+  pg_temp.s12td_body('flat-first')->>'contentHash',
+  'content hash covers the definition only, so it cannot leak ownership');
+select isnt(pg_temp.s12td_body('successor')->>'contentHash',
+  pg_temp.s12td_body('lifecycle-first')->>'contentHash',
+  'a changed definition changes the content hash');
+
+-- Full SECURITY DEFINER callee closure: every private callee of the new boundary is executable by its owner.
+select is((select owner.rolname from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+    join pg_roles owner on owner.oid = p.proowner
+  where n.nspname = schema and p.proname = name), 'wejammin_cms_definer', schema || '.' || name || ' is owned by the CMS definer')
+from (values ('platform_api', 'cms_create_taxonomy_version'), ('platform_private', 'cms_create_taxonomy_version'),
+  ('platform_api', 'cms_list_taxonomy_versions'), ('platform_private', 'cms_list_taxonomy_versions'),
+  ('platform_private', 'cms_taxonomy_versions_lifecycle_guard')) f(schema, name);
+select ok(coalesce((select count(*) = 3 and bool_and(closed) from (
+    select source.name, bool_and(coalesce(has_function_privilege('wejammin_cms_definer', callee.oid, 'EXECUTE'), false)) as closed
+    from (select p.proname as name, p.prosrc as src from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+      where n.nspname in ('platform_api', 'platform_private')
+        and p.proname in ('cms_create_taxonomy_version', 'cms_list_taxonomy_versions',
+          'cms_taxonomy_versions_lifecycle_guard')) source
+    left join lateral (select distinct m[1] as callee_schema, m[2] as callee_name
+      from regexp_matches(source.src, '(platform_api|platform_private|extensions)\.([a-z_0-9]+)\(', 'g') m) refs on true
+    left join pg_namespace callee_ns on callee_ns.nspname = refs.callee_schema
+    left join pg_proc callee on callee.pronamespace = callee_ns.oid and callee.proname = refs.callee_name
+    group by source.name) per_function), false),
+  'definer closure: the producer, the read and the lineage guard call only functions their owner may execute');

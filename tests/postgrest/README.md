@@ -8,6 +8,8 @@ v16) with JWTs minted in the test. They exist because pgTAP runs as the database
 owner and Worker tests fake PostgREST, so neither can see which identity the database
 is actually given. Selected only by `vitest.postgrest.config.ts` (`pnpm db:api-test`),
 which `pnpm db:verify` and `infra/verify-database.sh` (CI) run as a blocking step.
+Explicit local ALT-only suites use the `*.alt-apispec.ts` suffix instead, so this config
+never collects them (see "ALT-only suites" below).
 
 | Suite                                  | Proves                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                            |
 | -------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -45,6 +47,62 @@ suite from this directory.
    reset reuse the recorded owner.
 
 A missing stack fails loudly; nothing is skipped.
+
+## Shared database: judge your own world
+
+`pnpm db:api-test` runs every file against ONE database and commits fixtures without resetting
+between files; every Slice 11 suite also shares one operator-bootstrapped owner. Files run
+one at a time, but the rows an earlier file committed are still there, and rows with a future
+due time (for example the `+300 s` publish schedules of `phase-02-slice-11-schedule-precision*`)
+fall due while a later file sleeps. The Worker sweep (BE03b CMS-03B-20) claims **every** due
+schedule globally, so a tick executes other suites' schedules too. That is product behaviour,
+not something a test may switch off.
+
+The rule for any suite that runs a sweep tick or sleeps on the real clock:
+
+1. **Suites must scope claims and digests to their own world; never assume no other schedule is
+   due.** A world is the set of schedule ids the suite created (not the owner: the owner is shared).
+2. Assert claims with `expectWorldClaims(claimsOf(trace), worldIds, expectedIds, label)`
+   (`support/phase-02-slice-11-world-scope.ts`). It compares only the claims whose id is in
+   the world, so it also proves none of the world's other schedules (not yet due, blocked, exhausted)
+   was claimed. Never compare the whole claim batch, and never assert `claims.length === 0`.
+3. Take effect digests with `scopedSnapshotDigest(worldIds)` instead of `snapshotDigest()` around a
+   tick or a sleep. It hashes the same fourteen groups, whole rows, SQL-side, but only the rows
+   reachable from the world's schedules (entries, revisions, reviews, publication versions, audit
+   and outbox rows targeting them). `idempotency_records` and `cms_publication_settings_snapshots`
+   carry no world key and stay whole-table (the sweep never writes them). The global
+   `snapshotDigest()` remains correct only where no tick or sleep can intervene.
+4. Fail loudly on a typo: `scopedSnapshotDigest` throws when a world id is not an existing schedule.
+5. Do not delete or edit another suite's schedules to make yours pass.
+
+Pure controls: `tests/contracts/phase-02-slice-11-world-scope.test.ts`. Suites that follow the rule:
+`phase-02-slice-11-sweep-outcomes`, `phase-02-slice-11-sweep-composition`; `-sweep` and
+`-sweep-stale-evidence` already assert per schedule id (`find`) and need no digest scope.
+
+## ALT-only suites (`*.alt-apispec.ts`)
+
+A suite that needs a separately started local ALT stack and root-supplied runtime release
+variables cannot run in the canonical `db:verify` stack, so it MUST NOT match the
+`*.apispec.ts` glob of `vitest.postgrest.config.ts`. It is named `*.alt-apispec.ts`
+(`-apispec.ts` is not `.apispec.ts`) and collected only by `vitest.postgrest-alt.config.ts`,
+run on purpose with `pnpm db:api-test:dec194-alt`. Neither `pnpm db:api-test`, `pnpm db:verify`
+nor `infra/verify-database.sh` runs it. Currently one suite:
+
+| Suite                                               | Proves                                                                                                                                                                                                                                                                                                                     |
+| --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `phase-02-slice-12-dec194-isolation.alt-apispec.ts` | DEC194-RPC-001/002/003 (BE03c "Merge convergence recovery"): the unchanged Worker RPC producers, called over real HTTP through Kong and PostgREST on the ALT stack, run at the transaction isolation DEC-194 requires (or a selected sensitivity level). Runbook: `docs/runbooks/platform/cms-taxonomy-merge-converge.md`. |
+
+Prerequisites (each is asserted; a missing one fails loudly, nothing is skipped): the ALT
+stack project `wejammin_ev` (API `127.0.0.1:55321`, DB `127.0.0.1:55322`, containers
+`supabase_{db,rest,kong}_wejammin_ev`) is already running, the checkout is not the protected
+one, and root exports `S12_DEC194_RPC_ROOT_RELEASE`, `S12_DEC194_RPC_FIXTURE_RELEASE` and
+`S12_DEC194_RPC_CLEANUP_RELEASE`, each equal to `2026-10-16-local-alt` (optional
+`S12_DEC194_RPC_NON_RC_EXPECTED` = `repeatable read` | `serializable` for the sensitivity run).
+Support modules: `support/phase-02-slice-12-dec194-alt-environment.ts` (preflight) and
+`support/phase-02-slice-12-dec194-alt-stack.ts` (probe schema, fixture and cleanup).
+
+To add another ALT-only suite: name it `*.alt-apispec.ts`, document it here, and never give
+it the `.apispec.ts` suffix.
 
 ## Extension
 

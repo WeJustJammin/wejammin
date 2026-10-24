@@ -1,0 +1,34 @@
+-- Slice 11 pattern-forest fixture (lane claude_s12_repair_b).  Include AFTER phase_02_slice_11_helpers/000-helpers and 003-registry.
+--
+-- Why: since DEC-193/DEC-186 (BE03c 1511) the manifest, the render plan and the comparison read a composition row that pins a
+-- pattern version through that version's forest: the row's `path` must equal the key chain of one of the forest's block roots
+-- (below the template slot when the revision has a template) and its block identity must be that root's.  The shared
+-- pg_temp.h11m_pattern_row fixture gives every pattern one root keyed `root`, so a suite that pins several rows, or a row at a
+-- path other than /root, declares the roots it needs here.  Raw update under h11_raw_exec, like the row itself; node_count follows.
+-- DEC-199 (BE03c 1564, cms_pattern_live_pin_reason): a live pin is current only while the pattern's stored block_registry_digest
+-- equals the digest recomputed over its reachable blocks, so the helper also stores that recomputed digest (the shared row image
+-- keeps an arbitrary placeholder).  A later change of a reachable block's lifecycle (deprecate, withdraw) changes the recomputed
+-- digest and so makes a manifest that froze the pattern stale, exactly as in production; a suite that must keep a manifest
+-- current across such a change pins the pattern only on blocks it leaves alone.
+--
+--   pg_temp.h11x_forest(pattern_version_row_id, block_key, root_keys[])  -- one root per key, all of block_key version 1
+create or replace function pg_temp.h11x_forest(p_pattern uuid, p_block text, p_keys text[])
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.h11_raw_exec('platform_private.cms_pattern_versions', format(
+    $q$update platform_private.cms_pattern_versions
+          set block_tree = (select jsonb_agg(jsonb_build_object('kind', 'block', 'key', k, 'blockKey', %L,
+                                                                  'blockVersion', 1, 'props', '{}'::jsonb, 'children', '[]'::jsonb)
+                                             order by ordinality)
+                              from unnest(%L::text[]) with ordinality key(k, ordinality)),
+              node_count = %s
+        where id = %L$q$,
+    p_block, p_keys, cardinality(p_keys), p_pattern));
+  perform pg_temp.h11_raw_exec('platform_private.cms_pattern_versions', format(
+    $q$update platform_private.cms_pattern_versions
+          set block_registry_digest = platform_private.cms_pattern_registry_digest_readonly(owner_id, block_tree)
+        where id = %L$q$, p_pattern));
+end;
+$body$;

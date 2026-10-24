@@ -14,9 +14,10 @@
 - `claim-gate-manifest.ts`: the checked-in list of claim-gated `platform_api`
   functions (name, grant class, and the helper family that resolves the caller).
 - `claim-gate-fixtures*.ts`: one VALID request per manifest entry, split by family
-  (CMS actor, CMS editorial, admin and configuration, identity, profile, workers,
-  service principal), plus the exact outcome a real caller gets once the gate has
-  passed.
+  (CMS actor, CMS editorial, CMS governed review, CMS composition (taxonomy,
+  pattern, related content, locale variant, composition instances), admin and
+  configuration, identity, profile, workers, service principal), plus the exact
+  outcome a real caller gets once the gate has passed.
 - `claim-gate-success.ts`: the entries where a real person (the CMS owner) gets a
   success through the same gate.
 - `claim-gate-check.ts`: the drift check (exact manifest/catalog equality both ways
@@ -47,7 +48,14 @@
   deep equality, `sameInstant` at nanosecond resolution, the safe evidence-shape
   probes). No stack import.
 - `phase-02-slice-11-snapshot-core.ts`: the PURE effect-snapshot decoder
-  (`EFFECT_TABLES`, `decodeSnapshot`) with fixed safe rejections; no imports.
+  (`EFFECT_TABLES`, `decodeSnapshot`) with fixed safe rejections, plus the SQL-side
+  per-table digest builder (`tableDigestSql`) shared by the global and scoped digests; no imports.
+- `phase-02-slice-11-world-scope-core.ts`: PURE world scope for sweep suites
+  (`claimsInWorld`, `expectWorldClaims`, `scopedSnapshotSql`): judge only the claims
+  and rows reachable from the suite's own schedule ids. No stack import.
+- `phase-02-slice-11-world-scope.ts`: DB-bearing `scopedSnapshotDigest(worldIds)`
+  (the fourteen effect groups restricted to the world); re-exports the claim helpers.
+  Rule and rationale: `tests/postgrest/README.md` "Shared database".
 - `phase-02-slice-11-claimed-dry-run-fixture.ts`: public CMS draft/dry-run
   producers, actual BE00 claim receipts and original events; wraps resolver reads
   with both nonmutation observers. Contains runtime database/API calls.
@@ -140,6 +148,14 @@ fails until all four exist. Add a module only when two or more suites need the s
 it from production functions, never from a stand-in, and never set a GUC (claims
 travel only inside a minted JWT).
 
+The Slice 12 BE03c operations (governed review CMS-03C-06 .. 11, governed activation,
+taxonomy, pattern, related-content, locale-variant and composition-instance routes) are
+all `service-role` / `cfg-actor` entries: every wrapper is EXECUTE-granted to service_role
+only and resolves its caller through `cms_actor`. Their fixtures live in
+`claim-gate-fixtures-governed.ts` and `claim-gate-fixtures-composition.ts`; each states in
+its header which pre-gate checks the request must satisfy and why the post-gate outcome is
+what it is. The signed-cursor readers need the Vault key `claim-gate-world.ts` seeds.
+
 An actorless internal operation (CMS-03B-20 execute, the dependency recheck run)
 uses the `service-principal` family: it resolves no caller, so it is ineligible for
 the caller-binding ghost/forged probes and has no shared caller helper to mutate.
@@ -150,6 +166,13 @@ An RPC that reads no claims (for example `cms_dependency_recheck_resolve_event`
 and `cms_takedown_preview_tokens`) is NOT listed: the drift check fails a listed
 function that no longer reads claims. Its exposure is enumerated by the Slice 09
 API surface guard.
+
+- `phase-02-slice-12-dec194-alt-environment.ts`, `phase-02-slice-12-dec194-alt-stack.ts`,
+  `phase-02-slice-12-dec194-isolation-worker.ts`, `-lifecycle.ts`: support for the explicit
+  local ALT-only suite `../phase-02-slice-12-dec194-isolation.alt-apispec.ts`. It is not
+  collected by `vitest.postgrest.config.ts`; run it with `pnpm db:api-test:dec194-alt`
+  (`vitest.postgrest-alt.config.ts`). Prerequisites and release variables are listed under
+  "ALT-only suites" in `../README.md`.
 
 ## Conventions and related material
 

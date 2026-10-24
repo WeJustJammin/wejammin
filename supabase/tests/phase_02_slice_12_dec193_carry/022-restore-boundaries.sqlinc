@@ -1,0 +1,170 @@
+-- Restore selection is newest BEFORE active-only, not ordinary DEC-198 policy.
+select pg_temp.s12rr_world('rr-mask');
+select pg_temp.s12rr_seed('rr-mask','pending-old',to_jsonb(i)||jsonb_build_object('position',13))
+  from platform_private.cms_composition_instances i where id=pg_temp.s12pu_head('cp-donor','/spare');
+insert into s12rr_ids values('rr-mask:pending-new',pg_temp.s12pu_pending('rr-mask','/spare',2));
+select pg_temp.s12rr_seed('rr-mask',state||'-old',jsonb_build_object('path','/'||state,'position',position))
+  from (values('draft',17),('retired',21)) cases(state,position);
+select pg_temp.s12rr_seed('rr-mask',cases.state||'-new',to_jsonb(i)||jsonb_build_object('state',cases.state,'version',2))
+  from (values('draft'),('retired')) cases(state) join platform_private.cms_composition_instances i
+    on i.id=pg_temp.s12rr_id('rr-mask:'||cases.state||'-old');
+select pg_temp.s12rr_seed('rr-mask','keep','{"path":"/keep","position":29,"props":{"title":"KEEP"}}');
+select ok((select count(*)=7 and count(*) filter(where state='active')=4
+  and count(*) filter(where state='pending_diff' and version=2 and pattern_version=1 and pending_pattern_version=2)=1
+  from platform_private.cms_composition_instances where revision_id=pg_temp.s12pl_rev('rr-mask')),
+  'RR-MASK premise: pending/draft/retired v2 each overlays real active v1; one independent active keeper');
+select pg_temp.s12rr_expect('rr-mask',array[pg_temp.s12rr_id('rr-mask:keep')]);
+select pg_temp.s12cc_current('rr-mask');
+select pg_temp.s12cc_call('RR-MASK','restore',pg_temp.s12cc_request('rr-mask','restore','s12rr-mask'));
+select * from pg_temp.s12rr_restored('RR-MASK','rr-mask');
+select is((select jsonb_agg(path) from platform_private.cms_composition_instances
+  where revision_id=(pg_temp.s12cc_body('RR-MASK')->>'id')::uuid),'["/keep"]'::jsonb,
+  'RR-MASK: only explicit active keeper, no pending carry or old-active resurrection');
+select * from pg_temp.s12cc_effects('RR-MASK');
+
+-- Real active outer pin and a genuinely superseded nested pin, isolated from020.
+select * from pg_temp.s12pl_pattern('rr-inner1','s12rr-inner',jsonb_build_array(jsonb_build_object(
+  'kind','block','key','leaf','blockKey','s12rr.leaf','blockVersion',1,'props',jsonb_build_object('title','NESTED-B'),
+  'children','[]'::jsonb)));
+select * from pg_temp.s12pl_pattern('rr-outer1','s12rr-outer',jsonb_build_array(jsonb_build_object(
+  'kind','block','key','local','blockKey','s12rr.root','blockVersion',1,'props',jsonb_build_object('title','ROOT-B'),
+  'children',jsonb_build_array(jsonb_build_object('kind','pattern','key','shared',
+    'patternId',pg_temp.s12pd_body('rr-inner1')->'patternId','patternVersion',1))),
+  jsonb_build_object('kind','block','key','unused','blockKey','s12rr.unused','blockVersion',1,
+    'props',jsonb_build_object('title','UNRELATED-PROVENANCE'),'children','[]'::jsonb)));
+select pg_temp.s12rr_world(tag) from (values('rr-live'),('rr-legacy'),('rr-canonical')) worlds(tag);
+select pg_temp.s12pl_run('RR-PLACE-'||tag,pg_temp.s12pl_request(tag,'rr-outer1','/',
+  '{"/local":{"title":"LOCAL-OVERRIDE"}}','s12rr-place-'||tag,mode)||'{"roots":["/local"]}'::jsonb)
+  from (values('rr-live','linked'),('rr-legacy','detached'),('rr-canonical','linked')) worlds(tag,mode);
+select is(pg_temp.s12pl_state('RR-PLACE-'||tag),'00000',tag||': actual selected-root placement')
+  from (values('rr-live'),('rr-legacy'),('rr-canonical')) worlds(tag);
+select pg_temp.s12pu_update('RR-DETACH',pg_temp.s12pu_update_request('rr-canonical','detach',
+  jsonb_build_array(pg_temp.s12pu_target('rr-canonical','/local')),'s12rr-detach'));
+select is(pg_temp.s12pu_state('RR-DETACH'),'00000','RR-DETACH premise: real public detach materializes only selected root subtree');
+select * from pg_temp.s12pl_pattern('rr-inner2','s12rr-inner',jsonb_build_array(jsonb_build_object(
+  'kind','block','key','leaf','blockKey','s12rr.leaf','blockVersion',1,'props',jsonb_build_object('title','NESTED-T'),
+  'children','[]'::jsonb)),null,true,'1');
+select ok(pg_temp.s12pd_row('rr-outer1')->>'state'='active'
+  and pg_temp.s12pd_row('rr-inner1')->>'state'='superseded',
+  'RR-NESTED premise: root stays active while its exact nested B pin became inactive by real activation');
+select pg_temp.s12rr_expect(tag,array[pg_temp.s12pu_head(tag,'/local')])
+  from (values('rr-live'),('rr-legacy'),('rr-canonical')) worlds(tag);
+select pg_temp.s12cc_current(tag) from (values('rr-live'),('rr-legacy'),('rr-canonical')) worlds(tag);
+select * from pg_temp.s12cc_refused('RR-NESTED-LINKED','restore',
+  pg_temp.s12cc_request('rr-live','restore','s12rr-nested-linked'),'migration_chain_incomplete');
+select pg_temp.s12cc_call('RR-NESTED-LEGACY','restore',pg_temp.s12cc_request('rr-legacy','restore','s12rr-nested-legacy'));
+select * from pg_temp.s12rr_restored('RR-NESTED-LEGACY','rr-legacy');
+select ok((select count(*)=1 and bool_and(link_mode='detached' and detached_tree is null and pattern_version=1)
+  from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('RR-NESTED-LEGACY')->>'id')::uuid),
+  'RR-NESTED-LEGACY: literal detached-mode exception retains SQL NULL and inactive nested pin, no fabricated tree');
+select * from pg_temp.s12cc_effects('RR-NESTED-LEGACY');
+
+-- Provenance-only unused block is really withdrawn; the canonical own tree has
+-- neither that node nor a row for it. Inactive nested provenance is also retained.
+select * from pg_temp.s12rr_signed('rr-unused-deprecated',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('rr-unused')->>'id')::uuid,'supported','deprecated'),true);
+select * from pg_temp.s12rr_signed('rr-unused-withdrawn',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('rr-unused')->>'id')::uuid,'deprecated','withdrawn'),true);
+select ok((select count(*)=2 and bool_and(node->>'blockKey' in ('s12rr.root','s12rr.leaf'))
+  from platform_private.cms_composition_instances i cross join lateral jsonb_array_elements(i.detached_tree->'nodes') node
+  where i.id=(select (e->>'id')::uuid from s12cc_world w,jsonb_array_elements(w.expected_heads) e where tag='rr-canonical'))
+  and not exists(select 1 from platform_private.cms_composition_instances
+    where revision_id=(select source_id from s12cc_world where tag='rr-canonical') and path='/unused'),
+  'RR-OWN premise: exact canonical root+leaf only, no unrelated row; retained pin still names withdrawn sibling');
+select is((select to_lifecycle from platform_private.cms_block_definition_lifecycle_events
+  where block_definition_version_id=(pg_temp.s09d_resp('rr-unused')->>'id')::uuid
+  order by created_at desc,id desc limit 1),'withdrawn','RR-OWN premise: unrelated pin block has actual signed withdrawn lifecycle');
+select pg_temp.s12cc_call('RR-OWN','restore',pg_temp.s12cc_request('rr-canonical','restore','s12rr-own'));
+select * from pg_temp.s12rr_restored('RR-OWN','rr-canonical');
+select is((select block_registry_digest::text from platform_private.cms_composition_instances
+  where revision_id=(pg_temp.s12cc_body('RR-OWN')->>'id')::uuid),
+  pg_temp.s12rr_digest(array['s12rr.root','s12rr.leaf']),'RR-OWN: independent own-node tuple digest, no provenance-only dependency reopened');
+select * from pg_temp.s12cc_effects('RR-OWN');
+
+-- Exact source binding, not the current draft's different compatible template.
+select pg_temp.s12rr_world('rr-template-main',(pg_temp.s09d_resp('cc-template-main')->>'id')::uuid);
+select pg_temp.s12pl_run('RR-TEMPLATE-PLACE',pg_temp.s12pl_request('rr-template-main','cp-v2','/main',
+  '{}','s12rr-template-place'));
+select is(pg_temp.s12pl_state('RR-TEMPLATE-PLACE'),'00000','RR-TEMPLATE premise: real /main placement on exact source template');
+select pg_temp.s12rr_expect('rr-template-main',array[pg_temp.s12pu_head('rr-template-main','/main/spare')]);
+select pg_temp.s12cc_current('rr-template-main',(pg_temp.s09d_resp('cc-template-side')->>'id')::uuid);
+select pg_temp.s12cc_call('RR-TEMPLATE-SOURCE','restore',pg_temp.s12cc_request('rr-template-main','restore','s12rr-template-source'));
+select * from pg_temp.s12rr_restored('RR-TEMPLATE-SOURCE','rr-template-main');
+select is(pg_temp.s12cc_body('RR-TEMPLATE-SOURCE')->>'templateVersionId',pg_temp.s09d_resp('cc-template-main')->>'id',
+  'RR-TEMPLATE-SOURCE: literal source /main binding wins over current /side');
+select * from pg_temp.s12cc_effects('RR-TEMPLATE-SOURCE');
+select pg_temp.s12rr_world('rr-template-missing',(pg_temp.s09d_resp('cc-template-side')->>'id')::uuid);
+-- Labelled historical-binding READ fixture, not a public invalid-slot producer.
+select pg_temp.s12rr_seed('rr-template-missing','historical-main',to_jsonb(i))
+  from platform_private.cms_composition_instances i where id=(select (e->>'id')::uuid
+    from s12cc_world w,jsonb_array_elements(w.expected_heads) e where tag='rr-template-main');
+select pg_temp.s12rr_expect('rr-template-missing',array[pg_temp.s12rr_id('rr-template-missing:historical-main')]);
+select pg_temp.s12cc_current('rr-template-missing',(pg_temp.s09d_resp('cc-template-main')->>'id')::uuid);
+select * from pg_temp.s12cc_refused('RR-TEMPLATE-MISSING','restore',
+  pg_temp.s12cc_request('rr-template-missing','restore','s12rr-template-missing'),'template_incompatible');
+
+-- Full private snapshot plus a selected legacy child inserted before its parent
+-- in position order. Storage requires a fresh parent-first destination insertion.
+select pg_temp.s12rr_world('rr-wide');
+select pg_temp.s12rr_seed('rr-wide','wide',jsonb_build_object('path','/wide','position',10,
+  'block_key','s12rr.root','props','{}'::jsonb,'detached_tree',(select tree from s12rr_literal),
+  'block_registry_digest',pg_temp.s12rr_digest(array['s12rr.root','s12rr.leaf'])));
+select pg_temp.s12rr_seed('rr-wide','legacy',jsonb_build_object('path','/legacy','position',2,
+  'parent_instance_id',pg_temp.s12rr_id('rr-wide:wide'),'block_key','s12rr.leaf',
+  'block_registry_digest',pg_temp.s12rr_digest(array['s12rr.leaf']),
+  'created_by',pg_temp.s09d_actor_id('designer2','auth')::uuid));
+select ok((select jsonb_array_length(tree->'nodes')=512 and octet_length(tree::text)>262144
+  and tree#>'{nodes,1,props}'='null'::jsonb and tree#>'{nodes,2,props}'='42'::jsonb
+  and tree#>'{nodes,3,props}'='"scalar"'::jsonb from s12rr_literal),
+  'RR-WIDE premise: literal512 nodes, scalar/null values and >256KiB aggregate');
+select ok((select child.parent_instance_id=parent.id and child.position<parent.position
+  and child.created_by<>parent.created_by from platform_private.cms_composition_instances child
+  join platform_private.cms_composition_instances parent on parent.id=child.parent_instance_id
+  where child.id=pg_temp.s12rr_id('rr-wide:legacy')),
+  'RR-WIDE premise: selected parent edge and distinct creator/order are nonvacuous');
+select pg_temp.s12rr_expect('rr-wide',array[pg_temp.s12rr_id('rr-wide:wide'),pg_temp.s12rr_id('rr-wide:legacy')]);
+select pg_temp.s12cc_current('rr-wide');
+select pg_temp.s12cc_call('RR-WIDE','restore',pg_temp.s12cc_request('rr-wide','restore','s12rr-wide'));
+select * from pg_temp.s12rr_restored('RR-WIDE','rr-wide',jsonb_build_object('/legacy',pg_temp.s12rr_id('rr-wide:wide')));
+select is((select detached_tree from platform_private.cms_composition_instances
+  where revision_id=(pg_temp.s12cc_body('RR-WIDE')->>'id')::uuid and path='/wide'),
+  (select tree from s12rr_literal),'RR-WIDE: exact complete private snapshot, not capped or coerced');
+select ok((select count(*)=1 and bool_and(detached_tree is null and pattern_id is null)
+  from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('RR-WIDE')->>'id')::uuid and path='/legacy'),
+  'RR-WIDE: standalone legacy SQL NULL/pin remain NULL');
+select * from pg_temp.s12cc_effects('RR-WIDE');
+
+-- Second generation uses the ACTUAL first restore result. Missing first copies
+-- fail premises/assertions; never fabricate a first-generation composition row.
+do $body$
+declare first_id uuid:=(pg_temp.s12cc_body('RR-WIDE')->>'id')::uuid;
+begin
+  if exists(select 1 from platform_private.cms_entry_revisions where id=first_id) then
+    insert into s12pl_ids values('rr-generation:entry',pg_temp.s12pl_entry_id('rr-wide')::text),('rr-generation:revision',first_id::text);
+    insert into s12cc_world(tag,source_id,current_id) values('rr-generation',first_id,first_id);
+  end if;
+end;
+$body$;
+select is((select count(*)::integer from platform_private.cms_composition_instances
+  where revision_id=(pg_temp.s12cc_body('RR-WIDE')->>'id')::uuid),2,
+  'RR-GENERATION premise: real first restore produced both source identities');
+select pg_temp.s12rr_expect('rr-generation',array[
+  (select id from platform_private.cms_composition_instances where revision_id=w.source_id and path='/wide'),
+  (select id from platform_private.cms_composition_instances where revision_id=w.source_id and path='/legacy')])
+  from s12cc_world w where tag='rr-generation';
+select pg_temp.s12cc_current('rr-generation') from s12cc_world where tag='rr-generation';
+select pg_temp.s12cc_call('RR-GENERATION','restore',pg_temp.s12cc_request('rr-generation','restore','s12rr-generation'))
+  from s12cc_world where tag='rr-generation';
+select restored.* from s12cc_world w cross join lateral pg_temp.s12rr_restored(
+  'RR-GENERATION','rr-generation',jsonb_build_object('/legacy',
+    (select id from platform_private.cms_composition_instances where revision_id=w.source_id and path='/wide'))) restored
+  where tag='rr-generation';
+select ok((select count(*)=2 and bool_and(to_jsonb(i)->>'carried_from_id'=source.id::text
+  and to_jsonb(source)->>'carried_from_id' is not null
+  and to_jsonb(i)->>'carried_from_id'<>to_jsonb(source)->>'carried_from_id')
+  from platform_private.cms_composition_instances i join platform_private.cms_composition_instances source
+    on source.id=(to_jsonb(i)->>'carried_from_id')::uuid
+  where i.revision_id=(pg_temp.s12cc_body('RR-GENERATION')->>'id')::uuid),
+  'RR-GENERATION: immediate first-generation source, never original ancestor provenance');
+select effects.* from s12cc_world cross join lateral pg_temp.s12cc_effects('RR-GENERATION') effects
+  where tag='rr-generation';

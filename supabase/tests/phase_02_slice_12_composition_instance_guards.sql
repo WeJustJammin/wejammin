@@ -24,13 +24,15 @@ select ok(
 select set_config('app.cms_rpc', 'true', true);
 
 -- Fixture pattern version reused by the linked-mode control instance below.
+-- PatternVersion shape (BE03c 1425): the ordered forest, one compatible type id and node_count; the guard derives the lineage id.
 insert into platform_private.cms_pattern_versions(
-  id, owner_id, version, pattern_key, block_tree, block_registry_digest,
-  content_hash, owner_capability, created_by
+  id, owner_id, version, pattern_key, block_tree, compatible_type_ids, node_count,
+  block_registry_digest, content_hash, owner_capability, created_by
 )
 select 'a9150000-0000-4000-8000-000000000001',
        (select value::uuid from s10_ids where key = 'organization'),
-       1, 'guard-pattern', '{"nodes":[{"blockKey":"profile.header"}]}'::jsonb,
+       1, 'guard-pattern', '[{"kind":"block","key":"root","blockKey":"profile.header","blockVersion":1,"props":{},"children":[]}]'::jsonb,
+       jsonb_build_array((select value from s10_ids where key = 'typeId')), 1,
        repeat('a', 64), repeat('b', 64), 'cms.template_designer',
        (select value::uuid from s10_ids where key = 'creatorAuth');
 
@@ -38,19 +40,19 @@ select 'a9150000-0000-4000-8000-000000000001',
 insert into platform_private.cms_composition_instances(
   id, owner_id, version, revision_id, path, slot_key,
   block_key, block_version, pattern_id, pattern_version,
-  block_registry_digest, link_mode, created_by
+  block_registry_digest, link_mode, created_by, position
 )
 select 'a9150000-0000-4000-8000-000000000010',
        (select value::uuid from s10_ids where key = 'organization'),
        1, (select value::uuid from s10_ids where key = 'entryRevisionId'),
        '/parent', 'primary', 'profile.header', 1,
        'a9150000-0000-4000-8000-000000000001', 1, repeat('a', 64), 'linked',
-       (select value::uuid from s10_ids where key = 'creatorAuth');
+       (select value::uuid from s10_ids where key = 'creatorAuth'), 0;
 
 insert into platform_private.cms_composition_instances(
   id, owner_id, version, revision_id, path, slot_key,
   block_key, block_version, block_registry_digest, link_mode,
-  parent_instance_id, created_by
+  parent_instance_id, created_by, position
 )
 select 'a9150000-0000-4000-8000-000000000011',
        (select value::uuid from s10_ids where key = 'organization'),
@@ -58,7 +60,7 @@ select 'a9150000-0000-4000-8000-000000000011',
        '/parent/child', 'primary', 'profile.header', 1,
        repeat('a', 64), 'detached',
        'a9150000-0000-4000-8000-000000000010',
-       (select value::uuid from s10_ids where key = 'creatorAuth');
+       (select value::uuid from s10_ids where key = 'creatorAuth'), 1;
 
 select is(
   (select count(*)::int from platform_private.cms_composition_instances
@@ -90,14 +92,14 @@ select pg_temp.e2_evidence('a9150000-0000-4000-8000-000000000020', 'submitted');
 select throws_ok(
   $$insert into platform_private.cms_composition_instances(
       id, owner_id, version, revision_id, path, slot_key,
-      block_key, block_version, block_registry_digest, link_mode, created_by
+      block_key, block_version, block_registry_digest, link_mode, created_by, position
     )
     select 'a9150000-0000-4000-8000-000000000021',
            (select value::uuid from s10_ids where key = 'organization'),
            1, 'a9150000-0000-4000-8000-000000000020',
            '/submitted', 'primary', 'profile.header', 1,
            repeat('a', 64), 'detached',
-           (select value::uuid from s10_ids where key = 'creatorAuth')$$,
+           (select value::uuid from s10_ids where key = 'creatorAuth'), 0$$,
   'P0001', 'VALIDATION_FAILED',
   'submitted revision cannot be assigned as the composition target revision'
 );
@@ -114,14 +116,14 @@ select is(
 select throws_ok(
   $$insert into platform_private.cms_composition_instances(
       id, owner_id, version, revision_id, path, slot_key,
-      block_key, block_version, block_registry_digest, link_mode, created_by
+      block_key, block_version, block_registry_digest, link_mode, created_by, position
     )
     select 'a9150000-0000-4000-8000-000000000009',
            (select value::uuid from s10_ids where key = 'organization'),
            1, 'a9150000-0000-4000-8000-000000000099',
            '/absent', 'primary', 'profile.header', 1,
            repeat('a', 64), 'detached',
-           (select value::uuid from s10_ids where key = 'creatorAuth')$$,
+           (select value::uuid from s10_ids where key = 'creatorAuth'), 0$$,
   '23503', null,
   'missing target revision is rejected by the existing owner-bound revision FK'
 );

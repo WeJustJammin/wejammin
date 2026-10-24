@@ -1,0 +1,100 @@
+-- Defect 7 (governed-fix3): the governed recompute of a PATTERN must refuse a block whose registered compatibility
+-- range does not cover the compiler_version of the active artifact of EVERY bound type (subject typeIds).  The
+-- refusal is the pattern producer's own incompatible-block refusal (cms_create_pattern_version, step 8):
+-- P0001, message VALIDATION_FAILED, DETAIL ["/blockTree"].  Lifecycle is decided first and unchanged: a missing
+-- block is VALIDATION_FAILED without detail, a withdrawn block CONFLICT, a deprecated block is admitted.
+-- Fixtures: bc.* blocks (signed CMS-03A-05) and types bc-type-1/2 (real chains, compiler 1) plus two labelled clones
+-- (compiler 1.9 and the unregistered 2), all from the block-compat suite.
+create temp table fix3_owner(id uuid) on commit drop;
+insert into fix3_owner select pg_temp.s09d_id('ownerOrg');
+-- The wrapper turns a raise into a comparable value (SQLSTATE, message, DETAIL) so one defect cannot abort the
+-- transaction and hide the assertions after it.  The registry tables are forced-RLS and answer only inside an RPC
+-- context, which the wrapper sets for the single call and restores.
+create or replace function pg_temp.fix3_digest(p_kind text, p_subject jsonb) returns text
+language plpgsql volatile as $body$
+declare prior text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), ''); result text; why text;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  begin
+    result := platform_private.cms_governed_current_digest(p_kind, (select id from fix3_owner), p_subject);
+  exception when others then
+    get stacked diagnostics why = pg_exception_detail;
+    result := 'RAISED ' || sqlstate || ' ' || sqlerrm || ' ' || coalesce(nullif(why, ''), '-');
+  end;
+  perform pg_catalog.set_config('app.cms_rpc', prior, true);
+  return result;
+end;
+$body$;
+create or replace function pg_temp.fix3_node(p_key text, p_label text default 'root') returns jsonb
+language sql immutable as $body$
+  select jsonb_build_object('kind', 'block', 'key', p_label, 'blockKey', p_key, 'blockVersion', 1,
+    'props', jsonb_build_object('title', 'Pattern title'), 'children', '[]'::jsonb)
+$body$;
+create or replace function pg_temp.fix3_pattern(p_block text, p_types jsonb) returns text
+language sql volatile as $body$
+  select pg_temp.fix3_digest('pattern_version', jsonb_build_object(
+    'blockTree', jsonb_build_array(pg_temp.fix3_node(p_block)), 'typeIds', p_types))
+$body$;
+-- The tuple the digest folds, built independently from the stored row (not from the function under test).
+create or replace function pg_temp.fix3_hash(p_key text, p_lifecycle text default 'supported') returns text
+language sql stable as $body$
+  select platform_private.cms_jcs_sha256(jsonb_build_array(jsonb_build_object(
+    'blockKey', b.block_key, 'blockVersion', b.block_version,
+    'releaseDigest', pg_catalog.btrim(b.release_digest::text),
+    'propsSchemaHash', pg_catalog.btrim(b.props_schema_hash::text),
+    'rendererRef', b.renderer_ref, 'lifecycle', p_lifecycle)))
+    from platform_private.cms_block_definition_versions b where b.block_key = p_key and b.block_version = 1
+$body$;
+create or replace function pg_temp.fix3_refused() returns text language sql immutable as $body$
+  select 'RAISED P0001 VALIDATION_FAILED ["/blockTree"]' $body$;
+
+-- In range: unchanged digests (the fold is exactly the pattern producer's tuple form).
+select is(pg_temp.fix3_pattern('bc.exact', pg_temp.bc_types(pg_temp.bc_t1())), pg_temp.fix3_hash('bc.exact'),
+  'a block whose range 1..1 covers the real type compiler_version 1 recomputes to its unchanged digest [BE03c 1361]');
+select is(pg_temp.fix3_pattern('bc.exact', pg_temp.bc_types(pg_temp.bc_t1(), pg_temp.bc_t2())), pg_temp.fix3_hash('bc.exact'),
+  'two real compiled types that satisfy the range are both compatible [BE03c 1361]');
+select is(pg_temp.fix3_pattern('bc.wide', pg_temp.bc_types(pg_temp.bc_t1(), pg_temp.bc_c19())), pg_temp.fix3_hash('bc.wide'),
+  'range 1.0.0..1.9 covers a real type (1) and a 1.9 type: dotted-numeric order [BE03a 1098-1101]');
+select is(pg_temp.fix3_pattern('bc.high', pg_temp.bc_types(pg_temp.bc_c19())), pg_temp.fix3_hash('bc.high'),
+  'range 1.9..1.9 covers a type compiled at 1.9 [BE03a 1098-1101]');
+select is(pg_temp.fix3_pattern('bc.dep', pg_temp.bc_types(pg_temp.bc_t1())), pg_temp.fix3_hash('bc.dep', 'deprecated'),
+  'a deprecated block in range is admitted and folded `deprecated` [BE03c 396, 1361]');
+
+-- Subjects that bind no type carry nothing to be incompatible with: the digest is the unchanged registry fold.
+select is(pg_temp.fix3_digest('pattern_version', jsonb_build_object(
+    'blockTree', jsonb_build_array(pg_temp.fix3_node('bc.high')))), pg_temp.fix3_hash('bc.high'),
+  'a subject with no typeIds member recomputes the unchanged registry fold [BE03c digest invariants]');
+select is(pg_temp.fix3_pattern('bc.high', '[]'::jsonb), pg_temp.fix3_hash('bc.high'),
+  'a subject with an empty typeIds list recomputes the unchanged registry fold [BE03c digest invariants]');
+
+-- Out of range: the producer refusal, at the recompute.
+select is(pg_temp.fix3_pattern('bc.high', pg_temp.bc_types(pg_temp.bc_t1())), pg_temp.fix3_refused(),
+  'range 1.9..1.9 does not cover compiler_version 1: the recompute raises the producer incompatible-block refusal [BE03c 317-327, 1361]');
+select is(pg_temp.fix3_pattern('bc.exact', pg_temp.bc_types(pg_temp.bc_c19())), pg_temp.fix3_refused(),
+  'range 1..1 does not cover a type compiled at 1.9 [BE03c 1361]');
+select is(pg_temp.fix3_pattern('bc.exact', pg_temp.bc_types(pg_temp.bc_t1(), pg_temp.bc_c19())), pg_temp.fix3_refused(),
+  'EVERY bound type must be covered: one out-of-range type refuses the recompute [BE03c 1361]');
+select is(pg_temp.fix3_pattern('bc.high', pg_temp.bc_types(pg_temp.bc_c19(), pg_temp.bc_t1())), pg_temp.fix3_refused(),
+  'the same refusal when the covered type is listed first [BE03c 1361]');
+select is(pg_temp.fix3_pattern('bc.inverted', pg_temp.bc_types(pg_temp.bc_t1())), pg_temp.fix3_refused(),
+  'an inverted range 1.9..1 covers nothing [BE03a 1098-1101]');
+select is(pg_temp.fix3_pattern('bc.wide', pg_temp.bc_types(pg_temp.bc_c2())), pg_temp.fix3_refused(),
+  'an artifact compiler_version outside the closed compiler registry fails closed [BE03a 1098-1101]');
+select is(pg_temp.fix3_pattern('bc.badvalue', pg_temp.bc_types(pg_temp.bc_t1())), pg_temp.fix3_refused(),
+  'a range bound outside the closed compiler registry fails closed [BE03a 1098-1101]');
+select is(pg_temp.fix3_pattern('bc.minonly', pg_temp.bc_types(pg_temp.bc_t1())), pg_temp.fix3_refused(),
+  'a range lacking maxSchemaCompiler fails closed [BE03a 1098-1101]');
+select is(pg_temp.fix3_pattern('bc.empty', pg_temp.bc_types(pg_temp.bc_t1())), pg_temp.fix3_refused(),
+  'an empty range object fails closed [BE03a 1098-1101]');
+select is(pg_temp.fix3_pattern('bc.exact', pg_temp.bc_types(extensions.gen_random_uuid())), pg_temp.fix3_refused(),
+  'a bound type with no active version in the owner fails closed [BE03c 1361]');
+select is(pg_temp.fix3_digest('pattern_version', jsonb_build_object(
+    'blockTree', jsonb_build_array(pg_temp.fix3_node('bc.exact', 'a'), pg_temp.fix3_node('bc.high', 'b')),
+    'typeIds', pg_temp.bc_types(pg_temp.bc_t1()))), pg_temp.fix3_refused(),
+  'one incompatible block anywhere in the tree refuses the whole recompute [BE03c 1361]');
+
+-- Lifecycle is decided first and keeps its tokens (no DETAIL).
+select is(pg_temp.fix3_pattern('bc.wd', pg_temp.bc_types(pg_temp.bc_t1())), 'RAISED P0001 CONFLICT -',
+  'a withdrawn block in range is still refused CONFLICT, before the range rule [BE03c 396, 1361]');
+select is(pg_temp.fix3_pattern('bc.nonesuch', pg_temp.bc_types(pg_temp.bc_t1())), 'RAISED P0001 VALIDATION_FAILED -',
+  'a missing block is still refused VALIDATION_FAILED without detail, before the range rule [BE03c 1361]');

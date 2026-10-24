@@ -1,0 +1,156 @@
+-- CMS-03C-20 platform_private.cms_resolve_locale_field (BE03c 189, 1387-1389; DEC-121, DEC-138).
+-- Criteria: P2-S12-AC-148..152, receiving AC-051 and AC-052.  Result strings read
+-- 'mode/outcome/provenance/resolvedFromLocale/stale/blocking/reasonCode'.
+
+select set_config('app.cms_rpc', 'true', true);
+
+-- Author the fr-FR variant: title, summary and legal are translated; terms is not.
+create temp table l12r_fr on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('fr-FR', pg_temp.l12r_field_list(jsonb_build_object(
+  'title', 'Titre FR', 'summary', 'Resume FR', 'legal', 'Mentions FR')), 'l12r-fr-0001')) as response;
+select is((select response->>'state' from l12r_fr), 'draft', 'resolver world: the fr-FR variant is authored through the real RPC');
+select set_config('app.cms_rpc', 'true', true);
+
+-- ---- contract shape and mode semantics (AC148, AC149) --------------------------------------
+select is(
+  (select array_agg(key order by key) from jsonb_object_keys(pg_temp.l12_json(format(
+     'select platform_private.cms_resolve_locale_field(%L::uuid, ''fr-FR'', %L::uuid)',
+     pg_temp.l12_entry(), pg_temp.l12r_fid('title')))) key),
+  array['blocking','fieldId','locale','mode','outcome','provenance','reasonCode','resolvedFromLocale','stale'],
+  'the resolution has exactly the nine LocaleFieldResolution members and carries no value or text [P2-S12-AC-148]'
+);
+select is(pg_temp.l12r_res('fr-FR', 'slug'), 'none/resolved/authored/-/false/false/-',
+  'a none field resolves to the source-locale value in any locale [P2-S12-AC-149]');
+select is(pg_temp.l12r_res('en-US', 'title'), 'localized/resolved/authored/-/false/false/-',
+  'a localized field of the default locale is its own authored value [P2-S12-AC-149]');
+select is(pg_temp.l12r_res('fr-FR', 'title'), 'localized/resolved/authored/-/false/false/-',
+  'a localized field resolves to the field in the target locale own revision when present [P2-S12-AC-149]');
+select is(pg_temp.l12r_res('fr-FR', 'nick'), 'localized/missing/missing/-/false/false/-',
+  'a localized field with no value in the locale, its chain or the default is missing and does not block [P2-S12-AC-149]');
+select is(pg_temp.l12r_res('de-DE', 'title'), 'localized/resolved/localized_fallback/en-US/false/false/-',
+  'a localized field without a target value walks the active fallback chain and records resolvedFromLocale [P2-S12-AC-149]');
+select is(pg_temp.l12r_res('fr-CA', 'summary'), 'localized/resolved/localized_fallback/fr-FR/false/false/-',
+  'the chain is walked in order: fr-CA takes the fr-FR value before the default locale [P2-S12-AC-149]');
+select is(pg_temp.l12r_res('fr-CA', 'nick'), 'localized/missing/missing/-/false/false/-',
+  'the walk covers the whole chain and ends missing when no member holds a value [P2-S12-AC-149]');
+select is(pg_temp.l12r_res('fr-FR', 'terms'), 'no_fallback/missing/missing/-/false/true/no_fallback_missing',
+  'a no_fallback field is never resolved through fallbackChains: en-US holds terms, fr-FR does not, it blocks [P2-S12-AC-051]');
+select is(pg_temp.l12r_res('fr-CA', 'legal'), 'no_fallback/missing/missing/-/false/true/no_fallback_missing',
+  'a no_fallback field does not borrow even a chain member that holds it: fr-CA never takes the fr-FR legal text [P2-S12-AC-051]');
+select is(pg_temp.l12r_res('de-DE', 'legal'), 'no_fallback/missing/missing/-/false/true/no_fallback_missing',
+  'a locale with no variant blocks a no_fallback field [P2-S12-AC-051]');
+select is(pg_temp.l12r_res('fr-FR', 'legal'), 'no_fallback/resolved/authored/-/false/false/-',
+  'a present, current no_fallback value resolves and does not block [P2-S12-AC-051]');
+select is(pg_temp.l12r_res('en-US', 'legal'), 'no_fallback/resolved/authored/-/false/false/-',
+  'the default locale resolves a no_fallback field from its own source revision [P2-S12-AC-051]');
+select is(pg_temp.l12r_res('en-US', 'nick'), 'localized/missing/missing/-/false/false/-',
+  'the default locale has no chain: a missing localized value stays missing [P2-S12-AC-149]');
+
+-- ---- stale handling (AC052) -----------------------------------------------------------------
+select pg_temp.l12_source_edit(pg_temp.l12r_values(
+  'Changed source title', 'Source summary', 'Changed source legal', 'Source terms', 'source-slug'));
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12r_res('fr-FR', 'title'), 'localized/resolved/authored/-/true/false/-',
+  'a stale fallback-permitted field keeps serving its last translation, is flagged stale and never blocks [P2-S12-AC-052]');
+select is(pg_temp.l12r_res('fr-FR', 'summary'), 'localized/resolved/authored/-/false/false/-',
+  'a translated field whose source value did not change is not stale [P2-S12-AC-052]');
+select is(pg_temp.l12r_res('fr-FR', 'legal'), 'no_fallback/resolved/authored/-/true/true/no_fallback_stale',
+  'a stale no_fallback field blocks with no_fallback_stale while its own value is still the one served [P2-S12-AC-051]');
+select is(pg_temp.l12r_res('fr-FR', 'terms'), 'no_fallback/missing/missing/-/false/true/no_fallback_missing',
+  'a missing no_fallback field keeps blocking after the source change [P2-S12-AC-052]');
+select is(pg_temp.l12r_res('de-DE', 'title'), 'localized/resolved/localized_fallback/en-US/false/false/-',
+  'the fallback resolution of an untranslated locale is not flagged stale [P2-S12-AC-052]');
+select ok(
+  (select coalesce(case when jsonb_typeof(stale) = 'array' then jsonb_array_length(stale) = 2 and stale @> jsonb_build_array(pg_temp.l12r_fid('title'), pg_temp.l12r_fid('legal')) end, false)
+   from (select pg_temp.l12_json(format($$select platform_private.cms_locale_stale_fields(%L::uuid, 'fr-FR')$$,
+     pg_temp.l12_entry())) as stale) live),
+  'editorial reads expose exactly the stale translated fields [P2-S12-AC-052]'
+);
+select is(
+  (select count(*)::integer from platform_private.outbox_events
+   where event_type = 'cms.localization.changed.v1' and payload->>'locale' = 'fr-FR'
+     and aggregate_version = 2),
+  1, 'the stale transition itself is the single version-2 event of the fr-FR aggregate [P2-S12-AC-237]');
+
+-- Explicit revalidation: a new write with the current sourceHash clears the staleness.
+create temp table l12r_fr2 on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('fr-FR', pg_temp.l12r_field_list(jsonb_build_object(
+  'title', 'Titre FR 2', 'summary', 'Resume FR', 'legal', 'Mentions FR 2', 'terms', 'Conditions FR')),
+  'l12r-fr-0002')) as response;
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12r_res('fr-FR', 'legal'), 'no_fallback/resolved/authored/-/false/false/-',
+  'after a revalidation write the no_fallback field is current and no longer blocks [P2-S12-AC-051]');
+select is(pg_temp.l12r_res('fr-FR', 'terms'), 'no_fallback/resolved/authored/-/false/false/-',
+  'the translated terms resolve from the target revision [P2-S12-AC-051]');
+select is(pg_temp.l12r_res('fr-FR', 'title'), 'localized/resolved/authored/-/false/false/-',
+  'a revalidated localized field is current [P2-S12-AC-052]');
+
+-- ---- argument errors ------------------------------------------------------------------------
+select is(pg_temp.l12_try(format($$select platform_private.cms_resolve_locale_field(%L::uuid, 'fr-FR', %L::uuid)$$,
+  extensions.gen_random_uuid(), pg_temp.l12r_fid('title'))), 'P0001:NOT_FOUND', 'an absent entry is not found');
+select is(pg_temp.l12_try(format($$select platform_private.cms_resolve_locale_field(%L::uuid, 'fr-FR', %L::uuid)$$,
+  pg_temp.l12_entry(), extensions.gen_random_uuid())), 'P0001:NOT_FOUND', 'a field the active schema does not declare is not found');
+select is(pg_temp.l12_try(format($$select platform_private.cms_resolve_locale_field(%L::uuid, 'fr_FR', %L::uuid)$$,
+  pg_temp.l12_entry(), pg_temp.l12r_fid('title'))), 'P0001:INVALID_REQUEST', 'a malformed locale tag is an invalid request');
+select is(pg_temp.l12_try(format($$select platform_private.cms_resolve_locale_field(null::uuid, 'fr-FR', %L::uuid)$$,
+  pg_temp.l12r_fid('title'))), 'P0001:INVALID_REQUEST', 'a null entry is an invalid request');
+
+-- ---- read-only, deterministic, no leakage (AC150, AC151) --------------------------------------
+create temp table l12r_before on commit drop as
+select (select count(*) from platform_private.cms_locale_variants) as variants,
+       (select count(*) from platform_private.cms_entry_revisions) as revisions,
+       (select count(*) from platform_private.cms_entry_field_values) as field_values,
+       (select count(*) from platform_private.outbox_events) as events,
+       (select count(*) from audit_private.audit_events) as audits,
+       (select count(*) from platform_private.idempotency_records) as receipts;
+select set_config('app.cms_rpc', 'true', true);
+create temp table l12r_pass1 on commit drop as
+select f.key, l.locale, pg_temp.l12r_res(l.locale, f.key) as result
+from (values ('title'), ('summary'), ('legal'), ('terms'), ('slug'), ('nick')) f(key)
+cross join (values ('en-US'), ('fr-FR'), ('fr-CA'), ('de-DE')) l(locale);
+create temp table l12r_pass2 on commit drop as
+select f.key, l.locale, pg_temp.l12r_res(l.locale, f.key) as result
+from (values ('title'), ('summary'), ('legal'), ('terms'), ('slug'), ('nick')) f(key)
+cross join (values ('en-US'), ('fr-FR'), ('fr-CA'), ('de-DE')) l(locale);
+select ok(
+  (select count(*) = 24 and bool_and(p1.result = p2.result)
+   from l12r_pass1 p1 join l12r_pass2 p2 using (key, locale)),
+  'identical inputs resolve identically: 24 field and locale pairs, read twice [P2-S12-AC-151]'
+);
+select ok(
+  (select (select count(*) from platform_private.cms_locale_variants) = variants
+      and (select count(*) from platform_private.cms_entry_revisions) = revisions
+      and (select count(*) from platform_private.cms_entry_field_values) = field_values
+      and (select count(*) from platform_private.outbox_events) = events
+      and (select count(*) from audit_private.audit_events) = audits
+      and (select count(*) from platform_private.idempotency_records) = receipts
+   from l12r_before),
+  'resolving 48 times inserts no variant, revision, value, audit row, outbox row or idempotency receipt [P2-S12-AC-151]'
+);
+select ok(
+  (select proc.provolatile = 's' and proc.prosecdef and proc.proconfig = array['search_path=""']
+     and proc.proowner = 'wejammin_cms_definer'::regrole
+   from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_resolve_locale_field(uuid,text,uuid)')),
+  'the resolver is STABLE, SECURITY DEFINER with an empty search_path and owned by the CMS definer [P2-S12-AC-151]'
+);
+select ok(
+  coalesce(not has_function_privilege('anon', 'platform_private.cms_resolve_locale_field(uuid,text,uuid)', 'execute')
+    and not has_function_privilege('authenticated', 'platform_private.cms_resolve_locale_field(uuid,text,uuid)', 'execute')
+    and not has_function_privilege('service_role', 'platform_private.cms_resolve_locale_field(uuid,text,uuid)', 'execute')
+    and not exists (select 1 from pg_proc proc, aclexplode(coalesce(proc.proacl, acldefault('f', proc.proowner))) acl
+                    where proc.oid = to_regprocedure('platform_private.cms_resolve_locale_field(uuid,text,uuid)')
+                      and acl.grantee = 0), false),
+  'PUBLIC, anon, authenticated and service_role have EXECUTE revoked [P2-S12-AC-150]'
+);
+select is(
+  (select count(*)::integer from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+   where proc.proname = 'cms_resolve_locale_field' and ns.nspname <> 'platform_private'),
+  0, 'no platform_api (browser reachable) wrapper of the resolver exists [P2-S12-AC-150]');
+select ok(
+  (select bool_and(raw !~* '(Titre FR|Resume FR|Mentions FR|Source title|Source legal|Conditions FR|source-slug)')
+   from (select pg_temp.l12_json(format('select platform_private.cms_resolve_locale_field(%L::uuid, %L, %L::uuid)',
+           pg_temp.l12_entry(), l.locale, pg_temp.l12r_fid(f.key)))::text as raw
+         from (values ('title'), ('summary'), ('legal'), ('terms'), ('slug')) f(key)
+         cross join (values ('en-US'), ('fr-FR'), ('fr-CA'), ('de-DE')) l(locale)) resolved),
+  'a resolution never carries locale text: only identifiers, enums and booleans [P2-S12-AC-150]'
+);

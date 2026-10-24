@@ -1,0 +1,94 @@
+-- CMS-03C-08 refusals on R1: structure, concealment and 403, the review CAS, the uniform eligibility refusal
+-- and the duplicate active assignment.  Every refusal must leave the covered stores identical.
+select pg_temp.s12ga_mark('r1:refusals', pg_temp.s12ga_review('r1'));
+
+-- ------------------------------------------------------------------------------- structure --
+select pg_temp.s12ga_assign('st-unknown', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('capability', 'cms.reviewer'));
+select pg_temp.s12ga_assign('st-action', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('action', 'transfer'));
+select pg_temp.s12ga_assign('st-review', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('reviewId', 'not-a-uuid'));
+select pg_temp.s12ga_assign('st-ifmatch', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('ifMatch', '2'));
+select pg_temp.s12ga_assign('st-nokey', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  '{}'::jsonb, array['idempotencyKey']);
+select pg_temp.s12ga_assign('st-revoke-key', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('assignmentId', 'a12a0000-0000-4000-8000-0000000000f2'));
+select pg_temp.s12ga_assign('st-expected', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('expectedVersion', 'abc'));
+select pg_temp.s12ga_assign('st-expiry', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('expiresAt', 'tomorrow'));
+select pg_temp.s12ga_assign('st-person', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('reviewerPersonId', 'nobody'));
+select pg_temp.s12ga_assign('st-nfc', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('reason', E'é'));
+select pg_temp.s12ga_assign('st-long', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('reason', repeat('x', 257)));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l) || coalesce('#' || nullif(pg_temp.s12ga_det(l), ''), ''), ';' order by l collate "C")
+     from unnest(array['st-unknown', 'st-action', 'st-review', 'st-ifmatch', 'st-nokey', 'st-revoke-key', 'st-expected',
+                       'st-expiry', 'st-person', 'st-nfc', 'st-long']) l),
+  'st-action=P0001:INVALID_REQUEST;st-expected=P0001:VALIDATION_FAILED#["/expectedVersion"];'
+    || 'st-expiry=P0001:VALIDATION_FAILED#["/expiresAt"];st-ifmatch=P0001:INVALID_REQUEST;'
+    || 'st-long=P0001:VALIDATION_FAILED#["/reason"];st-nfc=P0001:VALIDATION_FAILED#["/reason"];'
+    || 'st-nokey=P0001:INVALID_REQUEST;st-person=P0001:VALIDATION_FAILED#["/reviewerPersonId"];'
+    || 'st-review=P0001:INVALID_REQUEST;st-revoke-key=P0001:INVALID_REQUEST;st-unknown=P0001:INVALID_REQUEST',
+  'unknown keys, an unknown action, a malformed review id, If-Match disagreeing with expectedVersion, a missing key and a '
+  || 'create carrying assignmentId are INVALID_REQUEST; a malformed version, expiry, person or an over-long or non-NFC reason '
+  || 'is VALIDATION_FAILED at its pointer [P2-S12-AC-077]');
+
+-- --------------------------------------------------------------------- concealment and 403 --
+select pg_temp.s12ga_rpc('cn-absent', 'platform_api.cms_assign_governed_reviewer', 'owner',
+  jsonb_build_object('reviewId', 'a12a0000-0000-4000-8000-0000000000f3', 'action', 'create', 'expectedVersion', '1',
+    'ifMatch', '1', 'reviewerPersonId', pg_temp.s12ga_person('rev2'),
+    'expiresAt', pg_temp.s12ga_iso(clock_timestamp() + interval '1 hour'), 'idempotencyKey', 's12ga-cn-absent'));
+select pg_temp.s12ga_assign('cn-other-org', 'other', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour');
+select pg_temp.s12ga_assign('cn-nonmember', 'rev3', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour');
+select pg_temp.s12ga_assign('cn-noscope', 'rev1', pg_temp.s12ga_review('r2'), 'rev2', interval '1 hour');
+select pg_temp.s12ga_assign('fb-designer', 'designer2', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour');
+select pg_temp.s12ga_assign('fb-reviewer', 'rev1', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour');
+select pg_temp.s12ga_assign('fb-submitter', 'designer2', pg_temp.s12ga_review('r6'), 'rev2', interval '1 hour');
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['cn-absent', 'cn-other-org', 'cn-nonmember', 'cn-noscope', 'fb-designer', 'fb-reviewer', 'fb-submitter']) l),
+  'cn-absent=P0001:NOT_FOUND;cn-nonmember=P0001:NOT_FOUND;cn-noscope=P0001:NOT_FOUND;cn-other-org=P0001:NOT_FOUND;'
+    || 'fb-designer=P0001:capability_missing;fb-reviewer=P0001:capability_missing;fb-submitter=P0001:capability_missing',
+  'an absent, cross-owner, non-member or scope-less caller meets one concealed NOT_FOUND; a designer, an assignee or a '
+  || 'non-owner submitter who can read the review is refused 403 capability_missing (owner-only, receipt-derived) [P2-S12-AC-078]');
+
+-- ---------------------------------------------------------------------------------- the CAS --
+select pg_temp.s12ga_assign('cas', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select ok(pg_temp.s12ga_out('cas') = 'P0001:VERSION_MISMATCH'
+    and pg_temp.s12ga_det('cas')::jsonb = '{"expectedVersion": "2", "currentVersion": "1"}'::jsonb,
+  'a stale review version is VERSION_MISMATCH naming the expected and the current version [P2-S12-AC-080]');
+
+-- ------------------------------------------------------- the uniform eligibility refusal --
+select pg_temp.s12ga_assign('el-absent', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  jsonb_build_object('reviewerPersonId', 'a12a0000-0000-4000-8000-0000000000f4'));
+select pg_temp.s12ga_assign('el-cross-org', 'owner', pg_temp.s12ga_review('r1'), 'other', interval '1 hour');
+select pg_temp.s12ga_assign('el-nonmember', 'owner', pg_temp.s12ga_review('r1'), 'rev3', interval '1 hour');
+select pg_temp.s12ga_assign('el-ungranted', 'owner', pg_temp.s12ga_review('r1'), 'designer2', interval '1 hour');
+select pg_temp.s12ga_assign('el-submitter', 'owner', pg_temp.s12ga_review('r1'), 'owner', interval '1 hour');
+select pg_temp.s12ga_assign('el-creator', 'owner', pg_temp.s12ga_review('r3'), 'rev2', interval '1 hour');
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l) || coalesce('#' || nullif(pg_temp.s12ga_det(l), ''), ''), ';' order by l collate "C")
+     from unnest(array['el-absent', 'el-cross-org', 'el-nonmember', 'el-ungranted', 'el-submitter', 'el-creator']) l),
+  'el-absent=P0001:reviewer_not_eligible;el-creator=P0001:reviewer_not_eligible;el-cross-org=P0001:reviewer_not_eligible;'
+    || 'el-nonmember=P0001:reviewer_not_eligible;el-submitter=P0001:reviewer_not_eligible;el-ungranted=P0001:reviewer_not_eligible',
+  'an absent, cross-organization, non-member, ungranted, submitter or subject-creator reviewer is one uniform '
+  || 'reviewer_not_eligible with no existence or role signal [P2-S12-AC-078]');
+
+-- ------------------------------------------------------------------- duplicate active row --
+select pg_temp.s12ga_assign('dup', 'owner', pg_temp.s12ga_review('r1'), 'rev1', interval '1 hour');
+select is(pg_temp.s12ga_out('dup'), 'P0001:assignment_exists',
+  'a second active assignment of the same reviewer on the review is refused assignment_exists [P2-S12-AC-080]');
+select ok(pg_temp.s12ga_same('r1:refusals', pg_temp.s12ga_review('r1'))
+    and (select count(*) from platform_private.idempotency_records
+          where operation = 'CMS-03C-08' and key_hash in (
+            select platform_private.cms_key_hash('s12ga-' || l) from unnest(array['st-unknown', 'cas', 'dup', 'el-absent', 'fb-designer']) l)) = 0,
+  'every structure, concealment, 403, CAS, eligibility and duplicate refusal leaves the covered stores identical and reserves nothing [P2-S12-AC-080]');
+select ok((select count(*) from platform_private.cms_governed_review_assignments
+          where review_id in (pg_temp.s12ga_review('r3'), pg_temp.s12ga_review('r6'))) = 0,
+  'the refusals on R3 and R6 wrote no assignment [P2-S12-AC-080]');

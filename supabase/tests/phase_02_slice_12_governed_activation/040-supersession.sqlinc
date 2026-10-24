@@ -1,0 +1,66 @@
+-- CMS-03C-09 `activate` supersession (the lineage gl1 -> gl2) and a protected (two-approval) activation (gp1).
+select pg_temp.s12gb_act('l1', 'owner', pg_temp.s12ga_review('gl1'), 'activate');
+select is(pg_temp.s12ga_out('l1'), 'ok', 'the first version of a lineage activates (nothing to supersede) [P2-S12-AC-082]');
+-- the successor v2 of the same lineage, through the real CMS-03C-01 / -06 / -08 / -07 producers
+select pg_temp.s12gb_successor('gl2', 'gl1', array['typeA']);
+select pg_temp.s12gb_approve('gl2');
+select ok(
+  (select successor.supersedes_id = pg_temp.s12ga_subject('gl1') and successor.version = 2
+          and successor.template_id = predecessor.template_id and successor.state = 'approved'
+     from platform_private.cms_template_versions successor
+     join platform_private.cms_template_versions predecessor on predecessor.id = pg_temp.s12ga_subject('gl1')
+    where successor.id = pg_temp.s12ga_subject('gl2'))
+  and (select review.state = 'approved' and review.version = 2 from platform_private.cms_governed_reviews review
+        where review.id = pg_temp.s12ga_review('gl2')),
+  'fixture: v2 of the lineage is a real approved successor that supersedes v1 by identity and shares its lineage id [P2-S12-AC-083]');
+select pg_temp.s12gb_mark('gl1:active', 'gl1');
+create temp table s12gb_before_gl2 on commit drop as
+  select (select count(*) from platform_private.outbox_events) as events,
+         (select count(*) from audit_private.audit_events where action = 'cms.governed.activate') as audits,
+         (select activated_at from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('gl1')) as v1_activated,
+         (select lifecycle_version from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('gl1')) as v1_lifecycle;
+select pg_temp.s12gb_act('l2', 'owner', pg_temp.s12ga_review('gl2'), 'activate');
+select is(pg_temp.s12ga_out('l2'), 'ok', 'a newer approved version of an active lineage activates [P2-S12-AC-083]');
+select ok(
+  (select v1.state = 'superseded' and v1.lifecycle_version = before.v1_lifecycle + 1 and v1.version = 1
+          and v1.activated_at = before.v1_activated and v1.retired_at is null
+     from platform_private.cms_template_versions v1, s12gb_before_gl2 before
+    where v1.id = pg_temp.s12ga_subject('gl1'))
+  and (select v2.state = 'active' and v2.lifecycle_version = 4 and v2.version = 2 and v2.activated_at is not null
+          and v2.activated_at >= (select activated_at from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('gl1'))
+     from platform_private.cms_template_versions v2 where v2.id = pg_temp.s12ga_subject('gl2'))
+  and (select count(*) = 1 from platform_private.cms_template_versions member
+        where member.template_id = (pg_temp.s12gb_subj('gl1')->>'template_id')::uuid and member.state = 'active'),
+  'the previous active version becomes superseded (lifecycle +1, activated_at kept, never retired) in the same transaction and exactly one version of the lineage is active [P2-S12-AC-083]');
+select ok(
+  pg_temp.s12gb_events('gl1') = 1 and pg_temp.s12gb_events('gl2') = 1
+  and (select count(*) from platform_private.outbox_events) = (select events from s12gb_before_gl2) + 1
+  and (select count(*) from audit_private.audit_events where action = 'cms.governed.activate') = (select audits from s12gb_before_gl2) + 1
+  and (select event.aggregate_version = 4 and event.aggregate_type = 'cms_template_version'
+          and event.payload = jsonb_build_object('templateId', subject.template_id, 'templateVersionId', subject.id)
+     from platform_private.outbox_events event
+     join platform_private.cms_template_versions subject on subject.id = event.aggregate_id
+    where event.aggregate_id = pg_temp.s12ga_subject('gl2')),
+  'the supersession emits nothing: the whole command added exactly one event (the new version at its lifecycle counter) and one audit record [P2-S12-AC-083]');
+select ok(
+  (select review.state = 'approved' and review.version = 3 and review.activated_at is not null
+     from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('gl1'))
+  and (select review.state = 'approved' and review.version = 3 and review.activated_at is not null
+         and review.activated_at = subject.activated_at
+     from platform_private.cms_governed_reviews review
+     join platform_private.cms_template_versions subject on subject.id = review.subject_id
+    where review.id = pg_temp.s12ga_review('gl2')),
+  'the superseded version keeps its own review record untouched and the new version''s review records its activation [P2-S12-AC-083]');
+select pg_temp.s12gb_act('l1-after', 'owner', pg_temp.s12ga_review('gl1'), 'activate', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select pg_temp.s12gb_act('l1-after-cur', 'owner', pg_temp.s12ga_review('gl1'), 'activate');
+select is(pg_temp.s12ga_out('l1-after') || '|' || pg_temp.s12ga_out('l1-after-cur'),
+  'P0001:VERSION_MISMATCH|P0001:subject_not_activatable',
+  'a superseded version cannot be activated again, with its stale or its current review version [P2-S12-AC-085]');
+
+-- ------------------------------------------------------------------ a protected (two approvals) review --
+select pg_temp.s12gb_act('p1', 'owner', pg_temp.s12ga_review('gp1'), 'activate');
+select ok(pg_temp.s12ga_out('p1') = 'ok' and pg_temp.s12ga_body('p1')->>'reviewVersion' = '4'
+    and (select subject.state = 'active' and subject.lifecycle_version = 4
+           from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('gp1'))
+    and pg_temp.s12gb_events('gp1') = 1,
+  'a protected review with both required approvals (policy slot and base slot) activates once, advancing the review from version 3 to 4 [P2-S12-AC-082]');

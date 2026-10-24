@@ -1,0 +1,56 @@
+-- CMS-03C-21 bound of 128 targets and the representative-size functional result of CMS-03C-05 / CMS-03C-21
+-- (BE03c 190, 1385; tracker P2-S12-AC-153, AC-154, AC-230).  124 more published, assigned entries b001 .. b124
+-- are made through the same producers.  The RPC < 300 ms budget (BE03c 1633, AC-279) is NOT asserted here: a
+-- wall-clock assertion must not turn the functional gate red on a loaded host, so it lives in the non-gating
+-- phase_02_slice_12_related_perf suite (p95 over repeated samples).
+
+do $bench$
+declare
+  n integer;
+begin
+  for n in 1..124 loop
+    perform pg_temp.r12_make('b' || lpad(n::text, 3, '0'));
+    perform pg_temp.r12_assign('b' || lpad(n::text, 3, '0'));
+    perform pg_temp.r12_publish('b' || lpad(n::text, 3, '0'));
+  end loop;
+end;
+$bench$;
+select is((select coalesce(string_agg(step, ', '), '') from pg_temp.r12_world_errors where step ~ ' b[0-9]{3}( |$)'), '', 'bench: all 124 extra publications succeeded');
+
+create or replace function pg_temp.r12_bnames(p_from integer, p_to integer)
+returns text[]
+language sql
+stable
+as $body$
+  select array_agg('b' || lpad(n::text, 3, '0') order by n) from generate_series(p_from, p_to) n
+$body$;
+
+-- eligibleCount counts derived candidates only for a source with an active publication (BE03c 1383: "0 derived
+-- when it has none"), so the 128-cap source is published first.
+select pg_temp.r12_publish('srcZ');
+select is((select coalesce(string_agg(step, ', '), '') from pg_temp.r12_world_errors where step like '%srcZ%'), '', 'bench fixture: srcZ published');
+-- 32 pins and a derived rule bounded to 128: 32 + 128+ candidates must be cut to 128 targets, pins first.
+create temp table r12_cap on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcZ', pg_temp.r12_bnames(1, 32), array[]::text[], pg_temp.r12_rule('same-type-recent', 128), 'r12-srcZ-cap-0001')) as written;
+select ok(not ((select written from r12_cap) ? '__error'), 'bench fixture: 32 pins and same-type-recent bounded to 128 (got ' || coalesce((select written::text from r12_cap), 'null') || ') [P2-S12-AC-230]');
+select is((select written->>'eligibleCount' from r12_cap), '128', 'eligibleCount never exceeds 128 (32 pins plus 100 candidates) [P2-S12-AC-230]');
+create temp table r12_cap_t on commit drop as select pg_temp.r12_targets(pg_temp.r12_id('srcZ')) as targets;
+select is(pg_temp.r12_len((select targets from r12_cap_t)), 128, 'the projection is cut at exactly 128 targets [P2-S12-AC-154]');
+select is((select targets->127->>'position' from r12_cap_t), '127', 'the last position is 127 [P2-S12-AC-153]');
+select is(pg_temp.r12_target_names(case when pg_temp.r12_len((select targets from r12_cap_t)) = 128 then jsonb_path_query_array((select targets from r12_cap_t), '$[0 to 31]') end),
+  array_to_string(pg_temp.r12_bnames(1, 32), ','), 'the 32 pins come first in pin order [P2-S12-AC-154]');
+select is((select case when pg_temp.r12_len(targets) >= 0 then (select count(*)::integer from jsonb_array_elements(targets) item where item->>'source' = 'derived') end from r12_cap_t), 96,
+  'the remaining 96 slots are derived candidates [P2-S12-AC-154]');
+select ok(pg_temp.r12_valid((select targets from r12_cap_t)), 'the 128-target list satisfies the contract [P2-S12-AC-153]');
+
+-- 64 related targets (32 pins + 32 exclusions) with a derived rule: the functional result at the BE03c 1633
+-- representative size.  Timing: phase_02_slice_12_related_perf.sql.
+create temp table r12_k_w on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcK', pg_temp.r12_bnames(1, 32), pg_temp.r12_bnames(33, 64), pg_temp.r12_rule('shared-terms', 64), 'r12-srcK-perf-0001')) as written;
+select ok(not ((select written from r12_k_w) ? '__error'), 'bench fixture: 32 pins, 32 exclusions and a derived rule (got ' || coalesce((select written::text from r12_k_w), 'null') || ') [P2-S12-AC-154]');
+create temp table r12_k_r on commit drop as select pg_temp.r12_targets(pg_temp.r12_id('srcK')) as targets;
+select is(pg_temp.r12_len((select targets from r12_k_r)), 96,
+  'pins 32 + derived candidates bounded to 64 (excluded b033..b064 are never candidates) = 96 targets [P2-S12-AC-154]');
+select is((select case when pg_temp.r12_len(targets) >= 0 then (select count(*)::integer from jsonb_array_elements(targets) item
+            where (item->>'entryId')::uuid in (select id from pg_temp.r12_tags where value between 'b033' and 'b064')) end from r12_k_r), 0,
+  'no excluded entry appears in the projection [P2-S12-AC-154]');

@@ -1,0 +1,48 @@
+-- CMS-03C-08 setup: real grants, six real open governed reviews and the fixture controls.
+--   owner     receipt-derived owner + cms.template_designer (governed_submit/005), the submitter and creator of R1/R2/R4/R5
+--   designer2 cms.editor + cms.reviewer.policy (005); gains cms.template_designer here (submits R6), cms.reviewer later
+--   rev1      cms.reviewer (1 day)            rev2  cms.reviewer (30 days) + cms.template_designer (creates R3)
+--   rev3      NOT a member of the owner organization (its context claims the owner party)
+--   other     owner of a second organization
+create temp table s12ga_setup(key text primary key, outcome text not null) on commit drop;
+insert into s12ga_setup(key, outcome) values
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 30)),
+  ('rev2:designer', pg_temp.s12ga_grant('rev2', 'cms.template_designer', 1)),
+  ('designer2:designer', pg_temp.s12ga_grant('designer2', 'cms.template_designer', 1));
+-- the reviewers act inside the owner party (rev3 only claims it: it has no tenure there)
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2', 'rev3');
+
+select pg_temp.s12ga_open('r1', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r2', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_open('r3', 'rev2', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r4', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r5', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r6', 'owner', array['typeA'], 'designer2');
+
+select ok((select count(*) = 4 and bool_and(outcome = 'OK') from s12ga_setup),
+  'fixture: rev1, rev2 and designer2 hold their real CMS-03A-15 grants in the owner organization [P2-S12-AC-078]');
+select ok(
+  (select count(*) = 6 and bool_and(state = 'open' and version = 1 and recorded_decision_count = 0)
+     from platform_private.cms_governed_reviews
+    where id in (select value::uuid from s12gov_ids where key like 'r_:review'))
+  and (select risk_class = 'protected' and required_decision_count = 2
+         and required_capabilities = '["cms.reviewer","cms.reviewer.policy"]'::jsonb
+         from platform_private.cms_governed_reviews where id = pg_temp.s12ga_review('r2'))
+  and (select risk_class = 'ordinary' and required_decision_count = 1
+         from platform_private.cms_governed_reviews where id = pg_temp.s12ga_review('r1')),
+  'fixture: six real open governed reviews exist, R2 protected (two decisions, policy slot) and R1 ordinary [P2-S12-AC-078]');
+select ok(
+  (select creator.person_id = pg_temp.s12ga_person('rev2') and review.submitted_by = pg_temp.s12ga_person('owner')
+     from platform_private.cms_governed_reviews review
+     join platform_private.cms_template_versions subject on subject.id = review.subject_id
+     join identity.auth_user_bindings creator on creator.auth_user_id = subject.created_by
+    where review.id = pg_temp.s12ga_review('r3'))
+  and (select review.submitted_by = pg_temp.s12ga_person('designer2')
+         from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r6')),
+  'fixture: R3 was created by rev2 and submitted by owner; R6 was created by owner and submitted by designer2 [P2-S12-AC-078]');
+
+select has_function('platform_api', 'cms_assign_governed_reviewer', array['jsonb'],
+  'CMS-03C-08 has a named platform API RPC [P2-S12-AC-076]');
+select has_function('platform_private', 'cms_assign_governed_reviewer', array['jsonb'],
+  'CMS-03C-08 has an atomic private implementation [P2-S12-AC-076]');

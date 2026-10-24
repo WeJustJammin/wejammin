@@ -1,0 +1,48 @@
+-- Lineage advisory lock and active-row re-read helpers shared by the activation (090) and schedule (055) suites.
+-- Include AFTER 000-world.sqlinc.  BE03c Slice 12 lock order (1336-1348): positions 1, 3, 3-4, 5, 6 are row locks and the lineage advisory
+-- lock is LAST; "never acquires an earlier position after a later one", so the conflict re-read under the advisory lock takes NO row lock.
+
+-- True when this backend holds the xact-scoped lineage advisory lock of a template tag (the CMS-03C-19 key:
+-- hashtextextended('cms.governed.lineage:<kind>:<lineage>', 0), split into classid / objid with objsubid 1).
+create or replace function pg_temp.s12gb_lineage_lock_held(p_tag text) returns boolean language sql stable as $body$
+  select exists (
+    select 1 from pg_locks held,
+      (select pg_catalog.hashtextextended('cms.governed.lineage:template_version:' || (pg_temp.s12gb_rev(p_tag)->>'lineage_id'), 0) as k) key
+     where held.locktype = 'advisory' and held.pid = pg_backend_pid() and held.granted and held.mode = 'ExclusiveLock'
+       and held.objsubid = 1
+       and held.classid::bigint = ((key.k >> 32) & 4294967295) and held.objid::bigint = (key.k & 4294967295))
+$body$;
+
+-- The body of a function by regprocedure signature (NULL when absent).
+create or replace function pg_temp.s12gb_prosrc(p_sig text) returns text language sql stable as $body$
+  select prosrc from pg_proc where oid = to_regprocedure(p_sig) $body$;
+
+-- The part of a producer's body from its lineage advisory lock on (the raw lock call or the extracted helper call), NULL when it has none.
+create or replace function pg_temp.s12gb_after_advisory(p_sig text) returns text language sql stable as $body$
+  select case when t.m is not null then substr(t.src, t.m) end
+    from (select s.src, least(nullif(strpos(s.src, 'pg_advisory_xact_lock'), 0),
+                              nullif(strpos(s.src, 'cms_governed_take_lineage_advisory'), 0)) as m
+            from (select pg_temp.s12gb_prosrc(p_sig) as src) s) t $body$;
+
+-- True when a function body contains a row-locking clause (FOR UPDATE / NO KEY UPDATE / SHARE / KEY SHARE).  NULL when the function is absent.
+create or replace function pg_temp.s12gb_takes_row_locks(p_sig text) returns boolean language sql stable as $body$
+  select pg_temp.s12gb_prosrc(p_sig) ~* 'for[[:space:]]+(no[[:space:]]+key[[:space:]]+update|key[[:space:]]+share|update|share)' $body$;
+
+-- The non-locking read of a template tag's lineage, excluding p_except (NULL when the helper is absent or the lineage has no other active version).
+-- The version tables are row-level-secured to the CMS rpc context (app.cms_rpc = 'true', which every producer sets first), so the helper is
+-- called inside that context and the previous setting is restored.
+create or replace function pg_temp.s12gb_read_active(p_tag text, p_except uuid) returns uuid language plpgsql as $body$
+declare
+  v_prior text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), '');
+  v_id uuid;
+begin
+  if to_regprocedure('platform_private.cms_governed_read_lineage_active(text,uuid,uuid)') is null then
+    return null;
+  end if;
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  v_id := platform_private.cms_governed_read_lineage_active(
+    'template_version', (pg_temp.s12gb_rev(p_tag)->>'lineage_id')::uuid, p_except);
+  perform pg_catalog.set_config('app.cms_rpc', v_prior, true);
+  return v_id;
+end;
+$body$;

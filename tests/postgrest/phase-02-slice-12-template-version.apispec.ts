@@ -10,7 +10,7 @@
 import { createHash, randomUUID } from 'node:crypto';
 
 import { TemplateVersionResourceSchema } from '@wejammin/contracts';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   type EditorialWorld,
@@ -42,6 +42,13 @@ beforeAll(async () => {
   worldA = await prepareEditorialWorld(ownerA);
   worldB = await prepareEditorialWorld(ownerB);
   stack = createCompositionStack(designerSession(ownerA));
+});
+
+// Several tests switch the verified session (none, no capability, owner B, an
+// ungranted owner). Restoring it here, not on a test's last line, means a failed
+// assertion cannot leave the next test running as the wrong caller.
+afterEach(() => {
+  stack.as(designerSession(ownerA));
 });
 
 const bodyFor = (
@@ -342,7 +349,6 @@ describe('CMS-03C-01 per-owner keys and concealment through the real stack', () 
         .map((rpc) => `${rpc.status}:${rpc.message}`),
     ).toEqual(['400:NOT_FOUND', '400:NOT_FOUND']);
     expect(rows(ownerB, heldKey)).toBe(0);
-    stack.as(designerSession(ownerA));
   });
 });
 
@@ -362,7 +368,10 @@ describe('CMS-03C-01 authority through the real stack', () => {
     expect(noCapability.status, noCapability.text).toBe(403);
     expect(noCapability.body).toMatchObject({
       code: 'TEMPLATE_FORBIDDEN',
-      details: { reasonCode: 'CAPABILITY_REQUIRED' },
+      // BE03c "Slice 12 typed refusals" (.memory/wiki/specs/be/03c-composition-taxonomy-localization.md
+      // line 1457): a 403 carries one lowercase token, `capability_missing`; the upper-case
+      // `CAPABILITY_REQUIRED` is the pre-contract BE00 token and is not a 03c token.
+      details: { reasonCode: 'capability_missing' },
     });
     expect(stack.observed()).toEqual([]);
     // The session claims the capability, but the database holds no grant for this owner.
@@ -394,7 +403,6 @@ describe('CMS-03C-01 authority through the real stack', () => {
                where owner_id = '${ungranted.organizationId}'`),
       ),
     ).toBe(0);
-    stack.as(designerSession(ownerA));
   });
 
   it('[P2-S12-AC-008] a dependency that never answers is 503 DEPENDENCY_UNAVAILABLE and writes nothing', async () => {

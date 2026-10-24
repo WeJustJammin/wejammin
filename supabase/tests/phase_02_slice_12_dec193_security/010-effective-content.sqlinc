@@ -1,0 +1,274 @@
+-- Existing BE03b detector is the sole policy oracle. All legacy seeds below are
+-- explicit guarded fixtures, NOT proof that an unsafe producer should succeed.
+create temp table s12sec_safe(name text primary key, value jsonb,
+  accept_tag text, detach_tag text, detach_path text) on commit drop;
+insert into s12sec_safe values
+  ('null', 'null', 'rs-null', 'rs-pc-y', '/fork'),
+  ('number', '42', 'rs-none', 'rs-pc-t', '/fork'),
+  ('boolean', 'false', 'rs-equal', 'rs-pc-one', '/fork'),
+  ('string', '"ordinary"', 'rs-unknown', 'rs-pc-two', '/fork'),
+  ('array', '[null,42,false,{"script":null,"style":17,"onload":"ordinary"}]',
+    'rs-stale', 'rs-digest', '/digest');
+create temp table s12sec_unsafe(name text primary key, value jsonb,
+  tag text, path text, action text) on commit drop;
+insert into s12sec_unsafe values
+  ('url', '{"nested":[{"uri":" java\nscript:alert(1)"}]}', 'rs-yours', '/panel', 'accept'),
+  ('template', '"{{ unsafe }}"', 'rs-reverse', '/panel', 'accept'),
+  ('frame-array', '[{"deep":"<iframe src=x></iframe>"}]', 'rs-copy', '/panel/leaf', 'detach'),
+  ('event', '{"markup":"<span onload=run()>x</span>"}', 'rs-rm-y', '/gone', 'detach');
+select is(platform_private.cms_json_executable_leaves(value), 0,
+  'SEC-01 existing detector accepts exact safe JSON ' || name) from s12sec_safe order by name;
+select is(platform_private.cms_json_executable_leaves(value), 1,
+  'SEC-02 existing detector finds one executable leaf in ' || name) from s12sec_unsafe order by name;
+
+create or replace function pg_temp.s12sec_legacy(p_tag text, p_path text,
+  p_props jsonb, p_tree jsonb default null) returns setof text language plpgsql as $body$
+declare prior platform_private.cms_composition_instances; row_id uuid := extensions.gen_random_uuid();
+  stamp timestamptz := clock_timestamp(); prior_rpc text := current_setting('app.cms_rpc', true); image jsonb;
+begin
+  select * into prior from platform_private.cms_composition_instances
+    where id = pg_temp.s12pu_head(p_tag, p_path);
+  if prior.id is null then
+    return next extensions.fail('SEC fixture ' || p_tag || ': real placed predecessor exists');
+    return;
+  end if;
+  return next extensions.ok(prior.pattern_id is not null and prior.pattern_version > 0
+    and prior.link_mode = 'linked', 'SEC fixture ' || p_tag || ': real positive placement provenance');
+  perform set_config('app.cms_rpc', 'true', true);
+  begin
+    insert into platform_private.cms_composition_instances
+    select (jsonb_populate_record(null::platform_private.cms_composition_instances, to_jsonb(prior) ||
+      jsonb_build_object('id', row_id, 'version', prior.version + 1, 'props', p_props,
+        'detached_tree', p_tree, 'link_mode', case when p_tree is null then 'linked' else 'detached' end,
+        'created_at', stamp, 'updated_at', stamp))).*;
+  exception when others then
+    perform set_config('app.cms_rpc', coalesce(prior_rpc, ''), true);
+    raise;
+  end;
+  perform set_config('app.cms_rpc', coalesce(prior_rpc, ''), true);
+  image := pg_temp.s12pu_row(row_id);
+  return next extensions.is(image->'props', p_props, 'SEC fixture ' || p_tag || ': exact legacy O');
+  return next extensions.is(image->'detached_tree', coalesce(p_tree, 'null'::jsonb),
+    'SEC fixture ' || p_tag || ': exact legacy tree, not an unsafe producer result');
+end;
+$body$;
+
+-- Unsafe effective alternatives are committed only as labelled guarded legacy
+-- input. A complete real public choice/detach must reject atomically.
+select seeded.* from s12sec_unsafe u cross join lateral pg_temp.s12sec_legacy(u.tag,
+  case when u.path = '/panel/leaf' then '/panel' else u.path end,
+  jsonb_build_object(u.path, u.value)) seeded order by u.name;
+select refused.* from s12sec_unsafe u cross join lateral pg_temp.s12pu_refused(
+  'sec-unsafe-' || u.name, 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request(u.tag, u.action, jsonb_build_array(pg_temp.s12pu_target(u.tag,
+    case when u.path = '/panel/leaf' then '/panel' else u.path end,
+    case when u.action = 'accept' then '[{"path":"/panel","choice":"yours"}]'::jsonb end)),
+    's12sec-unsafe-' || u.name, case when u.action = 'accept' then 2 end),
+  'VALIDATION_FAILED', case when u.action = 'accept' then '["/instances/0/choices"]'::jsonb
+    else '["/instances/0/instanceId"]'::jsonb end) refused order by u.name;
+
+-- First selected root is safe. The second root is unsafe; a first tentative
+-- append, receipt, audit or invalidation may not survive the failed whole RPC.
+select * from pg_temp.s12sec_legacy('rs-missing', '/quiet',
+  '{"/quiet":"data:text/html;base64,PHNjcmlwdD4="}');
+select * from pg_temp.s12pu_refused('sec-atomic-second', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-missing', 'detach', jsonb_build_array(
+    pg_temp.s12pu_target('rs-missing', '/panel'), pg_temp.s12pu_target('rs-missing', '/quiet')),
+    's12sec-atomic-second'), 'VALIDATION_FAILED', '["/instances/1/instanceId"]');
+
+create or replace function pg_temp.s12sec_success(p_label text, p_tag text, p_path text,
+  p_mode text, p_props jsonb, p_root_props jsonb default null) returns setof text language plpgsql as $body$
+declare body jsonb := pg_temp.s12pu_body(p_label); stored jsonb := pg_temp.s12pu_row(pg_temp.s12pu_head(p_tag, p_path));
+  before_image jsonb; after_image jsonb; prior jsonb; before_entry jsonb; after_entry jsonb; header_value text;
+begin
+  select before_rows, after_rows, headers into before_image, after_image, header_value
+    from s12pu_out where label = p_label;
+  select r into prior from jsonb_array_elements(before_image->'platform_private.cms_composition_instances') r
+    where r->>'id' = (select request#>>'{instances,0,instanceId}' from s12pu_out where label = p_label);
+  select r into before_entry from jsonb_array_elements(before_image->'platform_private.cms_content_entries') r
+    where r->>'id' = pg_temp.s12pl_entry_id(p_tag)::text;
+  select r into after_entry from jsonb_array_elements(after_image->'platform_private.cms_content_entries') r
+    where r->>'id' = pg_temp.s12pl_entry_id(p_tag)::text;
+  return next extensions.is(pg_temp.s12pu_state(p_label), '00000', p_label || ': actual public command succeeds');
+  return next extensions.is(stored->'props', p_props, p_label || ': exact stored override JSON, no coercion');
+  return next extensions.is(stored->>'link_mode', p_mode, p_label || ': intended link disposition');
+  if p_mode = 'detached' then
+    return next extensions.is(stored#>'{detached_tree,nodes,0,props}', p_root_props,
+      p_label || ': exact effective JSON retained in private selected tree');
+  else
+    return next extensions.is(stored->'detached_tree', 'null'::jsonb, p_label || ': linked choice has no private tree');
+    return next extensions.is(stored->>'pattern_version', '2', p_label || ': safe target pin adopted');
+  end if;
+  return next extensions.is((stored->>'version')::bigint, (prior->>'version')::bigint + 1,
+    p_label || ': one successor instance, not an in-place rewrite');
+  return next extensions.is((after_entry->>'version')::bigint, (before_entry->>'version')::bigint + 1,
+    p_label || ': one entry CAS advance');
+  return next extensions.ok(not exists (
+    select 1 from jsonb_array_elements(before_image->'platform_private.cms_composition_instances') old_row
+    where not exists (select 1 from jsonb_array_elements(after_image->'platform_private.cms_composition_instances') new_row
+      where new_row = old_row)), p_label || ': all prior full composition images preserved');
+  return next extensions.is(before_image->'platform_private.cms_entry_revisions',
+    after_image->'platform_private.cms_entry_revisions', p_label || ': revision payloads and recorded pins unchanged');
+  return next extensions.is(body - 'items', '{}'::jsonb, p_label || ': exact public items envelope');
+  return next extensions.is(case when jsonb_typeof(body->'items')='array'
+    then jsonb_array_length(body->'items') end, 1, p_label || ': one public resource');
+  return next extensions.ok(not ((body#>'{items,0}') ?| array['props','bindings','detachedTree','detached_tree']),
+    p_label || ': no private effective-content serialization');
+  return next extensions.is(case when header_value ~ '^\[' then header_value::jsonb end,
+    jsonb_build_array(jsonb_build_object('etag', '"' || (after_entry->>'version') || '"')),
+    p_label || ': strong ETag is committed entry version');
+end;
+$body$;
+
+-- Same unsafe O as SEC-02, but theirs discards it. Do not validate all B/L/T
+-- alternatives instead of the selected effective content.
+select * from pg_temp.s12sec_legacy('rs-theirs', '/panel',
+  jsonb_build_object('/panel', (select value from s12sec_unsafe where name = 'url')));
+select pg_temp.s12pu_update('sec-discard-unsafe', pg_temp.s12pu_update_request('rs-theirs', 'accept',
+  jsonb_build_array(pg_temp.s12pu_target('rs-theirs', '/panel', '[{"path":"/panel","choice":"theirs"}]')),
+  's12sec-discard-unsafe', 2));
+select * from pg_temp.s12sec_success('sec-discard-unsafe', 'rs-theirs', '/panel', 'linked', '{}');
+select is(platform_private.cms_json_executable_leaves(pg_temp.s12pu_props(pg_temp.s12pu_head('rs-theirs','/panel'))),
+  0, 'SEC-03 chosen safe target discarded unsafe local alternative');
+
+-- Present JSON null and all scalar classes remain values, never absent or {}.
+select seeded.* from s12sec_safe s cross join lateral pg_temp.s12sec_legacy(s.accept_tag, '/panel',
+  jsonb_build_object('/panel/leaf', s.value)) seeded order by s.name;
+select pg_temp.s12pu_update('sec-accept-' || name, pg_temp.s12pu_update_request(accept_tag, 'accept',
+  jsonb_build_array(pg_temp.s12pu_target(accept_tag, '/panel',
+    '[{"path":"/panel","choice":"theirs"},{"path":"/panel/leaf","choice":"yours"}]')),
+  's12sec-accept-' || name, 2)) from s12sec_safe order by name;
+select checked.* from s12sec_safe s cross join lateral pg_temp.s12sec_success('sec-accept-' || s.name,
+  s.accept_tag, '/panel', 'linked', jsonb_build_object('/panel/leaf', s.value)) checked order by s.name;
+select seeded.* from s12sec_safe s cross join lateral pg_temp.s12sec_legacy(s.detach_tag, s.detach_path,
+  jsonb_build_object(s.detach_path, s.value)) seeded order by s.name;
+select pg_temp.s12pu_update('sec-detach-' || name, pg_temp.s12pu_update_request(detach_tag, 'detach',
+  jsonb_build_array(pg_temp.s12pu_target(detach_tag, detach_path)), 's12sec-detach-' || name))
+  from s12sec_safe order by name;
+select checked.* from s12sec_safe s cross join lateral pg_temp.s12sec_success('sec-detach-' || s.name,
+  s.detach_tag, s.detach_path, 'detached', '{}', s.value) checked order by s.name;
+
+-- Existing public authority/ACL boundaries still surround content validation.
+select * from pg_temp.s12pu_refused('sec-unassigned', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-current', 'detach', jsonb_build_array(pg_temp.s12pu_target('rs-current','/panel')),
+    's12sec-unassigned', null, null, 'designer2'), 'capability_missing', null, 'designer2');
+select * from pg_temp.s12pu_refused('sec-hidden', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-current', 'detach', jsonb_build_array(pg_temp.s12pu_target('rs-current','/panel')),
+    's12sec-hidden', null, null, 'other'), 'NOT_FOUND', null, 'other');
+select ok((select bool_and(requested_role = 'service_role' and call_role = 'service_role' and role_restored)
+  from s12pu_out where label like 'sec-%'), 'SEC-04 all actual public calls used service_role and restored the caller role');
+select ok(has_function_privilege('service_role','platform_api.cms_apply_pattern_update(jsonb)','EXECUTE')
+  and not has_function_privilege('anon','platform_api.cms_apply_pattern_update(jsonb)','EXECUTE')
+  and not has_function_privilege('authenticated','platform_api.cms_apply_pattern_update(jsonb)','EXECUTE'),
+  'SEC-05 public update remains service-only');
+select ok(not has_function_privilege(role_name, signature, 'EXECUTE'),
+  'SEC-06 private security helpers grant no direct ' || role_name || ' access: ' || signature)
+from unnest(array['anon','authenticated','service_role']) role_name cross join unnest(array[
+  'platform_private.cms_json_executable_leaves(jsonb)',
+  'platform_private.cms_detached_tree_registry(uuid,jsonb,uuid,jsonb)',
+  'platform_private.cms_evaluate_preflight(jsonb)']) signature;
+
+-- Separate legacy tree-only worlds: props/bindings/history/field values are SAFE.
+-- No unsafe historical head can make the old props-only preflight fail for us.
+select * from pg_temp.s12sec_legacy('rs-same','/same','{}',
+  '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["same"],
+    "blockKey":"s12pd.block","blockVersion":1,"props":{"nested":[{"uri":"javascript:legacy()"}]}}]}');
+select * from pg_temp.s12sec_legacy('rs-wide','/wide','{}',
+  '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["wide"],
+    "blockKey":"s12pd.block","blockVersion":1,"props":[null,42,false,{"label":"ordinary"}]}]}');
+select is((select coalesce(sum(platform_private.cms_json_executable_leaves(props)
+  + platform_private.cms_json_executable_leaves(bindings)),0)::integer
+  from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev(tag)), 0,
+  'SEC-07 ' || tag || ': every ordinary/history props and bindings image is safe')
+from (values ('rs-same'),('rs-wide')) fixtures(tag);
+select is((select coalesce(sum(platform_private.cms_json_executable_leaves(value)),0)::integer
+  from platform_private.cms_entry_field_values where revision_id = pg_temp.s12pl_rev(tag)), 0,
+  'SEC-08 ' || tag || ': no unsafe stored field value') from (values ('rs-same'),('rs-wide')) fixtures(tag);
+select is((select coalesce(sum(platform_private.cms_json_executable_leaves(to_jsonb(old_row)->'detached_tree')),0)::integer
+  from platform_private.cms_composition_instances old_row where old_row.revision_id = pg_temp.s12pl_rev(tag)
+  and exists (select 1 from platform_private.cms_composition_instances newer where newer.revision_id=old_row.revision_id
+    and newer.path=old_row.path and newer.version>old_row.version)), 0,
+  'SEC-08a ' || tag || ': every superseded history tree is safe') from (values ('rs-same'),('rs-wide')) fixtures(tag);
+select is(platform_private.cms_json_executable_leaves(pg_temp.s12pu_row(pg_temp.s12pu_head('rs-same','/same'))->'detached_tree'),
+  1, 'SEC-09 legacy unsafe content exists ONLY in the explicit selected detached tree');
+select is(platform_private.cms_json_executable_leaves(pg_temp.s12pu_row(pg_temp.s12pu_head('rs-wide','/wide'))->'detached_tree'),
+  0, 'SEC-10 paired safe arbitrary-JSON detached tree has no executable leaf');
+
+-- E7 lookup-fixture prerequisite only: direct legacy rows did not run a normal
+-- write tail. This is not settings-writer/materializer or provider evidence.
+select is((select count(*) from platform_private.cms_publication_settings_snapshots
+  where owner_id=pg_temp.s09d_id('ownerOrg') and state='active' and version=1
+  and ordinal=1 and registry_version=1 and effective_values='[]'::jsonb
+  and snapshot_hash='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'),
+  0::bigint, 'SEC-E7-01 exact empty publication-settings lookup prerequisite is initially missing');
+do $settings_fixture$
+declare prior_rpc text := current_setting('app.cms_rpc',true);
+begin
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    insert into platform_private.cms_publication_settings_snapshots(
+      owner_id,state,version,ordinal,registry_version,snapshot_hash,effective_values
+    ) values (
+      pg_temp.s09d_id('ownerOrg'),'active',1,1,1,
+      '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'::char(64),'[]'::jsonb
+    );
+  exception when others then
+    perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+    raise;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+end;
+$settings_fixture$;
+select is((select count(*) from platform_private.cms_publication_settings_snapshots
+  where owner_id=pg_temp.s09d_id('ownerOrg') and state='active' and version=1
+  and ordinal=1 and registry_version=1 and effective_values='[]'::jsonb
+  and snapshot_hash='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'),
+  1::bigint, 'SEC-E7-02 exact empty publication-settings lookup prerequisite is present before preflight images');
+
+create or replace function pg_temp.s12sec_preflight(p_tag text, p_unsafe boolean)
+returns setof text language plpgsql as $body$
+declare proc oid; answer jsonb; observed jsonb; code text := '00000'; message text;
+  prior_rpc text := current_setting('app.cms_rpc', true); before_rows jsonb := pg_temp.s12pl_snapshot(); before_values jsonb;
+begin
+  proc := to_regprocedure('platform_private.cms_evaluate_preflight(jsonb)');
+  if proc is null or not exists (select 1 from pg_proc where oid=proc and prorettype='jsonb'::regtype
+    and not proretset and prokind='f') then
+    return next extensions.fail('SEC-11 exact real jsonb preflight signature is available');
+    return;
+  end if;
+  select coalesce(jsonb_agg(to_jsonb(field_row) order by to_jsonb(field_row)::text),'[]'::jsonb)
+    into before_values from platform_private.cms_entry_field_values field_row;
+  perform pg_temp.s09d_session('owner','service_role');
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    execute 'select platform_private.cms_evaluate_preflight($1)' into answer using jsonb_build_object(
+      'phase','submit','revisionId',pg_temp.s12pl_rev(p_tag),'actingPartyId',pg_temp.s09d_id('ownerOrg'),
+      'actorPersonId',pg_temp.s09d_actor_id('owner','person'),
+      'effectiveAt',to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+  exception when others then
+    get stacked diagnostics code=returned_sqlstate, message=message_text;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+  select coalesce(jsonb_agg(item),'[]'::jsonb) into observed from jsonb_array_elements(
+    case when jsonb_typeof(answer->'results')='array' then answer->'results' else '[]'::jsonb end) item
+    where item->>'category'='security';
+  return next extensions.is(code || coalesce(':'||message,''), '00000',
+    'SEC-11 ' || p_tag || ': actual private preflight evaluated, not a substituted result');
+  return next extensions.is(observed, jsonb_build_array(jsonb_build_object('category','security',
+    'providerKey','preflight.security','providerVersion','1','outcome',case when p_unsafe then 'failed' else 'passed' end,
+    'reasonCode',case when p_unsafe then 'unsafe_content' else null end,'blockingCount',case when p_unsafe then 1 else 0 end)),
+    'SEC-12 ' || p_tag || ': exact security provider outcome/reason/count over effective content');
+  return next extensions.is(pg_temp.s12pl_snapshot(),before_rows,'SEC-13 ' || p_tag || ': captured CMS mutation stores unchanged');
+  return next extensions.is((select coalesce(jsonb_agg(to_jsonb(field_row) order by to_jsonb(field_row)::text),'[]'::jsonb)
+    from platform_private.cms_entry_field_values field_row), before_values,
+    'SEC-13a ' || p_tag || ': all full stored field-value images unchanged');
+  return next extensions.is(coalesce(current_setting('app.cms_rpc',true),''),coalesce(prior_rpc,''),
+    'SEC-14 ' || p_tag || ': diagnostic CMS context restored');
+end;
+$body$;
+select * from pg_temp.s12sec_preflight('rs-same',true);
+select * from pg_temp.s12sec_preflight('rs-wide',false);
+select ok(exists (select 1 from pg_trigger t join pg_proc p on p.oid=t.tgfoid
+  join pg_namespace n on n.oid=p.pronamespace where t.tgrelid='platform_private.cms_composition_instances'::regclass
+  and not t.tgisinternal and t.tgenabled='O' and n.nspname='platform_private' and p.proname='cms_write_guard'),
+  'SEC-15 normal composition write guard remains enabled throughout labelled fixtures');

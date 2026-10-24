@@ -1,0 +1,101 @@
+-- Every case separately checks SQLSTATE, message and the full no-effect image.
+select * from pg_temp.s12pd_refused('stale-parent',pg_temp.s12pd_request('s12pd-pattern',
+  pg_temp.s12pd_forest(1),'1','s12pd-stale-0003',null,'1'),'CONFLICT');
+select * from pg_temp.s12pd_refused('duplicate-first',pg_temp.s12pd_request('s12pd-pattern',
+  pg_temp.s12pd_forest(1),null,'s12pd-duplicate-0003'),'CONFLICT');
+select * from pg_temp.s12pd_refused('absent-parent',pg_temp.s12pd_request('s12pd-absent',
+  pg_temp.s12pd_forest(1),'1','s12pd-absent-0003',null,'1'),'NOT_FOUND');
+select * from pg_temp.s12pd_refused('first-with-ifmatch',pg_temp.s12pd_request('s12pd-first-ifmatch',
+  pg_temp.s12pd_forest(1),null,'s12pd-ifmatch-0003',null,'1'),'INVALID_REQUEST');
+select * from pg_temp.s12pd_refused('parent-without-ifmatch',pg_temp.s12pd_request('s12pd-pattern',
+  pg_temp.s12pd_forest(1),'2','s12pd-no-ifmatch-0003'),'INVALID_REQUEST');
+select * from pg_temp.s12pd_refused('parent-ifmatch-differs',pg_temp.s12pd_request('s12pd-pattern',
+  pg_temp.s12pd_forest(1),'2','s12pd-bad-ifmatch-0003',null,'1'),'INVALID_REQUEST');
+select * from pg_temp.s12pd_refused('digest-mismatch',pg_temp.s12pd_request('s12pd-digest',
+  pg_temp.s12pd_forest(1),null,'s12pd-digest-0004',repeat('f',64)),
+  'CONFLICT','block_registry_digest_mismatch');
+select * from pg_temp.s12pd_refused('digest-malformed',pg_temp.s12pd_request('s12pd-bad-digest',
+  pg_temp.s12pd_forest(1),null,'s12pd-digest-0005','not-a-digest'),'VALIDATION_FAILED');
+select pg_temp.s12pd_refused('reserved-' || key,pg_temp.s12pd_request(key,
+  pg_temp.s12pd_forest(1),null,'s12pd-reserved-' || key),'VALIDATION_FAILED','key_reserved')
+from unnest(array['context','versions','selector','new']) key;
+
+-- Unknown public ownership/authority fields must never override the envelope.
+select pg_temp.s12pd_refused('unknown-' || key,
+  pg_temp.s12pd_request('s12pd-unknown-' || lower(key),pg_temp.s12pd_forest(1),
+    null,'s12pd-unknown-' || key) || jsonb_build_object(key,'forged'),'INVALID_REQUEST')
+from unnest(array['ownerId','createdBy','capability','lifecycleVersion']) key;
+select * from pg_temp.s12pd_refused('missing-idempotency',
+  pg_temp.s12pd_request('s12pd-no-idem',pg_temp.s12pd_forest(1),null,
+    's12pd-removed-idem') - 'idempotencyKey','INVALID_REQUEST');
+select * from pg_temp.s12pd_refused('missing-expected',
+  pg_temp.s12pd_request('s12pd-no-expected',pg_temp.s12pd_forest(1),null,
+    's12pd-removed-expected') - 'expectedVersion','INVALID_REQUEST');
+select * from pg_temp.s12pd_refused('string-null',pg_temp.s12pd_request('s12pd-string-null',
+  pg_temp.s12pd_forest(1),'null','s12pd-string-null'),'INVALID_REQUEST');
+
+-- The confirmed same-owner designer2 has schema authority but no pattern grant.
+select * from pg_temp.s12pd_refused('capability-missing',
+  pg_temp.s12pd_request('s12pd-forbidden',pg_temp.s12pd_forest(1),null,'s12pd-forbidden')
+    || jsonb_build_object('context',pg_temp.s09d_context('designer2',true)),
+  'FORBIDDEN','capability_missing','designer2');
+select * from pg_temp.s12pd_refused('hidden-owner',
+  pg_temp.s12pd_request('s12pd-pattern',pg_temp.s12pd_forest(1),'2','s12pd-hidden',null,'2')
+    || jsonb_build_object('context',pg_temp.s09d_context('other',true,
+      jsonb_build_object('actingPartyId',pg_temp.s09d_id('ownerOrg')))),
+  'NOT_FOUND',null,'other');
+select * from pg_temp.s12pd_refused('anonymous',
+  pg_temp.s12pd_request('s12pd-anonymous',pg_temp.s12pd_forest(1),null,'s12pd-anonymous')
+    || jsonb_build_object('context','{}'::jsonb),'UNAUTHENTICATED',null,'anonymous','service_role');
+
+-- Actual database ACL probes, not missing-human-identity application refusals.
+select pg_temp.s12pd_run('acl-' || db_role,
+  pg_temp.s12pd_request('s12pd-acl-' || db_role,pg_temp.s12pd_forest(1),null,
+    's12pd-acl-' || db_role),'owner',db_role)
+from unnest(array['anon','authenticated']) db_role;
+select is(pg_temp.s12pd_state('acl-' || db_role),'42501',
+  db_role || ': real database role cannot execute the pattern wrapper [P2-S12-AC-102]')
+from unnest(array['anon','authenticated']) db_role;
+select is((select call_role from s12pd_out where label='acl-' || db_role),db_role,
+  db_role || ': ACL probe really invoked the wrapper as that database role')
+from unnest(array['anon','authenticated']) db_role;
+select ok(to_regprocedure('platform_api.cms_create_pattern_version(jsonb)') is not null
+  and pg_temp.s12pd_state('create')='00000' and pg_temp.s12pd_body('create') is not null
+  and (select state='42501' and response is null and before_rows=after_rows
+    from s12pd_out where label='acl-' || db_role),
+  db_role || ': existing producer plus successful service control proves ACL refusal without effects')
+from unnest(array['anon','authenticated']) db_role;
+
+-- A previously successful designer loses authority via the real revoke RPC.
+select is(pg_temp.s09d_grant_via_rpc('designer2','cms.template_designer'),'OK',
+  'authority setup: temporary designer grant is issued by its owner');
+select pg_temp.s12pd_run('before-revoke',pg_temp.s12pd_request('s12pd-revoked',
+  pg_temp.s12pd_forest(1),null,'s12pd-revoke-replay')
+    || jsonb_build_object('context',pg_temp.s09d_context('designer2',true)),'designer2');
+select is(pg_temp.s12pd_state('before-revoke'),'00000',
+  'authority control: the granted designer can create [P2-S12-AC-102]');
+select is(pg_temp.s09d_revoke_via_rpc('designer2','cms.template_designer'),'OK',
+  'authority setup: real capability revoke succeeds');
+select * from pg_temp.s12pd_refused('revoked-replay',
+  (select request from s12pd_out where label='before-revoke'),
+  'FORBIDDEN','capability_missing','designer2');
+select is(pg_temp.s09d_grant_via_rpc('designer2','cms.template_designer'),'OK',
+  'authority cleanup: restore designer grant through the ordinary producer');
+select pg_temp.s12pd_run('restored-replay',
+  (select request from s12pd_out where label='before-revoke'),'designer2');
+select is(pg_temp.s12pd_state('restored-replay'),'00000',
+  'restored authority can reconcile the original idempotency result [P2-S12-AC-103]');
+select ok(pg_temp.s12pd_state('restored-replay')='00000'
+  and pg_temp.s12pd_state('before-revoke')='00000'
+  and pg_temp.s12pd_body('before-revoke') is not null
+  and pg_temp.s12pd_body('restored-replay')=pg_temp.s12pd_body('before-revoke'),
+  'restored replay returns exactly the original resource [P2-S12-AC-103]');
+
+-- Failing requests leave their keys reusable: repair the digest, same key.
+select pg_temp.s12pd_run('digest-retry',
+  (select request || jsonb_build_object('blockRegistryDigest',pg_temp.s12pd_expected_digest())
+   from s12pd_out where label='digest-mismatch'));
+select is(pg_temp.s12pd_state('digest-retry'),'00000',
+  'a refused key remains reusable by its corrected request [P2-S12-AC-104]');
+select is(pg_temp.s12pd_body('digest-retry')->>'blockRegistryDigest',pg_temp.s12pd_expected_digest(),
+  'matching digest is an expectation; persisted value is the server result [P2-S12-AC-193]');

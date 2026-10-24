@@ -1,0 +1,72 @@
+-- The active nested pattern parent ('nested', pinned to the active 'child') is retired by its owner (DEC-190).  Fixtures after 050-nested:
+-- child and nested are real ACTIVE pattern versions at lifecycle 4, definition version 1, each with an approved governed review.
+create temp table s12pd_retire_pre on commit drop as
+select pg_temp.s12pd_row('nested') as nested_row, pg_temp.s12pd_row('child') as child_row,
+       (select to_jsonb(review) from platform_private.cms_governed_reviews review
+         where review.subject_id::text = pg_temp.s12pd_body('nested')->>'id') as review_row;
+
+select ok((select nested_row->>'state' = 'active' and nested_row->>'lifecycle_version' = '4' and child_row->>'state' = 'active'
+                  and review_row->>'state' = 'approved' and review_row->>'activated_at' is not null from s12pd_retire_pre),
+  'fixture: the nested parent and its pinned child are real active pattern versions with an activated approved review [P2-S12-AC-211]');
+
+select pg_temp.s12pd_run('nested:retire', jsonb_build_object(
+    'reviewId', (select review_row->>'id' from s12pd_retire_pre), 'action', 'retire',
+    'expectedVersion', (select review_row->>'version' from s12pd_retire_pre), 'ifMatch', (select review_row->>'version' from s12pd_retire_pre),
+    'reason', 'Superseded by the spring layout', 'idempotencyKey', 's12pd-nested-retire',
+    'context', pg_temp.s09d_context('owner', true)), 'owner', 'service_role', 'activate');
+select is(pg_temp.s12pd_state('nested:retire'), '00000', 'the owner retires an active pattern version through the real producer [P2-S12-AC-087]');
+select ok(pg_temp.s12pd_body('nested:retire') = jsonb_build_object(
+    'reviewId', (select review_row->>'id' from s12pd_retire_pre),
+    'reviewVersion', ((select (review_row->>'version')::bigint + 1 from s12pd_retire_pre))::text,
+    'subjectKind', 'pattern_version', 'subjectId', pg_temp.s12pd_body('nested')->>'id',
+    'lineageId', (select nested_row->>'pattern_id' from s12pd_retire_pre), 'subjectVersion', 1,
+    'supersededVersion', null, 'action', 'retire', 'subjectState', 'retired',
+    'activatedAt', platform_private.auth_iso_time((select (nested_row->>'activated_at')::timestamptz from s12pd_retire_pre)),
+    'scheduledForUtc', null, 'eventType', 'cms.pattern.activated.v1'),
+  'the 200 resource names the review at its advanced version (expected + 1), the pattern subject at its definition number, action retire, state retired, the original activation instant and cms.pattern.activated.v1 [P2-S12-AC-087]');
+select ok((select row_data->>'state' = 'retired' and row_data->>'lifecycle_version' = '5' and row_data->>'version' = '1'
+                  and row_data->>'retired_at' is not null
+                  and row_data->>'activated_at' is not distinct from pre.nested_row->>'activated_at'
+                  and (row_data - array['state', 'lifecycle_version', 'retired_at', 'updated_at'])
+                    = (pre.nested_row - array['state', 'lifecycle_version', 'retired_at', 'updated_at'])
+             from (select pg_temp.s12pd_row('nested') as row_data) now_row, s12pd_retire_pre pre),
+  'the pattern moves active -> retired (lifecycle 4 -> 5, retired_at stamped) with its block forest, content hash, pins and definition version untouched [P2-S12-AC-087]');
+select ok(pg_temp.s12pd_row('child') = (select child_row from s12pd_retire_pre)
+    and (select review.version = (pre.review_row->>'version')::bigint + 1
+                and review.updated_at >= (pre.review_row->>'updated_at')::timestamptz
+                and (to_jsonb(review) - array['version', 'updated_at']) = (pre.review_row - array['version', 'updated_at'])
+           from platform_private.cms_governed_reviews review, s12pd_retire_pre pre
+          where review.id::text = pre.review_row->>'id'),
+  'the pinned child pattern is byte-identical and the retired parent''s review differs only in version + 1 and updated_at: a retirement does not touch its dependency and advances the review version by one [P2-S12-AC-087]');
+select ok(
+  (select count(*) = 2 and count(*) filter (where event.aggregate_version = 5) = 1
+          and bool_and(event.event_type = 'cms.pattern.activated.v1' and event.schema_version = 1 and event.aggregate_type = 'cms_pattern_version'
+                       and event.payload = jsonb_build_object('patternId', subject.pattern_id, 'patternVersionId', subject.id))
+     from platform_private.outbox_events event
+     join platform_private.cms_pattern_versions subject on subject.id = event.aggregate_id
+    where event.aggregate_id::text = pg_temp.s12pd_body('nested')->>'id')
+  and (select count(*) = 1 from audit_private.audit_events
+        where action = 'cms.governed.retire' and target_id::text = pg_temp.s12pd_body('nested')->>'id'),
+  'exactly one more cms.pattern.activated.v1 commits (aggregate cms_pattern_version at lifecycle 5, payload { patternId, patternVersionId }) with one retirement audit record [P2-S12-AC-087]');
+select is(
+  (select string_agg(store.key, ',' order by store.key collate "C")
+     from s12pd_out out
+     cross join lateral jsonb_each(out.after_rows) store
+    where out.label = 'nested:retire' and store.value is distinct from out.before_rows->store.key),
+  'audit_private.audit_events,platform_private.cms_governed_reviews,platform_private.cms_pattern_versions,platform_private.idempotency_records,platform_private.outbox_events',
+  'the whole retirement wrote exactly the pattern row, the review row (version CAS), one idempotency record, one audit record and one event: no dependency, schedule, decision or other store changed [P2-S12-AC-086]');
+
+select pg_temp.s12pd_run('nested:retire-again', jsonb_build_object(
+    'reviewId', (select review_row->>'id' from s12pd_retire_pre), 'action', 'retire',
+    'expectedVersion', (select (review_row->>'version')::bigint + 1 from s12pd_retire_pre)::text,
+    'ifMatch', (select (review_row->>'version')::bigint + 1 from s12pd_retire_pre)::text,
+    'idempotencyKey', 's12pd-nested-retire-again', 'context', pg_temp.s09d_context('owner', true)), 'owner', 'service_role', 'activate');
+select is(pg_temp.s12pd_state('nested:retire-again') || ':' || (select message from s12pd_out where label = 'nested:retire-again'), 'P0001:subject_not_retirable',
+  'a second retirement of the retired pattern under a new key and the current (advanced) review version is 409 subject_not_retirable [P2-S12-AC-087]');
+
+select pg_temp.s12pd_run('nested:retire-stale', jsonb_build_object(
+    'reviewId', (select review_row->>'id' from s12pd_retire_pre), 'action', 'retire',
+    'expectedVersion', (select review_row->>'version' from s12pd_retire_pre), 'ifMatch', (select review_row->>'version' from s12pd_retire_pre),
+    'idempotencyKey', 's12pd-nested-retire-stale', 'context', pg_temp.s09d_context('owner', true)), 'owner', 'service_role', 'activate');
+select is(pg_temp.s12pd_state('nested:retire-stale') || ':' || (select message from s12pd_out where label = 'nested:retire-stale'), 'P0001:VERSION_MISMATCH',
+  'a second retirement holding the pre-retirement review version is VERSION_MISMATCH: the retirement advanced the review version [P2-S12-AC-087]');

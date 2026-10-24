@@ -1,0 +1,177 @@
+-- The CMS-03C-19 retry ladder (15 s, 60 s, 300 s, then retries_exhausted) and the lease expiry (300 s) on real schedules.
+--   l1  fails four consecutive times through execute (the workflow-policy evidence is unavailable for the whole ladder): blocked
+--       retries_exhausted; the review stays approved, so the blocked subject is scheduled again (blocked -> scheduled)
+--   l3  fails exactly like l1 but its fourth attempt is claimed and never executed: its lease expires and the CLAIM exhausts the ladder
+--       (schedule blocked retries_exhausted and the scheduled subject blocked by the claim itself, ratified lock-order deviation)
+--   l2  is claimed and never executed: its lease expires and the next claim spends one retry on it; it then completes
+--   l4  is claimed; its lease expires but nobody recovers it; an executor that still presents the claim's lease runs (the schedule row lock
+--       is the fence, as in CMS-03B-20) and takes the 15 s retry step; it then completes
+-- Every wait is real (no clock forgery, no trigger toggle): about 12 minutes.  The negative fault is the labelled one of the schedule suite.
+create temp table s12gb_setup(key text primary key, outcome text not null) on commit drop;
+insert into s12gb_setup(key, outcome) values ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1));
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key = 'rev1';
+select pg_temp.s12gb_approved('l1');
+select pg_temp.s12gb_approved('l2');
+select pg_temp.s12gb_approved('l3');
+select pg_temp.s12gb_approved('l4');
+select pg_temp.s12gb_act('sch-l1', 'owner', pg_temp.s12ga_review('l1'), 'schedule', p_after => interval '62 seconds');
+select pg_temp.s12gb_act('sch-l2', 'owner', pg_temp.s12ga_review('l2'), 'schedule', p_after => interval '62 seconds');
+select pg_temp.s12gb_act('sch-l3', 'owner', pg_temp.s12ga_review('l3'), 'schedule', p_after => interval '62 seconds');
+select pg_temp.s12gb_act('sch-l4', 'owner', pg_temp.s12ga_review('l4'), 'schedule', p_after => interval '62 seconds');
+create temp table s12gb_clock(started timestamptz not null) on commit drop;
+insert into s12gb_clock(started) values (clock_timestamp());
+select ok((select count(*) = 4 and bool_and(pg_temp.s12ga_out('sch-' || t) = 'ok') from unnest(array['l1', 'l2', 'l3', 'l4']) t)
+    and (select count(*) = 4 and bool_and(state = 'pending') from platform_private.cms_governed_activation_schedules),
+  'fixture: four real pending schedules, all due 62 s after acceptance [P2-S12-AC-152]');
+
+select pg_sleep(greatest(0, 66 - extract(epoch from (clock_timestamp() - (select started from s12gb_clock)))));
+select pg_temp.s12gb_claim('c0');
+create or replace function pg_temp.s12gb_lease2(p_label text, p_tag text) returns uuid language sql stable as $body$
+  select (pg_temp.s12gb_claimed(p_label, p_tag)->>'leaseId')::uuid $body$;
+create or replace function pg_temp.s12gb_sver(p_tag text) returns text language sql stable as $body$
+  select (pg_temp.s12gb_sched(p_tag)->>'version') $body$;
+-- the schedule rows of a set of tags in one condition
+create or replace function pg_temp.s12gb_all(p_tags text[], p_condition text) returns boolean language plpgsql stable as $body$
+declare v_ok boolean;
+begin
+  execute format('select count(*) = %s and coalesce(bool_and(%s), false) from platform_private.cms_governed_activation_schedules schedule '
+                 'where schedule.review_id = any($1)', cardinality(p_tags), p_condition)
+    into v_ok using (select array_agg(pg_temp.s12ga_review(t)) from unnest(p_tags) t);
+  return v_ok;
+end;
+$body$;
+select ok(pg_temp.s12gb_sout('c0') = 'ok' and jsonb_array_length(pg_temp.s12gb_sbody('c0')) = 4
+    and (select count(*) = 4 and bool_and(state = 'executing' and version = 2) from platform_private.cms_governed_activation_schedules),
+  'all four due schedules are claimed (executing, version 2); l2 and l4 will hold their leases without executing [P2-S12-AC-152]');
+create temp table s12gb_held on commit drop as
+  select tag, pg_temp.s12gb_lease2('c0', tag) as lease, pg_temp.s12gb_claimed('c0', tag)->>'expectedVersion' as expected
+    from unnest(array['l2', 'l4']) tag;
+
+select pg_temp.s12gb_fault_on();
+-- failure 1 -> 15 s (l1 and l3 identically)
+select pg_temp.s12gb_exec('f1', pg_temp.s12gb_sid('l1'), '2', pg_temp.s12gb_lease2('c0', 'l1'));
+select pg_temp.s12gb_exec('f1-l3', pg_temp.s12gb_sid('l3'), '2', pg_temp.s12gb_lease2('c0', 'l3'));
+select ok(pg_temp.s12gb_sbody('f1')->>'outcome' = 'failed_retryable' and pg_temp.s12gb_sbody('f1-l3')->>'outcome' = 'failed_retryable'
+    and pg_temp.s12gb_all(array['l1', 'l3'], $c$schedule.state = 'failed_retryable' and schedule.attempt_count = 1 and schedule.version = 3
+            and schedule.lease_id is null
+            and schedule.next_attempt_at between clock_timestamp() + interval '10 seconds' and clock_timestamp() + interval '16 seconds'$c$),
+  'failure 1: attempt_count 1 and the retry 15 s ahead [P2-S12-AC-152]');
+select pg_sleep(16);
+select pg_temp.s12gb_claim('c1');
+select pg_temp.s12gb_exec('f2', pg_temp.s12gb_sid('l1'), '2', pg_temp.s12gb_lease2('c1', 'l1'));
+select pg_temp.s12gb_exec('f2-l3', pg_temp.s12gb_sid('l3'), '2', pg_temp.s12gb_lease2('c1', 'l3'));
+select ok(jsonb_array_length(pg_temp.s12gb_sbody('c1')) = 2 and pg_temp.s12gb_sbody('f2')->>'outcome' = 'failed_retryable'
+    and pg_temp.s12gb_sbody('f2-l3')->>'outcome' = 'failed_retryable'
+    and pg_temp.s12gb_all(array['l1', 'l3'], $c$schedule.state = 'failed_retryable' and schedule.attempt_count = 2 and schedule.version = 5
+            and schedule.lease_id is null
+            and schedule.next_attempt_at between clock_timestamp() + interval '55 seconds' and clock_timestamp() + interval '61 seconds'$c$),
+  'failure 2: the schedules are claimed again after 15 s; attempt_count 2 and the retry 60 s ahead [P2-S12-AC-152]');
+select pg_sleep(61);
+select pg_temp.s12gb_claim('c2');
+select pg_temp.s12gb_exec('f3', pg_temp.s12gb_sid('l1'), '2', pg_temp.s12gb_lease2('c2', 'l1'));
+select pg_temp.s12gb_exec('f3-l3', pg_temp.s12gb_sid('l3'), '2', pg_temp.s12gb_lease2('c2', 'l3'));
+select ok(jsonb_array_length(pg_temp.s12gb_sbody('c2')) = 2 and pg_temp.s12gb_sbody('f3')->>'outcome' = 'failed_retryable'
+    and pg_temp.s12gb_sbody('f3-l3')->>'outcome' = 'failed_retryable'
+    and pg_temp.s12gb_all(array['l1', 'l3'], $c$schedule.state = 'failed_retryable' and schedule.attempt_count = 3 and schedule.version = 7
+            and schedule.lease_id is null
+            and schedule.next_attempt_at between clock_timestamp() + interval '295 seconds' and clock_timestamp() + interval '301 seconds'$c$),
+  'failure 3: attempt_count 3 and the last retry 300 s ahead [P2-S12-AC-152]');
+select pg_temp.s12gb_claim('c2b');
+select ok(pg_temp.s12gb_sbody('c2b') = '[]'::jsonb,
+  'the schedules waiting for their 300 s step are not claimed, and the executing l2 and l4 are not claimed twice [P2-S12-AC-152]');
+
+-- the leases of l2 and l4 (claimed ~5 minutes ago) expire while l1 and l3 wait for their 300 s step
+select pg_sleep(301);
+-- l4: nobody recovered the expired lease; the executor that still presents the claim's lease reaches the schedule row lock and runs, as in
+-- CMS-03B-20 (BE03b: a lease that no longer MATCHES is refused; the row lock is the fence), taking the first retry step under the fault.
+select pg_temp.s12gb_exec('x-l4-expired', pg_temp.s12gb_sid('l4'),
+  (select expected from s12gb_held where tag = 'l4'), (select lease from s12gb_held where tag = 'l4'));
+select ok(pg_temp.s12gb_sout('x-l4-expired') = 'ok' and pg_temp.s12gb_sbody('x-l4-expired')->>'outcome' = 'failed_retryable'
+    and (select schedule.state = 'failed_retryable' and schedule.attempt_count = 1 and schedule.version = 3 and schedule.lease_id is null
+            and schedule.lease_until is null
+            and schedule.next_attempt_at between clock_timestamp() + interval '10 seconds' and clock_timestamp() + interval '16 seconds'
+       from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('l4'))
+    and (select state = 'executing' and version = 2 and attempt_count = 0 and lease_until <= clock_timestamp()
+         from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('l2')),
+  'an execution presenting the claim''s still-matching lease runs although the lease instant passed (the unrecovered lease is fenced by the schedule row lock, as in CMS-03B-20): l4 takes its first retry step, l2 is untouched [P2-S12-AC-153]');
+select pg_temp.s12gb_claim('c3');
+create temp table s12gb_c3(at timestamptz not null) on commit drop;
+insert into s12gb_c3(at) values (clock_timestamp());
+select ok(jsonb_array_length(pg_temp.s12gb_sbody('c3')) = 2
+    and (select string_agg(element.value->>'reviewId', ',' order by element.value->>'reviewId')
+           from jsonb_array_elements(pg_temp.s12gb_sbody('c3')) element(value))
+        = (select string_agg(r::text, ',' order by r::text) from unnest(array[pg_temp.s12ga_review('l1'), pg_temp.s12ga_review('l3')]) r)
+    and (select schedule.state = 'failed_retryable' and schedule.attempt_count = 1 and schedule.lease_id is null and schedule.lease_until is null
+            and schedule.version = 3
+            and schedule.next_attempt_at between clock_timestamp() + interval '10 seconds' and clock_timestamp() + interval '16 seconds'
+       from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('l2'))
+    and (select subject.state = 'scheduled' and subject.lifecycle_version = 4
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('l2'))
+    and pg_temp.s12gb_all(array['l1', 'l3'], $c$schedule.state = 'executing' and schedule.attempt_count = 3 and schedule.version = 8$c$),
+  'the claim first returns the expired lease of l2 to failed_retryable (attempt_count 1, the 15 s step), then claims the two due schedules at their fourth attempt [P2-S12-AC-153]');
+-- failure 4 of l1 through execute -> blocked retries_exhausted
+select pg_temp.s12gb_exec('f4', pg_temp.s12gb_sid('l1'), '2', pg_temp.s12gb_lease2('c3', 'l1'));
+select ok(pg_temp.s12gb_sbody('f4') = jsonb_build_object('scheduleId', pg_temp.s12gb_sid('l1'), 'outcome', 'blocked',
+          'reasonCode', 'retries_exhausted', 'actualUtc', null, 'deviationSeconds', null)
+    and (select schedule.state = 'blocked' and schedule.reason_code = 'retries_exhausted' and schedule.attempt_count = 3
+            and schedule.version = 9 and schedule.lease_id is null and schedule.next_attempt_at is null
+       from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('l1'))
+    and (select subject.state = 'blocked' and subject.lifecycle_version = 5 and subject.activated_at is null
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('l1'))
+    and pg_temp.s12gb_events('l1') = 0
+    and (select count(*) = 1 from audit_private.audit_events
+          where action = 'cms.governed.schedule.block' and target_id = pg_temp.s12gb_sid('l1')),
+  'the fourth failure blocks the schedule retries_exhausted (three attempts spent) and the subject blocked, with no event and one audit record [P2-S12-AC-152]');
+select is(pg_temp.s12gb_fault_off()::text, 'true', 'control: the policy-evidence resolver is restored byte for byte [P2-S12-AC-152]');
+
+-- blocked -> scheduled: the review is still approved and current, so a new CMS-03C-09 schedule command is accepted (the blocked row stays)
+select pg_temp.s12gb_act('resch-l1', 'owner', pg_temp.s12ga_review('l1'), 'schedule', p_after => interval '1 hour');
+select ok(pg_temp.s12ga_out('resch-l1') = 'ok' and pg_temp.s12ga_body('resch-l1')->>'subjectState' = 'scheduled'
+    and pg_temp.s12ga_body('resch-l1')->>'eventType' is null
+    and (select subject.state = 'scheduled' and subject.lifecycle_version = 6 and subject.activated_at is null
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('l1'))
+    and (select review.state = 'approved' and review.version = 2 from platform_private.cms_governed_reviews review
+          where review.id = pg_temp.s12ga_review('l1'))
+    and (select string_agg(schedule.state || ':' || schedule.version, ',' order by schedule.state collate "C")
+           from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('l1'))
+        = 'blocked:9,pending:1'
+    and pg_temp.s12gb_events('l1') = 0,
+  'a subject blocked by retries_exhausted whose review is still approved is scheduled again (blocked -> scheduled, lifecycle 6): a new pending row beside the blocked evidence row, no event [P2-S12-AC-146]');
+
+-- l2 and l4: the recovered retries complete
+select pg_sleep(16);
+select pg_temp.s12gb_claim('c4');
+select pg_temp.s12gb_exec('x-l2', pg_temp.s12gb_sid('l2'), pg_temp.s12gb_claimed('c4', 'l2')->>'expectedVersion', pg_temp.s12gb_lease2('c4', 'l2'));
+select pg_temp.s12gb_exec('x-l4', pg_temp.s12gb_sid('l4'), pg_temp.s12gb_claimed('c4', 'l4')->>'expectedVersion', pg_temp.s12gb_lease2('c4', 'l4'));
+select ok(jsonb_array_length(pg_temp.s12gb_sbody('c4')) = 2 and pg_temp.s12gb_sbody('x-l2')->>'outcome' = 'completed'
+    and pg_temp.s12gb_sbody('x-l4')->>'outcome' = 'completed'
+    and pg_temp.s12gb_all(array['l2', 'l4'], $c$schedule.state = 'completed' and schedule.attempt_count = 1 and schedule.version = 5$c$)
+    and (select count(*) = 2 and bool_and(subject.state = 'active' and subject.lifecycle_version = 5)
+         from platform_private.cms_template_versions subject
+        where subject.id in (pg_temp.s12ga_subject('l2'), pg_temp.s12ga_subject('l4')))
+    and pg_temp.s12gb_events('l2') = 1 and pg_temp.s12gb_events('l4') = 1,
+  'l2 (recovered from its expired lease by the claim) and l4 (executed with its unrecovered lease) are claimed again with new leases and complete: one event each [P2-S12-AC-153]');
+
+-- l3: its fourth attempt was claimed and never executed; the claim that finds the lease expired exhausts the ladder itself
+select pg_sleep(greatest(0, 301 - extract(epoch from (clock_timestamp() - (select at from s12gb_c3)))));
+select pg_temp.s12gb_claim('c5');
+select ok(pg_temp.s12gb_sout('c5') = 'ok' and pg_temp.s12gb_sbody('c5') = '[]'::jsonb
+    and (select schedule.state = 'blocked' and schedule.reason_code = 'retries_exhausted' and schedule.attempt_count = 3
+            and schedule.version = 9 and schedule.lease_id is null and schedule.lease_until is null
+            and schedule.next_attempt_at is null and schedule.actual_at_utc is null
+       from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('l3'))
+    and (select subject.state = 'blocked' and subject.lifecycle_version = 5 and subject.activated_at is null
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('l3'))
+    and (select review.state = 'approved' and review.version = 2 from platform_private.cms_governed_reviews review
+          where review.id = pg_temp.s12ga_review('l3'))
+    and pg_temp.s12gb_events('l3') = 0
+    and (select count(*) = 1 from audit_private.audit_events
+          where action = 'cms.governed.schedule.block' and target_id = pg_temp.s12gb_sid('l3')),
+  'the claim that finds the lease of a fourth attempt expired exhausts the ladder itself: schedule blocked retries_exhausted, the scheduled subject blocked (lifecycle 5), no event, one audit record [P2-S12-AC-153]');
+select pg_temp.s12gb_exec('x-l3-late', pg_temp.s12gb_sid('l3'), '2', pg_temp.s12gb_lease2('c3', 'l3'));
+select ok(pg_temp.s12gb_sout('x-l3-late') = 'P0001:CONFLICT'
+    and (select state = 'blocked' and version = 9 from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('l3'))
+    and pg_temp.s12gb_events('l3') = 0,
+  'the executor that finally presents the lease of the exhausted schedule is refused CONFLICT with no effect [P2-S12-AC-153]');
+select ok((select count(*) >= 10 and bool_and(rpc_user = 'service_role' and before_user = after_user) from s12gb_sys),
+  'role control: every system call of this suite really executed as service_role and restored the session role [P2-S12-AC-148]');

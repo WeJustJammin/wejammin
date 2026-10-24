@@ -11,9 +11,8 @@
 -- 20261010165100 (the lineage append and the workflow read call it).
 --
 -- TRACKING: #127
--- BOUNDARY: projection_id keeps no foreign key until publication_projection exists (BE04c names it,
--- BE04a's delivery.route_manifest_version, which it references, is defined nowhere; Slice 13 P2-S13-AC-164).
--- The sentinel assertion below fails the day that constraint lands, so this test is replaced with it.
+-- DEC-197 replaces the missing-FK sentinel with real validated direct/same-publication FKs and
+-- orphan/cross-publication refusals. Receiving fixtures do not implement Shard 04 delivery writers.
 
 \ir support/jwt-claims.sqlinc
 commit;
@@ -21,7 +20,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(53);
+select plan(62);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -36,9 +35,10 @@ select plan(53);
 select pg_temp.h11r_member('reviewer01', array['cms.reviewer']);
 
 \ir phase_02_slice_11_helpers/004-lineage.sqlinc
+\ir phase_02_slice_11_helpers/006-delivery-receivers.sqlinc
 
 -- ---------------------------------------------------------------------------
--- The table is exactly the BE04c ProjectionConsumerState (minus the one boundary below).
+-- The table is exactly the BE04c ProjectionConsumerState, including DEC-197 receiving relationships.
 -- ---------------------------------------------------------------------------
 select ok(to_regclass('platform_private.projection_consumer_state') is not null,
   'projection_consumer_state exists in the private schema [P2-S11-AC-116]');
@@ -53,8 +53,8 @@ select is(
 select is(
   (select string_agg(c.conname || ':' || c.contype::text, ',' order by c.conname)
      from pg_constraint c where c.conrelid = to_regclass('platform_private.projection_consumer_state')),
-  'projection_consumer_state_attempts_check:c,projection_consumer_state_consumer_check:c,projection_consumer_state_expected_version_check:c,projection_consumer_state_identity_unique:u,projection_consumer_state_pkey:p,projection_consumer_state_publication_fk:f,projection_consumer_state_state_check:c,projection_consumer_state_version_check:c',
-  'the constraints are the primary key, the five checks, the unique (publication_id, projection_id, consumer) and the publication foreign key [P2-S11-AC-116]');
+  'projection_consumer_state_attempts_check:c,projection_consumer_state_consumer_check:c,projection_consumer_state_expected_version_check:c,projection_consumer_state_identity_unique:u,projection_consumer_state_pkey:p,projection_consumer_state_projection_fk:f,projection_consumer_state_publication_fk:f,projection_consumer_state_publication_projection_fk:f,projection_consumer_state_state_check:c,projection_consumer_state_version_check:c',
+  'the constraints are the primary key, five checks, unique consumer identity, retained publication FK and direct/same-publication projection FKs [P2-S11-AC-116]');
 select is(
   (select string_agg(i.indexname || ':' || regexp_replace(i.indexdef, '^.* USING btree ', ''), ',' order by i.indexname)
      from pg_indexes i where i.schemaname = 'platform_private' and i.tablename = 'projection_consumer_state'),
@@ -65,14 +65,12 @@ select is(
     where c.conrelid = to_regclass('platform_private.projection_consumer_state') and c.conname = 'projection_consumer_state_publication_fk'),
   'FOREIGN KEY (publication_id) REFERENCES platform_private.cms_publication_versions(id)',
   'publication_id references the publication version row (BE04c publication.id; BE03b reads the state for the row id) [P2-S11-AC-116]');
-select is(
-  (select case when to_regclass('platform_private.projection_consumer_state') is null then -1 else
-            (select count(*)::integer from pg_constraint c
-              where c.conrelid = to_regclass('platform_private.projection_consumer_state') and c.contype = 'f'
-                and (select a.attnum from pg_attribute a where a.attrelid = c.conrelid and a.attname = 'projection_id') = any (c.conkey))
-          end),
-  0,
-  'BOUNDARY sentinel: projection_id has no foreign key yet (publication_projection and delivery.route_manifest_version are not defined anywhere); replace this with the constraint test when the delivery slice creates them [P2-S11-AC-116]');
+select ok(pg_temp.h11d_consumer_fk('projection_consumer_state_projection_fk', array['projection_id'],
+  'platform_private.publication_projection', array['id']),
+  'DEC197-PS-F01 direct projection FK is validated, ordered, immediate and restrictive with a valid parent key [#127]');
+select ok(pg_temp.h11d_consumer_fk('projection_consumer_state_publication_projection_fk', array['publication_id', 'projection_id'],
+  'platform_private.publication_projection', array['publication_id', 'id']),
+  'DEC197-PS-F02 composite same-publication FK is validated, ordered, immediate and restrictive with its parent unique [#127]');
 
 -- RLS posture and grants: private, forced RLS, RPC-only writes, no API role.
 select is(pg_temp.s11_rls_forced('platform_private.projection_consumer_state'), true,
@@ -101,10 +99,36 @@ create or replace function pg_temp.q_pub(p_n integer)
 returns uuid language sql immutable as $body$
   select ('a9500000-0000-4000-8000-' || lpad(p_n::text, 12, '0'))::uuid
 $body$;
-select pg_temp.h11r_raw_insert('platform_private.cms_publication_versions', pg_temp.s11_publication_row(jsonb_build_object(
-  'id', pg_temp.q_pub(n), 'publication_id', pg_temp.q_pub(n),
-  'audience', 'ps' || lpad(n::text, 2, '0'), 'publication_hash', pg_temp.s11_hex('ps-' || n))))
+-- Labelled storage fixtures pass the real guards, but are not append-producer/event proof.
+select pg_temp.h11w_revision('ps-fixture');
+select pg_temp.h11l_review('ps-fixture');
+select pg_temp.h11d_publication(pg_temp.q_pub(n), pg_temp.h11w_uuid('ps-fixture:revision'),
+  'ps' || lpad(n::text, 2, '0'), timestamptz '2026-10-01T15:00:00Z')
   from generate_series(1, 10) n;
+select is((select count(*)::integer from platform_private.cms_publication_versions p
+  join pg_temp.h11d_publications f on f.id = p.id
+  where p.publication_hash::text = pg_temp.h11_sha256(platform_private.cms_jcs(jsonb_build_object(
+    'action', p.action, 'audience', p.audience, 'dependencyHash', p.dependency_hash,
+    'entryId', p.entry_id, 'locale', p.locale, 'publicationId', p.publication_id,
+    'revisionId', p.revision_id, 'supersedesId', p.supersedes_id, 'version', p.version, 'versionSet', p.version_set)))),
+  10, 'DEC197-PS-P01 ten guarded labelled publication VERSION rows carry the exact E3 JCS hash');
+select pg_temp.h11d_receiver(pg_temp.q_pub(n)) from generate_series(1, 10) n;
+select ok((select count(*) = 10 and count(distinct p.id) = 10 and count(distinct m.id) = 10
+  from pg_temp.h11d_receivers r join platform_private.publication_projection p on p.id = r.projection_id
+  join platform_private.route_manifest_version m on m.id = p.route_manifest_id
+  join platform_private.cms_publication_versions v on v.id = p.publication_id
+  where r.publication_id = v.id and r.manifest_id = m.id and r.variant = 'p1'
+    and p.locale = v.locale and p.audience = v.audience and p.version = 1
+    and m.state = 'ready' and m.activated_at is null),
+  'DEC197-PS-P02 every publication has a distinct complete same-publication projection and ready manifest');
+select ok((select count(*) = 10 and bool_and(jsonb_array_length(r.frozen_input->'publicationVersions') = 10
+  and m.publication_set_hash = pg_temp.h11_sha256(platform_private.cms_jcs(r.frozen_input))
+  and r.frozen_input = (select jsonb_build_object('publicationVersions', jsonb_agg(
+    jsonb_build_object('publicationVersionId', p.id::text, 'publicationHash', p.publication_hash::text)
+    order by p.id::text collate "C")) from pg_temp.h11d_publications f
+    join platform_private.cms_publication_versions p on p.id = f.id))
+  from pg_temp.h11d_receivers r join platform_private.route_manifest_version m on m.id = r.manifest_id),
+  'DEC197-PS-P03 sealed fixture hashes cover the actual sorted ten-row frozen publication VERSION set');
 
 create or replace function pg_temp.q_row(
   p_pub integer, p_consumer text, p_state text,
@@ -116,7 +140,7 @@ begin
   insert into platform_private.projection_consumer_state(
     publication_id, projection_id, consumer, expected_version, state, attempts, last_error_code, updated_at, version
   ) values (
-    pg_temp.q_pub(p_pub), pg_temp.h11w_uuid('proj-' || p_projection), p_consumer, 1, p_state, p_attempts,
+    pg_temp.q_pub(p_pub), pg_temp.h11d_receiver(pg_temp.q_pub(p_pub), p_projection), p_consumer, 1, p_state, p_attempts,
     case when p_state in ('blocked', 'failed_retryable') then 'consumer_failed' end,
     coalesce(p_at, clock_timestamp()), p_version);
 end;
@@ -131,6 +155,26 @@ select pg_temp.q_all(1, 'active');
 select is((select count(*)::integer from platform_private.projection_consumer_state where publication_id = pg_temp.q_pub(1)), 8,
   'all eight BE04c consumers (route, render, menu, media, search, sitemap, cache, social) are accepted [P2-S11-AC-116]');
 select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.h11d_diag(format('insert into platform_private.projection_consumer_state
+  (id, publication_id, projection_id, consumer, expected_version, state, updated_at, version)
+  values (%L, %L, %L, ''route'', 1, ''building'', clock_timestamp(), 1)',
+  pg_temp.h11w_uuid('ps-fk-orphan'), pg_temp.q_pub(1), pg_temp.h11w_uuid('ps-missing-projection'))),
+  '23503:projection_consumer_state_projection_fk',
+  'DEC197-PS-F03 real publication plus absent projection fails specifically the direct projection FK [#127]');
+select is((select count(*)::integer from platform_private.publication_projection p
+  join platform_private.route_manifest_version m on m.id = p.route_manifest_id
+  join platform_private.cms_publication_versions v on v.id = p.publication_id
+  where p.id = pg_temp.h11d_receiver(pg_temp.q_pub(2)) and v.id = pg_temp.q_pub(2)),
+  1, 'DEC197-PS-F04 cross-publication control B is an existing complete projection of real publication B [#127]');
+select is(pg_temp.h11d_diag(format('insert into platform_private.projection_consumer_state
+  (id, publication_id, projection_id, consumer, expected_version, state, updated_at, version)
+  values (%L, %L, %L, ''route'', 1, ''building'', clock_timestamp(), 1)',
+  pg_temp.h11w_uuid('ps-fk-cross'), pg_temp.q_pub(1), pg_temp.h11d_receiver(pg_temp.q_pub(2)))),
+  '23503:projection_consumer_state_publication_projection_fk',
+  'DEC197-PS-F05 real A using valid B projection fails specifically the composite same-publication FK [#127]');
+select is((select count(*)::integer from platform_private.projection_consumer_state
+  where id in (pg_temp.h11w_uuid('ps-fk-orphan'), pg_temp.h11w_uuid('ps-fk-cross'))),
+  0, 'DEC197-PS-F06 rejected orphan/cross-publication probes leave no consumer rows [#127]');
 select throws_ok($$select pg_temp.q_row(2, 'other', 'active')$$, '23514',
   'new row for relation "projection_consumer_state" violates check constraint "projection_consumer_state_consumer_check"',
   'a consumer outside the eight is refused by the check [P2-S11-AC-116]');
@@ -144,23 +188,24 @@ select throws_ok($$select pg_temp.q_row(2, 'route', 'building', 'p1', null, 1, -
   'new row for relation "projection_consumer_state" violates check constraint "projection_consumer_state_attempts_check"',
   'attempts cannot be negative [P2-S11-AC-116]');
 select throws_ok($$insert into platform_private.projection_consumer_state(publication_id, projection_id, consumer, expected_version, state, updated_at, version)
-  values (pg_temp.q_pub(2), pg_temp.h11w_uuid('proj-p1'), 'route', 0, 'building', clock_timestamp(), 1)$$, '23514',
+  values (pg_temp.q_pub(2), pg_temp.h11d_receiver(pg_temp.q_pub(2)), 'route', 0, 'building', clock_timestamp(), 1)$$, '23514',
   'new row for relation "projection_consumer_state" violates check constraint "projection_consumer_state_expected_version_check"',
   'expected_version must be positive [P2-S11-AC-116]');
 select throws_ok($$insert into platform_private.projection_consumer_state(publication_id, projection_id, consumer, expected_version, state, last_error_code, updated_at, version)
-  values (pg_temp.q_pub(2), pg_temp.h11w_uuid('proj-p1'), 'route', 1, 'blocked', repeat('e', 97), clock_timestamp(), 1)$$, '22001',
+  values (pg_temp.q_pub(2), pg_temp.h11d_receiver(pg_temp.q_pub(2)), 'route', 1, 'blocked', repeat('e', 97), clock_timestamp(), 1)$$, '22001',
   'value too long for type character varying(96)',
   'last_error_code is at most 96 characters [P2-S11-AC-116]');
 select throws_ok($$select pg_temp.q_row(1, 'route', 'building')$$, '23505',
   'duplicate key value violates unique constraint "projection_consumer_state_identity_unique"',
   'one consumer reports a publication once per projection (unique publication, projection, consumer) [P2-S11-AC-116]');
 select throws_ok($$insert into platform_private.projection_consumer_state(publication_id, projection_id, consumer, expected_version, state, updated_at, version)
-  values (extensions.gen_random_uuid(), pg_temp.h11w_uuid('proj-p1'), 'route', 1, 'building', clock_timestamp(), 1)$$, '23503',
+  values (extensions.gen_random_uuid(), (select projection_id from pg_temp.h11d_receivers
+    where publication_id = pg_temp.q_pub(1) and variant = 'p1'), 'route', 1, 'building', clock_timestamp(), 1)$$, '23503',
   'insert or update on table "projection_consumer_state" violates foreign key constraint "projection_consumer_state_publication_fk"',
   'a consumer state reports an existing publication version row only [P2-S11-AC-116]');
 select set_config('app.cms_rpc', '', true);
 select throws_ok($$insert into platform_private.projection_consumer_state(publication_id, projection_id, consumer, expected_version, state, updated_at, version)
-  values (pg_temp.q_pub(2), pg_temp.h11w_uuid('proj-p1'), 'route', 1, 'building', clock_timestamp(), 1)$$, 'P0001',
+  values (pg_temp.q_pub(2), pg_temp.h11d_receiver(pg_temp.q_pub(2)), 'route', 1, 'building', clock_timestamp(), 1)$$, 'P0001',
   'DIRECT_CMS_TABLE_WRITE', 'a direct write outside a CMS RPC context is refused by the write guard [P2-S11-AC-116]');
 
 -- ---------------------------------------------------------------------------
@@ -208,6 +253,10 @@ select pg_temp.q_row(9, 'route', 'blocked', 'p1');
 select pg_temp.q_all(10, 'active', 'route');
 select pg_temp.q_row(10, 'route', 'blocked', 'p0', timestamptz '2026-10-10 10:00:00+00', 1);
 select pg_temp.q_row(10, 'route', 'active', 'p1', timestamptz '2026-10-10 10:00:00+00', 2);
+select ok((select count(*) = 6 and count(distinct p.route_manifest_id) = 6 and bool_and(p.version = 1)
+  from pg_temp.h11d_receivers r join platform_private.publication_projection p on p.id = r.projection_id
+  where r.publication_id in (pg_temp.q_pub(8), pg_temp.q_pub(9), pg_temp.q_pub(10)) and r.variant in ('p0', 'p1')),
+  'DEC197-PS-P04 p0/p1 use distinct legitimate manifest identities without borrowing consumer versions');
 
 create or replace function pg_temp.q_state(p_n integer)
 returns text language sql stable as $body$ select platform_private.cms_publication_projection_state(pg_temp.q_pub(p_n)) $body$;
@@ -248,10 +297,11 @@ select is(
 select pg_temp.h11w_revision('pj');
 select pg_temp.h11l_review('pj');
 create function public.s11_ps_probe() returns trigger language plpgsql security definer set search_path = '' as $f$
+declare projection_uuid uuid := pg_temp.h11d_receiver(new.id);
 begin
   insert into platform_private.projection_consumer_state(
     publication_id, projection_id, consumer, expected_version, state, updated_at, version)
-  select new.id, new.id, consumer_name, 1, 'active', pg_catalog.clock_timestamp(), 1
+  select new.id, projection_uuid, consumer_name, 1, 'active', pg_catalog.clock_timestamp(), 1
     from pg_catalog.unnest(array['route', 'render', 'menu', 'media', 'search', 'sitemap', 'cache', 'social']) consumer_name;
   return new;
 end;

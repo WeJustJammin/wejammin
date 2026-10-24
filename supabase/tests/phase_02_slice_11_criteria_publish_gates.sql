@@ -44,7 +44,7 @@ select plan(35);
 -- A second, retirable template and a withdrawable block (the registry ones are shared with other fixtures).
 select pg_temp.h11_raw_insert('platform_private.cms_template_versions', jsonb_build_object(
   'id', 'a9200000-0000-4000-8000-0000000d0011', 'template_id', 'a9200000-0000-4000-8000-0000000d0011', 'owner_id', pg_temp.h11w_org(), 'state', 'active',
-  'version', 1, 'template_key', 'c11-template-retired',
+  'version', 1, 'lifecycle_version', 1, 'template_key', 'c11-template-retired',
   'compatible_type_ids', jsonb_build_array((select value from h11w_ids where key = 'typeId')),
   'slots', jsonb_build_array(jsonb_build_object('key', 'primary', 'required', false, 'maxCount', 4,
     'allowedBlocks', jsonb_build_array(jsonb_build_object('blockKey', 'h11.first', 'blockVersion', 1)))),
@@ -346,10 +346,10 @@ select is(pg_temp.c11_run_x('settings'),
 select pg_temp.h11_raw_exec('platform_private.cms_field_definition_versions',
   $$update platform_private.cms_field_definition_versions set localization_mode = 'no_fallback' where field_key = 'legal'$$);
 select is(pg_temp.c11_run_p('locale', false),
-  'locale:failed:provider_unbuilt_reference => P0001:preflight_failed|locale:failed:provider_unbuilt_reference|passed=16/17',
+  'locale:failed:no_fallback_missing => P0001:preflight_failed|locale:failed:no_fallback_missing|passed=16/17',
   'locale gate: a schema that declares a no_fallback field refuses the publication 422 preflight_failed (locale) [P2-S11-AC-004]');
 select is(pg_temp.c11_run_x('locale'),
-  'locale:failed:provider_unbuilt_reference => 00000:|blocked:preflight_failed|schedule=blocked/3/0/preflight_failed/-|review=approved/2/-|lineage=0|events=0|delta=audit_events,cms_command_accessibility_evidence,cms_publication_schedules',
+  'locale:failed:no_fallback_missing => 00000:|blocked:preflight_failed|schedule=blocked/3/0/preflight_failed/-|review=approved/2/-|lineage=0|events=0|delta=audit_events,cms_command_accessibility_evidence,cms_publication_schedules',
   'locale gate: the executor blocks a schedule over a no_fallback field [P2-S11-AC-004]');
 select pg_temp.h11_raw_exec('platform_private.cms_field_definition_versions',
   $$update platform_private.cms_field_definition_versions set localization_mode = 'localized' where field_key = 'legal'$$);

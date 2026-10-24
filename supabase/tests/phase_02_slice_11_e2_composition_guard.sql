@@ -43,13 +43,19 @@ begin
   begin
     insert into platform_private.cms_composition_instances(
       id, owner_id, version, revision_id, path, slot_key,
-      block_key, block_version, block_registry_digest, link_mode, created_by
+      block_key, block_version, block_registry_digest, link_mode, created_by, position
     )
     select extensions.gen_random_uuid(),
            (select value::uuid from s10_ids where key = 'organization'),
            1, p_revision, '/' || p_tag, 'primary', 'profile.header', 1,
            repeat('a', 64), 'detached',
-           (select value::uuid from s10_ids where key = 'creatorAuth');
+           (select value::uuid from s10_ids where key = 'creatorAuth'),
+           -- DEC-185 (BE03c 1463): the path's existing position, else one above the slot's greatest (0 for an empty slot).
+           coalesce(
+             (select e.position from platform_private.cms_composition_instances e
+               where e.revision_id = p_revision and e.slot_key = 'primary' and e.path = '/' || p_tag limit 1),
+             (select coalesce(max(e.position) + 1, 0) from platform_private.cms_composition_instances e
+               where e.revision_id = p_revision and e.slot_key = 'primary'));
     return 'ok';
   exception when others then
     if sqlstate = 'P0001' then return 'P0001:' || sqlerrm; end if;

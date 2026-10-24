@@ -1,0 +1,53 @@
+-- DEC-191 setup: real standing grants, real APPROVED governed reviews (mint -> submit -> assignment -> approval through the named
+-- producers) and, scheduled early so that their real wait overlaps the rest of the suite, the fire-time schedules of 040.
+--   al1  ordinary: first activation of the template lineage al1/al2/al3 (and the schedule/retire companions of 020)
+--   dn   approved, never scheduled        dopen  submitted only (open)
+--   dk   scheduled +600 s then cancelled by the invalidation of its review (CMS-03C-09 + invalidation helper)
+--   dc   scheduled +62 s, claimed, executed -> completed (and `executing` between claim and execution)
+--   de   scheduled +64 s, executed under the labelled policy-evidence fault -> failed_retryable
+--   da   scheduled by rev2 (+66 s), rev2's designer grant revoked -> blocked activation_authority_ended; then rescheduled by the owner
+--   db   approved by rev2, scheduled +68 s, rev2's cms.reviewer grant lapsed by the calendar -> blocked approval_invalidated
+--   dd   scheduled +70 s, a real successor of the bound content type -> blocked dependency_changed
+create temp table d191_setup(key text primary key, outcome text not null) on commit drop;
+insert into d191_setup(key, outcome) values
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 1)),
+  ('rev2:designer', pg_temp.s12ga_grant('rev2', 'cms.template_designer', 1)),
+  ('designer2:reviewer', pg_temp.s12ga_grant('designer2', 'cms.reviewer', 1));
+-- rev3 keeps its own person party: it is the DEC-108 schema reviewer of the successor chain at the end
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2');
+
+select pg_temp.s12gb_approved('al1');
+select pg_temp.s12gb_approved('dn');
+select pg_temp.s12ga_open('dopen', 'owner', array['typeA'], 'owner');
+select pg_temp.s12gb_approved('dk');
+select pg_temp.s12gb_approved('dc');
+select pg_temp.s12gb_approved('de');
+select pg_temp.s12gb_approved('da');
+select pg_temp.s12gb_approved('db', array['typeA'], 'rev2');
+select pg_temp.s12gb_approved('dd');
+
+create temp table d191_clock(started timestamptz not null) on commit drop;
+insert into d191_clock(started) values (clock_timestamp());
+select pg_temp.s12gb_act('sch-dc', 'owner', pg_temp.s12ga_review('dc'), 'schedule', p_after => interval '62 seconds');
+select pg_temp.s12gb_act('sch-de', 'owner', pg_temp.s12ga_review('de'), 'schedule', p_after => interval '64 seconds');
+select pg_temp.s12gb_act('sch-da', 'rev2', pg_temp.s12ga_review('da'), 'schedule', p_after => interval '66 seconds');
+select pg_temp.s12gb_act('sch-db', 'owner', pg_temp.s12ga_review('db'), 'schedule', p_after => interval '68 seconds');
+select pg_temp.s12gb_act('sch-dd', 'owner', pg_temp.s12ga_review('dd'), 'schedule', p_after => interval '70 seconds');
+select pg_temp.s12gb_act('sch-dk', 'owner', pg_temp.s12ga_review('dk'), 'schedule', p_after => interval '600 seconds');
+select pg_temp.s12gb_inval('inv-dk', pg_temp.s12ga_review('dk'), 'dependency_changed');
+
+select ok((select count(*) = 4 and bool_and(outcome = 'OK') from d191_setup),
+  'fixture: rev1, rev2 (reviewer and designer) and designer2 hold real CMS-03A-15 grants in the owner organization [P2-S12-AC-082]');
+select ok(
+  (select count(*) = 7 and bool_and(review.state = 'approved' and review.version = 2 and review.activated_at is null
+            and review.recorded_decision_count = review.required_decision_count)
+     from platform_private.cms_governed_reviews review
+    where review.id in (select pg_temp.s12ga_review(t) from unnest(array['al1', 'dn', 'dc', 'de', 'da', 'db', 'dd']) t))
+  and (select review.state = 'invalidated' from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('dk'))
+  and (select review.state = 'open' and review.version = 1 from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('dopen')),
+  'fixture: seven real approved governed reviews, one invalidated review (dk) and one open review exist [P2-S12-AC-082]');
+select ok(
+  (select count(*) = 5 and bool_and(pg_temp.s12ga_out('sch-' || t) = 'ok') from unnest(array['dc', 'de', 'da', 'db', 'dd']) t)
+  and pg_temp.s12ga_out('sch-dk') = 'ok' and (select outcome from s12gb_inv where label = 'inv-dk') = 'ok',
+  'fixture: five real pending schedules (+62 s .. +70 s) and one cancelled schedule were produced by the real CMS-03C-09 and invalidation producers [P2-S12-AC-142]');

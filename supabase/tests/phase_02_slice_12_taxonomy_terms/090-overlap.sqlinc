@@ -1,0 +1,80 @@
+-- CMS-03C-03 canonical overlap (CMS-03C-18 in use): the check runs only for create, rename and alias, only for the domains the
+-- vocabulary's ACTIVE version declares (vh declares role, vf declares none), over the key, labels and aliases the action introduces;
+-- a match is 422 canonical_overlap naming the domain and the canonical id and never writes; a provider fault is 503 with no editorial
+-- write.  BE03c 1306 (token list), 1375 (DEC-135), 1377, 1506; tracker P2-S12-AC-137, AC-140, AC-141, AC-020.
+-- The role provider's source is the asserted facets of rev3: performer and engineer.
+create temp table s12tt_canon on commit drop as
+select (select set_config('app.cms_rpc', 'true', true)) flag,
+       (platform_private.cms_canonical_taxonomy_match('role', '["performer"]'::jsonb))->>'canonicalId' performer_id,
+       (platform_private.cms_canonical_taxonomy_match('role', '["engineer"]'::jsonb))->>'canonicalId' engineer_id;
+select ok((select performer_id is not null and engineer_id is not null and performer_id <> engineer_id from s12tt_canon),
+  'fixture: the role provider answers a canonical id for each asserted facet');
+select pg_temp.s12tt_mark('before-overlap');
+
+select pg_temp.s12tt_act('o-key', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'performer');
+select pg_temp.s12tt_act('o-label', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'sound-lead', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Performer"}]'::jsonb));
+select pg_temp.s12tt_act('o-alias-normalized', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'sound-lead', jsonb_build_object(
+  'aliases', jsonb_build_array(E'  ENGINEER \t')));
+select pg_temp.s12tt_act('o-second-label', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'sound-lead', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Fine"},{"locale":"fr-FR","label":"Performer"}]'::jsonb));
+select pg_temp.s12tt_act('o-rename', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'root-a', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Performer"}]'::jsonb));
+select pg_temp.s12tt_act('o-alias', 'owner', pg_temp.s12tt_lineage('vh'), 'alias', 'root-a', '{"aliases":["engineer"]}'::jsonb);
+select is(array[pg_temp.s12ga_out('o-key'), pg_temp.s12ga_out('o-label'), pg_temp.s12ga_out('o-alias-normalized'), pg_temp.s12ga_out('o-second-label'),
+                pg_temp.s12ga_out('o-rename'), pg_temp.s12ga_out('o-alias')],
+  array_fill('P0001:canonical_overlap'::text, array[6]),
+  'a key, a label, a normalized alias, a later-locale label, a rename label and an alias that equal a role facet are all 422 canonical_overlap [P2-S12-AC-141]');
+select ok(
+  (pg_temp.s12ga_det('o-key')::jsonb = jsonb_build_object('domain', 'role', 'canonicalId', (select performer_id from s12tt_canon)))
+  and (pg_temp.s12ga_det('o-label')::jsonb = jsonb_build_object('domain', 'role', 'canonicalId', (select performer_id from s12tt_canon)))
+  and (pg_temp.s12ga_det('o-alias-normalized')::jsonb = jsonb_build_object('domain', 'role', 'canonicalId', (select engineer_id from s12tt_canon)))
+  and (pg_temp.s12ga_det('o-second-label')::jsonb = jsonb_build_object('domain', 'role', 'canonicalId', (select performer_id from s12tt_canon)))
+  and (pg_temp.s12ga_det('o-rename')::jsonb = jsonb_build_object('domain', 'role', 'canonicalId', (select performer_id from s12tt_canon)))
+  and (pg_temp.s12ga_det('o-alias')::jsonb = jsonb_build_object('domain', 'role', 'canonicalId', (select engineer_id from s12tt_canon))),
+  'each refusal names exactly the domain and the canonical id to reference instead, and nothing else [P2-S12-AC-141]');
+select ok(pg_temp.s12tt_same('before-overlap'), 'no overlap refusal created a term, label, alias, audit, outbox, idempotency or job row [P2-S12-AC-141]');
+
+-- exact equality after normalization: near misses are not overlaps ------------------------------------------------------------------
+select pg_temp.s12tt_act('o-near', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'performers', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Performing"}]'::jsonb, 'aliases', '["perform","per former"]'::jsonb));
+select ok(pg_temp.s12tt_oc('o-near') = 'ok', 'a plural key, a participle label and prefix aliases are not overlaps: no fuzzy matching [P2-S12-AC-137]');
+select pg_temp.s12tt_act('o-deprecate-me', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'deprecate-me');
+select pg_temp.s12tt_act('o-merge-me', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'merge-me');
+select ok(pg_temp.s12tt_oc('o-deprecate-me') = 'ok' and pg_temp.s12tt_oc('o-merge-me') = 'ok', 'fixture: two more vh terms for the deprecate and merge probes');
+
+-- a vocabulary that declares no domain is never checked ------------------------------------------------------------------------------
+select pg_temp.s12tt_act('o-undeclared', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'performer', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Engineer"}]'::jsonb, 'aliases', '["performer"]'::jsonb));
+select ok(pg_temp.s12tt_oc('o-undeclared') = 'ok',
+  'vf declares no canonical domain, so a key, label and alias equal to role facets are accepted: the overlap check is per declared domain [P2-S12-AC-141]');
+
+-- a provider fault is a 503 for the command with no editorial write; deprecate and merge run no overlap check ----------------------------
+create temp table s12tt_provider(definition text not null) on commit drop;
+insert into s12tt_provider select pg_get_functiondef('platform_private.cms_canonical_role_facets(text[])'::regprocedure);
+create or replace function platform_private.cms_canonical_role_facets(p_keys text[]) returns table(facet_code text)
+language plpgsql stable security definer set search_path = '' as $f$ begin raise exception 'provider exploded'; end; $f$;
+select pg_temp.s12tt_mark('before-provider-fault');
+select pg_temp.s12tt_act('f-create', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'faulty-a');
+select pg_temp.s12tt_act('f-rename', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'root-a');
+select pg_temp.s12tt_act('f-alias', 'owner', pg_temp.s12tt_lineage('vh'), 'alias', 'root-a', '{"aliases":["calm-alias"]}'::jsonb);
+select is(array[pg_temp.s12ga_out('f-create'), pg_temp.s12ga_out('f-rename'), pg_temp.s12ga_out('f-alias')],
+  array_fill('P0001:DEPENDENCY_UNAVAILABLE'::text, array[3]),
+  'with the role provider failing, create, rename and alias are 503 DEPENDENCY_UNAVAILABLE: never a success-shaped body [P2-S12-AC-140]');
+select ok(pg_temp.s12tt_same('before-provider-fault'), 'the provider fault left every store identical: no editorial write [P2-S12-AC-140]');
+select pg_temp.s12tt_act('f-undeclared', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'faulty-b');
+select pg_temp.s12tt_act('f-deprecate', 'owner', pg_temp.s12tt_lineage('vh'), 'deprecate', 'deprecate-me');
+select pg_temp.s12tt_act('f-merge', 'owner', pg_temp.s12tt_lineage('vh'), 'merge', 'merge-me', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'grand-a')));
+select ok(pg_temp.s12tt_oc('f-undeclared') = 'ok' and pg_temp.s12tt_oc('f-deprecate') = 'ok' and pg_temp.s12tt_oc('f-merge') = 'ok',
+  'a failing provider does not touch an undeclared vocabulary, a deprecate or a merge: they introduce no new string and run no overlap check [P2-S12-AC-141]');
+do $restore$
+declare saved text := (select definition from s12tt_provider);
+begin
+  execute saved;
+end;
+$restore$;
+select ok(pg_get_functiondef('platform_private.cms_canonical_role_facets(text[])'::regprocedure) = (select definition from s12tt_provider),
+  'control: the role provider is restored byte for byte');
+select pg_temp.s12tt_act('f-after-restore', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'performer');
+select is(pg_temp.s12ga_out('f-after-restore'), 'P0001:canonical_overlap', 'control: with the provider restored the overlap check answers again [P2-S12-AC-141]');

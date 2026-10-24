@@ -67,7 +67,7 @@ begin
     id, owner_id, state, version, entry_id, revision_id, source_revision_id,
     locale, source_locale, source_hash, created_by
   ) values (
-    pg_temp.h11w_uuid(p_tag || ':variant'), pg_temp.h11w_org(), 'approved', 1,
+    pg_temp.h11w_uuid(p_tag || ':variant'), pg_temp.h11w_org(), 'draft', 1,
     pg_temp.h11w_uuid(entry_tag || ':entry'), variant_revision, source_revision, 'fr-FR', 'en-US',
     (select revision.payload_hash from platform_private.cms_entry_revisions revision where revision.id = source_revision),
     (select value::uuid from s10_ids where key = 'creatorAuth'));
@@ -114,6 +114,10 @@ begin
     revision_uuid, pg_temp.h11w_org(), pg_temp.h11w_uuid(p_entry_tag || ':entry'), p_number,
     pg_temp.h11w_version(), null, '[]'::jsonb, '[]'::jsonb, 'en-US', p_hash,
     pg_temp.h11w_person('creatorPerson'), pg_temp.h11w_org(), 'draft', 1, 'valid', '{}'::jsonb, stamp, stamp);
+  -- The source-change fan-out now runs when a writer moves the draft head to the revision (20261014050310,
+  -- after the revision values exist), not on the revision insert.  This fixture writes no values and moves no
+  -- head (the entry version stays as the reviews froze it), so it runs the same real producer directly.
+  perform platform_private.cms_stale_locale_dependents(revision_uuid, false);
   return revision_uuid;
 end;
 $body$;

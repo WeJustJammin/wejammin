@@ -1,0 +1,111 @@
+-- AC-202 / AC-203: one bounded run of cms.governed_review.recheck.  The run selects the live (open or approved, never activated)
+-- reviews the dependency index names under (kind, ref) in ascending review id after the cursor, takes at most `batch` (500) of them,
+-- rebuilds hash, policy basis and identities of each (cms_governed_frozen_status) and invalidates a review that no longer holds with
+-- dependency_changed (or reviewer_authority_changed when its live approvals fell short), through the single-review invalidation:
+-- subject back to draft, a pending schedule cancelled approval_invalidated, one audit record, NO event.
+-- Live typeA-bound reviews at this point: d1 d2 d3 dopen dsch dprot dlag pc2 (pa1 pa2 po1 pm1 pc1 pr1 were closed by 030; dctl is
+-- bound to protectedType only).
+select pg_temp.s12gr_mark('d1', 'd1');   select pg_temp.s12gr_mark('d2', 'd2');   select pg_temp.s12gr_mark('d3', 'd3');
+select pg_temp.s12gr_mark('dopen', 'dopen'); select pg_temp.s12gr_mark('dsch', 'dsch'); select pg_temp.s12gr_mark('dprot', 'dprot');
+select pg_temp.s12gr_mark('dlag', 'dlag'); select pg_temp.s12gr_mark('pc2', 'pc2'); select pg_temp.s12gr_mark('dctl', 'dctl');
+
+-- ---------------------------------------------- A: nothing changed, nothing is invalidated (a forged job is harmless)
+select pg_temp.s12gr_count_mark('A');
+select pg_temp.s12gr_run('run-a', 'content_type', pg_temp.s12gr_type_a_active());
+select is(pg_temp.s12gb_sbody('run-a'), pg_temp.s12gr_result(8, 0, 0, 0, null),
+  'a recheck over the current typeA version examines its eight live reviews and invalidates none: every one still holds [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_untouched('d1', 'd1') and pg_temp.s12gr_untouched('d2', 'd2') and pg_temp.s12gr_untouched('d3', 'd3')
+    and pg_temp.s12gr_untouched('dopen', 'dopen') and pg_temp.s12gr_untouched('dsch', 'dsch') and pg_temp.s12gr_untouched('dprot', 'dprot')
+    and pg_temp.s12gr_untouched('dlag', 'dlag') and pg_temp.s12gr_untouched('pc2', 'pc2') and pg_temp.s12gr_untouched('dctl', 'dctl')
+    and (select audits = (select count(*) from audit_private.audit_events) and events = (select count(*) from platform_private.outbox_events)
+           from s12gr_counts where label = 'A'),
+  'the run left every review, subject and schedule byte-identical and wrote no audit record and no event [P2-S12-AC-203]');
+
+-- ---------------------------------- B: a counted approver is lost without a revocation event -> reviewer_authority_changed
+-- LAG FIXTURE (002-lapse-helpers): the grant lapses by the calendar, the loss no trigger covers, so the stored approved state lags.
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('rev2'), 'cms.reviewer');
+select ok(pg_temp.s12gr_untouched('dlag', 'dlag') and pg_temp.s12ga_approvals(pg_temp.s12ga_review('dlag')) = 0,
+  'control: the stored approved state of dlag lags the loss of its only counted approver (live recount 0) [P2-S12-AC-203]');
+select pg_temp.s12gr_run('run-b', 'content_type', pg_temp.s12gr_type_a_active());
+select is(pg_temp.s12gb_sbody('run-b'), pg_temp.s12gr_result(8, 0, 1, 0, null),
+  'the recheck rebuilds the live approvals of each approved review and invalidates the one that fell short [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_invalidated('dlag', 'dlag', 'reviewer_authority_changed')
+    and pg_temp.s12gr_untouched('d1', 'd1') and pg_temp.s12gr_untouched('dopen', 'dopen') and pg_temp.s12gr_untouched('dsch', 'dsch'),
+  'dlag is invalidated reviewer_authority_changed (version + 1, subject back to draft) and no other review changes [P2-S12-AC-203]');
+select pg_temp.s12gr_mark('dlag:b', 'dlag');
+select pg_temp.s12fr_restore();
+
+-- ------------------------------------------ C: a bound content type changes (real DEC-108 successor activation)
+select pg_temp.s09d_successor('ordnew', 's12govordinary');
+select pg_temp.s09d_to_active('ordnew', array['rev3']);
+select ok(pg_temp.s09d_outcome('ordnew:activate') = 'OK'
+    and pg_temp.s12gr_type_a_active() <> (select value::uuid from s12gov_ids where key = 'typeVersionA'),
+  'control: a real successor of the bound content type is activated through the DEC-108 chain, so the typeA-bound reviews froze a superseded version [P2-S12-AC-202]');
+create temp table s12gr_order on commit drop as
+select row_number() over (order by review.id) as position, review.id as review_id
+  from platform_private.cms_governed_reviews review
+ where review.id in (select pg_temp.s12ga_review(t) from unnest(array['d1', 'd2', 'd3', 'dopen', 'dsch', 'dprot', 'pc2']) t);
+select is((select count(*) from s12gr_order), 7::bigint,
+  'control: seven live typeA-bound reviews remain (dlag was closed by B, the 030 reviews by the revocations) [P2-S12-AC-202]');
+select pg_temp.s12gr_count_mark('C');
+select pg_temp.s12gr_run('run-c1', 'content_type', pg_temp.s12gr_type_a_active(), null, 3);
+select is(pg_temp.s12gb_sbody('run-c1'),
+  pg_temp.s12gr_result(3, 3, 0, 0, (select review_id from s12gr_order where position = 3)),
+  'a run of batch 3 handles the three lowest review ids, invalidates all three and returns the id of the last one as the continuation cursor [P2-S12-AC-203]');
+select pg_temp.s12gr_run('run-c2', 'content_type', pg_temp.s12gr_type_a_active(), (select review_id from s12gr_order where position = 3), 3);
+select is(pg_temp.s12gb_sbody('run-c2'),
+  pg_temp.s12gr_result(3, 3, 0, 0, (select review_id from s12gr_order where position = 6)),
+  'the continuation from the cursor handles the next three reviews, and returns the next cursor [P2-S12-AC-203]');
+select pg_temp.s12gr_run('run-c3', 'content_type', pg_temp.s12gr_type_a_active(), (select review_id from s12gr_order where position = 6), 3);
+select is(pg_temp.s12gb_sbody('run-c3'), pg_temp.s12gr_result(1, 1, 0, 0, null),
+  'the last run examines the one remaining review and returns no cursor: a cursor is returned only while a further live review remains [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_invalidated('d1', 'd1', 'dependency_changed') and pg_temp.s12gr_invalidated('d2', 'd2', 'dependency_changed')
+    and pg_temp.s12gr_invalidated('d3', 'd3', 'dependency_changed') and pg_temp.s12gr_invalidated('dopen', 'dopen', 'dependency_changed')
+    and pg_temp.s12gr_invalidated('dsch', 'dsch', 'dependency_changed') and pg_temp.s12gr_invalidated('dprot', 'dprot', 'dependency_changed')
+    and pg_temp.s12gr_invalidated('pc2', 'pc2', 'dependency_changed'),
+  'all seven live reviews are invalidated dependency_changed: version + 1, decidedAt cleared, each subject back to draft one lifecycle step later (open reviews included) [P2-S12-AC-203]');
+select ok((select schedule.state = 'cancelled' and schedule.reason_code = 'approval_invalidated' and schedule.version = 2
+                  and schedule.next_attempt_at is null and schedule.lease_id is null
+             from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('dsch'))
+    and (select subject.state = 'draft' from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('dsch')),
+  'the schedule of the scheduled subject is cancelled (cancelled, approval_invalidated) in the invalidating transaction and the subject is back to draft [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_untouched('dctl', 'dctl')
+    and (pg_temp.s12gr_facts('dlag') = pg_temp.s12gr_before('dlag:b')),
+  'a review not bound to the changed type (dctl) is untouched and the already-invalidated dlag is skipped, not touched again [P2-S12-AC-203]');
+select ok((select count(*) = 7 and count(distinct event.target_id) = 7 from audit_private.audit_events event
+            where event.action = 'cms.governed.review.invalidate' and event.target_id in (select review_id from s12gr_order))
+    and (select count(*) = 1 from audit_private.audit_events event
+          where event.action = 'cms.governed.schedule.cancel'
+            and event.target_id = (select schedule.id from platform_private.cms_governed_activation_schedules schedule
+                                    where schedule.review_id = pg_temp.s12ga_review('dsch'))),
+  'each invalidation wrote exactly one audit record and the schedule cancellation exactly one [P2-S12-AC-203]');
+select ok((select events = (select count(*) from platform_private.outbox_events) from s12gr_counts where label = 'C')
+    and not exists (select 1 from platform_private.outbox_events
+                     where aggregate_id in (select review_id from s12gr_order)
+                        or aggregate_id in (select subject_id from platform_private.cms_governed_reviews
+                                             where id in (select review_id from s12gr_order))),
+  'the three runs emitted no event: governed review state changes emit none in Phase 2 [P2-S12-AC-203]');
+
+-- ------------------------------------------------------- D: idempotent on re-delivery and replay
+select pg_temp.s12gr_count_mark('D');
+select pg_temp.s12gr_run('run-d1', 'content_type', pg_temp.s12gr_type_a_active());
+select pg_temp.s12gr_run('run-d2', 'content_type', (select value::uuid from s12gov_ids where key = 'typeVersionA'));
+select pg_temp.s12gr_run('run-d3', 'content_type', pg_temp.s12gr_type_a_active(), (select review_id from s12gr_order where position = 3), 3);
+select ok(pg_temp.s12gb_sbody('run-d1') = pg_temp.s12gr_result(0, 0, 0, 0, null)
+    and pg_temp.s12gb_sbody('run-d2') = pg_temp.s12gr_result(0, 0, 0, 0, null)
+    and pg_temp.s12gb_sbody('run-d3') = pg_temp.s12gr_result(0, 0, 0, 0, null),
+  'a repeated run, a run naming the superseded version of the lineage and a duplicate continuation all find no live review: already invalidated reviews are skipped [P2-S12-AC-203]');
+select ok((select audits = (select count(*) from audit_private.audit_events) and events = (select count(*) from platform_private.outbox_events)
+             from s12gr_counts where label = 'D')
+    and pg_temp.s12gr_invalidated('d1', 'd1', 'dependency_changed') and pg_temp.s12gr_invalidated('dsch', 'dsch', 'dependency_changed'),
+  'the replays wrote no second audit record, emitted no event and did not touch the invalidated reviews again [P2-S12-AC-203]');
+
+-- ---------------------------------------------- E: a review that still holds is never invalidated
+select pg_temp.s12gr_run('run-e', 'content_type', (select value::uuid from s12gov_ids where key = 'protectedVersion'));
+select is(pg_temp.s12gb_sbody('run-e'), pg_temp.s12gr_result(1, 0, 0, 0, null),
+  'a run over the unchanged protectedType version examines its one live review (dctl) and invalidates nothing [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_untouched('dctl', 'dctl'), 'dctl is byte-identical after the run [P2-S12-AC-203]');
+select ok(not exists (select 1 from platform_private.cms_governed_reviews review
+                     where review.state in ('open', 'approved') and review.activated_at is null
+                       and review.id in (select review_id from s12gr_order)),
+  'no review of the changed lineage is live any more [P2-S12-AC-203]');

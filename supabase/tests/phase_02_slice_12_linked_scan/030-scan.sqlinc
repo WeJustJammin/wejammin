@@ -1,0 +1,175 @@
+-- Slice 12 linked-update scan: the predicate matrix, the row shape, re-delivery idempotency, the late scan of a superseded version and the
+-- advance of an older pending row.  BE03c "Linked update (diff, accept, detach)": the scan appends a `pending_diff` row, pinned to the
+-- unchanged version and carrying `pending_pattern_version` and the instance's `position` unchanged (DEC-185), for each `linked` instance
+-- on a DRAFT revision whose pinned version is older and whose entry type is compatible with the new version; instances on reviewed or
+-- published revisions keep their pin as history.  [P2-S12-AC-212, AC-213]
+
+create temp table s12ls_tags(tag text primary key) on commit drop;
+insert into s12ls_tags(tag) values ('lk1'), ('lk2'), ('lk3'), ('dt1'), ('rv1'), ('ty2'), ('old1'), ('arch1'), ('st1'), ('st2'), ('st3'),
+  ('iv1'), ('same1'), ('ob1');
+create temp table s12ls_pos(tag text primary key, before text not null) on commit drop;
+insert into s12ls_pos select tag, pg_temp.s12ls_positions(tag) from s12ls_tags;
+select pg_temp.s12ls_mark();
+
+-- ------------------------------------------------------------------------------------------------ run 1: the scan of ls-a v2 --
+select pg_temp.s12ls_call('r1', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('la2'));
+select is(pg_temp.s12ls_state('r1'), '00000', 'the scan of ls-a v2 succeeds as a context-cleared service_role call [P2-S12-AC-212]');
+select is((select rpc_before from s12ls_out where label = 'r1'), '',
+  'PAT-031: the scan was called with no RPC context set: the fixtures of this transaction held app.cms_rpc open and the runner cleared it');
+select is((select rpc_after from s12ls_out where label = 'r1'), '', 'the wrapper restores the RPC context it found (empty)');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.s12ls_body('r1')) k), array['appended', 'examined', 'nextCursor'],
+  'the answer is exactly { examined, appended, nextCursor }');
+select is(pg_temp.s12ls_sum('r1'), '11/11/end', 'run 1 examines and appends 11 instances and needs no continuation (lk1 2, lk2 2, lk3 2, st1-3 3, iv1 2)');
+select is(pg_temp.s12ls_appended(), 11::bigint, 'exactly 11 composition rows were appended');
+select is(pg_temp.s12ls_conforming(2), 11::bigint,
+  'all 11 follow the contract: next version of the head, state pending_diff, pin unchanged, pending_pattern_version 2, every other member copied [AC-212]');
+select ok(pg_temp.s12ls_history_intact(), 'every earlier composition row is identical (append-only)');
+
+-- linked vs detached / standalone ------------------------------------------------------------------------------------------------------
+select is(pg_temp.s12ls_heads('lk1'), '/cta=pending_diff:v2:p1:q2 /hero=pending_diff:v2:p1:q2 /standalone=active:v1:p-:q-',
+  'a linked instance on a draft revision gets a pending_diff row; the standalone block row beside it (no pattern) gets none');
+select is(pg_temp.s12ls_heads('lk2'), '/cta=pending_diff:v2:p1:q2 /hero=pending_diff:v2:p1:q2', 'a linked instance with a local override gets one too');
+select is((select props::text from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('lk2') and path = '/hero'
+            and state = 'pending_diff'), (select props::text from platform_private.cms_composition_instances
+            where revision_id = pg_temp.s12pl_rev('lk2') and path = '/hero' and state = 'active'),
+  'the pending row keeps the local override of the row it follows (an unanswered update overwrites nothing)');
+select is(pg_temp.s12ls_heads('lk3'), '/main/cta=pending_diff:v2:p1:q2 /main/hero=pending_diff:v2:p1:q2', 'a templated slot path is scanned like a root path');
+select is(pg_temp.s12ls_heads('dt1'), '/cta=active:v1:p1:q- /hero=active:v1:p1:q-',
+  'a DETACHED instance (provenance only) is never offered an update');
+-- draft vs reviewed ----------------------------------------------------------------------------------------------------------------------
+select is(pg_temp.s12ls_heads('rv1'), '/cta=active:v1:p1:q- /hero=active:v1:p1:q-',
+  'an instance on a revision with a live review (effective state submitted) keeps its pin as history');
+select is((select state || ':' || version::text from platform_private.cms_editorial_reviews where id = :'rv1_review'), 'open:1',
+  'the review of a revision the scan skipped is untouched');
+select is(pg_temp.s12ls_heads('old1'), '/cta=active:v1:p1:q- /hero=active:v1:p1:q-',
+  'an instance on a revision that is no longer the entry''s current draft is history and gets nothing');
+select is(pg_temp.s12ls_heads('old1b'), '', 'the current draft revision of that entry holds no instance, so nothing is invented there');
+select is(pg_temp.s12ls_heads('arch1'), '/cta=active:v1:p1:q- /hero=active:v1:p1:q-', 'an archived entry is not scanned');
+-- compatibility by entry type, both ways ---------------------------------------------------------------------------------------------------
+select is(pg_temp.s12ls_heads('ty2'), '/cta=active:v1:p1:q- /hero=active:v1:p1:q-',
+  'a type-2 entry is not offered v2: the new version is compatible with type 1 only');
+-- older vs same pin ----------------------------------------------------------------------------------------------------------------------
+select is(pg_temp.s12ls_heads('same1'), '/cta=active:v1:p2:q- /hero=active:v1:p2:q-', 'an instance already pinned to v2 is not offered v2');
+-- the other lineage ---------------------------------------------------------------------------------------------------------------------
+select is(pg_temp.s12ls_heads('ob1'), '/item=active:v1:p1:q-', 'an instance of another pattern lineage is never touched by this scan');
+-- head states: only active and pending_diff are scanned ---------------------------------------------------------------------------------
+select is(pg_temp.s12ls_heads('st1'), '/cta=pending_diff:v2:p1:q2 /hero=retired:v2:p1:q-', 'a retired head gets nothing; its active sibling does');
+select is(pg_temp.s12ls_heads('st2'), '/cta=pending_diff:v2:p1:q2 /hero=draft:v2:p1:q-', 'a draft-state head gets nothing; its active sibling does');
+select is(pg_temp.s12ls_heads('st3'), '/cta=pending_diff:v2:p1:q2 /hero=superseded:v2:p1:q-', 'a superseded head gets nothing; its active sibling does');
+-- position unchanged (DEC-185) ----------------------------------------------------------------------------------------------------------
+select is((select count(*)::integer from s12ls_pos pos where pos.before is distinct from pg_temp.s12ls_positions(pos.tag)), 0,
+  'the position of every path is unchanged by the scan, for every scenario entry (DEC-185)');
+select is(pg_temp.s12ls_positions('lk1'), '/cta@1 /hero@0 /standalone@5', 'lk1 keeps the forest order of its placement and the position of its standalone row');
+-- the live review of an editable revision is invalidated in the same transaction ------------------------------------------------------
+select is((select state || ':' || invalidated_reason || ':' || version::text from platform_private.cms_editorial_reviews where id = :'iv1_older'),
+  'invalidated:dependency_changed:2',
+  'the live review of the revision the scan wrote to is invalidated dependency_changed, version advanced once [BE03c Canonical records: every composition write]');
+select is((select state || ':' || version::text from platform_private.cms_editorial_reviews where id = :'iv1_newer'), 'invalidated:2',
+  'the review that was already invalidated is left untouched');
+select ok(exists (select 1 from platform_private.outbox_events event
+                   where event.event_type = 'cms.entry.review-changed.v1' and event.payload->>'reviewId' = :'iv1_older'),
+  'the invalidation emits its review-changed event');
+
+-- What a writing run does NOT do (BE03c Linked update: it "changes no entry version and writes no audit or event of its own, while the review
+-- invalidation it causes is audited as every composition write's is", DEC-222; review V6-03): compared over the full before/after rows of run 1.
+create or replace function pg_temp.s12ls_added(p_label text, p_store text) returns setof jsonb language sql stable as $body$
+  select element.value from s12ls_out o, jsonb_array_elements(o.after_rows->p_store) element(value)
+   where o.label = p_label and not (o.before_rows->p_store) @> jsonb_build_array(element.value) $body$;
+select is((select string_agg(store.key, ',' order by store.key collate "C") from s12ls_out o cross join lateral jsonb_each(o.after_rows) store
+            where o.label = 'r1' and store.value is distinct from o.before_rows->store.key),
+  'audit_private.audit_events,platform_private.cms_composition_instances,platform_private.cms_editorial_reviews,platform_private.outbox_events',
+  'run 1 wrote exactly the composition rows, the invalidated review, one audit record and one event: no entry, revision, assignment, pattern, schedule or idempotency row changed');
+select ok((select before_rows->'platform_private.cms_content_entries' = after_rows->'platform_private.cms_content_entries' from s12ls_out where label = 'r1'),
+  'run 1 changes no entry row, so no entry version is bumped [BE03c Linked update, DEC-222]');
+select is((select count(*)::integer || ':' || min(value->>'action') || ':' || min(value->>'target_type') || ':' || min(value->>'target_id')
+             from pg_temp.s12ls_added('r1', 'audit_private.audit_events') added(value)),
+  '1:cms.entry.review.invalidate:cms_editorial_review:' || :'iv1_older',
+  'the one audit record of run 1 is the review invalidation it caused: the scan writes no audit record of its own');
+select is((select count(*)::integer || ':' || min(value->>'event_type') || ':' || min(value->'payload'->>'reviewId')
+             from pg_temp.s12ls_added('r1', 'platform_private.outbox_events') added(value)),
+  '1:cms.entry.review-changed.v1:' || :'iv1_older', 'the one event of run 1 is that invalidation''s review-changed event: the scan emits no event of its own');
+
+-- ------------------------------------------------------------------------------------------------- run 2: re-delivery is idempotent --
+select pg_temp.s12ls_call('r2', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('la2'));
+select is(pg_temp.s12ls_sum('r2'), '0/0/end', 'a re-delivered cms.pattern.activated.v1 appends nothing: every pending row already waits for v2 [P2-S12-AC-213]');
+select ok(pg_temp.s12ls_unchanged('r2'), 'the re-delivery changes no row of any captured store');
+select pg_temp.s12ls_call('r2b', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('la2') || '{"batch":500,"correlationId":"a9120000-0000-4000-8000-00000000c0d9"}'::jsonb);
+select is(pg_temp.s12ls_sum('r2b'), '0/0/end', 'the same scan with the optional batch and correlationId members is idempotent too');
+select ok(pg_temp.s12ls_unchanged('r2b'), 'and changes nothing');
+
+-- ------------------------------------------------------------------------------- v3: the late scan of v2, then the scan of v3 --
+select * from pg_temp.s12pl_pattern('la3', 'ls-a', jsonb_build_array(
+  pg_temp.s12pd_block('hero', '[]'::jsonb, '{"title":"H3"}'::jsonb), pg_temp.s12pd_block('cta', '[]'::jsonb, '{"title":"C3"}'::jsonb)),
+  jsonb_build_array((select id from s12pd_types where ordinal = 1), (select id from s12pd_types where ordinal = 2)), true, '2');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('la2')->>'id')::uuid), 'superseded',
+  'setup: v2 is superseded by the activation of v3');
+select pg_temp.s12ls_call('r4', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('la2'));
+select is(pg_temp.s12ls_sum('r4'), '0/0/end', 'a scan delivered late for a version that is no longer active appends nothing: its successor''s own scan covers it');
+select ok(pg_temp.s12ls_unchanged('r4'), 'and changes no row');
+select * from pg_temp.s12pl_pattern('la4', 'ls-a', jsonb_build_array(pg_temp.s12pd_block('hero', '[]'::jsonb, '{"title":"H4"}'::jsonb)),
+  null, false, '3');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('la4')->>'id')::uuid), 'draft', 'setup: v4 is a real draft');
+select pg_temp.s12ls_call('r4b', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('la4'));
+select is(pg_temp.s12ls_sum('r4b'), '0/0/end', 'a draft pattern version is no activated version: nothing is appended');
+select ok(pg_temp.s12ls_unchanged('r4b'), 'and nothing changes');
+
+-- A scan delivered for a version that is no longer active, WITH candidates (review V6-02).  sg1 and rt1 each hold a linked, older-pinned, compatible
+-- draft instance, so the only reason a scan of the superseded ls-s v2 or of the retired ls-r v2 can append nothing is the state of its target.
+select pg_temp.s12ls_call('r4c', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('ls2'));
+select is(pg_temp.s12ls_sum('r4c'), '0/0/end', 'a scan of a SUPERSEDED version appends nothing although a linked older-pinned compatible draft instance exists');
+select ok(pg_temp.s12ls_unchanged('r4c'), 'and changes no row');
+select is(pg_temp.s12ls_heads('sg1'), '/item=active:v1:p1:q-', 'the instance of the control stays on its pin');
+select pg_temp.s12ls_call('r4d', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('ls3'));
+select is(pg_temp.s12ls_sum('r4d'), '1/1/end', 'control: the scan of the ACTIVE ls-s v3 does find that instance');
+select is(pg_temp.s12ls_heads('sg1'), '/item=pending_diff:v2:p1:q3', 'and appends its pending row for v3');
+create temp table s12ls_retire on commit drop as
+select review.id as review_id, review.version::text as review_version from platform_private.cms_governed_reviews review
+ where review.subject_id = (pg_temp.s12pd_body('lr2')->>'id')::uuid;
+select pg_temp.s12pd_run('lr2:retire', jsonb_build_object('reviewId', (select review_id from s12ls_retire), 'action', 'retire',
+    'expectedVersion', (select review_version from s12ls_retire), 'ifMatch', (select review_version from s12ls_retire),
+    'reason', 'Retired for the linked-scan suite', 'idempotencyKey', 's12ls-lr2-retire', 'context', pg_temp.s09d_context('owner', true)),
+  'owner', 'service_role', 'activate');
+select is(pg_temp.s12pd_state('lr2:retire'), '00000', 'setup: the owner retires ls-r v2 through the real governed retire producer');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('lr2')->>'id')::uuid), 'retired', 'setup: ls-r v2 is retired');
+select pg_temp.s12ls_call('r4e', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('lr2'));
+select is(pg_temp.s12ls_sum('r4e'), '0/0/end', 'a scan of a RETIRED version (the retirement event shares cms.pattern.activated.v1) appends nothing although rt1 qualifies by every other predicate');
+select ok(pg_temp.s12ls_unchanged('r4e'), 'and changes no row');
+select is(pg_temp.s12ls_heads('rt1'), '/item=active:v1:p1:q-', 'the instance stays on its pin');
+
+-- a NEW live review of iv1 (older than both earlier reviews, so the revision stays effective draft) for the correlation witness below (review V6-04)
+select pg_temp.s12pl_review('iv1', timestamptz '2026-10-08T11:59:00Z') as iv1_third \gset
+select is(platform_private.cms_revision_effective_state(pg_temp.s12pl_rev('iv1')), 'draft', 'setup: iv1 is still effective draft with a third review live beside the invalidated two');
+
+select pg_temp.s12ls_mark();
+select pg_temp.s12ls_call('r3', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('la3') || '{"correlationId":"a9120000-0000-4000-8000-00000000c0d9"}'::jsonb);
+select is(pg_temp.s12ls_sum('r3'), '15/15/end',
+  'the scan of v3 examines and appends 15: a newer pending row over each of the 11 rows already waiting for v2 (lk1-3, st1-3, iv1) and the first one for ty2 and same1 (4) [AC-212]');
+select is(pg_temp.s12ls_appended(), 15::bigint, 'exactly 15 composition rows were appended by the scan of v3');
+select is(pg_temp.s12ls_conforming(3), 15::bigint, 'all 15 follow the contract with pending_pattern_version 3 [AC-212]');
+select ok(pg_temp.s12ls_history_intact(), 'every earlier row, the pending rows for v2 included, is identical');
+select is(pg_temp.s12ls_heads('lk1'), '/cta=pending_diff:v3:p1:q3 /hero=pending_diff:v3:p1:q3 /standalone=active:v1:p-:q-',
+  'a row already waiting for v2 gets a newer pending row for v3, still pinned to v1');
+select is(pg_temp.s12ls_heads('ty2'), '/cta=pending_diff:v2:p1:q3 /hero=pending_diff:v2:p1:q3',
+  'the type-2 entry is offered v3, which is compatible with type 2 (the other direction of the compatibility predicate)');
+select is(pg_temp.s12ls_heads('same1'), '/cta=pending_diff:v2:p2:q3 /hero=pending_diff:v2:p2:q3', 'the instance pinned to v2 is offered v3');
+select is(pg_temp.s12ls_heads('st1'), '/cta=pending_diff:v3:p1:q3 /hero=retired:v2:p1:q-', 'the retired head still gets nothing');
+select is(pg_temp.s12ls_heads('rv1'), '/cta=active:v1:p1:q- /hero=active:v1:p1:q-', 'the submitted revision still keeps its pin');
+select is(pg_temp.s12ls_heads('dt1'), '/cta=active:v1:p1:q- /hero=active:v1:p1:q-', 'the detached instance still keeps its pin');
+select is(pg_temp.s12ls_heads('ob1'), '/item=active:v1:p1:q-', 'the other lineage is still untouched');
+select is((select count(*)::integer from s12ls_pos pos where pos.before is distinct from pg_temp.s12ls_positions(pos.tag)), 0,
+  'positions are still unchanged after the second scan');
+-- the request correlationId reaches its effect (review V6-04): the invalidation the scan caused carries it in its outbox event and its audit record
+select is((select state || ':' || invalidated_reason from platform_private.cms_editorial_reviews where id = :'iv1_third'), 'invalidated:dependency_changed',
+  'run 3 invalidated the third live review of iv1');
+select is((select count(*)::integer || ':' || min(correlation_id::text) from platform_private.outbox_events
+            where event_type = 'cms.entry.review-changed.v1' and payload->>'reviewId' = :'iv1_third'), '1:a9120000-0000-4000-8000-00000000c0d9',
+  'the event of that invalidation carries the correlationId of the request');
+select is((select count(*)::integer || ':' || min(correlation_id::text) from audit_private.audit_events
+            where action = 'cms.entry.review.invalidate' and target_id = :'iv1_third'::uuid), '1:a9120000-0000-4000-8000-00000000c0d9',
+  'and so does its audit record');
+select isnt((select correlation_id::text from platform_private.outbox_events
+              where event_type = 'cms.entry.review-changed.v1' and payload->>'reviewId' = :'iv1_older'), 'a9120000-0000-4000-8000-00000000c0d9',
+  'while run 1, which supplied none, invalidated under a fresh correlation (the fallback branch)');
+select pg_temp.s12ls_call('r5', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('la3'));
+select is(pg_temp.s12ls_sum('r5'), '0/0/end', 'a re-delivery of the scan of v3 appends nothing [AC-213]');
+select ok(pg_temp.s12ls_unchanged('r5'), 'and changes nothing');

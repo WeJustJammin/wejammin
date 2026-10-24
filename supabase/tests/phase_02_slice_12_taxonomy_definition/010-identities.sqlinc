@@ -1,0 +1,102 @@
+-- Only provider-boundary users and narrow identity authority facts are fixture
+-- inserts. Identity/person parties and organization ownership come from real
+-- existing commands. No CMS owner receipt or active content type is fabricated.
+insert into auth.users(id) values
+  ('a9126000-0000-4000-8000-000000000001'),
+  ('a9126000-0000-4000-8000-000000000002'),
+  ('a9126000-0000-4000-8000-000000000003');
+select platform_api.auth_bootstrap(
+  'a9126000-0000-4000-8000-000000000001', decode(repeat('61', 32), 'hex'),
+  decode(repeat('71', 32), 'hex'), 'a9126000-0000-4000-8000-000000000011',
+  'a9126000-0000-4000-8000-000000000012');
+select platform_api.auth_bootstrap(
+  'a9126000-0000-4000-8000-000000000002', decode(repeat('62', 32), 'hex'),
+  decode(repeat('72', 32), 'hex'), 'a9126000-0000-4000-8000-000000000021',
+  'a9126000-0000-4000-8000-000000000022');
+select platform_api.auth_bootstrap(
+  'a9126000-0000-4000-8000-000000000003', decode(repeat('63', 32), 'hex'),
+  decode(repeat('73', 32), 'hex'), 'a9126000-0000-4000-8000-000000000031',
+  'a9126000-0000-4000-8000-000000000032');
+insert into s12td_ids values
+  ('authA', 'a9126000-0000-4000-8000-000000000001'),
+  ('authB', 'a9126000-0000-4000-8000-000000000002'),
+  ('authMember', 'a9126000-0000-4000-8000-000000000003');
+insert into s12td_ids
+select 'person' || substring(ids.key from 5), binding.person_id::text
+from s12td_ids ids join identity.auth_user_bindings binding
+  on binding.auth_user_id = ids.value::uuid where ids.key like 'auth%';
+
+select pg_temp.s12td_as('A');
+select set_config('app.correlation_id', 'a9126000-0000-4000-8000-000000000091', true);
+select set_config('app.idempotency_key_hash', 's12td-org-a-0001', true);
+select set_config('app.request_hash', 's12td-org-a-request-0001', true);
+insert into s12td_ids select 'orgA',
+  platform_api.rpc_create_organization('self_member', '{}'::text[])->>'organizationId';
+select pg_temp.s12td_as('B', 'B');
+select set_config('app.idempotency_key_hash', 's12td-org-b-0001', true);
+select set_config('app.request_hash', 's12td-org-b-request-0001', true);
+insert into s12td_ids select 'orgB',
+  platform_api.rpc_create_organization('self_member', '{}'::text[])->>'organizationId';
+
+-- One readable member without curator authority; this is fixture setup, not a
+-- claim that membership invitation/acceptance has been exercised by this suite.
+insert into identity_private.membership_tenure(
+  id, organization_id, person_id, state, provenance, governance_mode,
+  starts_on, accepted_at, actor_id, version)
+values ('a9126000-0000-4000-8000-000000000201',
+  (select value::uuid from s12td_ids where key = 'orgA'),
+  (select value::uuid from s12td_ids where key = 'personMember'),
+  'confirmed', 'invitation', 'ungoverned', current_date, clock_timestamp(),
+  (select value::uuid from s12td_ids where key = 'personA'), 1);
+
+-- Two ordinary, finite curator projections, one per owner. The production
+-- command must consume current authority and cannot fall back to owner receipt.
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active)
+select (select value::uuid from s12td_ids where key = 'org' || who),
+  (select value::uuid from s12td_ids where key = 'person' || who),
+  'cms.taxonomy_curator', current_date, current_date + 1, true
+from (values ('A'), ('B')) actors(who);
+
+select is((select count(*)::integer from s12td_ids where key like 'org%'), 2,
+  'SETUP two real organization-create results exist');
+select isnt((select value from s12td_ids where key = 'orgA'),
+  (select value from s12td_ids where key = 'orgB'), 'SETUP organizations differ');
+select ok(platform_private.cms_entry_tenant_visible(
+  (select value::uuid from s12td_ids where key = 'auth' || who),
+  (select value::uuid from s12td_ids where key = 'org' || who)),
+  'SETUP ordinary owner ' || who || ' has current tenant visibility')
+from (values ('A'), ('B')) actors(who);
+select ok(platform_private.cms_person_holds_capability(
+  (select value::uuid from s12td_ids where key = 'org' || who),
+  (select value::uuid from s12td_ids where key = 'person' || who),
+  'cms.taxonomy_curator'), 'SETUP ordinary owner ' || who || ' is a live curator')
+from (values ('A'), ('B')) actors(who);
+select is((select count(*)::integer from platform_private.cms_owner_initialization r
+  where r.auth_user_id::text in (select value from s12td_ids where key like 'auth%')), 0,
+  'SETUP no tested actor has a CMS initialization-owner receipt');
+select ok(platform_private.cms_entry_tenant_visible(
+  (select value::uuid from s12td_ids where key = 'authMember'),
+  (select value::uuid from s12td_ids where key = 'orgA')),
+  'SETUP denied member really has readable organization scope');
+select ok(not platform_private.cms_person_holds_capability(
+  (select value::uuid from s12td_ids where key = 'orgA'),
+  (select value::uuid from s12td_ids where key = 'personMember'),
+  'cms.taxonomy_curator'), 'SETUP readable member has no curator grant');
+select ok(not platform_private.cms_entry_tenant_visible(
+  (select value::uuid from s12td_ids where key = 'authB'),
+  (select value::uuid from s12td_ids where key = 'orgA')),
+  'SETUP other owner cannot read owner A');
+select is((select count(*)::integer from platform_private.cms_content_types
+  where type_key = 's12td_type'), 0,
+  'SETUP allowlist key has no bound type; later review uses normative default basis');
+select ok(platform_private.cms_workflow_policy_member('editorial.default', 1) is not null,
+  'SETUP real seeded default workflow policy exists');
+select is((select jsonb_object_agg(domain, provider_state order by domain)
+  from (select distinct on (domain) domain, provider_state
+    from platform_private.cms_canonical_domain_registry order by domain, version desc) registry),
+  '{"role":"built","instrument":"unbuilt","gear":"unbuilt","place":"unbuilt","rights":"unbuilt","jurisdiction":"unbuilt"}'::jsonb,
+  'SETUP real Phase 2 canonical registry, without mutation');
+select ok(not exists(select 1 from jsonb_each(pg_temp.s12td_snapshot())
+  where jsonb_typeof(value) <> 'array'), 'SETUP every no-effect snapshot store exists');
+select pg_temp.s12td_as('A');

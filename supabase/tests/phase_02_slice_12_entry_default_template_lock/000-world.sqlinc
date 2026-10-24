@@ -1,0 +1,229 @@
+-- DEC-202 lock fixture: real public schema/template/entry producers only.
+-- Existing S09 Auth/member provisioning labels remain fixture-only, not hosted proof.
+-- The owner client validates every premise before separately issuing COMMIT.
+\ir ../support/jwt-claims.sqlinc
+begin;
+\ir ../phase_02_slice_09_dec108/00-helpers.sqlinc
+\ir ../phase_02_slice_09_dec108/01-actors.sqlinc
+\ir ../phase_02_slice_09_dec108/02-chain.sqlinc
+\ir ../phase_02_slice_09_dec108/03-support.sqlinc
+\ir ../phase_02_slice_12_governed_submit/000-fixtures.sqlinc
+\ir ../phase_02_slice_12_governed_assignment/000-world.sqlinc
+\ir ../phase_02_slice_12_governed_activation/000-world.sqlinc
+
+create temp table s12edtl_premises(key text primary key, passed boolean not null)
+  on commit drop;
+create function pg_temp.s12edtl_check(p_key text, p_pass boolean)
+returns void language sql as $body$
+  insert into s12edtl_premises values (p_key, p_pass is true)
+$body$;
+select pg_temp.s12edtl_check('author grant', pg_temp.s09d_grant_via_rpc('owner', 'cms.author') = 'OK');
+select pg_temp.s12edtl_check('designer grant',
+  pg_temp.s09d_grant_via_rpc('owner', 'cms.template_designer') = 'OK');
+select pg_temp.s12edtl_check('reviewer grant', pg_temp.s09d_grant_via_rpc('rev1', 'cms.reviewer') = 'OK');
+
+-- The closed projection registry requires content/article/cms.article.card.
+-- Produce that real type in this fresh owner scope; never extend the registry.
+do $fresh$
+begin
+  if exists (select 1 from platform_private.cms_content_types
+    where owner_id = pg_temp.s09d_id('ownerOrg') and type_key = 'article') then
+    raise exception 'SETUP: unexpected existing owner article type; no unproven reuse';
+  end if;
+end;
+$fresh$;
+select pg_temp.s09d_create_type('edtl-target', 'article');
+select pg_temp.s09d_to_active('edtl-target', array['rev2']);
+select pg_temp.s09d_create_type('edtl-base', 's12edtlbase');
+select pg_temp.s09d_add_field_only('edtl-base');
+select pg_temp.s09d_rpc('edtl-base:relation', 'platform_api.cms_bind_relation', 'owner',
+  jsonb_build_object(
+    'contentTypeId', pg_temp.s09d_id('edtl-base:type'),
+    'versionId', pg_temp.s09d_id('edtl-base:version'),
+    'fieldId', pg_temp.s09d_id('edtl-base:fieldId'),
+    'targetKind', 'content', 'targetType', 'article',
+    'projectionKey', 'cms.article.card', 'cardinality', 'many', 'min', 0, 'max', 1,
+    'ordered', true, 'onUnavailable', 'omit',
+    'expectedVersion', pg_temp.s09d_version('edtl-base'),
+    'idempotencyKey', 's12edtl-bind-content'));
+select pg_temp.s09d_to_active('edtl-base');
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key = 'rev1';
+insert into s12gov_ids values ('typeA', pg_temp.s09d_id('edtl-base:type')::text);
+
+select pg_temp.s12ga_rpc('mint:edtl-template', 'platform_api.cms_define_template', 'owner',
+  jsonb_build_object(
+    'templateKey', 's12edtl-template',
+    'compatibleTypeIds', jsonb_build_array(pg_temp.s09d_id('edtl-base:type')),
+    'slots', '[{"key":"main","required":false,"allowedBlocks":[],"maxCount":7}]'::jsonb,
+    'reservedRegions', '["header","now","record","detail","provenance"]'::jsonb,
+    'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public',
+    'expectedVersion', null, 'idempotencyKey', 's12edtl-template-create'));
+insert into s12gov_ids values
+  ('edtl-template:subject', pg_temp.s12ga_body('mint:edtl-template')->>'id');
+select pg_temp.s12ga_submit('edtl-template', 'owner');
+select pg_temp.s12gb_approve('edtl-template');
+select pg_temp.s12gb_act('edtl-template-activate', 'owner', pg_temp.s12ga_review('edtl-template'));
+select pg_temp.s09d_successor('edtl-bound', 'edtl-base',
+  p_default_template => pg_temp.s12ga_subject('edtl-template'), p_bindings => '[]'::jsonb);
+select pg_temp.s09d_to_active('edtl-bound', array['rev3']);
+
+-- Private evidence is read under the real resolved actor, as in frozen76 QA.
+-- Only the temporary read flag is scoped here; no evidence function is replaced.
+create function pg_temp.s12edtl_request(p_tag text, p_values jsonb, p_key text)
+returns jsonb language plpgsql as $body$
+declare
+  version_row platform_private.cms_content_type_versions;
+  artifact platform_private.cms_schema_artifacts;
+  request jsonb;
+  context_request jsonb;
+  actor uuid;
+  previous_rpc text := coalesce(current_setting('app.cms_rpc', true), '');
+begin
+  perform pg_temp.s09d_session('owner', 'service_role');
+  context_request := jsonb_build_object('context', pg_temp.s09d_context('owner', true));
+  perform set_config('app.cms_rpc', 'true', true);
+  actor := platform_private.cms_actor(context_request);
+  perform platform_private.cms_acting_party(context_request, actor);
+  select * into strict version_row from platform_private.cms_content_type_versions
+    where id = pg_temp.s09d_id(p_tag || ':version');
+  select * into strict artifact from platform_private.cms_schema_artifacts
+    where id = version_row.schema_artifact_id;
+  request := jsonb_build_object(
+    'contentTypeId', version_row.content_type_id, 'contentTypeVersionId', version_row.id,
+    'locale', 'en-US', 'values', p_values,
+    'changedPaths', (select jsonb_agg('/fields/' || key order by key)
+      from jsonb_object_keys(p_values) key),
+    'validatorRefs', '[]'::jsonb,
+    'schemaArtifact', jsonb_build_object(
+      'id', artifact.id, 'contentTypeVersionId', version_row.id,
+      'artifactHash', btrim(artifact.artifact_hash::text),
+      'compilerVersion', artifact.compiler_version, 'zodContractRef', artifact.zod_contract_ref),
+    'activationEvidence', platform_private.cms_type_version_resource(version_row.id)->'activationEvidence',
+    'workflowPolicy', platform_private.cms_editorial_workflow_policy_evidence(version_row.id),
+    'idempotencyKey', p_key);
+  perform set_config('app.cms_rpc', previous_rpc, true);
+  return request;
+exception when others then
+  perform set_config('app.cms_rpc', previous_rpc, true);
+  raise;
+end;
+$body$;
+
+-- The target and its caller assignment come from the actual public entry command.
+select pg_temp.s12ga_rpc('edtl-target-create', 'platform_api.cms_create_entry', 'owner',
+  pg_temp.s12edtl_request('edtl-target', jsonb_build_object(
+    (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('edtl-target:version') and field_key = 'title'),
+    'EDTL TARGET'), 's12edtl-target-create'), pg_temp.s09d_context('owner', true));
+select pg_temp.s09d_remember('edtl-target:entry',
+  (pg_temp.s12ga_body('edtl-target-create')->'entry'->>'id')::uuid);
+
+select pg_temp.s12edtl_check('thirty schema steps', (
+  select count(*) = 30 and bool_and(coalesce(probe.state = '00000' and probe.response is not null, false))
+  from (select tag, step from (values ('edtl-target'), ('edtl-base'), ('edtl-bound')) tags(tag)
+    cross join unnest(array['draft', 'dryRun', 'plan.get', 'plan.claim', 'plan.batch', 'plan.seal',
+      'submit', 'assignment', 'decision', 'activate']) step) expected
+  left join s09d_probe probe on probe.label = expected.tag || ':' || case expected.step
+    when 'draft' then case when expected.tag = 'edtl-bound' then 'successor' else 'create' end
+    when 'assignment' then 'assign:' || case expected.tag
+      when 'edtl-target' then 'rev2' when 'edtl-base' then 'rev1' else 'rev3' end
+    when 'decision' then 'decide:' || case expected.tag
+      when 'edtl-target' then 'rev2' when 'edtl-base' then 'rev1' else 'rev3' end
+    else expected.step end));
+select pg_temp.s12edtl_check('all captured schema calls',
+  (select count(*) > 30 and bool_and(state = '00000' and response is not null) from s09d_probe));
+select pg_temp.s12edtl_check('no helper read errors', not exists (select 1 from s09d_sql_errors));
+select pg_temp.s12edtl_check('six service-role producers', (
+  select count(*) = 6 and bool_and(state = '00000' and rpc_user = 'service_role'
+    and before_user = after_user and body is not null)
+  from s12ga_rcpt where label in ('mint:edtl-template', 'submit:edtl-template',
+    'as-edtl-template', 'ap-edtl-template', 'edtl-template-activate', 'edtl-target-create')));
+select pg_temp.s12edtl_check('source exact active compiled default', (
+  select v.state = 'active' and source.state = 'superseded' and content_type.state = 'active'
+    and v.owner_id = pg_temp.s09d_id('ownerOrg') and v.content_type_id = source.content_type_id
+    and v.default_template_version_id = pg_temp.s12ga_subject('edtl-template')
+    and artifact.id = v.schema_artifact_id and artifact.content_type_version_id = v.id
+    and artifact.state = 'compiled' and artifact.artifact_hash = v.definition_hash
+    and artifact.compiler_version is not null and artifact.zod_contract_ref is not null
+  from platform_private.cms_content_type_versions v
+  join platform_private.cms_content_type_versions source on source.id = pg_temp.s09d_id('edtl-base:version')
+  join platform_private.cms_content_types content_type on content_type.id = v.content_type_id
+  join platform_private.cms_schema_artifacts artifact on artifact.id = v.schema_artifact_id
+  where v.id = pg_temp.s09d_id('edtl-bound:version')));
+select pg_temp.s12edtl_check('literal active T1', (
+  select state = 'active' and version = 1 and lifecycle_version = 4
+    and owner_id = pg_temp.s09d_id('ownerOrg') and activated_at is not null
+    and compatible_type_ids = jsonb_build_array(pg_temp.s09d_id('edtl-base:type'))
+    and slots = '[{"key":"main","required":false,"allowedBlocks":[],"maxCount":7}]'::jsonb
+  from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('edtl-template')));
+select pg_temp.s12edtl_check('empty real source population and bindings',
+  not exists (select 1 from platform_private.cms_content_entries
+    where content_type_id = pg_temp.s09d_id('edtl-bound:type'))
+  and not exists (select 1 from platform_private.cms_content_type_template_bindings
+    where content_type_version_id = pg_temp.s09d_id('edtl-bound:version'))
+  and (select state = 'completed' and source_count = 0 and target_count = 0 and row_error_count = 0
+    from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('edtl-bound:plan')));
+select pg_temp.s12edtl_check('actual bound relation', (
+  select count(*) = 1 and bool_and(f.kind = 'relation' and r.target_kind = 'content'
+    and r.target_type = 'article' and r.projection_key = 'cms.article.card'
+    and r.cardinality = 'many' and r.min_count = 0 and r.max_count = 1
+    and r.ordered and r.on_unavailable = 'omit')
+  from platform_private.cms_field_definition_versions f
+  join platform_private.cms_relation_definitions r on r.field_definition_id = f.id
+  where f.content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and f.field_key = 'related'));
+select pg_temp.s12edtl_check('public target and caller assignment', (
+  select e.owner_id = pg_temp.s09d_id('ownerOrg') and e.owner_party_id = e.owner_id
+    and e.lifecycle = 'active' and e.version = 1 and e.content_type_id = pg_temp.s09d_id('edtl-target:type')
+    and revision.schema_version_id = pg_temp.s09d_id('edtl-target:version')
+    and revision.template_version_id is null
+    and target_version.state = 'active' and target_version.default_template_version_id is null
+    and (select count(*) = 1 and bool_and(a.state = 'active' and a.version = 1)
+      from platform_private.cms_entry_assignments a where a.entry_id = e.id
+        and a.assignee_person_id = pg_temp.s09d_actor_id('owner', 'person')::uuid
+        and a.capability_key = 'cms.author')
+  from platform_private.cms_content_entries e
+  join platform_private.cms_entry_revisions revision on revision.id = e.current_draft_revision_id
+  join platform_private.cms_content_type_versions target_version on target_version.id = revision.schema_version_id
+  where e.id = pg_temp.s09d_id('edtl-target:entry')));
+
+-- Re-resolve the real owner before visibility; never forge verified cache GUCs.
+select pg_temp.s09d_session('owner', 'service_role');
+select set_config('app.cms_rpc', 'true', true);
+create temp table s12edtl_context on commit drop as
+  select jsonb_build_object('context', pg_temp.s09d_context('owner', true)) as request;
+select platform_private.cms_acting_party(request, platform_private.cms_actor(request))
+  from s12edtl_context;
+select pg_temp.s12edtl_check('resolved caller visibility', platform_private.cms_relation_target_visible(
+  pg_temp.s09d_actor_id('owner', 'auth')::uuid, pg_temp.s09d_id('ownerOrg'),
+  pg_temp.s09d_id('edtl-target:entry'), 'article'));
+select pg_temp.s12edtl_check('actual recent owner binding', (
+  select count(*) = 1 and bool_and(b.state = 'active' and b.context_kind = 'organization'
+    and b.person_id = a.person_id and b.acting_party_id = a.party_id
+    and b.expires_at > clock_timestamp() and b.last_seen_at > clock_timestamp() - interval '1 hour')
+  from s09d_actor a join platform_private.acting_context_binding b on b.id = a.binding_id where a.key = 'owner'));
+
+select jsonb_build_object(
+  'premises', (select jsonb_object_agg(key, passed) from s12edtl_premises),
+  'schemaCalls', (select jsonb_agg(jsonb_build_object('label', label, 'state', state,
+    'message', message, 'detail', detail, 'hasResponse', response is not null) order by label) from s09d_probe),
+  'governedCalls', (select jsonb_agg(jsonb_build_object('label', label, 'state', state,
+    'message', message, 'detail', detail, 'role', rpc_user,
+    'restored', before_user = after_user) order by ordinal) from s12ga_rcpt),
+  'actor', (select jsonb_build_object('auth', auth_user_id, 'person', person_id,
+    'party', party_id, 'binding', binding_id) from s09d_actor where key = 'owner'),
+  'schema', pg_temp.s09d_id('edtl-bound:version'), 'type', pg_temp.s09d_id('edtl-bound:type'),
+  'template', pg_temp.s12ga_subject('edtl-template'), 'target', pg_temp.s09d_id('edtl-target:entry'),
+  'relationDefinition', (select relation.id from platform_private.cms_relation_definitions relation
+    join platform_private.cms_field_definition_versions field on field.id = relation.field_definition_id
+    where field.content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field.field_key = 'related'),
+  'relationFieldDefinition', (select id from platform_private.cms_field_definition_versions
+    where content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field_key = 'related'),
+  'relationField', (select stable_field_id from platform_private.cms_field_definition_versions
+    where content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field_key = 'related'),
+  'titleField', (select stable_field_id from platform_private.cms_field_definition_versions
+    where content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field_key = 'title'),
+  'request', pg_temp.s12edtl_request('edtl-bound', jsonb_build_object(
+    (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field_key = 'title'),
+    'EDTL UNUSED'), 's12edtl-unused'));
+-- Deliberately no COMMIT: the owning client first checks the entire manifest.

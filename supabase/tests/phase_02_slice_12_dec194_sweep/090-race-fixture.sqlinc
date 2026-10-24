@@ -1,0 +1,179 @@
+-- DEC-194 independent-session race helpers. Loaded by the standalone .race.mjs only.
+-- All functions are pg_temp. public.s12dcr_* holds synthetic fixture identifiers
+-- across committed sessions and is removed by the runner; root resets the ALT DB.
+-- Reuses the existing labelled S09 identity/tenure and S12 entry/assignment fixtures.
+-- Additional labelled history: BE00 accept/claim/outcome jobs model earlier failed
+-- deliveries; reserved receipts model an acceptance paused before its first job.
+-- "Time passes" shifts created_at/updated_at together: s12dc_elapse for setup,
+-- or the new producer Job alone when older committed history must stay unchanged.
+-- No job state/token/version/lease is forged, no trigger or guard is installed/disabled.
+
+create or replace function pg_temp.s12dcr_assert(p_ok boolean, p_label text)
+returns void language plpgsql as $body$
+begin
+  if p_ok is distinct from true then raise exception 'race fixture: %', p_label; end if;
+end;
+$body$;
+
+-- Retire any prior scenario's live jobs through BE00, never by table UPDATE.
+create or replace function pg_temp.s12dcr_finish_live() returns void language plpgsql as $body$
+declare j record; previous_role text := current_setting('role'); applied boolean;
+begin
+  for j in select * from platform_private.jobs
+    where job_type = 'cms.taxonomy.merge_converge' and acting_party_id = pg_temp.s09d_id('ownerOrg')
+      and state in ('queued', 'running') order by id
+  loop
+    if j.state = 'queued' or j.lease_until is null or j.lease_until <= clock_timestamp() then
+      perform pg_temp.s12tt_claim('finish-' || j.id, j.id, j.version);
+      perform pg_temp.s12dcr_assert(pg_temp.s12tt_outcome('finish-' || j.id, 'cancelled', null, 'S12_RACE_CLEANUP'), 'cancel queued');
+    else
+      execute 'set local role service_role';
+      select platform_api.apply_job_outcome(j.id, j.version, j.lease_token, 'cancelled', null, 'S12_RACE_CLEANUP', false) into applied;
+      perform set_config('role', previous_role, true);
+      perform pg_temp.s12dcr_assert(applied, 'cancel running');
+    end if;
+  end loop;
+end;
+$body$;
+
+create or replace function pg_temp.s12dcr_drain() returns void language plpgsql as $body$
+declare retired record;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  for retired in select distinct term_id from platform_private.cms_taxonomy_merge_work(pg_temp.s09d_id('ownerOrg'), null)
+  loop perform pg_temp.s12tt_converge(retired.term_id, 5000); end loop;
+  perform pg_temp.s12dcr_assert(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 0, 'previous tail drained');
+end;
+$body$;
+
+-- A real CMS-03C-03 merge, followed by three labelled late assignment rows.
+-- Its internal request helper is exercised directly later, isolating enqueue
+-- linearization from unrelated taxonomy-version/term locks of the outer merge.
+create or replace function pg_temp.s12dcr_terms(p_tag text) returns uuid language plpgsql as $body$
+declare tax uuid := pg_temp.s12tt_lineage('vf'); retired uuid; survivor uuid;
+begin
+  perform pg_temp.s12tt_act(p_tag || '-a', 'owner', tax, 'create', p_tag || '-a');
+  perform pg_temp.s12tt_act(p_tag || '-b', 'owner', tax, 'create', p_tag || '-b');
+  perform pg_temp.s12dcr_assert(pg_temp.s12ga_out(p_tag || '-a') = 'ok' and pg_temp.s12ga_out(p_tag || '-b') = 'ok', 'term creates');
+  retired := pg_temp.s12tt_term_id(tax, p_tag || '-a');
+  survivor := pg_temp.s12tt_term_id(tax, p_tag || '-b');
+  perform pg_temp.s12tt_act(p_tag || '-merge', 'owner', tax, 'merge', p_tag || '-a', jsonb_build_object('survivorId', survivor));
+  perform pg_temp.s12dcr_assert(pg_temp.s12ga_out(p_tag || '-merge') = 'ok', 'real merge');
+  perform pg_temp.s12dcr_assert(pg_temp.s12tt_seed_bulk(p_tag, 3, retired) = 3, 'three late assignments');
+  return retired;
+end;
+$body$;
+
+-- Exact old claim is retained even after its real terminal outcome; S2 sends it
+-- through the real service-role transport to prove the post-wait fence refuses it.
+create or replace function pg_temp.s12dcr_prepare(p_tag text, p_failures integer default 1)
+returns jsonb language plpgsql as $body$
+declare j uuid; term uuid; answer jsonb; n integer; claim jsonb;
+begin
+  perform pg_temp.s12dcr_finish_live();
+  perform pg_temp.s12dcr_drain();
+  j := pg_temp.s12dc_job(p_tag || '-separator', 'owner', pg_temp.s09d_id('ownerOrg'), 900 + (select count(*)::integer from platform_private.jobs));
+  perform pg_temp.s12dc_settle(p_tag || '-separator', j, 'cancelled', 'S12_RACE_SEPARATOR');
+  term := pg_temp.s12dcr_terms(p_tag);
+  for n in 1..p_failures loop
+    j := pg_temp.s12dc_job(p_tag || n, 'owner', pg_temp.s09d_id('ownerOrg'), 1000 + (select count(*)::integer from platform_private.jobs));
+    perform pg_temp.s12tt_claim('prepare-' || n, j, 1);
+    claim := pg_temp.s12tt_claimed('prepare-' || n, 1);
+    perform pg_temp.s12dcr_assert(pg_temp.s12tt_outcome('prepare-' || n, 'failed', null, 'MERGE_CONVERGE_CONFLICT'), 'failed history outcome');
+  end loop;
+  perform pg_temp.s12dc_elapse(20);
+  perform pg_temp.s12dcr_assert(pg_temp.s12dc_live(pg_temp.s09d_id('ownerOrg')) = 0, 'no live job');
+  perform pg_temp.s12dcr_assert(pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) >= 20, 'idle >= 20 minutes');
+  perform pg_temp.s12dcr_assert(pg_temp.s12dc_streak(pg_temp.s09d_id('ownerOrg')) = p_failures, 'exact failed streak');
+  perform pg_temp.s12dcr_assert(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 3, 'exact remaining work');
+  perform pg_temp.s12dcr_assert(pg_temp.s12dc_failed_head(pg_temp.s09d_id('ownerOrg')) = j, 'latest failed Q');
+  select jsonb_build_object('tag', p_tag, 'q', j, 'term', term, 'actor', actor_id,
+    'party', acting_party_id, 'correlation', correlation_id, 'ordinaryCorrelation', extensions.gen_random_uuid(), 'staleClaim', claim)
+    into answer from platform_private.jobs where id = j;
+  insert into public.s12dcr_cases(label, ids) values (p_tag, answer);
+  return answer;
+end;
+$body$;
+
+-- This is the ACTUAL ordinary enqueue producer called by cms_term_action_apply.
+-- Optional outcomes use the real BE00 functions inside the still-open producer
+-- transaction, so a waiting sweep must reselect after that transaction commits.
+create or replace function pg_temp.s12dcr_ordinary(p_ids jsonb, p_finish text default null, p_old boolean default false)
+returns jsonb language plpgsql as $body$
+declare answer jsonb; j uuid;
+begin
+  answer := platform_private.cms_request_taxonomy_merge_converge((p_ids->>'actor')::uuid, (p_ids->>'party')::uuid,
+    (p_ids->>'term')::uuid, (p_ids->>'ordinaryCorrelation')::uuid);
+  j := (answer->>'jobId')::uuid;
+  perform pg_temp.s12dcr_assert(answer->>'replayed' = 'false', 'ordinary acceptance is fresh');
+  if p_finish is not null then
+    perform pg_temp.s12tt_claim('ordinary', j, 1);
+    perform pg_temp.s12dcr_assert(pg_temp.s12tt_outcome('ordinary', p_finish, null, 'S12_RACE_HISTORY'), 'ordinary terminal outcome');
+  end if;
+  if p_old then
+    update platform_private.jobs set created_at = created_at - interval '20 minutes', updated_at = updated_at - interval '20 minutes' where id = j;
+  end if;
+  return answer;
+end;
+$body$;
+
+create or replace function pg_temp.s12dcr_claim(p_ids jsonb, p_seconds integer default 840)
+returns jsonb language plpgsql as $body$
+declare j uuid;
+begin
+  j := pg_temp.s12dc_job('claim-' || (p_ids->>'tag'), 'owner', (p_ids->>'party')::uuid,
+    2000 + (select count(*)::integer from platform_private.jobs));
+  perform pg_temp.s12tt_claim('continuation', j, 1, p_seconds);
+  return pg_temp.s12tt_claimed('continuation', 1);
+end;
+$body$;
+
+-- Labelled time-pass boundary: the new failed producer Job is 14m52s old.
+-- The runner proves its sweep is waiting BEFORE this cutoff, observes the real
+-- database clock crossing it, then commits. A pre-wait captured now_at is stale.
+create or replace function pg_temp.s12dcr_cooldown() returns jsonb language plpgsql as $body$
+declare j uuid := (select job_id from s12tt_claims where label = 'ordinary'); cutoff timestamptz;
+begin
+  update platform_private.jobs set created_at = created_at - interval '14 minutes 52 seconds',
+    updated_at = updated_at - interval '14 minutes 52 seconds'
+    where id = j and state = 'failed' returning updated_at + interval '15 minutes' into cutoff;
+  perform pg_temp.s12dcr_assert(cutoff is not null, 'cooldown names the real failed producer');
+  return jsonb_build_object('jobId', j, 'eligibleAt', cutoff);
+end;
+$body$;
+
+-- Seed only the receipt that the REAL acceptance will lock FOR UPDATE. The row
+-- holder never changes it; explicit COMMIT releases it. No completed result,
+-- association, job, outbox or audit row is forged by this barrier.
+create or replace function pg_temp.s12dcr_reserve(p_actor uuid, p_key text, p_request text)
+returns uuid language plpgsql as $body$
+declare receipt uuid;
+begin
+  insert into platform_private.idempotency_records(actor_id, operation, key_hash, request_hash, state, created_at, expires_at)
+  values (p_actor, 'cms.taxonomy.merge_converge', extensions.digest(p_key, 'sha256'), extensions.digest(p_request, 'sha256'),
+    'reserved', clock_timestamp(), clock_timestamp() + interval '7 days') returning id into receipt;
+  return receipt;
+end;
+$body$;
+
+-- Complete-row digests detect changed/removed/swapped effects; id lists identify
+-- each accepted job. Counts alone cannot establish a refused path wrote nothing.
+create or replace function pg_temp.s12dcr_snapshot() returns jsonb language sql stable as $body$
+  select jsonb_build_object(
+    'jobs', coalesce((select jsonb_agg(to_jsonb(j) order by j.id) from platform_private.jobs j
+      where j.job_type = 'cms.taxonomy.merge_converge'), '[]'::jsonb),
+    'events', coalesce((select jsonb_agg(to_jsonb(e) order by e.id) from platform_private.outbox_events e
+      where e.event_type = 'job.requested' and e.payload->>'jobType' = 'cms.taxonomy.merge_converge'), '[]'::jsonb),
+    'audit', coalesce((select jsonb_agg(to_jsonb(a) order by a.id) from audit_private.audit_events a
+      where a.action = 'job.accepted' and a.target_id in (select id from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge')), '[]'::jsonb),
+    'receipts', coalesce((select jsonb_agg(to_jsonb(r) order by r.id) from platform_private.idempotency_records r
+      where r.operation = 'cms.taxonomy.merge_converge'), '[]'::jsonb),
+    'stores', pg_temp.s12dc_stores(), 'association', pg_temp.s12dc_assoc_digest())
+$body$;
+
+create or replace function pg_temp.s12dcr_facts(p_party uuid) returns jsonb language plpgsql as $body$
+begin
+  return jsonb_build_object('live', pg_temp.s12dc_live(p_party), 'idle', pg_temp.s12dc_idle_minutes(p_party),
+    'streak', pg_temp.s12dc_streak(p_party), 'work', pg_temp.s12tt_work(p_party), 'head', pg_temp.s12dc_failed_head(p_party));
+end;
+$body$;

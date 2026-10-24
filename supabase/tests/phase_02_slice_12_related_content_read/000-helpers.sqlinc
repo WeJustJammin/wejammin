@@ -1,0 +1,47 @@
+-- cmsRelatedContentRead lane helpers (DEC-195).  Include AFTER phase_02_slice_12_related_content/000-helpers.sqlinc and
+-- 001-world.sqlinc: they reuse pg_temp.r12_call, r12_id, r12_req, r12_curate, r12_names and the world's entries.
+
+-- The read as the Worker calls it: the private request carries only the path entry id.
+create or replace function pg_temp.r195_read_id(p_entry_id text)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.r12_call(format(
+    'select platform_api.cms_get_related_content(%L::jsonb)', jsonb_build_object('entryId', p_entry_id)::text))
+$body$;
+
+create or replace function pg_temp.r195_read(p_tag text)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.r195_read_id(pg_temp.r12_id(p_tag)::text)
+$body$;
+
+-- Any request body (envelope probes).
+create or replace function pg_temp.r195_read_raw(p_request jsonb)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.r12_call(format('select platform_api.cms_get_related_content(%L::jsonb)', p_request::text))
+$body$;
+
+-- The caller context of the CMS-03C-05 suite: acting party = the organization.
+create or replace function pg_temp.r195_as(p_auth text)
+returns void
+language sql
+as $body$
+  select pg_temp.s10_rpc_as(p_auth::uuid, (select value::uuid from s10_ids where key = 'organization'))
+$body$;
+
+-- Counts that a read must not move.
+create or replace function pg_temp.r195_evidence()
+returns text
+language sql
+stable
+as $body$
+  select (select count(*) from platform_private.cms_related_content_rules)::text || '/'
+      || (select count(*) from audit_private.audit_events)::text || '/'
+      || (select count(*) from platform_private.idempotency_records)::text || '/'
+      || (select count(*) from platform_private.outbox_events)::text || '/'
+      || (select coalesce(sum(version), 0) from platform_private.cms_content_entries)::text
+$body$;

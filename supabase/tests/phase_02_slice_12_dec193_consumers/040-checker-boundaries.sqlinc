@@ -1,0 +1,133 @@
+-- Complete independent payloads; ordinal pointers are a PRIVATE implementation
+-- vector approved for this integration, not a new public addressing contract.
+create temp table s12cb_expected(tag text primary key,nodes jsonb) on commit drop;
+insert into s12cb_expected values
+ ('cs-b-parity','[
+  {"path":"/panel","ordinal":0,"blockKey":"s12cs.root","blockVersion":2,"accessibleName":"R"},
+  {"path":"/panel","ordinal":1,"blockKey":"s12cs.leaf","blockVersion":2,"accessibleName":"Z"},
+  {"path":"/panel","ordinal":2,"blockKey":"s12cs.leaf","blockVersion":2,"accessibleName":"A"}]'),
+ ('cs-b-json','[
+  {"path":"/panel","ordinal":0,"blockKey":"s12cs.root","blockVersion":2,"accessibleName":null},
+  {"path":"/panel","ordinal":1,"blockKey":"s12cs.leaf","blockVersion":2,"accessibleName":null},
+  {"path":"/panel","ordinal":2,"blockKey":"s12cs.tail","blockVersion":1,"accessibleName":null}]'),
+ ('cs-b-solo','[{"path":"/solo","ordinal":0,"blockKey":"s12cs.leaf","blockVersion":2,"accessibleName":"SOLO"}]'),
+ ('cs-b-long','[
+  {"path":"/panel","ordinal":0,"blockKey":"s12cs.root","blockVersion":2,"accessibleName":"LONG-ROOT"},
+  {"path":"/panel","ordinal":1,"blockKey":"s12cs.leaf","blockVersion":2,"accessibleName":"LONG"}]'),
+ ('cs-b-long-parity','[
+  {"path":"/panel","ordinal":0,"blockKey":"s12cs.root","blockVersion":2,"accessibleName":"LONG-ROOT"},
+  {"path":"/panel","ordinal":1,"blockKey":"s12cs.leaf","blockVersion":2,"accessibleName":"LONG"}]'),
+ ('cs-b-pending','[{"path":"/panel","ordinal":0,"blockKey":"s12cs.root","blockVersion":1,"accessibleName":"PINNED"}]'),
+ ('cs-b-reuse','[{"path":"/gone","ordinal":0,"blockKey":"s12cs.tail","blockVersion":1,"accessibleName":"RETURNED"}]'),
+ ('cs-b-special','[
+  {"path":"/panel","ordinal":0,"blockKey":"s12cb.root","blockVersion":1,"accessibleName":"SPECIAL"},
+  {"path":"/panel","ordinal":1,"blockKey":"s12cb.leaf","blockVersion":1,"accessibleName":null,
+   "recordHash":"dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+   "lifecycle":"deprecated","nameRequired":false,"accessibleNameFieldDefined":false}]'),
+ ('cs-b-order','[
+  {"path":"/zeta/zeta","ordinal":0,"blockKey":"s12cs.tail","blockVersion":1,"accessibleName":"Z"},
+  {"path":"/zeta/alpha","ordinal":0,"blockKey":"s12cs.leaf","blockVersion":2,"accessibleName":"A"},
+  {"path":"/zeta/omega","ordinal":0,"blockKey":"s12cs.leaf","blockVersion":2,"accessibleName":"O"},
+  {"path":"/zeta/beta","ordinal":0,"blockKey":"s12cs.tail","blockVersion":1,"accessibleName":"B"},
+  {"path":"/alpha/zeta","ordinal":0,"blockKey":"s12cs.tail","blockVersion":1,"accessibleName":"Z"},
+  {"path":"/alpha/alpha","ordinal":0,"blockKey":"s12cs.leaf","blockVersion":2,"accessibleName":"A"}]');
+create or replace function pg_temp.s12cb_payload(p_tag text,p_nodes jsonb) returns jsonb language sql stable as $body$
+ select coalesce(jsonb_agg(jsonb_build_object('kind','block','blockKey',n->'blockKey','blockVersion',n->'blockVersion',
+  'pointer','/composition/'||pg_temp.s12pu_head(p_tag,n->>'path')||case when n->>'ordinal'='0' then '' else '/nodes/'||(n->>'ordinal') end,
+  'recordHash',coalesce(n->>'recordHash',repeat('e',64)),'lifecycle',coalesce(n->>'lifecycle','supported'),
+  'nameRequired',coalesce((n->>'nameRequired')::boolean,true),
+  'accessibleNameFieldDefined',coalesce((n->>'accessibleNameFieldDefined')::boolean,true),
+  'accessibleName',n->'accessibleName') order by ord),'[]'::jsonb)
+ from jsonb_array_elements(p_nodes) with ordinality e(n,ord)
+$body$;
+select * from pg_temp.s12cb_reads('cs-b-long-parity');
+create or replace function pg_temp.s12cb_check(p_tag text,p_nodes jsonb) returns setof text language plpgsql as $body$
+declare expected jsonb:=pg_temp.s12cb_payload(p_tag,p_nodes); identities jsonb; plan_hash text; template_id uuid;
+ actual_plan jsonb:=pg_temp.s12cs_answer('cb-plan-'||p_tag);
+begin
+ return next extensions.is(pg_temp.s12cs_answer('cb-checker-'||p_tag)->'nodes',expected,
+  'CB-C01 '||p_tag||': complete private payload uses each effective node, exact registry tuple and private location');
+ return next extensions.is(pg_temp.s12cs_answer('cb-quality-'||p_tag)->'nodes',expected,
+  'CB-C02 '||p_tag||': actual public loader returns the same independent complete payload');
+ select jsonb_agg(n-array['recordHash','lifecycle','nameRequired','accessibleNameFieldDefined','accessibleName']::text[] order by ord)
+ into identities from jsonb_array_elements(expected) with ordinality e(n,ord);
+ select template_version_id into template_id from platform_private.cms_entry_revisions where id=pg_temp.s12pl_rev(p_tag);
+ plan_hash:=platform_private.cms_jcs_sha256(jsonb_build_object('templateVersionId',template_id,'nodes',identities));
+ return next extensions.is((select jsonb_agg(p->'identity' order by ord) from jsonb_array_elements(actual_plan)
+  with ordinality e(p,ord)),identities,'CB-C03 '||p_tag||': complete plan identities derive from literal content, not checker output');
+ return next extensions.is(pg_temp.s12cs_answer('cb-checker-'||p_tag)->>'renderPlanHash',plan_hash,
+  'CB-C04 '||p_tag||': private hash equals independent complete identities/template formula');
+ return next extensions.is(pg_temp.s12cs_answer('cb-quality-'||p_tag)->>'renderPlanHash',plan_hash,
+  'CB-C05 '||p_tag||': public loader preserves that same independent render hash');
+ return next extensions.is(pg_temp.s12cs_answer('cb-quality-'||p_tag)->>'dependencyHash',
+  platform_private.cms_jcs_sha256(pg_temp.s12cs_answer('cb-manifest-'||p_tag)),
+  'CB-C06 '||p_tag||': public input binds the actual manifest, not a made-up dependency hash');
+ return next extensions.is((select jsonb_agg(p->>'instance_id' order by ord) from jsonb_array_elements(actual_plan)
+  with ordinality e(p,ord)),(select jsonb_agg(pg_temp.s12pu_head(p_tag,n->>'path')::text order by ord)
+  from jsonb_array_elements(p_nodes) with ordinality e(n,ord)),
+  'CB-C07 '||p_tag||': every descendant remains anchored to its selected composition row');
+ return next extensions.is((select count(distinct n->>'pointer')::integer from jsonb_array_elements(expected) n),
+  jsonb_array_length(expected),'CB-C08 '||p_tag||': repeated registry tuples still have distinct stable locations');
+ return next extensions.ok(not exists(select 1 from jsonb_array_elements(pg_temp.s12cs_answer('cb-quality-'||p_tag)->'nodes') n
+  where n ?| array['props','bindings','detachedTree','detached_tree','patternId','patternVersion']),
+  'CB-C09 '||p_tag||': unchanged checker contract contains no raw tree/props/bindings/provenance');
+end;
+$body$;
+select tap.* from s12cb_expected e cross join lateral pg_temp.s12cb_check(e.tag,e.nodes) tap;
+select is((select jsonb_agg(n->'props' order by ord) from platform_private.cms_composition_instances c
+ cross join lateral jsonb_array_elements(c.detached_tree->'nodes') with ordinality e(n,ord)
+ where c.id=pg_temp.s12pu_head('cs-b-json','/panel')),'[null,[],"scalar"]'::jsonb,
+ 'CB-JSON premise: real stored selected props remain null/array/scalar, never object-coerced');
+
+-- DEC193 PARITY FIXTURE: SQL asserts the ACTUAL private/public checker document
+-- below, then the existing Worker sql-parity test reads precisely this dollar-quoted literal.
+-- Fixed anchors belong only to guarded copies of real public detach histories.
+create temp table s12cb_parity on commit drop as select $j$
+{"cases":[
+ {"name":"repeated","renderPlanHash":"e98b299a8cfe9eeb9e16c565a9d30dd764a8a7d4d5bb610524cf2bde11cfe58a","nodes":[
+  {"kind":"block","pointer":"/composition/a9c19300-0000-4000-8000-00000000c001","blockKey":"s12cs.root","blockVersion":2,
+   "recordHash":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","lifecycle":"supported","nameRequired":true,"accessibleNameFieldDefined":true,"accessibleName":"R"},
+  {"kind":"block","pointer":"/composition/a9c19300-0000-4000-8000-00000000c001/nodes/1","blockKey":"s12cs.leaf","blockVersion":2,
+   "recordHash":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","lifecycle":"supported","nameRequired":true,"accessibleNameFieldDefined":true,"accessibleName":"Z"},
+  {"kind":"block","pointer":"/composition/a9c19300-0000-4000-8000-00000000c001/nodes/2","blockKey":"s12cs.leaf","blockVersion":2,
+   "recordHash":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","lifecycle":"supported","nameRequired":true,"accessibleNameFieldDefined":true,"accessibleName":"A"}]},
+ {"name":"long","renderPlanHash":"7e17da2ecee965239e5af80afe6e3726b718a0dc5634cfee39f903df1663ef40","nodes":[
+  {"kind":"block","pointer":"/composition/a9c19300-0000-4000-8000-00000000c002","blockKey":"s12cs.root","blockVersion":2,
+   "recordHash":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","lifecycle":"supported","nameRequired":true,"accessibleNameFieldDefined":true,"accessibleName":"LONG-ROOT"},
+  {"kind":"block","pointer":"/composition/a9c19300-0000-4000-8000-00000000c002/nodes/1","blockKey":"s12cs.leaf","blockVersion":2,
+   "recordHash":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","lifecycle":"supported","nameRequired":true,"accessibleNameFieldDefined":true,"accessibleName":"LONG"}]}
+]}$j$::jsonb as document;
+select is((select jsonb_build_object('cases',jsonb_agg(jsonb_build_object('name',name,
+ 'renderPlanHash',pg_temp.s12cs_answer('cb-quality-'||tag)->'renderPlanHash',
+ 'nodes',pg_temp.s12cs_answer('cb-quality-'||tag)->'nodes') order by ord))
+ from (values (1,'repeated','cs-b-parity'),(2,'long','cs-b-long-parity')) cases(ord,name,tag)),
+ (select document from s12cb_parity),'CB-X01: ACTUAL public SQL documents exactly equal the independently pinned shared Worker literal');
+select is((select jsonb_build_object('cases',jsonb_agg(jsonb_build_object('name',name,
+ 'renderPlanHash',pg_temp.s12cs_answer('cb-checker-'||tag)->'renderPlanHash',
+ 'nodes',pg_temp.s12cs_answer('cb-checker-'||tag)->'nodes') order by ord))
+ from (values (1,'repeated','cs-b-parity'),(2,'long','cs-b-long-parity')) cases(ord,name,tag)),
+ (select document from s12cb_parity),'CB-X02: ACTUAL private SQL documents equal the same literal, not a parser-only fixture');
+
+-- A signed child-only withdrawal must reach checker structure validation; no
+-- whole-tree registry validator is allowed to silently omit the block instead.
+select pg_temp.p_advance('cs-b-withdraw',pg_temp.p_lifecycle_request((select id from platform_private.cms_block_definition_versions
+ where block_key='s12cb.leaf' and block_version=1),'deprecated','withdrawn','1',jsonb_build_object('releaseDigest',repeat('d',64))));
+select is(pg_temp.s09d_outcome('cs-b-withdraw'),'OK','CB-W01 premise: actual signed child withdrawal succeeds');
+select * from pg_temp.s12cs_call('cb-withdrawn','platform_private.cms_accessibility_checker_input',
+ jsonb_build_object('revisionId',pg_temp.s12pl_rev('cs-b-special'),'dependencyHash',repeat('f',64)));
+select is(pg_temp.s12cs_answer('cb-withdrawn')->'nodes',pg_temp.s12cb_payload('cs-b-special',
+ jsonb_set((select nodes from s12cb_expected where tag='cs-b-special'),'{1,lifecycle}','"withdrawn"')),
+ 'CB-W02: withdrawn descendant remains a complete ordered input node with its own registry metadata');
+select is(pg_temp.s12cs_answer('cb-withdrawn')#>>'{nodes,0,lifecycle}','supported',
+ 'CB-W03: a child lifecycle change is not borrowed from or applied to the root');
+select ok(not has_function_privilege(role,signature,'EXECUTE'),'CB-ACL '||role||' '||signature||': private read helper stays unexecutable')
+ from (values ('anon'),('authenticated'),('service_role')) roles(role)
+ cross join (values ('platform_private.cms_revision_render_plan(uuid)'),
+ ('platform_private.cms_accessibility_checker_input(uuid,text)')) functions(signature);
+select ok(exists(select 1 from pg_proc p where p.oid=to_regprocedure(signature)
+ and not exists(select 1 from aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+ where a.grantee=0 and a.privilege_type='EXECUTE')),'CB-ACL PUBLIC '||signature||': no PUBLIC execution grant')
+ from (values ('platform_private.cms_revision_render_plan(uuid)'),
+ ('platform_private.cms_accessibility_checker_input(uuid,text)')) functions(signature);
+select is(pg_temp.s12cs_history(pg_temp.s12pl_rev(tag)),rows,'CB-HISTORY '||tag||': every original producer/read-fixture row remains byte-identical')
+ from s12cb_before;

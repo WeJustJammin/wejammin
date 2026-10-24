@@ -1,0 +1,130 @@
+-- D5 via actual PUBLIC history reader over isolated GUARDED READ FIXTURES.
+-- Existing s12pl_entry/h11w_revision seams allow draft sibling revision fixtures.
+-- No append/carry producer is called, and no composition is removed or overwritten.
+create temp table s12cs_pairs(tag text primary key,entry_id uuid,left_tag text,left_id uuid,right_tag text,right_id uuid) on commit drop;
+create or replace function pg_temp.s12cs_history(p_revision uuid) returns jsonb language sql stable as $body$
+ select coalesce(jsonb_agg(to_jsonb(r) order by r.path collate "C",r.version),'[]'::jsonb)
+ from platform_private.cms_composition_instances r where r.revision_id=p_revision
+$body$;
+create or replace function pg_temp.s12cs_semantics(p_rows jsonb) returns jsonb language sql immutable as $body$
+ select coalesce(jsonb_agg(r-array['id','revision_id','created_at','updated_at']::text[] order by ord),'[]'::jsonb)
+ from jsonb_array_elements(p_rows) with ordinality e(r,ord)
+$body$;
+create or replace function pg_temp.s12cs_seed_current(p_source uuid,p_target uuid) returns setof text language plpgsql as $body$
+declare before_source jsonb:=pg_temp.s12cs_history(p_source); donor platform_private.cms_composition_instances;
+ target_entry uuid; stamp timestamptz; old_rpc text:=coalesce(current_setting('app.cms_rpc',true),'');
+begin
+ perform set_config('app.cms_rpc','true',true);
+ select entry.id into target_entry from platform_private.cms_entry_revisions target
+ join platform_private.cms_content_entries entry on entry.id=target.entry_id and entry.current_draft_revision_id=target.id
+ join platform_private.cms_entry_revisions source on source.id=p_source and source.owner_id=target.owner_id
+   and source.schema_version_id=target.schema_version_id
+ where target.id=p_target and platform_private.cms_revision_effective_state(target.id)='draft';
+ if not found then raise exception 'D5 fixture target is not a matching current draft'; end if;
+ if exists(select 1 from platform_private.cms_composition_instances where revision_id=p_target) then
+   raise exception 'D5 fixture refuses to overwrite any target composition'; end if;
+ for donor in select * from platform_private.cms_composition_instances where revision_id=p_source
+   order by path collate "C",version loop
+   if donor.parent_instance_id is not null then raise exception 'unexpected parent in root-only D5 donor'; end if;
+   stamp:=clock_timestamp();
+   insert into platform_private.cms_composition_instances
+   select (jsonb_populate_record(null::platform_private.cms_composition_instances,to_jsonb(donor)||jsonb_build_object(
+     'id',extensions.gen_random_uuid(),'revision_id',p_target,'created_at',stamp,'updated_at',stamp))).*;
+ end loop;
+ perform set_config('app.cms_rpc',old_rpc,true);
+ return next extensions.is(pg_temp.s12cs_semantics(pg_temp.s12cs_history(p_target)),pg_temp.s12cs_semantics(before_source),
+   'CS-D5-FIXTURE: every donor history semantic field is copied unchanged, including state/version/pin/tree/position');
+ return next extensions.is(pg_temp.s12cs_history(p_source),before_source,'CS-D5-FIXTURE: complete donor history remains byte-identical');
+ return next extensions.ok(not exists(select 1 from platform_private.cms_composition_instances c
+   join platform_private.cms_entry_revisions r on r.id=c.revision_id where c.revision_id=p_target
+     and (c.created_at<r.created_at or c.updated_at<>c.created_at)),
+   'CS-D5-FIXTURE: fresh copy timestamps follow the real target revision timestamp');
+ return next extensions.ok(exists(select 1 from platform_private.cms_content_entries
+   where id=target_entry and current_draft_revision_id=p_target),'CS-D5-FIXTURE: insertion occurred only while target is current');
+exception when others then
+ perform set_config('app.cms_rpc',old_rpc,true);
+ return next extensions.fail('CS-D5-FIXTURE: guarded current-draft donor seeding succeeds');
+ return next extensions.diag(sqlstate||':'||sqlerrm);
+end;
+$body$;
+create or replace function pg_temp.s12cs_pair(p_tag text,p_right_donor text) returns setof text language plpgsql as $body$
+declare v_left_tag text:=p_tag||'-d5-left'; v_right_tag text:=p_tag||'-d5-right'; v_left_id uuid; v_right_id uuid:=extensions.gen_random_uuid();
+ v_entry_id uuid; revision platform_private.cms_entry_revisions; stamp timestamptz; left_copy jsonb;
+ left_source uuid:=pg_temp.s12pl_rev(p_tag); right_source uuid:=pg_temp.s12pl_rev(p_right_donor);
+ left_before jsonb:=pg_temp.s12cs_history(left_source); right_before jsonb:=pg_temp.s12cs_history(right_source);
+ old_rpc text:=coalesce(current_setting('app.cms_rpc',true),'');
+begin
+ perform set_config('app.cms_rpc','true',true);
+ if left_source is null or right_source is null then raise exception 'D5 donor revision missing'; end if;
+ v_left_id:=pg_temp.s12pl_entry(v_left_tag); v_entry_id:=pg_temp.s12pl_entry_id(v_left_tag);
+ return query select * from pg_temp.s12cs_seed_current(left_source,v_left_id);
+ left_copy:=pg_temp.s12cs_history(v_left_id);
+ select * into revision from platform_private.cms_entry_revisions where id=v_left_id;
+ stamp:=clock_timestamp();
+ insert into platform_private.cms_entry_revisions
+ select (jsonb_populate_record(null::platform_private.cms_entry_revisions,to_jsonb(revision)||jsonb_build_object(
+   'id',v_right_id,'revision_number',2,'parent_revision_ids',jsonb_build_array(v_left_id),'created_at',stamp,'updated_at',stamp))).*;
+ update platform_private.cms_content_entries e set current_draft_revision_id=v_right_id,version=e.version+1,updated_at=stamp
+   where e.id=v_entry_id and e.current_draft_revision_id=v_left_id;
+ if not found then raise exception 'D5 fixture current pointer did not advance once'; end if;
+ insert into s12pl_ids values(v_right_tag||':entry',v_entry_id::text),(v_right_tag||':revision',v_right_id::text);
+ return query select * from pg_temp.s12cs_seed_current(right_source,v_right_id);
+ insert into s12cs_pairs values(p_tag,v_entry_id,v_left_tag,v_left_id,v_right_tag,v_right_id);
+ perform set_config('app.cms_rpc',old_rpc,true);
+ return next extensions.is(pg_temp.s12cs_history(v_left_id),left_copy,p_tag||': left fixture history stays byte-identical after forward advance');
+ return next extensions.is(pg_temp.s12cs_history(left_source),left_before,p_tag||': full left producer donor remains unchanged');
+ return next extensions.is(pg_temp.s12cs_history(right_source),right_before,p_tag||': full right producer donor remains unchanged');
+ return next extensions.ok(v_left_id<>v_right_id and revision.revision_number=1,
+   p_tag||': isolated guarded revision pair 1->2, no append/carry result fabricated');
+exception when others then
+ perform set_config('app.cms_rpc',old_rpc,true);
+ return next extensions.fail(p_tag||': isolated guarded D5 pair setup succeeds');
+ return next extensions.diag(sqlstate||':'||sqlerrm);
+end;
+$body$;
+select * from pg_temp.s12cs_pair('cs-equal','cs-equal-donor');
+select * from pg_temp.s12cs_pair('cs-delta','cs-delta-donor');
+select * from pg_temp.s12cs_pair('cs-legacy-d5','cs-legacy-donor');
+select * from pg_temp.s12cs_pair('cs-retired','cs-empty-donor');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-equal-d5-right','/panel'))->'detached_tree',pg_temp.s12cs_tree('selected'),
+ 'CS-D5-PREMISE: guarded right donor copy preserves the exact equal literal canonical content');
+select isnt(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-equal-d5-right','/panel'))->'pattern_id',
+ pg_temp.s12pu_row(pg_temp.s12pu_head('cs-equal-d5-left','/panel'))->'pattern_id','CS-D5-PREMISE: equal content has different REAL provenance');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-delta-d5-right','/panel'))->'detached_tree',pg_temp.s12cs_tree('target'),
+ 'CS-D5-PREMISE: guarded changed side preserves the independent target-local literal');
+create or replace function pg_temp.s12cs_image(p_name text) returns jsonb language sql stable as $body$
+ select jsonb_build_object('blockKey','s12cs.root','blockVersion',case when p_name='selected' then 1 else 2 end,
+   'blockRegistryDigest',pg_temp.s12cs_digest(case when p_name='selected' then 1 else 2 end,2),
+   'mode','detached','patternRef',null,'props','{}'::jsonb,'bindings','{}'::jsonb,'detachedTree',pg_temp.s12cs_tree(p_name))
+$body$;
+create or replace function pg_temp.s12cs_legacy_hash(p_version integer) returns text language sql stable as $body$
+ select platform_private.cms_jcs_sha256(jsonb_build_object('blockKey','s12cs.root','blockVersion',p_version,
+   'blockRegistryDigest',pg_temp.s12cs_digest(p_version,p_version),'mode','detached',
+   'patternRef',jsonb_build_object('patternId',pg_temp.s12pd_body('s12cs-outer1')->'patternId','patternVersion',p_version),
+   'props',pg_temp.s12cs_o(),'bindings','{}'::jsonb))
+$body$;
+select tap.* from s12cs_pairs p cross join lateral pg_temp.s12cs_call('compare-'||tag,'platform_api.cms_list_revisions',
+ jsonb_build_object('entryId',entry_id,'compareRevisionId',left_id,'locale','en-US','limit',25,
+   'context',pg_temp.s09d_context('owner',true)),'owner','service_role') tap;
+create or replace function pg_temp.s12cs_changes(p_tag text) returns jsonb language sql stable as $body$
+ select coalesce(jsonb_agg(c order by c->>'path' collate "C"),'[]'::jsonb)
+ from jsonb_array_elements(pg_temp.s12cs_answer('compare-'||p_tag)#>'{compare,changes}') c where c->>'domain'='block'
+$body$;
+select is(pg_temp.s12cs_changes('cs-equal'),jsonb_build_array(jsonb_build_object('domain','block','path','/blocks//panel',
+ 'kind','unchanged','leftHash',platform_private.cms_jcs_sha256(pg_temp.s12cs_image('selected')),
+ 'rightHash',platform_private.cms_jcs_sha256(pg_temp.s12cs_image('selected')))),
+ 'CS-D5-01: same detached content ignores different provenance pins and history rows');
+select is(pg_temp.s12cs_changes('cs-delta'),jsonb_build_array(jsonb_build_object('domain','block','path','/blocks//panel',
+ 'kind','changed','leftHash',platform_private.cms_jcs_sha256(pg_temp.s12cs_image('selected')),
+ 'rightHash',platform_private.cms_jcs_sha256(pg_temp.s12cs_image('target')))),
+ 'CS-D5-02: canonical selected nodes, reachable tuples and effective props determine exact side hashes');
+select is(pg_temp.s12cs_changes('cs-legacy-d5'),jsonb_build_array(jsonb_build_object('domain','block','path','/blocks//panel',
+ 'kind','changed','leftHash',pg_temp.s12cs_legacy_hash(1),'rightHash',pg_temp.s12cs_legacy_hash(2))),
+ 'CS-D5-03: legacy NULL-tree detached side hashes retain the exact old seven-field formula');
+select is(pg_temp.s12cs_changes('cs-retired'),'[]'::jsonb,'CS-D5-04: latest retired head prevents resurrection of older active block');
+select is(jsonb_build_object('left',pg_temp.s12cs_answer('compare-'||tag)#>'{compare,leftRevisionId}',
+ 'right',pg_temp.s12cs_answer('compare-'||tag)#>'{compare,rightRevisionId}'),
+ jsonb_build_object('left',left_id,'right',right_id),tag||': comparison names actual requested/newest revisions') from s12cs_pairs;
+select ok(not exists(select 1 from jsonb_array_elements(pg_temp.s12cs_answer('compare-'||tag)#>'{compare,changes}') c
+ where (select count(*) from jsonb_object_keys(c))<>5 or not(c ?& array['domain','path','kind','leftHash','rightHash'])),
+ tag||': safe five-member change objects, no canonical props/tree/pin payload') from s12cs_pairs;

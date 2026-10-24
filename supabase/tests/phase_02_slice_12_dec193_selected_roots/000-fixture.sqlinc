@@ -1,0 +1,209 @@
+-- BE03c380/520-551/1483/1485/1563. Only empty entries and explicitly labelled
+-- unrelated/history rows use existing guarded storage fixtures. Every placed
+-- pattern uses signed registry receipts and CMS-03C-12 plus governed activation.
+-- No future selected-plan helper is called or used to build expected results.
+create function pg_temp.s12sr_request(p_label text, p_tag text,
+  p_pattern text default 'sr-main', p_roots jsonb default null,
+  p_overrides jsonb default '{}', p_slot text default '/',
+  p_mode text default 'linked', p_expected text default null,
+  p_actor text default 'owner') returns jsonb language sql stable as $body$
+  select pg_temp.s12pl_request(p_tag,p_pattern,p_slot,p_overrides,'s12sr-' || p_label,
+    p_mode,p_expected,null,p_actor) || case when p_roots is null then '{}'
+      else jsonb_build_object('roots',p_roots) end
+$body$;
+
+-- Literal registry tuple image, independent of the placement/digest assemblers.
+-- main has a distinct registered wide block under d; selecting a alone must
+-- still carry the whole pinned forest's digest, not a selected-subtree digest.
+create function pg_temp.s12sr_digest(p_wide boolean default false) returns text
+language sql immutable as $body$
+  select platform_private.cms_jcs_sha256(
+    '[{"blockKey":"s12pd.block","blockVersion":1,"releaseDigest":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","propsSchemaHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","rendererRef":"cms/renderers/hero/1","lifecycle":"supported"}]'::jsonb
+    || case when p_wide then
+    '[{"blockKey":"s12pd.wide","blockVersion":1,"releaseDigest":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","propsSchemaHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","rendererRef":"cms/renderers/hero/1","lifecycle":"supported"}]'::jsonb
+      else '[]'::jsonb end)
+$body$;
+
+-- Tuples are caller literals [path, version STRING, position, blockKey, blockVersion].
+-- All row props images are independent caller literals; absent entries mean {}.
+-- The inherited resource oracle hand-assembles the legacy-NULL JCS hash and is
+-- intentionally limited to the one-override-per-row values used by this suite.
+create function pg_temp.s12sr_check(p_label text,p_tag text,p_pattern text,
+  p_expected jsonb,p_props jsonb default '{}',p_wide boolean default false,
+  p_mode text default 'linked',p_invalidation boolean default false)
+returns setof text language plpgsql as $body$
+declare items jsonb := coalesce(pg_temp.s12pl_body(p_label)->'items','[]'::jsonb);
+  before_image jsonb; after_image jsonb; stored jsonb; actual_props jsonb;
+  before_entry jsonb; after_entry jsonb; request_image jsonb; store text;
+  audit_delta jsonb; expected_audit jsonb;
+  n integer := jsonb_array_length(p_expected);
+  comp text := 'platform_private.cms_composition_instances';
+  entries text := 'platform_private.cms_content_entries';
+begin
+  select before_rows,after_rows,request into before_image,after_image,request_image
+    from s12pl_out where label=p_label;
+  return next extensions.is(pg_temp.s12pl_state(p_label),'00000',p_label || ': actual public placement succeeds');
+  if pg_temp.s12pl_state(p_label)<>'00000' then
+    return next extensions.diag(p_label || ' refused: ' || coalesce((select message || ' ' || coalesce(detail,'')
+      from s12pl_out where label=p_label),''));
+    return;
+  end if;
+  return next extensions.is((select jsonb_agg(jsonb_build_array(i->'path',i->'version',
+    i->'position',i->'blockKey',i->'blockVersion') order by ord)
+    from jsonb_array_elements(items) with ordinality t(i,ord)),p_expected,
+    p_label || ': exact literal paths, successor versions, ordered positions and block identities');
+  return next extensions.is(jsonb_array_length(items),n,p_label || ': exact selected cardinality');
+  return next extensions.is((select array_agg(k order by k)
+    from jsonb_object_keys(pg_temp.s12pl_body(p_label)) k),array['items'],
+    p_label || ': closed public body contains items only');
+  select coalesce(jsonb_agg(pg_temp.s12pl_resource(r) order by r.position),'[]'),
+    coalesce(jsonb_object_agg(r.path,r.props),'{}') into stored,actual_props
+    from platform_private.cms_composition_instances r where r.revision_id=pg_temp.s12pl_rev(p_tag)
+      and r.id::text in (select i->>'id' from jsonb_array_elements(items) i);
+  return next extensions.is(items,stored,p_label || ': full resources equal real rows and independent content hashes');
+  return next extensions.is(actual_props,(select jsonb_object_agg(e->>0,
+    case when p_props ? (e->>0) then p_props->(e->>0) else '{}'::jsonb end)
+    from jsonb_array_elements(p_expected) e),p_label || ': exact per-root override partition, including explicit null');
+  return next extensions.ok((select count(*)=n and bool_and(r.owner_id=pg_temp.s09d_id('ownerOrg')
+    and r.pattern_id::text=pg_temp.s12pd_body(p_pattern)->>'patternId'
+    and r.pattern_version=(pg_temp.s12pd_body(p_pattern)->>'patternVersion')::integer
+    and btrim(r.block_registry_digest::text)=pg_temp.s12sr_digest(p_wide)
+    and r.state='active' and r.link_mode=p_mode and r.bindings='{}'
+    and r.parent_instance_id is null and r.detached_tree is null
+    and r.created_by=pg_temp.s09d_actor_id('owner','auth')::uuid and r.created_at=r.updated_at)
+    from platform_private.cms_composition_instances r where r.id::text in
+      (select i->>'id' from jsonb_array_elements(items) i)),
+    p_label || ': real owner/actor, requested positive pin/mode, whole-forest digest and NULL snapshot');
+  return next extensions.is(jsonb_array_length(after_image->comp)-jsonb_array_length(before_image->comp),n,
+    p_label || ': exactly selected rows appended, no child or unselected row');
+  return next extensions.ok(not exists(select 1 from jsonb_array_elements(before_image->comp) old_row
+    where not exists(select 1 from jsonb_array_elements(after_image->comp) new_row where new_row=old_row)),
+    p_label || ': every old composition version remains byte-identical');
+  select e into before_entry from jsonb_array_elements(before_image->entries) e
+    where e->>'id'=pg_temp.s12pl_entry_id(p_tag)::text;
+  select e into after_entry from jsonb_array_elements(after_image->entries) e
+    where e->>'id'=pg_temp.s12pl_entry_id(p_tag)::text;
+  return next extensions.is(after_entry->>'version',((before_entry->>'version')::bigint+1)::text,
+    p_label || ': exactly one entry CAS increment');
+  return next extensions.is(after_entry-array['version','updated_at'],before_entry-array['version','updated_at'],
+    p_label || ': no other entry member changes');
+  return next extensions.is((select headers from s12pl_out where label=p_label),
+    jsonb_build_array(jsonb_build_object('etag','"' || (after_entry->>'version') || '"'))::text,
+    p_label || ': exact public aggregate ETag');
+  return next extensions.is(jsonb_array_length(after_image->'audit_private.audit_events')
+    -jsonb_array_length(before_image->'audit_private.audit_events'),
+    case when p_invalidation then 2 else 1 end,
+    p_label || ': exact placement and required review-invalidation audit count');
+  return next extensions.is((select count(*)::integer from audit_private.audit_events
+    where action='cms.composition.pattern.insert' and target_id::text=items->0->>'id'),1,
+    p_label || ': audit targets first position-ordered item');
+  select coalesce(jsonb_agg(jsonb_build_array(e->>'action',e->>'target_type',e->>'target_id',
+    e->>'reason_code',e->>'actor_id',e->>'acting_party_id',e->>'correlation_id')
+    order by e->>'action',e->>'target_id'),'[]') into audit_delta
+    from jsonb_array_elements(after_image->'audit_private.audit_events') e
+    where not exists(select 1 from jsonb_array_elements(before_image->'audit_private.audit_events') old_row
+      where old_row=e);
+  expected_audit:=jsonb_build_array(jsonb_build_array('cms.composition.pattern.insert',
+    'cms_composition_instance',items->0->>'id','CMS_PATTERN_PLACED',
+    request_image#>>'{context,authUserId}',request_image#>>'{context,actingPartyId}',
+    request_image#>>'{context,correlationId}'));
+  if p_invalidation then
+    expected_audit:=expected_audit || (select coalesce(jsonb_agg(jsonb_build_array(
+      'cms.entry.review.invalidate','cms_editorial_review',review_row->>'id','CMS_REVIEW_INVALIDATED',
+      request_image#>>'{context,authUserId}',request_image#>>'{context,actingPartyId}',
+      request_image#>>'{context,correlationId}') order by review_row->>'id'),'[]')
+      from jsonb_array_elements(before_image->'platform_private.cms_editorial_reviews') review_row
+      where review_row->>'revision_id'=pg_temp.s12pl_rev(p_tag)::text
+        and review_row->>'state' in ('open','approved'));
+  end if;
+  return next extensions.is(audit_delta,expected_audit,
+    p_label || ': exact new audit actions, targets, reasons, actor, party and correlation');
+  return next extensions.is(jsonb_array_length(after_image->'platform_private.idempotency_records')
+    -jsonb_array_length(before_image->'platform_private.idempotency_records'),1,
+    p_label || ': one idempotency record');
+  if not p_invalidation then
+    return next extensions.is(after_image->'platform_private.cms_editorial_reviews',
+      before_image->'platform_private.cms_editorial_reviews',p_label || ': no editorial review changes');
+  else
+    return next extensions.is(jsonb_array_length(after_image->'platform_private.outbox_events')
+      -jsonb_array_length(before_image->'platform_private.outbox_events'),1,
+      p_label || ': exactly one review invalidation outbox event');
+    return next extensions.ok(not exists(select 1 from jsonb_array_elements(
+      before_image->'platform_private.outbox_events') old_row where not exists(select 1
+        from jsonb_array_elements(after_image->'platform_private.outbox_events') new_row where new_row=old_row)),
+      p_label || ': all prior outbox events are unchanged');
+  end if;
+  for store in select jsonb_object_keys(before_image) loop
+    if store not in (comp,entries,'platform_private.idempotency_records',
+      'audit_private.audit_events','platform_private.cms_editorial_reviews')
+      and not (p_invalidation and store='platform_private.outbox_events') then
+      return next extensions.is(after_image->store,before_image->store,
+        p_label || ': untouched full store ' || store);
+    end if;
+  end loop;
+end;
+$body$;
+
+-- Store-free boundary probe: exact existing signature, dynamic call only after
+-- availability check, no actor/registry authority claim and no persistent effects.
+create function pg_temp.s12sr_guard(p_label text,p_request jsonb,p_expected text)
+returns setof text language plpgsql as $body$
+declare proc oid; answer text; code text:='00000'; msg text; details text;
+  before_image jsonb:=pg_temp.s12pl_snapshot(); outcome text;
+begin
+  proc:=to_regprocedure('platform_private.cms_pattern_placement_check(jsonb)');
+  if proc is null or not exists(select 1 from pg_proc where oid=proc
+    and prorettype='text'::regtype and not proretset and prokind='f') then
+    return next extensions.fail(p_label || ': exact store-free guard is available');
+    return;
+  end if;
+  begin
+    execute 'select platform_private.cms_pattern_placement_check($1)' into answer using p_request;
+  exception when others then
+    get stacked diagnostics code=returned_sqlstate,msg=message_text,details=pg_exception_detail;
+  end;
+  outcome:=case when code='00000' then 'ok:' || coalesce(answer,'NULL')
+    else code || ':' || coalesce(msg,'') || coalesce('#' || nullif(details,''),'') end;
+  return next extensions.is(outcome,p_expected,p_label || ': exact store-free outcome');
+  return next extensions.is(pg_temp.s12pl_snapshot(),before_image,p_label || ': store-free call changes no full row');
+end;
+$body$;
+
+select * from pg_temp.s12pl_pattern('sr-main','s12sr-main',jsonb_build_array(
+  pg_temp.s12pd_block('a',jsonb_build_array(pg_temp.s12pd_block('leaf'))),
+  pg_temp.s12pd_block('b'),pg_temp.s12pd_block('c'),
+  pg_temp.s12pd_block('d') || '{"blockKey":"s12pd.wide"}'::jsonb));
+select * from pg_temp.s12pl_pattern('sr-prefix','s12sr-prefix',jsonb_build_array(
+  pg_temp.s12pd_block('a'),pg_temp.s12pd_block('ab')));
+
+-- Real long root chains, not synthetic active versions. Three 64-key reference
+-- prefixes plus leaves52/53 give row paths248/249; eight prefixes plus leaf64
+-- give585, proving roots grammar is not stored-row grammar. Short is unselected
+-- long-root sibling. Expected addresses below are independently concatenated keys.
+create function pg_temp.s12sr_long_patterns() returns setof text language plpgsql as $body$
+declare n integer; label text; forest jsonb;
+begin
+  return query select * from pg_temp.s12pl_pattern('sr-long0','s12sr-long0',jsonb_build_array(
+    pg_temp.s12pd_block(repeat('a',52)),pg_temp.s12pd_block(repeat('b',53)),
+    pg_temp.s12pd_block(repeat('c',64))));
+  for n in 1..8 loop
+    label:='sr-long' || n;
+    forest:=jsonb_build_array(jsonb_build_object('kind','pattern','key',repeat('n',64),
+      'patternId',pg_temp.s12pd_body('sr-long' || (n-1))->'patternId',
+      'patternVersion',pg_temp.s12pd_body('sr-long' || (n-1))->'patternVersion'));
+    if n=8 then forest:=jsonb_build_array(pg_temp.s12pd_block('short')) || forest; end if;
+    return query select * from pg_temp.s12pl_pattern(label,'s12sr-long' || n,forest);
+  end loop;
+end;
+$body$;
+select * from pg_temp.s12sr_long_patterns();
+create temp table s12sr_paths(name text primary key,path text) on commit drop;
+insert into s12sr_paths values
+  ('row248',repeat('/' || repeat('n',64),3) || '/' || repeat('a',52)),
+  ('row249',repeat('/' || repeat('n',64),3) || '/' || repeat('b',53)),
+  ('row585',repeat('/' || repeat('n',64),8) || '/' || repeat('c',64)),
+  ('expanded4680',repeat('/' || repeat('x',64),72));
+select is((select octet_length(path) from s12sr_paths where name='row248'),248,'SR-PRE: independent exact248 row path');
+select is((select octet_length(path) from s12sr_paths where name='row249'),249,'SR-PRE: independent exact249 row path');
+select is((select char_length(path) from s12sr_paths where name='row585'),585,'SR-PRE: real expanded root address exceeds512');
+select is((select char_length(path) from s12sr_paths where name='expanded4680'),4680,'SR-PRE: exact public expanded boundary');

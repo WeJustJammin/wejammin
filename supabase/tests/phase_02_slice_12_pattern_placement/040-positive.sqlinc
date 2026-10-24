@@ -1,0 +1,123 @@
+-- The positive matrix of CMS-03C-02 on real pinned patterns (BE03c 1365; tracker P2-S12-AC-010, AC-015, AC-218,
+-- AC-219, AC-258).  The entry e1 is bound to the real template (slots main, side, fresh) and has three pre-existing
+-- rows: main position 7 (active), main position 12 (retired: the slot greatest counts a row of ANY state or version,
+-- DEC-185) and side position 99.
+select pg_temp.s12pl_tentry('e1');
+select pg_temp.s12pl_row('e1', '/main/existing', 'main', 7);
+select pg_temp.s12pl_row('e1', '/main/old', 'main', 12, 'retired');
+select pg_temp.s12pl_row('e1', '/side/other', 'side', 99);
+
+-- p1: two block roots, linked, client digest equal to the recomputed one, overrides under both roots.
+select pg_temp.s12pl_run('p1', pg_temp.s12pl_request('e1', 'pa', '/main',
+  jsonb_build_object('/hero/title', jsonb_build_object('text', 'Hi'), '/cta', jsonb_build_object('label', 'Go')),
+  's12pl-p1-0001', 'linked', null, pg_temp.s12pd_expected_digest()));
+select * from pg_temp.s12pl_check('p1', 'e1', 'pa', array['/main/hero', '/main/cta'], 13);
+select is((select props from platform_private.cms_composition_instances
+    where revision_id = pg_temp.s12pl_rev('e1') and path = '/main/hero'),
+  jsonb_build_object('/hero/title', jsonb_build_object('text', 'Hi')),
+  'the override under hero is stored on the hero row only [P2-S12-AC-218]');
+select is((select props from platform_private.cms_composition_instances
+    where revision_id = pg_temp.s12pl_rev('e1') and path = '/main/cta'),
+  jsonb_build_object('/cta', jsonb_build_object('label', 'Go')),
+  'the override naming the cta root is stored on the cta row only [P2-S12-AC-218]');
+select ok((select bool_and(slot_key = 'main' and owner_id = pg_temp.s09d_id('ownerOrg') and bindings = '{}'::jsonb
+    and parent_instance_id is null and created_at = updated_at and block_key = 's12pd.block' and block_version = 1
+    and created_by = (select auth_user_id from s09d_actor where key = 'owner'))
+  from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('e1') and path like '/main/%'
+    and path in ('/main/hero', '/main/cta')),
+  'rows carry the slot key, the revision owner, the acting author, the root block identity, empty bindings and no parent [P2-S12-AC-258]');
+select is((select count(*)::integer from platform_private.cms_composition_instances
+    where revision_id = pg_temp.s12pl_rev('e1') and path in ('/main/hero/title', '/main/title')), 0,
+  'the node title below hero is never a row [DEC-175]');
+select is(pg_temp.s12pl_count('p1', 'after', 'platform_private.outbox_events'),
+  pg_temp.s12pl_count('p1', 'before', 'platform_private.outbox_events'),
+  'a placement with no live review emits no outbox event (BE03c 1504: audit only)');
+
+-- Idempotent replay of the exact request: the stored response and ETag, no new effect.
+select pg_temp.s12pl_run('p1-replay', (select request from s12pl_out where label = 'p1'));
+select is(pg_temp.s12pl_state('p1-replay'), '00000', 'the exact replay succeeds [P2-S12-AC-013]');
+select is(pg_temp.s12pl_body('p1-replay'), pg_temp.s12pl_body('p1'), 'the replay returns the stored 201 body [P2-S12-AC-013]');
+select is((select headers from s12pl_out where label = 'p1-replay'), (select headers from s12pl_out where label = 'p1'),
+  'the replay publishes the stored ETag, not the current entry version [P2-S12-AC-013]');
+select ok((select before_rows = after_rows from s12pl_out where label = 'p1-replay'),
+  'the replay writes nothing: no row, no version, no audit, no idempotency change [P2-S12-AC-013]');
+select * from pg_temp.s12pl_refused('p1-mismatch', pg_temp.s12pl_request('e1', 'pa', '/other', '{}'::jsonb,
+  's12pl-p1-0001', 'linked', '1'), 'IDEMPOTENCY_MISMATCH');
+
+-- p2: a forest with a nested pattern reference expands to the nested block roots (DEC-181); an override key chain
+-- inside the expanded root (DEC-186) lands on that root's row only.
+select pg_temp.s12pl_run('p2', pg_temp.s12pl_request('e1', 'pn', '/main',
+  jsonb_build_object('/shared/a/title', jsonb_build_object('n', 1)), 's12pl-p2-0001'));
+select * from pg_temp.s12pl_check('p2', 'e1', 'pn',
+  array['/main/intro', '/main/shared/a', '/main/shared/b', '/main/shared/c', '/main/tail'], 15);
+select is((select jsonb_object_agg(path, props) from platform_private.cms_composition_instances
+    where revision_id = pg_temp.s12pl_rev('e1') and path in ('/main/intro', '/main/shared/a', '/main/shared/b',
+      '/main/shared/c', '/main/tail')),
+  jsonb_build_object('/main/intro', '{}'::jsonb, '/main/shared/a', jsonb_build_object('/shared/a/title', jsonb_build_object('n', 1)),
+    '/main/shared/b', '{}'::jsonb, '/main/shared/c', '{}'::jsonb, '/main/tail', '{}'::jsonb),
+  'only the row whose key chain begins the override key stores it [DEC-186]');
+
+-- p3: a second slot of the same revision starts after ITS greatest (99), not the first slot's.
+select pg_temp.s12pl_run('p3', pg_temp.s12pl_request('e1', 'pa', '/side', '{}'::jsonb, 's12pl-p3-0001'));
+select * from pg_temp.s12pl_check('p3', 'e1', 'pa', array['/side/hero', '/side/cta'], 100);
+
+-- p4: the root slot path `/` is the slot path of an entry with NO template; it adds no extra separator (DEC-186)
+-- and an empty slot starts at 0.  A second root placement appends after the first (positions 2 and 3).
+select pg_temp.s12pl_entry('e0');
+select pg_temp.s12pl_run('p4', pg_temp.s12pl_request('e0', 'pa', '/', '{}'::jsonb, 's12pl-p4-0001'));
+select * from pg_temp.s12pl_check('p4', 'e0', 'pa', array['/hero', '/cta'], 0);
+select pg_temp.s12pl_run('p4b', pg_temp.s12pl_request('e0', 'pc', '/', '{}'::jsonb, 's12pl-p4b-0001'));
+select * from pg_temp.s12pl_check('p4b', 'e0', 'pc', array['/a', '/b', '/c'], 2);
+select is((select array_agg(distinct slot_key) from platform_private.cms_composition_instances
+  where revision_id = pg_temp.s12pl_rev('e0')), array['root'], 'the rows of the root path live in the slot root [BE03c 1365]');
+
+-- p5: a detached placement is pinned too and stores the same rows with link_mode detached.
+select pg_temp.s12pl_run('p5', pg_temp.s12pl_request('e1', 'pa', '/fresh', '{}'::jsonb, 's12pl-p5-0001', 'detached'));
+select * from pg_temp.s12pl_check('p5', 'e1', 'pa', array['/fresh/hero', '/fresh/cta'], 0, 'detached');
+
+-- Two placements into one slot never interleave and never share a position (sequential evidence; the
+-- concurrent form needs a race module): the positions of p1, p2 and a later p6 are three disjoint runs.
+select * from pg_temp.s12pl_refused('p6', pg_temp.s12pl_request('e1', 'pa', '/main', '{}'::jsonb, 's12pl-p6-0001'),
+  'CONFLICT', '["/slotPath"]'::jsonb);
+-- A template slot is flat and exact (BE03c 1511: the slotPath must exist in the revision's template; DEC-193 slot binding),
+-- so the third placement into main is a different pattern on the same slot path `/main`, not a path nested below it.
+select pg_temp.s12pl_run('p6b', pg_temp.s12pl_request('e1', 'pc', '/main', '{}'::jsonb, 's12pl-p6b-0001'));
+select * from pg_temp.s12pl_check('p6b', 'e1', 'pc', array['/main/a', '/main/b', '/main/c'], 20);
+select is(pg_temp.s12pl_q(format($sql$select array_agg(position order by position)::text
+    from platform_private.cms_composition_instances where revision_id = %L and slot_key = 'main'$sql$, pg_temp.s12pl_rev('e1'))),
+  '{7,12,13,14,15,16,17,18,19,20,21,22}', 'the slot main holds each position once: no sharing, no interleaving [DEC-185]');
+select is(pg_temp.s12pl_q(format($sql$select (count(distinct (position, slot_key)) = count(*))::text
+    from platform_private.cms_composition_instances where revision_id = %L$sql$, pg_temp.s12pl_rev('e1'))), 'true',
+  'no two rows of one slot share a position [DEC-185]');
+
+-- AC-219: a composition write invalidates the revision's live review in the same transaction (dependency_changed)
+-- and never changes the revision hash.  Under the E2 derivation a revision whose LATEST review is live is effective
+-- submitted or approved and not editable, so a live review is reachable on an editable revision only when an older
+-- review (earlier submitted_at) is still live beside an invalidated one with a later submitted_at; the one-live-review
+-- unique index allows that order of writes.  That constructed shape is the defense-in-depth fixture.
+select pg_temp.s12pl_tentry('e3');
+select pg_temp.s12pl_review('e3', timestamptz '2026-10-08T12:01:00Z') as newer_invalidated \gset
+select platform_private.cms_invalidate_editorial_review(jsonb_build_object('reviewId', :'newer_invalidated'::uuid,
+  'reasonCode', 'revision_superseded', 'correlationId', 'a9120000-0000-4000-8000-00000000c0c0'));
+select pg_temp.s12pl_review('e3', timestamptz '2026-10-08T12:00:00Z') as older_open \gset
+select is(platform_private.cms_revision_effective_state(pg_temp.s12pl_rev('e3')), 'draft',
+  'setup: the latest review is invalidated, so the revision is effective draft with an older review still open');
+select pg_temp.s12pl_run('p7', pg_temp.s12pl_request('e3', 'pa', '/main', '{}'::jsonb, 's12pl-p7-0001'));
+select * from pg_temp.s12pl_check('p7', 'e3', 'pa', array['/main/hero', '/main/cta'], 0);
+select is((select state || ':' || invalidated_reason || ':' || version::text from platform_private.cms_editorial_reviews
+    where id = :'older_open'), 'invalidated:dependency_changed:2',
+  'the live review is invalidated dependency_changed in the same transaction, version advanced once [P2-S12-AC-219]');
+select is((select state || ':' || version::text from platform_private.cms_editorial_reviews where id = :'newer_invalidated'),
+  'invalidated:2', 'the review invalidated before the placement is left untouched by it');
+select is(pg_temp.s12pl_count('p7', 'after', 'platform_private.outbox_events')
+    - pg_temp.s12pl_count('p7', 'before', 'platform_private.outbox_events'), 1,
+  'the placement emits exactly the one review-changed event of the invalidation it performed [P2-S12-AC-219]');
+
+-- A forest of exactly 1 and of exactly 32 block roots writes that many rows, all-or-nothing, with the items list in the
+-- 201 (BE03c 1612, DEC-175); each in its own slot of one templated entry.
+select pg_temp.s12pl_tentry('cnt');
+select pg_temp.s12pl_run('c1', pg_temp.s12pl_request('cnt', 'p1r', '/main', '{}'::jsonb, 's12pl-c1-0001'));
+select * from pg_temp.s12pl_check('c1', 'cnt', 'p1r', array['/main/only'], 0);
+select pg_temp.s12pl_run('c32', pg_temp.s12pl_request('cnt', 'p32', '/side', '{}'::jsonb, 's12pl-c32-0001'));
+select * from pg_temp.s12pl_check('c32', 'cnt', 'p32',
+  (select array_agg('/side/root' || n order by n) from generate_series(1, 32) n), 0);

@@ -1,0 +1,147 @@
+-- The source root is produced under actual author assignment, signed registry and
+-- stable pattern lineage. Only the labelled storage candidates are guarded fixtures.
+select * from pg_temp.s12pl_pattern('s12dt-leaf', 's12dt-leaf',
+  jsonb_build_array(pg_temp.s12pd_block('hero')));
+select * from pg_temp.s12pl_pattern('s12dt-parent', 's12dt-parent',
+  pg_temp.s12pl_refs('s12dt-leaf', 1, 'shared'));
+select pg_temp.s12pl_entry('s12dt');
+select pg_temp.s12pl_run('s12dt-legacy', pg_temp.s12pl_request(
+  's12dt', 's12dt-parent', '/', '{"/shared1/hero":{"title":"Legacy local title"}}',
+  's12dt-legacy-placement', 'detached'));
+select * from pg_temp.s12pl_check('s12dt-legacy', 's12dt', 's12dt-parent',
+  array['/shared1/hero'], 0, 'detached');
+
+create temp table s12dt_source on commit drop as
+select to_jsonb(inst) as row_value
+from platform_private.cms_composition_instances inst
+where inst.id::text = pg_temp.s12pl_body('s12dt-legacy')->'items'->0->>'id';
+select is((select count(*)::integer from s12dt_source), 1,
+  'snapshot prerequisite: one real persisted root is available');
+select ok((select exists (
+  select 1 from platform_private.cms_pattern_versions pattern_row
+  join platform_private.cms_block_definition_versions block_row
+    on block_row.block_key = src.row_value->>'block_key'
+   and block_row.block_version = (src.row_value->>'block_version')::bigint
+  where pattern_row.pattern_id = (src.row_value->>'pattern_id')::uuid
+    and pattern_row.version = (src.row_value->>'pattern_version')::bigint
+    and pattern_row.owner_id = (src.row_value->>'owner_id')::uuid
+    and pattern_row.state = 'active'
+    and block_row.release_verified_at is not null
+    and block_row.props_attestation_verified_at is not null
+) from s12dt_source src),
+  'snapshot prerequisite: root has real active lineage and verified registry receipts');
+select ok((select row_value->>'link_mode' = 'detached'
+  and row_value->'props' = '{"/shared1/hero":{"title":"Legacy local title"}}'::jsonb
+  and (row_value->>'pattern_version')::bigint > 0
+  and coalesce(row_value->'detached_tree', 'null'::jsonb) = 'null'::jsonb
+  from s12dt_source),
+  'legacy NULL detached row retains its positive pin and whole-node override map');
+
+create or replace function pg_temp.s12dt_node(
+  p_parent integer, p_keys jsonb, p_props jsonb default '{"title":"Root"}'::jsonb)
+returns jsonb language sql immutable as $body$
+  select jsonb_build_object('parent', p_parent, 'keySegments', p_keys,
+    'blockKey', 's12pd.block', 'blockVersion', 1, 'props', p_props)
+$body$;
+create or replace function pg_temp.s12dt_tree(p_nodes jsonb) returns jsonb
+language sql immutable as $body$
+  select jsonb_build_object('format', 'cms.detached_tree.v1', 'nodes', p_nodes)
+$body$;
+create or replace function pg_temp.s12dt_one(p_props jsonb default '{"title":"Root"}'::jsonb)
+returns jsonb language sql immutable as $body$
+  select pg_temp.s12dt_tree(jsonb_build_array(
+    pg_temp.s12dt_node(null, '["shared1","hero"]', p_props)))
+$body$;
+create or replace function pg_temp.s12dt_fanout(p_count integer) returns jsonb
+language sql immutable as $body$
+  select pg_temp.s12dt_tree(coalesce(jsonb_agg(pg_temp.s12dt_node(
+    case when n = 0 then null else 0 end,
+    case when n = 0 then '["shared1","hero"]'::jsonb
+      else jsonb_build_array('expanded', 'child' || n) end,
+    case n when 1 then '"scalar value"'::jsonb when 2 then '42'::jsonb
+      when 3 then 'false'::jsonb when 4 then 'null'::jsonb
+      when 5 then '[null,"array value",true]'::jsonb
+      else jsonb_build_object('title', repeat('x', 600)) end) order by n), '[]'::jsonb))
+  from generate_series(0, p_count - 1) n
+$body$;
+create or replace function pg_temp.s12dt_depth(p_count integer) returns jsonb
+language plpgsql immutable as $body$
+declare value jsonb := '0'::jsonb; n integer;
+begin
+  for n in 1..p_count loop value := jsonb_build_array(value); end loop;
+  return value;
+end;
+$body$;
+
+create temp table s12dt_out(label text primary key, candidate jsonb, stored jsonb,
+  state text, message text, before_rows jsonb, after_rows jsonb,
+  assigned_tree_is_sql_null boolean, assigned_tree_kind text) on commit drop;
+
+-- jsonb_populate_record ignores an absent detached_tree key. For a real column,
+-- assign the raw jsonb argument into its typed position instead: JSONB null must
+-- not be collapsed to SQL NULL by JSON-to-record conversion. Future field reads
+-- are dynamic and guarded by catalog presence, so absence remains assertion RED.
+-- Invalid INSERTs roll back in the exception subtransaction; full store images
+-- independently witness atomicity. Existing triggers/RLS/constraints stay enabled.
+create or replace function pg_temp.s12dt_assert(p_label text, p_tree jsonb,
+  p_expected text default '00000', p_patch jsonb default '{}'::jsonb,
+  p_gate boolean default true) returns setof text language plpgsql as $body$
+declare candidate jsonb; persisted jsonb; before_rows jsonb; after_rows jsonb;
+  code text := '00000'; msg text; next_version bigint; other_rows jsonb;
+  typed_row platform_private.cms_composition_instances; projection text; has_tree boolean;
+  tree_is_sql_null boolean; tree_kind text;
+  comp text := 'platform_private.cms_composition_instances';
+  prior_gate text := current_setting('app.cms_rpc', true);
+begin
+  select coalesce(max(inst.version), 0) + 1 into next_version
+    from platform_private.cms_composition_instances inst, s12dt_source src
+   where inst.revision_id::text = src.row_value->>'revision_id'
+     and inst.path = src.row_value->>'path';
+  select row_value || jsonb_build_object('id', extensions.gen_random_uuid(),
+    'version', next_version, 'state', 'active', 'link_mode', 'detached',
+    'props', '{}'::jsonb, 'detached_tree', p_tree) || p_patch
+    into candidate from s12dt_source;
+  select string_agg(case when attname = 'detached_tree' then '$2::jsonb'
+      else format('src.%I', attname) end, ', ' order by attnum),
+    bool_or(attname = 'detached_tree') into projection, has_tree
+    from pg_catalog.pg_attribute
+   where attrelid = 'platform_private.cms_composition_instances'::regclass
+     and attnum > 0 and not attisdropped;
+  execute 'select ' || projection || ' from jsonb_populate_record('
+    || 'null::platform_private.cms_composition_instances, $1) src'
+    into typed_row using candidate, p_tree;
+  if has_tree then
+    execute 'select ($1).detached_tree is null, jsonb_typeof(($1).detached_tree)'
+      into tree_is_sql_null, tree_kind using typed_row;
+  end if;
+  before_rows := pg_temp.s12pl_snapshot();
+  perform set_config('app.cms_rpc', p_gate::text, true);
+  begin
+    insert into platform_private.cms_composition_instances as inst
+      select (typed_row).*
+      returning to_jsonb(inst) into persisted;
+  exception when others then
+    get stacked diagnostics code = returned_sqlstate, msg = message_text;
+  end;
+  perform set_config('app.cms_rpc', coalesce(prior_gate, ''), true);
+  after_rows := pg_temp.s12pl_snapshot();
+  insert into s12dt_out values(p_label, candidate, persisted, code, msg, before_rows, after_rows,
+    tree_is_sql_null, tree_kind);
+  return next extensions.is(code, p_expected, p_label || ': exact SQLSTATE');
+  if p_expected = '00000' then
+    return next extensions.ok(persisted = candidate,
+      p_label || ': exact full row persists the complete snapshot without props coercion');
+    select coalesce(jsonb_agg(item order by item::text), '[]'::jsonb) into other_rows
+      from jsonb_array_elements(after_rows->comp) item
+     where item->>'id' is distinct from candidate->>'id';
+    return next extensions.ok(code = '00000'
+      and jsonb_array_length(after_rows->comp) = jsonb_array_length(before_rows->comp) + 1
+      and other_rows = before_rows->comp
+      and after_rows - comp = before_rows - comp,
+      p_label || ': exactly one append, every prior row and every other store unchanged');
+  else
+    return next extensions.ok(before_rows = after_rows,
+      p_label || ': refusal preserves every full row of every captured store');
+  end if;
+end;
+$body$;

@@ -1,0 +1,289 @@
+-- Independent canonical literals, signed registry and governed public producers.
+-- CS-E7 lookup-only prerequisite BEGIN
+-- Direct-entry read fixtures did not run a normal write tail. This is not
+-- settings-writer/materializer or provider evidence; seed only the E7 lookup.
+select is((select count(*) from platform_private.cms_publication_settings_snapshots
+  where owner_id=pg_temp.s09d_id('ownerOrg') and state='active' and version=1
+  and ordinal=1 and registry_version=1 and effective_values='[]'::jsonb
+  and snapshot_hash='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'),
+  0::bigint, 'CS-E7-01 exact empty publication-settings lookup prerequisite is initially missing');
+do $consumer_settings_fixture$
+declare prior_rpc text := current_setting('app.cms_rpc',true);
+begin
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    insert into platform_private.cms_publication_settings_snapshots(
+      owner_id,state,version,ordinal,registry_version,snapshot_hash,effective_values
+    ) values (
+      pg_temp.s09d_id('ownerOrg'),'active',1,1,1,
+      '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'::char(64),'[]'::jsonb
+    );
+  exception when others then
+    perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+    raise;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+end;
+$consumer_settings_fixture$;
+select is((select count(*) from platform_private.cms_publication_settings_snapshots
+  where owner_id=pg_temp.s09d_id('ownerOrg') and state='active' and version=1
+  and ordinal=1 and registry_version=1 and effective_values='[]'::jsonb
+  and snapshot_hash='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'),
+  1::bigint, 'CS-E7-02 exact empty publication-settings lookup prerequisite is present before consumer calls and images');
+-- CS-E7 lookup-only prerequisite END
+-- CS-PAYLOAD guarded consumer bootstrap BEGIN
+-- Consumer-only copy of the existing guarded bootstrap. These revisions have
+-- zero field values: payload_hash is JCS({}) at INSERT, never a later mutation.
+create or replace function pg_temp.s12pl_entry(
+  p_tag text, p_template uuid default null, p_assignee text default 'owner', p_type_ordinal integer default 1)
+returns uuid
+language plpgsql
+as $body$
+declare
+  entry_uuid uuid := extensions.gen_random_uuid();
+  revision_uuid uuid := extensions.gen_random_uuid();
+  org uuid := pg_temp.s09d_id('ownerOrg');
+  stamp timestamptz := timestamptz '2026-10-08T12:00:00Z';
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle, current_draft_revision_id, version,
+    created_by, created_at, updated_at)
+  values (entry_uuid, org, (select id from s12pd_types where ordinal = p_type_ordinal), org, 'active', null, 1,
+    (select auth_user_id from s09d_actor where key = 'owner'), stamp, stamp);
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id, template_version_id, taxonomy_version_ids,
+    parent_revision_ids, locale, payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at)
+  values (revision_uuid, org, entry_uuid, 1, (select version_id from s12pd_types where ordinal = p_type_ordinal),
+    p_template, '[]'::jsonb, '[]'::jsonb, 'en-US',
+    platform_private.cms_jcs_sha256('{}'::jsonb),
+    (select person_id from s09d_actor where key = 'owner'), org, 'draft', 1, 'valid', '{}'::jsonb, stamp, stamp);
+  update platform_private.cms_content_entries set current_draft_revision_id = revision_uuid where id = entry_uuid;
+  if p_assignee is not null then
+    insert into platform_private.cms_entry_assignments(
+      owner_id, entry_id, assignee_person_id, capability_key, state, version, created_at, updated_at)
+    values (org, entry_uuid, (select person_id from s09d_actor where key = p_assignee), 'cms.author', 'active', 1,
+      stamp, stamp);
+  end if;
+  insert into s12pl_ids(key, value) values (p_tag || ':entry', entry_uuid::text), (p_tag || ':revision', revision_uuid::text);
+  return revision_uuid;
+end;
+$body$;
+-- CS-PAYLOAD guarded consumer bootstrap END
+-- Approved S10 comparison fixture: fresh isolated DB, transaction-only dummy
+-- key; never read/replace an operational value or bypass the sealed wrapper.
+select vault.create_secret(repeat('a1',32),'cms_editorial_history_cursor_active',
+ 'pgTAP transaction-only DEC-193 consumer comparison test key');
+create temp table s12cs_trees(name text primary key,tree jsonb) on commit drop;
+insert into s12cs_trees values
+('selected','{"format":"cms.detached_tree.v1","nodes":[
+ {"parent":null,"keySegments":["panel"],"blockKey":"s12cs.root","blockVersion":1,"props":{"title":"MY-ROOT","accessible_name":"MY-ROOT"}},
+ {"parent":0,"keySegments":["ns","zeta"],"blockKey":"s12cs.leaf","blockVersion":2,"props":{"title":"ZETA-T","accessible_name":"ZETA-T"}},
+ {"parent":0,"keySegments":["ns","alpha"],"blockKey":"s12cs.tail","blockVersion":1,"props":{"title":"MY-ALPHA","accessible_name":"MY-ALPHA"}}]}'),
+('target','{"format":"cms.detached_tree.v1","nodes":[
+ {"parent":null,"keySegments":["panel"],"blockKey":"s12cs.root","blockVersion":2,"props":{"title":"ROOT-T","accessible_name":"ROOT-T"}},
+ {"parent":0,"keySegments":["ns","zeta"],"blockKey":"s12cs.leaf","blockVersion":2,"props":{"title":"ZETA-T","accessible_name":"ZETA-T"}},
+ {"parent":0,"keySegments":["ns","alpha"],"blockKey":"s12cs.tail","blockVersion":1,"props":{"title":"MY-ALPHA","accessible_name":"MY-ALPHA"}}]}'),
+('legacy','{"format":"cms.detached_tree.v1","nodes":[
+ {"parent":null,"keySegments":["panel"],"blockKey":"s12cs.root","blockVersion":1,"props":{"title":"MY-ROOT","accessible_name":"MY-ROOT"}},
+ {"parent":0,"keySegments":["ns","zeta"],"blockKey":"s12cs.leaf","blockVersion":1,"props":{"title":"MY-ZETA","accessible_name":"MY-ZETA"}},
+ {"parent":0,"keySegments":["ns","alpha"],"blockKey":"s12cs.tail","blockVersion":1,"props":{"title":"MY-ALPHA","accessible_name":"MY-ALPHA"}}]}');
+create or replace function pg_temp.s12cs_o() returns jsonb language sql immutable as $body$
+ select '{"/panel":{"title":"MY-ROOT","accessible_name":"MY-ROOT"},
+   "/panel/ns/zeta":{"title":"MY-ZETA","accessible_name":"MY-ZETA"},
+   "/panel/ns/alpha":{"title":"MY-ALPHA","accessible_name":"MY-ALPHA"}}'::jsonb
+$body$;
+create or replace function pg_temp.s12cs_block(p_key text,p_block text,p_version integer,
+ p_title text,p_children jsonb default '[]') returns jsonb language sql immutable as $body$
+ select jsonb_build_object('kind','block','key',p_key,'blockKey',p_block,'blockVersion',p_version,
+   'props',jsonb_build_object('title',p_title,'accessible_name',p_title),'children',p_children)
+$body$;
+create or replace function pg_temp.s12cs_ref(p_label text) returns jsonb language sql stable as $body$
+ select jsonb_build_object('kind','pattern','key','ns','patternId',pg_temp.s12pd_body(p_label)->'patternId',
+   'patternVersion',pg_temp.s12pd_body(p_label)->'patternVersion')
+$body$;
+-- The signed snapshot really declares accessible_name; checker expectations are
+-- not satisfied by a fabricated registry row or a missing required-name contract.
+create or replace function pg_temp.s12cs_register(p_key text,p_version integer,p_children jsonb default '[]')
+returns setof text language plpgsql as $body$
+declare snapshot jsonb:='{"schemaVersion":"1","fields":[{"name":"title","kind":"string","required":true},
+ {"name":"accessible_name","kind":"short_text","required":false}],"additionalProperties":false}';
+ label text:='s12cs-register-'||p_key||p_version;
+begin
+ perform pg_temp.p_register(label,pg_temp.p_block_request(p_key,p_version,
+   jsonb_build_object('propsSchemaSnapshot',snapshot,'propsSnapshotHash',platform_private.cms_jcs_sha256(snapshot),
+     'allowedChildren',p_children,'slotRules',jsonb_build_object('maxDepth',16,'maxNodes',512))));
+ return next extensions.is(pg_temp.s09d_outcome(label),'OK',label||': actual signed registry producer succeeds');
+end;
+$body$;
+-- Explicit dependency phases, not a query-order hint: child identities must be
+-- registered/visible to cms_block_key_registry_valid BEFORE either root call.
+select phase.* from (values ('s12cs.leaf',1),('s12cs.leaf',2),('s12cs.tail',1)) refs(key,version)
+ cross join lateral pg_temp.s12cs_register(key,version) phase;
+select is((select count(*)::integer from platform_private.cms_block_definition_versions
+ where block_key in ('s12cs.leaf','s12cs.tail') and state='registered'
+   and release_verified_at is not null and props_attestation_verified_at is not null),3,
+ 'CS-SETUP: all allowed child identities exist with verified receipts before root registration');
+select * from pg_temp.s12cs_register('s12cs.root',1,'["s12cs.leaf","s12cs.tail"]');
+select * from pg_temp.s12cs_register('s12cs.root',2,'["s12cs.leaf","s12cs.tail"]');
+select is((select count(*)::integer from platform_private.cms_block_definition_versions
+ where block_key in ('s12cs.root','s12cs.leaf','s12cs.tail') and state='registered'
+   and release_verified_at is not null and props_attestation_verified_at is not null
+   and props_snapshot_hash=platform_private.cms_jcs_sha256(props_schema_snapshot)
+   and exists(select 1 from jsonb_array_elements(props_schema_snapshot->'fields') f
+     where f->>'name'='accessible_name' and f->>'kind'='short_text' and f->'required'='false'::jsonb)),5,
+ 'CS-SETUP: all five real receipts bind the exact declared short_text accessible-name snapshot');
+select * from pg_temp.s12pl_pattern('s12cs-inner1','s12cs-inner',jsonb_build_array(
+ pg_temp.s12cs_block('zeta','s12cs.leaf',1,'ZETA-B'),pg_temp.s12cs_block('alpha','s12cs.tail',1,'ALPHA')));
+select * from pg_temp.s12pl_pattern('s12cs-outer1','s12cs-outer',jsonb_build_array(
+ pg_temp.s12cs_block('panel','s12cs.root',1,'ROOT-B',jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner1')))));
+select * from pg_temp.s12pl_pattern('s12cs-remove1','s12cs-remove',jsonb_build_array(
+ pg_temp.s12cs_block('gone','s12cs.root',1,'GONE')));
+select setup.* from (values ('cs-detached'),('cs-progress'),('cs-linked'),('cs-equal'),('cs-delta')) cases(tag)
+ cross join lateral pg_temp.s12pu_place(tag,'s12cs-outer1',pg_temp.s12cs_o()) setup;
+select * from pg_temp.s12pu_place('cs-legacy','s12cs-outer1',pg_temp.s12cs_o(),'detached');
+select * from pg_temp.s12pu_place('cs-legacy-d5','s12cs-outer1',pg_temp.s12cs_o(),'detached');
+select * from pg_temp.s12pu_place('cs-retired','s12cs-remove1');
+-- CS-PAYLOAD independent zero-field premise BEGIN
+select is((select jsonb_build_object('revisions',count(distinct revision.id),
+  'fieldValues',count(field.revision_id),'canonicalHashes',count(distinct revision.id) filter (
+    where revision.payload_hash::text='44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a'))
+  from (values ('cs-detached'),('cs-progress'),('cs-linked'),('cs-equal'),('cs-delta'),
+    ('cs-legacy'),('cs-legacy-d5'),('cs-retired')) cases(tag)
+  join platform_private.cms_entry_revisions revision on revision.id=pg_temp.s12pl_rev(cases.tag)
+  left join platform_private.cms_entry_field_values field on field.revision_id=revision.id),
+  '{"revisions":8,"fieldValues":0,"canonicalHashes":8}'::jsonb,
+  'CS-HASH-01: eight owned source revisions have zero fields and canonical empty-object payload hashes');
+-- CS-PAYLOAD independent zero-field premise END
+create temp table s12cs_initial on commit drop as select tag,
+ pg_temp.s12pu_row(pg_temp.s12pu_head(tag,case when tag='cs-retired' then '/gone' else '/panel' end)) row_value
+ from (values ('cs-detached'),('cs-progress'),('cs-linked'),('cs-equal'),('cs-delta'),('cs-legacy'),('cs-retired')) cases(tag);
+select * from pg_temp.s12pl_pattern('s12cs-inner2','s12cs-inner',jsonb_build_array(
+ pg_temp.s12cs_block('zeta','s12cs.leaf',2,'ZETA-T'),pg_temp.s12cs_block('alpha','s12cs.tail',1,'ALPHA')),null,true,'1');
+select * from pg_temp.s12pl_pattern('s12cs-outer2','s12cs-outer',jsonb_build_array(
+ pg_temp.s12cs_block('panel','s12cs.root',2,'ROOT-T',jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner2')))),null,true,'1');
+select * from pg_temp.s12pl_pattern('s12cs-remove2','s12cs-remove',jsonb_build_array(
+ pg_temp.s12cs_block('keep','s12cs.tail',1,'KEEP')),null,true,'1');
+-- Same selected canonical content can be authored under a DIFFERENT real pin.
+select * from pg_temp.s12pl_pattern('s12cs-independent','s12cs-independent',jsonb_build_array(
+ pg_temp.s12cs_block('panel','s12cs.root',1,'ROOT-B',jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner2')))));
+select pg_temp.s12pu_update('cs-accept-'||tag,pg_temp.s12pu_update_request(tag,'accept',jsonb_build_array(
+ pg_temp.s12pu_target(tag,'/panel',jsonb_build_array(jsonb_build_object('path','/panel','choice',root_choice),
+   jsonb_build_object('path','/panel/ns/zeta','choice','theirs')))),'s12cs-accept-'||tag,2))
+from (values ('cs-detached','yours'),('cs-equal','yours'),('cs-delta','yours'),
+ ('cs-progress','theirs'),('cs-linked','theirs')) cases(tag,root_choice);
+select is(pg_temp.s12pu_oc('cs-accept-'||tag),'ok',tag||': real mixed/all-theirs writer succeeds')
+ from (values ('cs-detached'),('cs-equal'),('cs-delta'),('cs-progress'),('cs-linked')) cases(tag);
+select pg_temp.s12pu_update('cs-progress-detach',pg_temp.s12pu_update_request('cs-progress','detach',
+ jsonb_build_array(pg_temp.s12pu_target('cs-progress','/panel')),'s12cs-progress-detach'));
+select pg_temp.s12pu_update('cs-retire',pg_temp.s12pu_update_request('cs-retired','accept',jsonb_build_array(
+ pg_temp.s12pu_target('cs-retired','/gone','[{"path":"/gone","choice":"theirs"}]')),'s12cs-retire',2));
+select is(pg_temp.s12pu_oc('cs-progress-detach'),'ok','CS-SETUP: actual active->linked->detached chain');
+select is(pg_temp.s12pu_oc('cs-retire'),'ok','CS-SETUP: actual active->retired append, no in-place tombstone');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-detached','/panel'))->'detached_tree',
+ (select tree from s12cs_trees where name='selected'),'CS-SETUP: mixed writer selected independent literal tree');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-progress','/panel'))->'detached_tree',
+ (select tree from s12cs_trees where name='target'),'CS-SETUP: ordinary detach selected current target-local tree');
+select is(jsonb_array_length(pg_temp.s12pu_chain('cs-progress','/panel')),3,'CS-SETUP: three real active history versions');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-retired','/gone'))->>'state','retired','CS-SETUP: retired head hides older active');
+
+create temp table s12cs_out(label text primary key,answer jsonb,state text,message text,detail text,
+ before_rows jsonb,after_rows jsonb,called_as text,restored boolean) on commit drop;
+-- Exact existing signatures only. Each call guards availability before dynamic
+-- invocation; absence is explicit TAP FAIL, not a setup abort or a fake answer.
+create or replace function pg_temp.s12cs_call(p_label text,p_fn text,p_arg jsonb,
+ p_actor text default 'owner',p_role text default null,p_write boolean default false) returns setof text
+language plpgsql as $body$
+declare signature text; proc oid; answer jsonb; code text:='00000'; msg text; details text;
+ before_rows jsonb:=pg_temp.s12pl_snapshot(); old_role text:=current_setting('role');
+ old_user text:=current_user; old_rpc text:=coalesce(current_setting('app.cms_rpc',true),''); called text; restored boolean;
+begin
+ if p_fn in ('platform_api.cms_list_revisions','platform_api.cms_get_entry_workflow',
+   'platform_api.cms_load_quality_gate_input') then signature:=p_fn||'(jsonb)';
+ elsif p_fn in ('platform_private.cms_build_dependency_manifest','platform_private.cms_revision_render_plan') then signature:=p_fn||'(uuid)';
+ elsif p_fn='platform_private.cms_accessibility_checker_input' then signature:=p_fn||'(uuid,text)';
+ else raise exception 'unknown receiving test function'; end if;
+ proc:=to_regprocedure(signature);
+ if proc is null or not exists(select 1 from pg_proc where oid=proc and prokind='f'
+   and ((p_fn='platform_private.cms_revision_render_plan' and proretset and prorettype='record'::regtype)
+     or (p_fn<>'platform_private.cms_revision_render_plan' and not proretset and prorettype='jsonb'::regtype))) then
+   return next extensions.fail(p_label||': exact existing signature is available'); return;
+ end if;
+ begin
+   if p_role is not null then perform pg_temp.s09d_session(p_actor,p_role); end if;
+   if p_role is not null then perform set_config('role',p_role,true);
+   else perform set_config('app.cms_rpc','true',true); end if;
+   called:=current_user;
+   begin
+     if p_fn='platform_private.cms_revision_render_plan' then
+       execute 'select coalesce(jsonb_agg(to_jsonb(p) order by p.plan_position),''[]''::jsonb) from platform_private.cms_revision_render_plan($1) p'
+         into answer using (p_arg->>'revisionId')::uuid;
+     elsif p_fn='platform_private.cms_build_dependency_manifest' then
+       execute 'select platform_private.cms_build_dependency_manifest($1)' into answer using (p_arg->>'revisionId')::uuid;
+     elsif p_fn='platform_private.cms_accessibility_checker_input' then
+       execute 'select platform_private.cms_accessibility_checker_input($1,$2)' into answer
+         using (p_arg->>'revisionId')::uuid,p_arg->>'dependencyHash';
+     else execute format('select %s($1)',p_fn) into answer using p_arg; end if;
+   exception when others then get stacked diagnostics code=returned_sqlstate,msg=message_text,details=pg_exception_detail; end;
+   perform set_config('role',old_role,true);
+   perform set_config('app.cms_rpc',old_rpc,true);
+ exception when others then
+   perform set_config('role',old_role,true);
+   perform set_config('app.cms_rpc',old_rpc,true);
+   raise;
+ end;
+ restored:=current_user=old_user and current_setting('role')=old_role
+   and coalesce(current_setting('app.cms_rpc',true),'')=old_rpc;
+ insert into s12cs_out values(p_label,answer,code,msg,details,before_rows,pg_temp.s12pl_snapshot(),called,restored);
+ return next extensions.is(code||coalesce(':'||msg,''),'00000',p_label||': actual existing consumer succeeds');
+ if not p_write then return next extensions.is(pg_temp.s12pl_snapshot(),before_rows,p_label||': no persistent effects'); end if;
+ return next extensions.ok(restored and (p_role is null or called=p_role),p_label||': actual role and scoped RPC flag restored');
+end;
+$body$;
+create or replace function pg_temp.s12cs_answer(p_label text) returns jsonb language sql stable as $body$
+ select answer from s12cs_out where label=p_label
+$body$;
+create or replace function pg_temp.s12cs_tree(p_name text) returns jsonb language sql stable as $body$
+ select tree from s12cs_trees where name=p_name
+$body$;
+-- Closed, independent tuple set -> hash primitive; never a production manifest,
+-- registry-digest helper, content-image assembler, expander or resolver oracle.
+create or replace function pg_temp.s12cs_digest(p_root integer,p_leaf integer) returns text language sql immutable as $body$
+ select platform_private.cms_jcs_sha256(jsonb_build_array(
+   jsonb_build_object('blockKey','s12cs.leaf','blockVersion',p_leaf,'releaseDigest',repeat('e',64),
+     'propsSchemaHash',repeat('a',64),'rendererRef','cms/renderers/hero/1','lifecycle','supported'),
+   jsonb_build_object('blockKey','s12cs.root','blockVersion',p_root,'releaseDigest',repeat('e',64),
+     'propsSchemaHash',repeat('a',64),'rendererRef','cms/renderers/hero/1','lifecycle','supported'),
+   jsonb_build_object('blockKey','s12cs.tail','blockVersion',1,'releaseDigest',repeat('e',64),
+     'propsSchemaHash',repeat('a',64),'rendererRef','cms/renderers/hero/1','lifecycle','supported')))
+$body$;
+-- Keep this original writer entry current. D5 builds DIFFERENT, isolated guarded
+-- read-fixture pairs, never an append that assumes its compositions disappear.
+select * from pg_temp.s12cs_call('workflow-cs-retired','platform_api.cms_get_entry_workflow',
+ jsonb_build_object('entryId',pg_temp.s12pl_entry_id('cs-retired'),'revisionId',pg_temp.s12pl_rev('cs-retired'),
+   'context',pg_temp.s09d_context('owner',true)),'owner','service_role');
+
+-- Actual public right-side DONORS for the isolated D5 read fixtures. These are
+-- ordinary fresh placements/writer materializations, not fake append/carry DTOs.
+select * from pg_temp.s12pu_place('cs-equal-donor','s12cs-independent',pg_temp.s12cs_o()-'/panel/ns/zeta');
+select * from pg_temp.s12pu_place('cs-delta-donor','s12cs-outer2',
+ '{"/panel/ns/alpha":{"title":"MY-ALPHA","accessible_name":"MY-ALPHA"}}');
+select * from pg_temp.s12pu_place('cs-legacy-donor','s12cs-outer2',pg_temp.s12cs_o(),'detached');
+select pg_temp.s12pu_update('cs-donor-detach-'||kind,pg_temp.s12pu_update_request('cs-'||kind||'-donor','detach',
+ jsonb_build_array(pg_temp.s12pu_target('cs-'||kind||'-donor','/panel')),'s12cs-donor-detach-'||kind))
+ from (values ('equal'),('delta')) cases(kind);
+select is(pg_temp.s12pu_oc('cs-donor-detach-'||kind),'ok',kind||': real public donor materialization succeeds')
+ from (values ('equal'),('delta')) cases(kind);
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-equal-donor','/panel'))->'detached_tree',pg_temp.s12cs_tree('selected'),
+ 'CS-D5-DONOR: independent lineage has exactly the selected literal canonical content');
+select isnt(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-equal-donor','/panel'))->'pattern_id',
+ pg_temp.s12pu_row(pg_temp.s12pu_head('cs-equal','/panel'))->'pattern_id','CS-D5-DONOR: equal content has different real lineage provenance');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-delta-donor','/panel'))->'detached_tree',pg_temp.s12cs_tree('target'),
+ 'CS-D5-DONOR: changed content has the independent target-local literal tree');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-legacy-donor','/panel'))->'detached_tree','null'::jsonb,
+ 'CS-D5-DONOR: plain detached placement retains SQL NULL snapshot behavior');
+-- Empty NEW ENTRY fixture, never a public append of a populated revision.
+select pg_temp.s12pl_entry('cs-empty-donor');
+select is((select count(*)::integer from platform_private.cms_composition_instances
+ where revision_id=pg_temp.s12pl_rev('cs-empty-donor')),0,'CS-D5-DONOR: deliberately empty fresh read-fixture donor');

@@ -1,0 +1,75 @@
+-- The defensive refusals of CMS-03C-02 that no stored pattern can reach through the route (BE03c 1612: cycle, depth and
+-- node rejection; 1304 `pattern_cycle`, `pattern_depth_exceeded`, `pattern_nodes_exceeded`; 1365 expansion).  Pattern
+-- definition (CMS-03C-12) already refuses these shapes, so a stored active version never carries one; the placement
+-- re-proves them under its own locks.  They are driven through the REAL private expander and plan functions that the
+-- producer calls, with synthesized input (a forest document, a record value): no pattern row is forged, no trigger is
+-- disabled and no store is written.
+
+-- Runs one scalar query: the text of its value, or ERR:<sqlstate>|<message>|<detail> when it raises.  The pattern
+-- table is row-level-secured by the RPC context policy (20260927290000), which every producer establishes first with
+-- app.cms_rpc; the helper does the same for its call and restores the prior setting.
+create or replace function pg_temp.s12pl_call(p_sql text) returns text language plpgsql as $body$
+declare result text; code text; msg text; details text; prior text := coalesce(current_setting('app.cms_rpc', true), '');
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  begin
+    execute p_sql into result;
+  exception when others then
+    get stacked diagnostics code = returned_sqlstate, msg = message_text, details = pg_exception_detail;
+    result := 'ERR:' || code || '|' || msg || '|' || coalesce(details, '');
+  end;
+  perform set_config('app.cms_rpc', prior, true);
+  return result;
+end;
+$body$;
+-- A forest of p_levels nested block nodes (one block per level, each the only child of the previous one).
+create or replace function pg_temp.s12pl_deep(p_levels integer) returns jsonb language plpgsql immutable as $body$
+declare node jsonb := pg_temp.s12pd_block('leaf'); n integer;
+begin
+  for n in 2..p_levels loop node := pg_temp.s12pd_block('k' || n, jsonb_build_array(node)); end loop;
+  return jsonb_build_array(node);
+end;
+$body$;
+
+-- pattern_cycle: a nested reference whose lineage already stands on the expansion chain.
+select is(pg_temp.s12pl_call(format($sql$select count(*)::text from platform_private.cms_pattern_placement_nodes(
+    %L::uuid, jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'again', 'patternId', %L::uuid,
+      'patternVersion', %s)), array[%L::uuid])$sql$,
+    pg_temp.s09d_id('ownerOrg'), pg_temp.s12pd_body('pc')->>'patternId', pg_temp.s12pd_body('pc')->>'patternVersion',
+    pg_temp.s12pd_body('pc')->>'patternId')),
+  'ERR:P0001|pattern_cycle|["/patternId"]',
+  'a nested reference to a lineage already on the chain is refused pattern_cycle at /patternId (409) [BE03c 1612]');
+select is(pg_temp.s12pl_call(format($sql$select count(*)::text from platform_private.cms_pattern_placement_nodes(
+    %L::uuid, jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'again', 'patternId', %L::uuid,
+      'patternVersion', %s)), array[%L::uuid])$sql$,
+    pg_temp.s09d_id('ownerOrg'), pg_temp.s12pd_body('pc')->>'patternId', pg_temp.s12pd_body('pc')->>'patternVersion',
+    pg_temp.s12pd_body('pa')->>'patternId')),
+  '4', 'control: the same reference with the lineage NOT on the chain expands to the four block nodes a, title, b, c');
+
+-- pattern_depth_exceeded: 128 nested levels expand, the 129th is refused.
+select is(pg_temp.s12pl_call(format($sql$select count(*)::text from platform_private.cms_pattern_placement_nodes(
+    %L::uuid, %L::jsonb, array[]::uuid[])$sql$, pg_temp.s09d_id('ownerOrg'), pg_temp.s12pl_deep(128))),
+  '128', 'control: a forest nested 128 levels deep expands to 128 block nodes');
+select is(pg_temp.s12pl_call(format($sql$select count(*)::text from platform_private.cms_pattern_placement_nodes(
+    %L::uuid, %L::jsonb, array[]::uuid[])$sql$, pg_temp.s09d_id('ownerOrg'), pg_temp.s12pl_deep(129))),
+  'ERR:P0001|pattern_depth_exceeded|["/patternId"]',
+  'a forest nested 129 levels deep is refused pattern_depth_exceeded at /patternId (422) [BE03c 1612]');
+
+-- pattern_nodes_exceeded and the zero-root refusal, through the plan function with a record value built from a real
+-- pattern row by jsonb_populate_record (the stored row is untouched).
+create or replace function pg_temp.s12pl_plan_sql(p_forest jsonb) returns text language sql stable as $body$
+  select format($sql$select jsonb_array_length(platform_private.cms_pattern_placement_plan(%L::uuid,
+      jsonb_populate_record(pv, jsonb_build_object('block_tree', %L::jsonb)), '/main', '{}'::jsonb))::text
+    from platform_private.cms_pattern_versions pv where pv.id = %L::uuid$sql$,
+    pg_temp.s09d_id('ownerOrg'), p_forest, pg_temp.s12pd_body('pa')->>'id')
+$body$;
+select is(pg_temp.s12pl_call(pg_temp.s12pl_plan_sql(pg_temp.s12pd_forest(512))), '512',
+  'control: a forest of 512 block roots plans 512 nodes');
+select is(pg_temp.s12pl_call(pg_temp.s12pl_plan_sql(pg_temp.s12pd_forest(513))),
+  'ERR:P0001|pattern_nodes_exceeded|["/patternId"]',
+  'a forest of 513 block roots is refused pattern_nodes_exceeded at /patternId (422) [BE03c 1612, DEC-175]');
+select is(pg_temp.s12pl_call(pg_temp.s12pl_plan_sql('[]'::jsonb)),
+  'ERR:P0001|VALIDATION_FAILED|["/patternId"]',
+  'a forest with no block root is refused 422 at /patternId and writes nothing [DEC-181]');
+select is((select count(*)::integer from platform_private.cms_pattern_versions where pattern_id = (pg_temp.s12pd_body('pa')->>'patternId')::uuid),
+  1, 'the driving record values never touched the stored pattern: lineage pa still has exactly one version row');

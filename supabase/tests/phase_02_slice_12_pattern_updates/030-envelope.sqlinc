@@ -1,0 +1,74 @@
+-- CMS-03C-15 request grammar (BE03c 400, 1268; contract CompositionUpdateRequestSchema).  The exact Worker envelope is INVALID_REQUEST (400);
+-- a body member that violates its shape is VALIDATION_FAILED with the offending JSON pointer.  The store-free check runs first: a malformed
+-- request consumes no lock and no idempotency key.  [P2-S12-AC-118, AC-119]
+create temp table s12puc_env(label text primary key, request jsonb not null, expected text not null) on commit drop;
+create or replace function pg_temp.s12puc_base(p_action text default 'accept') returns jsonb language sql volatile as $body$
+  select pg_temp.s12pu_update_request('ap10', p_action, jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-env-0001',
+    case p_action when 'accept' then 2 end) $body$;
+create or replace function pg_temp.s12puc_with(p_patch jsonb, p_unset text[] default array[]::text[], p_action text default 'accept') returns jsonb
+language sql volatile as $body$ select (pg_temp.s12puc_base(p_action) || p_patch) - p_unset $body$;
+create or replace function pg_temp.s12puc_inst(p_patch jsonb, p_unset text[] default array[]::text[]) returns jsonb language sql volatile as $body$
+  select jsonb_build_object('instances', jsonb_build_array((pg_temp.s12pu_target('ap10', '/hero') || p_patch) - p_unset)) $body$;
+
+insert into s12puc_env(label, request, expected)
+select 'extra-' || key, pg_temp.s12puc_with(jsonb_build_object(key, 'x')), 'P0001:INVALID_REQUEST'
+  from unnest(array['ownerId', 'limit', 'force', 'revisionId']) key;
+insert into s12puc_env(label, request, expected)
+select 'missing-' || key, pg_temp.s12puc_with('{}'::jsonb, array[key]), 'P0001:INVALID_REQUEST'
+  from unnest(array['idempotencyKey', 'ifMatch', 'expectedVersion', 'context', 'instances', 'action']) key;
+insert into s12puc_env(label, request, expected) values
+  ('ifmatch-differs', pg_temp.s12puc_with('{"ifMatch":"99"}'), 'P0001:INVALID_REQUEST'),
+  ('idem-short', pg_temp.s12puc_with('{"idempotencyKey":"short"}'), 'P0001:INVALID_REQUEST'),
+  ('idem-control', pg_temp.s12puc_with(jsonb_build_object('idempotencyKey', E'tab\tkey-0001')), 'P0001:INVALID_REQUEST'),
+  ('expected-zero', pg_temp.s12puc_with('{"expectedVersion":"0","ifMatch":"0"}'), 'P0001:INVALID_REQUEST'),
+  ('expected-text', pg_temp.s12puc_with('{"expectedVersion":"abc","ifMatch":"abc"}'), 'P0001:INVALID_REQUEST'),
+  ('expected-number', pg_temp.s12puc_with('{"expectedVersion":5,"ifMatch":"5"}'), 'P0001:INVALID_REQUEST'),
+  ('expected-leading-zero', pg_temp.s12puc_with('{"expectedVersion":"01","ifMatch":"01"}'), 'P0001:INVALID_REQUEST'),
+  ('detach-with-target', pg_temp.s12puc_with('{"targetPatternVersion":2}', array[]::text[], 'detach'), 'P0001:INVALID_REQUEST'),
+  ('action-merge', pg_temp.s12puc_with('{"action":"merge"}'), 'P0001:VALIDATION_FAILED#["/action"]'),
+  ('action-number', pg_temp.s12puc_with('{"action":5}'), 'P0001:VALIDATION_FAILED#["/action"]'),
+  ('target-missing', pg_temp.s12puc_with('{}'::jsonb, array['targetPatternVersion']), 'P0001:VALIDATION_FAILED#["/targetPatternVersion"]'),
+  ('target-zero', pg_temp.s12puc_with('{"targetPatternVersion":0}'), 'P0001:VALIDATION_FAILED#["/targetPatternVersion"]'),
+  ('target-negative', pg_temp.s12puc_with('{"targetPatternVersion":-1}'), 'P0001:VALIDATION_FAILED#["/targetPatternVersion"]'),
+  ('target-fraction', pg_temp.s12puc_with('{"targetPatternVersion":1.5}'), 'P0001:VALIDATION_FAILED#["/targetPatternVersion"]'),
+  ('target-string', pg_temp.s12puc_with('{"targetPatternVersion":"2"}'), 'P0001:VALIDATION_FAILED#["/targetPatternVersion"]'),
+  ('target-null', pg_temp.s12puc_with('{"targetPatternVersion":null}'), 'P0001:VALIDATION_FAILED#["/targetPatternVersion"]'),
+  ('target-int32', pg_temp.s12puc_with('{"targetPatternVersion":2147483648}'), 'P0001:VALIDATION_FAILED#["/targetPatternVersion"]'),
+  ('instances-empty', pg_temp.s12puc_with('{"instances":[]}'), 'P0001:VALIDATION_FAILED#["/instances"]'),
+  ('instances-object', pg_temp.s12puc_with('{"instances":{}}'), 'P0001:VALIDATION_FAILED#["/instances"]'),
+  ('instances-33', pg_temp.s12puc_with(jsonb_build_object('instances', (select jsonb_agg(jsonb_build_object('instanceId', extensions.gen_random_uuid(), 'expectedVersion', '1'))
+      from generate_series(1, 33)))), 'P0001:VALIDATION_FAILED#["/instances"]'),
+  ('instance-not-object', pg_temp.s12puc_with('{"instances":[5]}'), 'P0001:VALIDATION_FAILED#["/instances/0"]'),
+  ('instance-extra-key', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"owner":"x"}')), 'P0001:VALIDATION_FAILED#["/instances/0"]'),
+  ('instance-no-id', pg_temp.s12puc_with(pg_temp.s12puc_inst('{}'::jsonb, array['instanceId'])), 'P0001:VALIDATION_FAILED#["/instances/0/instanceId"]'),
+  ('instance-bad-id', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"instanceId":"not-a-uuid"}')), 'P0001:VALIDATION_FAILED#["/instances/0/instanceId"]'),
+  ('instance-no-version', pg_temp.s12puc_with(pg_temp.s12puc_inst('{}'::jsonb, array['expectedVersion'])), 'P0001:VALIDATION_FAILED#["/instances/0/expectedVersion"]'),
+  ('instance-version-zero', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"expectedVersion":"0"}')), 'P0001:VALIDATION_FAILED#["/instances/0/expectedVersion"]'),
+  ('instance-version-number', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"expectedVersion":1}')), 'P0001:VALIDATION_FAILED#["/instances/0/expectedVersion"]'),
+  ('instance-duplicate', pg_temp.s12puc_with(jsonb_build_object('instances', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero'), pg_temp.s12pu_target('ap10', '/hero')))),
+    'P0001:VALIDATION_FAILED#["/instances/1/instanceId"]'),
+  ('instance-duplicate-upper', pg_temp.s12puc_with(jsonb_build_object('instances', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero'),
+      pg_temp.s12pu_target('ap10', '/hero') || jsonb_build_object('instanceId', upper(pg_temp.s12pu_head('ap10', '/hero')::text))))),
+    'P0001:VALIDATION_FAILED#["/instances/1/instanceId"]'),
+  ('choices-not-array', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"choices":{}}')), 'P0001:VALIDATION_FAILED#["/instances/0/choices"]'),
+  ('choice-not-object', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"choices":[5]}')), 'P0001:VALIDATION_FAILED#["/instances/0/choices/0"]'),
+  ('choice-extra-key', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"choices":[{"path":"/hero","choice":"yours","why":1}]}')), 'P0001:VALIDATION_FAILED#["/instances/0/choices/0"]'),
+  ('choice-no-path', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"choices":[{"choice":"yours"}]}')), 'P0001:VALIDATION_FAILED#["/instances/0/choices/0/path"]'),
+  ('choice-bad-path', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"choices":[{"path":"hero","choice":"yours"}]}')), 'P0001:VALIDATION_FAILED#["/instances/0/choices/0/path"]'),
+  ('choice-upper-path', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"choices":[{"path":"/Hero","choice":"yours"}]}')), 'P0001:VALIDATION_FAILED#["/instances/0/choices/0/path"]'),
+  ('choice-bad-value', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"choices":[{"path":"/hero","choice":"mine"}]}')), 'P0001:VALIDATION_FAILED#["/instances/0/choices/0/choice"]'),
+  ('choice-duplicate-path', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"choices":[{"path":"/hero","choice":"yours"},{"path":"/hero","choice":"theirs"}]}')),
+    'P0001:VALIDATION_FAILED#["/instances/0/choices/1/path"]'),
+  ('choices-129', pg_temp.s12puc_with(pg_temp.s12puc_inst(jsonb_build_object('choices', (select jsonb_agg(jsonb_build_object('path', '/n' || n, 'choice', 'yours')) from generate_series(1, 129) n)))),
+    'P0001:VALIDATION_FAILED#["/instances/0/choices"]'),
+  ('choices-with-two-instances', pg_temp.s12puc_with(jsonb_build_object('instances', jsonb_build_array(
+      pg_temp.s12pu_target('ap10', '/hero', '[{"path":"/hero","choice":"yours"}]'::jsonb), pg_temp.s12pu_target('ap10', '/cta')))),
+    'P0001:VALIDATION_FAILED#["/instances/0/choices"]'),
+  ('detach-with-choices', pg_temp.s12puc_with(pg_temp.s12puc_inst('{"choices":[{"path":"/hero","choice":"yours"}]}'), array[]::text[]) - 'targetPatternVersion' || '{"action":"detach"}',
+    'P0001:VALIDATION_FAILED#["/instances/0/choices"]');
+select pg_temp.s12pu_update('env-' || label, request) from s12puc_env order by label;
+select is(pg_temp.s12pu_oc('env-' || e.label), e.expected, 'request case ' || e.label) from s12puc_env e order by e.label;
+select ok((select bool_and(before_rows = after_rows) from s12pu_out where label like 'env-%'),
+  'every malformed request left every captured store identical: no idempotency record, no row, no audit');
+select pg_temp.s12pu_call('env-array', 'platform_api.cms_apply_pattern_update', '[]'::jsonb);
+select is(pg_temp.s12pu_oc('env-array'), 'P0001:INVALID_REQUEST', 'a non-object body is INVALID_REQUEST');

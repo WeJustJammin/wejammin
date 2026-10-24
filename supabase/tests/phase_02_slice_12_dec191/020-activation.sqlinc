@@ -1,0 +1,81 @@
+-- DEC-191 / CMS-03C-09: GovernedActivationResource.supersededVersion (BE03c schema block, changelog row "FE03-BE03c read gap"; FE03 :882).
+-- The definition `version` of the lineage's previously active version that a committed immediate `activate` superseded; null for `schedule`,
+-- `retire` and a lineage's first activation.  The lineage al1 -> al2 -> al3 makes the definition numbers (1, 2, 3) differ from the lifecycle
+-- counters (4, 5) and from the review versions, so the member can only be the definition number of the superseded row.
+
+-- ---------------------------------------------------------------------------------- first activation: nothing superseded --
+select pg_temp.s12gb_act('v1', 'owner', pg_temp.s12ga_review('al1'), 'activate');
+select pg_temp.s12ga_keep('v1', 'v1');
+select ok(pg_temp.s12ga_out('v1') = 'ok' and pg_temp.d191_act_keys('v1') = pg_temp.d191_activation_keys()
+    and pg_temp.s12ga_body('v1') ? 'supersededVersion' and pg_temp.s12ga_body('v1')->'supersededVersion' = 'null'::jsonb
+    and pg_temp.s12ga_body('v1')->>'subjectState' = 'active' and pg_temp.s12ga_body('v1')->>'action' = 'activate',
+  'the first activation of a lineage answers the 12-member GovernedActivationResource with supersededVersion present and null [P2-S12-AC-082]');
+
+-- ---------------------------------------------------------------------------------- v2 supersedes v1 --
+select pg_temp.d191_successor('al2', 'al1', 'al1', array['typeA']);
+select pg_temp.s12gb_approve('al2');
+select pg_temp.s12gb_act('v2', 'owner', pg_temp.s12ga_review('al2'), 'activate');
+select ok(pg_temp.s12ga_out('v2') = 'ok' and pg_temp.d191_act_keys('v2') = pg_temp.d191_activation_keys()
+    and pg_temp.s12ga_body('v2')->'subjectVersion' = '2'::jsonb
+    and pg_temp.s12ga_body('v2')->'supersededVersion' = '1'::jsonb and jsonb_typeof(pg_temp.s12ga_body('v2')->'supersededVersion') = 'number',
+  'activating v2 over an active v1 names the superseded definition version 1 as a JSON number [P2-S12-AC-083]');
+select ok(
+  (select v1.state = 'superseded' and v1.version = 1 and v1.lifecycle_version = 5
+     from platform_private.cms_template_versions v1 where v1.id = pg_temp.s12ga_subject('al1'))
+  and (pg_temp.s12ga_body('v2')->>'supersededVersion')::bigint
+      = (select v1.version from platform_private.cms_template_versions v1 where v1.id = pg_temp.s12ga_subject('al1'))
+  and (pg_temp.s12ga_body('v2')->>'supersededVersion')::bigint
+      <> (select v1.lifecycle_version from platform_private.cms_template_versions v1 where v1.id = pg_temp.s12ga_subject('al1')),
+  'the member is the superseded row''s immutable definition number (1), not its lifecycle counter (5) [P2-S12-AC-083]');
+
+-- ---------------------------------------------------------------------------------- v3 supersedes v2, and replays unchanged --
+select pg_temp.d191_successor('al3', 'al1', 'al2', array['typeA']);
+select pg_temp.s12gb_approve('al3');
+select pg_temp.s12gb_act('v3', 'owner', pg_temp.s12ga_review('al3'), 'activate');
+select pg_temp.s12ga_keep('v3', 'v3');
+select ok(pg_temp.s12ga_out('v3') = 'ok' and pg_temp.s12ga_body('v3')->'subjectVersion' = '3'::jsonb
+    and pg_temp.s12ga_body('v3')->'supersededVersion' = '2'::jsonb
+    and pg_temp.s12ga_body('v3')->>'eventType' = 'cms.template.activated.v1',
+  'activating v3 over the active v2 names the superseded definition version 2 [P2-S12-AC-083]');
+select ok(exists (select 1 from platform_private.idempotency_records record
+                   where record.operation = 'CMS-03C-09' and record.key_hash = platform_private.cms_key_hash('s12ga-v3')
+                     and record.state = 'completed' and record.response_ref->>'status' = '200'
+                     and record.response_ref->'safeHeaders'->'response' = pg_temp.s12ga_body('v3')
+                     and record.response_ref->'safeHeaders'->'response'->'supersededVersion' = '2'::jsonb),
+  'the completed idempotency record stores the 200 answer including supersededVersion [P2-S12-AC-086]');
+select pg_temp.s12gb_mark('al3:active', 'al3');
+select pg_temp.s12gb_act('v3', 'owner', pg_temp.s12ga_review('al3'), 'activate', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select ok(pg_temp.s12ga_out('v3') = 'ok' and pg_temp.s12ga_body('v3') = pg_temp.s12ga_kept('v3')
+    and pg_temp.s12ga_body('v3')->'supersededVersion' = '2'::jsonb and pg_temp.s12gb_same('al3:active', 'al3')
+    and pg_temp.s12gb_events('al3') = 1,
+  'an exact same-key replay returns the stored answer unchanged, supersededVersion included, and writes nothing [P2-S12-AC-086]');
+
+-- ---------------------------------------------------------------------------------- schedule: null although the lineage has an active version --
+select pg_temp.d191_successor('al4', 'al1', 'al3', array['typeA']);
+select pg_temp.s12gb_approve('al4');
+select pg_temp.s12gb_act('sc4', 'owner', pg_temp.s12ga_review('al4'), 'schedule', p_after => interval '600 seconds');
+select pg_temp.s12ga_keep('sc4', 'sc4');
+select ok(pg_temp.s12ga_out('sc4') = 'ok' and pg_temp.d191_act_keys('sc4') = pg_temp.d191_activation_keys()
+    and pg_temp.s12ga_body('sc4')->>'action' = 'schedule' and pg_temp.s12ga_body('sc4')->>'subjectState' = 'scheduled'
+    and pg_temp.s12ga_body('sc4') ? 'supersededVersion' and pg_temp.s12ga_body('sc4')->'supersededVersion' = 'null'::jsonb
+    and (select state = 'active' from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('al3')),
+  'a 202 schedule answers supersededVersion null even though the lineage already has an active version: nothing is superseded until the activation commits [P2-S12-AC-142]');
+select pg_temp.s12gb_act('sc4', 'owner', pg_temp.s12ga_review('al4'), 'schedule', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select ok(pg_temp.s12ga_out('sc4') = 'ok' and pg_temp.s12ga_body('sc4') = pg_temp.s12ga_kept('sc4'),
+  'the schedule answer replays unchanged [P2-S12-AC-086]');
+
+-- ---------------------------------------------------------------------------------- retire: null --
+select pg_temp.s12gb_act('rt3', 'owner', pg_temp.s12ga_review('al3'), 'retire');
+select pg_temp.s12ga_keep('rt3', 'rt3');
+select ok(pg_temp.s12ga_out('rt3') = 'ok' and pg_temp.d191_act_keys('rt3') = pg_temp.d191_activation_keys()
+    and pg_temp.s12ga_body('rt3')->>'action' = 'retire' and pg_temp.s12ga_body('rt3')->>'subjectState' = 'retired'
+    and pg_temp.s12ga_body('rt3') ? 'supersededVersion' and pg_temp.s12ga_body('rt3')->'supersededVersion' = 'null'::jsonb,
+  'a retirement answers supersededVersion null: it supersedes nothing [P2-S12-AC-087]');
+select pg_temp.s12gb_act('rt3', 'owner', pg_temp.s12ga_review('al3'), 'retire', jsonb_build_object('expectedVersion', '3', 'ifMatch', '3'));
+select ok(pg_temp.s12ga_out('rt3') = 'ok' and pg_temp.s12ga_body('rt3') = pg_temp.s12ga_kept('rt3'),
+  'the retirement answer replays unchanged [P2-S12-AC-086]');
+
+-- ---------------------------------------------------------------------------------- refusals carry no member --
+select pg_temp.s12gb_act('v3-again', 'owner', pg_temp.s12ga_review('al3'), 'activate');
+select ok(pg_temp.s12ga_out('v3-again') = 'P0001:subject_not_activatable' and pg_temp.s12ga_body('v3-again') is null,
+  'a refused command still answers its closed refusal token and no resource [P2-S12-AC-085]');

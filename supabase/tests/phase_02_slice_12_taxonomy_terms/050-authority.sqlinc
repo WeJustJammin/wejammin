@@ -1,0 +1,76 @@
+-- CMS-03C-03 authority, concealment and the active-version fences: curator capability re-proved on every write and on a cached replay,
+-- the 403/404 split, an inactive vocabulary, the stale active-version operand.  BE03c 1478 (matrix), 1304 (403 reason), 1344 and 1345
+-- (position 1 and 3), 1506.  [P2-S12-AC-018, AC-019, AC-020]
+
+select pg_temp.s12tt_mark('before-authority');
+select pg_temp.s12tt_act('a-editor', 'designer2', pg_temp.s12tt_lineage('vf'), 'create', 'by-editor');
+select pg_temp.s12tt_act('a-reviewer', 'rev1', pg_temp.s12tt_lineage('vf'), 'create', 'by-reviewer');
+select pg_temp.s12tt_act('a-author', 'rev2', pg_temp.s12tt_lineage('vf'), 'create', 'by-author');
+select pg_temp.s12tt_act('a-nonmember', 'rev3', pg_temp.s12tt_lineage('vf'), 'create', 'by-outsider');
+select pg_temp.s12tt_anonymous('a-anonymous', 'platform_api.cms_act_taxonomy_term', pg_temp.s12tt_req('a-anonymous', pg_temp.s12tt_lineage('vf'), 'create', 'by-anonymous'));
+select is(pg_temp.s12tt_oc('a-editor'), 'P0001:capability_missing',
+  'a readable member with the editor capability but no curator capability is refused 403 capability_missing [P2-S12-AC-018]');
+select is(pg_temp.s12tt_oc('a-reviewer'), 'P0001:capability_missing', 'a plain member holding only the reviewer capability is refused 403 [P2-S12-AC-018]');
+select is(pg_temp.s12tt_oc('a-author'), 'P0001:capability_missing', 'the author capability is not the curator capability [P2-S12-AC-018]');
+select is(pg_temp.s12tt_oc('a-nonmember'), 'P0001:NOT_FOUND', 'a caller who is not a member of the owner party gets the concealing 404 [P2-S12-AC-018]');
+select is(pg_temp.s12tt_oc('a-anonymous'), 'P0001:UNAUTHENTICATED', 'a request without a verified human is 401 UNAUTHENTICATED [P2-S12-AC-018]');
+select ok(pg_temp.s12tt_same('before-authority'), 'no authority refusal changed any store [P2-S12-AC-018]');
+
+-- concealment: a hidden vocabulary and an absent one are indistinguishable -----------------------------------------------------------
+select pg_temp.s12tt_act('h-absent', 'owner', 'a9186000-0000-4000-8000-0000000000f1', 'create', 'hidden-probe');
+select pg_temp.s12tt_act('h-foreign', 'owner', pg_temp.s12tt_lineage('vo'), 'create', 'hidden-probe');
+select pg_temp.s12tt_act('h-owner-from-other', 'other', pg_temp.s12tt_lineage('vf'), 'create', 'hidden-probe');
+select pg_temp.s12tt_act('h-other-own-draft', 'other', pg_temp.s12tt_lineage('vo'), 'create', 'hidden-probe');
+select pg_temp.s12tt_act('h-draft', 'owner', pg_temp.s12tt_lineage('vd'), 'create', 'hidden-probe');
+select is(pg_temp.s12tt_oc('h-absent'), 'P0001:NOT_FOUND', 'an absent vocabulary is the concealing 404 [P2-S12-AC-018]');
+select is(pg_temp.s12tt_oc('h-foreign'), pg_temp.s12tt_oc('h-absent'),
+  'another organization''s vocabulary gives the very same complete refusal as an absent one: no existence oracle [P2-S12-AC-018]');
+select is(pg_temp.s12tt_oc('h-owner-from-other'), pg_temp.s12tt_oc('h-absent'),
+  'a real curator of ANOTHER organization asking for this owner''s vocabulary gets the same refusal [P2-S12-AC-018]');
+select is(pg_temp.s12tt_oc('h-other-own-draft'), 'P0001:taxonomy_not_active',
+  'the other organization''s curator reaches its own vocabulary: concealment is by owner, and a draft has no active version [P2-S12-AC-018]');
+select is(pg_temp.s12tt_oc('h-draft'), 'P0001:taxonomy_not_active',
+  'a vocabulary of the caller''s organization without an active version is 409 taxonomy_not_active [P2-S12-AC-018]');
+select is((select count(*)::integer from platform_private.cms_terms where term_key = 'hidden-probe'), 0, 'no refused probe created a term [P2-S12-AC-018]');
+
+-- the active-version operand (If-Match) -----------------------------------------------------------------------------------------------
+select pg_temp.s12tt_mark('before-cas');
+select pg_temp.s12tt_act('cas-stale', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'cas-probe', '{"expectedVersion":"2","ifMatch":"2"}'::jsonb);
+select pg_temp.s12tt_act('cas-max', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'cas-probe',
+  '{"expectedVersion":"9223372036854775807","ifMatch":"9223372036854775807"}'::jsonb);
+select is(pg_temp.s12tt_oc('cas-stale'), 'P0001:CONFLICT', 'an operand that is not the active definition version is 409 TAXONOMY_VERSION_CONFLICT [P2-S12-AC-019]');
+select is(pg_temp.s12tt_oc('cas-max'), 'P0001:CONFLICT', 'a far-future operand is the same 409, never a 404 [P2-S12-AC-019]');
+select ok(pg_temp.s12tt_same('before-cas'), 'a stale operand changed nothing [P2-S12-AC-019]');
+
+-- live authority on a fresh write AND on a cached replay (the replay is only for a caller who still holds the capability) -------------
+create temp table s12tt_grant_before on commit drop as
+select * from identity_private.organization_actor_grant
+ where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s12ga_person('owner') and capability_code = 'cms.taxonomy_curator';
+update identity_private.organization_actor_grant set active = false
+ where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s12ga_person('owner') and capability_code = 'cms.taxonomy_curator';
+select ok(not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('owner'), 'cms.taxonomy_curator'),
+  'SETUP the curator grant is revoked before the replay and fresh-write probes');
+select pg_temp.s12tt_act('revoked-fresh', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'after-revoke');
+select pg_temp.s12tt_act('revoked-replay', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'alpha', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Alpha"},{"locale":"fr-FR","label":"Alpha FR"}]'::jsonb,
+  'aliases', '["first","Initial"]'::jsonb, 'idempotencyKey', 's12tt-c-alpha'));
+select is(pg_temp.s12tt_oc('revoked-fresh'), 'P0001:capability_missing', 'a revoked curator cannot write [P2-S12-AC-018]');
+select is(pg_temp.s12tt_oc('revoked-replay'), 'P0001:capability_missing',
+  'a revoked curator cannot even replay a stored response: the capability is re-proved before any cached answer [P2-S12-AC-018]');
+update identity_private.organization_actor_grant g set active = original.active, valid_from = current_date - 2, valid_through = current_date - 1
+  from s12tt_grant_before original
+ where g.organization_id = original.organization_id and g.person_id = original.person_id and g.capability_code = original.capability_code;
+select pg_temp.s12tt_act('lapsed-fresh', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'after-lapse');
+select is(pg_temp.s12tt_oc('lapsed-fresh'), 'P0001:capability_missing', 'a grant whose window ended yesterday is not authority [P2-S12-AC-018]');
+update identity_private.organization_actor_grant g set active = original.active, valid_from = original.valid_from, valid_through = original.valid_through
+  from s12tt_grant_before original
+ where g.organization_id = original.organization_id and g.person_id = original.person_id and g.capability_code = original.capability_code;
+select ok(platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('owner'), 'cms.taxonomy_curator'),
+  'SETUP the original curator authority is restored');
+select pg_temp.s12tt_act('restored-replay', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'alpha', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Alpha"},{"locale":"fr-FR","label":"Alpha FR"}]'::jsonb,
+  'aliases', '["first","Initial"]'::jsonb, 'idempotencyKey', 's12tt-c-alpha'));
+select ok(pg_temp.s12tt_oc('restored-replay') = 'ok' and pg_temp.s12ga_body('restored-replay') = pg_temp.s12ga_kept('c-alpha'),
+  'with the authority restored the same key replays the original response [P2-S12-AC-019]');
+select is((select count(*)::integer from platform_private.cms_terms where term_key in ('after-revoke', 'after-lapse', 'by-editor', 'by-outsider')), 0,
+  'no refused write created a term [P2-S12-AC-018]');

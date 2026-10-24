@@ -1,0 +1,277 @@
+-- cms.locale.no_fallback_gate version 1 (BE03c 1391, 1397; BE03b 1811-1818).  Criteria:
+-- P2-S12-AC-240, AC-241 (locale), AC-051, AC-052, AC-148, AC-152.  Include after the Slice 11
+-- helper world and phase_02_slice_12_locale_variant/000-helpers.sqlinc.
+--
+-- World: the h11doc entry saved by the real cms_create_entry.  Its `title` is made localized in
+-- the rolled-back transaction (the precedent of phase_02_slice_11_helpers_preflight.sql), so
+-- variants can omit the only no_fallback field, `legal`.
+
+select pg_temp.h11_raw_exec('platform_private.cms_field_definition_versions',
+  $$update platform_private.cms_field_definition_versions set localization_mode = 'localized' where field_key = 'title'$$);
+update s10_ids set value = (select response#>>'{entry,id}' from h11w_smoke_saved) where key = 'entryId';
+select pg_temp.s10_rpc_as(
+  (select value::uuid from s10_ids where key = 'creatorAuth'),
+  (select value::uuid from s10_ids where key = 'organization'));
+select set_config('app.cms_rpc', 'true', true);
+
+create or replace function pg_temp.l12g_gate(p_revision uuid, p_phase text)
+returns text
+language plpgsql
+as $body$
+declare
+  outcome_text text;
+begin
+  select gate.outcome || '/' || coalesce(gate.reason_code, '-') || '/' || gate.blocking_count
+    into outcome_text
+  from platform_private.cms_locale_no_fallback_gate(p_revision, p_phase) gate;
+  return outcome_text;
+exception when others then
+  return '__error ' || sqlstate || ':' || sqlerrm;
+end;
+$body$;
+
+create or replace function pg_temp.l12g_variant(p_fields jsonb, p_key text)
+returns uuid
+language plpgsql
+as $body$
+declare
+  response jsonb;
+begin
+  response := pg_temp.l12_author(pg_temp.l12_req('fr-FR', p_fields, p_key, jsonb_build_object(
+    'noFallbackFieldIds', jsonb_build_array(pg_temp.h11w_fid('legal')))));
+  perform set_config('app.cms_rpc', 'true', true);
+  return (response->>'revisionId')::uuid;
+end;
+$body$;
+
+create or replace function pg_temp.l12g_title(p_value text)
+returns jsonb language sql as $body$
+  select jsonb_build_array(jsonb_build_object('fieldId', pg_temp.h11w_fid('title'), 'value', to_jsonb(p_value)))
+$body$;
+create or replace function pg_temp.l12g_title_legal(p_title text, p_legal text)
+returns jsonb language sql as $body$
+  select jsonb_build_array(
+    jsonb_build_object('fieldId', pg_temp.h11w_fid('title'), 'value', to_jsonb(p_title)),
+    jsonb_build_object('fieldId', pg_temp.h11w_fid('legal'), 'value', to_jsonb(p_legal)))
+$body$;
+
+create or replace function pg_temp.l12g_state()
+returns text
+language sql
+as $body$
+  select platform_private.cms_locale_variant_state(pg_temp.l12_entry(), 'fr-FR')
+$body$;
+
+-- ---- registry (AC240) ------------------------------------------------------------------------
+select is(
+  (select provider_key || '@' || provider_version || '/' || provider_kind || '/' || coalesce(reference_kind, '-') || '/' || registry_version
+   from platform_private.cms_preflight_registry_current() where category = 'locale'),
+  'cms.locale.no_fallback_gate@1/database/-/2',
+  'the locale category is served by cms.locale.no_fallback_gate version 1 (database) as a newer registry row [P2-S12-AC-240]'
+);
+select is(
+  (select string_agg(category || '=' || provider_key || '/' || registry_version, ',' order by category)
+   from platform_private.cms_preflight_registry_current() where category in ('route', 'media', 'privacy')),
+  'media=preflight.reference_gate/1,privacy=preflight.reference_gate/1,route=preflight.reference_gate/1',
+  'the route, media and privacy categories stay on the reference gate [P2-S12-AC-240]'
+);
+select ok(
+  pg_temp.h11_private_definer('cms_locale_no_fallback_gate(uuid,text)'),
+  'the gate is a private SECURITY DEFINER function of the CMS definer with an empty search_path and no API-role execute [P2-S12-AC-152]'
+);
+
+-- ---- gate logic (AC051, AC052, AC240) --------------------------------------------------------
+select is(pg_temp.l12g_gate((select (response#>>'{revision,id}')::uuid from h11w_smoke_saved), 'submit'),
+  'failed/no_fallback_missing/1',
+  'a source-locale revision that holds no value for the no_fallback field blocks with no_fallback_missing [P2-S12-AC-051]');
+
+select pg_temp.l12_source_edit(jsonb_build_object(
+  pg_temp.h11w_fid('title')::text, 'Title two', pg_temp.h11w_fid('legal')::text, 'Legal two'));
+select set_config('app.cms_rpc', 'true', true);
+create temp table l12g_src2 on commit drop as select pg_temp.l12_source() as id;
+select is(pg_temp.l12g_gate((select id from l12g_src2), 'submit'), 'passed/-/0',
+  'a source-locale revision with its no_fallback value passes [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_src2), 'publish'), 'passed/-/0',
+  'a revision with no locale variant needs no variant approval at publish [P2-S12-AC-240]');
+
+create temp table l12g_fr1 on commit drop as select pg_temp.l12g_variant(pg_temp.l12g_title('Titre un'), 'l12g-fr-0001') as id;
+select is(pg_temp.l12g_gate((select id from l12g_fr1), 'submit'), 'failed/no_fallback_missing/1',
+  'a translation that omits the no_fallback field blocks although the default locale holds it [P2-S12-AC-051]');
+select is(pg_temp.l12g_gate((select id from l12g_fr1), 'publish'), 'failed/no_fallback_missing/1',
+  'a blocking field outranks the approval check [P2-S12-AC-240]');
+
+create temp table l12g_fr2 on commit drop as select pg_temp.l12g_variant(pg_temp.l12g_title_legal('Titre deux', 'Mentions deux'), 'l12g-fr-0002') as id;
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'submit'), 'passed/-/0',
+  'a translation holding its no_fallback value passes at submit, where the revision is still a draft [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'schedule'), 'failed/locale_variant_not_approved/1',
+  'a locale variant whose revision is not approved fails schedule acceptance with locale_variant_not_approved [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'publish'), 'failed/locale_variant_not_approved/1',
+  'a locale variant whose revision is not approved fails publication with locale_variant_not_approved [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'execute'), 'failed/locale_variant_not_approved/1',
+  'a locale variant whose revision is not approved fails scheduled execution with locale_variant_not_approved (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'bogus'), '__error P0001:INVALID_REQUEST',
+  'a phase outside submit, schedule, publish and execute is an INVALID_REQUEST [P2-S12-AC-240]');
+
+select pg_temp.h11r_member('reviewer01', array['cms.reviewer']);
+select pg_temp.h11r_approved('l12g-rv-2', (select id from l12g_fr2),
+  (select response#>>'{entry,id}' from h11w_smoke_saved)::uuid);
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'publish'), 'passed/-/0',
+  'an approved locale revision passes publication [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'schedule'), 'passed/-/0',
+  'an approved locale revision passes schedule acceptance [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'execute'), 'passed/-/0',
+  'an approved locale revision passes scheduled execution (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'submit'), 'passed/-/0',
+  'submit never applies the approval check to an approved locale revision (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_state(), 'approved',
+  'a variant whose revision has an approved review is shown approved [P2-S12-AC-234]');
+
+create temp table l12g_fr3 on commit drop as select pg_temp.l12g_variant(pg_temp.l12g_title_legal('Titre trois', 'Mentions trois'), 'l12g-fr-0003') as id;
+select pg_temp.h11r_review('l12g-rv-3', jsonb_build_object('revision_id', (select id from l12g_fr3),
+  'entry_id', (response#>>'{entry,id}')::uuid)) from h11w_smoke_saved;
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12g_gate((select id from l12g_fr3), 'publish'), 'failed/locale_variant_not_approved/1',
+  'a submitted (open review) locale revision is not approved [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr3), 'schedule'), 'failed/locale_variant_not_approved/1',
+  'a submitted locale revision fails schedule acceptance (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr3), 'execute'), 'failed/locale_variant_not_approved/1',
+  'a submitted locale revision fails scheduled execution (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr3), 'submit'), 'passed/-/0',
+  'submit never applies the approval check to a submitted locale revision (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_state(), 'review',
+  'a variant whose revision has an open review (effective state submitted) is shown review [P2-S12-AC-234]');
+
+create temp table l12g_fr4 on commit drop as select pg_temp.l12g_variant(pg_temp.l12g_title_legal('Titre quatre', 'Mentions quatre'), 'l12g-fr-0004') as id;
+select pg_temp.h11r_review('l12g-rv-4', jsonb_build_object('revision_id', (select id from l12g_fr4),
+  'entry_id', (response#>>'{entry,id}')::uuid)) from h11w_smoke_saved;
+select pg_temp.h11r_assign('l12g-rv-4-asg', 'l12g-rv-4', 'reviewer01');
+select pg_temp.h11r_decide('l12g-rv-4-dec', 'l12g-rv-4', 'reviewer01', 'l12g-rv-4-asg', 'reject');
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12g_gate((select id from l12g_fr4), 'publish'), 'failed/locale_variant_not_approved/1',
+  'a rejected locale revision is not approved [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr4), 'schedule'), 'failed/locale_variant_not_approved/1',
+  'a rejected locale revision fails schedule acceptance (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr4), 'execute'), 'failed/locale_variant_not_approved/1',
+  'a rejected locale revision fails scheduled execution (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr4), 'submit'), 'passed/-/0',
+  'submit never applies the approval check to a rejected locale revision (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_state(), 'draft',
+  'a variant whose revision review was rejected is shown draft [P2-S12-AC-234]');
+
+-- ---- scheduled and published admitted (DEC-192; 03b effective state E2 and the derived variant state) --
+create or replace function pg_temp.l12g_effective(p_revision uuid)
+returns text
+language sql
+as $body$
+  select platform_private.cms_revision_effective_state(p_revision)
+$body$;
+
+create temp table l12g_fr6 on commit drop as select pg_temp.l12g_variant(pg_temp.l12g_title_legal('Titre six', 'Mentions six'), 'l12g-fr-0006') as id;
+select pg_temp.h11r_approved('l12g-rv-6', (select id from l12g_fr6),
+  (select response#>>'{entry,id}' from h11w_smoke_saved)::uuid);
+select pg_temp.h11r_raw_insert('platform_private.cms_publication_schedules',
+  pg_temp.s11_schedule_row(jsonb_build_object(
+    'id', extensions.gen_random_uuid(),
+    'entry_id', (select response#>>'{entry,id}' from h11w_smoke_saved)::uuid,
+    'revision_id', (select id from l12g_fr6), 'review_id', pg_temp.s11_id('l12g-rv-6'),
+    'created_by', pg_temp.s11_id('reviewer04'))));
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12g_effective((select id from l12g_fr6)), 'scheduled',
+  'an approved locale revision with a pending publish schedule has the effective state scheduled [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr6), 'execute'), 'passed/-/0',
+  'a scheduled locale revision passes scheduled execution, where it is scheduled by construction (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr6), 'publish'), 'passed/-/0',
+  'a scheduled locale revision passes publication (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr6), 'schedule'), 'passed/-/0',
+  'a scheduled locale revision passes schedule acceptance (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr6), 'submit'), 'passed/-/0',
+  'submit never applies the approval check to a scheduled locale revision (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_state(), 'approved',
+  'a variant whose revision is scheduled is shown approved, in agreement with the gate [P2-S12-AC-234]');
+
+create temp table l12g_fr7 on commit drop as select pg_temp.l12g_variant(pg_temp.l12g_title_legal('Titre sept', 'Mentions sept'), 'l12g-fr-0007') as id;
+select pg_temp.h11r_approved('l12g-rv-7', (select id from l12g_fr7),
+  (select response#>>'{entry,id}' from h11w_smoke_saved)::uuid);
+select pg_temp.h11r_raw_insert('platform_private.cms_publication_versions',
+  pg_temp.s11_publication_row(jsonb_build_object(
+    'id', 'a9200000-0000-4000-8000-0000000c0701'::uuid, 'publication_id', 'a9200000-0000-4000-8000-0000000c0701'::uuid,
+    'entry_id', (select response#>>'{entry,id}' from h11w_smoke_saved)::uuid,
+    'revision_id', (select id from l12g_fr7), 'locale', 'fr-FR',
+    'publisher_person_id', pg_temp.s11_id('reviewer04'))));
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12g_effective((select id from l12g_fr7)), 'published',
+  'a locale revision referenced by a publish lineage row has the effective state published [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr7), 'execute'), 'passed/-/0',
+  'a published locale revision passes scheduled execution (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr7), 'publish'), 'passed/-/0',
+  'a published locale revision passes publication (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr7), 'schedule'), 'passed/-/0',
+  'a published locale revision passes schedule acceptance (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_gate((select id from l12g_fr7), 'submit'), 'passed/-/0',
+  'submit never applies the approval check to a published locale revision (DEC-192) [P2-S12-AC-240]');
+select is(pg_temp.l12g_state(), 'approved',
+  'a variant whose revision is published is shown approved [P2-S12-AC-234]');
+
+-- ---- stale (AC051, AC052) --------------------------------------------------------------------
+select pg_temp.l12_source_edit(jsonb_build_object(
+  pg_temp.h11w_fid('title')::text, 'Title two', pg_temp.h11w_fid('legal')::text, 'Legal three'));
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'submit'), 'failed/no_fallback_stale/1',
+  'a revision translated against an older source value of the no_fallback field blocks with no_fallback_stale [P2-S12-AC-051]');
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'publish'), 'failed/no_fallback_stale/1',
+  'stale blocks a locale revision that was previously approved but is now invalidated, and outranks the approval check [P2-S12-AC-051]');
+select is(pg_temp.l12g_gate((select id from l12g_fr2), 'execute'), 'failed/no_fallback_stale/1',
+  'stale outranks the approval check at scheduled execution too (DEC-192) [P2-S12-AC-051]');
+select is(pg_temp.l12g_gate((select id from l12g_fr3), 'execute'), 'failed/no_fallback_stale/1',
+  'a stale locale revision that was previously submitted but is now invalidated reports no_fallback_stale at scheduled execution, so the stale branch outranks the approval check (DEC-192) [P2-S12-AC-051]');
+select is(pg_temp.l12g_gate((select id from l12g_fr1), 'execute'), 'failed/no_fallback_missing/1',
+  'missing outranks the approval check at scheduled execution (DEC-192) [P2-S12-AC-051]');
+create temp table l12g_fr5 on commit drop as select pg_temp.l12g_variant(pg_temp.l12g_title_legal('Titre cinq', 'Mentions cinq'), 'l12g-fr-0005') as id;
+select is(pg_temp.l12g_state(), 'draft',
+  'a revalidation appends a draft row that has no review yet and is shown draft, not approved [P2-S12-AC-234]');
+select is(pg_temp.l12g_gate((select id from l12g_fr5), 'submit'), 'passed/-/0',
+  'a revalidated translation against the current source passes again [P2-S12-AC-052]');
+select pg_temp.l12_source_edit(jsonb_build_object(
+  pg_temp.h11w_fid('title')::text, 'Title four', pg_temp.h11w_fid('legal')::text, 'Legal three'));
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12g_gate((select id from l12g_fr5), 'submit'), 'passed/-/0',
+  'a stale localized field never blocks: only the changed title went stale, the no_fallback value is current [P2-S12-AC-052]');
+
+-- ---- through the deployed evaluator (AC241) -------------------------------------------------
+create or replace function pg_temp.l12g_eval(p_revision uuid, p_phase text)
+returns jsonb
+language plpgsql
+as $body$
+begin
+  return platform_private.cms_evaluate_preflight(jsonb_build_object(
+    'phase', p_phase, 'revisionId', p_revision, 'actingPartyId', pg_temp.h11w_org(),
+    'actorPersonId', (select value::uuid from s10_ids where key = 'creatorPerson'),
+    'effectiveAt', platform_private.auth_iso_time(clock_timestamp() + interval '1 hour')));
+exception when others then
+  return jsonb_build_object('error', sqlstate || ':' || sqlerrm);
+end;
+$body$;
+create or replace function pg_temp.l12g_locale_result(p_report jsonb)
+returns text
+language sql
+as $body$
+  select coalesce(
+    (select r->>'outcome' || '/' || coalesce(r->>'reasonCode', '-') || '/' || (r->>'blockingCount')
+            || '/' || (r->>'providerKey') || '@' || (r->>'providerVersion')
+       from jsonb_array_elements(p_report->'results') r where r->>'category' = 'locale'),
+    'ERR ' || coalesce(p_report->>'error', 'no locale result'))
+$body$;
+select is(pg_temp.l12g_locale_result(pg_temp.l12g_eval((select id from l12g_fr1), 'submit')),
+  'failed/no_fallback_missing/1/cms.locale.no_fallback_gate@1',
+  'the deployed evaluator dispatches the locale category to the registered gate and reports its reason [P2-S12-AC-241]');
+select is(pg_temp.l12g_locale_result(pg_temp.l12g_eval((select id from l12g_fr5), 'submit')),
+  'passed/-/0/cms.locale.no_fallback_gate@1',
+  'a passing locale revision is reported passed with the registered provider [P2-S12-AC-241]');
+select is(pg_temp.l12g_locale_result(pg_temp.l12g_eval((select id from l12g_fr5), 'publish')),
+  'failed/locale_variant_not_approved/1/cms.locale.no_fallback_gate@1',
+  'the evaluator passes the phase to the gate [P2-S12-AC-241]');
+select is(
+  (select count(*)::integer from jsonb_array_elements(pg_temp.l12g_eval((select id from l12g_fr5), 'submit')->'results') r
+   where r->>'category' = 'locale' and r->>'outcome' = 'unavailable'),
+  0, 'the locale category never evaluates unavailable with provider_unavailable [P2-S12-AC-241]');

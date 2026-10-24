@@ -1,0 +1,17 @@
+-- Root-owned fresh ALT bootstrap control; standalone race is separately released.
+\ir ../support/jwt-claims.sqlinc
+commit;
+create extension if not exists pgtap with schema extensions;
+commit;
+begin;
+select plan(4);
+select ok(to_regprocedure('platform_api.cms_reconcile_taxonomy_merge_converge()') is not null,
+  'DEC194 race baseline has the real service sweep transport');
+select ok(to_regprocedure('platform_private.cms_request_taxonomy_merge_converge(uuid,uuid,uuid,uuid)') is not null,
+  'DEC194 race baseline has the real ordinary enqueue producer');
+select ok(to_regprocedure('platform_api.cms_run_taxonomy_merge_converge(jsonb)') is not null,
+  'DEC194 race baseline has the real fenced continuation transport');
+select is((select count(*)::integer from platform_private.cms_terms),0,
+  'DEC194 race starts from fresh synthetic ALT taxonomy storage');
+select * from finish();
+rollback;

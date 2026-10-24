@@ -1,0 +1,57 @@
+-- DEC-191 / CMS-03C-09 on the TAXONOMY subject kind: the producer is shared, the previous-version lookup is per kind
+-- (cms_taxonomy_versions).  A real vocabulary (the built `role` canonical domain) is created, submitted, assigned, approved and activated;
+-- its successor then supersedes it.  The pattern kind is driven by phase_02_slice_12_dec191_pattern.sql.
+select is(pg_temp.s12ga_grant('owner', 'cms.taxonomy_curator', 1), 'OK',
+  'control: the real CMS-03A-15 command grants the owner cms.taxonomy_curator [P2-S12-AC-082]');
+
+-- A real taxonomy draft (CMS-03C-14 create; successor when p_expected names the parent definition number), submitted, assigned and approved.
+create or replace function pg_temp.d191_tax_approved(p_tag text, p_expected text, p_fields jsonb) returns uuid language plpgsql as $body$
+declare v_response jsonb; v_review uuid;
+begin
+  perform pg_temp.s12ga_rpc('create:' || p_tag, 'platform_api.cms_create_taxonomy_version', 'owner',
+    jsonb_build_object('taxonomyKey', 's12gb-d191-tax', 'shape', 'flat',
+      'allowedTypeKeys', jsonb_build_array((select type_key from platform_private.cms_content_types
+                                              where id = (select value::uuid from s12gov_ids where key = 'typeA'))),
+      'allowedFieldKeys', p_fields, 'canonicalOverlapDomains', jsonb_build_array('role'),
+      'expectedVersion', p_expected, 'idempotencyKey', 's12ga-create-' || p_tag)
+    || case when p_expected is null then '{}'::jsonb else jsonb_build_object('ifMatch', p_expected) end);
+  v_response := pg_temp.s12ga_body('create:' || p_tag);
+  if v_response is null or v_response->>'id' is null then
+    raise exception 'dec191 fixture: the real taxonomy producer did not create %: %', p_tag, pg_temp.s12ga_out('create:' || p_tag);
+  end if;
+  insert into s12gov_ids(key, value) values (p_tag || ':subject', v_response->>'id');
+  perform pg_temp.s12ga_rpc('submit:' || p_tag, 'platform_api.cms_submit_governed_review', 'owner', jsonb_build_object(
+    'subjectKind', 'taxonomy_version', 'subjectId', v_response->>'id',
+    'subjectHash', (select content_hash::text from platform_private.cms_taxonomy_versions where id = (v_response->>'id')::uuid),
+    'idempotencyKey', 's12ga-submit-' || p_tag));
+  if pg_temp.s12ga_body('submit:' || p_tag)->>'id' is null then
+    raise exception 'dec191 fixture: the real submit producer failed for %: %', p_tag, pg_temp.s12ga_out('submit:' || p_tag);
+  end if;
+  v_review := (pg_temp.s12ga_body('submit:' || p_tag)->>'id')::uuid;
+  insert into s12gov_ids(key, value) values (p_tag || ':review', v_review::text);
+  perform pg_temp.s12ga_assign('as-' || p_tag, 'owner', v_review, 'rev1', interval '20 hours');
+  perform pg_temp.s12ga_decide('ap-' || p_tag, 'rev1', v_review, 'approve');
+  if (select state from platform_private.cms_governed_reviews where id = v_review) <> 'approved' then
+    raise exception 'dec191 fixture: % did not reach approved', p_tag;
+  end if;
+  return v_review;
+end;
+$body$;
+
+select pg_temp.d191_tax_approved('tx1', null, jsonb_build_array('s12gb_field'));
+select pg_temp.s12gb_act('tx1-act', 'owner', pg_temp.s12ga_review('tx1'), 'activate');
+select ok(pg_temp.s12ga_out('tx1-act') = 'ok' and pg_temp.d191_act_keys('tx1-act') = pg_temp.d191_activation_keys()
+    and pg_temp.s12ga_body('tx1-act')->>'subjectKind' = 'taxonomy_version'
+    and pg_temp.s12ga_body('tx1-act') ? 'supersededVersion' and pg_temp.s12ga_body('tx1-act')->'supersededVersion' = 'null'::jsonb,
+  'the first activation of a taxonomy lineage answers supersededVersion null [P2-S12-AC-082]');
+
+select pg_temp.d191_tax_approved('tx2', '1', jsonb_build_array('s12gb_field', 's12gb_field_two'));
+select pg_temp.s12gb_act('tx2-act', 'owner', pg_temp.s12ga_review('tx2'), 'activate');
+select ok(pg_temp.s12ga_out('tx2-act') = 'ok' and pg_temp.d191_act_keys('tx2-act') = pg_temp.d191_activation_keys()
+    and pg_temp.s12ga_body('tx2-act')->>'subjectKind' = 'taxonomy_version'
+    and pg_temp.s12ga_body('tx2-act')->'subjectVersion' = '2'::jsonb
+    and pg_temp.s12ga_body('tx2-act')->'supersededVersion' = '1'::jsonb
+    and pg_temp.s12ga_body('tx2-act')->>'eventType' = 'cms.taxonomy.changed.v1'
+    and (select v1.state = 'superseded' and v1.version = 1 from platform_private.cms_taxonomy_versions v1
+          where v1.id = pg_temp.s12ga_subject('tx1')),
+  'activating a taxonomy successor names the superseded taxonomy definition version 1 [P2-S12-AC-083]');

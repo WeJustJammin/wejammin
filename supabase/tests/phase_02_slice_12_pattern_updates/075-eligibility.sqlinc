@@ -1,0 +1,25 @@
+-- CMS-03C-15 eligibility (BE03c 1476, AC-120): accept needs a linked instance in state `pending_diff` or `active`; detach needs ANY linked
+-- instance.  Draft-state heads are a labelled fixture (020-world-adoption.sqlinc).  [AC-118, AC-120, AC-121]
+
+-- detach of a linked draft-state head is admitted: the appended row is an active detached row materializing the pinned tree
+select pg_temp.s12pu_update('e-dr1-detach', pg_temp.s12pu_update_request('dr1', 'detach', jsonb_build_array(pg_temp.s12pu_target('dr1', '/hero')), 's12pu-dr1-0001'));
+select * from pg_temp.s12puc_check('e-dr1-detach', 'dr1', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached',
+  'patternVersion', null, 'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H2'), pg_temp.s12puc_tnode(0, 'title', 'T2'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+-- accept of the same kind of head is NOT admitted: the spec names only pending_diff and active for accept
+select * from pg_temp.s12pu_refused('e-dr2-accept', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('dr2', 'accept', jsonb_build_array(pg_temp.s12pu_target('dr2', '/hero')), 's12pu-dr2-0001', 2),
+  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+-- a detached head is never eligible (it is no longer linked); a non-pattern row is no instance of any pattern
+select * from pg_temp.s12pu_refused('e-detached-again', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('dr1', 'detach', jsonb_build_array(pg_temp.s12pu_target('dr1', '/hero')), 's12pu-dr1-0002'),
+  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+
+-- detach admits any linked pattern-origin row that is the newest version of its path (DEC-193, BE03c Linked update): a head in the derived,
+-- history-only `superseded` state (labelled fixture sp1, 020-world-adoption) is detached too, materializing its pinned tree, while accept still
+-- refuses it (accept admits a linked `active` or `pending_diff` row).  [AC-120] (fix pass 2, R1; DEC-193)
+select pg_temp.s12pu_update('e-sp1-detach', pg_temp.s12pu_update_request('sp1', 'detach', jsonb_build_array(pg_temp.s12pu_target('sp1', '/hero')), 's12pu-sp1-0001'));
+select * from pg_temp.s12puc_check('e-sp1-detach', 'sp1', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached',
+  'patternVersion', null, 'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H2'), pg_temp.s12puc_tnode(0, 'title', 'T2'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+select * from pg_temp.s12pu_refused('e-sp1-accept', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('sp1', 'accept', jsonb_build_array(pg_temp.s12pu_target('sp1', '/hero')), 's12pu-sp1-0002', 2),
+  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);

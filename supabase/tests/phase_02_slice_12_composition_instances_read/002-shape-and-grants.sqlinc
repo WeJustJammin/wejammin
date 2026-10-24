@@ -1,0 +1,53 @@
+-- cmsCompositionInstancesRead function shape and grants (DEC-206; BE03c route registry, catalog, authority; tracker P2-S12-AC-261, AC-269).
+-- The keyset reader, the signed-cursor wrapper and the Worker transport follow the CMS-03C-13 precedent: reader definer-owned, empty
+-- search_path, the transport executable by service_role only, nothing by anon, authenticated or PUBLIC, no write and no lock.
+
+select has_function('platform_api', 'cms_list_composition_instances', array['jsonb'], 'cmsCompositionInstancesRead has a named platform API RPC [AC-261]');
+select has_function('platform_private', 'cms_list_composition_instances', array['jsonb'], 'the private keyset reader is a named function [AC-261]');
+select has_function('platform_private', 'cms_list_composition_instances_signed', array['jsonb'], 'the signed-cursor wrapper is a named private function (BE00 collection cursor) [AC-261]');
+-- SEC-2: the keyset reader names forced-RLS CMS tables, so the CMS definer owns it.  The signed wrapper and the API transport stay with the
+-- migration owner, the only role that may reach the Vault cursor helpers (the CMS-03C-13 precedent, 20261014140300/310).
+select ok(coalesce((select bool_and(p.prosecdef and coalesce(p.proconfig, array[]::text[]) @> array['search_path=""'])
+                    from pg_proc p where p.oid in (to_regprocedure('platform_api.cms_list_composition_instances(jsonb)'),
+                                                   to_regprocedure('platform_private.cms_list_composition_instances_signed(jsonb)'),
+                                                   to_regprocedure('platform_private.cms_list_composition_instances(jsonb)'))), false),
+  'the transport, the signed wrapper and the keyset reader are SECURITY DEFINER with an empty search_path [AC-261]');
+select is((select pg_get_userbyid(proowner)::text from pg_proc where oid = to_regprocedure('platform_private.cms_list_composition_instances(jsonb)')),
+  'wejammin_cms_definer', 'the keyset reader is owned by the CMS definer (forced-RLS tables) [AC-261]');
+select ok(coalesce((select bool_and(pg_get_userbyid(proowner)::text <> 'wejammin_cms_definer') from pg_proc
+                     where oid in (to_regprocedure('platform_api.cms_list_composition_instances(jsonb)'),
+                                   to_regprocedure('platform_private.cms_list_composition_instances_signed(jsonb)'))), false),
+  'the signed wrapper and the transport stay with the migration owner: only it reaches the Vault cursor helpers [AC-261]');
+select ok(coalesce((select has_function_privilege('service_role', p.oid, 'execute')
+                        and not has_function_privilege('anon', p.oid, 'execute')
+                        and not has_function_privilege('authenticated', p.oid, 'execute')
+                        and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+                                         where acl.grantee = 0 and acl.privilege_type = 'EXECUTE')
+                   from pg_proc p where p.oid = to_regprocedure('platform_api.cms_list_composition_instances(jsonb)')), false),
+  'the Worker transport is executable by service_role only: nothing for anon, authenticated or PUBLIC [AC-261]');
+select ok(coalesce((select bool_and(not has_function_privilege(r, f, 'execute'))
+                    from unnest(array['public', 'anon', 'authenticated', 'service_role']) r,
+                         unnest(array[to_regprocedure('platform_private.cms_list_composition_instances(jsonb)'),
+                                      to_regprocedure('platform_private.cms_list_composition_instances_signed(jsonb)')]) f), false),
+  'the keyset reader and the signed wrapper are closed to every API role: only the transport reaches them [AC-261]');
+select is((select count(*)::integer from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+            where ns.nspname in ('platform_api', 'platform_private') and proc.proname = 'cms_list_composition_instances'), 2,
+  'exactly one private reader and one transport overload exist [AC-261]');
+select is(pg_temp.s12pl_q($$select pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_list_composition_instances(jsonb)')) !~* '\m(insert|update|delete)\s+(into|platform_private|from)'$$),
+  'true', 'the reader contains no insert, update or delete statement: a read writes nothing [AC-269]');
+select is(pg_temp.s12pl_q($$select pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_list_composition_instances(jsonb)')) !~* 'for (update|share)'$$),
+  'true', 'the reader takes no row lock: a read locks nothing [AC-269]');
+-- The ACL probes: the real anon and authenticated database roles cannot execute the transport; the call writes nothing.
+select pg_temp.s12ci_read('acl-anon', 'ord1', null, 'owner', 'anon');
+select pg_temp.s12ci_read('acl-authenticated', 'ord1', null, 'owner', 'authenticated');
+select is(pg_temp.s12ci_state('acl-anon') || '/' || pg_temp.s12ci_state('acl-authenticated'), '42501/42501',
+  'the real anon and authenticated database roles cannot execute the transport [AC-261]');
+select ok((select bool_and(before_rows = after_rows and call_role = requested_role) from s12ci_out where label like 'acl-%'),
+  'the ACL probes ran as those roles and wrote nothing');
+
+-- The signing environment is part of the contract (BE00 signed cursor): without a valid Vault key there is no page, signed or unsigned.
+select pg_temp.s12ci_read('nokey', 'ord1');
+select is(pg_temp.s12ci_state('nokey') || ':' || (select message from s12ci_out where label = 'nokey'), 'P0001:DEPENDENCY_UNAVAILABLE',
+  'without a valid Vault signing key the read fails closed: DEPENDENCY_UNAVAILABLE, never an unsigned page [AC-269]');
+-- This fixed key exists only inside the rolled-back pgTAP transaction; it is never an operational signing value.
+select vault.create_secret(repeat('c3', 32), 'cms_editorial_history_cursor_active', 'pgTAP transaction-only composition instances test key');

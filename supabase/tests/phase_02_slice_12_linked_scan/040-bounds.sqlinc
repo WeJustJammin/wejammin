@@ -1,0 +1,94 @@
+-- Slice 12 linked-update scan: the bound of 500 instances per run with a continuation cursor, idempotent across the whole list.
+-- BE03c "Linked update": "500 instances per run with a continuation cursor, idempotent"; "Slice 12 lock order": "taking entries in ascending
+-- entry id order within a run of at most 500 instances".  [P2-S12-AC-213]
+-- The lineage ls-big places 39 real rows per placement (31 block roots and a nested pattern reference that expands to 8 more, DEC-181);
+-- 14 placements are 546 instances, so one run of 500 must hand back a cursor and a second run must finish the 46 that are left.
+-- The lineage ls-mid places 2 entries (78 rows) and is scanned with batch 25, so the cursor lands INSIDE an entry.
+
+select * from pg_temp.s12pl_pattern('lp8', 'ls-p8', (
+  select jsonb_agg(pg_temp.s12pd_block('extra' || n, '[]'::jsonb, '{"title":"X1"}'::jsonb) order by n) from generate_series(1, 8) n));
+select * from pg_temp.s12pl_pattern('lbig1', 'ls-big', (
+  select jsonb_agg(pg_temp.s12pd_block('root' || n, '[]'::jsonb, '{"title":"P1"}'::jsonb) order by n) from generate_series(1, 31) n)
+  || jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'more', 'patternId', pg_temp.s12pd_body('lp8')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('lp8')->'patternVersion')));
+select * from pg_temp.s12pl_pattern('lmid1', 'ls-mid', (
+  select jsonb_agg(pg_temp.s12pd_block('root' || n, '[]'::jsonb, '{"title":"M1"}'::jsonb) order by n) from generate_series(1, 31) n)
+  || jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'more', 'patternId', pg_temp.s12pd_body('lp8')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('lp8')->'patternVersion')));
+select placed.* from generate_series(1, 14) n cross join lateral pg_temp.s12pu_place('bg' || n, 'lbig1') placed;
+select placed.* from generate_series(1, 2) n cross join lateral pg_temp.s12pu_place('md' || n, 'lmid1') placed;
+select * from pg_temp.s12pl_pattern('lbig2', 'ls-big', (
+  select jsonb_agg(pg_temp.s12pd_block('root' || n, '[]'::jsonb, '{"title":"P2"}'::jsonb) order by n) from generate_series(1, 31) n)
+  || jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'more', 'patternId', pg_temp.s12pd_body('lp8')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('lp8')->'patternVersion')), null, true, '1');
+select * from pg_temp.s12pl_pattern('lmid2', 'ls-mid', (
+  select jsonb_agg(pg_temp.s12pd_block('root' || n, '[]'::jsonb, '{"title":"M2"}'::jsonb) order by n) from generate_series(1, 31) n)
+  || jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'more', 'patternId', pg_temp.s12pd_body('lp8')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('lp8')->'patternVersion')), null, true, '1');
+
+-- the candidate order the spec fixes: ascending entry id, then bytewise path, over every linked head of the lineage
+create temp table s12ls_order(lineage text, rn integer, entry_id uuid, path text, primary key (lineage, rn)) on commit drop;
+insert into s12ls_order
+select lineage, row_number() over (partition by lineage order by revision.entry_id, instance.path collate "C"), revision.entry_id, instance.path
+  from (select 'big' as lineage, instance.* from platform_private.cms_composition_instances instance
+         where instance.pattern_id = (pg_temp.s12pd_body('lbig1')->>'patternId')::uuid
+        union all
+        select 'mid', instance.* from platform_private.cms_composition_instances instance
+         where instance.pattern_id = (pg_temp.s12pd_body('lmid1')->>'patternId')::uuid) instance
+  join platform_private.cms_entry_revisions revision on revision.id = instance.revision_id;
+select is((select count(*)::integer from s12ls_order where lineage = 'big'), 546, 'setup: 14 real placements wrote 546 linked rows of ls-big');
+select is((select count(*)::integer from s12ls_order where lineage = 'mid'), 78, 'setup: 2 real placements wrote 78 linked rows of ls-mid');
+select pg_temp.s12ls_mark();
+
+-- ----------------------------------------------------------------------------------------------------- 546 instances, two runs --
+select pg_temp.s12ls_call('big1', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('lbig2'), 'service_role', false);
+select is(pg_temp.s12ls_state('big1'), '00000', 'the first run over 546 instances succeeds');
+select is((pg_temp.s12ls_body('big1')->>'examined') || '/' || (pg_temp.s12ls_body('big1')->>'appended'), '500/500',
+  'the first run takes exactly 500 instances and appends 500 rows: the bound of AC-213');
+select ok(pg_temp.s12ls_body('big1')->>'nextCursor' ~ '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}\.[0-9a-f]+$'
+    and length(split_part(pg_temp.s12ls_body('big1')->>'nextCursor', '.', 2)) between 2 and 1024,
+  'the run hands back an opaque continuation cursor (entry id and hex-encoded path)');
+select is(pg_temp.s12ls_appended(), 500::bigint, 'exactly 500 rows exist after the first run');
+select is((select count(*)::integer from s12ls_order ordered join platform_private.cms_composition_instances instance
+            on instance.revision_id = (select id from platform_private.cms_entry_revisions where entry_id = ordered.entry_id and revision_number = 1)
+           and instance.path = ordered.path and instance.state = 'pending_diff' where ordered.lineage = 'big' and ordered.rn <= 500), 500,
+  'the 500 rows are the first 500 candidates in ascending entry id then bytewise path order');
+select is((select count(*)::integer from s12ls_order ordered join platform_private.cms_composition_instances instance
+            on instance.revision_id = (select id from platform_private.cms_entry_revisions where entry_id = ordered.entry_id and revision_number = 1)
+           and instance.path = ordered.path and instance.state = 'pending_diff' where ordered.lineage = 'big' and ordered.rn > 500), 0,
+  'and none of the remaining 46 was touched');
+select pg_temp.s12ls_call('big2', 'platform_api.cms_scan_linked_pattern_updates',
+  pg_temp.s12ls_req('lbig2', pg_temp.s12ls_body('big1')->>'nextCursor'), 'service_role', false);
+select is(pg_temp.s12ls_sum('big2'), '46/46/end', 'the continuation takes the remaining 46 and ends');
+select is(pg_temp.s12ls_appended(), 546::bigint, '546 rows exist after the second run, one per instance');
+select is(pg_temp.s12ls_conforming(2), 546::bigint, 'all 546 follow the contract of the scan (pending_pattern_version 2, pin unchanged, copy of the head)');
+select ok(pg_temp.s12ls_history_intact(), 'no earlier row changed');
+select is((select count(*)::integer from (select revision_id, path from platform_private.cms_composition_instances
+            where state = 'pending_diff' and pattern_id = (pg_temp.s12pd_body('lbig1')->>'patternId')::uuid
+            group by revision_id, path having count(*) > 1) duplicated), 0, 'no instance received two pending rows');
+select pg_temp.s12ls_call('big3', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('lbig2'), 'service_role', false);
+select is(pg_temp.s12ls_sum('big3'), '0/0/end',
+  'a re-delivery from the start of the list appends nothing, though 546 instances are linked and older [AC-213]');
+select is(pg_temp.s12ls_appended(), 546::bigint, 'and the row count is unchanged');
+
+-- ------------------------------------------------------------------------------------------- a cursor that splits an entry --
+select pg_temp.s12ls_mark();
+select pg_temp.s12ls_call('mid1', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('lmid2') || '{"batch":25}'::jsonb, 'service_role', false);
+select is(pg_temp.s12ls_sum('mid1'), '25/25/more', 'batch 25: the first run appends 25 and continues');
+select is(pg_temp.s12ls_appended(), 25::bigint, '25 rows exist after the first run');
+select pg_temp.s12ls_call('mid2', 'platform_api.cms_scan_linked_pattern_updates',
+  pg_temp.s12ls_req('lmid2', pg_temp.s12ls_body('mid1')->>'nextCursor') || '{"batch":25}'::jsonb, 'service_role', false);
+select is(pg_temp.s12ls_sum('mid2'), '25/25/more', 'the second run resumes inside the first entry (39 rows) and crosses into the second');
+select is(pg_temp.s12ls_appended(), 50::bigint, '50 rows exist after the second run');
+select pg_temp.s12ls_call('mid3', 'platform_api.cms_scan_linked_pattern_updates',
+  pg_temp.s12ls_req('lmid2', pg_temp.s12ls_body('mid2')->>'nextCursor') || '{"batch":25}'::jsonb, 'service_role', false);
+select is(pg_temp.s12ls_sum('mid3'), '25/25/more', 'the third run appends 25 more and still has instances left');
+select pg_temp.s12ls_call('mid4', 'platform_api.cms_scan_linked_pattern_updates',
+  pg_temp.s12ls_req('lmid2', pg_temp.s12ls_body('mid3')->>'nextCursor') || '{"batch":25}'::jsonb, 'service_role', false);
+select is(pg_temp.s12ls_sum('mid4'), '3/3/end', 'the fourth run appends the last 3 and ends');
+select is(pg_temp.s12ls_appended(), 78::bigint, 'all 78 instances have exactly one pending row: none skipped, none repeated across the cursor');
+select is(pg_temp.s12ls_conforming(2), 78::bigint, 'all 78 follow the contract of the scan');
+select is((select count(*)::integer from s12ls_order ordered join platform_private.cms_composition_instances instance
+            on instance.revision_id = (select id from platform_private.cms_entry_revisions where entry_id = ordered.entry_id and revision_number = 1)
+           and instance.path = ordered.path and instance.state = 'pending_diff' where ordered.lineage = 'mid'), 78,
+  'every candidate of the lineage, in the order the spec fixes, ended up with its pending row');

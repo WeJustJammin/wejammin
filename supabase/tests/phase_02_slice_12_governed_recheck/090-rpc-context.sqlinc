@@ -1,0 +1,101 @@
+-- Review V4-04 (PAT-031): every OUTERMOST entry point of this lane's migrations, called with app.cms_rpc CLEARED, as its real caller role,
+-- must (a) reach real rows of the forced-RLS tables it reads (a non-zero effect, not an empty answer), and (b) leave the caller's value of the
+-- flag as it found it.  Every earlier section ran in a transaction whose fixtures leave the flag set, which is exactly how a read that forgets
+-- to set it stays invisible (SEC-2; model phase_02_slice_12_fix_template_reads_rpc_context.sql).  The private recheck, the verdict and the
+-- event reference are reachable only through their wrappers and are covered through them.
+--   service_role wrappers : cms_recheck_governed_reviews, cms_governed_recheck_resolve_event
+--   direct private entry  : cms_invalidate_governed_reviews_for_person (the trigger bodies' callee)
+--   triggers              : the actor-grant trigger and the tenure trigger, fired by a write to their table
+-- Labelled fixtures: the lag fixture (a calendar lapse for the person-level call and the recheck), and the direct writes of 080 and 085 for
+-- the two triggers (no command rewrites the projection term or ends an ungoverned tenure).
+create temp table s12v4_probe_out(label text primary key, ran_as text, result text, flag_after text, error text) on commit drop;
+create or replace function pg_temp.s12v4_probe(p_label text, p_role text, p_call text) returns void language plpgsql as $body$
+declare v_role text := current_setting('role'); v_user text; v_result text; v_error text;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', '', true);
+  if p_role is not null then
+    execute 'set local role ' || quote_ident(p_role);
+  end if;
+  v_user := current_user;
+  begin
+    execute p_call into v_result;
+  exception when others then
+    v_error := sqlstate || ':' || sqlerrm;
+  end;
+  perform pg_catalog.set_config('role', v_role, true);
+  insert into s12v4_probe_out(label, ran_as, result, flag_after, error)
+  values (p_label, v_user, v_result, coalesce(pg_catalog.current_setting('app.cms_rpc', true), '<null>'), v_error);
+end;
+$body$;
+create or replace function pg_temp.s12v4_leaky() returns text language plpgsql as $body$
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  return 'leaked';
+end;
+$body$;
+
+-- negative control: the probe sees a call that leaves the flag set
+select pg_temp.s12v4_probe('leak', null, 'select pg_temp.s12v4_leaky()');
+select ok((select flag_after = 'true' and result = 'leaked' and error is null from s12v4_probe_out where label = 'leak'),
+  'negative control: the probe reports a call that leaves app.cms_rpc = true (it sees a leak) [PAT-031]');
+select pg_temp.s12v4_probe('clean', null, 'select ''noop''');
+select ok((select flag_after = '' from s12v4_probe_out where label = 'clean'),
+  'negative control: a call that touches nothing is reported with the cleared flag untouched [PAT-031]');
+
+-- fixtures: cx1 lags designer2 (recheck), tn5 / tn6 / tn7 of 080 are approved reviews of x10 / x11 / x12 that are still live
+select pg_temp.s12gb_approved('cx1', array['typeA'], 'designer2');
+select pg_temp.s12gr_mark('cx1', 'cx1');
+select ok((select count(*) = 3 and bool_and(review.state = 'approved' and review.activated_at is null)
+             from platform_private.cms_governed_reviews review
+            where review.id in (pg_temp.s12ga_review('tn5'), pg_temp.s12ga_review('tn6'), pg_temp.s12ga_review('tn7')))
+    and pg_temp.s12gr_untouched('tn5', 'tn5') and pg_temp.s12gr_untouched('tn6', 'tn6') and pg_temp.s12gr_untouched('tn7', 'tn7'),
+  'fixture: tn5, tn6 and tn7 (counted on by x10, x11 and x12) are untouched live approved reviews [PAT-031]');
+
+-- 1. platform_api.cms_recheck_governed_reviews as service_role, flag cleared, over a lagging approval
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('designer2'), 'cms.reviewer');
+select pg_temp.s12v4_probe('recheck', 'service_role', format('select platform_api.cms_recheck_governed_reviews(%L::jsonb)::text',
+  jsonb_build_object('eventId', extensions.gen_random_uuid(), 'kind', 'content_type', 'refId', pg_temp.s12gr_type_a_active(), 'cursor', null)::text));
+select pg_temp.s12fr_restore();
+select ok((select ran_as = 'service_role' and error is null and flag_after = ''
+                  and (result::jsonb->>'examined')::integer >= 1 and (result::jsonb->>'reviewerAuthorityChanged')::integer >= 1
+                  and (result::jsonb->>'unavailable')::integer = 0
+             from s12v4_probe_out where label = 'recheck')
+    and pg_temp.s12gr_invalidated('cx1', 'cx1', 'reviewer_authority_changed'),
+  'platform_api.cms_recheck_governed_reviews, called as service_role with the flag cleared, examines real live reviews, invalidates the lagging one (cx1) and leaves the flag cleared [PAT-031]');
+
+-- 2. platform_api.cms_governed_recheck_resolve_event as service_role, flag cleared, over a real committed event
+select pg_temp.s12v4_probe('resolve', 'service_role', format('select platform_api.cms_governed_recheck_resolve_event(%L::uuid)::text',
+  (pg_temp.s12gr_latest_event('cms.schema.activated.v1')).id));
+select ok((select ran_as = 'service_role' and error is null and flag_after = ''
+                  and (result::jsonb->>'found')::boolean and result::jsonb->>'kind' = 'content_type'
+                  and result::jsonb->>'refId' = (pg_temp.s12gr_latest_event('cms.schema.activated.v1')).payload->>'schemaVersionId'
+             from s12v4_probe_out where label = 'resolve'),
+  'platform_api.cms_governed_recheck_resolve_event, called as service_role with the flag cleared, finds the real committed event row and leaves the flag cleared [PAT-031]');
+
+-- 3. cms_invalidate_governed_reviews_for_person called directly, flag cleared, over a lagging approval of x12
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x12'), 'cms.reviewer');
+select pg_temp.s12v4_probe('person', null, format('select platform_private.cms_invalidate_governed_reviews_for_person(%L::uuid, null)::text',
+  pg_temp.s12ga_person('x12')));
+select pg_temp.s12fr_restore();
+select ok((select error is null and flag_after = '' and result = '1' from s12v4_probe_out where label = 'person')
+    and pg_temp.s12gr_invalidated('tn7', 'tn7', 'reviewer_authority_changed'),
+  'cms_invalidate_governed_reviews_for_person, called with the flag cleared, finds the lagging approval of x12, invalidates tn7 and leaves the flag cleared [PAT-031]');
+
+-- 4. the actor-grant trigger, fired by the write that ends the term of x10's grant, flag cleared
+select pg_temp.s12v4_probe('grant-trigger', null, format($q$with changed as (
+    update identity_private.organization_actor_grant set valid_from = current_date - 5, valid_through = current_date - 1
+     where organization_id = %L and person_id = %L and capability_code = 'cms.reviewer' returning 1)
+  select count(*)::text from changed$q$, pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x10')));
+select ok((select error is null and flag_after = '' and result = '1' from s12v4_probe_out where label = 'grant-trigger')
+    and pg_temp.s12gr_invalidated('tn5', 'tn5', 'reviewer_authority_changed'),
+  'the actor-grant trigger, fired with the flag cleared, reaches the governed rows (tn5 invalidated reviewer_authority_changed) and leaves the flag cleared [PAT-031]');
+
+-- 5. the tenure trigger, fired by the end of x11's tenure, flag cleared
+select pg_temp.s12v4_probe('tenure-trigger', null, format($q$with changed as (
+    update identity_private.membership_tenure
+       set state = 'ended', revoked_at = pg_catalog.clock_timestamp(), updated_at = pg_catalog.clock_timestamp()
+     where organization_id = %L and person_id = %L and state = 'confirmed' returning 1)
+  select count(*)::text from changed$q$, pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x11')));
+select ok((select error is null and flag_after = '' and result = '1' from s12v4_probe_out where label = 'tenure-trigger')
+    and pg_temp.s12gr_invalidated('tn6', 'tn6', 'reviewer_authority_changed'),
+  'the tenure trigger, fired with the flag cleared, reaches the governed rows (tn6 invalidated reviewer_authority_changed) and leaves the flag cleared [PAT-031]');

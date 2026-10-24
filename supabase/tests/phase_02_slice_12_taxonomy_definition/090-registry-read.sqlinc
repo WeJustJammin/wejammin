@@ -1,0 +1,74 @@
+-- CMS-03C-16 reads the canonical domain registry at create (BE03c:178 route row, D10/DEC-135 at 1375): every declared
+-- domain must have a current registry row, and a registered domain with no provider (unbuilt) is still ACCEPTED.
+-- Proof that the producer consults the registry rather than a hardcoded list: inside an always-rolled-back
+-- sub-transaction the pinned reader is replaced by a copy that hides one registered domain; the producer must then
+-- refuse a vocabulary that declares it and still accept one that does not. The registry rows, the reader and every
+-- guard are untouched afterwards; nothing here disables a trigger or forges a row.
+create function pg_temp.s12td_registry_probe(p_hidden text, p_other text) returns jsonb language plpgsql as $body$
+declare
+  refused text := '00000:'; accepted text := '00000:'; state text; msg text; det text;
+begin
+  begin
+    execute format($ddl$
+      create or replace function platform_private.cms_canonical_domain_current(p_domain text)
+      returns table(registry_id uuid, provider_state text, provider_key text, provider_version bigint)
+      language sql stable security definer set search_path = ''
+      as $fn$
+        select registry.id, registry.provider_state, registry.provider_key, registry.provider_version
+          from platform_private.cms_canonical_domain_registry registry
+         where registry.domain = p_domain and registry.domain <> %L
+         order by registry.version desc limit 1
+      $fn$$ddl$, p_hidden);
+    begin
+      perform platform_private.cms_create_taxonomy_version(pg_temp.s12td_request(
+        's12td-regprobe-a', 's12td-regprobe-hidden',
+        jsonb_build_object('canonicalOverlapDomains', jsonb_build_array(p_hidden))));
+    exception when others then
+      get stacked diagnostics state = returned_sqlstate, msg = message_text, det = pg_exception_detail;
+      refused := state || ':' || msg || ':' || coalesce(det, '');
+    end;
+    begin
+      perform platform_private.cms_create_taxonomy_version(pg_temp.s12td_request(
+        's12td-regprobe-b', 's12td-regprobe-other',
+        jsonb_build_object('canonicalOverlapDomains', jsonb_build_array(p_other))));
+    exception when others then
+      get stacked diagnostics state = returned_sqlstate, msg = message_text;
+      accepted := state || ':' || msg;
+    end;
+    raise exception 'S12TD_UNDO';
+  exception when others then
+    get stacked diagnostics msg = message_text;
+    if msg <> 'S12TD_UNDO' then raise; end if;
+  end;
+  return jsonb_build_object('refused', refused, 'accepted', accepted);
+end;
+$body$;
+
+select pg_temp.s12td_as('A');
+create temp table s12td_registry_before on commit drop as
+select md5(p.prosrc) as source_hash, pg_get_userbyid(p.proowner) as owner, p.proacl::text as acl,
+       (select count(*) from platform_private.cms_canonical_domain_registry) as registry_rows
+  from pg_proc p where p.oid = 'platform_private.cms_canonical_domain_current(text)'::regprocedure;
+create temp table s12td_registry_probes on commit drop as
+select 'gear-hidden' as label, pg_temp.s12td_registry_probe('gear', 'role') as outcome
+union all
+select 'role-hidden', pg_temp.s12td_registry_probe('role', 'gear');
+
+select is((select outcome->>'refused' from s12td_registry_probes where label = 'gear-hidden'),
+  'P0001:VALIDATION_FAILED:["/canonicalOverlapDomains"]',
+  'registry read: a declared domain with no current registry row is refused at its pointer');
+select is((select outcome->>'accepted' from s12td_registry_probes where label = 'gear-hidden'), '00000:',
+  'registry read: a vocabulary declaring only registered domains is still created (control)');
+select is((select outcome->>'refused' from s12td_registry_probes where label = 'role-hidden'),
+  'P0001:VALIDATION_FAILED:["/canonicalOverlapDomains"]',
+  'registry read: the built domain is refused too when the registry has no row for it');
+select is((select outcome->>'accepted' from s12td_registry_probes where label = 'role-hidden'), '00000:',
+  'registry read: a registered but unbuilt domain is accepted at creation (DEC-135, control)');
+select is((select jsonb_build_object('source_hash', md5(p.prosrc), 'owner', pg_get_userbyid(p.proowner),
+    'acl', p.proacl::text, 'registry_rows', (select count(*) from platform_private.cms_canonical_domain_registry))
+  from pg_proc p where p.oid = 'platform_private.cms_canonical_domain_current(text)'::regprocedure),
+  (select to_jsonb(b) from s12td_registry_before b),
+  'registry read: the probes leave the pinned reader, its owner and ACL, and every registry row unchanged');
+select ok(position('cms_canonical_domain_current' in (select p.prosrc from pg_proc p
+    where p.oid = 'platform_private.cms_create_taxonomy_version(jsonb)'::regprocedure)) > 0,
+  'registry read: the producer names the pinned registry reader');

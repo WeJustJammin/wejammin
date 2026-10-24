@@ -1,0 +1,61 @@
+-- CMS-03C-19 setup: real standing grants and real scheduled governed activations.  Every schedule is accepted by the real
+-- CMS-03C-09 producer at least 62 s ahead and the suite really waits for it to fall due: no clock is forged and no trigger disabled.
+--   ex0  v1 of a lineage, activated immediately        ex1  v2 of that lineage, scheduled (the execution supersedes ex0)
+--   e2   scheduled, executed twice (already_completed)  e3   bound to typeA, whose active version later changes
+--   ea   scheduled by rev2 whose designer grant is later revoked                e5   executed once under a policy-evidence fault
+--   ec   scheduled, then cancelled by the invalidation of its review            ef   scheduled ten minutes ahead (never due)
+create temp table s12gb_setup(key text primary key, outcome text not null) on commit drop;
+insert into s12gb_setup(key, outcome) values
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 1)),
+  ('rev2:designer', pg_temp.s12ga_grant('rev2', 'cms.template_designer', 1)),
+  ('designer2:reviewer', pg_temp.s12ga_grant('designer2', 'cms.reviewer', 1));
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2');
+
+select pg_temp.s12gb_approved('ex0');
+select pg_temp.s12gb_act('act-ex0', 'owner', pg_temp.s12ga_review('ex0'), 'activate');
+select pg_temp.s12gb_successor('ex1', 'ex0', array['typeA']);
+select pg_temp.s12gb_approve('ex1');
+select pg_temp.s12gb_approved('e2');
+select pg_temp.s12gb_approved('ea');
+select pg_temp.s12gb_approved('e5');
+select pg_temp.s12gb_approved('ec');
+select pg_temp.s12gb_approved('ef');
+select pg_temp.s12gb_approved('e3');
+
+create temp table s12gb_clock(started timestamptz not null) on commit drop;
+insert into s12gb_clock(started) values (clock_timestamp());
+select pg_temp.s12gb_act('sch-ex1', 'owner', pg_temp.s12ga_review('ex1'), 'schedule', p_after => interval '62 seconds');
+select pg_temp.s12gb_act('sch-ec', 'owner', pg_temp.s12ga_review('ec'), 'schedule', p_after => interval '62 seconds');
+select pg_temp.s12gb_act('sch-e2', 'owner', pg_temp.s12ga_review('e2'), 'schedule', p_after => interval '64 seconds');
+select pg_temp.s12gb_act('sch-e3', 'owner', pg_temp.s12ga_review('e3'), 'schedule', p_after => interval '66 seconds');
+select pg_temp.s12gb_act('sch-ea', 'rev2', pg_temp.s12ga_review('ea'), 'schedule', p_after => interval '68 seconds');
+select pg_temp.s12gb_act('sch-e5', 'owner', pg_temp.s12ga_review('e5'), 'schedule', p_after => interval '70 seconds');
+select pg_temp.s12gb_act('sch-ef', 'owner', pg_temp.s12ga_review('ef'), 'schedule', p_after => interval '600 seconds');
+
+select ok((select count(*) = 4 and bool_and(outcome = 'OK') from s12gb_setup),
+  'fixture: rev1, rev2, designer2 hold cms.reviewer and rev2 holds cms.template_designer through the real CMS-03A-15 command [P2-S12-AC-148]');
+select ok(
+  (select count(*) = 7 and bool_and(pg_temp.s12ga_out('sch-' || t) = 'ok') from unnest(array['ex1', 'ec', 'e2', 'e3', 'ea', 'e5', 'ef']) t)
+  and (select count(*) = 7 and bool_and(schedule.state = 'pending' and schedule.version = 1 and schedule.attempt_count = 0
+            and schedule.lease_id is null and schedule.expected_version = 2)
+        from platform_private.cms_governed_activation_schedules schedule)
+  and (select count(*) = 7 and bool_and(subject.state = 'scheduled' and subject.lifecycle_version = 4)
+         from platform_private.cms_template_versions subject
+        where subject.id in (select pg_temp.s12ga_subject(t) from unnest(array['ex1', 'ec', 'e2', 'e3', 'ea', 'e5', 'ef']) t)),
+  'fixture: seven real pending schedules were accepted (version 1, no lease) and their subjects are scheduled at lifecycle 4 [P2-S12-AC-148]');
+select ok(
+  (select state = 'active' and lifecycle_version = 4 from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('ex0'))
+  and (select created_by = pg_temp.s12ga_person('rev2') from platform_private.cms_governed_activation_schedules
+        where review_id = pg_temp.s12ga_review('ea'))
+  and (select count(*) = 1 from platform_private.outbox_events
+        where event_type = 'cms.template.activated.v1' and aggregate_id = pg_temp.s12ga_subject('ex0')),
+  'fixture: ex0 is really active (one activation event), and the ea schedule was created by rev2 [P2-S12-AC-148]');
+select has_function('platform_private', 'cms_claim_due_governed_activations', array['jsonb'],
+  'CMS-03C-19 has a private claim function [P2-S12-AC-148]');
+select has_function('platform_private', 'cms_execute_governed_activation', array['jsonb'],
+  'CMS-03C-19 has a private execute function [P2-S12-AC-148]');
+select has_function('platform_api', 'cms_claim_due_governed_activations', array['jsonb'],
+  'CMS-03C-19 has a platform API claim wrapper for the Worker scheduled sweep [P2-S12-AC-148]');
+select has_function('platform_api', 'cms_execute_governed_activation', array['jsonb'],
+  'CMS-03C-19 has a platform API execute wrapper for the Worker scheduled sweep [P2-S12-AC-148]');

@@ -1,0 +1,86 @@
+-- The routing scan of the recovery sweep locks only parties that can still need a recovery (review R2-03; BE03c "Slice 12 lock order":
+-- "the sweep takes only that mutex, parties in ascending id", DEC-212).  Transaction-scoped advisory locks last to commit, and failed Jobs are
+-- never purged, so a scan that locked every party that EVER had a failed Job would hold an ever-growing lock set each minute.  The routing
+-- scan therefore keeps a party only if its failed head (the latest failed job of the type) is not yet marked in
+-- platform_private.taxonomy_merge_recoveries and the party has no queued or running job of the type; the post-lock re-selection stays the
+-- authority (a routed party is still re-tested after its mutex is held).
+--
+-- Observable through pg_locks: after one sweep call this transaction holds the mutex of exactly the parties the sweep routed.
+-- Labelled fixture forgeries (nothing else): fresh synthetic acting parties (jobs.acting_party_id has no foreign key) whose jobs are accepted
+-- and settled through the real BE00 path, and the marker rows of the "already recovered" heads, inserted as the test administrator.
+-- Every party is brand new, so no earlier statement of this transaction holds its mutex.  [P2-S12-AC-226; DEC-194, DEC-212]
+
+create or replace function pg_temp.s12dc_rp(p_n integer) returns uuid language sql immutable as $body$
+  select ('a9194080-0000-4000-8000-' || lpad(p_n::text, 12, '0'))::uuid $body$;
+
+-- pA: its only failed job is already marked (recovered).
+select pg_temp.s12dc_job('rpa1', 'owner', pg_temp.s12dc_rp(1), 81);
+select pg_temp.s12dc_settle('rpa1', pg_temp.s12dc_id('job:rpa1'), 'failed', 'S12DC_ROUTING');
+-- pB: an unmarked failed head followed by a queued job (live).
+select pg_temp.s12dc_job('rpb1', 'owner', pg_temp.s12dc_rp(2), 82);
+select pg_temp.s12dc_settle('rpb1', pg_temp.s12dc_id('job:rpb1'), 'failed', 'S12DC_ROUTING');
+select pg_temp.s12dc_job('rpb2', 'owner', pg_temp.s12dc_rp(2), 82);
+-- pC: an unmarked failed head, nothing else.
+select pg_temp.s12dc_job('rpc1', 'owner', pg_temp.s12dc_rp(3), 83);
+select pg_temp.s12dc_settle('rpc1', pg_temp.s12dc_id('job:rpc1'), 'failed', 'S12DC_ROUTING');
+-- pD: an older MARKED failed job, then an unmarked failed head.
+select pg_temp.s12dc_job('rpd1', 'owner', pg_temp.s12dc_rp(4), 84);
+select pg_temp.s12dc_settle('rpd1', pg_temp.s12dc_id('job:rpd1'), 'failed', 'S12DC_ROUTING');
+select pg_temp.s12dc_job('rpd2', 'owner', pg_temp.s12dc_rp(4), 84);
+select pg_temp.s12dc_settle('rpd2', pg_temp.s12dc_id('job:rpd2'), 'failed', 'S12DC_ROUTING');
+-- pE: an older UNMARKED failed job, then a MARKED failed head.
+select pg_temp.s12dc_job('rpe1', 'owner', pg_temp.s12dc_rp(5), 85);
+select pg_temp.s12dc_settle('rpe1', pg_temp.s12dc_id('job:rpe1'), 'failed', 'S12DC_ROUTING');
+select pg_temp.s12dc_job('rpe2', 'owner', pg_temp.s12dc_rp(5), 85);
+select pg_temp.s12dc_settle('rpe2', pg_temp.s12dc_id('job:rpe2'), 'failed', 'S12DC_ROUTING');
+
+select ok(pg_temp.s12dc_assoc_forge(pg_temp.s12dc_id('job:rpa1'), pg_temp.s12dc_corr(801))
+          and pg_temp.s12dc_assoc_forge(pg_temp.s12dc_id('job:rpd1'), pg_temp.s12dc_corr(802))
+          and pg_temp.s12dc_assoc_forge(pg_temp.s12dc_id('job:rpe2'), pg_temp.s12dc_corr(803)),
+  'fixture: the failed heads of pA and pE and the older failed job of pD are marked as already recovered [P2-S12-AC-226, DEC-212]');
+select ok(pg_temp.s12dc_failed_head(pg_temp.s12dc_rp(1)) = pg_temp.s12dc_id('job:rpa1')
+          and pg_temp.s12dc_failed_head(pg_temp.s12dc_rp(2)) = pg_temp.s12dc_id('job:rpb1') and pg_temp.s12dc_live(pg_temp.s12dc_rp(2)) = 1
+          and pg_temp.s12dc_failed_head(pg_temp.s12dc_rp(3)) = pg_temp.s12dc_id('job:rpc1') and pg_temp.s12dc_live(pg_temp.s12dc_rp(3)) = 0
+          and pg_temp.s12dc_failed_head(pg_temp.s12dc_rp(4)) = pg_temp.s12dc_id('job:rpd2')
+          and pg_temp.s12dc_failed_head(pg_temp.s12dc_rp(5)) = pg_temp.s12dc_id('job:rpe2'),
+  'fixture: the failed heads and live jobs are as designed (pA marked head, pB live job, pC plain head, pD unmarked head over a marked one, pE marked head over an unmarked one) [P2-S12-AC-226]');
+select ok(not (pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(1)) or pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(2))
+               or pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(3)) or pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(4))
+               or pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(5))),
+  'fixture: this transaction holds none of the five parties'' merge-enqueue mutexes before the sweep [P2-S12-AC-226]');
+-- positive control of the lock observer: taking a mutex through the real helper is visible to it.
+select platform_private.cms_taxonomy_merge_enqueue_lock(pg_temp.s12dc_rp(9));
+select ok(pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(9)),
+  'fixture: the lock observer sees a mutex taken through platform_private.cms_taxonomy_merge_enqueue_lock [P2-S12-AC-226]');
+
+select pg_temp.s12dc_party_mark('rp-a', pg_temp.s12dc_rp(1));
+select pg_temp.s12dc_party_mark('rp-b', pg_temp.s12dc_rp(2));
+select pg_temp.s12dc_party_mark('rp-c', pg_temp.s12dc_rp(3));
+select pg_temp.s12dc_party_mark('rp-d', pg_temp.s12dc_rp(4));
+select pg_temp.s12dc_party_mark('rp-e', pg_temp.s12dc_rp(5));
+select pg_temp.s12dc_sweep('rp');
+select ok(pg_temp.s12dc_out('rp') ~ '^ok:\{"requested": [0-9]+\}$',
+  'the sweep with the five routing fixtures answers { requested } [P2-S12-AC-226, DEC-194]');
+select ok(not pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(1)),
+  'a party whose only failed job is already marked recovered is not locked [P2-S12-AC-226, DEC-212]');
+select ok(not pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(2)),
+  'a party with a queued job of the type is not locked even though its failed head is unmarked [P2-S12-AC-226, DEC-212]');
+select ok(pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(3)),
+  'a party with an unmarked failed head and no live job IS locked: the post-lock re-selection stays the authority [P2-S12-AC-226, DEC-212]');
+select ok(pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(4)),
+  'only the HEAD decides: an unmarked failed head over an older marked failed job is locked [P2-S12-AC-226, DEC-212]');
+select ok(not pg_temp.s12dc_party_lock_held(pg_temp.s12dc_rp(5)),
+  'only the HEAD decides: a marked failed head over an older unmarked failed job is not locked [P2-S12-AC-226, DEC-212]');
+select ok(pg_temp.s12dc_party_same('rp-a', pg_temp.s12dc_rp(1)) and pg_temp.s12dc_party_same('rp-b', pg_temp.s12dc_rp(2))
+          and pg_temp.s12dc_party_same('rp-c', pg_temp.s12dc_rp(3)) and pg_temp.s12dc_party_same('rp-d', pg_temp.s12dc_rp(4))
+          and pg_temp.s12dc_party_same('rp-e', pg_temp.s12dc_rp(5)),
+  'the routing fixtures received no recovery job: the locked parties were re-tested after their mutex (no work, 15-minute bound) and requested nothing [P2-S12-AC-226, DEC-194]');
+
+-- Lock ORDER (review V1-01; BE03c "Slice 12 lock order": "the sweep takes only that mutex, parties in ascending id", DEC-212): two concurrent
+-- sweeps, or a sweep and a producer that names several parties, can only avoid a lock cycle if every taker acquires in the same order.  A
+-- single session cannot observe the order in which advisory locks were granted (pg_locks carries no sequence), so the order is pinned on the
+-- function source (precedent: the dec206 function-source pins), as a statement that ends the routing query and feeds the lock loop; a
+-- reversed (`desc`), dropped or re-keyed `order by` fails it.  A behavioural proof needs two sessions with opposed party sets; the current race modules use one party (review V1-01), so it is offered to root as a request.
+select ok(coalesce((select pg_get_functiondef(p.oid) ~ 'order by head\.acting_party_id\s+loop\s+perform platform_private\.cms_taxonomy_merge_enqueue_lock\(party\.acting_party_id\)'
+                      from pg_proc p where p.oid = to_regprocedure('platform_private.cms_reconcile_taxonomy_merge_converge()')), false),
+  'the routing scan orders the parties by ascending acting_party_id immediately before taking each party''s mutex [P2-S12-AC-226, DEC-212]');

@@ -1,0 +1,63 @@
+-- CMS-03C-14 bounds: a diff over 128 changed paths or 256 KiB is 422 diff_too_large (BE03c 399, 1267, 1304; AC-113, AC-115), and the
+-- boundary values on either side are answered.
+select pg_temp.s12pu_diff_head('b-wide', 'wid1', '/wide');
+select ok(pg_temp.s12pu_oc('b-wide') = 'P0001:diff_too_large#["/instanceId"]' and pg_temp.s12pu_unchanged('b-wide'),
+  '156 changed paths (the root, 5 children and 150 grandchildren) are 422 diff_too_large with the instance pointer, writing nothing [AC-113]');
+select pg_temp.s12pu_diff_head('b-fat', 'fat1', '/fat');
+select ok(pg_temp.s12pu_oc('b-fat') = 'P0001:diff_too_large#["/instanceId"]' and pg_temp.s12pu_unchanged('b-fat'),
+  '120 changed paths whose base and theirs values total more than 256 KiB are 422 diff_too_large [AC-113, AC-115]');
+-- the 128-path bound is exact: a second pattern changes exactly 128 nodes (accepted) and 129 (refused)
+select * from pg_temp.s12pl_pattern('x1', 'pu-x', jsonb_build_array(pg_temp.s12pd_block('area', (
+  select jsonb_agg(pg_temp.s12pd_block('c' || c, (
+    select jsonb_agg(pg_temp.s12pd_block('g' || g, '[]'::jsonb, '{"title":"n1"}'::jsonb) order by g) from generate_series(1, 31) g),
+    '{"title":"n1"}'::jsonb) order by c) from generate_series(1, 4) c), '{"title":"n1"}'::jsonb)));
+select * from pg_temp.s12pu_place('xb1', 'x1');
+select * from pg_temp.s12pu_place('xb2', 'x1');
+-- v2 changes the 124 grandchildren and 4 children = 128 paths; the root is unchanged
+select * from pg_temp.s12pl_pattern('x2', 'pu-x', jsonb_build_array(pg_temp.s12pd_block('area', (
+  select jsonb_agg(pg_temp.s12pd_block('c' || c, (
+    select jsonb_agg(pg_temp.s12pd_block('g' || g, '[]'::jsonb, '{"title":"n2"}'::jsonb) order by g) from generate_series(1, 31) g),
+    '{"title":"n2"}'::jsonb) order by c) from generate_series(1, 4) c), '{"title":"n1"}'::jsonb)), null, true, '1');
+select pg_temp.s12pu_diff_head('b-128', 'xb1', '/area');
+select ok(pg_temp.s12pu_oc('b-128') = 'ok' and jsonb_array_length(pg_temp.s12pu_body('b-128')->'paths') = 128
+    and (pg_temp.s12pu_body('b-128')->>'collisionCount') = '0' and (pg_temp.s12pu_body('b-128')->>'bulkEligible') = 'true',
+  'exactly 128 changed paths are answered in full [AC-113]');
+-- v3 also changes the root: 129 paths
+select * from pg_temp.s12pl_pattern('x3', 'pu-x', jsonb_build_array(pg_temp.s12pd_block('area', (
+  select jsonb_agg(pg_temp.s12pd_block('c' || c, (
+    select jsonb_agg(pg_temp.s12pd_block('g' || g, '[]'::jsonb, '{"title":"n3"}'::jsonb) order by g) from generate_series(1, 31) g),
+    '{"title":"n3"}'::jsonb) order by c) from generate_series(1, 4) c), '{"title":"n3"}'::jsonb)), null, true, '2');
+select pg_temp.s12pu_diff_head('b-129', 'xb2', '/area');
+select ok(pg_temp.s12pu_oc('b-129') = 'P0001:diff_too_large#["/instanceId"]', '129 changed paths (v1 against v3: the root joins the 128) are 422 diff_too_large [AC-113]');
+select ok(pg_temp.s12pu_body('b-128') is not null and octet_length(platform_private.cms_jcs(pg_temp.s12pu_body('b-128'))) <= 262144,
+  'an answered diff never exceeds 256 KiB [AC-115]');
+
+-- The 256 KiB bound is exact too.  One root, one changed path: base is a 130000-character title, theirs a title whose length is CHOSEN so that the
+-- RFC 8785 text of the whole answered resource is exactly 262144 octets (answered) and then one octet more (422).  The length is not guessed:
+-- a probe version (theirs of 1000 characters) is answered first and its measured size S0 fixes the next version's length (1000 + 262144 - S0),
+-- because the resource grows by exactly one octet per character of theirs.  Supersessions keep one instance (bfa) and move its target.
+-- [AC-113, AC-115]
+select * from pg_temp.s12pl_pattern('bf1', 'pu-bf', jsonb_build_array(
+  pg_temp.s12pd_block('big', '[]'::jsonb, jsonb_build_object('title', repeat('x', 130000)))));
+select * from pg_temp.s12pu_place('bfa', 'bf1');
+select * from pg_temp.s12pl_pattern('bf2', 'pu-bf', jsonb_build_array(
+  pg_temp.s12pd_block('big', '[]'::jsonb, jsonb_build_object('title', repeat('y', 1000)))), null, true, '1');
+select pg_temp.s12pu_diff_head('bf-probe', 'bfa', '/big');
+select ok(pg_temp.s12pu_oc('bf-probe') = 'ok' and jsonb_array_length(pg_temp.s12pu_body('bf-probe')->'paths') = 1
+    and pg_temp.s12pu_body('bf-probe')->>'targetPatternVersion' = '2',
+  'the probe diff (one path, a 130000-character base, a 1000-character theirs) is answered');
+create or replace function pg_temp.s12pdf_size(p_label text) returns integer language sql stable as $body$
+  select octet_length(platform_private.cms_jcs(pg_temp.s12pu_body(p_label))) $body$;
+select * from pg_temp.s12pl_pattern('bf3', 'pu-bf', jsonb_build_array(pg_temp.s12pd_block('big', '[]'::jsonb,
+  jsonb_build_object('title', repeat('y', 1000 + 262144 - pg_temp.s12pdf_size('bf-probe'))))), null, true, '2');
+select pg_temp.s12pu_diff_head('bf-exact', 'bfa', '/big');
+select ok(pg_temp.s12pu_oc('bf-exact') = 'ok' and pg_temp.s12pu_body('bf-exact')->>'targetPatternVersion' = '3',
+  'a resource of exactly 262144 octets is answered (the bound is "over 256 KiB") [AC-115]');
+select is(pg_temp.s12pdf_size('bf-exact'), 262144, 'the answered resource measures exactly 262144 octets of RFC 8785 text: the case sits ON the boundary');
+select * from pg_temp.s12pl_pattern('bf4', 'pu-bf', jsonb_build_array(pg_temp.s12pd_block('big', '[]'::jsonb,
+  jsonb_build_object('title', repeat('y', 1000 + 262144 - pg_temp.s12pdf_size('bf-probe') + 1)))), null, true, '3');
+select pg_temp.s12pu_diff_head('bf-over', 'bfa', '/big');
+select ok(pg_temp.s12pu_oc('bf-over') = 'P0001:diff_too_large#["/instanceId"]' and pg_temp.s12pu_unchanged('bf-over'),
+  'a resource one octet over (262145) is 422 diff_too_large with the instance pointer and writes nothing [AC-115]');
+select is(length(pg_temp.s12pd_row('bf4')->'block_tree'->0->'props'->>'title'), length(pg_temp.s12pd_row('bf3')->'block_tree'->0->'props'->>'title') + 1,
+  'the boundary pair differs by exactly one character of theirs, so the one-octet difference is the only difference');

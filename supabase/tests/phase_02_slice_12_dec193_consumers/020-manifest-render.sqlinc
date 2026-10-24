@@ -1,0 +1,111 @@
+-- Manifest expectations are CLOSED literal identity pairs, never an expander or
+-- production manifest builder's output; UUID/hash values resolve real receipts.
+create temp table s12cs_models(tag text primary key,model text,pattern_label text,root_version integer,leaf_version integer) on commit drop;
+insert into s12cs_models values ('cs-detached','selected','s12cs-outer1',1,2),
+ ('cs-progress','target','s12cs-outer2',2,2),('cs-linked','target','s12cs-outer2',2,2),
+ ('cs-legacy','legacy','s12cs-outer1',1,1),('cs-retired',null,null,null,null);
+create or replace function pg_temp.s12cs_blocks(p_root integer,p_leaf integer) returns jsonb language sql stable as $body$
+ select coalesce(jsonb_agg(jsonb_build_object('id',b.id,'hash',b.release_digest::text) order by b.id::text collate "C"),'[]'::jsonb)
+ from (values ('s12cs.root',p_root),('s12cs.leaf',p_leaf),('s12cs.tail',case when p_root is not null then 1 end)) wanted(key,version)
+ join platform_private.cms_block_definition_versions b on b.block_key=wanted.key and b.block_version=wanted.version
+$body$;
+select tap.* from s12cs_models m cross join lateral pg_temp.s12cs_call('manifest-'||tag,
+ 'platform_private.cms_build_dependency_manifest',jsonb_build_object('revisionId',pg_temp.s12pl_rev(tag))) tap;
+-- Retirement's current-draft public witness was captured before the D5 fork;
+-- the other current drafts are read here. No historical preparation is fabricated.
+select tap.* from s12cs_models m cross join lateral pg_temp.s12cs_call('workflow-'||tag,'platform_api.cms_get_entry_workflow',
+ jsonb_build_object('entryId',pg_temp.s12pl_entry_id(tag),'revisionId',pg_temp.s12pl_rev(tag),
+   'context',pg_temp.s09d_context('owner',true)),'owner','service_role') tap where tag<>'cs-retired';
+select is(pg_temp.s12cs_answer('manifest-'||tag)->'blocks',pg_temp.s12cs_blocks(root_version,leaf_version),
+ tag||': private manifest has every selected reachable block, no stale/live-pin/history extras') from s12cs_models;
+select is(pg_temp.s12cs_answer('manifest-'||tag)->'patterns',case when pattern_label is null then '[]'::jsonb else
+ jsonb_build_array(jsonb_build_object('id',pg_temp.s12pd_body(pattern_label)->'id','hash',pg_temp.s12pd_body(pattern_label)->'contentHash')) end,
+ tag||': exact head provenance row, not a newer target or historical pin') from s12cs_models;
+select is(pg_temp.s12cs_answer('workflow-'||tag)#>'{preparation,dependencyManifest,blocks}',pg_temp.s12cs_blocks(root_version,leaf_version),
+ tag||': actual public workflow manifest projects exact reachable set') from s12cs_models;
+select is(pg_temp.s12cs_answer('workflow-'||tag)#>'{preparation,dependencyManifest,patterns}',
+ pg_temp.s12cs_answer('manifest-'||tag)->'patterns',tag||': public workflow retains private provenance without reopening it')
+ from s12cs_models;
+select ok((select state='superseded' from platform_private.cms_pattern_versions where id=(pg_temp.s12pd_body('s12cs-outer1')->>'id')::uuid),
+ 'CS-PROVENANCE: detached and legacy fixtures really retain a nonactive prior pin');
+
+select tap.* from s12cs_models m cross join lateral pg_temp.s12cs_call('plan-'||tag,'platform_private.cms_revision_render_plan',
+ jsonb_build_object('revisionId',pg_temp.s12pl_rev(tag))) tap;
+select tap.* from s12cs_models m cross join lateral pg_temp.s12cs_call('checker-'||tag,'platform_private.cms_accessibility_checker_input',
+ jsonb_build_object('revisionId',pg_temp.s12pl_rev(tag),'dependencyHash',repeat('f',64))) tap;
+select tap.* from s12cs_models m cross join lateral pg_temp.s12cs_call('quality-'||tag,'platform_api.cms_load_quality_gate_input',
+ jsonb_build_object('phase','workflow_read','entryId',pg_temp.s12pl_entry_id(tag),'revisionId',pg_temp.s12pl_rev(tag),
+   'context',pg_temp.s09d_context('owner',true)),'owner','service_role') tap;
+create or replace function pg_temp.s12cs_render_assert(p_tag text,p_model text) returns setof text language plpgsql as $body$
+declare expected jsonb:=case when p_model is null then '[]'::jsonb else pg_temp.s12cs_tree(p_model)->'nodes' end;
+ actual_plan jsonb:=pg_temp.s12cs_answer('plan-'||p_tag); private_nodes jsonb:=pg_temp.s12cs_answer('checker-'||p_tag)->'nodes';
+ public_nodes jsonb:=pg_temp.s12cs_answer('quality-'||p_tag)->'nodes'; head_id uuid;
+ expected_keys jsonb; actual_keys jsonb; expected_payload jsonb; actual_payload jsonb; anchor text;
+ ordered_identities jsonb; expected_plan_hash text;
+begin
+ head_id:=pg_temp.s12pu_head(p_tag,case when p_tag='cs-retired' then '/gone' else '/panel' end);
+ anchor:='/composition/'||head_id;
+ return next extensions.is((select to_jsonb(r)->'template_version_id' from platform_private.cms_entry_revisions r
+   where r.id=pg_temp.s12pl_rev(p_tag)),'null'::jsonb,p_tag||': known literal NULL-template fixture pin');
+ return next extensions.is(jsonb_array_length(actual_plan),jsonb_array_length(expected),
+   p_tag||': complete plan row count, not only a filtered block count');
+ return next extensions.ok(not exists(select 1 from jsonb_array_elements(actual_plan) p
+   where p->>'plan_kind' is distinct from 'block' or p#>>'{identity,kind}' is distinct from 'block'),
+   p_tag||': every plan row is an expected block, no hidden extra non-block kind');
+ return next extensions.is((select coalesce(jsonb_agg(p->'plan_position' order by ord),'[]'::jsonb)
+   from jsonb_array_elements(actual_plan) with ordinality e(p,ord)),
+   (select coalesce(jsonb_agg(n order by n),'[]'::jsonb) from generate_series(1,jsonb_array_length(expected)) n),
+   p_tag||': complete one-based consecutive plan order');
+ select coalesce(jsonb_agg(jsonb_build_object('blockKey',n->'blockKey','blockVersion',n->'blockVersion') order by ord),'[]'::jsonb)
+   into expected_keys from jsonb_array_elements(expected) with ordinality e(n,ord);
+ select coalesce(jsonb_agg((p->'identity')-'pointer' order by ord),'[]'::jsonb) into actual_keys
+   from jsonb_array_elements(actual_plan) with ordinality e(p,ord);
+ return next extensions.is(actual_keys,(select coalesce(jsonb_agg(n||'{"kind":"block"}'::jsonb order by ord),'[]'::jsonb)
+   from jsonb_array_elements(expected_keys) with ordinality e(n,ord)),p_tag||': exact canonical preorder identities, no stale history');
+ return next extensions.ok(not exists(select 1 from jsonb_array_elements(actual_plan) p
+   where p->>'instance_id' is distinct from head_id::text),
+   p_tag||': every block node is anchored to newest row identity');
+ if p_model is not null then
+   return next extensions.is(actual_plan#>>'{0,identity,pointer}',anchor,p_tag||': root uses existing composition anchor');
+   return next extensions.ok(starts_with(actual_plan#>>'{1,identity,pointer}',anchor||'/'),
+     p_tag||': first canonical descendant remains under newest-row anchor');
+   return next extensions.ok(starts_with(actual_plan#>>'{2,identity,pointer}',anchor||'/'),
+     p_tag||': second ordered descendant remains under newest-row anchor');
+   return next extensions.is((select count(distinct p->'identity'->>'pointer')::integer from jsonb_array_elements(actual_plan) p
+     ),3,p_tag||': descendants have distinct stable location identities');
+ end if;
+ select coalesce(jsonb_agg(jsonb_build_object('kind','block','blockKey',n->'blockKey','blockVersion',n->'blockVersion',
+   'recordHash',repeat('e',64),'lifecycle','supported','nameRequired',true,'accessibleNameFieldDefined',true,
+   'accessibleName',n->'props'->>'accessible_name') order by ord),'[]'::jsonb) into expected_payload
+   from jsonb_array_elements(expected) with ordinality e(n,ord);
+ select coalesce(jsonb_agg(n-'pointer' order by ord),'[]'::jsonb) into actual_payload
+   from jsonb_array_elements(private_nodes) with ordinality e(n,ord);
+ return next extensions.is(actual_payload,expected_payload,p_tag||': checker reads effective canonical props, not empty row props or old pin');
+ return next extensions.is(public_nodes,private_nodes,p_tag||': actual public quality loader uses same complete ordered nodes');
+ return next extensions.is(pg_temp.s12cs_answer('quality-'||p_tag)->>'dependencyHash',
+   platform_private.cms_jcs_sha256(pg_temp.s12cs_answer('manifest-'||p_tag)),p_tag||': public loader binds actual manifest hash');
+ -- Independent 17910:198 formula. Template is the known NULL fixture pin, and
+ -- identities are the COMPLETE ordered plan whose count/kinds/content were checked
+ -- above; neither checker output supplies this expected hash.
+ select coalesce(jsonb_agg(p->'identity' order by ord),'[]'::jsonb) into ordered_identities
+   from jsonb_array_elements(actual_plan) with ordinality e(p,ord);
+ expected_plan_hash:=platform_private.cms_jcs_sha256(jsonb_build_object('templateVersionId',null,'nodes',ordered_identities));
+ return next extensions.is(pg_temp.s12cs_answer('checker-'||p_tag)->>'renderPlanHash',expected_plan_hash,
+   p_tag||': private checker hash equals independent complete-plan JCS formula');
+ return next extensions.is(pg_temp.s12cs_answer('quality-'||p_tag)->>'renderPlanHash',expected_plan_hash,
+   p_tag||': actual public checker hash equals independent complete-plan JCS formula');
+ return next extensions.is(pg_temp.s12cs_answer('quality-'||p_tag)->>'renderPlanHash',
+   pg_temp.s12cs_answer('checker-'||p_tag)->>'renderPlanHash',p_tag||': public/private render-plan hash agreement');
+ return next extensions.ok(not exists(select 1 from jsonb_array_elements(public_nodes) n
+   where n ?| array['props','detachedTree','detached_tree','patternId','patternVersion']),
+   p_tag||': unchanged checker node contract exposes no raw private tree/props/provenance');
+end;
+$body$;
+select tap.* from s12cs_models m cross join lateral pg_temp.s12cs_render_assert(tag,model) tap;
+-- Repeated derivation proves descendant identity stability without a new suffix API.
+select * from pg_temp.s12cs_call('plan-repeat','platform_private.cms_revision_render_plan',
+ jsonb_build_object('revisionId',pg_temp.s12pl_rev('cs-detached')));
+select is(pg_temp.s12cs_answer('plan-repeat'),pg_temp.s12cs_answer('plan-cs-detached'),
+ 'CS-RENDER-STABLE: same canonical head yields identical complete plan twice');
+select ok(not exists(select 1 from s12cs_initial i where pg_temp.s12pu_row((row_value->>'id')::uuid)<>row_value),
+ 'CS-HISTORY: every original producer row stays byte-identical after all reads/new-revision placements');

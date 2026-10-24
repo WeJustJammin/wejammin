@@ -1,0 +1,120 @@
+-- Full-row snapshots, including existing append-only rows. Count equality
+-- alone cannot detect an in-place audit/outbox/idempotency mutation.
+create or replace function pg_temp.s12pd_snapshot() returns jsonb
+language plpgsql volatile as $body$
+declare store text; rows_json jsonb; answer jsonb := '{}'::jsonb;
+begin
+  foreach store in array array[
+    'platform_private.cms_pattern_versions','platform_private.cms_composition_instances',
+    'platform_private.cms_governed_reviews','platform_private.cms_governed_review_dependencies',
+    'platform_private.cms_governed_review_decisions','platform_private.cms_governed_review_assignments',
+    'platform_private.cms_governed_activation_schedules',
+    'platform_private.cms_block_definition_versions',
+    'platform_private.cms_block_definition_lifecycle_events',
+    'platform_private.cms_release_nonce_receipts',
+    'platform_private.cms_content_types','platform_private.cms_content_type_versions',
+    'platform_private.cms_schema_artifacts','platform_private.cms_capability_grants',
+    'platform_private.cms_capability_grant_events',
+    'identity_private.membership_tenure','identity_private.organization_actor_grant',
+    'platform_private.idempotency_records','audit_private.audit_events',
+    'platform_private.outbox_events'] loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(r) order by to_jsonb(r)::text),''[]''::jsonb) from %s r',store)
+      into rows_json;
+    answer := answer || jsonb_build_object(store,rows_json);
+  end loop;
+  return answer;
+end;
+$body$;
+create temp table s12pd_out(label text primary key, request jsonb, response jsonb,
+  state text, message text, detail text, before_rows jsonb, after_rows jsonb,
+  operation text, requested_role text, call_role text, role_restored boolean) on commit drop;
+
+create or replace function pg_temp.s12pd_run(p_label text, p_request jsonb,
+  p_actor text default 'owner', p_role text default 'service_role',
+  p_operation text default 'create')
+returns void language plpgsql as $body$
+declare before_rows jsonb; answer jsonb; code text := '00000'; msg text; details text;
+  prior_role text := current_setting('role'); prior_user text := current_user;
+  invoked_as text; restored boolean; statement text;
+begin
+  statement := case p_operation
+    when 'create' then 'select platform_api.cms_create_pattern_version($1)'
+    when 'submit' then 'select platform_api.cms_submit_governed_review($1)'
+    when 'assign' then 'select platform_api.cms_assign_governed_reviewer($1)'
+    when 'decide' then 'select platform_api.cms_record_governed_decision($1)'
+    when 'activate' then 'select platform_api.cms_activate_governed_subject($1)'
+    when 'latest' then 'select platform_api.cms_pattern_latest($1)'
+    else null end;
+  if statement is null or p_role is null
+     or p_role not in ('service_role','anon','authenticated') then
+    raise exception 'unknown pattern test operation or database role';
+  end if;
+  perform pg_temp.s09d_session(p_actor,p_role);
+  if p_actor='anonymous' then
+    -- Human-anonymous service transport is distinct from a database ACL probe.
+    perform pg_temp.set_jwt_claim('sub','',true);
+    perform set_config('app.auth_user_id','',true);
+    perform set_config('app.actor_auth_user_id','',true);
+    perform set_config('app.actor_person_id','',true);
+    perform set_config('app.acting_party_id','',true);
+    perform set_config('app.acting_context_id','',true);
+  end if;
+  before_rows := pg_temp.s12pd_snapshot();
+  begin
+    -- SECURITY INVOKER harness: JWT claims alone never establish the SQL role.
+    perform set_config('role',p_role,true);
+    invoked_as := current_user;
+    if invoked_as is distinct from p_role then
+      raise exception 'pattern test effective role mismatch';
+    end if;
+    begin
+      -- Only an actual RPC failure is recorded as a product outcome.
+      execute statement into answer using p_request;
+    exception when others then
+      get stacked diagnostics code = returned_sqlstate, msg = message_text,
+        details = pg_exception_detail;
+      answer := null;
+    end;
+    perform set_config('role',prior_role,true);
+  exception when others then
+    perform set_config('role',prior_role,true);
+    raise;
+  end;
+  restored := current_user::text = prior_user and current_setting('role') = prior_role;
+  if restored is not true then raise exception 'pattern test role restoration failed'; end if;
+  insert into s12pd_out values(p_label,p_request,answer,code,msg,details,
+    before_rows,pg_temp.s12pd_snapshot(),p_operation,p_role,invoked_as,restored);
+end;
+$body$;
+create or replace function pg_temp.s12pd_body(p_label text) returns jsonb
+language sql stable as $body$ select response from s12pd_out where label=p_label $body$;
+create or replace function pg_temp.s12pd_state(p_label text) returns text
+language sql stable as $body$
+  select coalesce((select state from s12pd_out where label=p_label),'UNRUN')
+$body$;
+create or replace function pg_temp.s12pd_row(p_label text) returns jsonb
+language sql stable as $body$
+  select to_jsonb(r) from platform_private.cms_pattern_versions r
+  where r.id::text = pg_temp.s12pd_body(p_label)->>'id'
+$body$;
+
+-- Exact P0001/message pairs follow the CMS transport convention. Closed
+-- reason tokens are raised as the message (cms_submit_governed_review and
+-- mapTemplateRpcFailure); the HTTP adapter owns catalog code and reasonCode.
+-- DETAIL is captured for diagnosis, with no invented JSON encoding contract.
+create or replace function pg_temp.s12pd_refused(p_label text, p_request jsonb,
+  p_message text, p_reason text default null, p_actor text default 'owner',
+  p_role text default 'service_role', p_operation text default 'create')
+returns setof text language plpgsql as $body$
+declare expected_token text := coalesce(p_reason,p_message);
+begin
+  perform pg_temp.s12pd_run(p_label,p_request,p_actor,p_role,p_operation);
+  return next extensions.is(pg_temp.s12pd_state(p_label),'P0001',
+    p_label || ': SQLSTATE is application refusal [P2-S12-AC-104]');
+  return next extensions.is((select message from s12pd_out where label=p_label),expected_token,
+    p_label || ': exact SQL message token [P2-S12-AC-104]');
+  return next extensions.ok((select state='P0001' and message=expected_token
+    and before_rows=after_rows from s12pd_out where label=p_label),
+    p_label || ': expected refusal preserves every captured full row [P2-S12-AC-104]');
+end;
+$body$;

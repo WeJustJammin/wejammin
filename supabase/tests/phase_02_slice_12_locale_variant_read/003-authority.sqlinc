@@ -1,0 +1,122 @@
+-- cmsLocaleVariantRead authority and request validation (DEC-205; BE03c authority row `as CMS-03C-04`, error matrix,
+-- validation row `cmsLocaleVariantRead | entryId/locale`; tracker P2-S12-AC-270, AC-057): only an assigned CMS author or
+-- editor who can edit the entry's localizable fields reads a variant; a visible entry without edit is FORBIDDEN (403), a
+-- hidden or absent entry or a locale outside the active version's supportedLocales is NOT_FOUND (404), no session is
+-- UNAUTHENTICATED (401), a malformed path value or an extra member INVALID_REQUEST (400) BEFORE any authority or existence
+-- answer.  Principals (Slice 10 fixtures): creator (author + editor grants, assigned by cms_create_entry), editor (cms.editor
+-- grant, no assignment on this entry), outsider (confirmed member with no CMS grant), stranger (no membership at all).
+
+create or replace function pg_temp.l205_err(p_answer jsonb)
+returns text
+language sql
+as $body$
+  select case when p_answer ? '__error' then p_answer->>'__error' else 'OK' end
+$body$;
+
+select pg_temp.l205_as('creatorAuth');
+select ok(pg_temp.l205_err(pg_temp.l205_read('fr-FR')) = 'OK', 'control: the assigned creator reads the variant [P2-S12-AC-270]');
+create temp table l205_creator on commit drop as select pg_temp.l205_read('fr-FR') as answer;
+
+-- The editor holds the grant but no assignment on this entry.
+select pg_temp.l205_as('editorAuth');
+select is(pg_temp.l205_err(pg_temp.l205_read('fr-FR')), 'P0001:FORBIDDEN',
+  'a granted editor with no assignment on the entry is refused FORBIDDEN although the entry is visible [P2-S12-AC-270]');
+select ok((pg_temp.l205_read('fr-FR') ? '__error') and not (pg_temp.l205_read('fr-FR') ? 'fields') and not (pg_temp.l205_read('fr-FR') ? 'resolutions'),
+  'the refusal carries no variant, value or resolution: a caller without edit learns nothing of the translation [P2-S12-AC-270]');
+select is(pg_temp.l205_err(pg_temp.l205_read('es-ES')), 'P0001:FORBIDDEN',
+  'authority is answered before the locale: a caller without edit gets FORBIDDEN for an unsupported locale too [P2-S12-AC-270]');
+
+-- The same refusal as the CMS-03C-04 write, for every principal.
+create or replace function pg_temp.l205_pair(p_key text)
+returns text
+language plpgsql
+as $body$
+declare
+  read_answer text;
+  write_answer text;
+begin
+  perform pg_temp.l205_as(p_key);
+  read_answer := pg_temp.l205_err(pg_temp.l205_read('fr-FR'));
+  write_answer := coalesce(pg_temp.l12_try(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    pg_temp.l12r_req('fr-FR', pg_temp.l12r_field_list(jsonb_build_object('title', 'x')), 'l205-pair-' || p_key)::text)), 'OK');
+  return read_answer || ' | ' || write_answer;
+end;
+$body$;
+select is(pg_temp.l205_pair('editorAuth'), 'P0001:FORBIDDEN | P0001:FORBIDDEN', 'unassigned editor: the read refuses exactly as the write [P2-S12-AC-270]');
+select is(pg_temp.l205_pair('outsiderAuth'), 'P0001:FORBIDDEN | P0001:FORBIDDEN', 'member without a grant: the read refuses exactly as the write [P2-S12-AC-270]');
+select is(pg_temp.l205_pair('strangerAuth'), 'P0001:NOT_FOUND | P0001:NOT_FOUND', 'stranger: the read answers exactly as the write [P2-S12-AC-270]');
+
+-- Assigning the editor to the entry grants the read.
+select set_config('app.cms_rpc', 'true', true);
+-- Hand-written fixture row (the assignment producer is a later lane): the active editor assignment cms_create_entry gives its creator.
+insert into platform_private.cms_entry_assignments(
+  owner_id, entry_id, assignee_person_id, capability_key, state, version, created_at, updated_at
+) values ((select value::uuid from s10_ids where key = 'organization'), pg_temp.l12_entry(),
+          (select value::uuid from s10_ids where key = 'editorPerson'), 'cms.editor', 'active', 1,
+          timestamptz '2026-10-22T12:00:00Z', timestamptz '2026-10-22T12:00:00Z');
+select pg_temp.l205_as('editorAuth');
+select ok(not (select answer ? '__error' from l205_creator) and pg_temp.l205_read('fr-FR') = (select answer from l205_creator),
+  'an assigned editor reads the very same answer as the author (BE03c authority row: author or editor) [P2-S12-AC-270]');
+
+-- Revoking the assignment removes the right again.
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_entry_assignments set state = 'revoked', version = version + 1, updated_at = clock_timestamp()
+ where entry_id = pg_temp.l12_entry() and assignee_person_id = (select value::uuid from s10_ids where key = 'editorPerson');
+select pg_temp.l205_as('editorAuth');
+select is(pg_temp.l205_err(pg_temp.l205_read('fr-FR')), 'P0001:FORBIDDEN', 'a revoked assignment removes the right to read [P2-S12-AC-270]');
+
+-- Hidden and absent look the same.
+select pg_temp.l205_as('strangerAuth');
+select is(pg_temp.l205_err(pg_temp.l205_read('fr-FR')), 'P0001:NOT_FOUND', 'an entry of another tenant is hidden: NOT_FOUND [P2-S12-AC-270]');
+create temp table l205_absent on commit drop as
+select pg_temp.l205_read_id('00000000-0000-4000-8000-0000000000aa', 'fr-FR') as answer;
+select ok(pg_temp.l205_err((select answer from l205_absent)) = 'P0001:NOT_FOUND' and pg_temp.l205_read('fr-FR') = (select answer from l205_absent),
+  'a hidden entry and an absent one are byte-identical answers: the read is no existence oracle [P2-S12-AC-270]');
+select pg_temp.l205_as('creatorAuth');
+select is(pg_temp.l205_err(pg_temp.l205_read_id(extensions.gen_random_uuid()::text, 'fr-FR')), 'P0001:NOT_FOUND', 'an absent entry is NOT_FOUND [P2-S12-AC-270]');
+
+-- Unsupported locale: 404, indistinguishable from an absent entry.
+select ok(pg_temp.l205_err((select answer from l205_absent)) = 'P0001:NOT_FOUND' and pg_temp.l205_read('es-ES') = (select answer from l205_absent),
+  'a locale outside the active version supportedLocales is the same NOT_FOUND answer as an absent entry [P2-S12-AC-270]');
+select is(pg_temp.l205_err(pg_temp.l205_read('fr-fr')), 'P0001:NOT_FOUND',
+  'a locale tag in another case is not a member of supportedLocales: NOT_FOUND, as the write refuses it [P2-S12-AC-270]');
+select is(pg_temp.l205_err(pg_temp.l205_read('fr')), 'P0001:NOT_FOUND', 'a well-formed locale that is not configured is NOT_FOUND [P2-S12-AC-270]');
+select is(pg_temp.l205_err(pg_temp.l205_read('en-US')), 'OK', 'control: the default locale is a member of supportedLocales [P2-S12-AC-270]');
+
+-- Validation before authority and existence.
+select pg_temp.l205_as('outsiderAuth');
+select is(pg_temp.l205_err(pg_temp.l205_read_id('not-a-uuid', 'fr-FR')), 'P0001:INVALID_REQUEST',
+  'a malformed entry id is INVALID_REQUEST for a caller who would be refused 403 [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_read('fr_FR')), 'P0001:INVALID_REQUEST',
+  'a malformed locale is INVALID_REQUEST for a caller who would be refused 403 [P2-S12-AC-057]');
+select pg_temp.l205_as('strangerAuth');
+select is(pg_temp.l205_err(pg_temp.l205_read_id('not-a-uuid', 'fr-FR')), 'P0001:INVALID_REQUEST', 'and for a caller who would see 404 [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_read('fr_FR')), 'P0001:INVALID_REQUEST', 'a malformed locale beats the 404 as well [P2-S12-AC-057]');
+select pg_temp.l205_as('creatorAuth');
+select is(pg_temp.l205_err(pg_temp.l205_call('{}'::jsonb)), 'P0001:INVALID_REQUEST', 'a request without entryId and locale is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('entryId', pg_temp.l12_entry()))), 'P0001:INVALID_REQUEST', 'a request without locale is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('locale', 'fr-FR'))), 'P0001:INVALID_REQUEST', 'a request without entryId is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('entryId', pg_temp.l12_entry(), 'locale', 'fr-FR', 'cursor', 'x'))), 'P0001:INVALID_REQUEST',
+  'an extra member (the route is strict: no query key) is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('entryId', pg_temp.l12_entry(), 'locale', 'fr-FR', 'fields', '[]'::jsonb))), 'P0001:INVALID_REQUEST',
+  'a write member is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call('[]'::jsonb)), 'P0001:INVALID_REQUEST', 'a non-object body is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call('"x"'::jsonb)), 'P0001:INVALID_REQUEST', 'a scalar body is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call('null'::jsonb)), 'P0001:INVALID_REQUEST', 'a JSON null body is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('entryId', 5, 'locale', 'fr-FR'))), 'P0001:INVALID_REQUEST', 'a numeric entryId is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('entryId', null, 'locale', 'fr-FR'))), 'P0001:INVALID_REQUEST', 'a null entryId is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('entryId', pg_temp.l12_entry(), 'locale', 5))), 'P0001:INVALID_REQUEST', 'a numeric locale is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('entryId', pg_temp.l12_entry(), 'locale', null))), 'P0001:INVALID_REQUEST', 'a null locale is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_read('')), 'P0001:INVALID_REQUEST', 'an empty locale is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_read('f')), 'P0001:INVALID_REQUEST', 'a one-letter locale is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_read('fr-' || repeat('a', 40))), 'P0001:INVALID_REQUEST', 'an over-long locale tag is INVALID_REQUEST [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_read(E'fr-FR\n')), 'P0001:INVALID_REQUEST', 'a locale with a trailing newline is INVALID_REQUEST [P2-S12-AC-057]');
+select ok(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('entryId', pg_temp.l12_entry(), 'locale', 'fr-FR', 'correlationId', extensions.gen_random_uuid()))) = 'OK',
+  'the server-added correlationId member is allowed [P2-S12-AC-057]');
+select is(pg_temp.l205_err(pg_temp.l205_call(jsonb_build_object('entryId', upper(pg_temp.l12_entry()::text), 'locale', 'fr-FR'))), 'P0001:INVALID_REQUEST',
+  'the database accepts a lower-case entry id only (cms_valid_uuid); the Worker adapter lower-cases the contract id before the call [P2-S12-AC-057]');
+
+-- No session.
+select pg_temp.s10_rpc_clear_actor();
+select is(pg_temp.l205_err(pg_temp.l205_read('fr-FR')), 'P0001:UNAUTHENTICATED', 'a request with no verified session is UNAUTHENTICATED [P2-S12-AC-057]');
+select pg_temp.l205_as('creatorAuth');

@@ -1,0 +1,145 @@
+-- BE03c 1487/1563; DEC-193. Real signed blocks, governed pattern versions and
+-- CMS-03C-02 placements. Only explicitly labelled history/scan rows are fixtures.
+create or replace function pg_temp.s12df_node(p_props jsonb,
+  p_children jsonb default '[]'::jsonb, p_key text default 's12pd.block',
+  p_version integer default 1) returns jsonb language sql immutable as $body$
+  select jsonb_build_object('blockKey', p_key, 'blockVersion', p_version,
+    'props', p_props, 'children', p_children)
+$body$;
+create or replace function pg_temp.s12df_path(p_path text, p_base jsonb,
+  p_theirs jsonb, p_yours jsonb, p_kind text default null)
+returns jsonb language sql immutable as $body$
+  select jsonb_build_object('path', p_path, 'base', p_base, 'theirs', p_theirs,
+    'yours', p_yours, 'collision', p_kind is not null, 'collisionKind', p_kind)
+$body$;
+-- Array order is not invented for the paths/newRoots sets. Child arrays remain
+-- byte-for-byte ordered, so sorting cannot conceal a structural ordering bug.
+create or replace function pg_temp.s12df_normalize(p_resource jsonb)
+returns jsonb language sql immutable as $body$
+  select case when jsonb_typeof(p_resource->'paths') = 'array'
+    and jsonb_typeof(p_resource->'newRoots') = 'array' then
+    jsonb_set(jsonb_set(p_resource, '{paths}', coalesce((select
+    jsonb_agg(item order by item->>'path' collate "C")
+    from jsonb_array_elements(p_resource->'paths') item), '[]'::jsonb)),
+    '{newRoots}', coalesce((select jsonb_agg(item order by item->>'rootPath' collate "C")
+    from jsonb_array_elements(p_resource->'newRoots') item), '[]'::jsonb))
+    else p_resource end
+$body$;
+create or replace function pg_temp.s12df_resource(p_id uuid, p_target integer,
+  p_paths jsonb, p_roots jsonb default '[]'::jsonb, p_slot text default '/',
+  p_pin integer default 1) returns jsonb language sql stable as $body$
+  select jsonb_build_object('instance', jsonb_build_object('id', inst.id,
+    'version', inst.version::text, 'revisionId', inst.revision_id, 'path', inst.path,
+    'state', inst.state, 'linkMode', inst.link_mode, 'pinnedPatternVersion', p_pin),
+    'slotPath', p_slot, 'targetPatternVersion', p_target, 'paths', p_paths,
+    'newRoots', p_roots, 'collisionCount', (select count(*)::integer
+      from jsonb_array_elements(p_paths) item where (item->>'collision')::boolean),
+    'bulkEligible', p_target > p_pin and not exists (select 1
+      from jsonb_array_elements(p_paths) item where (item->>'collision')::boolean))
+  from platform_private.cms_composition_instances inst where inst.id = p_id
+$body$;
+create or replace function pg_temp.s12df_check(p_label text, p_id uuid,
+  p_target integer, p_paths jsonb, p_roots jsonb default '[]'::jsonb,
+  p_slot text default '/', p_pin integer default 1)
+returns setof text language plpgsql as $body$
+begin
+  return next extensions.is(pg_temp.s12pu_oc(p_label), 'ok', p_label || ': real RPC succeeds');
+  return next extensions.is(pg_temp.s12df_normalize(pg_temp.s12pu_body(p_label)),
+    pg_temp.s12df_normalize(pg_temp.s12df_resource(p_id, p_target, p_paths, p_roots, p_slot, p_pin)),
+    p_label || ': exact typed values, collision kinds, pin, slot and new-root envelope');
+  return next extensions.ok(pg_temp.s12pu_unchanged(p_label),
+    p_label || ': every captured full row is unchanged by the read');
+end;
+$body$;
+create or replace function pg_temp.s12df_roots() returns jsonb
+language sql immutable as $body$
+  select '[{"rootPath":"/znew","blockKey":"s12pd.block","blockVersion":1},
+    {"rootPath":"/more/zeta","blockKey":"s12pd.block","blockVersion":1},
+    {"rootPath":"/more/alpha","blockKey":"s12pd.block","blockVersion":1}]'::jsonb
+$body$;
+create or replace function pg_temp.s12df_panel_paths(p_local boolean default true)
+returns jsonb language sql immutable as $body$
+  select jsonb_build_array(
+    pg_temp.s12df_path('/panel', pg_temp.s12df_node('{"title":"B"}',
+      '["/panel/left","/panel/right","/panel/props","/panel/equal","/panel/nully","/panel/version","/panel/remove","/panel/shared/zeta","/panel/shared/alpha"]'),
+      pg_temp.s12df_node('{"title":"T"}',
+      '["/panel/right","/panel/shared/zeta","/panel/shared/alpha","/panel/left","/panel/props","/panel/equal","/panel/nully","/panel/version","/panel/add"]'),
+      case when p_local then '{"title":"ROOT-LOCAL"}'::jsonb end, 'structure'),
+    pg_temp.s12df_path('/panel/add', null, pg_temp.s12df_node('{"title":"AD"}',
+      '["/panel/add/deep"]'), null, 'structure'),
+    pg_temp.s12df_path('/panel/equal', pg_temp.s12df_node('{"title":"E1"}'),
+      pg_temp.s12df_node('{"title":"E2"}'), case when p_local then '{"title":"E1"}'::jsonb end),
+    pg_temp.s12df_path('/panel/nully', pg_temp.s12df_node('{"title":"N1"}'),
+      pg_temp.s12df_node('{"title":"N2"}'), null, case when p_local then 'props' end),
+    pg_temp.s12df_path('/panel/props', pg_temp.s12df_node('{"title":"P1"}'),
+      pg_temp.s12df_node('{"title":"P2"}'), case when p_local then '{"title":"MINE"}'::jsonb end,
+      case when p_local then 'props' end),
+    pg_temp.s12df_path('/panel/remove', pg_temp.s12df_node('{"title":"RM"}',
+      '["/panel/remove/deep"]'), null, null, 'structure'),
+    pg_temp.s12df_path('/panel/version', pg_temp.s12df_node('{"title":"V1"}'),
+      pg_temp.s12df_node('{"title":"V2"}', '[]', 's12pd.block', 2),
+      case when p_local then '{"title":"V-LOCAL"}'::jsonb end, 'structure'))
+$body$;
+
+-- A second signed version changes block identity without inventing registry rows.
+select pg_temp.p_register('s12df-block2', pg_temp.p_block_request('s12pd.block', 2,
+  jsonb_build_object('allowedChildren', jsonb_build_array('s12pd.block'),
+    'slotRules', jsonb_build_object('maxDepth', 16, 'maxNodes', 512))));
+select is(pg_temp.s09d_outcome('s12df-block2'), 'OK', 'prerequisite: signed block version 2 registers');
+select * from pg_temp.s12pl_pattern('df-n1', 's12df-nested', jsonb_build_array(
+  pg_temp.s12pd_block('zeta'), pg_temp.s12pd_block('alpha')));
+create or replace function pg_temp.s12df_ref(p_key text) returns jsonb
+language sql stable as $body$
+  select jsonb_build_object('kind', 'pattern', 'key', p_key,
+    'patternId', pg_temp.s12pd_body('df-n1')->'patternId', 'patternVersion', 1)
+$body$;
+select * from pg_temp.s12pl_pattern('df-b1', 's12df-main', jsonb_build_array(
+  pg_temp.s12pd_block('panel', jsonb_build_array(
+    pg_temp.s12pd_block('left', '[]', '{"title":"L"}'),
+    pg_temp.s12pd_block('right', '[]', '{"title":"R"}'),
+    pg_temp.s12pd_block('props', '[]', '{"title":"P1"}'),
+    pg_temp.s12pd_block('equal', '[]', '{"title":"E1"}'),
+    pg_temp.s12pd_block('nully', '[]', '{"title":"N1"}'),
+    pg_temp.s12pd_block('version', '[]', '{"title":"V1"}'),
+    pg_temp.s12pd_block('remove', jsonb_build_array(pg_temp.s12pd_block('deep')), '{"title":"RM"}'),
+    pg_temp.s12df_ref('shared')), '{"title":"B"}'),
+  pg_temp.s12pd_block('gone', jsonb_build_array(pg_temp.s12pd_block('deep')), '{"title":"G"}'),
+  pg_temp.s12pd_block('identity', '[]', '{"title":"I1"}'),
+  pg_temp.s12pd_block('quiet', '[]', '{"title":"Q"}')));
+select pg_temp.s09d_rpc('s12pu-template', 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+  'templateKey', 's12df-template', 'compatibleTypeIds', jsonb_build_array((select id from s12pd_types where ordinal = 1)),
+  'slots', jsonb_build_array(jsonb_build_object('key', 'main', 'required', false,
+    'allowedBlocks', '[]'::jsonb, 'maxCount', 128)),
+  'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+  'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public',
+  'expectedVersion', null, 'idempotencyKey', 's12df-template-0001'), true);
+select is(pg_temp.s09d_outcome('s12pu-template'), 'OK', 'prerequisite: real template declares /main');
+select * from pg_temp.s12pu_place('df-local', 'df-b1', '{"/panel":{"title":"ROOT-LOCAL"},
+  "/panel/props":{"title":"MINE"},"/panel/equal":{"title":"E1"},"/panel/nully":null,
+  "/panel/version":{"title":"V-LOCAL"},"/gone":{"title":"G-LOCAL"}}', 'linked', '/main', true);
+select * from pg_temp.s12pu_place('df-history', 'df-b1');
+select * from pg_temp.s12pu_place('df-detached', 'df-b1', '{}', 'detached');
+select * from pg_temp.s12pu_place('df-retired', 'df-b1');
+select * from pg_temp.s12pu_place('df-copy', 'df-b1');
+select * from pg_temp.s12pu_place('df-draft', 'df-b1');
+select * from pg_temp.s12pu_place('df-super', 'df-b1');
+select * from pg_temp.s12pl_pattern('df-b2', 's12df-main', jsonb_build_array(
+  pg_temp.s12pd_block('panel', jsonb_build_array(
+    pg_temp.s12pd_block('right', '[]', '{"title":"R"}'), pg_temp.s12df_ref('shared'),
+    pg_temp.s12pd_block('left', '[]', '{"title":"L"}'),
+    pg_temp.s12pd_block('props', '[]', '{"title":"P2"}'),
+    pg_temp.s12pd_block('equal', '[]', '{"title":"E2"}'),
+    pg_temp.s12pd_block('nully', '[]', '{"title":"N2"}'),
+    pg_temp.s12pd_block('version', '[]', '{"title":"V2"}') || '{"blockVersion":2}'::jsonb,
+    pg_temp.s12pd_block('add', jsonb_build_array(pg_temp.s12pd_block('deep')), '{"title":"AD"}')), '{"title":"T"}'),
+  pg_temp.s12pd_block('identity', '[]', '{"title":"I2"}') || '{"blockKey":"s12pd.wide"}'::jsonb,
+  pg_temp.s12pd_block('quiet', '[]', '{"title":"Q"}'), pg_temp.s12pd_block('znew'),
+  pg_temp.s12df_ref('more')), null, true, '1');
+select * from pg_temp.s12pu_place('df-current', 'df-b2');
+select ok((select count(*) = 2 and bool_and(release_verified_at is not null
+  and props_attestation_verified_at is not null) from platform_private.cms_block_definition_versions
+  where block_key = 's12pd.block' and block_version in (1, 2)),
+  'prerequisite: both compared block versions carry real release/props receipts');
+select ok(pg_temp.s12pu_row(pg_temp.s12pu_head('df-local', '/main/panel'))->>'pattern_version' = '1'
+  and pg_temp.s12pu_row(pg_temp.s12pu_head('df-current', '/panel'))->>'pattern_version' = '2',
+  'prerequisite: pre-activation and post-activation placements retain the actual distinct pins');

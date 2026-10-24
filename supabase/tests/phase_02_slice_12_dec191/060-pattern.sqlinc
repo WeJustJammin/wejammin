@@ -1,0 +1,46 @@
+-- DEC-191 / CMS-03C-09 on the PATTERN subject kind (cms_pattern_versions).  Fixtures after 050-nested: child and nested are real ACTIVE
+-- pattern versions (definition 1, activated by the real producers: 'child:activate', 'nested:activate'); 'child-successor' is a real draft
+-- successor (definition 2) of the child lineage.  Activating it supersedes the child, so the answer names definition version 1.
+select ok(pg_temp.s12pd_body('child:activate') ? 'supersededVersion' and pg_temp.s12pd_body('child:activate')->'supersededVersion' = 'null'::jsonb
+    and pg_temp.s12pd_body('nested:activate') ? 'supersededVersion' and pg_temp.s12pd_body('nested:activate')->'supersededVersion' = 'null'::jsonb
+    and (select string_agg(key, ',' order by key collate "C") from jsonb_object_keys(pg_temp.s12pd_body('child:activate')) key)
+        = 'action,activatedAt,eventType,lineageId,reviewId,reviewVersion,scheduledForUtc,subjectId,subjectKind,subjectState,subjectVersion,supersededVersion',
+  'the first activation of each pattern lineage answers the 12-member resource with supersededVersion null [P2-S12-AC-082]');
+-- s12pd_activate asserts definition 1 for the label it drives; the successor is definition 2, so the same four real steps run here.
+create or replace function pg_temp.d191_pattern_activate(p_label text) returns void language plpgsql as $body$
+declare body jsonb := pg_temp.s12pd_body(p_label); review jsonb; decision jsonb;
+begin
+  perform pg_temp.s12pd_run(p_label || ':submit',
+    jsonb_build_object('subjectKind','pattern_version','subjectId',body->'id','subjectHash',body->'contentHash',
+      'idempotencyKey','s12pd-' || p_label || '-submit','context',pg_temp.s09d_context('owner',true)),'owner','service_role','submit');
+  review := pg_temp.s12pd_body(p_label || ':submit');
+  perform pg_temp.s12pd_run(p_label || ':assign',
+    jsonb_build_object('reviewId',review->'id','action','create','expectedVersion',review->'version','ifMatch',review->'version',
+      'reviewerPersonId',pg_temp.s09d_actor_id('rev1','person'),
+      'expiresAt',to_char((clock_timestamp()+interval '1 day') at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+      'reason','DEC-191 pattern successor','idempotencyKey','s12pd-' || p_label || '-assign',
+      'context',pg_temp.s09d_context('owner',true)),'owner','service_role','assign');
+  perform pg_temp.s12pd_run(p_label || ':decide',
+    jsonb_build_object('reviewId',review->'id','decision','approve','reason','DEC-191 pattern successor approved',
+      'expectedVersion',review->'version','ifMatch',review->'version','idempotencyKey','s12pd-' || p_label || '-decide',
+      'context',pg_temp.s09d_context('rev1',true)),'rev1','service_role','decide');
+  decision := pg_temp.s12pd_body(p_label || ':decide');
+  perform pg_temp.s12pd_run(p_label || ':activate',
+    jsonb_build_object('reviewId',review->'id','action','activate','expectedVersion',decision->'version','ifMatch',decision->'version',
+      'idempotencyKey','s12pd-' || p_label || '-activate','context',pg_temp.s09d_context('owner',true)),'owner','service_role','activate');
+  if pg_temp.s12pd_state(p_label || ':submit') <> '00000' or pg_temp.s12pd_state(p_label || ':assign') <> '00000'
+     or pg_temp.s12pd_state(p_label || ':decide') <> '00000' then
+    raise exception 'dec191 fixture: the real governed steps for % failed: % / % / %', p_label,
+      pg_temp.s12pd_state(p_label || ':submit'), pg_temp.s12pd_state(p_label || ':assign'), pg_temp.s12pd_state(p_label || ':decide');
+  end if;
+end;
+$body$;
+select pg_temp.d191_pattern_activate('child-successor');
+select ok(pg_temp.s12pd_state('child-successor:activate') = '00000'
+    and pg_temp.s12pd_body('child-successor:activate')->>'subjectKind' = 'pattern_version'
+    and pg_temp.s12pd_body('child-successor:activate')->'subjectVersion' = '2'::jsonb
+    and pg_temp.s12pd_body('child-successor:activate')->'supersededVersion' = '1'::jsonb
+    and pg_temp.s12pd_body('child-successor:activate')->>'eventType' = 'cms.pattern.activated.v1'
+    and (pg_temp.s12pd_row('child')->>'state' = 'superseded' and pg_temp.s12pd_row('child')->'version' = '1'::jsonb),
+  'activating a pattern successor names the superseded pattern definition version 1 [P2-S12-AC-083]');
+select 'EVIDENCE child-successor:activate ' || coalesce(pg_temp.s12pd_body('child-successor:activate')::text, 'null');

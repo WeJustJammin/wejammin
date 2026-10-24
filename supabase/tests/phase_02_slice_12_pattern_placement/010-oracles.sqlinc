@@ -1,0 +1,228 @@
+-- Slice 12 lane placement: the command runner, the whole-effects snapshot and the placement oracles.
+-- Include after 000-fixtures.sqlinc (s12pd_snapshot is the pattern-definition full-row image of every store the
+-- governed chain and a composition write touch: composition rows, idempotency, audit, outbox, grants...).
+
+-- s12pd_snapshot plus the entry, revision, editorial-review and assignment rows, all by FULL row content, so
+-- an in-place change (a version bump, a state flip, a payload hash change) is visible, not only a row count.
+create or replace function pg_temp.s12pl_snapshot() returns jsonb
+language plpgsql volatile as $body$
+declare store text; rows_json jsonb; answer jsonb := pg_temp.s12pd_snapshot();
+begin
+  foreach store in array array['platform_private.cms_content_entries', 'platform_private.cms_entry_revisions',
+    'platform_private.cms_editorial_reviews', 'platform_private.cms_entry_assignments'] loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(r) order by to_jsonb(r)::text), ''[]''::jsonb) from %s r', store)
+      into rows_json;
+    answer := answer || jsonb_build_object(store, rows_json);
+  end loop;
+  return answer;
+end;
+$body$;
+
+create temp table s12pl_out(label text primary key, request jsonb, response jsonb, state text, message text,
+  detail text, headers text, before_rows jsonb, after_rows jsonb, requested_role text, call_role text,
+  role_restored boolean) on commit drop;
+
+-- Runs platform_api.cms_insert_pattern_instance once as the named actor and database role.  A missing
+-- function is the captured SQLSTATE 42883 (never a harness abort); `response.headers` is cleared first and read
+-- back, so the ETag the transport would send is observed.
+create or replace function pg_temp.s12pl_run(
+  p_label text, p_request jsonb, p_actor text default 'owner', p_role text default 'service_role')
+returns void
+language plpgsql as $body$
+declare before_rows jsonb; answer jsonb; code text := '00000'; msg text; details text; header_text text;
+  prior_role text := current_setting('role'); prior_user text := current_user; invoked_as text; restored boolean;
+begin
+  if p_role not in ('service_role', 'anon', 'authenticated') then
+    raise exception 'unknown database role %', p_role;
+  end if;
+  perform pg_temp.s09d_session(p_actor, p_role);
+  if p_actor = 'anonymous' then
+    perform pg_temp.set_jwt_claim('sub', '', true);
+    perform set_config('app.auth_user_id', '', true);
+    perform set_config('app.actor_auth_user_id', '', true);
+    perform set_config('app.actor_person_id', '', true);
+    perform set_config('app.acting_party_id', '', true);
+    perform set_config('app.acting_context_id', '', true);
+  end if;
+  perform set_config('response.headers', '', true);
+  before_rows := pg_temp.s12pl_snapshot();
+  begin
+    perform set_config('role', p_role, true);
+    invoked_as := current_user;
+    if invoked_as is distinct from p_role then raise exception 'placement test effective role mismatch'; end if;
+    begin
+      select platform_api.cms_insert_pattern_instance(p_request) into answer;
+    exception when others then
+      get stacked diagnostics code = returned_sqlstate, msg = message_text, details = pg_exception_detail;
+      answer := null;
+    end;
+    perform set_config('role', prior_role, true);
+  exception when others then
+    perform set_config('role', prior_role, true);
+    raise;
+  end;
+  header_text := nullif(current_setting('response.headers', true), '');
+  restored := current_user::text = prior_user and current_setting('role') = prior_role;
+  if restored is not true then raise exception 'placement test role restoration failed'; end if;
+  insert into s12pl_out values (p_label, p_request, answer, code, msg, details, header_text, before_rows,
+    pg_temp.s12pl_snapshot(), p_role, invoked_as, restored)
+  on conflict (label) do update set request = excluded.request, response = excluded.response,
+    state = excluded.state, message = excluded.message, detail = excluded.detail, headers = excluded.headers,
+    before_rows = excluded.before_rows, after_rows = excluded.after_rows;
+end;
+$body$;
+create or replace function pg_temp.s12pl_state(p_label text) returns text language sql stable as $body$
+  select coalesce((select state from s12pl_out where label = p_label), 'UNRUN') $body$;
+create or replace function pg_temp.s12pl_body(p_label text) returns jsonb language sql stable as $body$
+  select response from s12pl_out where label = p_label $body$;
+
+-- Rows of a store in a snapshot image.
+create or replace function pg_temp.s12pl_rows(p_label text, p_side text, p_store text) returns jsonb
+language sql stable as $body$
+  select case p_side when 'before' then before_rows else after_rows end -> p_store from s12pl_out where label = p_label $body$;
+create or replace function pg_temp.s12pl_count(p_label text, p_side text, p_store text) returns integer
+language sql stable as $body$
+  select jsonb_array_length(coalesce(pg_temp.s12pl_rows(p_label, p_side, p_store), '[]'::jsonb)) $body$;
+
+-- A refusal: SQLSTATE P0001, the exact message token, optionally the exact DETAIL JSON, and NO effect on any store
+-- (the full before/after images are equal).
+create or replace function pg_temp.s12pl_refused(
+  p_label text, p_request jsonb, p_token text, p_detail jsonb default null,
+  p_actor text default 'owner', p_role text default 'service_role')
+returns setof text
+language plpgsql as $body$
+begin
+  perform pg_temp.s12pl_run(p_label, p_request, p_actor, p_role);
+  return next extensions.is(pg_temp.s12pl_state(p_label), 'P0001', p_label || ': SQLSTATE is the application refusal');
+  return next extensions.is((select message from s12pl_out where label = p_label), p_token,
+    p_label || ': exact SQL message token ' || p_token);
+  if p_detail is not null then
+    return next extensions.is((select case when detail ~ '^[\[{]' then detail::jsonb end from s12pl_out where label = p_label), p_detail,
+      p_label || ': exact DETAIL pointer or members');
+  end if;
+  return next extensions.ok((select before_rows = after_rows from s12pl_out where label = p_label),
+    p_label || ': the refusal preserves every captured full row of every store');
+end;
+$body$;
+
+-- The CompositionInstanceResource of a stored row, derived independently of the producer's response builder
+-- (platform_private.cms_composition_instance_resource) AND of the hash helper it uses.  contentHash is the D5 block
+-- comparison hash of cms_compare_revisions (20261005010400:877-891: blockKey, blockVersion, blockRegistryDigest,
+-- mode, patternRef, props, bindings; position is NOT an input).  Here it is computed from first principles: the RFC 8785
+-- (JCS) text is assembled by hand with the keys in the fixed UTF-16 order bindings < blockKey < blockRegistryDigest <
+-- blockVersion < mode < patternRef < props, and hashed with SHA-256 over its UTF-8 bytes.  props is rendered compactly
+-- by removing the jsonb text padding, which is exact for every row this suite stores (each props document holds at
+-- most one key whose value contains no ', ' or '": ' sequence); bindings are always {} in a placement.
+create or replace function pg_temp.s12pl_resource(p_row platform_private.cms_composition_instances) returns jsonb
+language plpgsql stable as $body$
+declare canonical text;
+begin
+  if p_row.bindings <> '{}'::jsonb or (select count(*) from jsonb_object_keys(p_row.props)) > 1 then
+    raise exception 's12pl_resource: oracle limited to one-key props and empty bindings';
+  end if;
+  canonical := '{"bindings":{},"blockKey":' || to_json(p_row.block_key)::text
+    || ',"blockRegistryDigest":' || to_json(btrim(p_row.block_registry_digest::text))::text
+    || ',"blockVersion":' || p_row.block_version::text
+    || ',"mode":' || to_json(p_row.link_mode)::text
+    || ',"patternRef":' || case when p_row.pattern_id is null then 'null'
+        else '{"patternId":"' || p_row.pattern_id::text || '","patternVersion":' || p_row.pattern_version::text || '}' end
+    || ',"props":' || replace(replace(p_row.props::text, '": ', '":'), ', ', ',') || '}';
+  return jsonb_build_object(
+    'id', p_row.id, 'version', p_row.version::text,
+    'contentHash', encode(extensions.digest(convert_to(canonical, 'UTF8'), 'sha256'), 'hex'),
+    'createdAt', to_char(p_row.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'updatedAt', to_char(p_row.updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'state', p_row.state, 'revisionId', p_row.revision_id, 'path', p_row.path, 'position', p_row.position,
+    'blockKey', p_row.block_key, 'blockVersion', p_row.block_version, 'patternId', p_row.pattern_id,
+    'patternVersion', p_row.pattern_version, 'blockRegistryDigest', btrim(p_row.block_registry_digest::text),
+    'linkMode', p_row.link_mode, 'conflictState', case p_row.link_mode when 'linked' then 'none' else null end);
+end;
+$body$;
+create or replace function pg_temp.s12pl_stored(p_tag text) returns jsonb language plpgsql stable as $body$
+begin
+  return (select coalesce(jsonb_agg(pg_temp.s12pl_resource(inst) order by inst.position, inst.path collate "C", inst.id), '[]'::jsonb)
+    from platform_private.cms_composition_instances inst where inst.revision_id = pg_temp.s12pl_rev(p_tag));
+end;
+$body$;
+-- Runs one statement in a subtransaction and returns its SQLSTATE ('00000' on success).
+create or replace function pg_temp.s12pl_try(p_sql text) returns text language plpgsql as $body$
+begin
+  execute p_sql;
+  return '00000';
+exception when others then
+  return sqlstate;
+end;
+$body$;
+
+-- Runs one scalar query and returns its text; a failure is the text ERR:<SQLSTATE>, so an assertion over a
+-- column that does not exist yet fails as an assertion instead of aborting the suite.
+create or replace function pg_temp.s12pl_q(p_sql text) returns text language plpgsql as $body$
+declare result text;
+begin
+  execute p_sql into result;
+  return result;
+exception when others then
+  return 'ERR:' || sqlstate;
+end;
+$body$;
+
+-- A successful placement: the 201 body, the persisted rows, the ETag, the entry CAS and every untouched store.
+-- p_paths are the expected row paths in forest order; the first position is p_first.
+create or replace function pg_temp.s12pl_check(
+  p_label text, p_tag text, p_pattern text, p_paths text[], p_first integer, p_mode text default 'linked')
+returns setof text
+language plpgsql as $body$
+declare
+  items jsonb; stored jsonb; before_version bigint; after_version bigint; n integer := cardinality(p_paths);
+  entry_key text := 'platform_private.cms_content_entries'; comp text := 'platform_private.cms_composition_instances';
+  revision_key text := 'platform_private.cms_entry_revisions';
+begin
+  return next extensions.is(pg_temp.s12pl_state(p_label), '00000', p_label || ': the placement succeeds');
+  if pg_temp.s12pl_state(p_label) <> '00000' then
+    return next extensions.diag(p_label || ' refused: ' || coalesce((select message || ' ' || coalesce(detail, '')
+      from s12pl_out where label = p_label), ''));
+    return;
+  end if;
+  items := pg_temp.s12pl_body(p_label)->'items';
+  return next extensions.is(jsonb_array_length(items), n, p_label || ': one item per block root, ' || n || ' rows');
+  return next extensions.is((select jsonb_agg(item->>'path' order by (item->>'position')::integer)
+    from jsonb_array_elements(items) item), to_jsonb(p_paths),
+    p_label || ': row paths are slotPath joined with each root key chain, in forest order [DEC-186]');
+  return next extensions.is((select jsonb_agg((item->>'position')::integer order by ordinality)
+    from jsonb_array_elements(items) with ordinality item(item, ordinality)),
+    (select jsonb_agg(p_first + g) from generate_series(0, n - 1) g),
+    p_label || ': consecutive positions in forest order from ' || p_first || ' [DEC-185]');
+  return next extensions.is((select array_agg(key order by key) from jsonb_object_keys(pg_temp.s12pl_body(p_label)) key),
+    array['items'], p_label || ': the 201 body is exactly { items }');
+  stored := (select coalesce(jsonb_agg(pg_temp.s12pl_resource(inst) order by inst.position), '[]'::jsonb)
+    from platform_private.cms_composition_instances inst
+   where inst.revision_id = pg_temp.s12pl_rev(p_tag) and inst.id in (select (i->>'id')::uuid from jsonb_array_elements(items) i));
+  return next extensions.is(items, stored, p_label || ': the response items equal the persisted rows resource by resource');
+  return next extensions.ok((select bool_and(item->>'patternId' = pg_temp.s12pd_body(p_pattern)->>'patternId'
+      and item->>'patternVersion' = pg_temp.s12pd_body(p_pattern)->>'patternVersion'
+      and item->>'blockRegistryDigest' = pg_temp.s12pd_expected_digest()
+      and item->>'linkMode' = p_mode and item->>'state' = 'active' and item->>'version' = '1'
+      and item->>'revisionId' = pg_temp.s12pl_rev(p_tag)::text)
+    from jsonb_array_elements(items) item),
+    p_label || ': every row is pinned to the placed (patternId, patternVersion), carries the server digest, the mode, state active, version 1');
+  return next extensions.is(pg_temp.s12pl_count(p_label, 'after', comp) - pg_temp.s12pl_count(p_label, 'before', comp), n,
+    p_label || ': exactly ' || n || ' composition rows were appended');
+  return next extensions.is((select count(*)::integer from jsonb_array_elements(pg_temp.s12pl_rows(p_label, 'before', comp)) b
+    where not exists (select 1 from jsonb_array_elements(pg_temp.s12pl_rows(p_label, 'after', comp)) a where a = b)), 0,
+    p_label || ': every pre-existing composition row is byte-identical afterwards (no renumbering, no update)');
+  before_version := (select (e->>'version')::bigint from jsonb_array_elements(pg_temp.s12pl_rows(p_label, 'before', entry_key)) e
+    where e->>'id' = pg_temp.s12pl_entry_id(p_tag)::text);
+  after_version := (select (e->>'version')::bigint from jsonb_array_elements(pg_temp.s12pl_rows(p_label, 'after', entry_key)) e
+    where e->>'id' = pg_temp.s12pl_entry_id(p_tag)::text);
+  return next extensions.is(after_version, before_version + 1, p_label || ': the entry aggregate version advanced by exactly one');
+  return next extensions.is((select headers from s12pl_out where label = p_label),
+    jsonb_build_array(jsonb_build_object('etag', '"' || after_version || '"'))::text,
+    p_label || ': the committed entry aggregate strong ETag is published through response.headers');
+  return next extensions.ok((select (select e from jsonb_array_elements(before_rows -> revision_key) e
+      where e->>'id' = pg_temp.s12pl_rev(p_tag)::text) = (select e from jsonb_array_elements(after_rows -> revision_key) e
+      where e->>'id' = pg_temp.s12pl_rev(p_tag)::text) from s12pl_out where label = p_label),
+    p_label || ': the revision row, payload_hash included, is unchanged by the composition write [AC-219]');
+  return next extensions.is((select count(*)::integer from audit_private.audit_events where action = 'cms.composition.pattern.insert'
+    and target_id = (items->0->>'id')::uuid), 1, p_label || ': one audit record names the placement');
+end;
+$body$;

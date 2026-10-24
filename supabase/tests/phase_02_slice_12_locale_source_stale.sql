@@ -57,11 +57,11 @@ select platform_api.cms_author_locale_variant(jsonb_build_object(
 select ok(
   exists (
     select 1 from pg_catalog.pg_trigger trigger_row
-    where trigger_row.tgrelid = 'platform_private.cms_entry_revisions'::regclass
-      and trigger_row.tgname = 'cms_entry_revisions_locale_stale'
+    where trigger_row.tgrelid = 'platform_private.cms_content_entries'::regclass
+      and trigger_row.tgname = 'cms_content_entries_locale_stale'
       and not trigger_row.tgisinternal
   ),
-  'every committed source revision enters the locale-staleness transition'
+  'every source revision that becomes the draft head enters the locale-staleness transition, after its values exist'
 );
 select ok(
   not has_function_privilege('anon',
@@ -119,6 +119,11 @@ begin
     platform_private.cms_jcs_sha256(p_value)::char(64),
     snapshot_time, snapshot_time
   );
+  -- Like every revision writer, move the draft head last, after the values (20261014050310): the
+  -- source-change fan-out runs on that head move, once the revision values exist.
+  update platform_private.cms_content_entries
+  set current_draft_revision_id = p_revision_id, version = version + 1, updated_at = snapshot_time
+  where id = source_row.entry_id;
 end;
 $body$;
 
@@ -182,10 +187,9 @@ select is(
   'source staleness commits one attributable private audit event'
 );
 select is(
-  pg_temp.s10_outbox_count(
-    'cms.localization.changed.v1',
-    (select value::uuid from s10_ids where key = 'entryId')
-  ),
+  (select count(*)::integer from platform_private.outbox_events
+   where event_type = 'cms.localization.changed.v1'
+     and payload->>'entryId' = (select value from s10_ids where key = 'entryId')),
   4,
   'source staleness emits one identifier-only locale change event per locale'
 );
@@ -194,7 +198,7 @@ select ok(
       and (select count(*) from pg_catalog.jsonb_object_keys(payload)) = 3)
    from platform_private.outbox_events
    where event_type = 'cms.localization.changed.v1'
-     and aggregate_id = (select value::uuid from s10_ids where key = 'entryId')),
+     and payload->>'entryId' = (select value from s10_ids where key = 'entryId')),
   'locale change events never disclose source or translated text'
 );
 

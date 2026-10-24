@@ -1,0 +1,35 @@
+-- The producer's stored digest must equal the digest every governed command recomputes (submit, decision,
+-- activation and the recheck job all call cms_governed_current_digest), or a freshly created draft could never be
+-- submitted.  The recomputation runs as the harness user against the stored row, so a defect in the frozen
+-- recompute helper fails this one assertion instead of aborting the suite.  Runs before the block is withdrawn.
+create or replace function pg_temp.s12pd_try(p_sql text) returns text language plpgsql as $body$
+declare answer text;
+begin
+  begin
+    execute p_sql into answer;
+  exception when others then
+    return 'ERROR:' || sqlstate || ':' || sqlerrm;
+  end;
+  return answer;
+end;
+$body$;
+-- Every governed command sets the RPC flag itself before it reads the CMS tables (their forced policies admit a
+-- row only inside an RPC context); the platform_api wrapper that created the row restored the flag, so this
+-- harness sets it for the recompute exactly as cms_submit_governed_review does.
+create or replace function pg_temp.s12pd_governed_digest(p_label text) returns text
+language plpgsql volatile as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  return pg_temp.s12pd_try(format(
+    'select platform_private.cms_governed_current_digest(%L, %L::uuid, jsonb_build_object(%L, %L::jsonb))',
+    'pattern_version', pg_temp.s09d_id('ownerOrg'), 'blockTree',
+    (pg_temp.s12pd_row(p_label)->'block_tree')::text));
+end;
+$body$;
+
+select is(pg_temp.s12pd_governed_digest('create'),pg_temp.s12pd_body('create')->>'blockRegistryDigest',
+  'first definition digest equals the governed recompute [P2-S12-AC-193]');
+select is(pg_temp.s12pd_governed_digest('successor'),pg_temp.s12pd_body('successor')->>'blockRegistryDigest',
+  'successor digest equals the governed recompute [P2-S12-AC-193]');
+select is(pg_temp.s12pd_governed_digest('create'),pg_temp.s12pd_row('create')->>'block_registry_digest',
+  'the stored column and the resource carry the same digest [P2-S12-AC-193]');

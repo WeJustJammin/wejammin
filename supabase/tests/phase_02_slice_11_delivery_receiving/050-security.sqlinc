@@ -1,0 +1,163 @@
+-- Admin positives in 000-world run first. A permission error proves ACL denial;
+-- diagnostic grants below independently test RLS through a real non-bypass role.
+select ok(c.relrowsecurity and c.relforcerowsecurity,
+  'DR-S01 new relation enables AND forces RLS: ' || q.name)
+from unnest(array['platform_private.route_manifest_version','platform_private.publication_projection']) q(name)
+left join pg_class c on c.oid=to_regclass(q.name);
+select is(case when to_regclass(q.name) is null then -1 else
+  (select count(*)::integer from pg_policy where polrelid=to_regclass(q.name)) end,0,
+  'DR-S02 no policies on new sealed receiving table: ' || q.name)
+from unnest(array['platform_private.route_manifest_version','platform_private.publication_projection']) q(name);
+select ok(to_regclass(q.name) is not null and not exists(
+  select 1 from pg_class c cross join lateral aclexplode(coalesce(c.relacl,acldefault('r',c.relowner))) a
+  where c.oid=to_regclass(q.name) and a.grantee<>c.relowner),
+  'DR-S03 no PUBLIC, API or ordinary-definer explicit table grant: ' || q.name)
+from unnest(array['platform_private.route_manifest_version','platform_private.publication_projection']) q(name);
+select is(case when to_regclass(q.name) is null then -1 else (select count(*)::integer from pg_roles r cross join pg_class c
+  cross join unnest(array['SELECT','INSERT','UPDATE','DELETE','TRUNCATE','REFERENCES','TRIGGER']) p(privilege)
+  where c.oid=to_regclass(q.name) and not r.rolsuper and r.oid<>c.relowner
+    and (r.rolname in ('anon','authenticated','service_role') or r.rolname ~ '^wejammin_.*_definer$')
+    and has_table_privilege(r.oid,c.oid,p.privilege)) end,0,
+  'DR-S04 no inherited runtime table privilege, including service_role and every ordinary definer: ' || q.name)
+from unnest(array['platform_private.route_manifest_version','platform_private.publication_projection']) q(name);
+select ok((select count(*)=1 and bool_and(not exists(
+  select 1 from aclexplode(coalesce(seq.relacl,acldefault('s',seq.relowner))) a where a.grantee<>seq.relowner))
+  from pg_depend d join pg_class seq on seq.oid=d.objid
+  where d.refobjid=to_regclass('platform_private.route_manifest_version') and d.deptype='i' and seq.relkind='S'),
+  'DR-S05 private ordinal sequence exists and PUBLIC/API/ordinary definers have no explicit sequence grant');
+select is(case when to_regclass('platform_private.route_manifest_version') is null then -1 else
+  (select count(*)::integer from pg_depend d join pg_class seq on seq.oid=d.objid
+  cross join pg_roles r cross join unnest(array['USAGE','SELECT','UPDATE']) p(privilege)
+  where d.refobjid=to_regclass('platform_private.route_manifest_version') and d.deptype='i' and seq.relkind='S'
+    and not r.rolsuper and r.oid<>seq.relowner
+    and (r.rolname in ('anon','authenticated','service_role') or r.rolname ~ '^wejammin_.*_definer$')
+    and has_sequence_privilege(r.oid,seq.oid,p.privilege)) end,0,
+  'DR-S06 ordinal allocation has no inherited API or ordinary-definer sequence privilege');
+select ok((select count(*)>0 and bool_and(not p.prosecdef)
+  from pg_trigger t join pg_proc p on p.oid=t.tgfoid
+  where t.tgrelid in (to_regclass('platform_private.route_manifest_version'),to_regclass('platform_private.publication_projection'))
+    and not t.tgisinternal),
+  'DR-S07 manifest lifecycle/immutability guards exist and every guard is SECURITY INVOKER');
+select is(case when to_regclass('platform_private.route_manifest_version') is null then -1 else
+  (select count(*)::integer from pg_trigger t join pg_proc p on p.oid=t.tgfoid
+  cross join lateral aclexplode(coalesce(p.proacl,acldefault('f',p.proowner))) a
+  where t.tgrelid in (to_regclass('platform_private.route_manifest_version'),to_regclass('platform_private.publication_projection'))
+    and not t.tgisinternal and a.grantee<>p.proowner) end,0,
+  'DR-S08 new guard functions revoke direct EXECUTE from PUBLIC/API/ordinary definers');
+select is((select count(*)::integer from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+  where n.nspname='platform_api' and p.prosrc ~* '(route_manifest_version|publication_projection)([^_a-z]|$)'),0,
+  'DR-S09 receiving storage adds no API RPC that accesses its private tables');
+select ok((select count(*)=2 and bool_and(pg_get_userbyid(c.relowner)=current_user)
+  from pg_class c where c.oid in (to_regclass('platform_private.route_manifest_version'),
+    to_regclass('platform_private.publication_projection'))),
+  'DR-S10 tables remain owned by the migration administrator, not a new delivery principal');
+
+-- Actual API/ordinary CMS roles, no and forged CMS GUC, SELECT and all writes.
+select is(r->>'state' || ':' || coalesce(r->>'constraint',''),'42501:',
+  'DR-S11 ACL refuses ' || role_name || '/' || action || '/' || q.name || '/forged=' || forged)
+from unnest(array['anon','authenticated','service_role','wejammin_cms_definer']) role_name
+cross join unnest(array[false,true]) forged
+cross join (values
+  ('manifest','SELECT','select * from platform_private.route_manifest_version'),
+  ('manifest','INSERT',pg_temp.dr_manifest_sql('api-manifest')),
+  ('manifest','UPDATE','update platform_private.route_manifest_version set state=state'),
+  ('manifest','DELETE','delete from platform_private.route_manifest_version'),
+  ('projection','SELECT','select * from platform_private.publication_projection'),
+  ('projection','INSERT',pg_temp.dr_projection_sql('api-projection','a','manifest-a')),
+  ('projection','UPDATE','update platform_private.publication_projection set state=state'),
+  ('projection','DELETE','delete from platform_private.publication_projection')) q(name,action,sql)
+cross join lateral (select pg_temp.dr_role_result(role_name,sql,forged) r) observed;
+
+-- Diagnostic authority is limited to this rolled-back suite. authenticated is
+-- an existing real role; no principal/policy/guard is created or disabled.
+select ok((select not rolbypassrls and not rolsuper from pg_roles where rolname='authenticated'),
+  'DR-S12 diagnostic authenticated principal is real and has neither superuser nor BYPASSRLS');
+select is(pg_temp.dr_result('grant usage on schema platform_private to authenticated',true)->>'state','00000',
+  'DR-S13 transaction-local diagnostic schema access reaches the actual RLS boundary');
+select is(pg_temp.dr_result('grant select,insert,update,delete on platform_private.route_manifest_version to authenticated',true)->>'state',
+  '00000','DR-S14 transaction-local diagnostic manifest table ACL is sufficient before RLS probes');
+select is(pg_temp.dr_result('grant select,insert,update,delete on platform_private.publication_projection to authenticated',true)->>'state',
+  '00000','DR-S15 transaction-local diagnostic projection table ACL is sufficient before RLS probes');
+select ok(to_regclass(q.name) is not null and (select bool_and(has_table_privilege('authenticated',to_regclass(q.name),p))
+  from unnest(array['SELECT','INSERT','UPDATE','DELETE']) p),
+  'DR-S16 diagnostic table grant is effective (ACL denial cannot substitute for RLS): ' || q.name)
+from unnest(array['platform_private.route_manifest_version','platform_private.publication_projection']) q(name);
+select is(pg_temp.dr_role_scalar('authenticated',format('select row_security_active(%L::regclass)::text',q.name)),'true',
+  'DR-S17 RLS is active for actual diagnostic role: ' || q.name)
+from unnest(array['platform_private.route_manifest_version','platform_private.publication_projection']) q(name);
+select is(pg_temp.dr_role_scalar('authenticated','select count(*) from platform_private.route_manifest_version'),'0',
+  'DR-S18 forced default-deny RLS hides the two admin-positive manifest rows despite forged GUC');
+select is(pg_temp.dr_role_scalar('authenticated','select count(*) from platform_private.publication_projection'),'0',
+  'DR-S19 forced default-deny RLS hides both admin-positive projection rows despite forged GUC');
+
+-- Explicit ordinal avoids sequence ACL as an earlier failure. Projection input
+-- carries all legitimate existing parents. Only a RLS diagnostic counts here.
+select is(r->>'state' || ':' || coalesce(r->>'constraint',''),'42501:',label || ' SQLSTATE/constraint')
+from (values
+  (pg_temp.dr_role_result('authenticated',pg_temp.dr_manifest_sql('rls-manifest','{"version_no":9223372036854775800}')),
+    'DR-S20 manifest INSERT reaches RLS, not sequence permission'),
+  (pg_temp.dr_role_result('authenticated',pg_temp.dr_projection_sql('rls-projection','a','manifest-a','{"version":2}')),
+    'DR-S21 projection INSERT reaches RLS, not missing-parent or uniqueness')) q(r,label);
+select ok(r->>'message' like '%row-level security%',label || ' identifies row-level security in actual diagnostic')
+from (values
+  (pg_temp.dr_role_result('authenticated',pg_temp.dr_manifest_sql('rls-manifest','{"version_no":9223372036854775800}')),
+    'DR-S22 manifest INSERT'),
+  (pg_temp.dr_role_result('authenticated',pg_temp.dr_projection_sql('rls-projection','a','manifest-a','{"version":2}')),
+    'DR-S23 projection INSERT')) q(r,label);
+select is(pg_temp.dr_role_result('authenticated',sql)->>'rows','0',
+  'DR-S24 forced RLS filters all existing rows from diagnostic ' || label)
+from (values
+  ('manifest UPDATE','update platform_private.route_manifest_version set state=state'),
+  ('manifest DELETE','delete from platform_private.route_manifest_version'),
+  ('projection UPDATE','update platform_private.publication_projection set state=state'),
+  ('projection DELETE','delete from platform_private.publication_projection')) q(label,sql);
+select is(pg_temp.dr_scalar('select count(*) from platform_private.route_manifest_version'),'2',
+  'DR-S25 diagnostic filtered writes preserve both real admin manifest fixtures');
+select is(pg_temp.dr_scalar('select count(*) from platform_private.publication_projection'),'2',
+  'DR-S26 diagnostic filtered writes preserve both real admin projection fixtures');
+select is(pg_temp.dr_result('revoke all on platform_private.route_manifest_version,platform_private.publication_projection from authenticated',true)->>'state',
+  '00000','DR-S27 diagnostic table grants explicitly removed; final suite ROLLBACK also undoes schema/table grants');
+select ok(to_regclass(q.name) is not null and not has_table_privilege('authenticated',to_regclass(q.name),'SELECT,INSERT,UPDATE,DELETE'),
+  'DR-S28 original authenticated table ACL restored: ' || q.name)
+from unnest(array['platform_private.route_manifest_version','platform_private.publication_projection']) q(name);
+
+-- The existing consumer is NOT a new default-deny table. Preserve exact policy,
+-- CMS SELECT-only grant and its enabled real write guard (applied migration immutable).
+select ok(pg_temp.s11_rls_forced('platform_private.projection_consumer_state'),
+  'DR-S29 existing consumer ENABLE/FORCE RLS retained [P2-S11-AC-116]');
+select is(pg_temp.s11_policies('platform_private.projection_consumer_state'),'projection_consumer_state_rpc_policy',
+  'DR-S30 existing consumer policy is retained, not replaced by new-table zero-policy posture');
+select is((select p.polcmd::text || ':' || p.polpermissive::text || ':' || p.polroles::text || ':'
+  || pg_get_expr(p.polqual,p.polrelid) || ':' || pg_get_expr(p.polwithcheck,p.polrelid)
+  from pg_policy p where p.polrelid=to_regclass('platform_private.projection_consumer_state')
+    and p.polname='projection_consumer_state_rpc_policy'),
+  '*:true:{0}:platform_private.cms_rpc_context_valid():platform_private.cms_rpc_context_valid()',
+  'DR-S31 existing consumer ALL/PUBLIC policy retains its exact USING and WITH CHECK guard');
+select ok(has_table_privilege('wejammin_cms_definer','platform_private.projection_consumer_state','SELECT')
+  and not has_table_privilege('wejammin_cms_definer','platform_private.projection_consumer_state','INSERT,UPDATE,DELETE'),
+  'DR-S32 existing CMS definer retains consumer SELECT and no writes');
+select is(pg_temp.s11_triggers('platform_private.projection_consumer_state'),
+  'projection_consumer_state_write_guard:cms_write_guard:31','DR-S33 existing consumer real write guard retained');
+select is((select t.tgenabled::text from pg_trigger t where t.tgrelid=to_regclass('platform_private.projection_consumer_state')
+  and t.tgname='projection_consumer_state_write_guard'),'O','DR-S34 consumer write guard remains enabled normally');
+select is(pg_temp.s11_api_privileges('platform_private.projection_consumer_state'),'','DR-S35 consumer API grants remain absent');
+select set_config('app.cms_rpc','false',true);
+select is(pg_temp.dr_diag(pg_temp.dr_consumer_sql('unguarded-consumer','a','projection-a')),'P0001:',
+  'DR-S36 existing consumer insert outside CMS context is still refused before any FK');
+select is(pg_temp.dr_result(pg_temp.dr_consumer_sql('unguarded-consumer','a','projection-a'))->>'message','DIRECT_CMS_TABLE_WRITE',
+  'DR-S37 unchanged consumer refusal is specifically DIRECT_CMS_TABLE_WRITE');
+select set_config('app.cms_rpc','true',true);
+
+select is(r->>'state' || ':' || coalesce(r->>'constraint',''),'42501:',
+  'DR-S38 direct EXECUTE of internal invoker guard is denied: ' || p.oid::regprocedure)
+from (select distinct t.tgfoid from pg_trigger t
+  where t.tgrelid in (to_regclass('platform_private.route_manifest_version'),to_regclass('platform_private.publication_projection'))
+    and not t.tgisinternal) guards join pg_proc p on p.oid=guards.tgfoid
+cross join lateral (select pg_temp.dr_role_result('authenticated',format('select %s()',p.oid::regproc)) r) observed;
+select is(r->>'state' || ':' || coalesce(r->>'constraint',''),'42501:',
+  'DR-S39 forged CMS GUC cannot allocate private ordinal: ' || role_name)
+from unnest(array['anon','authenticated','service_role','wejammin_cms_definer']) role_name
+cross join lateral (select pg_temp.dr_role_result(role_name,
+  (select format('select nextval(%L)',seq.oid::regclass::text)
+   from pg_depend d join pg_class seq on seq.oid=d.objid
+   where d.refobjid=to_regclass('platform_private.route_manifest_version') and d.deptype='i' and seq.relkind='S')) r) observed;

@@ -1,0 +1,64 @@
+-- cmsPatternLatestRead (BE03c 165, 1479; tracker P2-S12-AC-171 to AC-176): the owner's latest version of a key in
+-- any state, as the resource plus its block tree; hidden, absent and other-owner keys are one NOT_FOUND.
+create or replace function pg_temp.s12pd_latest_request(p_key text, p_actor text default 'owner',
+  p_override jsonb default '{}'::jsonb) returns jsonb language sql stable as $body$
+  select jsonb_build_object('patternKey',p_key,'context',pg_temp.s09d_context(p_actor,true,p_override))
+$body$;
+
+select pg_temp.s12pd_run('latest',pg_temp.s12pd_latest_request('s12pd-pattern'),'owner','service_role','latest');
+select is(pg_temp.s12pd_state('latest'),'00000','the designer reads the latest version of an owned key [P2-S12-AC-171]');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.s12pd_body('latest')) k),
+  array['blockRegistryDigest','blockTree','compatibleTypeIds','contentHash','createdAt','id','nodeCount',
+    'patternId','patternKey','patternVersion','state','updatedAt','version']::text[],
+  'detail is the exact safe resource plus the tree; no owner, creator or lifecycle member [P2-S12-AC-176]');
+select is(pg_temp.s12pd_body('latest')->'patternVersion','2'::jsonb,
+  'the latest of two versions is definition 2 [P2-S12-AC-171]');
+select is(pg_temp.s12pd_body('latest')->'version','"2"'::jsonb,
+  'the public CAS version is the definition number as a decimal string [P2-S12-AC-171]');
+select is(pg_temp.s12pd_body('latest')->'blockTree',pg_temp.s12pd_forest(2),
+  'the stored forest is returned exactly [P2-S12-AC-171]');
+select is(pg_temp.s12pd_body('latest') - 'blockTree',pg_temp.s12pd_body('successor'),
+  'the read is the creation resource of that version plus the tree [P2-S12-AC-171]');
+select ok((select state='00000' and before_rows=after_rows from s12pd_out where label='latest'),
+  'a read changes no captured full row and emits nothing [P2-S12-AC-171]');
+select pg_temp.s12pd_run('latest-child',pg_temp.s12pd_latest_request('s12pd-child'),'owner','service_role','latest');
+select ok(pg_temp.s12pd_state('latest-child')='00000'
+  and pg_temp.s12pd_body('latest-child')->>'patternId'=pg_temp.s12pd_body('child')->>'patternId'
+  and pg_temp.s12pd_body('latest-child')->'patternVersion'='2'::jsonb
+  and pg_temp.s12pd_body('latest-child')->>'state'='draft',
+  'the latest read follows the lineage: an active v1 does not hide the newer draft v2 [P2-S12-AC-172]');
+
+select * from pg_temp.s12pd_refused('latest-absent',pg_temp.s12pd_latest_request('s12pd-no-such-key'),
+  'NOT_FOUND',null,'owner','service_role','latest');
+select * from pg_temp.s12pd_refused('latest-reserved',pg_temp.s12pd_latest_request('selector'),
+  'INVALID_REQUEST',null,'owner','service_role','latest');
+select * from pg_temp.s12pd_refused('latest-malformed',pg_temp.s12pd_latest_request('Bad_Key'),
+  'INVALID_REQUEST',null,'owner','service_role','latest');
+select * from pg_temp.s12pd_refused('latest-extra-key',
+  pg_temp.s12pd_latest_request('s12pd-pattern') || '{"ownerId":"forged"}'::jsonb,
+  'INVALID_REQUEST',null,'owner','service_role','latest');
+-- designer2 is a confirmed member holding schema authority; its pattern grant is revoked through the real RPC.
+select is(pg_temp.s09d_revoke_via_rpc('designer2','cms.template_designer'),'OK',
+  'authority setup: real capability revoke succeeds before the read is attempted');
+select * from pg_temp.s12pd_refused('latest-no-capability',
+  pg_temp.s12pd_latest_request('s12pd-pattern','designer2'),
+  'FORBIDDEN','capability_missing','designer2','service_role','latest');
+select * from pg_temp.s12pd_refused('latest-hidden-owner',
+  pg_temp.s12pd_latest_request('s12pd-pattern','other',
+    jsonb_build_object('actingPartyId',pg_temp.s09d_id('ownerOrg'))),
+  'NOT_FOUND',null,'other','service_role','latest');
+select * from pg_temp.s12pd_refused('latest-anonymous',
+  jsonb_build_object('patternKey','s12pd-pattern','context','{}'::jsonb),
+  'UNAUTHENTICATED',null,'anonymous','service_role','latest');
+
+select pg_temp.s12pd_run('acl-latest-' || db_role,pg_temp.s12pd_latest_request('s12pd-pattern'),'owner',db_role,'latest')
+from unnest(array['anon','authenticated']) db_role;
+select is(pg_temp.s12pd_state('acl-latest-' || db_role),'42501',
+  db_role || ': real database role cannot execute the latest-read wrapper [P2-S12-AC-173]')
+from unnest(array['anon','authenticated']) db_role;
+select ok(to_regprocedure('platform_api.cms_pattern_latest(jsonb)') is not null
+  and pg_temp.s12pd_state('latest')='00000'
+  and (select state='42501' and response is null and before_rows=after_rows
+    from s12pd_out where label='acl-latest-' || db_role),
+  db_role || ': existing read plus successful service control proves ACL refusal without effects')
+from unnest(array['anon','authenticated']) db_role;

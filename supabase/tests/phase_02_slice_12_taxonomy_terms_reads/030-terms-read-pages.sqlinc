@@ -1,0 +1,75 @@
+-- cmsTaxonomyTermsRead paging and validation: the signed keyset over (termKey ASC, termId ASC), the cursor bound to the query and the
+-- acting scope, the DEC-140 fault classes (malformed 400, expired/tampered/foreign 409) and the query grammar.  BE03c 167, 371, 1186;
+-- [P2-S12-AC-183, AC-184, AC-186, AC-187]
+select pg_temp.s12tt_mark('before-paging');
+select pg_temp.s12tr_read('p-1', 'owner', pg_temp.s12tt_lineage('vr'), '{"limit":3}'::jsonb);
+select ok(pg_temp.s12tt_oc('p-1') = 'ok' and pg_temp.s12tr_keys(pg_temp.s12tr_page('p-1')) = array['tr-a', 'tr-b', 'tr-c']
+    and jsonb_typeof(pg_temp.s12tr_page('p-1')->'nextCursor') = 'string',
+  'limit 3 returns the first three terms in key order and a cursor [P2-S12-AC-183]');
+select ok(octet_length(pg_temp.s12tr_page('p-1')->>'nextCursor') between 1 and 512
+    and (convert_from(decode(pg_temp.s12tr_page('p-1')->>'nextCursor', 'base64'), 'utf8')::jsonb) ?& array['keyId', 'signature', 'queryHash', 'expiresAt']
+    and (convert_from(decode(pg_temp.s12tr_page('p-1')->>'nextCursor', 'base64'), 'utf8')::jsonb->>'signature') ~ '^[0-9a-f]{64}$',
+  'the cursor is a signed envelope of at most 512 characters that names its key, signature, query binding and expiry [P2-S12-AC-186]');
+select pg_temp.s12tr_read('p-2', 'owner', pg_temp.s12tt_lineage('vr'), jsonb_build_object('limit', 3, 'cursor', pg_temp.s12tr_page('p-1')->>'nextCursor'));
+select pg_temp.s12tr_read('p-3', 'owner', pg_temp.s12tt_lineage('vr'), jsonb_build_object('limit', 3, 'cursor', pg_temp.s12tr_page('p-2')->>'nextCursor'));
+select is(pg_temp.s12tr_keys(pg_temp.s12tr_page('p-2')), array['tr-d', 'tr-e', 'tr-f'], 'the cursor continues strictly after the last key of the previous page [P2-S12-AC-183]');
+select ok(pg_temp.s12tr_keys(pg_temp.s12tr_page('p-3')) = array['tr-g', 'tr-h'] and pg_temp.s12tr_page('p-3')->'nextCursor' = 'null'::jsonb,
+  'the last page lists the remainder and has no cursor [P2-S12-AC-183]');
+select is(pg_temp.s12tr_keys(pg_temp.s12tr_page('p-1')) || pg_temp.s12tr_keys(pg_temp.s12tr_page('p-2')) || pg_temp.s12tr_keys(pg_temp.s12tr_page('p-3')),
+  pg_temp.s12tr_keys(pg_temp.s12tr_page('t-after-write')), 'three pages are exactly the unpaged list: no gap, no repeat [P2-S12-AC-183]');
+select pg_temp.s12tr_read('p-exact', 'owner', pg_temp.s12tt_lineage('vr'), '{"limit":8}'::jsonb);
+select ok(array_length(pg_temp.s12tr_keys(pg_temp.s12tr_page('p-exact')), 1) = 8 and pg_temp.s12tr_page('p-exact')->'nextCursor' = 'null'::jsonb,
+  'a page that exactly exhausts the list carries no cursor [P2-S12-AC-183]');
+select pg_temp.s12tr_read('p-lifecycle-paged', 'owner', pg_temp.s12tt_lineage('vr'), '{"limit":2,"lifecycle":"active"}'::jsonb);
+select pg_temp.s12tr_read('p-lifecycle-paged-2', 'owner', pg_temp.s12tt_lineage('vr'), jsonb_build_object('limit', 2, 'lifecycle', 'active',
+  'cursor', pg_temp.s12tr_page('p-lifecycle-paged')->>'nextCursor'));
+select is(pg_temp.s12tr_keys(pg_temp.s12tr_page('p-lifecycle-paged')) || pg_temp.s12tr_keys(pg_temp.s12tr_page('p-lifecycle-paged-2')),
+  array['tr-a', 'tr-d', 'tr-e', 'tr-f'], 'paging composes with the lifecycle filter [P2-S12-AC-184]');
+
+-- cursor binding: query, vocabulary, forged, malformed --------------------------------------------------------------------------------------
+select pg_temp.s12tr_read('b-other-limit', 'owner', pg_temp.s12tt_lineage('vr'), jsonb_build_object('limit', 4, 'cursor', pg_temp.s12tr_page('p-1')->>'nextCursor'));
+select pg_temp.s12tr_read('b-other-filter', 'owner', pg_temp.s12tt_lineage('vr'), jsonb_build_object('limit', 3, 'lifecycle', 'active', 'cursor', pg_temp.s12tr_page('p-1')->>'nextCursor'));
+select pg_temp.s12tr_read('b-other-vocabulary', 'owner', pg_temp.s12tt_lineage('vq'), jsonb_build_object('limit', 3, 'cursor', pg_temp.s12tr_page('p-1')->>'nextCursor'));
+select pg_temp.s12tr_read('b-forged-key', 'owner', pg_temp.s12tt_lineage('vr'),
+  jsonb_build_object('limit', 3, 'cursor', pg_temp.s12tr_forge(pg_temp.s12tr_page('p-1')->>'nextCursor', 'lastTermKey', '"tr-f"')));
+select pg_temp.s12tr_read('b-forged-expiry', 'owner', pg_temp.s12tt_lineage('vr'),
+  jsonb_build_object('limit', 3, 'cursor', pg_temp.s12tr_forge(pg_temp.s12tr_page('p-1')->>'nextCursor', 'expiresAt', '"99999999999"')));
+select pg_temp.s12tr_read('b-not-base64', 'owner', pg_temp.s12tt_lineage('vr'), '{"cursor":"!!not a cursor!!"}'::jsonb);
+select pg_temp.s12tr_read('b-not-json', 'owner', pg_temp.s12tt_lineage('vr'), jsonb_build_object('cursor', encode(convert_to('plain text', 'utf8'), 'base64')));
+select pg_temp.s12tr_read('b-wrong-keys', 'owner', pg_temp.s12tt_lineage('vr'), jsonb_build_object('cursor', encode(convert_to('{"a":1}', 'utf8'), 'base64')));
+select pg_temp.s12tr_read('b-number', 'owner', pg_temp.s12tt_lineage('vr'), '{"cursor":7}'::jsonb);
+select pg_temp.s12tr_read('b-513', 'owner', pg_temp.s12tt_lineage('vr'), jsonb_build_object('cursor', repeat('A', 513)));
+select pg_temp.s12tr_read('b-null-cursor', 'owner', pg_temp.s12tt_lineage('vr'), '{"cursor":null}'::jsonb);
+select is(array[pg_temp.s12tt_oc('b-other-limit'), pg_temp.s12tt_oc('b-other-filter'), pg_temp.s12tt_oc('b-other-vocabulary'), pg_temp.s12tt_oc('b-forged-key'),
+                pg_temp.s12tt_oc('b-forged-expiry')],
+  array_fill('P0001:CONFLICT'::text, array[5]),
+  'a cursor replayed against another limit, filter or vocabulary, or with a forged payload or expiry, is 409: the client restarts from page one [P2-S12-AC-187]');
+select is(array[pg_temp.s12tt_oc('b-not-base64'), pg_temp.s12tt_oc('b-not-json'), pg_temp.s12tt_oc('b-wrong-keys'), pg_temp.s12tt_oc('b-number'), pg_temp.s12tt_oc('b-513')],
+  array_fill('P0001:INVALID_REQUEST'::text, array[5]), 'a structurally malformed cursor (not base64, not JSON, wrong members, not a string, over 512 octets) is 400 [P2-S12-AC-187]');
+select ok(pg_temp.s12tt_oc('b-null-cursor') = 'ok', 'a null cursor is the first page [P2-S12-AC-184]');
+
+-- query grammar: BE03c 407 lists lifecycle, cursor and limit of cmsTaxonomyTermsRead with the outcomes 400/policy-safe 404/502, so a query value outside its
+-- grammar is the 400 INVALID_REQUEST of its neighbours (an unknown key, a bad path id), never a 422 -------------------------------------------------------------------------------------------------------------------------
+create temp table s12tr_cases(label text primary key, patch jsonb not null, unset text[] not null default array[]::text[], expected text not null) on commit drop;
+insert into s12tr_cases(label, patch, expected)
+select 'limit-' || cases.label, jsonb_build_object('limit', cases.value), 'P0001:INVALID_REQUEST'
+  from (values ('zero', '0'::jsonb), ('negative', '-1'::jsonb), ('over', '51'::jsonb), ('fraction', '2.5'::jsonb), ('text', '"5"'::jsonb), ('boolean', 'true'::jsonb),
+               ('array', '[]'::jsonb)) cases(label, value);
+insert into s12tr_cases(label, patch, expected)
+select 'lifecycle-' || cases.label, jsonb_build_object('lifecycle', cases.value), 'P0001:INVALID_REQUEST'
+  from (values ('unknown', '"gone"'::jsonb), ('case', '"Active"'::jsonb), ('number', '1'::jsonb), ('empty', '""'::jsonb), ('array', '["active"]'::jsonb)) cases(label, value);
+insert into s12tr_cases(label, patch, expected)
+select 'extra-' || key, jsonb_build_object(key, 'x'), 'P0001:INVALID_REQUEST' from unnest(array['ownerId', 'sort', 'q', 'offset', 'taxonomyKey']) key;
+insert into s12tr_cases(label, patch, unset, expected) values
+  ('taxonomy-missing', '{}', array['taxonomyId'], 'P0001:INVALID_REQUEST'),
+  ('taxonomy-text', '{"taxonomyId":"not-a-uuid"}', array[]::text[], 'P0001:INVALID_REQUEST'),
+  ('taxonomy-number', '{"taxonomyId":5}', array[]::text[], 'P0001:INVALID_REQUEST'),
+  ('limit-50', '{"limit":50}', array[]::text[], 'ok'),
+  ('limit-1', '{"limit":1}', array[]::text[], 'ok'),
+  ('limit-null', '{"limit":null}', array[]::text[], 'ok'),
+  ('lifecycle-null', '{"lifecycle":null}', array[]::text[], 'ok');
+select pg_temp.s12tr_read('q-' || label, 'owner', pg_temp.s12tt_lineage('vr'), patch, unset) from s12tr_cases order by label;
+select is(pg_temp.s12tt_oc('q-' || c.label), c.expected, 'query case ' || c.label || ' [P2-S12-AC-184]') from s12tr_cases c order by c.label;
+select pg_temp.s12ga_rpc('q-body-array', 'platform_api.cms_list_taxonomy_terms', 'owner', '[]'::jsonb, pg_temp.s12ga_ctx('owner', interval '1 minute', false));
+select is(pg_temp.s12tt_oc('q-body-array'), 'P0001:INVALID_REQUEST', 'a non-object request is 400 [P2-S12-AC-184]');
+select ok(pg_temp.s12tt_same('before-paging'), 'paging, cursor faults and query refusals changed no store: reads are mutation-free [P2-S12-AC-186]');

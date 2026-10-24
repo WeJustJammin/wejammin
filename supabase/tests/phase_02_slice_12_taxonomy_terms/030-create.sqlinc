@@ -1,0 +1,85 @@
+-- CMS-03C-03 `create` on the active flat vocabulary vf: the exact resource, the term, label, audit, outbox and idempotency effects,
+-- replay, mismatch and the stable-key rules.  [P2-S12-AC-016, AC-019, AC-021; BE03c 1377, 1506, 1554-1561]
+select pg_temp.s12tt_act('c-alpha', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'alpha', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Alpha"},{"locale":"fr-FR","label":"Alpha FR"}]'::jsonb,
+  'aliases', '["first","Initial"]'::jsonb));
+select pg_temp.s12ga_keep('c-alpha', 'c-alpha');
+select is(pg_temp.s12tt_oc('c-alpha'), 'ok', 'the taxonomy curator creates a term in the active flat vocabulary [P2-S12-AC-016]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('c-alpha')),
+  'contentHash,createdAt,id,lifecycle,parentId,successorId,taxonomyId,termId,termKey,updatedAt,version',
+  'the 200 body is exactly TaxonomyTermResource (11 members, no owner or authority field) [P2-S12-AC-016]');
+select ok(
+  pg_temp.s12ga_body('c-alpha')->>'id' = pg_temp.s12ga_body('c-alpha')->>'termId'
+  and pg_temp.s12ga_body('c-alpha')->>'id' = pg_temp.s12tt_term(pg_temp.s12tt_lineage('vf'), 'alpha')->>'id'
+  and pg_temp.s12ga_body('c-alpha')->>'taxonomyId' = pg_temp.s12tt_lineage('vf')::text
+  and pg_temp.s12ga_body('c-alpha')->>'termKey' = 'alpha'
+  and pg_temp.s12ga_body('c-alpha')->>'lifecycle' = 'active'
+  and pg_temp.s12ga_body('c-alpha')->>'version' = '1' and jsonb_typeof(pg_temp.s12ga_body('c-alpha')->'version') = 'string'
+  and pg_temp.s12ga_body('c-alpha')->'parentId' = 'null'::jsonb and pg_temp.s12ga_body('c-alpha')->'successorId' = 'null'::jsonb
+  and pg_temp.s12ga_body('c-alpha')->>'createdAt' = pg_temp.s12ga_body('c-alpha')->>'updatedAt'
+  and pg_temp.s12ga_body('c-alpha')->>'contentHash' ~ '^[0-9a-f]{64}$',
+  'the resource names the stable term id, the vocabulary lineage, the key, lifecycle active, version "1" and null parent and successor [P2-S12-AC-016]');
+select is(pg_temp.s12ga_body('c-alpha')->>'contentHash',
+  platform_private.cms_jcs_sha256(jsonb_build_object('id', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha'), 'termKey', 'alpha',
+    'lifecycle', 'active', 'version', '1', 'successorId', null)),
+  'the content hash is the term digest the dependency manifest already uses (id, termKey, lifecycle, version, successorId) [P2-S12-AC-016]');
+select ok(
+  (select term.owner_id = pg_temp.s09d_id('ownerOrg') and term.taxonomy_id = pg_temp.s12tt_lineage('vf')
+          and term.taxonomy_version_id = pg_temp.s12tt_active_id(pg_temp.s12tt_lineage('vf'))
+          and term.lifecycle = 'active' and term.version = 1 and term.successor_id is null and term.parent_term_id is null
+          and term.aliases = '["first", "Initial"]'::jsonb and term.created_by = pg_temp.s12ga_auth('owner')
+          and term.created_at = term.updated_at
+     from platform_private.cms_terms term where term.id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha')),
+  'the term row is owner-bound, keyed to the vocabulary, written under the active version, active at version 1 with the aliases and the creator [P2-S12-AC-016]');
+select ok(
+  (select count(*) = 2 and bool_and(label.state = 'active' and label.version = 1 and label.owner_id = pg_temp.s09d_id('ownerOrg')
+            and label.aliases = '[]'::jsonb and label.created_by = pg_temp.s12ga_auth('owner'))
+     from platform_private.cms_term_labels label where label.term_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha'))
+  and pg_temp.s12tt_labels(pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha'))
+        = '[{"locale":"en-US","label":"Alpha"},{"locale":"fr-FR","label":"Alpha FR"}]'::jsonb,
+  'one version-1 label row exists per submitted locale, owner-bound and active [P2-S12-AC-016]');
+select ok(
+  (select count(*) = 1 and bool_and(event.schema_version = 1 and event.aggregate_type = 'cms_term' and event.aggregate_version = 1
+            and event.payload = jsonb_build_object('taxonomyId', pg_temp.s12tt_lineage('vf'),
+                                                   'taxonomyVersionId', pg_temp.s12tt_active_id(pg_temp.s12tt_lineage('vf'))))
+     from platform_private.outbox_events event
+    where event.event_type = 'cms.taxonomy.changed.v1' and event.aggregate_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha'))
+  and (select count(*) = 1 from audit_private.audit_events audit
+        where audit.action = 'cms.taxonomy.term.create' and audit.target_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha')
+          and audit.target_type = 'cms_term' and audit.actor_id = pg_temp.s12ga_auth('owner')),
+  'exactly one cms.taxonomy.changed.v1 (aggregate cms_term at the term version, payload { taxonomyId, taxonomyVersionId }) and one audit record commit [P2-S12-AC-021]');
+select ok(exists (select 1 from platform_private.idempotency_records record
+                   where record.operation = 'CMS-03C-03' and record.key_hash = platform_private.cms_key_hash('s12tt-c-alpha')
+                     and record.state = 'completed' and record.response_ref->>'status' = '200'),
+  'the completed idempotency record stores status 200 [P2-S12-AC-019]');
+
+-- ----------------------------------------------------------------------------- replay, mismatch --
+select pg_temp.s12tt_mark('after-alpha');
+select pg_temp.s12tt_act('c-alpha-replay', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'alpha', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Alpha"},{"locale":"fr-FR","label":"Alpha FR"}]'::jsonb,
+  'aliases', '["first","Initial"]'::jsonb, 'idempotencyKey', 's12tt-c-alpha'));
+select ok(pg_temp.s12tt_oc('c-alpha-replay') = 'ok' and pg_temp.s12ga_body('c-alpha-replay') = pg_temp.s12ga_kept('c-alpha')
+    and pg_temp.s12tt_same('after-alpha'),
+  'an exact same-key replay returns the original response and writes no second term, label, audit, outbox or idempotency row [P2-S12-AC-019]');
+select pg_temp.s12tt_act('c-alpha-mismatch', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'alpha', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Different"}]'::jsonb, 'idempotencyKey', 's12tt-c-alpha'));
+select is(pg_temp.s12tt_oc('c-alpha-mismatch'), 'P0001:IDEMPOTENCY_MISMATCH',
+  'the same key with a different body is IDEMPOTENCY_MISMATCH and changes nothing [P2-S12-AC-019]');
+select ok(pg_temp.s12tt_same('after-alpha'), 'the mismatch left every store identical [P2-S12-AC-019]');
+select pg_temp.s12tt_act('c-alpha-twice', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'alpha');
+select is(pg_temp.s12tt_oc('c-alpha-twice'), 'P0001:CONFLICT',
+  'a second create of an existing key under a new idempotency key is a 409 duplicate; the stable key never moves [P2-S12-AC-019]');
+select ok(pg_temp.s12tt_same('after-alpha'), 'the duplicate key left every store identical [P2-S12-AC-019]');
+
+-- ----------------------------------------------------------------------------- bounds that succeed --
+select pg_temp.s12tt_act('c-min', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'ab');
+select pg_temp.s12tt_act('c-max-key', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'm' || repeat('x', 62) || '1');
+select pg_temp.s12tt_act('c-labels-64', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'sixty-four', jsonb_build_object(
+  'labels', (select jsonb_agg(jsonb_build_object('locale', 'x' || chr(97 + i / 26) || chr(97 + i % 26), 'label', repeat('L', 160)) order by i)
+               from generate_series(0, 63) i),
+  'aliases', (select jsonb_agg(repeat('a', 156) || lpad(i::text, 3, '0') || chr(97 + i % 26) order by i) from generate_series(0, 63) i)));
+select ok(pg_temp.s12tt_oc('c-min') = 'ok' and pg_temp.s12tt_oc('c-max-key') = 'ok' and pg_temp.s12tt_oc('c-labels-64') = 'ok',
+  'a 2-character key, a 64-character key, 64 labels of 160 characters and 64 aliases are accepted [P2-S12-AC-017]');
+select ok((select count(*) = 64 from platform_private.cms_term_labels where term_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'sixty-four'))
+    and (select jsonb_array_length(aliases) = 64 from platform_private.cms_terms where id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'sixty-four')),
+  'all 64 labels and 64 aliases of the maximum request are stored [P2-S12-AC-017]');

@@ -1,0 +1,145 @@
+-- cmsCompositionInstancesRead paging (DEC-206 as aligned to BE00 collection rules, BE03c 182, 409, 1188-1196, 1648, changelog 2026-10-22):
+-- `limit` 1-50 default 25, at most `limit` items a page, an opaque SIGNED cursor of at most 512 characters (the shared Vault envelope of
+-- CMS-03C-13: authenticated, expires within 24 hours, bound to the route, entry, draft revision, sort and the caller's user/acting context).
+-- A tampered, expired or cross-context cursor is 400 INVALID_REQUEST, never 409 (BE03c 409: "400 without disclosing cursor internals").
+-- big1 holds 512 rows (32 nested references x 16 roots): 20 default pages of 25 and a short one of 12, or ten pages of 50 and one of 12.
+
+-- Walks every page of a tag from the first page at a page size (null = the default); returns sizes, cursors, concatenated paths.
+create or replace function pg_temp.s12ci_walk(p_prefix text, p_tag text, p_limit integer default null) returns jsonb
+language plpgsql as $body$
+declare n integer := 0; cursor_text text := null; sizes jsonb := '[]'::jsonb; cursors jsonb := '[]'::jsonb; paths jsonb := '[]'::jsonb;
+begin
+  loop
+    n := n + 1;
+    perform pg_temp.s12ci_read(p_prefix || n, p_tag, cursor_text, 'owner', 'service_role', p_limit);
+    if pg_temp.s12ci_state(p_prefix || n) <> '00000' or n > 40 then
+      return jsonb_build_object('failed', p_prefix || n, 'sizes', sizes, 'cursors', cursors, 'paths', paths);
+    end if;
+    sizes := sizes || to_jsonb(jsonb_array_length(pg_temp.s12ci_body(p_prefix || n)->'items'));
+    paths := paths || pg_temp.s12ci_paths(p_prefix || n);
+    cursor_text := pg_temp.s12ci_next(p_prefix || n);
+    exit when cursor_text is null;
+    cursors := cursors || to_jsonb(cursor_text);
+  end loop;
+  return jsonb_build_object('sizes', sizes, 'cursors', cursors, 'paths', paths);
+end;
+$body$;
+create or replace function pg_temp.s12ci_big_paths() returns jsonb language sql stable as $body$
+  select jsonb_agg('/nested' || (g / 16 + 1) || '/root' || (g % 16 + 1) order by g) from generate_series(0, 511) g $body$;
+
+-- DEFAULT page size 25 (BE03c 1188: limit default 25).
+select pg_temp.s12ci_walk('pg', 'big1') as walk \gset
+select is((:'walk'::jsonb)->'sizes', (select jsonb_agg(25) from generate_series(1, 20)) || '[12]'::jsonb,
+  'without limit a 512-row revision is twenty pages of exactly 25 and one of 12 [AC-269]');
+select is((:'walk'::jsonb)->'paths', pg_temp.s12ci_big_paths(),
+  'the concatenated default pages are the 512 rows once each, in authored position order, none repeated and none skipped');
+select ok((select bool_and(length(c #>> '{}') between 1 and 512) from jsonb_array_elements((:'walk'::jsonb)->'cursors') c) and jsonb_array_length((:'walk'::jsonb)->'cursors') = 20,
+  'twenty opaque cursors, each at most 512 characters, one per page that has a successor');
+select is(pg_temp.s12ci_next('pg21'), null, 'the last page has a null cursor');
+select is(pg_temp.s12ci_body('pg1')->>'revisionId', pg_temp.s12pl_rev('big1')::text, 'every page names the same draft revision');
+select ok((select bool_and(pg_temp.s12ci_unchanged(label)) from s12ci_out where label ~ '^pg[0-9]+$'), 'paging changed no captured store');
+select is(pg_temp.s12ci_body('pg2')->'items', (select jsonb_agg(pg_temp.s12ci_resource('big1', '/nested' || (g / 16 + 1) || '/root' || (g % 16 + 1)) order by g) from generate_series(25, 49) g),
+  'page two items are the producers'' resources of positions 25 to 49');
+select pg_temp.s12ci_read('pg2-again', 'big1', pg_temp.s12ci_next('pg1'));
+-- The next cursor is re-issued with a fresh expiry, so the repeated page is compared without it.
+select is(pg_temp.s12ci_body('pg2-again') - 'nextCursor', pg_temp.s12ci_body('pg2') - 'nextCursor', 'the same cursor answers the same page');
+select is((pg_temp.s12ci_cursor_json(pg_temp.s12ci_next('pg2-again')) - 'expiresAt' - 'signature') , (pg_temp.s12ci_cursor_json(pg_temp.s12ci_next('pg2')) - 'expiresAt' - 'signature'), 'and continues with the same binding, position and key');
+
+-- EXPLICIT limits.
+select pg_temp.s12ci_walk('lm', 'big1', 50) as walk50 \gset
+select is((:'walk50'::jsonb)->'sizes', (select jsonb_agg(50) from generate_series(1, 10)) || '[12]'::jsonb, 'limit 50, the maximum, gives ten pages of 50 and one of 12 [AC-269]');
+select is((:'walk50'::jsonb)->'paths', pg_temp.s12ci_big_paths(), 'limit 50 pages are the 512 rows once each, in order');
+select ok(coalesce((select bool_and(jsonb_array_length(response->'items') <= 50) from s12ci_out where label ~ '^lm[0-9]+$'), false), 'no page ever holds more than 50 items');
+select pg_temp.s12ci_walk('l1', 'ord1', 1) as walk1 \gset
+select is((:'walk1'::jsonb)->'paths', to_jsonb(array['/zeta', '/alpha', '/bb', '/ba', '/aa', '/zz']), 'limit 1 walks the six rows one by one, none repeated or skipped');
+select pg_temp.s12ci_read('l5', 'ord1', null, 'owner', 'service_role', 5);
+select is(jsonb_array_length(pg_temp.s12ci_body('l5')->'items') || ':' || (pg_temp.s12ci_next('l5') is not null), '5:true', 'limit 5 of six rows gives five and a cursor');
+select pg_temp.s12ci_read('l6', 'ord1', null, 'owner', 'service_role', 6);
+select is(jsonb_array_length(pg_temp.s12ci_body('l6')->'items') || ':' || coalesce(pg_temp.s12ci_next('l6'), 'none'), '6:none', 'limit equal to the row count exhausts the list: no cursor');
+select pg_temp.s12ci_read('l7', 'ord1', null, 'owner', 'service_role', 7);
+select is(jsonb_array_length(pg_temp.s12ci_body('l7')->'items') || ':' || coalesce(pg_temp.s12ci_next('l7'), 'none'), '6:none', 'limit above the row count answers the six rows and no cursor');
+-- The page size is not part of the binding (BE03c 409 lists route, entry, revision, sort, user/acting context): a cursor continues at any limit.
+select pg_temp.s12ci_read('lx-1', 'big1', null, 'owner', 'service_role', 50);
+select pg_temp.s12ci_read('lx-2', 'big1', pg_temp.s12ci_next('lx-1'), 'owner', 'service_role', 10);
+select is(pg_temp.s12ci_paths('lx-2'), (select jsonb_agg(p) from jsonb_array_elements(pg_temp.s12ci_big_paths()) with ordinality t(p, i) where i between 51 and 60),
+  'a cursor issued at page size 50 continues at page size 10 from the next row');
+
+-- The cursor is SIGNED: the shared Vault envelope with exactly the declared payload members, not a plain readable position.
+select pg_temp.s12ci_cursor_json(pg_temp.s12ci_next('pg1')) as cj \gset
+select is((select array_agg(k order by k) from jsonb_object_keys(:'cj'::jsonb) k), array['expiresAt', 'keyId', 'lastInstanceId', 'queryHash', 'signature'],
+  'the cursor is the sealed envelope: the three payload members, the key id and the HMAC signature');
+select ok((:'cj'::jsonb->>'signature') ~ '^[0-9a-f]{64}$' and (:'cj'::jsonb->>'queryHash') ~ '^[0-9a-f]{64}$' and (:'cj'::jsonb->>'expiresAt') ~ '^[0-9]{1,12}$',
+  'signature and binding hash are 64 lowercase hex characters and expiresAt is epoch seconds');
+select ok((:'cj'::jsonb->>'expiresAt')::bigint between floor(extract(epoch from clock_timestamp()))::bigint + 86300 and floor(extract(epoch from clock_timestamp()))::bigint + 86400,
+  'the cursor expires 24 hours after issue, never later');
+select is(:'cj'::jsonb->>'lastInstanceId', (pg_temp.s12ci_body('pg1')->'items'->24->>'id'), 'the payload names the last row answered');
+select ok(pg_temp.s12ci_next('pg1') !~ ('(?i)(' || pg_temp.s12pl_entry_id('big1')::text || '|' || pg_temp.s12pl_rev('big1')::text || '|nested)'),
+  'the cursor text does not name the entry, the revision or a path');
+
+-- Every cursor that is structurally malformed, tampered, expired, over-lived or bound to another context is 400 INVALID_REQUEST with no detail.
+select * from pg_temp.s12ci_refused('c-empty', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'), ''), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-not-base64', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'), 'not base64!!'), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-not-json', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'), pg_temp.s12ci_cursor_make('"abc"'::jsonb)), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-extra-key', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'), pg_temp.s12ci_tampered(pg_temp.s12ci_next('pg1'), '{"x":1}'::jsonb)), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-missing-key', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'), pg_temp.s12ci_cursor_make((:'cj'::jsonb) - 'lastInstanceId')), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-unsigned-legacy', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_cursor_make(jsonb_build_object('h', repeat('0', 64), 'i', pg_temp.s12ci_body('pg1')->'items'->24->>'id'))), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-too-long', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'), repeat('A', 513)), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-number', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1')) || jsonb_build_object('cursor', 5), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-bad-signature', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_tampered(pg_temp.s12ci_next('pg1'), jsonb_build_object('signature', repeat('0', 64)))), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-tampered-position', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_tampered(pg_temp.s12ci_next('pg1'), jsonb_build_object('lastInstanceId', pg_temp.s12ci_body('pg1')->'items'->0->>'id'))), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-tampered-expiry', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_tampered(pg_temp.s12ci_next('pg1'), jsonb_build_object('expiresAt', (floor(extract(epoch from clock_timestamp()))::bigint + 800000)::text))), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-unknown-key', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_tampered(pg_temp.s12ci_next('pg1'), jsonb_build_object('keyId', 'a9120000-0000-4000-8000-0000000000ab'))), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-expired', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_resigned(pg_temp.s12ci_next('pg1'), jsonb_build_object('expiresAt', (floor(extract(epoch from clock_timestamp()))::bigint - 10)::text))), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-overlived', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_resigned(pg_temp.s12ci_next('pg1'), jsonb_build_object('expiresAt', (floor(extract(epoch from clock_timestamp()))::bigint + 90000)::text))), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-signed-absent-row', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_resigned(pg_temp.s12ci_next('pg1'), jsonb_build_object('lastInstanceId', 'a9120000-0000-4000-8000-0000000000dd'))), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-signed-bad-id', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_resigned(pg_temp.s12ci_next('pg1'), jsonb_build_object('lastInstanceId', 'not-a-uuid'))), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-signed-other-hash', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  pg_temp.s12ci_resigned(pg_temp.s12ci_next('pg1'), jsonb_build_object('queryHash', repeat('0', 64)))), 'INVALID_REQUEST');
+-- A validly signed cursor of another ENTRY (a different binding hash) and a row of another entry's revision.
+select * from pg_temp.s12ci_refused('c-foreign-entry', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('other1'), pg_temp.s12ci_next('pg1')), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('c-no-draft', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('norev1'), pg_temp.s12ci_next('pg1')), 'INVALID_REQUEST');
+-- A validly signed cursor of ANOTHER DOMAIN (a sibling paged read) is not this read's cursor.
+select * from pg_temp.s12ci_refused('c-foreign-domain', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'),
+  platform_private.cms_signed_cursor_seal_page('cms-03c-13', jsonb_build_object('nextCursor', replace(encode(convert_to(platform_private.cms_jcs(
+    jsonb_build_object('queryHash', :'cj'::jsonb->>'queryHash', 'lastInstanceId', :'cj'::jsonb->>'lastInstanceId', 'expiresAt', :'cj'::jsonb->>'expiresAt')), 'utf8'), 'base64'), E'\n', '')),
+    pg_temp.s12ci_keys())->>'nextCursor'), 'INVALID_REQUEST');
+-- A null cursor is an absent cursor (BE03c 1188: `cursor` is nullable and optional).
+select pg_temp.s12ci_call('c-null-first', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1')) || jsonb_build_object('cursor', null));
+select is(pg_temp.s12ci_paths('c-null-first'), pg_temp.s12ci_paths('pg1'), 'a null cursor is the first page');
+
+-- The cursor is positional, not a snapshot: after a new version of the last returned path is appended, page two still starts at the next
+-- path and never repeats it.
+select pg_temp.s12ci_read('pg-50', 'big1', null, 'owner', 'service_role', 50);
+select pg_temp.s12ci_read('pg-50-2', 'big1', pg_temp.s12ci_next('pg-50'), 'owner', 'service_role', 50);
+select pg_temp.s12pu_pending('big1', (pg_temp.s12ci_body('pg-50')->'items'->49->>'path'), 2) as moved_row \gset
+select pg_temp.s12ci_read('pg-50-2-moved', 'big1', pg_temp.s12ci_next('pg-50'), 'owner', 'service_role', 50);
+select is(pg_temp.s12ci_body('pg-50-2-moved')->'items'->0->>'path', '/nested4/root3', 'page two starts at the next position although the last returned row has a newer version');
+select is(pg_temp.s12ci_paths('pg-50-2-moved'), pg_temp.s12ci_paths('pg-50-2'), 'page two is the same rows, none repeated and none skipped');
+select pg_temp.s12ci_read('pg-50-moved', 'big1', null, 'owner', 'service_role', 50);
+select is(pg_temp.s12ci_body('pg-50-moved')->'items'->49->>'id', :'moved_row', 'a fresh first page lists the newest row of that path in the same place');
+select is(pg_temp.s12ci_body('pg-50-moved')->'items'->49->>'state', 'pending_diff', 'and shows it as pending_diff');
+
+-- A cursor issued for the revision that was current is not valid once another revision is the entry's current draft (labelled fixture: a
+-- second revision row flipped to current).
+select set_config('app.cms_rpc', 'true', true);
+insert into platform_private.cms_entry_revisions
+select (jsonb_populate_record(null::platform_private.cms_entry_revisions, to_jsonb(r) || jsonb_build_object(
+  'id', 'a9120000-0000-4000-8000-0000000000ee', 'revision_number', r.revision_number + 1,
+  'payload_hash', encode(extensions.digest(convert_to('s12ci:big1:rev2', 'utf8'), 'sha256'), 'hex')))).*
+  from platform_private.cms_entry_revisions r where r.id = pg_temp.s12pl_rev('big1');
+update platform_private.cms_content_entries set current_draft_revision_id = 'a9120000-0000-4000-8000-0000000000ee' where id = pg_temp.s12pl_entry_id('big1');
+select * from pg_temp.s12ci_refused('c-new-revision', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'), pg_temp.s12ci_next('pg1')), 'INVALID_REQUEST');
+select pg_temp.s12ci_read('pg-new-revision', 'big1');
+select is(pg_temp.s12ci_body('pg-new-revision'), jsonb_build_object('revisionId', 'a9120000-0000-4000-8000-0000000000ee', 'items', '[]'::jsonb, 'nextCursor', null),
+  'the new current draft revision lists its own (no) rows, never the earlier revision''s');
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_entries set current_draft_revision_id = pg_temp.s12pl_rev('big1') where id = pg_temp.s12pl_entry_id('big1');

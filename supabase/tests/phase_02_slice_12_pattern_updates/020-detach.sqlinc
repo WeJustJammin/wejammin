@@ -1,0 +1,50 @@
+-- CMS-03C-15 detach (DEC-193): a `detached` row that materializes the instance's current effective content (the full subtree of its root in the
+-- pinned version plus its overrides) as a detached local block tree in `detached_tree`, with props {}, keeps the pin as provenance and the
+-- position, and stops receiving updates.  The effective value of a node is the override when one exists, else the pinned node's props.  Detach
+-- admits any linked pattern-origin row (a retired or a superseded newest head too) and has no key-count refusal.  BE03c Linked update (diff,
+-- accept, detach), 400, 1476; AC-118, AC-120, AC-121.
+select pg_temp.s12pu_update('d-ap7', pg_temp.s12pu_update_request('ap7', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap7', '/hero')), 's12pu-ap7-0001'));
+select * from pg_temp.s12puc_check('d-ap7', 'ap7', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null,
+  'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H1'), pg_temp.s12puc_tnode(0, 'title', 'MINE'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+select is((select pattern_version from platform_private.cms_composition_instances where id = (pg_temp.s12pu_body('d-ap7')->'items'->0->>'id')::uuid), 1::bigint,
+  'the detached row keeps the pattern version it was pinned to (its origin)');
+select pg_temp.s12pu_diff_head('d-ap7-after', 'ap7', '/hero');
+select ok(pg_temp.s12pu_body('d-ap7-after')->>'targetPatternVersion' = '1' and pg_temp.s12pu_body('d-ap7-after')->'paths' = '[]'::jsonb
+    and pg_temp.s12pu_body('d-ap7-after')#>>'{instance,linkMode}' = 'detached',
+  'a detached instance receives no further update: its diff is the empty no-update');
+select * from pg_temp.s12pu_refused('d-ap7-again', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('ap7', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap7', '/hero')), 's12pu-ap7-0002'),
+  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+select * from pg_temp.s12pu_refused('d-ap7-accept', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('ap7', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap7', '/hero')), 's12pu-ap7-0003', 2),
+  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+
+-- a pending_diff head is detached by an active detached row; the pinned base is materialized
+select pg_temp.s12pu_pending('ap8', '/hero', 2) as pending_row \gset
+select pg_temp.s12pu_update('d-ap8', pg_temp.s12pu_update_request('ap8', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap8', '/hero')), 's12pu-ap8-0001'));
+select * from pg_temp.s12puc_check('d-ap8', 'ap8', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null,
+  'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H1'), pg_temp.s12puc_tnode(0, 'title', 'T1'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+
+-- an instance that is already detached cannot be detached or accepted
+select * from pg_temp.s12pu_refused('d-ap9-detach', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('ap9', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap9', '/hero')), 's12pu-ap9-0001'),
+  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+select * from pg_temp.s12pu_refused('d-ap9-accept', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('ap9', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap9', '/hero')), 's12pu-ap9-0002', 2),
+  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+
+-- A RETIRED head (DEC-193, BE03c Linked update: "the newest version of its path may still be detached"): rm1 /gone was retired by the accept of
+-- 010-accept (u-rm1-gone).  Its detach appends an `active` detached row pinned (as provenance) to the version whose forest has the root and
+-- materializes that pinned tree; it does not resurrect the target and it is not an error.
+select pg_temp.s12pu_update('d-retired', pg_temp.s12pu_update_request('rm1', 'detach', jsonb_build_array(pg_temp.s12pu_target('rm1', '/gone')), 's12pu-rm1-gone-detach'));
+select * from pg_temp.s12puc_check('d-retired', 'rm1', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached',
+  'patternVersion', null, 'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'gone', 'G1')]))), 'detach');
+
+-- no key-count bound (DEC-193): a root with 156 nodes (the root, 5 children and 150 grandchildren) is materialized in full, in preorder
+select pg_temp.s12pu_update('d-wide', pg_temp.s12pu_update_request('wid2', 'detach', jsonb_build_array(pg_temp.s12pu_target('wid2', '/wide')), 's12pu-wid2-0001'));
+select * from pg_temp.s12puc_check('d-wide', 'wid2', array['/wide'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached',
+  'patternVersion', null, 'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree((select array_agg(node order by ord) from (
+    select 0 as ord, pg_temp.s12puc_tnode(null, 'wide', 'n1') as node
+    union all select 1 + (c - 1) * 31, pg_temp.s12puc_tnode(0, 'c' || c, 'n1') from generate_series(1, 5) c
+    union all select 1 + (c - 1) * 31 + g, pg_temp.s12puc_tnode(1 + (c - 1) * 31, 'g' || g, 'n1')
+      from generate_series(1, 5) c, generate_series(1, 30) g) preorder)))), 'detach');

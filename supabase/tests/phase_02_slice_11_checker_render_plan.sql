@@ -178,10 +178,12 @@ select ok(
 select pg_temp.rp_call('tpl', 'rp-tpl');
 select is(pg_temp.rp_nodes('tpl'),
   pg_temp.h11w_fid('meta')::text || '#note,' || pg_temp.h11w_fid('meta')::text || '#lead,' || pg_temp.h11w_fid('body')::text
-    || ',/composition/' || pg_temp.h11w_uuid('rp-i2') || ',/composition/' || pg_temp.h11w_uuid('rp-i1'),
-  'with a template the plan is the fields (properties nested at their field), then the instances by slot and path [P2-S11-AC-100]');
-select is(pg_temp.r11_resp('tpl')->>'renderPlanHash', '2cb8fc5df5fde344dea2c1aba67fa6bcbabf963ec06265fc10b42440ff817111',
-  'the render-plan hash binds the template version and the block identities (independent vector) [P2-S11-AC-100]');
+    || ',/composition/' || pg_temp.h11w_uuid('rp-i1') || ',/composition/' || pg_temp.h11w_uuid('rp-i2'),
+  'with a template the plan is the fields (properties nested at their field), then the instances by slot, authored position and path: rp-i1 (position 0, path /b/2) renders ahead of rp-i2 (position 1, path /b/1) although /b/1 sorts first (BE03c 1511, DEC-185) [P2-S11-AC-100]');
+-- Independent vector (python3 json.dumps(sort_keys, compact) + sha256): the plan order is now rp-i1 then rp-i2 (DEC-185 position
+-- before path); the previous path-ordered vector was 2cb8fc5d...7111, which this order no longer produces.
+select is(pg_temp.r11_resp('tpl')->>'renderPlanHash', '1cf797d05a557d56721888fe67aaf5b985ac7a5adbf2930b507ce02c1322dfc2',
+  'the render-plan hash binds the template version and the block identities in authored-position order (independent vector) [P2-S11-AC-100]');
 select pg_temp.r11_try('plan-positions', format(
   'select coalesce(jsonb_agg(plan.plan_position order by plan.plan_position), %L::jsonb) from platform_private.cms_revision_render_plan(%L::uuid) plan',
   '[]', pg_temp.h11w_uuid('rp-tpl:revision')));

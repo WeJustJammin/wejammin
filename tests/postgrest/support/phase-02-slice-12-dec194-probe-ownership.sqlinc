@@ -1,0 +1,46 @@
+-- TEST ONLY. Two separately committed ownership transactions; never a public RPC.
+-- DEC194_ACTIVATE
+begin;
+lock table platform_private.jobs in access exclusive mode;
+create trigger __TRIGGER__ after insert on platform_private.jobs
+  for each row execute function __SCHEMA__.observe_job();
+select pg_catalog.jsonb_build_object('oid', t.oid::bigint, 'functionOid', t.tgfoid::bigint,
+  'functionSchema', n.nspname, 'functionName', p.proname)
+from pg_catalog.pg_trigger t
+join pg_catalog.pg_proc p on p.oid = t.tgfoid
+join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+where t.tgname = '__TRIGGER__' and t.tgrelid = 'platform_private.jobs'::regclass
+  and not t.tgisinternal and n.nspname = '__SCHEMA__'
+  and p.proname = 'observe_job' and p.pronargs = 0;
+commit;
+-- DEC194_CLEANUP
+begin;
+lock table platform_private.jobs in access exclusive mode;
+do $ownership$
+declare expected_trigger oid := __TRIGGER_OID__::oid;
+  expected_function oid := __FUNCTION_OID__::oid;
+begin
+  if expected_trigger <> 0 then
+    if not exists (
+      select 1 from pg_catalog.pg_trigger t
+      join pg_catalog.pg_proc p on p.oid = t.tgfoid
+      join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+      where t.oid = expected_trigger and t.tgfoid = expected_function
+        and t.tgname = '__TRIGGER__' and t.tgrelid = 'platform_private.jobs'::regclass
+        and not t.tgisinternal and n.nspname = '__SCHEMA__'
+        and p.proname = 'observe_job' and p.pronargs = 0
+    ) then
+      raise exception 'DEC194_PROBE_OWNERSHIP_CHANGED';
+    end if;
+    execute 'drop trigger __TRIGGER__ on platform_private.jobs restrict';
+  end if;
+end;
+$ownership$;
+drop function __SCHEMA__.observe_job() restrict;
+drop function __SCHEMA__.bootstrap() restrict;
+drop function __SCHEMA__.facts() restrict;
+drop function __SCHEMA__.snapshot() restrict;
+drop table __SCHEMA__.observations restrict;
+drop table __SCHEMA__.world restrict;
+drop schema __SCHEMA__ restrict;
+commit;

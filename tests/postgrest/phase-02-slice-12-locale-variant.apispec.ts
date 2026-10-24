@@ -11,7 +11,7 @@
 import { randomUUID } from 'node:crypto';
 
 import { LocaleVariantResourceSchema } from '@wejammin/contracts';
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   type CompositionStack,
@@ -43,6 +43,13 @@ beforeAll(async () => {
   world = await prepareLocaleWorld();
   foreign = await prepareLocaleWorld();
   stack = createCompositionStack(session(world));
+});
+
+// AC-055 switches the verified session (none, then no capability). Restoring it here,
+// not on a test's last line, means a failed assertion cannot leave the next test
+// (AC-057 and any later one) running as the wrong caller.
+afterEach(() => {
+  stack.as(session(world));
 });
 
 const bodyFor = (
@@ -122,7 +129,8 @@ describe('CMS-03C-04 author a locale variant through the real stack', () => {
     expect(
       Number(
         q(`select count(*) from platform_private.outbox_events
-            where event_type = 'cms.localization.changed.v1' and aggregate_id = '${entry.entryId}'`),
+            where event_type = 'cms.localization.changed.v1'
+              and payload->>'entryId' = '${entry.entryId}'`),
       ),
     ).toBe(1);
   });
@@ -235,7 +243,10 @@ describe('CMS-03C-04 author a locale variant through the real stack', () => {
     expect(noCapability.status, noCapability.text).toBe(403);
     expect(noCapability.body).toMatchObject({
       code: 'LOCALE_FORBIDDEN',
-      details: { reasonCode: 'CAPABILITY_REQUIRED' },
+      // BE03c "Slice 12 typed refusals" (.memory/wiki/specs/be/03c-composition-taxonomy-localization.md
+      // line 1457): a 403 carries one lowercase token, `capability_missing`; the upper-case
+      // `CAPABILITY_REQUIRED` is the pre-contract BE00 token and is not a 03c token.
+      details: { reasonCode: 'capability_missing' },
     });
     expect(stack.observed()).toEqual([]);
     stack.as(session(world));

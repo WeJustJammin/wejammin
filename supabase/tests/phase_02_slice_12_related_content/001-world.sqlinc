@@ -1,0 +1,272 @@
+-- Slice 12 related-content world (BE03c CMS-03C-05 / CMS-03C-21).  Include AFTER 000-helpers.sqlinc, the
+-- Slice 10 RPC prelude, the Slice 11 data-model prelude and phase_02_slice_11_helpers/000 .. 002 + 004.
+--
+-- Everything is written under the CMS RPC context through the same builders the Slice 11 helper suites use;
+-- publications go through the REAL producer cms_append_publication_lineage (approved review at the same
+-- dependency hash, publisher with cms.publisher).  Hand-written statements say so in a comment.
+--
+--   Candidates (published en-US/public, in this order, so created_at ascends c1 < c2 < ... < c7):
+--     c1 {term1,term2,term3}   c2 {term1}   c3 {term1}   c4 {} + term1 superseded + term2 revoked
+--     c5 {term1,term2} (article type)   c6 {term1,term2,term3} (NOT assigned to the caller)
+--     c7 {termd}  (termd is a deprecated term)
+--   Source entries: srcp published (rev1 terms term1,term2,termd; later draft rev2 term3); src* unpublished
+--   drafts the caller is assigned to.  Never-eligible entries x2 (unpublished), x3 (fr-FR only), x4 (members
+--   only), x5 (draft only), x6/x7 (published; archived/held by the tests), xo (published; owner changed).
+
+select pg_temp.h11r_member('reviewer01', array['cms.reviewer']);
+select pg_temp.h11r_member('reviewer04', array['cms.publisher']);
+
+-- Taxonomy vocabulary and terms: hand-written (the term producer CMS-03C-03 is a later lane), under the guards.
+-- NOTE: cms_taxonomy_versions carries taxonomy_id (the lineage root; a first row is its own root).
+select set_config('app.cms_rpc', 'true', true);
+insert into platform_private.cms_taxonomy_versions(
+  id, taxonomy_id, owner_id, version, taxonomy_key, owner_capability, shape,
+  allowlisted_type_keys, allowlisted_field_keys, content_hash, created_by
+) values (pg_temp.h11w_uuid('tax1'), pg_temp.h11w_uuid('tax1'), pg_temp.h11w_org(), 1, 'r12-genres',
+  'cms.taxonomy_curator', 'flat', '[]'::jsonb, '[]'::jsonb, repeat('a', 64),
+  (select value::uuid from s10_ids where key = 'creatorAuth'));
+insert into platform_private.cms_terms(id, owner_id, version, taxonomy_version_id, term_key, created_by)
+select pg_temp.h11w_uuid(term.name), pg_temp.h11w_org(), 1, pg_temp.h11w_uuid('tax1'), term.key,
+       (select value::uuid from s10_ids where key = 'creatorAuth')
+  from (values ('term1', 'jazz'), ('term2', 'rock'), ('term3', 'blues'), ('termd', 'folk')) term(name, key);
+-- A term is created active and deprecated afterwards, one version up (cms_terms_lifecycle_guard).
+update platform_private.cms_terms set lifecycle = 'deprecated', version = version + 1, updated_at = clock_timestamp()
+ where id = pg_temp.h11w_uuid('termd');
+
+-- A second content type `r12art`, created by the real cms_create_type_draft and activated with the real seeded
+-- editorial policy exactly like h11doc: the "article" side of the same-type-recent cases.
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid, (select value::uuid from s10_ids where key = 'organization'));
+create temp table r12_art_created on commit drop as
+select platform_api.cms_create_type_draft(
+  request || jsonb_build_object(
+    'typeKey', 'r12art', 'label', 'R12 article', 'idempotencyKey', 'r12-art-type-create-0001',
+    'fields', jsonb_build_array(
+      jsonb_build_object('stableFieldId', 'a9200000-0000-4000-8000-000000000d31',
+        'key', 'title', 'kind', 'short_text', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Title', 'order', 0), 'lifecycle', 'active')),
+    'relations', '[]'::jsonb)
+) as response
+from s10_type_request;
+create temp table r12_art_ids on commit drop as
+select 'typeId' as key, response->>'contentTypeId' as value from r12_art_created
+union all select 'versionId', response->>'id' from r12_art_created;
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_type_versions
+set state = 'active', version = version + 1,
+    activation_workflow_policy_key = (select member->>'key' from h11w_policy),
+    activation_workflow_policy_version = (select (member->>'version')::bigint from h11w_policy),
+    activation_workflow_policy_hash = (select member->>'policyHash' from h11w_policy),
+    activation_required_decision_count = (select (member->>'requiredDecisionCount')::integer from h11w_policy),
+    activation_required_capabilities = (select member->'requiredCapabilities' from h11w_policy),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = (select value::uuid from r12_art_ids where key = 'versionId');
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select value::uuid from r12_art_ids where key = 'typeId');
+select is((select count(*)::integer from r12_art_ids where value is not null), 2, 'world: the r12art type was created');
+
+-- A second owner party for the foreign-owner cases.
+insert into platform_private.party(id, kind) values (pg_temp.h11w_uuid('r12:party2'), 'organization');
+
+-- Entry + one draft revision.  Same inserts as pg_temp.h11w_revision, with a chosen content type (the r12art type for p_article) and revision locale.
+create or replace function pg_temp.r12_make(p_tag text, p_article boolean default false, p_locale text default 'en-US')
+returns void
+language plpgsql
+as $body$
+declare
+  full_tag text := 'r12:' || p_tag;
+  entry_uuid uuid := pg_temp.h11w_uuid(full_tag || ':entry');
+  revision_uuid uuid := pg_temp.h11w_uuid(full_tag || ':revision');
+  stamp timestamptz := timestamptz '2026-10-08T12:00:00Z';
+  type_uuid uuid := case when p_article then (select value::uuid from r12_art_ids where key = 'typeId')
+                         else (select value::uuid from h11w_ids where key = 'typeId') end;
+  version_uuid uuid := case when p_article then (select value::uuid from r12_art_ids where key = 'versionId')
+                            else pg_temp.h11w_version() end;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle, current_draft_revision_id, version, created_by,
+    created_at, updated_at
+  ) values (entry_uuid, pg_temp.h11w_org(), type_uuid, pg_temp.h11w_org(), 'active', null, 1,
+            (select value::uuid from s10_ids where key = 'creatorAuth'), stamp, stamp);
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id, template_version_id, taxonomy_version_ids,
+    parent_revision_ids, locale, payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at
+  ) values (revision_uuid, pg_temp.h11w_org(), entry_uuid, 1, version_uuid, null, '[]'::jsonb, '[]'::jsonb, p_locale,
+    encode(extensions.digest(convert_to('h11w:' || full_tag, 'utf8'), 'sha256'), 'hex'),
+    pg_temp.h11w_person('creatorPerson'), pg_temp.h11w_org(), 'draft', 1, 'valid', '{}'::jsonb, stamp, stamp);
+  update platform_private.cms_content_entries set current_draft_revision_id = revision_uuid where id = entry_uuid;
+  insert into pg_temp.r12_tags(id, value) values (entry_uuid, p_tag);
+exception when others then
+  insert into pg_temp.r12_world_errors values ('make ' || p_tag, jsonb_build_object('state', sqlstate, 'error', sqlerrm));
+end;
+$body$;
+
+-- Active entry assignment of a person for one entry (the rows cms_create_entry writes for its creator).
+create or replace function pg_temp.r12_assign(p_tag text, p_person text default 'creatorPerson', p_cap text default 'cms.author')
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_entry_assignments(
+    owner_id, entry_id, assignee_person_id, capability_key, state, version, created_at, updated_at
+  ) values (pg_temp.h11w_org(), pg_temp.r12_id(p_tag), pg_temp.h11w_person(p_person), p_cap, 'active', 1,
+            timestamptz '2026-10-08T12:00:00Z', timestamptz '2026-10-08T12:00:00Z');
+exception when others then
+  insert into pg_temp.r12_world_errors values ('assign ' || p_tag, jsonb_build_object('state', sqlstate, 'error', sqlerrm));
+end;
+$body$;
+
+-- Term assignments of the entry's FIRST revision (term names are the world terms; state defaults to active).
+create or replace function pg_temp.r12_terms(p_tag text, p_terms text[], p_state text default 'active', p_revision_tag text default null)
+returns void
+language plpgsql
+as $body$
+declare
+  term_name text;
+  index_no integer := 0;
+begin
+  foreach term_name in array p_terms loop
+    perform pg_temp.h11w_assignment('r12:' || coalesce(p_revision_tag, p_tag) || ':' || term_name || ':' || p_state,
+      pg_temp.h11w_uuid('r12:' || coalesce(p_revision_tag, p_tag) || ':revision'), term_name, p_state, index_no);
+    index_no := index_no + 1;
+  end loop;
+exception when others then
+  insert into pg_temp.r12_world_errors values ('terms ' || p_tag, jsonb_build_object('state', sqlstate, 'error', sqlerrm));
+end;
+$body$;
+
+-- Publishes the revision of entry p_tag (review first, then the lineage producer); records a failure.
+create or replace function pg_temp.r12_publish(p_tag text, p_audience text default 'public', p_locale text default 'en-US',
+  p_revision_tag text default null, p_entry_tag text default null)
+returns void
+language plpgsql
+as $body$
+declare
+  result jsonb;
+  revision_tag text := 'r12:' || coalesce(p_revision_tag, p_tag);
+begin
+  perform pg_temp.h11l_review(revision_tag, case when p_entry_tag is null then null else 'r12:' || p_entry_tag end);
+  result := pg_temp.h11l_append(pg_temp.h11l_publish(revision_tag, p_audience,
+    jsonb_build_object('locale', p_locale), case when p_entry_tag is null then null else 'r12:' || p_entry_tag end));
+  if result ? 'error' then
+    insert into pg_temp.r12_world_errors values ('publish ' || p_tag || ' ' || p_audience, result);
+  end if;
+exception when others then
+  insert into pg_temp.r12_world_errors values ('publish ' || p_tag, jsonb_build_object('state', sqlstate, 'error', sqlerrm));
+end;
+$body$;
+
+create or replace function pg_temp.r12_unpublish(p_tag text, p_audience text default 'public', p_locale text default 'en-US')
+returns void
+language plpgsql
+as $body$
+declare
+  result jsonb;
+begin
+  result := pg_temp.h11l_append(pg_temp.h11l_tombstone('r12:' || p_tag, 'unpublish', p_audience,
+    jsonb_build_object('locale', p_locale)));
+  if result ? 'error' then
+    insert into pg_temp.r12_world_errors values ('unpublish ' || p_tag, result);
+  end if;
+exception when others then
+  insert into pg_temp.r12_world_errors values ('unpublish ' || p_tag, jsonb_build_object('state', sqlstate, 'error', sqlerrm));
+end;
+$body$;
+
+-- Entry lifecycle change: hand-written under the CMS RPC context with the entry user triggers paused (a
+-- lifecycle producer is a later slice; the review-invalidation trigger is not under test here).
+create or replace function pg_temp.r12_lifecycle(p_tag text, p_lifecycle text)
+returns void
+language sql
+as $body$
+  select pg_temp.r12_safe('lifecycle ' || p_tag, format(
+    'select pg_temp.h11_raw_exec(%L, %L)', 'platform_private.cms_content_entries', format(
+      'update platform_private.cms_content_entries set lifecycle = %L where id = %L', p_lifecycle, pg_temp.r12_id(p_tag))))
+$body$;
+
+-- Foreign-owner fixture: the entry exists and is published under org 1, then its owning party is changed.
+create or replace function pg_temp.r12_foreign_owner(p_tag text)
+returns void
+language sql
+as $body$
+  select pg_temp.r12_safe('foreign owner ' || p_tag, format(
+    'select pg_temp.h11_raw_exec(%L, %L)', 'platform_private.cms_content_entries', format(
+      'update platform_private.cms_content_entries set owner_party_id = %L where id = %L',
+      pg_temp.h11w_uuid('r12:party2'), pg_temp.r12_id(p_tag))))
+$body$;
+
+-- Candidates, published in order.
+select pg_temp.r12_make('c1');  select pg_temp.r12_assign('c1');
+select pg_temp.r12_terms('c1', array['term1', 'term2', 'term3']);
+select pg_temp.r12_publish('c1');
+select pg_temp.r12_make('c2');  select pg_temp.r12_assign('c2');
+select pg_temp.r12_terms('c2', array['term1']);
+select pg_temp.r12_publish('c2');
+select pg_temp.r12_make('c3');  select pg_temp.r12_assign('c3');
+select pg_temp.r12_terms('c3', array['term1']);
+select pg_temp.r12_publish('c3');
+select pg_temp.r12_make('c4');  select pg_temp.r12_assign('c4');
+select pg_temp.r12_terms('c4', array['term1'], 'superseded');
+select pg_temp.r12_terms('c4', array['term2'], 'revoked');
+select pg_temp.r12_publish('c4');
+select pg_temp.r12_make('c5', true);  select pg_temp.r12_assign('c5');
+select pg_temp.r12_terms('c5', array['term1', 'term2']);
+select pg_temp.r12_publish('c5');
+select pg_temp.r12_make('c6');  -- deliberately NOT assigned to the caller
+select pg_temp.r12_terms('c6', array['term1', 'term2', 'term3']);
+select pg_temp.r12_publish('c6');
+select pg_temp.r12_make('c7');  select pg_temp.r12_assign('c7');
+select pg_temp.r12_terms('c7', array['termd']);
+select pg_temp.r12_publish('c7');
+
+-- The published source: rev1 published, then a newer draft rev2 with different terms.
+select pg_temp.r12_make('srcp');  select pg_temp.r12_assign('srcp');
+select pg_temp.r12_terms('srcp', array['term1', 'term2', 'termd']);
+select pg_temp.r12_publish('srcp');
+select pg_temp.r12_safe('srcp2 revision', $$select pg_temp.h11w_revision('r12:srcp2', 'creatorPerson', 'en-US', '[]'::jsonb, 'r12:srcp', 2)$$);
+select pg_temp.r12_terms('srcp', array['term3'], 'active', 'srcp2');
+
+-- A source published in `public` (rev1) and then `members` (rev2, newer): its most recent active publication
+-- is the members one.
+select pg_temp.r12_make('srcm');  select pg_temp.r12_assign('srcm');
+select pg_temp.r12_publish('srcm');
+select pg_temp.r12_safe('srcm2 revision', $$select pg_temp.h11w_revision('r12:srcm2', 'creatorPerson', 'en-US', '[]'::jsonb, 'r12:srcm', 2)$$);
+select pg_temp.r12_publish('srcm', 'members', 'en-US', 'srcm2', 'srcm');
+
+-- Never-publicly-eligible and later-changed entries.
+select pg_temp.r12_make('x2');  select pg_temp.r12_assign('x2');
+select pg_temp.r12_publish('x2');
+select pg_temp.r12_unpublish('x2');
+select pg_temp.r12_make('x3', false, 'fr-FR');  select pg_temp.r12_assign('x3');
+select pg_temp.r12_publish('x3', 'public', 'fr-FR');
+select pg_temp.r12_make('x4');  select pg_temp.r12_assign('x4');
+select pg_temp.r12_publish('x4', 'members');
+select pg_temp.r12_make('x5');  select pg_temp.r12_assign('x5');
+select pg_temp.r12_make('x6');  select pg_temp.r12_assign('x6');
+select pg_temp.r12_publish('x6');
+select pg_temp.r12_make('x7');  select pg_temp.r12_assign('x7');
+select pg_temp.r12_publish('x7');
+select pg_temp.r12_make('xo');
+select pg_temp.r12_publish('xo');
+
+-- Unpublished draft sources the caller is assigned to (one per test group so version/CAS state is independent),
+-- an article-type source, and sources for the editor / foreign owner.
+select pg_temp.r12_make(tag) from unnest(array['srcA','srcR','srcV','srcE','srcE2','srcC','srcD','srcI','srcP','srcP2','srcP3','srcT','srcB','srcZ','srcK']) tag;
+select pg_temp.r12_assign(tag) from unnest(array['srcA','srcR','srcV','srcE','srcC','srcD','srcI','srcP','srcP2','srcP3','srcT','srcB','srcZ','srcK']) tag;
+select pg_temp.r12_assign('srcE2', 'editorPerson', 'cms.editor');
+select pg_temp.r12_make('srcart', true);  select pg_temp.r12_assign('srcart');
+select pg_temp.r12_terms('srcP2', array['term1', 'term2']);
+select pg_temp.r12_terms('srcP', array['term1']);
+select pg_temp.r12_terms('srcT', array['term1', 'term2']);
+
+select is((select count(*)::integer from pg_temp.r12_world_errors), 0,
+  'world: every fixture publication went through the real lineage producer without a refusal');
+select is((select count(*)::integer from platform_private.cms_publication_versions where entry_id in (
+    select id from pg_temp.r12_tags where value in ('c1','c2','c3','c4','c5','c6','c7','srcp','srcm','x2','x3','x4','x6','x7','xo'))), 17,
+  'world: the fifteen published entries hold 17 lineage rows (srcm in two audiences, x2 with its tombstone)');

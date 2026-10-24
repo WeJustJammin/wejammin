@@ -1,0 +1,92 @@
+-- CMS-03C-13 paging, the signed keyset cursor bound to the query and acting scope, and the query grammar.
+-- BE03c 175, 398 (signed cursor <= 512 characters, limit 1-50 default 25, strict keys), 1266, DEC-140 fault classes.
+-- [P2-S12-AC-106, AC-107, AC-109, AC-110]
+
+-- A genuinely signed cursor whose expiry is in the past: opened and re-sealed with the shared Vault helpers.
+create or replace function pg_temp.s12ps_expired_cursor(p_cursor text) returns text language plpgsql as $body$
+declare
+  v_keys constant text[] := array['queryHash', 'lastPatternKey', 'lastPatternVersion', 'expiresAt'];
+  v_payload jsonb;
+begin
+  if p_cursor is null then return null; end if;
+  v_payload := convert_from(decode(platform_private.cms_signed_cursor_open('cms-03c-13', to_jsonb(p_cursor), v_keys), 'base64'), 'utf8')::jsonb
+    || jsonb_build_object('expiresAt', (floor(extract(epoch from clock_timestamp()))::bigint - 10)::text);
+  return platform_private.cms_signed_cursor_seal_page('cms-03c-13', jsonb_build_object('nextCursor',
+    replace(encode(convert_to(platform_private.cms_jcs(v_payload), 'utf8'), 'base64'), E'\n', '')), v_keys)->>'nextCursor';
+end;
+$body$;
+create or replace function pg_temp.s12ps_tampered_cursor(p_cursor text) returns text language plpgsql as $body$
+begin
+  if p_cursor is null then return null; end if;
+  return replace(encode(convert_to(platform_private.cms_jcs(jsonb_set(convert_from(decode(p_cursor, 'base64'), 'utf8')::jsonb,
+    '{signature}', to_jsonb(repeat('0', 64)))), 'utf8'), 'base64'), E'\n', '');
+end;
+$body$;
+
+select pg_temp.s12ps_sel('g1', '{"limit":4}'::jsonb);
+select pg_temp.s12ps_sel('g2', jsonb_build_object('limit', 4, 'cursor', pg_temp.s12pu_body('g1')->>'nextCursor'));
+select pg_temp.s12ps_sel('g3', jsonb_build_object('limit', 4, 'cursor', pg_temp.s12pu_body('g2')->>'nextCursor'));
+select ok(pg_temp.s12pu_oc('g1') = 'ok' and cardinality(pg_temp.s12ps_keys(pg_temp.s12pu_body('g1'))) = 4
+    and jsonb_typeof(pg_temp.s12pu_body('g1')->'nextCursor') = 'string' and octet_length(pg_temp.s12pu_body('g1')->>'nextCursor') <= 512,
+  'limit 4 returns four items and a signed cursor of at most 512 characters [AC-109]');
+select is(pg_temp.s12ps_keys(pg_temp.s12pu_body('g1')) || pg_temp.s12ps_keys(pg_temp.s12pu_body('g2')) || pg_temp.s12ps_keys(pg_temp.s12pu_body('g3')),
+  pg_temp.s12ps_keys(pg_temp.s12pu_body('after-h4')), 'three pages (4, 4, 2) are exactly the unpaged list in (patternKey, patternVersion) order [AC-109]');
+select ok(cardinality(pg_temp.s12ps_keys(pg_temp.s12pu_body('g3'))) = 2 and pg_temp.s12pu_body('g3')->'nextCursor' = 'null'::jsonb
+    and cardinality(pg_temp.s12ps_keys(pg_temp.s12pu_body('g2'))) = 4 and jsonb_typeof(pg_temp.s12pu_body('g2')->'nextCursor') = 'string',
+  'the last page has no cursor; a middle page has one [AC-109]');
+select pg_temp.s12ps_sel('g-exact', '{"limit":10}'::jsonb);
+select ok(cardinality(pg_temp.s12ps_keys(pg_temp.s12pu_body('g-exact'))) = 10 and pg_temp.s12pu_body('g-exact')->'nextCursor' = 'null'::jsonb,
+  'a page that exactly exhausts the list has no cursor [AC-109]');
+select pg_temp.s12ps_sel('g-one', '{"limit":1}'::jsonb);
+select pg_temp.s12ps_sel('g-one-2', jsonb_build_object('limit', 1, 'cursor', pg_temp.s12pu_body('g-one')->>'nextCursor'));
+select is(pg_temp.s12ps_keys(pg_temp.s12pu_body('g-one')) || pg_temp.s12ps_keys(pg_temp.s12pu_body('g-one-2')), array['pu-a@2', 'pu-big@2'],
+  'a cursor of limit 1 continues with the next key [AC-109]');
+select pg_temp.s12ps_sel('g-50', '{"limit":50}'::jsonb);
+select ok(pg_temp.s12pu_oc('g-50') = 'ok' and jsonb_array_length(pg_temp.s12pu_body('g-50')->'items') = 10, 'limit 50, the maximum, is accepted [AC-107]');
+select ok(pg_temp.s12pu_unchanged('g3') and pg_temp.s12pu_unchanged('g1'), 'paging changed no store [AC-110]');
+
+-- cursor binding ---------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12ps_sel('c-other-limit', jsonb_build_object('limit', 5, 'cursor', pg_temp.s12pu_body('g1')->>'nextCursor'));
+select pg_temp.s12ps_sel('c-other-type', jsonb_build_object('limit', 4, 'cursor', pg_temp.s12pu_body('g1')->>'nextCursor'), array[]::text[], 'owner', 2);
+select pg_temp.s12ps_sel('c-other-actor', jsonb_build_object('limit', 4, 'cursor', pg_temp.s12pu_body('g1')->>'nextCursor'), array[]::text[], 'designer2');
+select pg_temp.s12ps_sel('c-tampered', jsonb_build_object('limit', 4, 'cursor', pg_temp.s12ps_tampered_cursor(pg_temp.s12pu_body('g1')->>'nextCursor')));
+select pg_temp.s12ps_sel('c-expired', jsonb_build_object('limit', 4, 'cursor', pg_temp.s12ps_expired_cursor(pg_temp.s12pu_body('g1')->>'nextCursor')));
+select pg_temp.s12ps_sel('c-malformed', '{"cursor":"!!not a cursor!!"}'::jsonb);
+select pg_temp.s12ps_sel('c-json', jsonb_build_object('cursor', encode(convert_to('hello', 'utf8'), 'base64')));
+select pg_temp.s12ps_sel('c-keys', jsonb_build_object('cursor', encode(convert_to('{"a":1}', 'utf8'), 'base64')));
+select pg_temp.s12ps_sel('c-long', jsonb_build_object('cursor', repeat('A', 513)));
+select pg_temp.s12ps_sel('c-number', '{"cursor":7}'::jsonb);
+select is((select string_agg(l || '=' || pg_temp.s12pu_oc(l), ';' order by l collate "C")
+             from unnest(array['c-other-limit', 'c-other-type', 'c-other-actor', 'c-tampered', 'c-expired']) l),
+  'c-expired=P0001:CONFLICT;c-other-actor=P0001:CONFLICT;c-other-limit=P0001:CONFLICT;c-other-type=P0001:CONFLICT;c-tampered=P0001:CONFLICT',
+  'a cursor replayed against another limit, content type or actor, a tampered signature and an expired cursor are 409 CONFLICT: the client restarts [AC-110]');
+select is((select string_agg(l || '=' || pg_temp.s12pu_oc(l), ';' order by l collate "C")
+             from unnest(array['c-malformed', 'c-json', 'c-keys', 'c-long', 'c-number']) l),
+  'c-json=P0001:INVALID_REQUEST;c-keys=P0001:INVALID_REQUEST;c-long=P0001:INVALID_REQUEST;c-malformed=P0001:INVALID_REQUEST;c-number=P0001:INVALID_REQUEST',
+  'a structurally malformed cursor (not base64, not JSON, wrong keys, over 512 characters, not a string) is 400 INVALID_REQUEST [AC-110]');
+select ok((select bool_and(before_rows = after_rows) from s12pu_out where label like 'c-%'), 'every cursor refusal leaves every captured store identical [AC-110]');
+
+-- query grammar.  A malformed contentTypeId is a malformed QUERY value: 400 INVALID_REQUEST with no DETAIL (BE03c validation matrix 398 and error
+-- matrix 1266 "malformed query/cursor"); an out-of-range limit stays the 422 body-shape refusal.  [AC-107] ----------------------------------------------------------------------------------------------------------------------
+create temp table s12ps_cases(label text primary key, patch jsonb not null, unset text[] not null default array[]::text[], expected text not null) on commit drop;
+insert into s12ps_cases(label, patch, expected)
+select 'type-' || cases.label, jsonb_build_object('contentTypeId', cases.value), 'P0001:INVALID_REQUEST'
+  from (values ('empty', '""'::jsonb), ('word', '"not-a-uuid"'::jsonb), ('short', '"a9120000-0000-4000-8000-00000000"'::jsonb), ('number', '5'::jsonb),
+               ('null', 'null'::jsonb), ('object', '{}'::jsonb)) cases(label, value);
+insert into s12ps_cases(label, patch, expected)
+select 'limit-' || cases.label, jsonb_build_object('limit', cases.value), 'P0001:VALIDATION_FAILED#["/limit"]'
+  from (values ('zero', '0'::jsonb), ('negative', '-1'::jsonb), ('over', '51'::jsonb), ('fraction', '2.5'::jsonb), ('text', '"5"'::jsonb),
+               ('boolean', 'true'::jsonb)) cases(label, value);
+insert into s12ps_cases(label, patch, expected)
+select 'extra-' || key, jsonb_build_object(key, 'x'), 'P0001:INVALID_REQUEST'
+  from unnest(array['ownerId', 'patternKey', 'state', 'sort', 'offset']) key;
+insert into s12ps_cases(label, patch, unset, expected)
+  values ('missing-contentTypeId', '{}'::jsonb, array['contentTypeId'], 'P0001:INVALID_REQUEST'),
+         ('missing-context', '{}'::jsonb, array['context'], 'P0001:INVALID_REQUEST');
+insert into s12ps_cases(label, patch, expected) values
+  ('limit-1', '{"limit":1}', 'ok'), ('limit-null', '{"limit":null}', 'ok'), ('cursor-null', '{"cursor":null}', 'ok'),
+  ('unknown-type', '{"contentTypeId":"a9120000-0000-4000-8000-0000000000aa"}', 'P0001:NOT_FOUND');
+select pg_temp.s12ps_sel('v-' || label, patch, unset) from s12ps_cases order by label;
+select is(pg_temp.s12pu_oc('v-' || c.label), c.expected, 'selector query case ' || c.label || ' [AC-107]') from s12ps_cases c order by c.label;
+select pg_temp.s12pu_call('v-body-array', 'platform_api.cms_list_pattern_selector', '[]'::jsonb);
+select is(pg_temp.s12pu_oc('v-body-array'), 'P0001:INVALID_REQUEST', 'a non-object body is INVALID_REQUEST [AC-107]');

@@ -1,0 +1,109 @@
+-- The named surface of the sweep: a private SECURITY DEFINER body and a service_role-only platform_api wrapper, both owned by the CMS definer
+-- with an empty search_path, the body executable by no API role (BE03c "Merge convergence recovery").  [P2-S12-AC-226; DEC-194]
+select has_function('platform_private', 'cms_reconcile_taxonomy_merge_converge', array[]::text[],
+  'the reconciliation body is a named private function taking no argument [P2-S12-AC-226, DEC-194]');
+select has_function('platform_api', 'cms_reconcile_taxonomy_merge_converge', array[]::text[],
+  'the reconciliation has a named platform API wrapper taking no argument [P2-S12-AC-226, DEC-194]');
+select ok(coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_private.cms_reconcile_taxonomy_merge_converge()'), 'execute'))
+                      from (values ('public'), ('anon'), ('authenticated'), ('service_role')) roles(role_name)), false),
+  'no API role can execute the private body [P2-S12-AC-226, DEC-194]');
+select ok(
+  has_function_privilege('service_role', to_regprocedure('platform_api.cms_reconcile_taxonomy_merge_converge()'), 'execute')
+  and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_api.cms_reconcile_taxonomy_merge_converge()'), 'execute'))
+                  from (values ('public'), ('anon'), ('authenticated')) roles(role_name)), false),
+  'only service_role executes the wrapper; PUBLIC, anon and authenticated cannot [P2-S12-AC-226, DEC-194]');
+select ok(not exists (select 1 from pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+                       where p.oid in (to_regprocedure('platform_private.cms_reconcile_taxonomy_merge_converge()'),
+                                       to_regprocedure('platform_api.cms_reconcile_taxonomy_merge_converge()'))
+                         and acl.privilege_type = 'EXECUTE' and acl.grantee = 0)
+  and (select count(*) = 2 from pg_proc p where p.oid in (to_regprocedure('platform_private.cms_reconcile_taxonomy_merge_converge()'),
+                                                         to_regprocedure('platform_api.cms_reconcile_taxonomy_merge_converge()'))),
+  'neither function carries a PUBLIC execute grant in its ACL [P2-S12-AC-226, DEC-194]');
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""'] and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer')
+                      from pg_proc p where p.oid in (to_regprocedure('platform_private.cms_reconcile_taxonomy_merge_converge()'),
+                                                     to_regprocedure('platform_api.cms_reconcile_taxonomy_merge_converge()'))), false)
+  and (select count(*) = 2 from pg_proc p where p.oid in (to_regprocedure('platform_private.cms_reconcile_taxonomy_merge_converge()'),
+                                                         to_regprocedure('platform_api.cms_reconcile_taxonomy_merge_converge()'))),
+  'both functions are SECURITY DEFINER with an empty search_path, owned by the CMS definer role [P2-S12-AC-226, DEC-194]');
+select ok((select p.prosrc ~ 'set_config\(''app\.cms_rpc'', ''true'', true\)' from pg_proc p
+            where p.oid = to_regprocedure('platform_private.cms_reconcile_taxonomy_merge_converge()')),
+  'the body sets the RPC context itself: the forced-RLS work predicate never depends on a caller that pre-set the flag [P2-S12-AC-226, DEC-194]');
+select is(pg_temp.s12dc_state_as('anon', 'select platform_api.cms_reconcile_taxonomy_merge_converge()'), '42501',
+  'anon is refused the wrapper with permission denied [P2-S12-AC-226, DEC-194]');
+select is(pg_temp.s12dc_state_as('authenticated', 'select platform_api.cms_reconcile_taxonomy_merge_converge()'), '42501',
+  'authenticated is refused the wrapper with permission denied [P2-S12-AC-226, DEC-194]');
+select is(pg_temp.s12dc_state_as('service_role', 'select platform_private.cms_reconcile_taxonomy_merge_converge()'), '42501',
+  'even service_role cannot call the private body directly [P2-S12-AC-226, DEC-194]');
+select ok(not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                       where n.nspname = 'platform_api' and p.proname = 'cms_reconcile_taxonomy_merge_converge' and p.pronargs <> 0)
+          and to_regprocedure('platform_api.cms_reconcile_taxonomy_merge_converge()') is not null,
+  'the wrapper has no overload that takes a request: nothing a caller sends can steer the sweep [P2-S12-AC-226, DEC-194]');
+
+-- Posture of the two support objects the recovery added (review R2-05; BE03c "Merge convergence recovery" and "Database Schema", DEC-212):
+-- the per-party mutex helper and the non-aggregate recovery table platform_private.taxonomy_merge_recoveries, which sits OUTSIDE the cms_
+-- namespace so the cms_ aggregate pins (envelope, RPC-gate policy, guard-trigger coverage) keep covering only aggregates.  Catalog-only
+-- assertions that name the table by string, so a missing or misnamed table fails these tests instead of aborting the file.
+select has_function('platform_private', 'cms_taxonomy_merge_enqueue_lock', array['uuid'],
+  'the per-party merge-enqueue mutex helper is a named private function taking the acting party id [P2-S12-AC-226, DEC-194]');
+select ok(coalesce((select p.prosecdef and p.proconfig @> array['search_path=""'] and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer'
+                      from pg_proc p where p.oid = to_regprocedure('platform_private.cms_taxonomy_merge_enqueue_lock(uuid)')), false),
+  'the mutex helper is SECURITY DEFINER with an empty search_path, owned by the CMS definer role [P2-S12-AC-226, DEC-194]');
+select ok(to_regprocedure('platform_private.cms_taxonomy_merge_enqueue_lock(uuid)') is not null
+          and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_private.cms_taxonomy_merge_enqueue_lock(uuid)'), 'execute'))
+                          from (values ('public'), ('anon'), ('authenticated'), ('service_role')) roles(role_name)), false)
+          and not exists (select 1 from pg_proc p, aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+                           where p.oid = to_regprocedure('platform_private.cms_taxonomy_merge_enqueue_lock(uuid)')
+                             and acl.privilege_type = 'EXECUTE' and acl.grantee = 0),
+  'no API role (and no PUBLIC ACL entry) can execute the mutex helper [P2-S12-AC-226, DEC-194]');
+select is(pg_temp.s12dc_state_as('service_role', 'select platform_private.cms_taxonomy_merge_enqueue_lock(gen_random_uuid())'), '42501',
+  'even service_role cannot call the mutex helper directly [P2-S12-AC-226, DEC-194]');
+
+select ok(pg_temp.s12dc_assoc_oid() is not null
+          and not exists (select 1 from pg_class c join pg_namespace n on n.oid = c.relnamespace
+                           where n.nspname = 'platform_private' and c.relname = 'cms_taxonomy_merge_recoveries'),
+  'DEC-212: the recovery table is platform_private.taxonomy_merge_recoveries and no cms_-prefixed twin exists [P2-S12-AC-226, DEC-194]');
+select ok(coalesce((select c.relrowsecurity and c.relforcerowsecurity
+                      from pg_class c where c.oid = pg_temp.s12dc_assoc_oid()), false),
+  'the recovery table has row level security enabled and forced [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_assoc_oid() is not null
+          and coalesce((select bool_and(not has_table_privilege(role_name, pg_temp.s12dc_assoc_oid(), priv))
+                          from (values ('public'), ('anon'), ('authenticated'), ('service_role')) roles(role_name)
+                          cross join unnest(array['SELECT', 'INSERT', 'UPDATE', 'DELETE', 'TRUNCATE', 'REFERENCES', 'TRIGGER']) p(priv)), false),
+  'no API role holds any privilege on the recovery table [P2-S12-AC-226, DEC-194]');
+select is((select string_agg(pg_get_userbyid(acl.grantee) || ':' || acl.privilege_type, ',' order by pg_get_userbyid(acl.grantee), acl.privilege_type)
+             from pg_class c, aclexplode(coalesce(c.relacl, acldefault('r', c.relowner))) acl
+            where c.oid = pg_temp.s12dc_assoc_oid() and acl.grantee <> c.relowner),
+  'wejammin_cms_definer:INSERT,wejammin_cms_definer:SELECT',
+  'the only non-owner privileges on the recovery table are SELECT and INSERT for the CMS definer [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_assoc_oid() is not null
+          and has_table_privilege('wejammin_cms_definer', pg_temp.s12dc_assoc_oid(), 'SELECT')
+          and has_table_privilege('wejammin_cms_definer', pg_temp.s12dc_assoc_oid(), 'INSERT')
+          and not has_table_privilege('wejammin_cms_definer', pg_temp.s12dc_assoc_oid(), 'UPDATE')
+          and not has_table_privilege('wejammin_cms_definer', pg_temp.s12dc_assoc_oid(), 'DELETE')
+          and not has_table_privilege('wejammin_cms_definer', pg_temp.s12dc_assoc_oid(), 'TRUNCATE')
+          and not has_table_privilege('wejammin_cms_definer', pg_temp.s12dc_assoc_oid(), 'REFERENCES')
+          and not has_table_privilege('wejammin_cms_definer', pg_temp.s12dc_assoc_oid(), 'TRIGGER'),
+  'the CMS definer holds exactly SELECT and INSERT on the recovery table: no UPDATE, DELETE, TRUNCATE, REFERENCES or TRIGGER [P2-S12-AC-226, DEC-194]');
+select is((select string_agg(pol.policyname || ':' || pol.cmd || ':' || pol.permissive || ':' || pol.roles::text || ':'
+                             || coalesce(pol.qual, '-') || ':' || coalesce(pol.with_check, '-'), '|' order by pol.policyname)
+             from pg_policies pol where pol.schemaname = 'platform_private' and pol.tablename = 'taxonomy_merge_recoveries'),
+  'taxonomy_merge_recoveries_insert:INSERT:PERMISSIVE:{wejammin_cms_definer}:-:platform_private.cms_rpc_context_valid()'
+  || '|taxonomy_merge_recoveries_select:SELECT:PERMISSIVE:{wejammin_cms_definer}:platform_private.cms_rpc_context_valid():-',
+  'the recovery table has exactly two permissive policies, SELECT and INSERT for the CMS definer, each gated by the RPC context [P2-S12-AC-226, DEC-194]');
+select is((select string_agg(att.attname || ':' || format_type(att.atttypid, att.atttypmod) || ':' || att.attnotnull::text, ',' order by att.attnum)
+             from pg_attribute att where att.attrelid = pg_temp.s12dc_assoc_oid() and att.attnum > 0 and not att.attisdropped),
+  'failed_job_id:uuid:true,recovery_job_id:uuid:true,requested_at:timestamp with time zone:true',
+  'the recovery table has exactly failed_job_id, recovery_job_id and requested_at, all not null [P2-S12-AC-226, DEC-194]');
+select ok(coalesce((select count(*) = 1 and bool_and(con.conkey = array[(select att.attnum from pg_attribute att
+                                                                          where att.attrelid = con.conrelid and att.attname = 'failed_job_id')])
+                      from pg_constraint con where con.conrelid = pg_temp.s12dc_assoc_oid() and con.contype = 'p'), false),
+  'failed_job_id is the primary key of the recovery table [P2-S12-AC-226, DEC-194]');
+select ok(coalesce((select count(*) = 1
+                      and bool_and(con.confrelid = to_regclass('platform_private.jobs') and con.confdeltype = 'c' and con.confupdtype = 'a'
+                                   and con.conkey = array[(select att.attnum from pg_attribute att where att.attrelid = con.conrelid and att.attname = 'failed_job_id')]
+                                   and con.confkey = array[(select att.attnum from pg_attribute att where att.attrelid = con.confrelid and att.attname = 'id')])
+                      from pg_constraint con where con.conrelid = pg_temp.s12dc_assoc_oid() and con.contype = 'f'), false),
+  'the recovery table has exactly one foreign key, failed_job_id -> platform_private.jobs(id) ON DELETE CASCADE, so recovery_job_id has none [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_assoc_oid() is not null
+          and not exists (select 1 from pg_trigger t where t.tgrelid = pg_temp.s12dc_assoc_oid() and not t.tgisinternal),
+  'the recovery table has no user trigger: nothing can obstruct the cascade from its failed Job [P2-S12-AC-226, DEC-194]');

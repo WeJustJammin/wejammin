@@ -1,0 +1,66 @@
+-- The request itself: one fresh convergence Job bound to the failed Job's actor and acting party under a key derived from the failed Job's
+-- id, exactly once per failed Job, writing nothing else.  [P2-S12-AC-226, DEC-194; BE03c "Merge convergence recovery"]
+select pg_temp.s12dc_elapse(2);
+select is(pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')), 16, 'fixture: the last job activity is 16 minutes old [P2-S12-AC-226]');
+select pg_temp.s12dc_mark('r1');
+select pg_temp.s12dc_sweep('r1');
+select is(pg_temp.s12dc_out('r1'), 'ok:{"requested": 1}',
+  '16 minutes after the failure the sweep requests exactly one job and answers { requested: 1 } (the second party, with no work, requests none) [P2-S12-AC-226, DEC-194]');
+select is(pg_temp.s12dc_delta('r1'), 'jobs +1, outbox +1, audit +1, idempotency +1, stores same',
+  'the request adds one job, one outbox event, one audit event and one idempotency record, and touches no term store [P2-S12-AC-226, DEC-194]');
+select ok(not exists (select 1 from jsonb_each(pg_temp.s12dc_rcpt_body('r1')) answer where answer.key <> 'requested'),
+  'the answer carries only the count: no job id, party or term [P2-S12-AC-226, DEC-194]');
+insert into s12dc_ids(key, value) values ('job:j3', pg_temp.s12dc_key_job(pg_temp.s12dc_id('job:q')));
+select ok(pg_temp.s12dc_id('job:j3') is not null, 'the idempotency record under the key derived from the failed job id names the requested job [P2-S12-AC-226, DEC-194]');
+select ok((select job.job_type = 'cms.taxonomy.merge_converge' and job.state = 'queued' and job.version = 1
+                  and job.actor_id = failed.actor_id and job.acting_party_id = failed.acting_party_id and job.correlation_id = failed.correlation_id
+                  and job.id not in (failed.id, pg_temp.s12dc_id('job:x'), pg_temp.s12dc_id('job:c'))
+             from platform_private.jobs job, platform_private.jobs failed
+            where job.id = pg_temp.s12dc_id('job:j3') and failed.id = pg_temp.s12dc_id('job:q')),
+  'the requested job is a NEW queued v1 job of the type, bound to the failed job''s actor and acting party and carrying its correlation id [P2-S12-AC-226, DEC-194]');
+select ok((select record.state = 'completed' and record.expires_at between clock_timestamp() + interval '6 days' and clock_timestamp() + interval '8 days'
+             from platform_private.idempotency_records record
+            where record.operation = 'cms.taxonomy.merge_converge'
+              and record.key_hash = extensions.digest('cms.taxonomy.merge_converge.reconcile:' || pg_temp.s12dc_id('job:q')::text, 'sha256')),
+  'the idempotency record is completed with the 7-day window of the other requests of the type [P2-S12-AC-226, DEC-194]');
+select ok(exists (select 1 from platform_private.outbox_events event where event.aggregate_id = pg_temp.s12dc_id('job:j3')
+                     and event.event_type = 'job.requested' and event.payload->>'jobType' = 'cms.taxonomy.merge_converge'),
+  'the job.requested outbox event of the new job exists, so the BE00 consumer will deliver it [P2-S12-AC-226, DEC-194]');
+select is((select count(*)::integer from platform_private.jobs where acting_party_id = pg_temp.s09d_id('otherOrg')), 1,
+  'the second party, whose failed job has no remaining work, got no job [P2-S12-AC-226, DEC-194]');
+
+-- the same tick again: the new job is live
+select pg_temp.s12dc_mark('r2');
+select pg_temp.s12dc_sweep('r2');
+select is(pg_temp.s12dc_out('r2') || '#' || pg_temp.s12dc_delta('r2'), 'ok:{"requested": 0}#jobs +0, outbox +0, audit +0, idempotency +0, stores same',
+  'a replayed tick requests nothing and writes nothing: the requested job is queued [P2-S12-AC-226, DEC-194]');
+
+-- the requested job is a real recovery: the Worker's claim and the real handler converge the tail the failed job left
+select pg_temp.s12tt_claim('dc-j3', pg_temp.s12dc_id('job:j3'), 1);
+select pg_temp.s12tt_run('dc-j3-run', pg_temp.s12tt_claimed('dc-j3', 5000));
+select ok(pg_temp.s12gb_sout('dc-j3-run') = 'ok' and pg_temp.s12gb_sbody('dc-j3-run') = '{"converged": 2, "remaining": 0, "continuationJobId": null}'::jsonb,
+  'the sweep-requested job is deliverable: the real handler converges the 2 remaining assignments through it [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12tt_outcome('dc-j3', 'succeeded', pg_temp.s12gb_sbody('dc-j3-run'), null), 'the requested job is recorded succeeded [P2-S12-AC-226]');
+select is(pg_temp.s12tt_assignments(pg_temp.s12tt_rev('dcd')) || '#' || pg_temp.s12tt_assignments(pg_temp.s12tt_rev('dce')),
+  'dc-retire:active:1:3|dc-retire:superseded:2:3|dc-survivor:active:1:3#dc-retire:active:1:4|dc-retire:superseded:2:4|dc-survivor:active:1:4',
+  'the tail the failed job left is now superseded once and re-pointed once onto the survivor [P2-S12-AC-226, AC-003]');
+select pg_temp.s12dc_elapse(20);
+select is(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')), 0, 'no merged-term work is left after the recovery job [P2-S12-AC-226]');
+select pg_temp.s12tt_mark('r2b');
+select pg_temp.s12dc_sweep('r2b');
+select is(pg_temp.s12dc_out('r2b'), 'ok:{"requested": 0}', 'once the work is converged the sweep requests nothing (the party''s latest failed job is old, the work is gone) [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12tt_same('r2b'), 'and writes nothing [P2-S12-AC-226, DEC-194]');
+
+-- exactly once per failed job: more merged-term work appears (a labelled tail again) and the party's latest failed job Q is old, with no live job
+select pg_temp.s12tt_seed_revision('dcf');
+select pg_temp.s12tt_seed_revision('dcg');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('dcf'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-retire'), 1, 'active', 5);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('dcg'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-retire'), 1, 'active', 6);
+select ok(pg_temp.s12dc_live(pg_temp.s09d_id('ownerOrg')) = 0 and pg_temp.s12dc_streak(pg_temp.s09d_id('ownerOrg')) = 0
+          and pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) >= 20 and pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 2
+          and (select state from platform_private.jobs where id = pg_temp.s12dc_id('job:q')) = 'failed',
+  'fixture: no live job, no failed generation at the head (the recovery job succeeded), 20 minutes idle, 2 assignments remain, Q is still the latest failed job [P2-S12-AC-226]');
+select pg_temp.s12dc_mark('r3');
+select pg_temp.s12dc_sweep('r3');
+select is(pg_temp.s12dc_out('r3') || '#' || pg_temp.s12dc_delta('r3'), 'ok:{"requested": 0}#jobs +0, outbox +0, audit +0, idempotency +0, stores same',
+  'a failed job is reconciled at most once: the key derived from Q replays the first request, so nothing is requested twice [P2-S12-AC-226, DEC-194]');

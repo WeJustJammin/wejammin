@@ -1,0 +1,207 @@
+-- AC260 persistence delta, AC235 write-time field source hashes, AC237 event identity
+-- of the author RPC, AC054 resource, AC055 never borrows another jurisdiction's text.
+
+select ok(
+  (select count(*) = 2
+   from information_schema.columns
+   where table_schema = 'platform_private' and table_name = 'cms_locale_variants'
+     and ((column_name = 'field_source_hashes' and data_type = 'jsonb' and is_nullable = 'NO'
+           and column_default = '''{}''::jsonb')
+       or (column_name = 'stale_field_ids' and data_type = 'jsonb' and is_nullable = 'NO'
+           and column_default = '''[]''::jsonb'))),
+  'cms_locale_variants carries field_source_hashes jsonb NOT NULL DEFAULT {} and stale_field_ids jsonb NOT NULL DEFAULT [] [P2-S12-AC-260]'
+);
+
+-- Author the first fr-FR variant: a translated title and a translated date.  The
+-- fixture source revision holds a title value and no event_date value.
+create temp table l12_v1_request on commit drop as
+select pg_temp.l12_req('fr-FR', jsonb_build_array(
+  jsonb_build_object('fieldId', pg_temp.l12_field('typeFieldId'), 'value', 'Titre traduit'),
+  jsonb_build_object('fieldId', pg_temp.l12_field('typeDateFieldId'), 'value', '2024-03-01')
+), 'l12-variant-v1') as request;
+create temp table l12_v1 on commit drop as
+select pg_temp.l12_author(request) as response from l12_v1_request;
+
+select ok(
+  (select response ? 'id' and response->>'state' = 'draft' and response->>'version' = '1'
+     and response->'staleFieldIds' = '[]'::jsonb
+   from l12_v1),
+  'the first variant is a draft resource with an empty staleFieldIds [P2-S12-AC-054]'
+);
+select is(
+  (select array_agg(key order by key) from l12_v1, jsonb_object_keys(response) key),
+  array['contentHash','createdAt','entryId','fallbackChain','id','locale','noFallbackFieldIds','revisionId',
+        'sourceRevisionId','staleFieldIds','state','updatedAt','version'],
+  'the 201 resource has exactly the strict LocaleVariantResource members: no owner, party or person identifier is serialized [P2-S12-AC-055]'
+);
+select is(
+  (select field_source_hashes from platform_private.cms_locale_variants
+   where id = (select (response->>'id')::uuid from l12_v1)),
+  jsonb_build_object(
+    pg_temp.l12_field('typeFieldId')::text, platform_private.cms_jcs_sha256(to_jsonb('Seeded draft title'::text)),
+    pg_temp.l12_field('typeDateFieldId')::text, platform_private.cms_jcs_sha256('null'::jsonb)),
+  'field_source_hashes records the source value hash of each translated field at write time; an absent source value is the hash of JSON null [P2-S12-AC-235]'
+);
+select is(
+  (select stale_field_ids from platform_private.cms_locale_variants
+   where id = (select (response->>'id')::uuid from l12_v1)),
+  '[]'::jsonb,
+  'a freshly authored draft variant has no stale fields [P2-S12-AC-235]'
+);
+select ok(
+  (select not (revision_values.field_ids @> jsonb_build_array(pg_temp.l12_field('typeRelationFieldId')::text))
+   from (select jsonb_agg(value.field_id::text) as field_ids
+         from platform_private.cms_entry_field_values value
+         where value.revision_id = (select (response->>'revisionId')::uuid from l12_v1)) revision_values)
+  and (select count(*) = 2 from platform_private.cms_entry_field_values value
+       where value.revision_id = (select (response->>'revisionId')::uuid from l12_v1)),
+  'the target revision holds only the requested fields: no value of the source or another locale is copied in [P2-S12-AC-055]'
+);
+
+-- AC237: the outbox identity of the author RPC.
+select is(
+  pg_temp.l12_text($$select platform_private.cms_uuid_v5('6ba7b810-9dad-11d1-80b4-00c04fd430c8'::uuid, 'python.org')::text$$),
+  '886313e1-3b8a-5372-9b90-0c9aee199e5d',
+  'cms_uuid_v5 reproduces the published RFC 4122 test vector [P2-S12-AC-237]'
+);
+select is(
+  pg_temp.l12_v5('6ba7b810-9dad-11d1-80b4-00c04fd430c8'::uuid, 'python.org')::text,
+  '886313e1-3b8a-5372-9b90-0c9aee199e5d',
+  'the test-side UUIDv5 reproduces the same published vector'
+);
+select is(
+  pg_temp.l12_text(format($$select platform_private.cms_locale_aggregate_id(%L::uuid, 'fr-FR')::text$$, pg_temp.l12_entry())),
+  pg_temp.l12_aggregate(pg_temp.l12_entry(), 'fr-FR')::text,
+  'the locale aggregate id is a UUIDv5 over the entry id and locale under the namespace cms.locale.aggregate.v1 [P2-S12-AC-237]'
+);
+select is(
+  pg_temp.l12_text(format($$select platform_private.cms_locale_aggregate_id(%L::uuid, 'FR-fr')::text$$, pg_temp.l12_entry())),
+  pg_temp.l12_aggregate(pg_temp.l12_entry(), 'fr-FR')::text,
+  'the locale aggregate id is case-insensitive in the locale, like every locale comparison of the aggregate [P2-S12-AC-237]'
+);
+select isnt(
+  pg_temp.l12_aggregate(pg_temp.l12_entry(), 'fr-FR'), pg_temp.l12_aggregate(pg_temp.l12_entry(), 'de-DE'),
+  'two locales of one entry are two aggregates [P2-S12-AC-237]'
+);
+select is(
+  pg_temp.l12_events('fr-FR'),
+  'cms_locale_variant/' || pg_temp.l12_aggregate(pg_temp.l12_entry(), 'fr-FR') || '/1',
+  'the author RPC emits cms.localization.changed.v1 under (cms_locale_variant, UUIDv5(entry, locale), variant version) [P2-S12-AC-237]'
+);
+select ok(
+  (select count(*) = 1 and bool_and(payload ?& array['entryId', 'locale', 'revisionId']
+            and (select count(*) from jsonb_object_keys(payload)) = 3)
+   from platform_private.outbox_events
+   where event_type = 'cms.localization.changed.v1' and payload->>'entryId' = pg_temp.l12_entry()::text),
+  'the localization event stays identifier-only: entryId, locale, revisionId [P2-S12-AC-278]'
+);
+
+-- AC260 constraints, probed on a copy of the first variant inside a savepoint
+-- (a successful insert is rolled back by the probe itself).
+create or replace function pg_temp.l12_variant_probe(
+  p_state text, p_hashes jsonb, p_stale jsonb, p_updated_offset interval default interval '0'
+)
+returns text
+language plpgsql
+as $body$
+declare
+  base platform_private.cms_locale_variants%rowtype;
+  stamp timestamptz := pg_catalog.clock_timestamp();
+begin
+  select * into base from platform_private.cms_locale_variants variant
+  where variant.entry_id = pg_temp.l12_entry() and variant.locale = 'fr-FR'
+  order by variant.version desc limit 1;
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_locale_variants(
+    id, owner_id, state, version, created_at, updated_at, entry_id, revision_id,
+    source_revision_id, locale, source_locale, source_hash, fallback_chain,
+    no_fallback_field_ids, created_by, field_source_hashes, stale_field_ids
+  ) values (
+    extensions.gen_random_uuid(), base.owner_id, p_state, 900, stamp, stamp + p_updated_offset,
+    base.entry_id, base.revision_id, base.source_revision_id, base.locale, base.source_locale,
+    base.source_hash, base.fallback_chain, base.no_fallback_field_ids, base.created_by,
+    p_hashes, p_stale
+  );
+  raise exception 'l12-probe-inserted';
+exception when others then
+  return sqlstate || ':' || sqlerrm;
+end;
+$body$;
+
+create or replace function pg_temp.l12_hash_map(p_keys integer)
+returns jsonb
+language sql
+as $body$
+  select coalesce(jsonb_object_agg(md5(i::text)::uuid::text, repeat('a', 64)), '{}'::jsonb)
+  from generate_series(1, p_keys) i
+$body$;
+
+create or replace function pg_temp.l12_id_list(p_count integer)
+returns jsonb
+language sql
+as $body$
+  select coalesce(jsonb_agg(md5(i::text)::uuid::text), '[]'::jsonb) from generate_series(1, p_count) i
+$body$;
+
+select is(
+  pg_temp.l12_variant_probe('stale', '{}'::jsonb, jsonb_build_array(pg_temp.l12_field('typeFieldId'))),
+  'P0001:l12-probe-inserted',
+  'control: a stale row with a UUID stale_field_ids member is admitted [P2-S12-AC-260]'
+);
+select is(
+  pg_temp.l12_variant_probe('stale', pg_temp.l12_hash_map(128), '[]'::jsonb),
+  'P0001:l12-probe-inserted',
+  'control: field_source_hashes admits 128 field-id keys [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('stale', pg_temp.l12_hash_map(129), '[]'::jsonb) like '23514:%',
+  'field_source_hashes refuses a 129th key [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('draft', jsonb_build_array('a'), '[]'::jsonb) like '23514:%',
+  'field_source_hashes must be an object [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('draft', jsonb_build_object(md5('1')::uuid::text, 'not-a-hash'), '[]'::jsonb) like '23514:%',
+  'every field_source_hashes value is 64 lowercase hex [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('draft', jsonb_build_object('not-a-uuid', repeat('a', 64)), '[]'::jsonb) like '23514:%',
+  'every field_source_hashes key is a field id (UUID) [P2-S12-AC-260]'
+);
+select is(
+  pg_temp.l12_variant_probe('stale', '{}'::jsonb, pg_temp.l12_id_list(128)),
+  'P0001:l12-probe-inserted',
+  'control: stale_field_ids admits 128 UUIDs [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('stale', '{}'::jsonb, pg_temp.l12_id_list(129)) like '23514:%',
+  'stale_field_ids refuses a 129th member [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('stale', '{}'::jsonb, jsonb_build_array('not-a-uuid')) like '23514:%',
+  'stale_field_ids members are UUIDs [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('stale', '{}'::jsonb, '{"a":1}'::jsonb) like '23514:%',
+  'stale_field_ids must be an array [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('stale', '{}'::jsonb,
+    jsonb_build_array(pg_temp.l12_field('typeFieldId'), pg_temp.l12_field('typeFieldId'))) like '23514:%',
+  'stale_field_ids members are unique [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('draft', '{}'::jsonb, jsonb_build_array(pg_temp.l12_field('typeFieldId'))) like '23514:%',
+  'a draft row has no stale fields: staleFieldIds is empty unless the state is stale [P2-S12-AC-054]'
+);
+select ok(
+  pg_temp.l12_variant_probe('approved', '{}'::jsonb, '[]'::jsonb) like '23514:%'
+    and pg_temp.l12_variant_probe('review', '{}'::jsonb, '[]'::jsonb) like '23514:%'
+    and pg_temp.l12_variant_probe('untranslated', '{}'::jsonb, '[]'::jsonb) like '23514:%',
+  'the physical state is draft or stale: review, approved and untranslated are derived, never stored [P2-S12-AC-260]'
+);
+select ok(
+  pg_temp.l12_variant_probe('draft', '{}'::jsonb, '[]'::jsonb, interval '1 second') like '23514:%',
+  'a snapshot with updated_at different from created_at is refused [P2-S12-AC-260]'
+);

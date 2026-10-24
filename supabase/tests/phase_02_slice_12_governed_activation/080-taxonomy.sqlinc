@@ -1,0 +1,50 @@
+-- CMS-03C-09 on a TAXONOMY subject (the third subject kind), through the real taxonomy producer: a vocabulary that declares the built
+-- `role` canonical domain, submitted, assigned, approved and activated.  The activation emits cms.taxonomy.changed.v1 for the
+-- taxonomy version row (aggregate cms_taxonomy_version at its lifecycle counter).  Pattern subjects are driven by the pattern-definition
+-- suite (nested activation) staged with this lane.
+select is(pg_temp.s12ga_grant('owner', 'cms.taxonomy_curator', 1), 'OK',
+  'control: the real CMS-03A-15 command grants the owner cms.taxonomy_curator [P2-S12-AC-082]');
+select pg_temp.s12ga_rpc('tx-create', 'platform_api.cms_create_taxonomy_version', 'owner', jsonb_build_object(
+  'taxonomyKey', 's12gb-tax', 'shape', 'flat',
+  'allowedTypeKeys', jsonb_build_array((select type_key from platform_private.cms_content_types
+                                          where id = (select value::uuid from s12gov_ids where key = 'typeA'))),
+  'allowedFieldKeys', jsonb_build_array('s12gb_field'), 'canonicalOverlapDomains', jsonb_build_array('role'),
+  'expectedVersion', null, 'idempotencyKey', 's12ga-tx-create'));
+insert into s12gov_ids(key, value)
+select 'tx:subject', pg_temp.s12ga_body('tx-create')->>'id' where pg_temp.s12ga_body('tx-create')->>'id' is not null;
+select pg_temp.s12ga_rpc('tx-submit', 'platform_api.cms_submit_governed_review', 'owner', jsonb_build_object(
+  'subjectKind', 'taxonomy_version', 'subjectId', pg_temp.s12ga_subject('tx'),
+  'subjectHash', (select content_hash::text from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tx')),
+  'idempotencyKey', 's12ga-tx-submit'));
+insert into s12gov_ids(key, value)
+select 'tx:review', pg_temp.s12ga_body('tx-submit')->>'id' where pg_temp.s12ga_body('tx-submit')->>'id' is not null;
+select pg_temp.s12ga_assign('as-tx', 'owner', pg_temp.s12ga_review('tx'), 'rev1', interval '20 hours');
+select pg_temp.s12ga_decide('ap-tx', 'rev1', pg_temp.s12ga_review('tx'), 'approve');
+select ok(pg_temp.s12ga_out('tx-create') = 'ok' and pg_temp.s12ga_out('tx-submit') = 'ok' and pg_temp.s12ga_out('as-tx') = 'ok'
+    and pg_temp.s12ga_out('ap-tx') = 'ok'
+    and (select review.state = 'approved' and review.subject_kind = 'taxonomy_version' and review.version = 2
+           and exists (select 1 from platform_private.cms_governed_review_dependencies dependency
+                        where dependency.review_id = review.id and dependency.kind = 'canonical_domain')
+       from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('tx'))
+    and (select state = 'approved' and lifecycle_version = 3 from platform_private.cms_taxonomy_versions
+          where id = pg_temp.s12ga_subject('tx')),
+  'fixture: a real taxonomy version declaring the built role domain was created, submitted, assigned and approved (frozen canonical_domain dependency) [P2-S12-AC-082]');
+select pg_temp.s12gb_act('tx-act', 'owner', pg_temp.s12ga_review('tx'), 'activate');
+select ok(pg_temp.s12ga_out('tx-act') = 'ok' and pg_temp.s12ga_body('tx-act')->>'subjectKind' = 'taxonomy_version'
+    and pg_temp.s12ga_body('tx-act')->>'eventType' = 'cms.taxonomy.changed.v1'
+    and pg_temp.s12ga_body('tx-act')->>'subjectState' = 'active' and pg_temp.s12ga_body('tx-act')->>'reviewVersion' = '3'
+    and pg_temp.s12ga_body('tx-act')->>'lineageId' = (select taxonomy_id::text from platform_private.cms_taxonomy_versions
+                                                       where id = pg_temp.s12ga_subject('tx')),
+  'activating a taxonomy version answers the taxonomy event type and its lineage id [P2-S12-AC-082]');
+select ok(
+  (select state = 'active' and lifecycle_version = 4 and version = 1 and activated_at is not null
+     from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tx'))
+  and pg_temp.s12gb_events('tx') = 1
+  and (select event.event_type = 'cms.taxonomy.changed.v1' and event.aggregate_type = 'cms_taxonomy_version'
+          and event.aggregate_version = 4
+          and event.payload = jsonb_build_object('taxonomyId', subject.taxonomy_id, 'taxonomyVersionId', subject.id)
+     from platform_private.outbox_events event
+     join platform_private.cms_taxonomy_versions subject on subject.id = event.aggregate_id
+    where event.aggregate_id = pg_temp.s12ga_subject('tx'))
+  and pg_temp.s12gb_audits('cms.governed.activate', 'tx') = 1,
+  'the taxonomy activation commits exactly one cms.taxonomy.changed.v1 (aggregate cms_taxonomy_version at lifecycle 4, payload { taxonomyId, taxonomyVersionId }) and one audit record [P2-S12-AC-082]');

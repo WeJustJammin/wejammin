@@ -1,0 +1,49 @@
+-- CMS-03C-14 authority, concealment and request grammar (BE03c 176, 399, 1267, 1475): an assigned CMS author or editor on the instance's
+-- revision; a hidden or absent instance is 404 (uniform); a visible instance without edit is 403 capability_missing.  [AC-114, AC-116, AC-261]
+select pg_temp.s12pu_diff_head('a-owner', 'dif1', '/hero');
+select is(pg_temp.s12pu_oc('a-owner'), 'ok', 'control: the assigned author reads the diff');
+select * from pg_temp.s12pu_refused('a-no-edit', 'platform_api.cms_get_instance_update_diff', pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero'), 'designer2'),
+  'capability_missing', null, 'designer2');
+select pg_temp.s12pu_assign('dif1', 'designer2', 'cms.author');
+select pg_temp.s12pu_diff_head('a-assigned', 'dif1', '/hero', 'designer2');
+select is(pg_temp.s12pu_body('a-assigned'), pg_temp.s12pu_body('a-owner'),
+  'once assigned on the entry, a second author reads the same diff [AC-114]');
+select * from pg_temp.s12pu_refused('a-hidden', 'platform_api.cms_get_instance_update_diff', pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero'), 'other'),
+  'NOT_FOUND', null, 'other');
+select * from pg_temp.s12pu_refused('a-absent', 'platform_api.cms_get_instance_update_diff', pg_temp.s12pu_diff_request('a9120000-0000-4000-8000-0000000000cc'), 'NOT_FOUND');
+select pg_temp.s12pu_call('a-anon', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero')) || jsonb_build_object('context', '{}'::jsonb), 'anonymous');
+select is(pg_temp.s12pu_oc('a-anon'), 'P0001:UNAUTHENTICATED', 'a request without a verified human context is 401 UNAUTHENTICATED [AC-116]');
+select pg_temp.s12pu_diff('acl-anon', pg_temp.s12pu_head('dif1', '/hero'), 'owner', 'anon');
+select pg_temp.s12pu_diff('acl-authenticated', pg_temp.s12pu_head('dif1', '/hero'), 'owner', 'authenticated');
+select is(pg_temp.s12pu_state('acl-anon') || '/' || pg_temp.s12pu_state('acl-authenticated'), '42501/42501',
+  'the real anon and authenticated database roles cannot execute the transport [AC-261]');
+select ok((select bool_and(before_rows = after_rows and call_role = requested_role) from s12pu_out where label like 'acl-%'), 'the ACL probes ran as those roles and wrote nothing');
+
+-- a hidden instance and an absent one are indistinguishable (the same token and DETAIL), and the entry's other revisions are not an oracle
+select ok((select a.message = b.message and a.detail is not distinct from b.detail and a.state = b.state from s12pu_out a, s12pu_out b
+    where a.label = 'a-hidden' and b.label = 'a-absent'), 'hidden and absent instances are the same uniform 404 [AC-114]');
+
+-- request grammar
+select * from pg_temp.s12pu_refused('g-extra', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero')) || jsonb_build_object('limit', 5), 'INVALID_REQUEST');
+select * from pg_temp.s12pu_refused('g-missing', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero')) - 'instanceId', 'INVALID_REQUEST');
+-- a malformed instanceId is a malformed PATH value: 400 INVALID_REQUEST with no DETAIL (BE03c validation matrix 399, error matrix 1267 "malformed path/query")
+select * from pg_temp.s12pu_refused('g-bad-id', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero')) || jsonb_build_object('instanceId', 'not-a-uuid'), 'INVALID_REQUEST');
+select * from pg_temp.s12pu_refused('g-number-id', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero')) || jsonb_build_object('instanceId', 5), 'INVALID_REQUEST');
+select * from pg_temp.s12pu_refused('g-null-id', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero')) || jsonb_build_object('instanceId', null), 'INVALID_REQUEST');
+select is((select string_agg(label || '=' || coalesce(nullif(detail, ''), '-'), ',' order by label) from s12pu_out where label like 'g-%-id' or label = 'g-bad-id'),
+  'g-bad-id=-,g-null-id=-,g-number-id=-', 'a malformed instanceId carries no DETAIL pointer');
+select pg_temp.s12pu_call('g-array', 'platform_api.cms_get_instance_update_diff', '[]'::jsonb);
+select is(pg_temp.s12pu_oc('g-array'), 'P0001:INVALID_REQUEST', 'a non-object body is INVALID_REQUEST');
+
+-- authority is re-proved on every call
+select is(pg_temp.s09d_revoke_via_rpc('designer2', 'cms.author'), 'OK', 'setup: the real revoke command ends designer2''s author grant');
+select * from pg_temp.s12pu_refused('a-revoked', 'platform_api.cms_get_instance_update_diff', pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero'), 'designer2'),
+  'capability_missing', null, 'designer2');
+select ok((select bool_and(call_role = 'service_role' and role_restored) from s12pu_out where requested_role = 'service_role'),
+  'every diff call ran under the real service_role and restored the prior role setting');

@@ -1,0 +1,39 @@
+-- CMS-03C-14 and the `pending_pattern_version` column (BE03c 1426, AC-258): catalog and privilege facts.
+select has_function('platform_api', 'cms_get_instance_update_diff', array['jsonb'], 'CMS-03C-14 has a named platform API RPC (BE03c 1447, AC-261)');
+select has_function('platform_private', 'cms_get_instance_update_diff', array['jsonb'], 'the private reader is a named function');
+select ok(has_function_privilege('service_role', to_regprocedure('platform_api.cms_get_instance_update_diff(jsonb)'), 'execute')
+    and coalesce((select bool_and(not has_function_privilege(r, to_regprocedure('platform_api.cms_get_instance_update_diff(jsonb)'), 'execute'))
+                    from unnest(array['public', 'anon', 'authenticated']) r), false)
+    and coalesce((select bool_and(not has_function_privilege(r, to_regprocedure('platform_private.cms_get_instance_update_diff(jsonb)'), 'execute'))
+                    from unnest(array['public', 'anon', 'authenticated', 'service_role']) r), false),
+  'only service_role executes the transport; the private reader is closed to every API role [AC-261]');
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""']) from pg_proc p
+                     where p.oid in (to_regprocedure('platform_api.cms_get_instance_update_diff(jsonb)'),
+                                     to_regprocedure('platform_private.cms_get_instance_update_diff(jsonb)'))), false),
+  'both functions are SECURITY DEFINER with an empty search_path [AC-261]');
+select is(pg_temp.s12pl_q($sql$select data_type || ':' || is_nullable from information_schema.columns
+    where table_schema = 'platform_private' and table_name = 'cms_composition_instances' and column_name = 'pending_pattern_version'$sql$),
+  'integer:YES', 'cms_composition_instances.pending_pattern_version is a nullable integer [AC-258]');
+-- Direct-insert probes of the column rule (guarded insert under app.cms_rpc into a subtransaction that is rolled back).
+create or replace function pg_temp.s12pu_try_row(p_state text, p_pending integer) returns text language plpgsql as $body$
+declare head_row platform_private.cms_composition_instances;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select * into head_row from platform_private.cms_composition_instances
+   where revision_id = pg_temp.s12pl_rev('dif1') and path = '/hero' order by version desc limit 1;
+  begin
+    insert into platform_private.cms_composition_instances
+    select (jsonb_populate_record(null::platform_private.cms_composition_instances, to_jsonb(head_row)
+      || jsonb_build_object('id', extensions.gen_random_uuid(), 'state', p_state, 'version', head_row.version + 50,
+           'pending_pattern_version', p_pending, 'created_at', transaction_timestamp(), 'updated_at', transaction_timestamp()))).*;
+    raise exception 'probe row inserted' using errcode = 'P0002';
+  exception when others then
+    return sqlstate;
+  end;
+end;
+$body$;
+select is(pg_temp.s12pu_try_row('active', 5), '23514',
+  'a non-pending row carrying pending_pattern_version is refused by the table: it is non-null exactly when state = pending_diff [AC-258]');
+select is(pg_temp.s12pu_try_row('pending_diff', null), '23514', 'a pending_diff row without pending_pattern_version is refused [AC-258]');
+select is(pg_temp.s12pu_try_row('pending_diff', 0), '23514', 'pending_pattern_version is a positive integer [AC-258]');
+select is(pg_temp.s12pu_try_row('pending_diff', 2), 'P0002', 'a pending_diff row with a positive pending_pattern_version is admitted [AC-258]');

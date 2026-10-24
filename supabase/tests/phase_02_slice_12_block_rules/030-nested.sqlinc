@@ -1,0 +1,27 @@
+-- DEC-210 / CMS-03C-12 and the DEC-181 expansion: a nested pattern reference is expanded into its pinned version's block
+-- roots, which become the children of the block the reference sits under; the rules are evaluated over that expanded
+-- forest, and a violation reached through a reference points at the reference node in the request.
+select * from pg_temp.s12pl_pattern('brn-mid', 'brn-mid', jsonb_build_array(pg_temp.brb('m', 'br.mid',
+  jsonb_build_array(pg_temp.brb('l', 'br.leaf')))));
+select * from pg_temp.s12pl_pattern('brn-two', 'brn-two', jsonb_build_array(pg_temp.brb('a', 'br.leaf'),
+  pg_temp.brb('b', 'br.leaf')));
+select * from pg_temp.s12pl_pattern('brn-three', 'brn-three', jsonb_build_array(pg_temp.brb('a', 'br.leaf'),
+  pg_temp.brb('b', 'br.leaf'), pg_temp.brb('c', 'br.leaf')));
+select * from pg_temp.s12pl_pattern('brn-sh', 'brn-sh', jsonb_build_array(pg_temp.brb('s', 'br.shallow',
+  jsonb_build_array(pg_temp.brb('l', 'br.leaf')))));
+
+select * from pg_temp.brs_ok('N01', 'br-nest-allowed', jsonb_build_array(pg_temp.brb('r', 'br.root',
+  jsonb_build_array(pg_temp.brr('brn-mid', 'ref')))));
+select * from pg_temp.brs_refused('N02', 'br-nest-bad-root', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brr('brn-mid', 'ref')))), '/blockTree/0/children/0');
+select * from pg_temp.brs_ok('N03', 'br-nest-nodes-at', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brr('brn-two', 'ref')))));
+select * from pg_temp.brs_refused('N04', 'br-nest-nodes-over', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brr('brn-three', 'ref')))), '/blockTree/0');
+select * from pg_temp.brs_refused('N05', 'br-nest-depth-over', jsonb_build_array(pg_temp.brb('s', 'br.shallow',
+  jsonb_build_array(pg_temp.brr('brn-sh', 'ref')))), '/blockTree/0');
+select * from pg_temp.brs_ok('N06', 'br-nest-top-level', jsonb_build_array(pg_temp.brr('brn-mid', 'ref')));
+select * from pg_temp.brs_refused('N07', 'br-nest-literal-plus-ref', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brr('brn-two', 'ref')))), '/blockTree/0');
+select * from pg_temp.brs_refused('N08', 'br-nest-second-ref', jsonb_build_array(pg_temp.brb('r', 'br.root',
+  jsonb_build_array(pg_temp.brb('l', 'br.leaf'), pg_temp.brr('brn-sh', 'ref')))), '/blockTree/0/children/1');

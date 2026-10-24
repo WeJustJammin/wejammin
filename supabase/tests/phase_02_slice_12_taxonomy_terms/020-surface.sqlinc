@@ -1,0 +1,55 @@
+-- The named RPC surface of CMS-03C-03: private producer, service_role-only transport, no browser role, definer boundary, the merge
+-- convergence helpers and the registered job type.  [P2-S12-AC-016, AC-018, AC-021; BE03c 1447]
+select has_function('platform_api', 'cms_act_taxonomy_term', array['jsonb'],
+  'CMS-03C-03 has a named platform API RPC (BE03c 1447) [P2-S12-AC-016]');
+select has_function('platform_private', 'cms_act_taxonomy_term', array['jsonb'],
+  'CMS-03C-03 has an atomic private implementation [P2-S12-AC-016]');
+select ok(coalesce((
+    select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_private.cms_act_taxonomy_term(jsonb)'), 'execute'))
+      from (values ('public'), ('anon'), ('authenticated'), ('service_role')) roles(role_name)), false),
+  'no API role can execute the private producer [P2-S12-AC-018]');
+select ok(
+  has_function_privilege('service_role', to_regprocedure('platform_api.cms_act_taxonomy_term(jsonb)'), 'execute')
+  and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_api.cms_act_taxonomy_term(jsonb)'), 'execute'))
+                  from (values ('public'), ('anon'), ('authenticated')) roles(role_name)), false),
+  'only service_role executes the Worker transport; PUBLIC, anon and authenticated cannot [P2-S12-AC-018]');
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""'] and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer')
+                      from pg_proc p where p.oid in (to_regprocedure('platform_api.cms_act_taxonomy_term(jsonb)'),
+                                                     to_regprocedure('platform_private.cms_act_taxonomy_term(jsonb)'))), false),
+  'both functions are SECURITY DEFINER with an empty search_path, owned by the CMS definer role [P2-S12-AC-018]');
+select has_function('platform_private', 'cms_converge_taxonomy_merge', array['uuid', 'integer'],
+  'the merge convergence batch is a named private function [P2-S12-AC-021]');
+select has_function('platform_private', 'cms_run_taxonomy_merge_converge', array['uuid', 'bigint', 'uuid', 'integer'],
+  'the job handler of cms.taxonomy.merge_converge is a named private function taking the claimed lease (job id, version, lease token) and a batch [P2-S12-AC-021]');
+select is((select count(*)::integer from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'platform_private' and p.proname = 'cms_run_taxonomy_merge_converge'), 1,
+  'no unfenced handler overload survives: the job handler exists exactly once, with the lease fence in its signature [P2-S12-AC-021]');
+select has_function('platform_private', 'cms_request_taxonomy_merge_converge', array['uuid', 'uuid', 'uuid', 'uuid'],
+  'the continuation request is a named private function [P2-S12-AC-021]');
+select ok(coalesce((select bool_and(not has_function_privilege(role_name, p.oid, 'execute'))
+                      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                     cross join (values ('public'), ('anon'), ('authenticated'), ('service_role')) roles(role_name)
+                     where n.nspname = 'platform_private'
+                       and p.proname in ('cms_converge_taxonomy_merge', 'cms_run_taxonomy_merge_converge', 'cms_request_taxonomy_merge_converge')), false),
+  'the convergence functions are not executable by any API role [P2-S12-AC-021]');
+select ok(exists (select 1 from platform_private.job_type_registry where job_type = 'cms.taxonomy.merge_converge'),
+  'the continuation job type cms.taxonomy.merge_converge is registered (BE03c 1334) [P2-S12-AC-021]');
+-- The continuation transport (BE03c 1334, 1377, 1447): the job handler of cms.taxonomy.merge_converge is reached by its registered non-browser
+-- caller through a platform_api wrapper exactly like the CMS-03C-19 claim and execute pair (20261014070510, 20261014070610); the batch function and
+-- the continuation request stay internal.
+select has_function('platform_api', 'cms_run_taxonomy_merge_converge', array['jsonb'],
+  'the merge continuation has a named platform API transport (BE03c 1334, 1447) [P2-S12-AC-021]');
+select ok(
+  has_function_privilege('service_role', to_regprocedure('platform_api.cms_run_taxonomy_merge_converge(jsonb)'), 'execute')
+  and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_api.cms_run_taxonomy_merge_converge(jsonb)'), 'execute'))
+                  from (values ('public'), ('anon'), ('authenticated')) roles(role_name)), false),
+  'only service_role executes the continuation transport; PUBLIC, anon and authenticated cannot [P2-S12-AC-018, AC-021]');
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""'] and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer')
+                      from pg_proc p where p.oid = to_regprocedure('platform_api.cms_run_taxonomy_merge_converge(jsonb)')), false),
+  'the continuation transport is SECURITY DEFINER with an empty search_path, owned by the CMS definer role [P2-S12-AC-018]');
+select ok(not exists (select 1 from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                       where n.nspname = 'platform_api' and p.proname in ('cms_converge_taxonomy_merge', 'cms_request_taxonomy_merge_converge')),
+  'the batch function and the continuation request stay internal: only the handler has a transport [P2-S12-AC-021]');
+select ok((select p.prosrc ~ 'set_config\(''app\.cms_rpc'', ''true'', true\)' from pg_proc p
+            where p.oid = to_regprocedure('platform_private.cms_run_taxonomy_merge_converge(uuid,bigint,uuid,integer)')),
+  'the handler sets the RPC context itself: a forced-RLS read never depends on a caller that pre-set the flag [P2-S12-AC-021]');

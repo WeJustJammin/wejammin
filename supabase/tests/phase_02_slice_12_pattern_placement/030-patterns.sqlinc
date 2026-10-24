@@ -1,0 +1,52 @@
+-- Real patterns for the placement suite, each created by CMS-03C-12 and activated by the governed chain
+-- (CMS-03C-06, 08, 07, 09).  Block roots and key chains (DEC-175, DEC-181, DEC-186):
+--   pa   [hero{title}, cta]                                   -> block roots hero, cta (title is below hero)
+--   pc   [a{title}, b, c]                                     -> a nested pattern
+--   pn   [intro, shared -> pc, tail]                          -> intro, shared/a, shared/b, shared/c, tail
+--   pc16 [root1 .. root16]; pb [nested1 .. nested32 -> pc16]  -> 512 block roots after expansion
+--   pi   [hero], compatible only with the SECOND pattern type -> pattern_incompatible for a first-type entry
+--   pd   a draft that is never activated                      -> pattern_version_not_active
+--   p1r  [only]                                               -> a forest of exactly 1 block root  (BE03c 1612)
+--   p32  [root1 .. root32]                                    -> a forest of exactly 32 block roots (BE03c 1612)
+select * from pg_temp.s12pl_pattern('pa', 's12pl-pa', jsonb_build_array(
+  pg_temp.s12pd_block('hero', jsonb_build_array(pg_temp.s12pd_block('title'))), pg_temp.s12pd_block('cta')));
+select * from pg_temp.s12pl_pattern('pc', 's12pl-pc', jsonb_build_array(
+  pg_temp.s12pd_block('a', jsonb_build_array(pg_temp.s12pd_block('title'))), pg_temp.s12pd_block('b'),
+  pg_temp.s12pd_block('c')));
+select * from pg_temp.s12pl_pattern('pn', 's12pl-pn', jsonb_build_array(pg_temp.s12pd_block('intro'),
+  jsonb_build_object('kind', 'pattern', 'key', 'shared', 'patternId', pg_temp.s12pd_body('pc')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('pc')->'patternVersion'), pg_temp.s12pd_block('tail')));
+select * from pg_temp.s12pl_pattern('pc16', 's12pl-pc16', pg_temp.s12pd_forest(16));
+select * from pg_temp.s12pl_pattern('pb', 's12pl-pb', pg_temp.s12pl_refs('pc16', 32));
+select * from pg_temp.s12pl_pattern('pi', 's12pl-pi', jsonb_build_array(pg_temp.s12pd_block('hero')),
+  jsonb_build_array((select id from s12pd_types where ordinal = 2)));
+select * from pg_temp.s12pl_pattern('pd', 's12pl-pd', jsonb_build_array(pg_temp.s12pd_block('hero')), null, false);
+select * from pg_temp.s12pl_pattern('p1r', 's12pl-p1r', jsonb_build_array(pg_temp.s12pd_block('only')));
+select * from pg_temp.s12pl_pattern('p32', 's12pl-p32', pg_temp.s12pd_forest(32));
+select is(pg_temp.s12pd_body('pb')->'nodeCount', '512'::jsonb,
+  'setup: the 512-row pattern really stores 512 expanded nodes (32 references times 16 block roots)');
+select is(pg_temp.s12pd_row('pd')->>'state', 'draft', 'setup: the never-activated pattern is a real draft');
+
+-- Real CMS-03C-01 templates for the template-bound slot rule (BE03c 1365: the slotPath must name a slot of the
+-- revision's template; the root path `/` is for entries with no template only).  maxCount and allowedBlocks are
+-- declared but not enforced at placement: see the lane report, BOUNDARY B2.
+select pg_temp.s09d_rpc('s12pl-template', 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+  'templateKey', 's12pl-tpl', 'compatibleTypeIds', jsonb_build_array((select id from s12pd_types where ordinal = 1)),
+  'slots', jsonb_build_array(
+    jsonb_build_object('key', 'main', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128),
+    jsonb_build_object('key', 'side', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128),
+    jsonb_build_object('key', 'fresh', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128)),
+  'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+  'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+  'idempotencyKey', 's12pl-template-0001'), true);
+select is(pg_temp.s09d_outcome('s12pl-template'), 'OK', 'setup: a real draft template declares the slots main, side and fresh');
+-- A template with a slot literally named root: its slot key equals the key the root path `/` maps to (F6), so the
+-- templated entry must still refuse `/`.
+select pg_temp.s09d_rpc('s12pl-template-root', 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+  'templateKey', 's12pl-tpl-root', 'compatibleTypeIds', jsonb_build_array((select id from s12pd_types where ordinal = 1)),
+  'slots', jsonb_build_array(
+    jsonb_build_object('key', 'root', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128)),
+  'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+  'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+  'idempotencyKey', 's12pl-template-0002'), true);
+select is(pg_temp.s09d_outcome('s12pl-template-root'), 'OK', 'setup: a real draft template declares a slot named root');

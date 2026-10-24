@@ -1,0 +1,206 @@
+-- BE03c 1487/1563: canonical snapshots, exact local values and real producers.
+-- These literal expected trees do not consume the independent typed-diff lane.
+create temp table s12rs_trees(name text primary key, b jsonb, t jsonb, o jsonb,
+  local_tree jsonb, yours_tree jsonb, theirs_tree jsonb) on commit drop;
+insert into s12rs_trees values ('main',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["panel"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"B"}},
+    {"parent":0,"keySegments":["leaf"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"L1"}},
+    {"parent":0,"keySegments":["note"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"N"}},
+    {"parent":0,"keySegments":["auto"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"A1"}}]}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["panel"],"blockKey":"s12pd.block","blockVersion":2,"props":{"title":"T"}},
+    {"parent":0,"keySegments":["auto"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"A2"}},
+    {"parent":0,"keySegments":["note"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"N"}},
+    {"parent":0,"keySegments":["leaf"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"L2"}}]}',
+  '{"/panel":{"title":"MY-ROOT"},"/panel/leaf":{"title":"MY-LEAF"},"/panel/note":{"title":"MY-NOTE"}}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["panel"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"MY-ROOT"}},
+    {"parent":0,"keySegments":["leaf"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"MY-LEAF"}},
+    {"parent":0,"keySegments":["note"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"MY-NOTE"}},
+    {"parent":0,"keySegments":["auto"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"A1"}}]}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["panel"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"MY-ROOT"}},
+    {"parent":0,"keySegments":["leaf"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"L2"}},
+    {"parent":0,"keySegments":["note"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"MY-NOTE"}},
+    {"parent":0,"keySegments":["auto"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"A2"}}]}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["panel"],"blockKey":"s12pd.block","blockVersion":2,"props":{"title":"T"}},
+    {"parent":0,"keySegments":["auto"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"A2"}},
+    {"parent":0,"keySegments":["note"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"MY-NOTE"}},
+    {"parent":0,"keySegments":["leaf"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"MY-LEAF"}}]}');
+insert into s12rs_trees values ('removed',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["gone"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"G"}},
+    {"parent":0,"keySegments":["nil"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"N"}},
+    {"parent":0,"keySegments":["scalar"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"S"}},
+    {"parent":0,"keySegments":["list"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"A"}}]}',
+  'null', '{"/gone":{"title":"MY-G"},"/gone/nil":null,"/gone/scalar":42,"/gone/list":[null,"mine",false]}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["gone"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"MY-G"}},
+    {"parent":0,"keySegments":["nil"],"blockKey":"s12pd.block","blockVersion":1,"props":null},
+    {"parent":0,"keySegments":["scalar"],"blockKey":"s12pd.block","blockVersion":1,"props":42},
+    {"parent":0,"keySegments":["list"],"blockKey":"s12pd.block","blockVersion":1,"props":[null,"mine",false]}]}', null, null);
+insert into s12rs_trees values ('presence',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["fork"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"F"}},
+    {"parent":0,"keySegments":["child"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"C"}},
+    {"parent":1,"keySegments":["deep"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"D"}},
+    {"parent":0,"keySegments":["keep"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"K"}}]}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["fork"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"F"}},
+    {"parent":0,"keySegments":["keep"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"K"}},
+    {"parent":0,"keySegments":["add"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"AD"}},
+    {"parent":2,"keySegments":["deep"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"NEW"}}]}',
+  '{"/fork/child/deep":{"title":"MY-DEEP"}}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["fork"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"F"}},
+    {"parent":0,"keySegments":["child"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"C"}},
+    {"parent":1,"keySegments":["deep"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"MY-DEEP"}},
+    {"parent":0,"keySegments":["keep"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"K"}}]}', null, null);
+insert into s12rs_trees values ('digest',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["digest"],"blockKey":"s12rs.root","blockVersion":1,"props":{"title":"DB"}},
+    {"parent":0,"keySegments":["child"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"CB"}}]}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["digest"],"blockKey":"s12rs.root","blockVersion":2,"props":{"title":"DT"}},
+    {"parent":0,"keySegments":["child"],"blockKey":"s12pd.wide","blockVersion":1,"props":{"title":"CT"}}]}',
+  '{"/digest":{"title":"MY-D"},"/digest/child":{"title":"MY-C"}}', null,
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["digest"],"blockKey":"s12rs.root","blockVersion":1,"props":{"title":"MY-D"}},
+    {"parent":0,"keySegments":["child"],"blockKey":"s12pd.wide","blockVersion":1,"props":{"title":"CT"}}]}', null);
+
+create temp table s12rs_pure_out(label text primary key, answer jsonb, state text,
+  message text, detail text) on commit drop;
+-- EVERY case resolves the exact future signature and checks its return type before
+-- any dynamic invocation. Absence/wrong return type is explicit TAP FAIL, not skip,
+-- setup abort, a fake result, or an accidentally invoked overload.
+create or replace function pg_temp.s12rs_pure(p_label text, p_b jsonb, p_t jsonb,
+  p_o jsonb, p_choices jsonb, p_expected jsonb default null,
+  p_error text default null) returns setof text language plpgsql as $body$
+declare proc oid; answer jsonb; code text := '00000'; msg text; details text;
+  before_rows jsonb := pg_temp.s12pl_snapshot();
+begin
+  proc := to_regprocedure('platform_private.cms_pattern_update_resolve(jsonb,jsonb,jsonb,jsonb)');
+  if proc is null or not exists (select 1 from pg_proc where oid = proc
+    and prorettype = 'jsonb'::regtype and not proretset and prokind='f') then
+    return next extensions.fail(p_label || ': exact four-jsonb resolver returning jsonb is available');
+    return;
+  end if;
+  begin
+    execute 'select platform_private.cms_pattern_update_resolve($1,$2,$3,$4)'
+      into answer using p_b, p_t, p_o, p_choices;
+  exception when others then
+    get stacked diagnostics code = returned_sqlstate, msg = message_text, details = pg_exception_detail;
+  end;
+  insert into s12rs_pure_out values (p_label, answer, code, msg, details);
+  if p_error is null then
+    return next extensions.is(code || coalesce(':' || msg, ''), '00000', p_label || ': pure call succeeds');
+    return next extensions.is(answer, p_expected, p_label || ': exact independent disposition/tree/overrides');
+  else
+    return next extensions.is(code || ':' || coalesce(msg, ''), p_error, p_label || ': exact refusal, not incidental SQL failure');
+  end if;
+  return next extensions.is(pg_temp.s12pl_snapshot(), before_rows, p_label || ': pure call touches no persistent store');
+end;
+$body$;
+create or replace function pg_temp.s12rs_result(p_disposition text, p_tree jsonb,
+  p_overrides jsonb default '{}') returns jsonb language sql immutable as $body$
+  select jsonb_build_object('disposition', p_disposition, 'tree', p_tree, 'overrides', p_overrides)
+$body$;
+create or replace function pg_temp.s12rs_block(p_key text, p_props jsonb,
+  p_children jsonb default '[]', p_version integer default 1,
+  p_block text default 's12pd.block') returns jsonb language sql immutable as $body$
+  select jsonb_build_object('kind', 'block', 'key', p_key, 'blockKey', p_block,
+    'blockVersion', p_version, 'props', p_props, 'children', p_children)
+$body$;
+
+-- Real signed registry registration, not fabricated registry rows or receipts.
+select pg_temp.p_register('s12rs-block2', pg_temp.p_block_request('s12pd.block', 2,
+  '{"allowedChildren":["s12pd.block"],"slotRules":{"maxDepth":16,"maxNodes":512}}'));
+select is(pg_temp.s09d_outcome('s12rs-block2'), 'OK', 'prerequisite: signed ordinary block version 2 registers');
+select pg_temp.p_register('s12rs-root1', pg_temp.p_block_request('s12rs.root', 1,
+  '{"allowedChildren":["s12pd.block","s12pd.wide"],"slotRules":{"maxDepth":16,"maxNodes":512}}'));
+select pg_temp.p_register('s12rs-root2', pg_temp.p_block_request('s12rs.root', 2,
+  '{"allowedChildren":["s12pd.block","s12pd.wide"],"slotRules":{"maxDepth":16,"maxNodes":512}}'));
+select is(pg_temp.s09d_outcome('s12rs-root1') || pg_temp.s09d_outcome('s12rs-root2'), 'OKOK',
+  'prerequisite: both digest root versions have real signed receipts and permit both child identities');
+select * from pg_temp.s12pl_pattern('s12rs-main1', 's12rs-main', jsonb_build_array(
+  pg_temp.s12rs_block('panel', '{"title":"B"}', jsonb_build_array(
+    pg_temp.s12rs_block('leaf', '{"title":"L1"}'), pg_temp.s12rs_block('note', '{"title":"N"}'),
+    pg_temp.s12rs_block('auto', '{"title":"A1"}'))), pg_temp.s12rs_block('quiet', '{"title":"Q1"}')));
+select * from pg_temp.s12pl_pattern('s12rs-rm1', 's12rs-removed', jsonb_build_array(
+  pg_temp.s12rs_block('gone', '{"title":"G"}', jsonb_build_array(
+    pg_temp.s12rs_block('nil', '{"title":"N"}'), pg_temp.s12rs_block('scalar', '{"title":"S"}'),
+    pg_temp.s12rs_block('list', '{"title":"A"}'))), pg_temp.s12rs_block('keep', '{"title":"K"}')));
+select * from pg_temp.s12pl_pattern('s12rs-pc1', 's12rs-presence', jsonb_build_array(
+  pg_temp.s12rs_block('fork', '{"title":"F"}', jsonb_build_array(
+    pg_temp.s12rs_block('child', '{"title":"C"}', jsonb_build_array(pg_temp.s12rs_block('deep', '{"title":"D"}'))),
+    pg_temp.s12rs_block('keep', '{"title":"K"}')))));
+select * from pg_temp.s12pl_pattern('s12rs-dg1', 's12rs-digest', jsonb_build_array(
+  pg_temp.s12rs_block('digest', '{"title":"DB"}', jsonb_build_array(
+    pg_temp.s12rs_block('child', '{"title":"CB"}')), 1, 's12rs.root')));
+select * from pg_temp.s12pl_pattern('s12rs-same1', 's12rs-same',
+  jsonb_build_array(pg_temp.s12rs_block('same', '{"title":"SAME"}')));
+create or replace function pg_temp.s12rs_wide_forest(p_title text) returns jsonb
+language sql immutable as $body$
+  select jsonb_build_array(pg_temp.s12rs_block('wide',jsonb_build_object('title',p_title),
+    (select jsonb_agg(pg_temp.s12rs_block('c'||c,jsonb_build_object('title',p_title),
+      (select jsonb_agg(pg_temp.s12rs_block('g'||g,jsonb_build_object('title',p_title)) order by g)
+        from generate_series(1,30) g)) order by c) from generate_series(1,5) c)))
+$body$;
+select * from pg_temp.s12pl_pattern('s12rs-wide1','s12rs-wide',pg_temp.s12rs_wide_forest('B'));
+select * from pg_temp.s12pu_place('rs-same','s12rs-same1');
+select * from pg_temp.s12pu_place('rs-wide','s12rs-wide1');
+create temp table s12rs_cases(tag text primary key, family text, overrides jsonb) on commit drop;
+insert into s12rs_cases values
+  ('rs-yours', 'main', (select o from s12rs_trees where name = 'main')),
+  ('rs-reverse', 'main', (select o from s12rs_trees where name = 'main')),
+  ('rs-theirs', 'main', (select o from s12rs_trees where name = 'main')),
+  ('rs-copy', 'main', (select o from s12rs_trees where name = 'main')),
+  ('rs-none', 'main', '{}'), ('rs-null', 'main', '{"/panel/leaf":null}'),
+  ('rs-equal', 'main', '{"/panel/leaf":{"title":"L1"},"/panel/note":{"title":"KEEP"}}'),
+  ('rs-rm-y', 'removed', (select o from s12rs_trees where name = 'removed')),
+  ('rs-rm-t', 'removed', (select o from s12rs_trees where name = 'removed')),
+  ('rs-retired', 'removed', (select o from s12rs_trees where name = 'removed')),
+  ('rs-stale', 'main', '{}'), ('rs-unknown', 'main', '{}'), ('rs-missing', 'main', '{}'),
+  ('rs-pc-one', 'presence', (select o from s12rs_trees where name = 'presence')),
+  ('rs-pc-two', 'presence', (select o from s12rs_trees where name = 'presence')),
+  ('rs-pc-y', 'presence', (select o from s12rs_trees where name = 'presence')),
+  ('rs-pc-t', 'presence', (select o from s12rs_trees where name = 'presence')),
+  ('rs-digest', 'digest', (select o from s12rs_trees where name = 'digest'));
+select placed.* from s12rs_cases c cross join lateral pg_temp.s12pu_place(c.tag,
+  case c.family when 'main' then 's12rs-main1' when 'removed' then 's12rs-rm1'
+    when 'presence' then 's12rs-pc1' else 's12rs-dg1' end, c.overrides) placed;
+-- All old-pin placements precede activation. No direct active pattern seed.
+select * from pg_temp.s12pl_pattern('s12rs-main2', 's12rs-main', jsonb_build_array(
+  pg_temp.s12rs_block('panel', '{"title":"T"}', jsonb_build_array(
+    pg_temp.s12rs_block('auto', '{"title":"A2"}'), pg_temp.s12rs_block('note', '{"title":"N"}'),
+    pg_temp.s12rs_block('leaf', '{"title":"L2"}')), 2),
+  pg_temp.s12rs_block('quiet', '{"title":"Q2"}'),
+  pg_temp.s12rs_block('badge', '{"title":"NEW"}', '[]', 1, 's12pd.wide')), null, true, '1');
+select * from pg_temp.s12pl_pattern('s12rs-rm2', 's12rs-removed', jsonb_build_array(
+  pg_temp.s12rs_block('keep', '{"title":"K2"}')), null, true, '1');
+select * from pg_temp.s12pl_pattern('s12rs-pc2', 's12rs-presence', jsonb_build_array(
+  pg_temp.s12rs_block('fork', '{"title":"F"}', jsonb_build_array(
+    pg_temp.s12rs_block('keep', '{"title":"K"}'), pg_temp.s12rs_block('add', '{"title":"AD"}',
+      jsonb_build_array(pg_temp.s12rs_block('deep', '{"title":"NEW"}')))))), null, true, '1');
+select * from pg_temp.s12pl_pattern('s12rs-dg2', 's12rs-digest', jsonb_build_array(
+  pg_temp.s12rs_block('digest', '{"title":"DT"}', jsonb_build_array(
+    pg_temp.s12rs_block('child', '{"title":"CT"}', '[]', 1, 's12pd.wide')), 2, 's12rs.root')), null, true, '1');
+select * from pg_temp.s12pl_pattern('s12rs-same2','s12rs-same',
+  jsonb_build_array(pg_temp.s12rs_block('same','{"title":"SAME"}')),null,true,'1');
+select * from pg_temp.s12pl_pattern('s12rs-wide2','s12rs-wide',pg_temp.s12rs_wide_forest('T'),null,true,'1');
+select * from pg_temp.s12pu_place('rs-current', 's12rs-main2');
+
+-- Capture old rows independently; subsequent assertions must not accept rewrites.
+create temp table s12rs_initial on commit drop as
+select c.tag, to_jsonb(inst) as row_value from s12rs_cases c
+join platform_private.cms_composition_instances inst on inst.revision_id = pg_temp.s12pl_rev(c.tag);
+select ok((select count(*) = 4 and bool_and(release_verified_at is not null
+  and props_attestation_verified_at is not null) from platform_private.cms_block_definition_versions
+  where (block_key = 's12pd.block' and block_version in (1, 2)) or block_key = 's12rs.root'),
+  'prerequisite: all four compared ordinary/root versions carry verified release and props receipts');
+select ok(exists(select 1 from platform_private.cms_block_definition_versions
+  where block_key='s12pd.wide' and block_version=1 and state='registered'
+    and release_verified_at is not null and props_attestation_verified_at is not null),
+  'prerequisite: unrelated target /badge uses the already signed compatible wide block, not a forged digest-only reference');

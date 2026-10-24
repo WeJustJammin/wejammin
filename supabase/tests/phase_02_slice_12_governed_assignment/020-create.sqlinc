@@ -1,0 +1,90 @@
+-- CMS-03C-08 create: the happy path, exact replay, changed-body mismatch and the step-up gate.
+
+-- ------------------------------------------------------------------------------- happy path --
+select pg_temp.s12ga_mark('r1:before-create', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_assign('a1', 'owner', pg_temp.s12ga_review('r1'), 'rev1', interval '20 hours',
+  jsonb_build_object('reason', 'Initial assignment'));
+select pg_temp.s12ga_keep('a1', 'a1');
+select is(pg_temp.s12ga_out('a1'), 'ok',
+  'the receipt-derived owner creates a reviewer assignment on an open governed review [P2-S12-AC-076]');
+select is(
+  (select string_agg(key, ',' order by key) from jsonb_object_keys(pg_temp.s12ga_body('a1')) key),
+  'actions,capability,contentHash,createdAt,expiresAt,id,reason,reviewId,startsAt,state,updatedAt,version',
+  'the 201 body is exactly GovernedReviewAssignmentResource (12 members, no person, grantor or party identifier) [P2-S12-AC-076]');
+select ok(
+  pg_temp.s12ga_body('a1')->>'reviewId' = pg_temp.s12ga_review('r1')::text
+    and pg_temp.s12ga_body('a1')->>'state' = 'active'
+    and pg_temp.s12ga_body('a1')->>'capability' = 'cms.definition_review'
+    and pg_temp.s12ga_body('a1')->'actions' = '["read","decide"]'::jsonb
+    and pg_temp.s12ga_body('a1')->>'version' = '1'
+    and pg_temp.s12ga_body('a1')->>'reason' = 'Initial assignment'
+    and pg_temp.s12ga_body('a1')->>'contentHash' ~ '^[a-f0-9]{64}$'
+    and (pg_temp.s12ga_body('a1')->>'expiresAt')::timestamptz - (pg_temp.s12ga_body('a1')->>'startsAt')::timestamptz
+        between interval '19 hours 59 minutes' and interval '20 hours',
+  'the assignment confers exactly read and decide on this review for the requested window inside the seven-day ceiling [P2-S12-AC-077]');
+select ok(
+  exists (select 1 from platform_private.cms_governed_review_assignments assignment
+           where assignment.id = (pg_temp.s12ga_body('a1')->>'id')::uuid
+             and assignment.review_id = pg_temp.s12ga_review('r1')
+             and assignment.owner_id = pg_temp.s12ga_org()
+             and assignment.reviewer_person_id = pg_temp.s12ga_person('rev1')
+             and assignment.grantor_person_id = pg_temp.s12ga_person('owner')
+             and assignment.capability_key = 'cms.definition_review'
+             and assignment.actions = array['read', 'decide']::text[]
+             and assignment.state = 'active' and assignment.version = 1),
+  'the stored assignment names the server-derived grantor and the requested reviewer and nothing else [P2-S12-AC-078]');
+select ok(
+  (select review.version = 1 and review.state = 'open' and review.recorded_decision_count = 0
+     from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r1'))
+  and (select subject.state = 'review' and subject.lifecycle_version = 2 and subject.version = 1
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('r1')),
+  'creating an assignment leaves the review version, state and the subject untouched [P2-S12-AC-079]');
+select ok(
+  pg_temp.s12ga_audit('cms.governed.review.assignment.create', pg_temp.s12ga_review('r1')) = 1
+    and (select count(*) from platform_private.outbox_events where aggregate_id = pg_temp.s12ga_review('r1')) = 0,
+  'creating an assignment commits exactly one audit record and emits no event [P2-S12-AC-079]');
+select ok(
+  exists (select 1 from platform_private.idempotency_records record
+           where record.operation = 'CMS-03C-08' and record.key_hash = platform_private.cms_key_hash('s12ga-a1')
+             and record.state = 'completed' and record.response_ref->>'status' = '201'),
+  'the completed idempotency record stores the 201 status of the create [P2-S12-AC-079]');
+
+-- ----------------------------------------------------------------------------------- replay --
+select pg_temp.s12ga_mark('r1:after-create', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_assign('a1', 'owner', pg_temp.s12ga_review('r1'), 'rev1', interval '20 hours',
+  jsonb_build_object('reason', 'Initial assignment', 'expiresAt', pg_temp.s12ga_kept('a1')->>'expiresAt',
+    'expectedVersion', '1', 'ifMatch', '1'));
+select ok(pg_temp.s12ga_out('a1') = 'ok' and pg_temp.s12ga_body('a1') = pg_temp.s12ga_kept('a1')
+    and pg_temp.s12ga_same('r1:after-create', pg_temp.s12ga_review('r1')),
+  'an exact same-key replay returns the original response and writes no second assignment or audit record [P2-S12-AC-080]');
+select pg_temp.s12ga_assign('a1', 'owner', pg_temp.s12ga_review('r1'), 'rev1', interval '21 hours',
+  jsonb_build_object('reason', 'Initial assignment', 'expectedVersion', '1', 'ifMatch', '1'));
+select is(pg_temp.s12ga_out('a1'), 'P0001:IDEMPOTENCY_MISMATCH',
+  'a same-key request with a different expiry is refused IDEMPOTENCY_MISMATCH [P2-S12-AC-080]');
+select ok(pg_temp.s12ga_same('r1:after-create', pg_temp.s12ga_review('r1')),
+  'the mismatch leaves every covered store identical [P2-S12-AC-080]');
+
+-- ----------------------------------------------------- step-up is unconditional and comes first --
+select pg_temp.s12ga_assign('su-none', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  '{}'::jsonb, array[]::text[], pg_temp.s12ga_ctx('owner', interval '1 minute', false));
+select pg_temp.s12ga_assign('su-stale', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  '{}'::jsonb, array[]::text[], pg_temp.s12ga_ctx('owner', interval '11 minutes'));
+select pg_temp.s12ga_assign('su-future', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour',
+  '{}'::jsonb, array[]::text[], pg_temp.s12ga_ctx('owner', interval '-2 minutes'));
+select pg_temp.s12ga_rpc('su-unknown', 'platform_api.cms_assign_governed_reviewer', 'owner',
+  jsonb_build_object('reviewId', 'a12a0000-0000-4000-8000-0000000000f1', 'action', 'create', 'expectedVersion', '1',
+    'ifMatch', '1', 'reviewerPersonId', pg_temp.s12ga_person('rev2'),
+    'expiresAt', pg_temp.s12ga_iso(clock_timestamp() + interval '1 hour'), 'idempotencyKey', 's12ga-su-unknown'),
+  pg_temp.s12ga_ctx('owner', interval '11 minutes'));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['su-none', 'su-stale', 'su-future', 'su-unknown']) l),
+  'su-future=P0001:STEP_UP_REQUIRED;su-none=P0001:STEP_UP_REQUIRED;su-stale=P0001:STEP_UP_REQUIRED;su-unknown=P0001:STEP_UP_REQUIRED',
+  'a missing, stale (11 min) or future (+2 min) step-up is STEP_UP_REQUIRED, even before a hidden review is concealed [P2-S12-AC-078]');
+select ok(
+  (select count(*) from platform_private.idempotency_records
+    where operation = 'CMS-03C-08'
+      and key_hash in (platform_private.cms_key_hash('s12ga-su-none'), platform_private.cms_key_hash('s12ga-su-stale'),
+                       platform_private.cms_key_hash('s12ga-su-future'), platform_private.cms_key_hash('s12ga-su-unknown'))) = 0
+  and pg_temp.s12ga_same('r1:after-create', pg_temp.s12ga_review('r1')),
+  'the step-up refusal reserves no idempotency record and changes no state [P2-S12-AC-080]');

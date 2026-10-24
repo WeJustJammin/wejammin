@@ -344,14 +344,20 @@ begin
   perform set_config('app.cms_rpc', 'true', true);
   insert into platform_private.cms_composition_instances(
     id, owner_id, state, version, revision_id, path, slot_key, block_key, block_version,
-    pattern_id, pattern_version, block_registry_digest, link_mode, created_by
+    pattern_id, pattern_version, block_registry_digest, link_mode, created_by, position
   ) values (
     pg_temp.h11w_uuid(p_tag), pg_temp.h11w_org(), p_state, 1, p_revision, p_path, 'primary',
     p_block_key, 1,
     case when p_pattern then pg_temp.h11w_uuid('pattern') end,
     case when p_pattern then 1 end,
     repeat('a', 64), case when p_pattern then 'linked' else 'detached' end,
-    (select value::uuid from s10_ids where key = 'creatorAuth')
+    (select value::uuid from s10_ids where key = 'creatorAuth'),
+    -- DEC-185 (BE03c 1463): the path's existing position, else one above the slot's greatest (0 for an empty slot).
+    coalesce(
+      (select e.position from platform_private.cms_composition_instances e
+        where e.revision_id = p_revision and e.slot_key = 'primary' and e.path = p_path limit 1),
+      (select coalesce(max(e.position) + 1, 0) from platform_private.cms_composition_instances e
+        where e.revision_id = p_revision and e.slot_key = 'primary'))
   );
 end;
 $body$;

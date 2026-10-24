@@ -1,0 +1,133 @@
+-- CMS-03C-05 / CMS-03C-21 persistence, registry and grant shape (BE03c 190, 1385, 1432, 1447, 1452;
+-- tracker P2-S12-AC-153, AC-155, AC-156, AC-228, AC-229, AC-261).  RED before 20261014060000, GREEN after.
+
+-- ---------------------------------------------------------------------------
+-- The code-owned rule registry (OD-5) and the persistence delta.
+-- ---------------------------------------------------------------------------
+select is(pg_temp.r12_text($$select platform_private.cms_related_rule_valid('shared-terms', 1)::text$$), 'true',
+  'cms_related_rule_valid accepts shared-terms at version 1 [P2-S12-AC-229]');
+select is(pg_temp.r12_text($$select platform_private.cms_related_rule_valid('same-type-recent', 1)::text$$), 'true',
+  'cms_related_rule_valid accepts same-type-recent at version 1 [P2-S12-AC-229]');
+select is(pg_temp.r12_text($$select platform_private.cms_related_rule_valid('shared-terms', 2)::text$$), 'false',
+  'an unregistered version of a registered rule is not valid [P2-S12-AC-229]');
+select is(pg_temp.r12_text($$select platform_private.cms_related_rule_valid('arbitrary-expression', 1)::text$$), 'false',
+  'an unregistered key is not valid: no arbitrary query or expression [P2-S12-AC-229]');
+select is(pg_temp.r12_text($$select platform_private.cms_related_rule_valid(null, 1)::text$$), 'false',
+  'a null key is not valid [P2-S12-AC-229]');
+select is(pg_temp.h11_volatility('cms_related_rule_valid(text, bigint)'), 'i',
+  'the registry predicate is IMMUTABLE (it backs a CHECK constraint) [P2-S12-AC-229]');
+
+select is((select count(*)::integer from information_schema.columns
+            where table_schema = 'platform_private' and table_name = 'cms_related_content_rules'
+              and column_name = 'max_candidates'), 1,
+  'the derived rule stores its maxCandidates bound in max_candidates [P2-S12-AC-228, BE03c 1385]');
+
+-- Constraint probes: hand-written rows in the RPC context; each must be refused by a CHECK (23514).
+create or replace function pg_temp.r12_row(p_overrides jsonb)
+returns text
+language plpgsql
+as $body$
+declare
+  base jsonb := jsonb_build_object(
+    'id', extensions.gen_random_uuid(), 'created_at', '2026-10-08T12:00:00Z', 'updated_at', '2026-10-08T12:00:00Z',
+    'owner_id', pg_temp.h11w_org(), 'state', 'active', 'version', 1,
+    'source_entry_id', pg_temp.r12_id('srcZ'), 'target_entry_id', pg_temp.r12_id('c1'), 'mode', 'pin',
+    'reason_code', 'MANUAL_PIN', 'position', 0,
+    'created_by', (select value from s10_ids where key = 'creatorAuth'));
+  merged jsonb := base || p_overrides;
+  result text;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  begin
+    insert into platform_private.cms_related_content_rules
+      select * from jsonb_populate_record(null::platform_private.cms_related_content_rules, merged);
+    result := 'OK';
+    raise exception 'rollback probe' using errcode = 'P0002';
+  exception
+    when sqlstate 'P0002' then null;
+    when others then result := sqlstate;
+  end;
+  return result;
+end;
+$body$;
+
+select is(pg_temp.r12_row('{}'::jsonb), 'OK', 'control: a valid pin row inserts');
+select is(pg_temp.r12_row('{"mode":"derived","target_entry_id":null,"position":null,"rule_key":"shared-terms","rule_version":1,"reason_code":"SHARED_TERMS","max_candidates":4}'::jsonb), 'OK',
+  'control: a valid derived row inserts');
+select is(pg_temp.r12_row('{"mode":"derived","target_entry_id":null,"position":null,"rule_key":"arbitrary","rule_version":1,"reason_code":"SHARED_TERMS","max_candidates":4}'::jsonb), '23514',
+  'a derived row whose rule is not in the registry is refused by cms_related_rule_valid [P2-S12-AC-229]');
+select is(pg_temp.r12_row('{"mode":"derived","target_entry_id":null,"position":null,"rule_key":"shared-terms","rule_version":2,"reason_code":"SHARED_TERMS","max_candidates":4}'::jsonb), '23514',
+  'a derived row at an unregistered rule version is refused [P2-S12-AC-229]');
+select is(pg_temp.r12_row('{"mode":"derived","target_entry_id":null,"position":null,"rule_key":null,"rule_version":null,"reason_code":"SHARED_TERMS","max_candidates":4}'::jsonb), '23514',
+  'a derived row must select a rule: a derived row without a rule key is refused [P2-S12-AC-228]');
+select is(pg_temp.r12_row('{"mode":"derived","target_entry_id":null,"position":null,"rule_key":"shared-terms","rule_version":1,"reason_code":"SAME_TYPE_RECENT","max_candidates":4}'::jsonb), '23514',
+  'a derived row whose reason code is not the registry reason of its rule is refused [P2-S12-AC-229]');
+select is(pg_temp.r12_row('{"mode":"derived","target_entry_id":null,"position":null,"rule_key":"shared-terms","rule_version":1,"reason_code":"SHARED_TERMS","max_candidates":0}'::jsonb), '23514',
+  'maxCandidates below 1 is refused [P2-S12-AC-229]');
+select is(pg_temp.r12_row('{"mode":"derived","target_entry_id":null,"position":null,"rule_key":"shared-terms","rule_version":1,"reason_code":"SHARED_TERMS","max_candidates":129}'::jsonb), '23514',
+  'maxCandidates above 128 is refused [P2-S12-AC-229]');
+select is(pg_temp.r12_row('{"mode":"derived","target_entry_id":null,"position":null,"rule_key":"shared-terms","rule_version":1,"reason_code":"SHARED_TERMS","max_candidates":null}'::jsonb), '23514',
+  'a derived row must carry maxCandidates [P2-S12-AC-229]');
+select is(pg_temp.r12_row('{"max_candidates":4}'::jsonb), '23514',
+  'a pin row carries no maxCandidates [P2-S12-AC-228]');
+select is(pg_temp.r12_row('{"rule_key":"shared-terms","rule_version":1}'::jsonb), '23514',
+  'a pin row carries no rule [P2-S12-AC-228]');
+select is(pg_temp.r12_row('{"position":null}'::jsonb), '23514',
+  'a pin row must carry the position its array index gave it [P2-S12-AC-228]');
+select is(pg_temp.r12_row('{"target_entry_id":null}'::jsonb), '23514',
+  'a pin row requires a target (existing table CHECK) [P2-S12-AC-228]');
+
+-- ---------------------------------------------------------------------------
+-- Function shape and grants (BE03c 190, 1447).
+-- ---------------------------------------------------------------------------
+select ok(pg_temp.h11_private_definer('cms_curate_related_content(jsonb)'),
+  'cms_curate_related_content is a private SECURITY DEFINER function of the CMS definer, empty search_path, no API-role execute [P2-S12-AC-261]');
+select is(pg_temp.h11_volatility('cms_curate_related_content(jsonb)'), 'v', 'the curation command is VOLATILE [P2-S12-AC-061]');
+select is(pg_temp.h11_rettype('cms_curate_related_content(jsonb)'), 'jsonb', 'the curation command answers jsonb [P2-S12-AC-059]');
+select ok(pg_temp.h11_private_definer('cms_related_content_public_targets(uuid, text, text)'),
+  'CMS-03C-21 is a private SECURITY DEFINER function of the CMS definer with PUBLIC, anon, authenticated and service_role execute revoked [P2-S12-AC-155]');
+select is(pg_temp.h11_volatility('cms_related_content_public_targets(uuid, text, text)'), 's',
+  'CMS-03C-21 is a STABLE read: no insert, update, delete, audit or outbox row [P2-S12-AC-156]');
+select is(pg_temp.h11_rettype('cms_related_content_public_targets(uuid, text, text)'), 'jsonb',
+  'CMS-03C-21 answers one jsonb array of RelatedPublicTarget [P2-S12-AC-153]');
+select ok(pg_temp.h11_private_definer('cms_related_publish_head_revision(uuid, text, text)'),
+  'the public-eligibility head predicate is a private SECURITY DEFINER function of the CMS definer with no API-role execute [P2-S12-AC-261]');
+select is(pg_temp.h11_volatility('cms_related_publish_head_revision(uuid, text, text)'), 's',
+  'the head predicate is a STABLE read [P2-S12-AC-156]');
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.r12_text(format('select platform_private.cms_related_publish_head_revision(%L::uuid, %L, %L)::text', pg_temp.r12_id('c1'), 'en-US', 'public')),
+  (select revision_id::text from platform_private.cms_publication_versions
+    where entry_id = pg_temp.r12_id('c1') and locale = 'en-US' and audience = 'public' and action = 'publish' order by version desc limit 1),
+  'a lineage whose head is a publish row answers that head revision [P2-S12-AC-231]');
+select is(pg_temp.r12_text(format('select platform_private.cms_related_publish_head_revision(%L::uuid, %L, %L)::text', pg_temp.r12_id('x2'), 'en-US', 'public')), null,
+  'a lineage whose head is a tombstone (published, then unpublished) answers NULL [P2-S12-AC-231]');
+select is(pg_temp.r12_text(format('select platform_private.cms_related_publish_head_revision(%L::uuid, %L, %L)::text', pg_temp.r12_id('x5'), 'en-US', 'public')), null,
+  'an entry with no lineage row answers NULL [P2-S12-AC-231]');
+select is(pg_temp.r12_text(format('select platform_private.cms_related_publish_head_revision(%L::uuid, %L, %L)::text', pg_temp.r12_id('c1'), 'en-US', 'members')), null,
+  'the lineage is per (locale, audience): another audience answers NULL [P2-S12-AC-232]');
+select ok(not exists (select 1 from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+                       where ns.nspname = 'platform_api' and proc.proname like 'cms\_related\_content\_public%'),
+  'CMS-03C-21 has no platform_api wrapper and so no browser route [P2-S12-AC-153]');
+select ok(coalesce((select p.prosecdef and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer'
+                        and coalesce(p.proconfig, array[]::text[]) @> array['search_path=""']
+                        and has_function_privilege('service_role', p.oid, 'execute')
+                        and not has_function_privilege('anon', p.oid, 'execute')
+                        and not has_function_privilege('authenticated', p.oid, 'execute')
+                        and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+                                         where acl.grantee = 0 and acl.privilege_type = 'EXECUTE')
+                   from pg_proc p where p.oid = to_regprocedure('platform_api.cms_curate_related_content(jsonb)')), false),
+  'the Worker transport platform_api.cms_curate_related_content is definer-owned and service_role-only [P2-S12-AC-261]');
+select ok(not coalesce(has_function_privilege('anon', to_regprocedure('platform_private.cms_related_rule_valid(text, bigint)'), 'execute'), true)
+          and not coalesce(has_function_privilege('authenticated', to_regprocedure('platform_private.cms_related_rule_valid(text, bigint)'), 'execute'), true)
+          and coalesce(has_function_privilege('wejammin_cms_definer', to_regprocedure('platform_private.cms_related_rule_valid(text, bigint)'), 'execute'), false),
+  'the registry predicate is executable by the definer (CHECK) and by no API role [P2-S12-AC-261]');
+select ok(not has_table_privilege('anon', 'platform_private.cms_related_content_rules', 'insert,update,delete')
+          and not has_table_privilege('authenticated', 'platform_private.cms_related_content_rules', 'insert,update,delete,select')
+          and not has_table_privilege('service_role', 'platform_private.cms_related_content_rules', 'insert,update,delete,select'),
+  'no API role holds a direct privilege on the rule table [P2-S12-AC-261]');
+select ok(has_table_privilege('wejammin_cms_definer', 'platform_private.cms_related_content_rules', 'insert')
+          and has_table_privilege('wejammin_cms_definer', 'platform_private.cms_related_content_rules', 'select')
+          and not has_table_privilege('wejammin_cms_definer', 'platform_private.cms_related_content_rules', 'update,delete'),
+  'the definer may append and read rules but never update or delete them (append-only) [P2-S12-AC-228]');
+select is((select relrowsecurity and relforcerowsecurity from pg_class where oid = 'platform_private.cms_related_content_rules'::regclass), true,
+  'the rule table keeps forced row level security [P2-S12-AC-261]');

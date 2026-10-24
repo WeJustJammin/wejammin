@@ -1,0 +1,85 @@
+-- DEC-201 explicitly authorizes restore's active-only parent-path remap.
+-- Reuse018's labelled guarded legacy DAG and REAL public parent successors;
+-- no old fixture/oracle is edited and no parent-producing placement is claimed.
+select fixture.* from (values('rr-parent','positive'),('rr-parent-excluded','excluded'),
+  ('rr-parent-cycle','cycle')) worlds(tag,kind)
+  cross join lateral pg_temp.s12cp_world(tag,kind) fixture;
+select pg_temp.s12pu_update('RR-RETIRE-PARENT',pg_temp.s12pu_update_request('rr-parent-excluded','accept',
+  jsonb_build_array(pg_temp.s12pu_target('rr-parent-excluded','/parent',
+    '[{"path":"/parent","choice":"theirs"}]')),'s12rr-retire-parent',2));
+select is(pg_temp.s12pu_state('RR-RETIRE-PARENT'),'00000',
+  'RR-PARENT-EXCLUDED premise: real public removed-root theirs appends retired parent');
+update s12cp_graph set p2=pg_temp.s12pu_head(tag,'/parent') where tag='rr-parent-excluded';
+select ok((select state='retired' and id<>g.p1 and version=2
+  from platform_private.cms_composition_instances where id=g.p2)
+  and (select state='active' and parent_instance_id=g.p1 from platform_private.cms_composition_instances where id=g.c1)
+  and (select state='active' from platform_private.cms_composition_instances where id=g.p1),
+  'RR-PARENT-EXCLUDED premise: newest parent excluded, older active P1 and selected child still physically exist')
+  from s12cp_graph g where tag='rr-parent-excluded';
+select ok((select count(*)=4 from platform_private.cms_composition_instances where revision_id=pg_temp.s12pl_rev(g.tag))
+  and (select parent_instance_id is null from platform_private.cms_composition_instances where id=g.c0)
+  and (select parent_instance_id=g.c0 from platform_private.cms_composition_instances where id=g.p1)
+  and (select parent_instance_id=g.p1 from platform_private.cms_composition_instances where id=g.c1)
+  and (select parent_instance_id=g.c0 from platform_private.cms_composition_instances where id=g.p2)
+  and g.c0<>g.c1 and g.p1<>g.p2,
+  'RR-PARENT-CYCLE premise: valid acyclic physical C0<-P1<-C1 and C0<-publicP2; selected paths alone form C1<->P2')
+  from s12cp_graph g where tag='rr-parent-cycle';
+select ok((select child.parent_instance_id=g.p1 and child.id=g.c1 from platform_private.cms_composition_instances child where id=g.c1)
+  and (select parent.id=g.p2 and parent.id<>g.p1 and parent.version=2 and parent.link_mode='detached'
+    and parent.detached_tree is not null and parent.parent_instance_id is null
+    from platform_private.cms_composition_instances parent where id=g.p2),
+  'RR-PARENT premise: child records historical P1 while public detach made selected active canonical P2')
+  from s12cp_graph g where tag='rr-parent';
+
+-- The guarded legacy child inherited a historical digest. Restore must repin its
+-- actual own supported s12pd.block tuple; neither withdrawn cc donor is content.
+select pg_temp.s12rr_expect(g.tag,array[g.p2,g.c1],jsonb_build_object(
+  '/parent',pg_temp.s12rr_digest(array['s12pd.block']),
+  '/child',pg_temp.s12rr_digest(array['s12pd.block'])))
+  from s12cp_graph g where tag='rr-parent';
+select pg_temp.s12cc_capture(tag) from s12cp_graph where tag in ('rr-parent-excluded','rr-parent-cycle');
+select pg_temp.s12cc_current('rr-parent');
+select pg_temp.s12cc_call('RR-PARENT','restore',pg_temp.s12cc_request('rr-parent','restore','s12rr-parent'));
+select restored.* from s12cp_graph g cross join lateral pg_temp.s12rr_restored(
+  'RR-PARENT','rr-parent',jsonb_build_object('/child',g.p2)) restored where tag='rr-parent';
+select ok((select child.parent_instance_id=parent.id and child.id<>g.c1 and parent.id not in(g.p1,g.p2)
+  and to_jsonb(child)->>'carried_from_id'=g.c1::text and to_jsonb(parent)->>'carried_from_id'=g.p2::text
+  and child.revision_id=parent.revision_id and child.owner_id=parent.owner_id
+  and child.position=23 and parent.position=0 and parent.parent_instance_id is null
+  from platform_private.cms_composition_instances child join platform_private.cms_composition_instances parent
+    on parent.id=child.parent_instance_id
+  where child.revision_id=(pg_temp.s12cc_body('RR-PARENT')->>'id')::uuid and child.path='/child'),
+  'RR-PARENT: exact child copy reconnects to fresh selected-P2 copy by source parent path, not P1 identity')
+  from s12cp_graph g where tag='rr-parent';
+select * from pg_temp.s12cc_effects('RR-PARENT');
+select * from pg_temp.s12cc_replay('RR-PARENT','rr-parent');
+
+create temp table s12rr_parent_refusals(tag text primary key,label text,review_id uuid,conflict_id uuid) on commit drop;
+create function pg_temp.s12rr_parent_refusal(p_tag text,p_label text) returns setof text
+language plpgsql as $body$
+declare review_id uuid; conflict_id uuid;
+begin
+  -- Real field-conflict producer, not a forged ConflictRecord. Its current draft
+  -- is composition-empty, so the named source remains a strong discriminator.
+  return query select * from pg_temp.s12cp_conflict(p_tag);
+  select id into conflict_id from platform_private.cms_conflict_records
+    where entry_id=pg_temp.s12pl_entry_id(p_tag) and state='open';
+  review_id:=pg_temp.s12pl_review(p_tag,clock_timestamp());
+  insert into s12rr_parent_refusals values(p_tag,p_label,review_id,conflict_id);
+  return query select * from pg_temp.s12cc_refused(p_label,'restore',
+    pg_temp.s12cc_request(p_tag,'restore','s12rr-'||p_label),'migration_chain_incomplete');
+  return next extensions.ok((select state='open' and version=1 from platform_private.cms_editorial_reviews
+    where id=review_id),p_label||': exact preexisting live review remains open after whole refusal');
+  return next extensions.ok((select state='open' and resolved_revision_id is null and id=conflict_id
+    from platform_private.cms_conflict_records where id=conflict_id),
+    p_label||': actual conflict identity stays unresolved, no partial supersession');
+  return next extensions.is((select jsonb_agg(to_jsonb(i) order by path,version)
+    from platform_private.cms_composition_instances i where revision_id=(select source_id from s12cc_world where tag=p_tag)),
+    (select source_rows from s12cc_world where tag=p_tag),p_label||': all source history/children/parents remain unchanged');
+end;
+$body$;
+select * from pg_temp.s12rr_parent_refusal('rr-parent-excluded','RR-PARENT-EXCLUDED');
+select * from pg_temp.s12rr_parent_refusal('rr-parent-cycle','RR-PARENT-CYCLE');
+select ok((select count(*)=2 and bool_and(state='P0001' and message='migration_chain_incomplete'
+  and before_rows=after_rows) from s12cc_out where label in ('RR-PARENT-EXCLUDED','RR-PARENT-CYCLE')),
+  'RR-PARENT-REFUSALS: existing translation token, full rollback; no child drop, detach, resurrection or cross-revision edge');

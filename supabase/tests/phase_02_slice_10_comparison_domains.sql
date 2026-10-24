@@ -122,9 +122,16 @@ select ok(
   'CMS-07 relation side hash keys are definition version, position and expected version'
 );
 
+-- DEC-193 (BE03b 1712): the block side hash is the JCS hash of the row's canonical content, built by the one private
+-- cms_composition_instance_content function the comparison calls; the locked key set (registry digest, bindings) lives there.
 select ok(
-  (select body like '%blockRegistryDigest%' and body like '%bindings%'
-   from s10_compare_body),
+  (select s10_compare_body.body like '%cms_composition_instance_content%'
+      and content.body like '%blockRegistryDigest%' and content.body like '%bindings%'
+      and content.body like '%blockKey%' and content.body like '%patternRef%'
+   from s10_compare_body,
+        lateral (select coalesce(pg_catalog.pg_get_functiondef(p.oid), '') as body
+                   from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+                  where n.nspname = 'platform_private' and p.proname = 'cms_composition_instance_content') content),
   'CMS-07 block side hash keys include the registry digest and bindings'
 );
 

@@ -1,0 +1,109 @@
+-- Slice 12 linked-update scan: the shared append helper platform_private.cms_pattern_update_next_row and its `pending` action (review V6-01: one row
+-- writer, no second copy).  The migration 20261022110050 proves by construction that the installed source differs from the pattern-updates definition by
+-- the one anchored branch (its inverse restores the installed bytes, or the migration raises); this file pins the OUTPUT of all three actions from the
+-- outside, and the five pattern-updates suites run beside this one prove the accept and detach commands that call it.  [P2-S12-AC-212]
+create or replace function pg_temp.s12ls_head_row(p_tag text, p_path text) returns platform_private.cms_composition_instances
+language sql stable as $body$
+  select i from platform_private.cms_composition_instances i
+   where i.revision_id = pg_temp.s12pl_rev(p_tag) and i.path = p_path order by i.version desc limit 1 $body$;
+create or replace function pg_temp.s12ls_helper(
+  p_action text, p_head platform_private.cms_composition_instances, p_plan jsonb, p_choices jsonb, p_digest text, p_actor uuid)
+returns jsonb language plpgsql as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  return to_jsonb(platform_private.cms_pattern_update_next_row(p_head, p_action, p_plan, p_choices, p_digest, p_actor,
+    timestamptz '2026-10-09T10:00:00Z'));
+exception when others then
+  return jsonb_build_object('error', sqlstate || ':' || sqlerrm);
+end;
+$body$;
+create or replace function pg_temp.s12ls_plan(p_head platform_private.cms_composition_instances, p_tag text) returns jsonb
+language plpgsql as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  return platform_private.cms_pattern_update_plan(p_head,
+    (select content_type_id from platform_private.cms_content_entries where id = pg_temp.s12pl_entry_id(p_tag)), true);
+end;
+$body$;
+create temp table s12ls_h(label text primary key, head platform_private.cms_composition_instances, result jsonb) on commit drop;
+create or replace function pg_temp.s12ls_h(p_label text, p_action text, p_tag text, p_path text, p_plan jsonb default null,
+  p_digest text default null, p_actor uuid default null) returns void language plpgsql as $body$
+declare h platform_private.cms_composition_instances := pg_temp.s12ls_head_row(p_tag, p_path);
+begin
+  insert into s12ls_h values (p_label, h, pg_temp.s12ls_helper(p_action, h, p_plan, null, p_digest, p_actor));
+end;
+$body$;
+create or replace function pg_temp.s12ls_hr(p_label text) returns jsonb language sql stable as $body$ select result from s12ls_h where label = p_label $body$;
+create or replace function pg_temp.s12ls_hh(p_label text) returns jsonb language sql stable as $body$ select to_jsonb(head) from s12ls_h where label = p_label $body$;
+
+-- ------------------------------------------------------------------------------------------------------------- the pending action --
+select pg_temp.s12ls_h('pend', 'pending', 'lk3', '/main/hero', '{"target":4}'::jsonb, null, 'a9120000-0000-4000-8000-00000000aaaa'::uuid);
+select is(pg_temp.s12ls_hr('pend')->>'state', 'pending_diff', 'pending: the row is a pending_diff row');
+select is((pg_temp.s12ls_hr('pend')->>'version')::bigint, (pg_temp.s12ls_hh('pend')->>'version')::bigint + 1, 'pending: at the next version of the path');
+select is(pg_temp.s12ls_hr('pend')->>'pending_pattern_version', '4', 'pending: carrying the version it waits for, p_plan->target');
+select is(pg_temp.s12ls_hr('pend')->>'pattern_version', pg_temp.s12ls_hh('pend')->>'pattern_version', 'pending: pinned to the UNCHANGED pattern version');
+select ok((pg_temp.s12ls_hr('pend') - array['id', 'state', 'version', 'pending_pattern_version', 'created_at', 'updated_at', 'carried_from_id'])
+          = (pg_temp.s12ls_hh('pend') - array['id', 'state', 'version', 'pending_pattern_version', 'created_at', 'updated_at', 'carried_from_id']),
+  'pending: every other member of the head is copied unchanged, position, slot, block, props, bindings, digest, parent and created_by included');
+select is(pg_temp.s12ls_hr('pend')->>'created_by', pg_temp.s12ls_hh('pend')->>'created_by',
+  'pending: created_by stays the head''s: a system job has no actor, so the actor argument (given here as another uuid) is ignored');
+select ok(pg_temp.s12ls_hr('pend')->>'id' <> pg_temp.s12ls_hh('pend')->>'id' and pg_temp.s12ls_hr('pend')->'carried_from_id' = 'null'::jsonb
+          and (pg_temp.s12ls_hr('pend')->>'created_at')::timestamptz = timestamptz '2026-10-09T10:00:00Z'
+          and pg_temp.s12ls_hr('pend')->>'created_at' = pg_temp.s12ls_hr('pend')->>'updated_at',
+  'pending: a fresh id, no carry source (R1-006), created_at = updated_at = the caller''s instant');
+-- a head that itself came from a revision-append carry-over keeps no carry source on the row appended after it (R1-006), whatever the head says
+insert into s12ls_h
+select 'pend-carried', carried, pg_temp.s12ls_helper('pending', carried, '{"target":4}'::jsonb, null, null, null)
+  from (select jsonb_populate_record(null::platform_private.cms_composition_instances,
+          to_jsonb(pg_temp.s12ls_head_row('lk3', '/main/hero')) || '{"carried_from_id":"a9120000-0000-4000-8000-00000000dddd"}'::jsonb) as carried) head_row;
+select is(pg_temp.s12ls_hh('pend-carried')->>'carried_from_id', 'a9120000-0000-4000-8000-00000000dddd', 'setup: the head carries a source revision row');
+select is(pg_temp.s12ls_hr('pend-carried')->'carried_from_id', 'null'::jsonb, 'pending: the appended row has no carry source although its head has one');
+select pg_temp.s12ls_h('pend-eq', 'pending', 'lk3', '/main/hero', '{"target":1}'::jsonb);
+select pg_temp.s12ls_h('pend-zero', 'pending', 'lk3', '/main/hero', '{"target":0}'::jsonb);
+select pg_temp.s12ls_h('pend-text', 'pending', 'lk3', '/main/hero', '{"target":"4"}'::jsonb);
+select pg_temp.s12ls_h('pend-frac', 'pending', 'lk3', '/main/hero', '{"target":1.5}'::jsonb);
+select pg_temp.s12ls_h('pend-big', 'pending', 'lk3', '/main/hero', '{"target":2147483648}'::jsonb);
+select pg_temp.s12ls_h('pend-null', 'pending', 'lk3', '/main/hero');
+select pg_temp.s12ls_h('pend-detached', 'pending', 'dt1', '/hero', '{"target":4}'::jsonb);
+select pg_temp.s12ls_h('pend-retired', 'pending', 'st1', '/hero', '{"target":4}'::jsonb);
+select pg_temp.s12ls_h('pend-draft', 'pending', 'st2', '/hero', '{"target":4}'::jsonb);
+select pg_temp.s12ls_h('pend-standalone', 'pending', 'lk1', '/standalone', '{"target":4}'::jsonb);
+select pg_temp.s12ls_h('bogus', 'bogus', 'lk3', '/main/hero', '{"target":4}'::jsonb);
+select is((select string_agg(label || '=' || coalesce(result->>'error', 'wrote'), ' ' order by label collate "C") from s12ls_h
+            where (label like 'pend-%' and label <> 'pend-carried') or label = 'bogus'),
+  'bogus=P0001:INVALID_REQUEST pend-big=P0001:INVALID_REQUEST pend-detached=P0001:INVALID_REQUEST pend-draft=P0001:INVALID_REQUEST '
+  || 'pend-eq=P0001:INVALID_REQUEST pend-frac=P0001:INVALID_REQUEST pend-null=P0001:INVALID_REQUEST pend-retired=P0001:INVALID_REQUEST '
+  || 'pend-standalone=P0001:INVALID_REQUEST pend-text=P0001:INVALID_REQUEST pend-zero=P0001:INVALID_REQUEST',
+  'pending refuses a missing, non-numeric, fractional, zero, oversized or not-newer target and a head that is not a linked active or pending_diff row; an unknown action is still refused');
+
+-- ------------------------------------------------------------------------------------------- accept and detach are unchanged --
+create temp table s12ls_acc on commit drop as
+select pg_temp.s12ls_head_row('lk1', '/cta') as head, pg_temp.s12ls_plan(pg_temp.s12ls_head_row('lk1', '/cta'), 'lk1') as plan;
+select is((select plan->>'target' from s12ls_acc), '3', 'setup: the writer plan of the lk1 /cta head (pending for v3) names the newest active compatible version, v3');
+select pg_temp.s12ls_h('acc', 'accept', 'lk1', '/cta', (select plan from s12ls_acc), repeat('d', 64), 'a9120000-0000-4000-8000-00000000bbbb'::uuid);
+select pg_temp.s12ls_h('det', 'detach', 'lk1', '/cta', null, repeat('e', 64), 'a9120000-0000-4000-8000-00000000cccc'::uuid);
+select is(pg_temp.s12ls_hr('acc')->>'error', null, 'accept: the helper still assembles the row');
+select is(pg_temp.s12ls_hr('acc')->>'state' || ':' || (pg_temp.s12ls_hr('acc')->>'link_mode') || ':' || (pg_temp.s12ls_hr('acc')->>'pattern_version')
+          || ':' || coalesce(pg_temp.s12ls_hr('acc')->>'pending_pattern_version', '-') || ':' || (pg_temp.s12ls_hr('acc')->>'props'),
+  'active:linked:3:-:{}', 'accept: an active linked row adopting the target pin, no pending version, no override');
+select is(pg_temp.s12ls_hr('acc')->>'created_by', 'a9120000-0000-4000-8000-00000000bbbb', 'accept: created_by is the actor given, unlike the pending action');
+select is(pg_temp.s12ls_hr('acc')->>'block_registry_digest', repeat('d', 64), 'accept: the digest given');
+select ok((pg_temp.s12ls_hr('acc') - array['id', 'state', 'version', 'pattern_version', 'pending_pattern_version', 'created_at', 'updated_at', 'created_by',
+    'block_registry_digest', 'carried_from_id']) = (pg_temp.s12ls_hh('acc') - array['id', 'state', 'version', 'pattern_version', 'pending_pattern_version',
+    'created_at', 'updated_at', 'created_by', 'block_registry_digest', 'carried_from_id']),
+  'accept: every other member (position, slot, block, props, bindings, parent) is the head''s');
+select is(pg_temp.s12ls_hr('det')->>'error', null, 'detach: the helper still assembles the row');
+select is(pg_temp.s12ls_hr('det')->>'state' || ':' || (pg_temp.s12ls_hr('det')->>'link_mode') || ':' || (pg_temp.s12ls_hr('det')->>'pattern_version')
+          || ':' || coalesce(pg_temp.s12ls_hr('det')->>'pending_pattern_version', '-') || ':' || (pg_temp.s12ls_hr('det')->>'props'),
+  'active:detached:1:-:{}', 'detach: an active detached row keeping the prior pin as provenance, empty props, no pending version');
+select ok(pg_temp.s12ls_hr('det')#>>'{detached_tree,format}' = 'cms.detached_tree.v1' and jsonb_array_length(pg_temp.s12ls_hr('det')#>'{detached_tree,nodes}') = 1
+          and pg_temp.s12ls_hr('det')->>'created_by' = 'a9120000-0000-4000-8000-00000000cccc' and pg_temp.s12ls_hr('det')->>'block_registry_digest' = repeat('e', 64)
+          and pg_temp.s12ls_hr('det')->'carried_from_id' = 'null'::jsonb,
+  'detach: the materialized single-node detached tree, the actor and the digest given, no carry source');
+
+-- the function keeps its posture (owner, definer, search_path, closed ACL) after the anchored patch
+select is((select pg_get_userbyid(proc.proowner) || ':' || proc.prosecdef::text || ':' || proc.provolatile::text || ':' || coalesce(proc.proconfig, array[]::text[])::text
+             from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_pattern_update_next_row(platform_private.cms_composition_instances,text,jsonb,jsonb,text,uuid,timestamp with time zone)')),
+  'wejammin_cms_definer:true:v:{"search_path=\"\""}', 'the helper is still a volatile SECURITY DEFINER of the CMS definer with an empty search_path');
+select ok((select not bool_or(has_function_privilege(role_name, to_regprocedure('platform_private.cms_pattern_update_next_row(platform_private.cms_composition_instances,text,jsonb,jsonb,text,uuid,timestamp with time zone)'), 'EXECUTE'))
+             from unnest(array['anon', 'authenticated', 'service_role']) role_name), 'no application role may execute the helper');

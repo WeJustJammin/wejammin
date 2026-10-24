@@ -1,0 +1,147 @@
+-- AC056 idempotent replay and mismatch, unique entry/locale/source revision/version,
+-- AC055/AC057 refusals that leave no record.  Runs before the ceiling fixtures so the
+-- committed state is exactly the first fr-FR variant.
+
+create temp table l12_before_refusals on commit drop as
+select (select count(*) from platform_private.cms_locale_variants) as variants,
+       (select count(*) from platform_private.cms_entry_revisions) as revisions,
+       (select count(*) from platform_private.outbox_events) as events,
+       (select count(*) from audit_private.audit_events) as audits,
+       (select count(*) from platform_private.idempotency_records) as reservations,
+       (select version from platform_private.cms_content_entries where id = pg_temp.l12_entry()) as entry_version;
+
+select is(
+  pg_temp.l12_json(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    (select request::text from l12_v1_request))),
+  (select response from l12_v1),
+  'an exact repeat of the committed command replays the stored resource, including staleFieldIds [P2-S12-AC-056]'
+);
+select is(
+  pg_temp.l12_try(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    ((select request from l12_v1_request) || jsonb_build_object('fields', pg_temp.l12_title_field('Autre titre')))::text)),
+  'P0001:IDEMPOTENCY_MISMATCH',
+  'the same key with a changed body is a 409 mismatch [P2-S12-AC-056]'
+);
+select is(
+  pg_temp.l12_try(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    ((select request from l12_v1_request) || '{"locale":"de-DE"}'::jsonb)::text)),
+  'P0001:IDEMPOTENCY_MISMATCH',
+  'the same key with a changed path locale is a 409 mismatch [P2-S12-AC-056]'
+);
+select is(
+  pg_temp.l12_try(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    ((select request from l12_v1_request) || '{"expectedVersion":"9","ifMatch":"9"}'::jsonb)::text)),
+  'P0001:IDEMPOTENCY_MISMATCH',
+  'the same key with a changed entry version is a 409 mismatch [P2-S12-AC-056]'
+);
+select is(
+  pg_temp.l12_try(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    pg_temp.l12_req('fr-FR', pg_temp.l12_title_field('x'), 'l12-absent-source-1',
+      jsonb_build_object('sourceRevisionId', extensions.gen_random_uuid()))::text)),
+  'P0001:NOT_FOUND',
+  'an absent source revision is concealed as not found [P2-S12-AC-055]'
+);
+select is(
+  pg_temp.l12_try(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    pg_temp.l12_req('fr-FR', pg_temp.l12_title_field('x'), 'l12-absent-entry-1',
+      jsonb_build_object('entryId', extensions.gen_random_uuid()))::text)),
+  'P0001:NOT_FOUND',
+  'an absent entry is concealed as not found [P2-S12-AC-055]'
+);
+select is(
+  pg_temp.l12_try(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    pg_temp.l12_req('fr-FR', pg_temp.l12_title_field('x'), 'short')::text)),
+  'P0001:INVALID_REQUEST',
+  'a malformed Idempotency-Key is refused as an invalid request [P2-S12-AC-056]'
+);
+select ok(
+  (select (select count(*) from platform_private.cms_locale_variants) = variants
+      and (select count(*) from platform_private.cms_entry_revisions) = revisions
+      and (select count(*) from platform_private.outbox_events) = events
+      and (select count(*) from audit_private.audit_events) = audits
+      and (select count(*) from platform_private.idempotency_records) = reservations
+      and (select version from platform_private.cms_content_entries where id = pg_temp.l12_entry()) = entry_version
+   from l12_before_refusals),
+  'every refusal and the replay leave no variant, revision, event, audit or idempotency record and keep the entry version [P2-S12-AC-057]'
+);
+
+create or replace function pg_temp.l12_duplicate_probe()
+returns text
+language plpgsql
+as $body$
+declare
+  base platform_private.cms_locale_variants%rowtype;
+begin
+  select * into base from platform_private.cms_locale_variants variant
+  where variant.entry_id = pg_temp.l12_entry() and variant.locale = 'fr-FR'
+  order by variant.version desc limit 1;
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_locale_variants(
+    id, owner_id, state, version, created_at, updated_at, entry_id, revision_id,
+    source_revision_id, locale, source_locale, source_hash, fallback_chain,
+    no_fallback_field_ids, created_by
+  ) values (
+    extensions.gen_random_uuid(), base.owner_id, 'draft', base.version, base.created_at, base.created_at,
+    base.entry_id, base.revision_id, base.source_revision_id, base.locale, base.source_locale,
+    base.source_hash, base.fallback_chain, base.no_fallback_field_ids, base.created_by
+  );
+  raise exception 'l12-duplicate-inserted';
+exception when others then
+  return sqlstate;
+end;
+$body$;
+select is(
+  pg_temp.l12_duplicate_probe(), '23505',
+  'a second variant for the same entry, locale, source revision and version violates the unique key [P2-S12-AC-056]'
+);
+
+-- AC233 (BE03c 382-388, OD-4): `fallbackChain` equals the active chain element for element, and `[]`
+-- exactly when the locale is the content type's default locale.  Each probe rolls back, so the committed
+-- state stays exactly the first fr-FR variant (the ceiling fixtures of 002 follow).  The default-locale
+-- variant is sourced from the newest fr-FR revision (a locale revision can be a source, 382-388).
+create temp table l12_default_src on commit drop as
+select revision.id as revision_id, btrim(revision.payload_hash::text) as source_hash
+from platform_private.cms_entry_revisions revision
+where revision.entry_id = pg_temp.l12_entry() and revision.locale = 'fr-FR'
+order by revision.revision_number desc limit 1;
+
+create or replace function pg_temp.l12_default_req(p_chain jsonb, p_key text, p_locale text default 'en-US')
+returns jsonb
+language sql
+as $body$
+  select pg_temp.l12_req(p_locale, pg_temp.l12_title_field('English title'), p_key,
+    jsonb_build_object(
+      'sourceRevisionId', case when p_locale = 'en-US' then (select revision_id from l12_default_src)
+                               else pg_temp.l12_source() end,
+      'sourceHash', case when p_locale = 'en-US' then (select source_hash from l12_default_src)
+                         else (select btrim(payload_hash::text) from platform_private.cms_entry_revisions
+                                where id = pg_temp.l12_source()) end,
+      'fallbackChain', p_chain))
+$body$;
+
+select is(
+  (select r #>> '{response,state}' || '/' || (r #>> '{response,locale}') || '/' || (r #>> '{response,fallbackChain}')
+     from (select pg_temp.l12_author_rolled_back(
+             pg_temp.l12_default_req('[]'::jsonb, 'l12-default-0001')) as r) probe),
+  'draft/en-US/[]',
+  'the empty fallbackChain is accepted for the default locale (en-US), sourced from a locale revision [P2-S12-AC-233]'
+);
+select is(
+  (select r->>'error' || ' ' || (r->>'detail')::jsonb::text
+     from (select pg_temp.l12_author_rolled_back(
+             pg_temp.l12_default_req('["fr-FR"]'::jsonb, 'l12-default-0002')) as r) probe),
+  'P0001:VERSION_MISMATCH {"reasonCode": "FALLBACK_CHAIN_MISMATCH", "activeFallbackChain": []}',
+  'a non-empty chain for the default locale is the 409 FALLBACK_CHAIN_MISMATCH with the active chain [] [P2-S12-AC-233]'
+);
+select is(
+  (select r->>'error' || ' ' || (r->>'detail')::jsonb::text
+     from (select pg_temp.l12_author_rolled_back(
+             pg_temp.l12_default_req('[]'::jsonb, 'l12-default-0003', 'fr-FR')) as r) probe),
+  'P0001:VERSION_MISMATCH {"reasonCode": "FALLBACK_CHAIN_MISMATCH", "activeFallbackChain": ["en-US"]}',
+  'control: the empty chain is refused for a non-default locale, whose active chain is [en-US] [P2-S12-AC-233]'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_locale_variants
+   where entry_id = pg_temp.l12_entry() and locale = 'en-US'),
+  0, 'the accepted default-locale probe was rolled back: the committed state is unchanged [P2-S12-AC-233]'
+);

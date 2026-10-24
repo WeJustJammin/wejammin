@@ -1,0 +1,172 @@
+-- All new-relation access is dynamic. Unexpected errors become attributable TAP
+-- results, never a missing-table setup abort. Successful probes roll back unless kept.
+create function pg_temp.dr_id(p_label text) returns uuid language sql immutable as $$
+  select (substr(h,1,8) || '-' || substr(h,9,4) || '-4' || substr(h,14,3)
+    || '-8' || substr(h,18,3) || '-' || substr(h,21,12))::uuid
+  from (select md5('DEC197:' || p_label) h) q
+$$;
+
+create function pg_temp.dr_result(p_sql text, p_keep boolean default false)
+returns jsonb language plpgsql as $$
+declare
+  n bigint; c text; m text; t text; s text; col text;
+begin
+  begin
+    execute p_sql;
+    get diagnostics n = row_count;
+    if p_keep then return jsonb_build_object('state','00000','constraint','','rows',n); end if;
+    raise exception using errcode = 'ZX197', message = 'DEC197_PROBE_ACCEPTED';
+  exception when others then
+    get stacked diagnostics c = constraint_name, m = message_text, t = table_name, s = returned_sqlstate, col = column_name;
+    if s = 'ZX197' then return jsonb_build_object('state','00000','constraint','','rows',n); end if;
+    return jsonb_build_object('state',s,'constraint',c,'message',m,'table',t,'column',col);
+  end;
+end;
+$$;
+
+create function pg_temp.dr_scalar(p_sql text) returns text language plpgsql as $$
+declare v text;
+begin
+  execute p_sql into v;
+  return v;
+exception when others then return sqlstate || ':' || sqlerrm;
+end;
+$$;
+
+create function pg_temp.dr_role_result(p_role text, p_sql text, p_forged boolean default true)
+returns jsonb language plpgsql as $$
+declare r jsonb; n bigint; c text; m text; s text;
+begin
+  begin
+    execute format('set local role %I', p_role);
+    perform set_config('app.cms_rpc',case when p_forged then 'true' else 'false' end,true);
+    perform set_config('request.jwt.claims',case when p_forged then
+      '{"role":"service_role","app_metadata":{"cms":true}}' else '{}' end,true);
+    execute p_sql;
+    get diagnostics n = row_count;
+    raise exception using errcode = 'ZX197', message = 'DEC197_ROLE_ACCEPTED';
+  exception when others then
+    get stacked diagnostics c = constraint_name, m = message_text, s = returned_sqlstate;
+    r := case when s = 'ZX197' then jsonb_build_object('state','00000','constraint','','rows',n)
+      else jsonb_build_object('state',s,'constraint',c,'message',m) end;
+  end;
+  return r;
+end;
+$$;
+
+create function pg_temp.dr_role_scalar(p_role text, p_sql text) returns text language plpgsql as $$
+declare v text;
+begin
+  begin
+    execute format('set local role %I',p_role);
+    perform set_config('app.cms_rpc','true',true);
+    execute p_sql into v;
+    raise exception using errcode = 'ZX197', message = 'DEC197_ROLE_SCALAR';
+  exception when others then
+    if sqlstate <> 'ZX197' then return sqlstate || ':' || sqlerrm; end if;
+  end;
+  return v;
+end;
+$$;
+
+create function pg_temp.dr_attnums(p_table text, p_columns text[]) returns smallint[] language sql stable as $$
+  select array_agg(a.attnum order by k.ordinality)
+  from unnest(p_columns) with ordinality k(name,ordinality)
+  join pg_attribute a on a.attrelid = to_regclass(p_table) and a.attname = k.name
+    and a.attnum > 0 and not a.attisdropped
+$$;
+
+create function pg_temp.dr_key(p_table text, p_kind "char", p_columns text[])
+returns text language sql stable as $$
+  select c.conname::text from pg_constraint c
+  where c.conrelid = to_regclass(p_table) and c.contype = p_kind and c.convalidated
+    and c.conkey = pg_temp.dr_attnums(p_table,p_columns)
+  order by c.conname limit 1
+$$;
+
+create function pg_temp.dr_fk(p_table text, p_columns text[], p_parent text, p_parent_columns text[])
+returns text language sql stable as $$
+  select c.conname::text from pg_constraint c
+  where c.conrelid = to_regclass(p_table) and c.contype = 'f' and c.convalidated
+    and c.conkey = pg_temp.dr_attnums(p_table,p_columns)
+    and c.confrelid = to_regclass(p_parent)
+    and c.confkey = pg_temp.dr_attnums(p_parent,p_parent_columns)
+    and c.confdeltype in ('a','r') and c.confupdtype in ('a','r')
+    and not c.condeferrable and c.confmatchtype = 's'
+  order by c.conname limit 1
+$$;
+
+create function pg_temp.dr_check(p_table text, p_fragments text[]) returns text language sql stable as $$
+  select c.conname::text from pg_constraint c
+  where c.conrelid = to_regclass(p_table) and c.contype = 'c' and c.convalidated
+    and pg_get_constraintdef(c.oid) like all (select '%' || x || '%' from unnest(p_fragments) x)
+  order by c.conname limit 1
+$$;
+
+create function pg_temp.dr_error(p_sql text, p_state text, p_constraint text)
+returns boolean language sql as $$
+  select p_constraint is not null and (r->>'state',r->>'constraint') = (p_state,p_constraint)
+  from (select pg_temp.dr_result(p_sql) r) q
+$$;
+
+create function pg_temp.dr_diag(p_sql text) returns text language sql as $$
+  select r->>'state' || ':' || coalesce(r->>'constraint','')
+  from (select pg_temp.dr_result(p_sql) r) q
+$$;
+
+create function pg_temp.dr_manifest_sql(p_label text, p_overrides jsonb default '{}')
+returns text language plpgsql as $$
+declare r jsonb;
+begin
+  r := jsonb_build_object('id',pg_temp.dr_id(p_label),'publication_set_hash',
+    (select value from dr_frozen where key='hash'),'state','ready',
+    'generated_at','2026-10-16T12:00:00Z','activated_at',null) || p_overrides;
+  return format('insert into platform_private.route_manifest_version (%s) %s select %s
+    from jsonb_to_record(%L::jsonb) as r(id uuid,version_no bigint,publication_set_hash text,
+      state text,generated_at timestamptz,activated_at timestamptz)',
+    case when r ? 'version_no' then 'id,version_no,publication_set_hash,state,generated_at,activated_at'
+      else 'id,publication_set_hash,state,generated_at,activated_at' end,
+    case when r ? 'version_no' then 'overriding system value' else '' end,
+    case when r ? 'version_no' then 'id,version_no,publication_set_hash,state,generated_at,activated_at'
+      else 'id,publication_set_hash,state,generated_at,activated_at' end,r::text);
+end;
+$$;
+
+create function pg_temp.dr_projection_sql(p_label text, p_publication text, p_manifest text,
+  p_overrides jsonb default '{}') returns text language plpgsql as $$
+declare r jsonb;
+begin
+  r := jsonb_build_object('id',pg_temp.dr_id(p_label),'publication_id',
+    coalesce((select id from dr_publications where label=p_publication),pg_temp.dr_id(p_publication)),
+    'route_manifest_id',pg_temp.dr_id(p_manifest),'locale','en-US','audience','public',
+    'render_payload',jsonb_build_object('blocks',jsonb_build_array(),'title','DEC-197 fixture'),
+    'render_hash',repeat('a',64),'discovery_hash',repeat('b',64),'required_refs','[]'::jsonb,
+    'state','ready','version',1,'created_at','2026-10-16T12:00:00Z',
+    'updated_at','2026-10-16T12:00:00Z') || p_overrides;
+  return format('insert into platform_private.publication_projection
+    (id,publication_id,route_manifest_id,locale,audience,render_payload,render_hash,discovery_hash,
+      required_refs,state,version,created_at,updated_at)
+    select id,publication_id,route_manifest_id,locale,audience,render_payload,render_hash,discovery_hash,
+      required_refs,state,version,created_at,updated_at from jsonb_to_record(%L::jsonb)
+    as r(id uuid,publication_id uuid,route_manifest_id uuid,locale text,audience text,
+      render_payload jsonb,render_hash text,discovery_hash text,required_refs jsonb,state text,
+      version bigint,created_at timestamptz,updated_at timestamptz)',r::text);
+end;
+$$;
+
+create function pg_temp.dr_consumer_sql(p_label text, p_publication text, p_projection text,
+  p_overrides jsonb default '{}') returns text language plpgsql as $$
+declare r jsonb;
+begin
+  r := jsonb_build_object('id',pg_temp.dr_id(p_label),'publication_id',
+    coalesce((select id from dr_publications where label=p_publication),pg_temp.dr_id(p_publication)),
+    'projection_id',pg_temp.dr_id(p_projection),'consumer','route','expected_version',1,
+    'state','active','attempts',0,'last_error_code',null,'updated_at','2026-10-16T12:00:00Z',
+    'version',1) || p_overrides;
+  return format('insert into platform_private.projection_consumer_state
+    (id,publication_id,projection_id,consumer,expected_version,state,attempts,last_error_code,updated_at,version)
+    select id,publication_id,projection_id,consumer,expected_version,state,attempts,last_error_code,updated_at,version
+    from jsonb_to_record(%L::jsonb) as r(id uuid,publication_id uuid,projection_id uuid,consumer text,
+      expected_version bigint,state text,attempts integer,last_error_code text,updated_at timestamptz,version bigint)',r::text);
+end;
+$$;

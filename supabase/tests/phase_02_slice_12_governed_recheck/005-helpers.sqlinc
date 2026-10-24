@@ -1,0 +1,86 @@
+-- Helpers of the governed-recheck suite.  pg_temp only; every governed row is written by a named producer.
+
+-- One CMS recheck run (the database half of cms.governed_review.recheck) under the REAL service_role.
+-- p_patch is merged over the request; p_unset removes keys.
+create or replace function pg_temp.s12gr_run(
+  p_label text, p_kind text, p_ref uuid, p_cursor uuid default null, p_batch integer default null,
+  p_patch jsonb default '{}'::jsonb, p_unset text[] default array[]::text[]
+) returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12gb_call(p_label, 'platform_api.cms_recheck_governed_reviews',
+    ((jsonb_build_object('eventId', extensions.gen_random_uuid(), 'kind', p_kind, 'refId', p_ref,
+        'cursor', p_cursor)
+      || case when p_batch is null then '{}'::jsonb else jsonb_build_object('batch', p_batch) end) || p_patch) - p_unset);
+end;
+$body$;
+
+-- review + subject facts of a tag as one jsonb (versions, states, reason, schedule).
+create or replace function pg_temp.s12gr_facts(p_tag text) returns jsonb language sql stable as $body$
+  select jsonb_build_object(
+    'reviewState', review.state, 'reviewVersion', review.version, 'reason', review.invalidated_reason,
+    'decidedAt', review.decided_at, 'subjectState', subject.state, 'subjectLifecycle', subject.lifecycle_version,
+    'scheduleState', (select schedule.state from platform_private.cms_governed_activation_schedules schedule
+                       where schedule.review_id = review.id order by schedule.created_at desc limit 1),
+    'scheduleReason', (select schedule.reason_code from platform_private.cms_governed_activation_schedules schedule
+                        where schedule.review_id = review.id order by schedule.created_at desc limit 1))
+    from platform_private.cms_governed_reviews review
+    join platform_private.cms_template_versions subject on subject.id = review.subject_id
+   where review.id = pg_temp.s12ga_review(p_tag)
+$body$;
+
+-- facts captured under a label and compared later.
+create temp table s12gr_marks(label text primary key, facts jsonb not null) on commit drop;
+create or replace function pg_temp.s12gr_mark(p_label text, p_tag text) returns void language sql as $body$
+  insert into s12gr_marks(label, facts) values (p_label, pg_temp.s12gr_facts(p_tag))
+  on conflict (label) do update set facts = excluded.facts $body$;
+create or replace function pg_temp.s12gr_before(p_label text) returns jsonb language sql stable as $body$
+  select facts from s12gr_marks where label = p_label $body$;
+
+-- true when the tag's review was invalidated with the reason, exactly one version after the mark, the subject went back to
+-- draft one lifecycle step after the mark, and (when a schedule existed) the schedule is cancelled approval_invalidated.
+create or replace function pg_temp.s12gr_invalidated(p_label text, p_tag text, p_reason text) returns boolean
+language sql stable as $body$
+  with after_facts as (select pg_temp.s12gr_facts(p_tag) as f)
+  select (f->>'reviewState') = 'invalidated' and (f->>'reason') = p_reason
+     and (f->>'reviewVersion')::bigint = (pg_temp.s12gr_before(p_label)->>'reviewVersion')::bigint + 1
+     and (f->>'decidedAt') is null
+     and (f->>'subjectState') = 'draft'
+     and (f->>'subjectLifecycle')::bigint = (pg_temp.s12gr_before(p_label)->>'subjectLifecycle')::bigint + 1
+     and (pg_temp.s12gr_before(p_label)->>'scheduleState' is null
+          or ((f->>'scheduleState') = 'cancelled' and (f->>'scheduleReason') = 'approval_invalidated'))
+    from after_facts
+$body$;
+
+-- true when the tag's facts are byte-identical to the mark (an untouched review).
+create or replace function pg_temp.s12gr_untouched(p_label text, p_tag text) returns boolean language sql stable as $body$
+  select pg_temp.s12gr_facts(p_tag) = pg_temp.s12gr_before(p_label) $body$;
+
+-- The active version id of the typeA content type.
+create or replace function pg_temp.s12gr_type_a_active() returns uuid language sql stable as $body$
+  select version_row.id from platform_private.cms_content_type_versions version_row
+   where version_row.content_type_id = (select value::uuid from s12gov_ids where key = 'typeA') and version_row.state = 'active' $body$;
+
+create temp table s12gr_counts(label text primary key, audits bigint not null, events bigint not null) on commit drop;
+create or replace function pg_temp.s12gr_count_mark(p_label text) returns void language sql as $body$
+  insert into s12gr_counts(label, audits, events)
+  select p_label, (select count(*) from audit_private.audit_events), (select count(*) from platform_private.outbox_events)
+  on conflict (label) do update set audits = excluded.audits, events = excluded.events $body$;
+
+-- EXECUTE privilege of a role on a function signature; false (not an error) when the function does not exist.
+create or replace function pg_temp.s12gr_priv(p_role text, p_signature text) returns boolean language plpgsql as $body$
+begin
+  if to_regprocedure(p_signature) is null then
+    return false;
+  end if;
+  return has_function_privilege(p_role, p_signature, 'EXECUTE');
+end;
+$body$;
+
+-- The exact answer of one run: the invalidated count is the sum of the two closed reasons.
+create or replace function pg_temp.s12gr_result(
+  p_examined integer, p_dependency integer, p_authority integer, p_unavailable integer, p_cursor uuid
+) returns jsonb language sql immutable as $body$
+  select jsonb_build_object('examined', p_examined, 'invalidated', p_dependency + p_authority,
+    'dependencyChanged', p_dependency, 'reviewerAuthorityChanged', p_authority,
+    'unavailable', p_unavailable, 'nextCursor', p_cursor)
+$body$;

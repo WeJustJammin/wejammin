@@ -47,12 +47,17 @@ returns text language sql stable as $body$
    where node->>'kind' = p_kind
 $body$;
 
--- gt-1 composition: three blocks without a template, one superseded and one pending_diff instance (not rendered); gt-2 carries a block the registry does not know.
+-- gt-1 composition: three blocks without a template, one superseded instance (not rendered) and one pending_diff instance (rendered: it keeps its pinned version, BE03c 1515); gt-2 carries a block the registry does not know.
 select pg_temp.h11m_instance('gt-i2', pg_temp.h11w_uuid('gt-1:revision'), '/b/2', 'h11.first');
 select pg_temp.h11m_instance('gt-i1', pg_temp.h11w_uuid('gt-1:revision'), '/b/1', 'h11.second');
 select pg_temp.h11m_instance('gt-i0', pg_temp.h11w_uuid('gt-1:revision'), '/b/0', 'h11.slotonly', null, 'active');
 select pg_temp.h11m_instance('gt-i9', pg_temp.h11w_uuid('gt-1:revision'), '/b/9', 'h11.first', null, 'superseded');
-select pg_temp.h11m_instance('gt-i8', pg_temp.h11w_uuid('gt-1:revision'), '/b/8', 'h11.first', null, 'pending_diff');
+-- A pending_diff row waits for a newer pattern version (BE03c 1426, cms_composition_instances_pending_version_check): the
+-- shared h11m_instance writes none, so the row is written `active` and moved to `pending_diff` with its pending version.
+select pg_temp.h11m_instance('gt-i8', pg_temp.h11w_uuid('gt-1:revision'), '/b/8', 'h11.first', null, 'active');
+select pg_temp.h11_raw_exec('platform_private.cms_composition_instances', format(
+  $q$update platform_private.cms_composition_instances set state = 'pending_diff', pending_pattern_version = 2 where id = %L$q$,
+  pg_temp.h11w_uuid('gt-i8')));
 select pg_temp.h11m_lifecycle('a9200000-0000-4000-8000-0000000b0002'::uuid, 'h11.second', 'withdrawn');
 -- Name rules: h11.first requires a name and defines the accessible_name prop; the instance /b/2 carries one.
 select pg_temp.h11_raw_exec('platform_private.cms_block_definition_versions', format(
@@ -103,8 +108,9 @@ select ok(
         = jsonb_build_object('kind', 'field', 'fieldId', pg_temp.h11w_fid('body')::text, 'fieldKind', 'rich_text', 'value', pg_temp.h11w_rich('Body of Hello world')),
   'a field node is exactly { kind, fieldId, fieldKind rich_text, value } with the stored rich_text.v1 value verbatim; the short_text title is not a node [P2-S11-AC-101]');
 select is(pg_temp.r11g_nodes('submit', 'block'),
-  '/composition/' || pg_temp.h11w_uuid('gt-i0') || ',/composition/' || pg_temp.h11w_uuid('gt-i1') || ',/composition/' || pg_temp.h11w_uuid('gt-i2'),
-  'block nodes are the live (draft | active) instances, after the revision''s field nodes (the render plan: fields, then instances by slot and path), ordered by path here (a superseded and a pending_diff instance are not rendered) [P2-S11-AC-101]');
+  '/composition/' || pg_temp.h11w_uuid('gt-i2') || ',/composition/' || pg_temp.h11w_uuid('gt-i1') || ',/composition/' || pg_temp.h11w_uuid('gt-i0')
+    || ',/composition/' || pg_temp.h11w_uuid('gt-i8'),
+  'block nodes are the heads that render (draft | active | pending_diff: a pending_diff row renders its pinned version, BE03c 1515), after the revision''s field nodes (the render plan: fields, then instances by slot, authored position (DEC-185) and path), ordered by position here: i2 (0), i1 (1), i0 (2), i8 (4, pending_diff); the superseded head is not rendered [P2-S11-AC-101]');
 select ok(
   (select jsonb_build_object('kind', node->>'kind', 'blockKey', node->>'blockKey', 'blockVersion', node->'blockVersion', 'lifecycle', node->>'lifecycle',
             'recordHash', node->>'recordHash')
@@ -133,14 +139,16 @@ select ok(
 -- Determinism and the render-plan hash.
 select pg_temp.r11g_call('submit2', 'owner', pg_temp.r11g_rq('submit', 'gt-1'));
 select ok(pg_temp.r11_resp('submit2') = pg_temp.r11_resp('submit'), 'loading twice answers the identical document [P2-S11-AC-101]');
+-- DEC-185 (BE03c 1511): the order of rows in a slot is their authored position, so moving an instance is changing its position
+-- (a path no longer orders it).
 select pg_temp.h11_raw_exec('platform_private.cms_composition_instances',
-  format($$update platform_private.cms_composition_instances set path = '/b/5' where id = %L$$, pg_temp.h11w_uuid('gt-i0')));
+  format($$update platform_private.cms_composition_instances set position = 9 where id = %L$$, pg_temp.h11w_uuid('gt-i0')));
 select pg_temp.r11g_call('submit-moved', 'owner', pg_temp.r11g_rq('submit', 'gt-1'));
 select ok(pg_temp.r11_resp('submit-moved')->>'renderPlanHash' <> pg_temp.r11_resp('submit')->>'renderPlanHash'
-    and pg_temp.r11g_nodes('submit-moved', 'block') = '/composition/' || pg_temp.h11w_uuid('gt-i1') || ',/composition/' || pg_temp.h11w_uuid('gt-i2') || ',/composition/' || pg_temp.h11w_uuid('gt-i0'),
-  'moving an instance changes the order and the render-plan hash [P2-S11-AC-101]');
+    and pg_temp.r11g_nodes('submit-moved', 'block') = '/composition/' || pg_temp.h11w_uuid('gt-i2') || ',/composition/' || pg_temp.h11w_uuid('gt-i1') || ',/composition/' || pg_temp.h11w_uuid('gt-i8') || ',/composition/' || pg_temp.h11w_uuid('gt-i0'),
+  'moving an instance (its authored position) changes the order and the render-plan hash [P2-S11-AC-101]');
 select pg_temp.h11_raw_exec('platform_private.cms_composition_instances',
-  format($$update platform_private.cms_composition_instances set path = '/b/0' where id = %L$$, pg_temp.h11w_uuid('gt-i0')));
+  format($$update platform_private.cms_composition_instances set position = 2 where id = %L$$, pg_temp.h11w_uuid('gt-i0')));
 
 -- A template orders by slot first; an unknown slot sorts after the template's.
 select pg_temp.h11_raw_exec('platform_private.cms_entry_revisions',
@@ -148,8 +156,8 @@ select pg_temp.h11_raw_exec('platform_private.cms_entry_revisions',
 select pg_temp.h11_raw_exec('platform_private.cms_composition_instances',
   format($$update platform_private.cms_composition_instances set slot_key = 'sidebar' where id = %L$$, pg_temp.h11w_uuid('gt-i0')));
 select pg_temp.r11g_call('submit-template', 'owner', pg_temp.r11g_rq('submit', 'gt-1'));
-select ok(pg_temp.r11g_nodes('submit-template', 'block') = '/composition/' || pg_temp.h11w_uuid('gt-i1') || ',/composition/' || pg_temp.h11w_uuid('gt-i2') || ',/composition/' || pg_temp.h11w_uuid('gt-i0'),
-  'with a template the instances follow its slot order (primary) and an instance in an unknown slot comes last [P2-S11-AC-101]');
+select ok(pg_temp.r11g_nodes('submit-template', 'block') = '/composition/' || pg_temp.h11w_uuid('gt-i2') || ',/composition/' || pg_temp.h11w_uuid('gt-i1') || ',/composition/' || pg_temp.h11w_uuid('gt-i8') || ',/composition/' || pg_temp.h11w_uuid('gt-i0'),
+  'with a template the instances follow its slot order (primary) then their authored position, and an instance in an unknown slot comes last [P2-S11-AC-101]');
 
 -- ---------------------------------------------------------------------------
 -- Phases and the dependency hash.

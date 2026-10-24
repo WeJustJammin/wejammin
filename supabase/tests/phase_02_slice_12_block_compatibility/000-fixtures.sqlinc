@@ -1,0 +1,146 @@
+-- Producer prerequisites.  Owner holds the template-designer authority (patterns and templates share it); rev1
+-- reviews the CMS-03A type chains.
+select is(pg_temp.s09d_grant_via_rpc('owner', 'cms.template_designer'), 'OK',
+  'setup: owner grants its template-designer authority through CMS-03A-15');
+select is(pg_temp.s09d_grant_via_rpc('rev1', 'cms.reviewer'), 'OK',
+  'setup: independent reviewer receives a real reviewer grant');
+
+-- Real chain types: create, dry run, seal, submit, assign, decide, activate.  The compiler writes
+-- compilerVersion '1' and no `blocks` member into the artifact (BE03a 2246-2255).
+select pg_temp.s09d_create_type('bc-type-1', 'bctype1');
+select pg_temp.s09d_to_active('bc-type-1');
+select pg_temp.s09d_create_type('bc-type-2', 'bctype2');
+select pg_temp.s09d_to_active('bc-type-2');
+select is((select count(*)::integer from platform_private.cms_content_types c
+  join platform_private.cms_content_type_versions v on v.content_type_id = c.id
+  join platform_private.cms_schema_artifacts a on a.id = v.schema_artifact_id
+  where c.id in (pg_temp.s09d_id('bc-type-1:type'), pg_temp.s09d_id('bc-type-2:type'))
+    and c.state = 'active' and v.state = 'active' and a.compiler_version = '1'
+    and not (a.renderer_manifest ? 'blocks') and not (a.renderer_manifest ? 'blockDefinitions')), 2,
+  'setup: two real active compiled types carry compiler_version 1 and no renderer-manifest block member');
+
+-- Fixture clone: an active type whose artifact carries another compiler_version, cloned from chain type 1 under
+-- app.cms_rpc the way the pattern-definition suite builds its extra types (no trigger disabled, the chain's own
+-- workflow policy and activation evidence).  The real compiler only ever writes '1'; the registry also admits
+-- 1.0, 1.0.0 and 1.9, and a range test needs an artifact on the other side of a boundary.
+create temp table bc_clone_type(label text primary key, id uuid not null, version_id uuid not null)
+on commit drop;
+create or replace function pg_temp.bc_make_type(p_label text, p_compiler text) returns void
+language plpgsql as $body$
+declare
+  src_type platform_private.cms_content_types%rowtype;
+  src_version platform_private.cms_content_type_versions%rowtype;
+  src_artifact platform_private.cms_schema_artifacts%rowtype;
+  o_type uuid := extensions.gen_random_uuid();
+  o_version uuid := extensions.gen_random_uuid();
+  new_artifact uuid := extensions.gen_random_uuid();
+  stamp timestamptz := clock_timestamp();
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select c.* into src_type from platform_private.cms_content_types c where c.id = pg_temp.s09d_id('bc-type-1:type');
+  select v.* into src_version from platform_private.cms_content_type_versions v where v.id = pg_temp.s09d_id('bc-type-1:version');
+  select a.* into src_artifact from platform_private.cms_schema_artifacts a where a.id = src_version.schema_artifact_id;
+  insert into platform_private.cms_content_types
+    select (jsonb_populate_record(null::platform_private.cms_content_types, to_jsonb(src_type)
+      || jsonb_build_object('id', o_type, 'type_key', 'bcclone' || p_label, 'state', 'retired', 'version', 1,
+        'created_at', stamp, 'updated_at', stamp))).*;
+  insert into platform_private.cms_content_type_versions
+    select (jsonb_populate_record(null::platform_private.cms_content_type_versions, to_jsonb(src_version)
+      || jsonb_build_object('id', o_version, 'content_type_id', o_type,
+        'schema_artifact_id', new_artifact, 'state', 'draft', 'version', 1, 'version_no', 1,
+        'created_at', stamp, 'updated_at', stamp, 'supersedes_id', null, 'dry_run_id', null,
+        'approved_at', null, 'definition_hash', md5(p_label || 'd') || md5(p_label || 'e'),
+        'activation_workflow_policy_key', null, 'activation_workflow_policy_version', null,
+        'activation_workflow_policy_hash', null, 'activation_required_decision_count', null,
+        'activation_required_capabilities', null, 'activation_approval_evidence_hash', null))).*;
+  insert into platform_private.cms_schema_artifacts
+    select (jsonb_populate_record(null::platform_private.cms_schema_artifacts, to_jsonb(src_artifact)
+      || jsonb_build_object('id', new_artifact, 'content_type_version_id', o_version,
+        'compiler_version', p_compiler, 'created_at', stamp, 'updated_at', stamp, 'compiled_at', stamp,
+        'artifact_hash', md5(p_label || 'a') || md5(p_label || 'b')))).*;
+  update platform_private.cms_content_type_versions version_row
+     set state = 'active', version = version_row.version + 1, updated_at = clock_timestamp(),
+         activation_workflow_policy_key = src_version.activation_workflow_policy_key,
+         activation_workflow_policy_version = src_version.activation_workflow_policy_version,
+         activation_workflow_policy_hash = src_version.activation_workflow_policy_hash,
+         activation_required_decision_count = src_version.activation_required_decision_count,
+         activation_required_capabilities = src_version.activation_required_capabilities,
+         activation_approval_evidence_hash = src_version.activation_approval_evidence_hash
+   where version_row.id = o_version;
+  update platform_private.cms_content_types type_row
+     set state = 'active', version = type_row.version + 1, updated_at = clock_timestamp()
+   where type_row.id = o_type;
+  insert into bc_clone_type values (p_label, o_type, o_version);
+end;
+$body$;
+select pg_temp.bc_make_type('c19', '1.9');
+select pg_temp.bc_make_type('c2', '2');
+select is((select count(*)::integer from bc_clone_type t
+  join platform_private.cms_content_types c on c.id = t.id and c.state = 'active'
+  join platform_private.cms_content_type_versions v on v.id = t.version_id and v.state = 'active'
+  join platform_private.cms_schema_artifacts a on a.id = v.schema_artifact_id
+  where a.compiler_version in ('1.9', '2')), 2,
+  'setup: the two cloned types are active and carry compiler_version 1.9 and the unregistered 2');
+
+-- Blocks registered through the real signed CMS-03A-05 producer, each with a real compatibility range.
+create or replace function pg_temp.bc_register(p_key text, p_min text, p_max text) returns void
+language plpgsql as $body$
+begin
+  perform pg_temp.p_register('bc:' || p_key, pg_temp.p_block_request(p_key, 1,
+    jsonb_build_object('compatibility',
+      jsonb_build_object('minSchemaCompiler', p_min, 'maxSchemaCompiler', p_max))));
+end;
+$body$;
+select pg_temp.bc_register('bc.exact', '1', '1');
+select pg_temp.bc_register('bc.wide', '1.0.0', '1.9');
+select pg_temp.bc_register('bc.high', '1.9', '1.9');
+select pg_temp.bc_register('bc.inverted', '1.9', '1');
+select pg_temp.bc_register('bc.dep', '1', '1');
+select pg_temp.bc_register('bc.wd', '1', '1');
+select is((select count(*)::integer from s09d_probe where label like 'bc:bc.%' and state = '00000'), 6,
+  'setup: signed CMS-03A-05 registers the six range blocks');
+
+select pg_temp.p_advance('bc:dep-deprecate', pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('bc:bc.dep')->>'id')::uuid, 'supported', 'deprecated'));
+select pg_temp.p_advance('bc:wd-deprecate', pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('bc:bc.wd')->>'id')::uuid, 'supported', 'deprecated'));
+select pg_temp.p_advance('bc:wd-withdraw', pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('bc:bc.wd')->>'id')::uuid, 'deprecated', 'withdrawn'));
+select is(pg_temp.s09d_outcome('bc:dep-deprecate') || pg_temp.s09d_outcome('bc:wd-deprecate')
+  || pg_temp.s09d_outcome('bc:wd-withdraw'), 'OKOKOK',
+  'setup: the signed lifecycle command deprecates one block and withdraws another');
+
+-- Fixture clones of registered blocks whose compatibility_range the producer cannot write (its validator demands
+-- both registry-valid keys).  They stand for rows registered before any range rule: an unregistered compiler
+-- value, a range lacking maxSchemaCompiler, and the empty range older raw fixtures wrote.
+create or replace function pg_temp.bc_clone_block(p_key text, p_range jsonb) returns void
+language plpgsql as $body$
+declare src platform_private.cms_block_definition_versions%rowtype;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select b.* into src from platform_private.cms_block_definition_versions b
+   where b.block_key = 'bc.exact' and b.block_version = 1;
+  insert into platform_private.cms_block_definition_versions
+    select (jsonb_populate_record(null::platform_private.cms_block_definition_versions, to_jsonb(src)
+      || jsonb_build_object('id', extensions.gen_random_uuid(), 'block_key', p_key,
+        'compatibility_range', p_range))).*;
+end;
+$body$;
+select pg_temp.bc_clone_block('bc.badvalue',
+  jsonb_build_object('minSchemaCompiler', '1', 'maxSchemaCompiler', '2'));
+select pg_temp.bc_clone_block('bc.minonly', jsonb_build_object('minSchemaCompiler', '1'));
+select pg_temp.bc_clone_block('bc.empty', '{}'::jsonb);
+select is((select count(*)::integer from platform_private.cms_block_definition_versions
+  where block_key in ('bc.badvalue', 'bc.minonly', 'bc.empty')), 3,
+  'setup: three range-defective block rows exist');
+
+create or replace function pg_temp.bc_types(variadic p_ids uuid[]) returns jsonb
+language sql immutable as $body$ select pg_catalog.to_jsonb(p_ids) $body$;
+create or replace function pg_temp.bc_t1() returns uuid language sql stable as $body$
+  select pg_temp.s09d_id('bc-type-1:type') $body$;
+create or replace function pg_temp.bc_t2() returns uuid language sql stable as $body$
+  select pg_temp.s09d_id('bc-type-2:type') $body$;
+create or replace function pg_temp.bc_c19() returns uuid language sql stable as $body$
+  select id from bc_clone_type where label = 'c19' $body$;
+create or replace function pg_temp.bc_c2() returns uuid language sql stable as $body$
+  select id from bc_clone_type where label = 'c2' $body$;

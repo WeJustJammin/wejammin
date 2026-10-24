@@ -1,0 +1,33 @@
+-- OWNERSHIP-ONLY FIXTURE. No application RPC, claims, credentials, or job writes.
+-- Matches the private observation probe's object interface, not its behavior.
+begin;
+create schema __SCHEMA__;
+revoke all on schema __SCHEMA__ from public, anon, authenticated, service_role;
+create table __SCHEMA__.world (fixture_only boolean);
+create table __SCHEMA__.observations (fixture_only boolean);
+alter table __SCHEMA__.world enable row level security;
+alter table __SCHEMA__.observations enable row level security;
+revoke all on all tables in schema __SCHEMA__
+  from public, anon, authenticated, service_role;
+create function __SCHEMA__.observe_job() returns trigger
+  language plpgsql as $fixture$ begin return new; end; $fixture$;
+create function __SCHEMA__.bootstrap() returns void
+  language plpgsql as $fixture$ begin return; end; $fixture$;
+create function __SCHEMA__.facts() returns jsonb
+  language sql as $fixture$ select '{"ownership_fixture_only":true}'::jsonb; $fixture$;
+create function __SCHEMA__.snapshot() returns jsonb
+  language sql as $fixture$ select '{"ownership_fixture_only":true}'::jsonb; $fixture$;
+revoke all on all functions in schema __SCHEMA__
+  from public, anon, authenticated, service_role;
+create schema __FOREIGN__;
+revoke all on schema __FOREIGN__ from public, anon, authenticated, service_role;
+create function __FOREIGN__.foreign_hook() returns trigger
+  language plpgsql as $fixture$ begin return new; end; $fixture$;
+revoke all on all functions in schema __FOREIGN__
+  from public, anon, authenticated, service_role;
+select pg_catalog.jsonb_build_object(
+  'schemaOid', '__SCHEMA__'::regnamespace::oid,
+  'foreignSchemaOid', '__FOREIGN__'::regnamespace::oid,
+  'functionOid', '__SCHEMA__.observe_job()'::regprocedure::oid,
+  'foreignFunctionOid', '__FOREIGN__.foreign_hook()'::regprocedure::oid);
+commit;

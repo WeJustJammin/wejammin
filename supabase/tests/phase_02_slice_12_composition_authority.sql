@@ -139,26 +139,28 @@ select ok(
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
 
 select set_config('app.cms_rpc', 'true', true);
+-- PatternVersion shape (BE03c 1425): the ordered forest, one compatible type id and node_count; the guard derives the lineage id.
 insert into platform_private.cms_pattern_versions(
-  id, owner_id, version, pattern_key, block_tree, block_registry_digest,
-  content_hash, owner_capability, created_by
+  id, owner_id, version, pattern_key, block_tree, compatible_type_ids, node_count,
+  block_registry_digest, content_hash, owner_capability, created_by
 )
 select 'a9120000-0000-4000-8000-000000000201',
        (select value::uuid from s10_ids where key = 'organization'),
-       1, 'test-pattern', '{"nodes":[{"blockKey":"profile.header"}]}'::jsonb,
+       1, 'test-pattern', '[{"kind":"block","key":"root","blockKey":"profile.header","blockVersion":1,"props":{},"children":[]}]'::jsonb,
+       jsonb_build_array((select value from s10_ids where key = 'typeId')), 1,
        repeat('a',64), repeat('b',64), 'cms.template_designer',
        (select value::uuid from s10_ids where key = 'creatorAuth');
 insert into platform_private.cms_composition_instances(
   id, owner_id, version, revision_id, path, slot_key,
   block_key, block_version, pattern_id, pattern_version,
-  block_registry_digest, link_mode, created_by
+  block_registry_digest, link_mode, created_by, position
 )
 select 'a9120000-0000-4000-8000-000000000202',
        (select value::uuid from s10_ids where key = 'organization'),
        1, (select value::uuid from s10_ids where key = 'entryRevisionId'),
        '/primary', 'primary', 'profile.header', 1,
        'a9120000-0000-4000-8000-000000000201', 1, repeat('a',64),
-       'linked', (select value::uuid from s10_ids where key = 'creatorAuth');
+       'linked', (select value::uuid from s10_ids where key = 'creatorAuth'), 0;
 select throws_ok(
   $$update platform_private.cms_pattern_versions
     set block_tree = '{}'::jsonb

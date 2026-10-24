@@ -1,0 +1,49 @@
+-- Schema-compiler range compatibility of every reachable block with every compatibleTypeIds member (BE03c 1361:
+-- "rejects a missing, withdrawn or incompatible block"; BE03a 1098-1101, 2761: a registered block's compatibility
+-- range {minSchemaCompiler, maxSchemaCompiler} must cover the compiler_version of each type's active artifact,
+-- dotted-numeric over the closed compiler registry).  Fixture blocks: s12pd.block 1..1, s12pd.high 1.9..1.9,
+-- s12pd.wide 1.0.0..1.9.  Chain types carry compiler_version 1, the variant type 1.9.  A refusal is
+-- VALIDATION_FAILED at /blockTree and changes no captured row.  The wider matrix (fail-closed ranges, templates)
+-- lives in phase_02_slice_12_block_compatibility.sql.
+create or replace function pg_temp.s12pd_with_types(p_request jsonb, p_types jsonb) returns jsonb
+language sql immutable as $body$
+  select p_request || jsonb_build_object('compatibleTypeIds', p_types)
+$body$;
+create or replace function pg_temp.s12pd_with_block(p_request jsonb, p_block text) returns jsonb
+language sql immutable as $body$
+  select p_request || jsonb_build_object('blockTree', jsonb_build_array(jsonb_build_object(
+    'kind','block','key','root0','blockKey',p_block,'blockVersion',1,
+    'props',jsonb_build_object('title','Pattern title'),'children','[]'::jsonb)))
+$body$;
+select * from pg_temp.s12pd_refused('block-range-excludes-chain-type', pg_temp.s12pd_with_types(
+  pg_temp.s12pd_with_block(
+    pg_temp.s12pd_request('s12pd-incompat-chain', pg_temp.s12pd_forest(1), null, 's12pd-incompat-chain'),
+    's12pd.high'),
+  jsonb_build_array((select id from s12pd_chain_types where ordinal = 1))),
+  'VALIDATION_FAILED');
+select is((select detail from s12pd_out where label = 'block-range-excludes-chain-type'), '["/blockTree"]',
+  'an incompatible block points at /blockTree [P2-S12-AC-104]');
+select * from pg_temp.s12pd_refused('block-incompatible-one-of-two', pg_temp.s12pd_with_types(
+  pg_temp.s12pd_request('s12pd-incompat-mixed', pg_temp.s12pd_forest(1), null, 's12pd-incompat-mixed'),
+  jsonb_build_array((select id from s12pd_types where ordinal = 1),
+    (select id from s12pd_variant_types where label = 'compiler-1-9'))),
+  'VALIDATION_FAILED');
+select * from pg_temp.s12pd_refused('block-range-excludes-variant', pg_temp.s12pd_with_types(
+  pg_temp.s12pd_request('s12pd-incompat-version', pg_temp.s12pd_forest(1), null, 's12pd-incompat-version'),
+  jsonb_build_array((select id from s12pd_variant_types where label = 'compiler-1-9'))),
+  'VALIDATION_FAILED');
+select pg_temp.s12pd_run('block-range-covers-variant', pg_temp.s12pd_with_types(
+  pg_temp.s12pd_with_block(
+    pg_temp.s12pd_request('s12pd-compat-defs', pg_temp.s12pd_forest(1), null, 's12pd-compat-defs'),
+    's12pd.high'),
+  jsonb_build_array((select id from s12pd_variant_types where label = 'compiler-1-9'))));
+select is(pg_temp.s12pd_state('block-range-covers-variant'), '00000',
+  'a block whose range 1.9..1.9 covers the type compiler_version 1.9 is compatible [P2-S12-AC-101]');
+select pg_temp.s12pd_run('block-compatible-both', pg_temp.s12pd_with_types(
+  pg_temp.s12pd_with_block(
+    pg_temp.s12pd_request('s12pd-compat-both', pg_temp.s12pd_forest(1), null, 's12pd-compat-both'),
+    's12pd.wide'),
+  jsonb_build_array((select id from s12pd_types where ordinal = 2),
+    (select id from s12pd_variant_types where label = 'compiler-1-9'))));
+select is(pg_temp.s12pd_state('block-compatible-both'), '00000',
+  'a range covering every compatibleTypeIds member (1 and 1.9) makes the pattern compatible [P2-S12-AC-101]');

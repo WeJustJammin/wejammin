@@ -177,9 +177,10 @@ select ok(
   'CMS-07 block side hash is the locked JCS {blockKey, blockVersion, blockRegistryDigest, mode, patternRef, props, bindings} input'
 );
 
--- Two active instances on one path would silently collapse into one change,
--- and a /blocks/<path> pointer beyond the 256-character JsonPointer contract
--- could never be returned intact: each is refused, never partial.
+-- Composition rows are append-only versions of a path (BE03c 1511: (revision_id, path) is unique per version; DEC-193):
+-- two `active` rows on one path are two versions of ONE block history, so the comparison reads the newest row of the path
+-- (BE03b 1712) and reports exactly one block change for it, never a collapsed or doubled diff.  A /blocks/<path> pointer
+-- beyond the 256-character JsonPointer contract could never be returned intact and is still refused, never partial.
 select pg_temp.s10_rpc_probe(
   'compare-block-duplicate-path',
   pg_temp.s10_sql_replica(
@@ -188,10 +189,12 @@ select pg_temp.s10_rpc_probe(
   ),
   pg_temp.s10_compare_sql()
 );
-select is(
-  pg_temp.s10_probe_message('compare-block-duplicate-path'),
-  'comparison_unavailable',
-  'CMS-07 two active block instances on one path are comparison_unavailable, never a collapsed diff'
+select ok(
+  pg_temp.s10_probe_state('compare-block-duplicate-path') = '00000'
+    and (select count(*) = 1 and bool_and(change->>'path' = '/blocks//hero')
+         from jsonb_array_elements(pg_temp.s10_probe_response('compare-block-duplicate-path')->'compare'->'changes') change
+         where change->>'domain' = 'block'),
+  'CMS-07 two active versions of one block path compare as the single newest head, never a collapsed or doubled diff'
 );
 select pg_temp.s10_rpc_probe(
   'compare-block-long-path',

@@ -1,0 +1,28 @@
+-- CATALOG-SOURCE oracles over the live platform_private.cms_submit_governed_review body, for refusals whose
+-- behavior needs a pattern or a taxonomy producer that is not promoted (see the file header).  Each pairs an
+-- absent-old / present-new check so the pair cannot pass on an empty or wrong body.
+create temp table fix_submit_src(src text not null) on commit drop;
+insert into fix_submit_src
+select proc.prosrc from pg_catalog.pg_proc proc
+ where proc.oid = 'platform_private.cms_submit_governed_review(jsonb)'::regprocedure;
+select is((select count(*)::integer from fix_submit_src where length(src) > 4000), 1,
+  'control: the live private submit body is present [BE03c CMS-03C-06]');
+
+-- Defect 2: BE03c 1304 scopes pattern_version_not_active to CMS-03C-02/12/15; the nested-pattern submit precondition
+-- (BE03c 389, 1313) is subject_not_submittable.
+select ok((select src !~ 'pattern_version_not_active' from fix_submit_src),
+  'submit never raises pattern_version_not_active (BE03c 1304 scopes it to CMS-03C-02, -12 and -15) [DEC-180 R5]');
+select ok((select src ~ 'cms_governed_pattern_closure\(owner_id, subject->''blockTree''\)[^;]*?nested_state is distinct from ''active''[^;]*?\) then\s+raise exception ''subject_not_submittable'' using errcode = ''P0001'';'
+                from fix_submit_src),
+  'an inactive nested pattern is refused subject_not_submittable (BE03c 389, 1313) [DEC-180 R5]');
+
+-- Defect 3: canonical_source_unavailable carries DETAIL {"domain": ...} (BE03c 1314, 1375, 1611; FE03 1115).
+select ok((select src ~ 'raise exception ''canonical_source_unavailable'' using errcode = ''P0001'',\s+detail = pg_catalog\.jsonb_build_object\(''domain'''
+                from fix_submit_src),
+  'canonical_source_unavailable always carries a {"domain"} DETAIL (BE03c 1314, 1375) [DEC-180 G11]');
+select ok((select src !~ 'raise exception ''canonical_source_unavailable'' using errcode = ''P0001'';' from fix_submit_src),
+  'no bare canonical_source_unavailable raise remains [BE03c 1375]');
+
+-- Defect 4 (source half; the behavioral half is 030-refusals.sqlinc in the governed-submit suite).
+select ok((select src ~ 'raise exception ''VALIDATION_FAILED'' using errcode = ''P0001'', detail = ''\["/subjectHash"\]'';' from fix_submit_src),
+  'a stored-hash mismatch raises VALIDATION_FAILED with DETAIL ["/subjectHash"] (BE03c 389, 1259; FE03 1115)');

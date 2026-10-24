@@ -1,0 +1,50 @@
+-- CMS-03C-05 compare-and-set on the source entry aggregate, typed deadlock and the lock order (BE03c 163,
+-- 1337-1340, 1357; tracker P2-S12-AC-061, AC-062, AC-276).  The concurrent behavior itself needs two sessions
+-- and is a root race module (this lane may not run one): here the CAS is proven with stale operands and the
+-- lock order and deadlock conversion are asserted on the installed source, labelled static.
+
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+                          (select value::uuid from s10_ids where key = 'organization'));
+
+-- srcI: a stale If-Match is the 409 version conflict and writes nothing.
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcI', array['c1'], array[]::text[], null, 'r12-srcI-cas-0001',
+  jsonb_build_object('expectedVersion', '2', 'ifMatch', '2')))->>'__error', 'VERSION_MISMATCH',
+  'a version ahead of the entry is a version mismatch [P2-S12-AC-061]');
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcI', array['c1'], array[]::text[], null, 'r12-srcI-cas-0001',
+  jsonb_build_object('expectedVersion', '2', 'ifMatch', '2')))->'__detail', jsonb_build_object('expectedVersion', '2', 'currentVersion', '1'),
+  'the refusal names the expected and the current version [P2-S12-AC-062]');
+select is(pg_temp.r12_history('srcI'), '', 'a stale write appended no row [P2-S12-AC-061]');
+
+-- A write advances the entry; replaying the OLD operand with a NEW key is then stale.
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcI', array['c1'], array[]::text[], null, 'r12-srcI-cas-0002')) ? '__error'),
+  'a write at the live version succeeds [P2-S12-AC-061]');
+select is(pg_temp.r12_version('srcI'), 2::bigint, 'the entry is at version 2 [P2-S12-AC-061]');
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcI', array['c3'], array[]::text[], null, 'r12-srcI-cas-0003',
+  jsonb_build_object('expectedVersion', '1', 'ifMatch', '1')))->>'__error', 'VERSION_MISMATCH',
+  'the previous operand is now stale: the loser of two writers from version 1 is refused [P2-S12-AC-061]');
+select is(pg_temp.r12_stored('srcI'), 'pin:c1:0:active:1', 'only the winner''s rows exist [P2-S12-AC-061]');
+
+-- Another writer of the ENTRY (a locale variant or revision write bumps the same aggregate version) makes the
+-- rule write stale: simulate by advancing the entry the way those commands do, under the CMS RPC context.
+select pg_temp.r12_safe('advance srcI', format('select pg_temp.h11_raw_exec(%L, %L)', 'platform_private.cms_content_entries',
+  format($$update platform_private.cms_content_entries set version = version + 1 where id = %L$$, pg_temp.r12_id('srcI'))));
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcI', array['c3'], array[]::text[], null, 'r12-srcI-cas-0004',
+  jsonb_build_object('expectedVersion', '2', 'ifMatch', '2')))->'__detail', jsonb_build_object('expectedVersion', '2', 'currentVersion', '3'),
+  'a write by another entry command moves the aggregate: the rule write at the old operand is refused [P2-S12-AC-061]');
+
+-- Static lock order (BE03c Slice 12 lock order, CMS-03C-05 row): entry FOR UPDATE (0), authority rows (1),
+-- target entries FOR SHARE in ascending id order (2), the entry content-type version FOR SHARE (4).
+create temp table r12_src on commit drop as
+select pg_get_functiondef(to_regprocedure('platform_private.cms_curate_related_content(jsonb)')) as private_def,
+       pg_get_functiondef(to_regprocedure('platform_api.cms_curate_related_content(jsonb)')) as wrapper_def;
+select ok((select private_def ~* 'from platform_private\.cms_content_entries entry\s+where entry\.id = requested_entry_id for update'
+             and private_def ~* 'cms_content_type_versions version_row\s+where version_row\.id = [a-z_.]+ for share'
+             and position('for update' in lower(private_def)) < position('cms_lock_entry_authority' in lower(private_def))
+             and position('cms_lock_entry_authority' in lower(private_def)) < position('cms_lock_entry_rows_shared' in lower(private_def))
+             and position('cms_lock_entry_rows_shared' in lower(private_def)) < position('cms_content_type_versions' in lower(private_def))
+             from r12_src),
+  'static: the command locks the entry FOR UPDATE (0), then the authority rows (1), then the target entries in ascending id order (2, cms_lock_entry_rows_shared), then the source content-type version FOR SHARE (4) [P2-S12-AC-276]');
+select ok((select wrapper_def ~* 'deadlock_detected' and wrapper_def ~* 'lock_not_available' and wrapper_def ~* 'CONFLICT' from r12_src),
+  'static: the transport converts a deadlock or a lock timeout to the retryable CONFLICT token (409 RELATED_CONTENT_VERSION_CONFLICT), rolling its sub-transaction back [P2-S12-AC-276]');
+select ok((select wrapper_def ~* 'app\.cms_rpc' from r12_src),
+  'static: the transport restores the RPC-context flag around the command (SEC-2) [P2-S12-AC-261]');

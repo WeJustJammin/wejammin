@@ -1,0 +1,173 @@
+-- AUTHORING ONLY / UNRUN. Nine additional producer controls; shared S09 scaffolding is
+-- local test provisioning, not hosted Auth/MFA or a membership-workflow acceptance claim.
+-- No S10/h11 identity, type, approval or grant is a causal input to these subjects.
+select pg_temp.s09g_grant('s12gov:designer', 'owner', 'owner', 'cms.template_designer', pg_temp.s09g_day(1));
+select pg_temp.s09g_grant('s12gov:editor', 'owner', 'designer2', 'cms.editor', pg_temp.s09g_day(1));
+select pg_temp.s09g_grant('s12gov:specialist', 'owner', 'designer2', 'cms.reviewer.policy', pg_temp.s09g_day(1));
+select pg_temp.s09d_create_type('s12govordinary', 's12govordinary');
+select pg_temp.s09d_to_active('s12govordinary', array['rev1']);
+select pg_temp.s09d_create_type('s12govprotected', 's12govprotected', 'cms.disclosure.policy');
+select pg_temp.s09d_to_active('s12govprotected', array['rev1', 'designer2']);
+
+insert into s12gov_ids(key, value) values
+  ('typeA', pg_temp.s09d_id('s12govordinary:type')::text),
+  ('typeVersionA', pg_temp.s09d_id('s12govordinary:version')::text),
+  ('dependencyType', pg_temp.s09d_id('s12govordinary:type')::text),
+  ('protectedType', pg_temp.s09d_id('s12govprotected:type')::text),
+  ('protectedVersion', pg_temp.s09d_id('s12govprotected:version')::text),
+  ('protectedCreateState', (select state from s09d_probe where label = 's12govprotected:create'));
+
+select ok(exists (
+  select 1 from platform_private.cms_owner_initialization receipt
+  join s09d_actor actor on actor.key = 'owner' and receipt.auth_user_id = actor.auth_user_id
+    and receipt.person_id = actor.person_id and receipt.organization_id = actor.party_id
+  join platform_private.acting_context_binding binding on binding.id = actor.binding_id
+    and binding.person_id = actor.person_id and binding.acting_party_id = receipt.organization_id
+  where receipt.organization_id = pg_temp.s09d_id('ownerOrg') and receipt.operator_role = 'postgres'
+    and receipt.authorization_ref = 'a9d10000-0000-4000-8000-000000000099'::uuid
+    and binding.state = 'active' and binding.expires_at > clock_timestamp()
+    and exists (select 1 from audit_private.audit_events event
+      where event.action = 'operator.cms_owner.initialize' and event.actor_id = receipt.auth_user_id
+        and event.target_id = receipt.organization_id and event.correlation_id = receipt.authorization_ref)),
+  'producer control: governed owner and selected binding match the actual initialization receipt');
+
+create temp table s12gov_grant_proof on commit drop as
+select expected.label, expected.capability, grant_row.id,
+  probe.state = '00000' and probe.response is not null and probe.response->>'id' = grant_row.id::text
+    and grant_row.owner_id = pg_temp.s09d_id('ownerOrg') and grant_row.state = 'active'
+    and grant_row.grantor_person_ref = pg_temp.s09d_actor_id('owner', 'person')::uuid
+    and projection.active and projection.valid_from = grant_row.valid_from
+    and projection.valid_through = grant_row.valid_through
+    and projection.valid_from <= current_date and projection.valid_through >= current_date
+    and event.action = 'granted' and event.aggregate_version = grant_row.version
+    and event.subject_person_ref = grant_row.subject_person_ref
+    and event.capability_code = grant_row.capability_code
+    and event.owner_id = grant_row.owner_id and event.binding_context_hash = platform_private.cms_review_context_hash(
+      pg_temp.s09d_actor_id('owner', 'auth')::uuid, pg_temp.s09d_actor_id('owner', 'person')::uuid,
+      pg_temp.s09d_id('ownerOrg'), pg_temp.s09d_actor_id('owner', 'binding')::uuid)
+    and event.mfa_verified_at is not null
+    and exists (select 1 from platform_private.idempotency_records idem
+      where idem.operation = 'CMS-03A-15' and idem.state = 'completed'
+        and idem.actor_id = pg_temp.s09d_actor_id('owner', 'auth')::uuid
+        and idem.response_ref->>'resourceRef' = grant_row.id::text) as coherent
+from (values ('s12gov:designer', 'owner', 'cms.template_designer'),
+  ('s12gov:editor', 'designer2', 'cms.editor'),
+  ('s12gov:specialist', 'designer2', 'cms.reviewer.policy')) expected(label, actor, capability)
+join s09d_probe probe on probe.label = expected.label
+join platform_private.cms_capability_grants grant_row on grant_row.id::text = probe.response->>'id'
+  and grant_row.subject_person_ref = pg_temp.s09d_actor_id(expected.actor, 'person')::uuid
+  and grant_row.capability_code = expected.capability
+join identity_private.organization_actor_grant projection
+  on projection.organization_id = grant_row.owner_id and projection.person_id = grant_row.subject_person_ref
+  and projection.capability_code = grant_row.capability_code
+join platform_private.cms_capability_grant_events event
+  on event.grant_id = grant_row.id and event.aggregate_version = grant_row.version;
+select ok((select count(*) = 1 and bool_and(coalesce(coherent, false))
+  from s12gov_grant_proof where capability = 'cms.template_designer'),
+  'producer control: real CMS-03A-15 designer aggregate, event, projection and completion agree');
+select ok((select count(*) = 2 and bool_and(coalesce(coherent, false))
+  from s12gov_grant_proof where capability in ('cms.editor', 'cms.reviewer.policy'))
+  and not exists (select 1 from identity_private.organization_actor_grant
+    where organization_id = pg_temp.s09d_id('ownerOrg')
+      and person_id = pg_temp.s09d_actor_id('designer2', 'person')::uuid
+      and capability_code = 'cms.template_designer' and active),
+  'producer control: Editor and policy specialist have real grants, but Editor has no template capability');
+
+create temp table s12gov_chain_steps(tag text, step text) on commit drop;
+insert into s12gov_chain_steps
+select tag, step from unnest(array['s12govordinary', 's12govprotected']) tag
+cross join unnest(array['create','dryRun','plan.get','plan.claim','plan.batch','plan.seal',
+  'submit','assign:rev1','decide:rev1','activate']) step;
+insert into s12gov_chain_steps values
+  ('s12govprotected', 'assign:designer2'), ('s12govprotected', 'decide:designer2');
+select ok((select count(*) = 10 and bool_and(coalesce(probe.state = '00000'
+  and probe.response is not null, false)) from s12gov_chain_steps expected
+  left join s09d_probe probe on probe.label = expected.tag || ':' || expected.step
+  where expected.tag = 's12govordinary'),
+  'producer control: every ordinary compile, dry-run, review, decision and activation call succeeded');
+select ok((select count(*) = 12 and bool_and(coalesce(probe.state = '00000'
+  and probe.response is not null, false)) from s12gov_chain_steps expected
+  left join s09d_probe probe on probe.label = expected.tag || ':' || expected.step
+  where expected.tag = 's12govprotected'),
+  'producer control: every protected producer call and both independent approval paths succeeded');
+
+-- Private evidence readers require the RPC read context. This flag surrounds SELECTs only;
+-- it neither activates a type nor disables a guard, and its exact value is restored.
+do $proof$
+declare prior_rpc text := coalesce(current_setting('app.cms_rpc', true), '');
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  create temp table s12gov_chain_proof on commit drop as
+  select expected.tag,
+    artifact.id = version_row.schema_artifact_id and artifact.state = 'compiled'
+      and artifact.content_type_version_id = version_row.id
+      and artifact.artifact_hash = version_row.definition_hash
+      and artifact.artifact_hash ~ '^[a-f0-9]{64}$'
+      and artifact.compiler_version is not null and artifact.zod_contract_ref is not null
+      and artifact.artifact_hash = platform_private.cms_jcs_sha256(jsonb_build_object(
+        'compilerVersion', artifact.compiler_version, 'zodContractRef', artifact.zod_contract_ref,
+        'editorManifest', artifact.editor_manifest, 'rendererManifest', artifact.renderer_manifest,
+        'localeConfigHash', version_row.locale_config_hash))
+      and review.schema_artifact_id = artifact.id and review.definition_hash = version_row.definition_hash as artifact_ok,
+    report.result = 'pass' and report.target_version_id = version_row.id
+      and report.owner_id = version_row.owner_id and report.compiler_hash = artifact.artifact_hash
+      and report.target_hash = version_row.definition_hash and report.source_count = 0
+      and report.target_count = 0 and report.row_error_count = 0
+      and report.report->>'result' = 'pass' and review.dry_run_id = report.id
+      and not exists (select 1 from platform_private.cms_content_entries entry
+        where entry.content_type_id = version_row.content_type_id) as dry_run_ok,
+    review.state = 'approved' and review.required_decision_count = expected.decisions
+      and review.approval_evidence_hash is not null
+      and review.approval_evidence_hash = platform_private.cms_schema_review_approval_digest(review.id)
+      and (select count(*) = expected.decisions and count(distinct decision.reviewer_person_ref) = expected.decisions
+        and bool_and(decision.decision = 'approve' and decision.reviewed_hash = review.definition_hash
+          and decision.reviewer_person_ref <> review.submitter_person_ref
+          and decision.mfa_verified_at is not null and assignment.state = 'active'
+          and assignment.owner_id = review.owner_id and assignment.review_id = review.id
+          and assignment.version = decision.assignment_version)
+        from platform_private.cms_schema_review_decisions decision
+        join platform_private.cms_schema_review_assignments assignment on assignment.id = decision.assignment_id
+        where decision.review_id = review.id) as approval_ok,
+    version_row.state = 'active' and content_type.state = 'active'
+      and version_row.owner_id = pg_temp.s09d_id('ownerOrg')
+      and version_row.activation_approval_evidence_hash = review.approval_evidence_hash
+      and member.value is not null and evidence.value is not null
+      and member.value->>'key' = expected.policy
+      and (member.value->>'version')::bigint = 1
+      and version_row.activation_workflow_policy_key = expected.policy
+      and version_row.activation_workflow_policy_version = 1
+      and version_row.activation_workflow_policy_hash = member.value->>'policyHash'
+      and version_row.activation_required_decision_count = expected.decisions
+      and version_row.activation_required_capabilities = member.value->'requiredCapabilities'
+      and review.policy_hash = member.value->>'policyHash'
+      and evidence.value->>'policyHash' = member.value->>'policyHash'
+      and evidence.value->>'approvalEvidenceHash' = platform_private.cms_jcs_sha256(jsonb_build_object(
+        'activationApprovalEvidenceHash', review.approval_evidence_hash,
+        'policyHash', member.value->>'policyHash', 'schemaVersionId', version_row.id))
+      and review.required_capabilities = member.value->'requiredCapabilities'
+      and cardinality(platform_private.cms_review_qualifying_approvers(review.id)) = expected.decisions
+      and platform_private.cms_review_unsatisfied_slots(review.id, null) = 0 as activation_ok
+  from (values ('s12govordinary', 'editorial', 1),
+    ('s12govprotected', 'cms.disclosure.policy', 2)) expected(tag, policy, decisions)
+  join platform_private.cms_content_type_versions version_row on version_row.id = pg_temp.s09d_id(expected.tag || ':version')
+  join platform_private.cms_content_types content_type on content_type.id = version_row.content_type_id
+  join platform_private.cms_schema_artifacts artifact on artifact.id = version_row.schema_artifact_id
+  join platform_private.cms_schema_reviews review on review.id = pg_temp.s09d_id(expected.tag || ':review')
+  join platform_private.cms_schema_dry_run_reports report on report.id = pg_temp.s09d_id(expected.tag || ':dryRun')
+  cross join lateral (select platform_private.cms_workflow_policy_member(version_row.workflow_key, version_row.workflow_version)) member(value)
+  cross join lateral (select platform_private.cms_editorial_workflow_policy_evidence(version_row.id)) evidence(value);
+  perform set_config('app.cms_rpc', prior_rpc, true);
+end;
+$proof$;
+select ok((select count(*) = 2 and bool_and(coalesce(artifact_ok, false)) from s12gov_chain_proof),
+  'producer control: both matching compiled artifacts and frozen review hashes are real and non-null');
+select ok((select count(*) = 2 and bool_and(coalesce(dry_run_ok, false)) from s12gov_chain_proof),
+  'producer control: both sealed passed dry runs bind the actual artifacts and genuinely zero source rows');
+select ok((select count(*) = 2 and bool_and(coalesce(approval_ok, false)) from s12gov_chain_proof),
+  'producer control: one ordinary and two distinct protected approvals match actual assignments and digests');
+select ok((select count(*) = 2 and bool_and(coalesce(activation_ok, false)) from s12gov_chain_proof),
+  'producer control: both real activations retain current registry policy and actual qualifying approval evidence');
+
+select pg_temp.s12gov_mint('subject', array['typeA'], 's12gov-template-create-0001');
+select pg_temp.s12gov_mint('protected', array['typeA', 'protectedType'], 's12gov-template-create-0002');
+select pg_temp.s12gov_as('Creator');

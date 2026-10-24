@@ -1,0 +1,147 @@
+-- DEC-199: real inactive nested pins, including a transitive-only offender.
+-- No active pattern row, lifecycle evidence or detector result is fabricated.
+-- Source: S09 session/JWT helpers, CMS published-session/MFA gates, configuration
+-- actor/correlation/release context and the SQL-role/response-header RPC harness.
+-- Custom missing/empty settings are equivalent at these nullif/coalesce seams.
+create function pg_temp.s12pc_release_context() returns jsonb language plpgsql stable as $body$
+declare setting_name text; answer jsonb:='{}'::jsonb;
+begin
+ foreach setting_name in array array[
+  'request.jwt.claims','request.jwt.claim.role','request.jwt.claim.sub',
+  'app.auth_user_id','app.actor_auth_user_id','app.actor_person_id',
+  'app.acting_party_id','app.acting_context_id','app.cms_session_actor','app.cms_session_party',
+  'app.mfa_session_subject','app.step_up_verified','app.cms_rpc','app.cfg_rpc',
+  'app.correlation_id','app.idempotency_key_hash','app.request_hash','app.release_principal_id',
+  'response.headers','role'] loop
+  answer:=answer||jsonb_build_object(setting_name,coalesce(current_setting(setting_name,true),''));
+ end loop;
+ return answer;
+end;
+$body$;
+create function pg_temp.s12pc_advance_scoped(p_label text,p_request jsonb) returns setof text
+language plpgsql as $body$
+declare before_context jsonb:=pg_temp.s12pc_release_context(); prior_user text:=current_user;
+ setting_value record; code text:='00000'; message text;
+begin
+ begin
+  perform pg_temp.p_advance(p_label,p_request);
+ exception when others then get stacked diagnostics code=returned_sqlstate,message=message_text;
+ end;
+ -- Both success and exception paths restore before any following read oracle.
+ for setting_value in select key,value from jsonb_each_text(before_context) where key<>'role' loop
+  if coalesce(current_setting(setting_value.key,true),'') is distinct from setting_value.value then
+   perform set_config(setting_value.key,setting_value.value,true);
+  end if;
+ end loop;
+ perform set_config('role',before_context->>'role',true);
+ return next extensions.is(code,'00000',p_label||': scoped real signed lifecycle invocation completes');
+ return next extensions.is(pg_temp.s12pc_release_context(),before_context,
+  p_label||': complete request/session/role context restored before read oracles');
+ return next extensions.is(current_user::text,prior_user,p_label||': exact effective SQL caller restored');
+end;
+$body$;
+select * from pg_temp.s12pl_pattern('s12pc-middle','s12pc-middle',
+  jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner2')));
+select * from pg_temp.s12pl_pattern('s12pc-grand','s12pc-grand',jsonb_build_array(
+  pg_temp.s12cs_block('panel','s12cs.root',1,'GRAND',jsonb_build_array(pg_temp.s12cs_ref('s12pc-middle')))));
+select * from pg_temp.s12pl_pattern('s12pc-nested','s12pc-nested',jsonb_build_array(
+  pg_temp.s12cs_block('left','s12cs.root',1,'LEFT',jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner2'))),
+  pg_temp.s12cs_block('right','s12cs.root',2,'RIGHT',jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner2')))));
+select * from pg_temp.s12pu_place('pc-grand','s12pc-grand');
+select * from pg_temp.s12pu_place('pc-nested-live','s12cs-outer2');
+select * from pg_temp.s12pu_place('pc-nested-legacy','s12cs-outer2','{}','detached');
+select * from pg_temp.s12pu_place('pc-nested-mixed','s12pc-nested');
+select pg_temp.s12pu_update('pc-nested-detach',pg_temp.s12pu_update_request('pc-nested-mixed','detach',
+  jsonb_build_array(pg_temp.s12pu_target('pc-nested-mixed','/left')),'s12pc-nested-detach'));
+select is(pg_temp.s12pu_oc('pc-nested-detach'),'ok','PC-N-PREMISE-01: actual mixed live/snapshot producer succeeds');
+select pg_temp.s12pl_entry('pc-nested-only');
+select * from pg_temp.s12pc_seed('PC-N-F01','pc-nested-only',pg_temp.s12pu_head('pc-nested-mixed','/left'));
+select * from pg_temp.s12pc_check('PC-N01-control','pc-nested-live',null,true,
+  array['s12cs-outer2'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-N02-control','pc-grand',null,true,
+  array['s12pc-grand'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+
+-- This activation changes nested activity only. The immutable graph, registry
+-- tuples and parent activity/hash remain identical; nested inactivity is real.
+select * from pg_temp.s12pl_pattern('s12pc-inner3','s12cs-inner',jsonb_build_array(
+  pg_temp.s12cs_block('zeta','s12cs.leaf',2,'ZETA-T'),pg_temp.s12cs_block('alpha','s12cs.tail',1,'ALPHA')),
+  null,true,'2');
+select is(pg_temp.s12pu_pattern_row('s12cs-inner2')->>'state','superseded',
+  'PC-N-PREMISE-02: real child successor made only the pinned nested row inactive');
+select is((select count(*)::integer from platform_private.cms_pattern_versions p
+  where p.id in ((pg_temp.s12pd_body('s12cs-outer2')->>'id')::uuid,
+    (pg_temp.s12pd_body('s12pc-middle')->>'id')::uuid,(pg_temp.s12pd_body('s12pc-grand')->>'id')::uuid,
+    (pg_temp.s12pd_body('s12pc-nested')->>'id')::uuid) and p.state='active'),4,
+  'PC-N-PREMISE-03: root and intermediate patterns remain active, so root refusal cannot mask recursion');
+select is((select content_hash::text from platform_private.cms_pattern_versions
+  where id=(pg_temp.s12pd_body('s12cs-outer2')->>'id')::uuid),
+  pg_temp.s12pd_body('s12cs-outer2')->>'contentHash','PC-N-PREMISE-04: live root frozen hash is unchanged');
+select checked.* from unnest(array['submit','schedule','publish','execute']) phases(phase)
+  cross join lateral pg_temp.s12pc_check('PC-N03-live-'||phase,'pc-nested-live','nested_pattern_not_active',false,
+    array['s12cs-outer2'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]',phase) checked;
+select * from pg_temp.s12pc_check('PC-N04-legacy-nulltree','pc-nested-legacy','nested_pattern_not_active',false,
+  array['s12cs-outer2'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-N05-transitive','pc-grand','nested_pattern_not_active',false,
+  array['s12pc-grand'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-N06-mixed-same-pin','pc-nested-mixed','nested_pattern_not_active',false,
+  array['s12pc-nested'],'[["s12cs.root",1],["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-N07-only-provenance','pc-nested-only',null,true,
+  array['s12pc-nested'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-N08-canonical-target','cs-progress',null,true,
+  array['s12cs-outer2'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+
+-- A canonical snapshot is also independent of RETIRED (not only superseded)
+-- provenance. Use the actual governed retire action and its current review CAS.
+select pg_temp.s12pd_run('pc-retire-provenance',jsonb_build_object(
+  'reviewId',pg_temp.s12pd_body('s12cs-independent:submit')->'id','action','retire',
+  'expectedVersion',pg_temp.s12pd_body('s12cs-independent:activate')->'reviewVersion',
+  'ifMatch',pg_temp.s12pd_body('s12cs-independent:activate')->'reviewVersion',
+  'reason','Currentness test retirement','idempotencyKey','s12pc-retire-provenance',
+  'context',pg_temp.s09d_context('owner',true)),'owner','service_role','activate');
+select is(pg_temp.s12pd_state('pc-retire-provenance'),'00000','PC-N-PREMISE-05: actual governed retirement succeeds');
+select is(pg_temp.s12pu_pattern_row('s12cs-independent')->>'state','retired','PC-N-PREMISE-06: provenance is really retired');
+select * from pg_temp.s12pc_check('PC-N09-retired-provenance','cs-equal-donor',null,true,
+  array['s12cs-independent'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+
+-- Fresh public live pin with active nested version isolates registry-digest
+-- failures from DEC-199 nested activity. Create it before registry transitions.
+select * from pg_temp.s12pl_pattern('s12pc-fresh','s12pc-fresh',jsonb_build_array(
+  pg_temp.s12cs_block('panel','s12cs.root',2,'FRESH',jsonb_build_array(pg_temp.s12cs_ref('s12pc-inner3')))));
+select * from pg_temp.s12pu_place('pc-fresh','s12pc-fresh');
+select * from pg_temp.s12pc_check('PC-D01-control','pc-fresh',null,true,
+  array['s12pc-fresh'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+
+-- Registry changes are real signed CMS-03A-08 events. Unselected provenance
+-- leaf v1 must not poison the canonical tree, whose literal selected leaf is v2.
+select * from pg_temp.s12pc_advance_scoped('pc-old-leaf-deprecate',pg_temp.p_lifecycle_request(
+  (select id from platform_private.cms_block_definition_versions where block_key='s12cs.leaf' and block_version=1),
+  'supported','deprecated'));
+select is(pg_temp.s09d_outcome('pc-old-leaf-deprecate'),'OK','PC-D-PREMISE-00: real old-only deprecation succeeds');
+select * from pg_temp.s12pc_advance_scoped('pc-old-leaf-withdraw',pg_temp.p_lifecycle_request(
+  (select id from platform_private.cms_block_definition_versions where block_key='s12cs.leaf' and block_version=1),
+  'deprecated','withdrawn','1'));
+select is(pg_temp.s09d_outcome('pc-old-leaf-withdraw'),'OK','PC-D-PREMISE-01: real old-only signed withdrawal succeeds');
+select * from pg_temp.s12pc_check('PC-D02-unselected-old-block','cs-detached',null,true,
+  array['s12cs-outer1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-D03-live-unaffected','pc-fresh',null,true,
+  array['s12pc-fresh'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]','submit',null,'PC-D01-control');
+
+-- A deprecated block remains renderable, but its digest tuple changed. This is
+-- a digest mismatch without a withdrawn-block or inactive-pattern alternative.
+select * from pg_temp.s12pc_advance_scoped('pc-leaf-deprecate',pg_temp.p_lifecycle_request(
+  (select id from platform_private.cms_block_definition_versions where block_key='s12cs.leaf' and block_version=2),
+  'supported','deprecated'));
+select is(pg_temp.s09d_outcome('pc-leaf-deprecate'),'OK','PC-D-PREMISE-02: real selected leaf deprecation succeeds');
+select * from pg_temp.s12pc_check('PC-D04-selected-digest','cs-detached','pattern_digest_changed',false,
+  array['s12cs-outer1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-D05-live-digest','pc-fresh','pattern_digest_changed',false,
+  array['s12pc-fresh'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_advance_scoped('pc-leaf-withdraw',pg_temp.p_lifecycle_request(
+  (select id from platform_private.cms_block_definition_versions where block_key='s12cs.leaf' and block_version=2),
+  'deprecated','withdrawn','1'));
+select is(pg_temp.s09d_outcome('pc-leaf-withdraw'),'OK','PC-D-PREMISE-03: real selected leaf withdrawal succeeds');
+select * from pg_temp.s12pc_check('PC-D06-selected-withdrawn','cs-detached','pattern_digest_changed',false,
+  array['s12cs-outer1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-D07-live-withdrawn','pc-fresh','pattern_digest_changed',false,
+  array['s12pc-fresh'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-D08-retired-still-excluded','cs-retired',null,true,array[]::text[],'[]');

@@ -1,0 +1,111 @@
+-- DEC-221 (review V4-02; BE03c "Governed review machinery" Invalidation and its changelog row "Governed lock failures and revocation races";
+-- BE03b "Write-path lock order and authority fencing" rule 3: a lock failure there is CONFLICT, never "not approved"): a lock timeout (55P03)
+-- or a deadlock (40P01) raised while the frozen block digest is RECOMPUTED inside cms_governed_frozen_status is the retryable conflict of
+-- the recheck run, the decision and the activation, never `changed`.  Until DEC-221 the promoted function swallowed every error of the
+-- digest into `changed`: a healthy review was invalidated (subject back to draft, schedule cancelled, audit) instead of the command raising
+-- the CONFLICT its platform_api wrapper maps.
+-- This section tests ERROR CLASSIFICATION, not authority: the test-admin puts a guard in front of the body of ONE private function
+-- (cms_governed_current_digest) and restores it byte for byte, owner and ACL unchanged (the labelled fault of 070-isolation).  The guard
+-- fires only for the review whose frozen subject hash the transaction-local setting s12v4.digest_hash names, so every other live review of
+-- the run is evaluated by the real digest.  Mode (s12v4.digest_mode): a SQLSTATE raises that error from the digest; `differs` makes the
+-- digest return a value that is not the frozen one (a genuine difference).  Nothing else is faked and no trigger is touched.
+create or replace function pg_temp.s12v4_digest_guard() returns text language sql immutable as $body$
+  select $g$if p_subject->>'contentHash' = nullif(pg_catalog.current_setting('s12v4.digest_hash', true), '') then
+    if pg_catalog.current_setting('s12v4.digest_mode', true) = 'differs' then
+      return 'not-the-frozen-digest';
+    end if;
+    raise exception 'DIGEST_FAULT_FOR_TEST' using errcode = pg_catalog.current_setting('s12v4.digest_mode', true);
+  end if;$g$ $body$;
+create or replace function pg_temp.s12v4_digest_fault(p_tag text, p_mode text) returns void language sql as $body$
+  select pg_catalog.set_config('s12v4.digest_hash',
+           (select review.subject_hash::text from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review(p_tag)), true),
+         pg_catalog.set_config('s12v4.digest_mode', p_mode, true) $body$;
+
+-- one review per assertion so a failure of one case never hides the next
+select pg_temp.s12gb_approved('dga', array['typeA'], 'rev1');   -- recheck, lock_not_available
+select pg_temp.s12gb_approved('dge', array['typeA'], 'rev1');   -- recheck, deadlock_detected
+select pg_temp.s12gb_approved('dgb', array['typeA'], 'rev1');   -- control: the digest differs
+select pg_temp.s12gb_approved('dgf', array['typeA'], 'rev1');   -- control: the digest raises a genuine (non-lock) error
+select pg_temp.s12gb_approved('dgc', array['typeA'], 'rev1');   -- activation
+select pg_temp.s12ga_open('dgd', 'owner', array['typeA'], 'owner');   -- decision
+select pg_temp.s12ga_assign('as-dgd', 'owner', pg_temp.s12ga_review('dgd'), 'rev1', interval '20 hours');
+select ok((select count(*) = 5 and bool_and(review.state = 'approved' and review.activated_at is null)
+             from platform_private.cms_governed_reviews review
+            where review.id in (select pg_temp.s12ga_review(t) from unnest(array['dga', 'dge', 'dgb', 'dgf', 'dgc']) t))
+    and (select review.state = 'open' and review.recorded_decision_count = 0
+           from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('dgd'))
+    and (select count(distinct review.subject_hash) = 6 from platform_private.cms_governed_reviews review
+          where review.id in (select pg_temp.s12ga_review(t) from unnest(array['dga', 'dge', 'dgb', 'dgf', 'dgc', 'dgd']) t)),
+  'fixture: five real approved reviews and one open assigned review, six different frozen subject hashes, none activated [DEC-221]');
+select ok((select pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer' and proc.prosecdef and proc.proconfig = array['search_path=""']
+                  and proc.prosrc ~ 'when deadlock_detected or lock_not_available then\s+raise;\s+when others then\s+return ''changed'';'
+                  and obj_description(proc.oid, 'pg_proc') like '%(DEC-221)%'
+                  and not exists (select 1 from unnest(array['service_role', 'authenticated', 'anon', 'public']) role_name
+                                   where has_function_privilege(role_name, proc.oid, 'execute'))
+             from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_governed_frozen_status(uuid)')),
+  'the amended cms_governed_frozen_status keeps its owner, SECURITY DEFINER, empty search_path and no API-role execute, re-raises exactly the two lock SQLSTATEs before the unchanged `when others` mapping, and its comment records DEC-221 [DEC-221]');
+select pg_temp.s12gr_mark(t, t) from unnest(array['dga', 'dge', 'dgb', 'dgf', 'dgc', 'dgd']) t;
+select pg_temp.s12gr_count_mark('dg:before');
+
+select pg_temp.s12fr_fault_on('platform_private.cms_governed_current_digest(text, uuid, jsonb)', pg_temp.s12v4_digest_guard());
+
+-- ------------------------------------------------------------------ the recheck run
+select pg_temp.s12v4_digest_fault('dga', '55P03');
+select pg_temp.s12gr_run('dg-a', 'content_type', pg_temp.s12gr_type_a_active());
+select pg_temp.s12v4_digest_fault('dge', '40P01');
+select pg_temp.s12gr_run('dg-e', 'content_type', pg_temp.s12gr_type_a_active());
+select is(pg_temp.s12gb_sout('dg-a') || '|' || pg_temp.s12gb_sout('dg-e'), 'P0001:CONFLICT|P0001:CONFLICT',
+  'a lock_not_available and a deadlock_detected raised while the digest of a review is recomputed are the typed retryable CONFLICT of the recheck run, not dependency_changed [DEC-221]');
+select ok(pg_temp.s12gr_untouched('dga', 'dga') and pg_temp.s12gr_untouched('dge', 'dge') and pg_temp.s12gr_untouched('dgb', 'dgb')
+    and (select audits = (select count(*) from audit_private.audit_events) and events = (select count(*) from platform_private.outbox_events)
+           from s12gr_counts where label = 'dg:before'),
+  'the failed runs committed nothing: no review invalidated, no subject back to draft, no audit record, no event, so the job can be retried whole [DEC-221]');
+
+-- control: a GENUINE difference or a genuine digest failure is still reported as a changed dependency
+select pg_temp.s12v4_digest_fault('dgb', 'differs');
+select pg_temp.s12gr_run('dg-b', 'content_type', pg_temp.s12gr_type_a_active());
+select pg_temp.s12v4_digest_fault('dgf', 'P0001');
+select pg_temp.s12gr_run('dg-f', 'content_type', pg_temp.s12gr_type_a_active());
+select ok(pg_temp.s12gb_sout('dg-b') = 'ok' and (pg_temp.s12gb_sbody('dg-b')->>'dependencyChanged')::integer = 1
+    and (pg_temp.s12gb_sbody('dg-b')->>'invalidated')::integer = 1 and (pg_temp.s12gb_sbody('dg-b')->>'unavailable')::integer = 0
+    and pg_temp.s12gr_invalidated('dgb', 'dgb', 'dependency_changed') and pg_temp.s12gr_untouched('dga', 'dga'),
+  'control: a digest that differs from the frozen one still invalidates exactly that review dependency_changed (version + 1, subject back to draft) and no other [DEC-221]');
+select ok(pg_temp.s12gb_sout('dg-f') = 'ok' and (pg_temp.s12gb_sbody('dg-f')->>'dependencyChanged')::integer = 1
+    and (pg_temp.s12gb_sbody('dg-f')->>'invalidated')::integer = 1 and (pg_temp.s12gb_sbody('dg-f')->>'unavailable')::integer = 0
+    and pg_temp.s12gr_invalidated('dgf', 'dgf', 'dependency_changed') and pg_temp.s12gr_untouched('dge', 'dge'),
+  'control: a digest that raises an ordinary error (the kind a withdrawn or incompatible block raises, P0001) is still dependency_changed, not unavailable and not a conflict [DEC-221]');
+
+-- ------------------------------------------------------------------ the activation (CMS-03C-09)
+select pg_temp.s12v4_digest_fault('dgc', '55P03');
+select pg_temp.s12gb_act('dg-act-lock', 'owner', pg_temp.s12ga_review('dgc'), 'activate');
+select pg_temp.s12v4_digest_fault('dgc', '40P01');
+select pg_temp.s12gb_act('dg-act-dead', 'owner', pg_temp.s12ga_review('dgc'), 'activate');
+select is(pg_temp.s12ga_out('dg-act-lock') || '|' || pg_temp.s12ga_out('dg-act-dead'), 'P0001:CONFLICT|P0001:CONFLICT',
+  'a lock failure raised while the digest is recomputed by the activation recheck is the typed CONFLICT of CMS-03C-09, not the committed refusal dependency_changed [DEC-221]');
+select ok(pg_temp.s12gr_untouched('dgc', 'dgc') and pg_temp.s12gb_events('dgc') = 0 and pg_temp.s12gb_audits('cms.governed.activate', 'dgc') = 0
+    and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('dgc')) = 0,
+  'the refused activations left the review approved at its version, the subject unactivated, and wrote no invalidation, no activation audit record and no event [DEC-221]');
+
+-- ------------------------------------------------------------------ the decision (CMS-03C-07)
+select pg_temp.s12v4_digest_fault('dgd', '55P03');
+select pg_temp.s12ga_decide('ap-dgd-lock', 'rev1', pg_temp.s12ga_review('dgd'), 'approve');
+select pg_temp.s12v4_digest_fault('dgd', '40P01');
+select pg_temp.s12ga_decide('ap-dgd-dead', 'rev1', pg_temp.s12ga_review('dgd'), 'approve');
+select is(pg_temp.s12ga_out('ap-dgd-lock') || '|' || pg_temp.s12ga_out('ap-dgd-dead'), 'P0001:CONFLICT|P0001:CONFLICT',
+  'a lock failure raised while the digest is recomputed by the decision recheck is the typed CONFLICT of CMS-03C-07, not the committed refusal dependency_changed [DEC-221]');
+select ok(pg_temp.s12gr_untouched('dgd', 'dgd')
+    and (select review.recorded_decision_count = 0 and review.state = 'open'
+           from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('dgd'))
+    and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('dgd')) = 0,
+  'the refused decisions recorded nothing: the review is still open at its version with no decision row and was not invalidated [DEC-221]');
+
+select ok(pg_temp.s12fr_fault_off('platform_private.cms_governed_current_digest(text, uuid, jsonb)'),
+  'the labelled fault is removed and the digest function restored byte for byte, owner and ACL unchanged [DEC-221]');
+
+-- ---------------------------------------- retry: the same commands succeed once the lock failure is gone
+select pg_temp.s12gb_act('dg-act-retry', 'owner', pg_temp.s12ga_review('dgc'), 'activate');
+select pg_temp.s12ga_decide('ap-dgd-retry', 'rev1', pg_temp.s12ga_review('dgd'), 'approve');
+select ok(pg_temp.s12ga_out('dg-act-retry') = 'ok' and pg_temp.s12ga_body('dg-act-retry')->>'subjectState' = 'active'
+    and pg_temp.s12ga_out('ap-dgd-retry') = 'ok'
+    and (select review.state = 'approved' from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('dgd')),
+  'once the lock failure is gone the retried activation activates the subject and the retried decision approves the review: the CONFLICT was the retryable outcome, nothing was lost [DEC-221]');

@@ -1,0 +1,122 @@
+-- CMS-03C-09 authority and currency: a non-owner capability holder activates, a lost capability is 403, a counted approver whose
+-- standing grant was revoked kills the review, the invalidation of an approved review cancels its schedule, and a changed frozen
+-- dependency commits the invalidation (activate and schedule).  The successor activation of the bound content type comes last: it
+-- changes the bound type for every review that depends on typeA.
+-- ------------------------------------------- a non-owner holder of the owner capability, then its loss --
+select is(pg_temp.s12ga_grant('designer2', 'cms.template_designer', 1), 'OK',
+  'control: the real CMS-03A-15 command grants designer2 cms.template_designer in the owner organization [P2-S12-AC-084]');
+select pg_temp.s12gb_act('c9', 'designer2', pg_temp.s12ga_review('gc9'), 'activate');
+select ok(pg_temp.s12ga_out('c9') = 'ok' and pg_temp.s12ga_body('c9')->>'subjectState' = 'active'
+    and (select actor_id = pg_temp.s12ga_auth('designer2') and acting_party_id = pg_temp.s12ga_org()
+           from audit_private.audit_events where action = 'cms.governed.activate' and target_id = pg_temp.s12ga_subject('gc9'))
+    and pg_temp.s12gb_events('gc9') = 1,
+  'a designer who is not the receipt owner, creator or submitter activates through the capability scope; the audit record names that actor [P2-S12-AC-084]');
+select is(pg_temp.s09d_revoke_via_rpc('designer2', 'cms.template_designer'), 'OK',
+  'control: the real CMS-03A-17 command revokes the designer capability of designer2 [P2-S12-AC-084]');
+select pg_temp.s12gb_mark('gc8:revoked', 'gc8');
+select pg_temp.s12gb_act('c8', 'designer2', pg_temp.s12ga_review('gc8'), 'activate');
+select pg_temp.s12gb_act('c8-schedule', 'designer2', pg_temp.s12ga_review('gc8'), 'schedule');
+select pg_temp.s12gb_act('c8-nocap', 'designer2', pg_temp.s12ga_review('gd1'), 'activate');
+select is(pg_temp.s12ga_out('c8') || '|' || pg_temp.s12ga_out('c8-schedule') || '|' || pg_temp.s12ga_out('c8-nocap'),
+  'P0001:capability_missing|P0001:capability_missing|P0001:NOT_FOUND',
+  'after the revocation the assigned reviewer still reads gc8 (403 capability_missing) while a review without any remaining scope is concealed (404) [P2-S12-AC-084]');
+select ok(pg_temp.s12gb_same('gc8:revoked', 'gc8') and pg_temp.s12gb_events('gc8') = 0,
+  'the revoked-capability refusals leave the covered stores identical and emit nothing [P2-S12-AC-086]');
+
+-- ------------------------------------------------ a counted approver loses the standing authority (gr7) --
+select pg_temp.s12gb_mark('gr7:before', 'gr7');
+-- LAG FIXTURE (002-lapse-helpers): since P2-S12-AC-204 (BE03c G6) every authority loss that has an event (the CMS-03A-17 revocation, a
+-- grant or tenure UPDATE or DELETE) invalidates the review in its own transaction, so the stored `approved` state this suite proves the
+-- activation recount must catch lags only for a grant that ENDS BY THE CALENDAR (its term passes without any write; the fixture reproduces exactly that read).
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('rev2'), 'cms.reviewer');
+select ok(pg_temp.s12gb_same('gr7:before', 'gr7') and pg_temp.s12ga_approvals(pg_temp.s12ga_review('gr7')) = 0,
+  'control: the cms.reviewer grant of rev2, the only approver of gr7, lapsed by the calendar: the stored approved state lags and the live recount is 0 [P2-S12-AC-084]');
+select pg_temp.s12gb_act('r7', 'owner', pg_temp.s12ga_review('gr7'), 'activate');
+select pg_temp.s12ga_keep('r7', 'r7');
+select ok(pg_temp.s12ga_out('r7') = 'ok'
+    and pg_temp.s12ga_body('r7') = '{"kind": "refusal", "details": {}, "reasonCode": "dependency_changed"}'::jsonb,
+  'an approval that no longer counts makes the activation answer the committed refusal dependency_changed, the only invalidation outcome of CMS-03C-09 (BE03c 1262, 1326 step 4; the stored approved state lags the revocation) [P2-S12-AC-084]');
+select ok(
+  (select review.state = 'invalidated' and review.invalidated_reason = 'reviewer_authority_changed' and review.version = 3
+          and review.decided_at is null and review.activated_at is null and review.recorded_decision_count = 1
+     from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('gr7'))
+  and (select subject.state = 'draft' and subject.lifecycle_version = 4 and subject.activated_at is null
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('gr7'))
+  and pg_temp.s12gb_events('gr7') = 0
+  and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('gr7')) = 1
+  and pg_temp.s12gb_audits('cms.governed.activate', 'gr7') = 0
+  and exists (select 1 from platform_private.idempotency_records record
+               where record.operation = 'CMS-03C-09' and record.key_hash = platform_private.cms_key_hash('s12ga-r7')
+                 and record.state = 'completed' and record.response_ref->>'status' = '409'),
+  'the review is invalidated reviewer_authority_changed at version 3, the subject returns to draft (lifecycle 4), no event is emitted and the refusal is stored as 409 [P2-S12-AC-084]');
+select pg_temp.s12gb_mark('gr7:dead', 'gr7');
+select pg_temp.s12gb_act('r7', 'owner', pg_temp.s12ga_review('gr7'), 'activate', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select pg_temp.s12gb_act('r7-after', 'owner', pg_temp.s12ga_review('gr7'), 'activate');
+select ok(pg_temp.s12ga_body('r7') = pg_temp.s12ga_kept('r7') and pg_temp.s12gb_same('gr7:dead', 'gr7')
+    and pg_temp.s12ga_out('r7-after') = 'P0001:subject_not_activatable',
+  'the committed refusal replays identically, and a later activation of the invalidated review is subject_not_activatable [P2-S12-AC-086]');
+select pg_temp.s12fr_restore();
+
+-- ------------------------------ the invalidation of an approved review cancels its schedule (gs1) --
+select pg_temp.s12gb_inval('inv-gs1', pg_temp.s12ga_review('gs1'), 'dependency_changed');
+select ok((select outcome from s12gb_inv where label = 'inv-gs1') = 'ok'
+    and (select schedule.state = 'cancelled' and schedule.reason_code = 'approval_invalidated' and schedule.version = 2
+            and schedule.lease_id is null and schedule.attempt_count = 0 and schedule.actual_at_utc is null
+       from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('gs1')),
+  'invalidating an approved review whose subject is scheduled cancels the schedule (cancelled, approval_invalidated, version 2) in the same transaction [P2-S12-AC-145]');
+select ok(
+  (select review.state = 'invalidated' and review.invalidated_reason = 'dependency_changed' and review.version = 3
+          and review.decided_at is null and review.activated_at is null
+     from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('gs1'))
+  and (select subject.state = 'draft' and subject.lifecycle_version = 5
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('gs1'))
+  and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('gs1')) = 1
+  and (select count(*) = 1 from audit_private.audit_events
+        where action = 'cms.governed.schedule.cancel' and target_id = (pg_temp.s12gb_sched('gs1')->>'id')::uuid)
+  and pg_temp.s12gb_events('gs1') = 0,
+  'the review is invalidated, the subject returns scheduled -> draft (lifecycle 5), one invalidation and one cancellation audit record are written and no event is emitted [P2-S12-AC-145]');
+select pg_temp.s12gb_inval('inv-gs1-again', pg_temp.s12ga_review('gs1'), 'dependency_changed');
+select pg_temp.s12gb_inval('inv-bad-reason', pg_temp.s12ga_review('gs2'), 'because');
+select ok((select outcome from s12gb_inv where label = 'inv-gs1-again') = 'P0001:review_not_open'
+    and (select outcome from s12gb_inv where label = 'inv-bad-reason') = 'P0001:VALIDATION_FAILED',
+  'a review that is no longer live (open or approved) cannot be invalidated again, and the reason set is closed to dependency_changed and reviewer_authority_changed [P2-S12-AC-145]');
+
+-- ----------------------------------------------- a changed frozen dependency commits the invalidation --
+select pg_temp.s09d_successor('ordnew', 's12govordinary');
+select pg_temp.s09d_to_active('ordnew', array['rev3']);
+select ok(pg_temp.s09d_outcome('ordnew:activate') = 'OK'
+    and (select version_row.id <> (select value::uuid from s12gov_ids where key = 'typeVersionA')
+           from platform_private.cms_content_type_versions version_row
+          where version_row.content_type_id = (select value::uuid from s12gov_ids where key = 'typeA') and version_row.state = 'active'),
+  'control: a real successor of the bound content type is activated through the DEC-108 chain, so gd1 and gd2 depend on a superseded version [P2-S12-AC-084]');
+select pg_temp.s12gb_act('d1', 'owner', pg_temp.s12ga_review('gd1'), 'activate');
+select pg_temp.s12ga_keep('d1', 'd1');
+select pg_temp.s12gb_act('d2', 'owner', pg_temp.s12ga_review('gd2'), 'schedule');
+select ok(pg_temp.s12ga_out('d1') = 'ok'
+    and pg_temp.s12ga_body('d1') = '{"kind": "refusal", "details": {}, "reasonCode": "dependency_changed"}'::jsonb
+    and pg_temp.s12ga_out('d2') = 'ok'
+    and pg_temp.s12ga_body('d2') = '{"kind": "refusal", "details": {}, "reasonCode": "dependency_changed"}'::jsonb,
+  'a changed frozen dependency commits the invalidation and answers the dependency_changed refusal envelope for activate and for schedule [P2-S12-AC-084]');
+select ok(
+  (select count(*) = 2 and bool_and(review.state = 'invalidated' and review.invalidated_reason = 'dependency_changed'
+            and review.version = 3 and review.decided_at is null and review.activated_at is null)
+     from platform_private.cms_governed_reviews review
+    where review.id in (pg_temp.s12ga_review('gd1'), pg_temp.s12ga_review('gd2')))
+  and (select count(*) = 2 and bool_and(subject.state = 'draft' and subject.lifecycle_version = 4)
+         from platform_private.cms_template_versions subject
+        where subject.id in (pg_temp.s12ga_subject('gd1'), pg_temp.s12ga_subject('gd2')))
+  and (select count(*) = 0 from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('gd2'))
+  and pg_temp.s12gb_events('gd1') = 0 and pg_temp.s12gb_events('gd2') = 0
+  and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('gd1')) = 1
+  and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('gd2')) = 1
+  and (select count(*) = 2 and bool_and(record.state = 'completed' and record.response_ref->>'status' = '409')
+         from platform_private.idempotency_records record
+        where record.operation = 'CMS-03C-09'
+          and record.key_hash in (platform_private.cms_key_hash('s12ga-d1'), platform_private.cms_key_hash('s12ga-d2'))),
+  'both invalidations are committed: reviews invalidated dependency_changed at version 3, subjects back to draft, no schedule, no event, one audit record each, status 409 stored [P2-S12-AC-084]');
+select pg_temp.s12gb_mark('gd1:changed', 'gd1');
+select pg_temp.s12gb_act('d1', 'owner', pg_temp.s12ga_review('gd1'), 'activate', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select pg_temp.s12gb_act('d1-after', 'owner', pg_temp.s12ga_review('gd1'), 'activate');
+select ok(pg_temp.s12ga_body('d1') = pg_temp.s12ga_kept('d1') and pg_temp.s12gb_same('gd1:changed', 'gd1')
+    and pg_temp.s12ga_out('d1-after') = 'P0001:subject_not_activatable',
+  'the committed dependency_changed refusal replays identically and a later activation of the invalidated review is subject_not_activatable [P2-S12-AC-086]');

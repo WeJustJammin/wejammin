@@ -1,0 +1,85 @@
+-- Slice 12 lane linked-scan: the world of the scan suite.  Every pattern is a REAL active pattern created by CMS-03C-12 and activated
+-- through the governed chain (CMS-03C-06/08/07/09); every composition row is written by the real CMS-03C-02 producer.  A placement pins
+-- the version that is active AT THAT TIME, so every v1 placement happens before v2 is activated (activation supersedes v1).
+--   ls-a  v1 hero{H1}, cta{C1}, compatible with types 1 and 2     v2 hero{H2}, cta{C2}, type 1 ONLY     v3 hero{H3}, cta{C3}, types 1 and 2
+--   ls-b  v1 item{B1}                                              a second lineage the scan of ls-a must never touch
+-- Scenario entries (all pinned to ls-a v1 unless said), each exercising one predicate of the scan both ways:
+--   lk1   linked, draft; plus a standalone block row (no pattern)     lk2  linked with an override      lk3  linked, templated slot /main
+--   dt1   a DETACHED placement (provenance only, never updated)       ty2  linked on a type-2 entry (v2 is not compatible, v3 is)
+--   rv1   an OPEN editorial review: effective state submitted         old1 rows on a revision that is no longer the entry's current draft
+--   arch1 an archived entry                                           st1..3 head states retired / draft / superseded on /hero, /cta stays active
+--   iv1   effective draft with an OLDER live review beside a newer invalidated one (the defense-in-depth shape)
+--   same1 placed on v2 itself: the pin equals the new version         ob1  pinned to the other lineage ls-b
+select * from pg_temp.s12pl_pattern('la1', 'ls-a', jsonb_build_array(
+  pg_temp.s12pd_block('hero', '[]'::jsonb, '{"title":"H1"}'::jsonb), pg_temp.s12pd_block('cta', '[]'::jsonb, '{"title":"C1"}'::jsonb)),
+  jsonb_build_array((select id from s12pd_types where ordinal = 1), (select id from s12pd_types where ordinal = 2)));
+select * from pg_temp.s12pl_pattern('lb1', 'ls-b', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"B1"}'::jsonb)));
+
+-- A real template with the slots main and side (the label is the one s12pu_place reads for a templated entry).
+select pg_temp.s09d_rpc('s12pu-template', 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+  'templateKey', 's12ls-tpl', 'compatibleTypeIds', jsonb_build_array((select id from s12pd_types where ordinal = 1)),
+  'slots', jsonb_build_array(
+    jsonb_build_object('key', 'main', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128),
+    jsonb_build_object('key', 'side', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128)),
+  'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+  'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+  'idempotencyKey', 's12ls-template-0001'), true);
+select is(pg_temp.s09d_outcome('s12pu-template'), 'OK', 'setup: a real draft template declares the slots main and side');
+
+-- v1 placements ----------------------------------------------------------------------------------------------------------------------
+select * from pg_temp.s12pu_place('lk1', 'la1');
+select pg_temp.s12pl_row('lk1', '/standalone', 'root', 5) as standalone_row \gset
+select * from pg_temp.s12pu_place('lk2', 'la1', '{"/hero":{"title":"MINE"}}'::jsonb);
+select * from pg_temp.s12pu_place('lk3', 'la1', '{}'::jsonb, 'linked', '/main', true);
+select * from pg_temp.s12pu_place('dt1', 'la1', '{}'::jsonb, 'detached');
+select * from pg_temp.s12pu_place('rv1', 'la1');
+select pg_temp.s12pl_review('rv1', timestamptz '2026-10-08T12:00:00Z') as rv1_review \gset
+select is(platform_private.cms_revision_effective_state(pg_temp.s12pl_rev('rv1')), 'submitted',
+  'setup: an open review makes the revision of rv1 effective submitted (not draft)');
+select * from pg_temp.s12pu_place('ty2', 'la1', '{}'::jsonb, 'linked', '/', false, 2);
+select * from pg_temp.s12pu_place('old1', 'la1');
+select pg_temp.s12ls_extra_revision('old1', 'old1b', 2, 'draft');
+select * from pg_temp.s12pu_place('arch1', 'la1');
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_entries set lifecycle = 'archived' where id = pg_temp.s12pl_entry_id('arch1');
+select * from pg_temp.s12pu_place('st1', 'la1');
+select * from pg_temp.s12pu_place('st2', 'la1');
+select * from pg_temp.s12pu_place('st3', 'la1');
+select pg_temp.s12ls_staterow('st1', '/hero', 'retired');
+select pg_temp.s12ls_staterow('st2', '/hero', 'draft');
+select pg_temp.s12ls_staterow('st3', '/hero', 'superseded');
+select * from pg_temp.s12pu_place('iv1', 'la1');
+select pg_temp.s12pl_review('iv1', timestamptz '2026-10-08T12:01:00Z') as iv1_newer \gset
+select platform_private.cms_invalidate_editorial_review(jsonb_build_object('reviewId', :'iv1_newer'::uuid,
+  'reasonCode', 'revision_superseded', 'correlationId', 'a9120000-0000-4000-8000-00000000c0c0'));
+select pg_temp.s12pl_review('iv1', timestamptz '2026-10-08T12:00:00Z') as iv1_older \gset
+select is(platform_private.cms_revision_effective_state(pg_temp.s12pl_rev('iv1')), 'draft',
+  'setup: the latest review of iv1 is invalidated, so the revision is effective draft with an older review still open');
+select * from pg_temp.s12pu_place('ob1', 'lb1');
+
+-- v2: compatible with type 1 only; then the placement whose pin already equals it ----------------------------------------------------
+select * from pg_temp.s12pl_pattern('la2', 'ls-a', jsonb_build_array(
+  pg_temp.s12pd_block('hero', '[]'::jsonb, '{"title":"H2"}'::jsonb), pg_temp.s12pd_block('cta', '[]'::jsonb, '{"title":"C2"}'::jsonb)),
+  jsonb_build_array((select id from s12pd_types where ordinal = 1)), true, '1');
+select * from pg_temp.s12pu_place('same1', 'la2');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('la2')->>'id')::uuid), 'active',
+  'setup: ls-a v2 is the real active version');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('la1')->>'id')::uuid), 'superseded',
+  'setup: ls-a v1 is superseded by the activation of v2');
+select is(pg_temp.s12ls_heads('lk1'), '/cta=active:v1:p1:q- /hero=active:v1:p1:q- /standalone=active:v1:p-:q-',
+  'setup: lk1 holds two real linked rows pinned to v1 and one standalone block row');
+
+-- Targets that are no longer active, WITH candidates (review V6-02): a scan of a superseded or a retired version must append nothing although a
+-- linked, older-pinned, compatible draft instance exists, so the no-op can only come from the target's state.
+--   ls-s  v1 placed on sg1, then v2 and v3 activated: v2 is superseded     ls-r  v1 placed on rt1, then v2 activated and later retired
+select * from pg_temp.s12pl_pattern('ls1', 'ls-s', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"S1"}'::jsonb)));
+select * from pg_temp.s12pu_place('sg1', 'ls1');
+select * from pg_temp.s12pl_pattern('ls2', 'ls-s', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"S2"}'::jsonb)), null, true, '1');
+select * from pg_temp.s12pl_pattern('ls3', 'ls-s', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"S3"}'::jsonb)), null, true, '2');
+select * from pg_temp.s12pl_pattern('lr1', 'ls-r', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"R1"}'::jsonb)));
+select * from pg_temp.s12pu_place('rt1', 'lr1');
+select * from pg_temp.s12pl_pattern('lr2', 'ls-r', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"R2"}'::jsonb)), null, true, '1');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('ls2')->>'id')::uuid), 'superseded',
+  'setup: ls-s v2 is superseded by the activation of v3');
+select is(pg_temp.s12ls_heads('sg1') || ' ' || pg_temp.s12ls_heads('rt1'), '/item=active:v1:p1:q- /item=active:v1:p1:q-',
+  'setup: sg1 and rt1 hold a linked draft instance pinned to v1 each, older than the v2 that a scan will name');

@@ -1,0 +1,245 @@
+-- Typed refusals of CMS-03C-02 (BE03c 375-378 validation, 1289 catalog, 1304 typed refusals, 1355 pinned
+-- definitions).  Every refusal is asserted by exact SQLSTATE and message token, the exact DETAIL where the
+-- transport reads it, and by NO effect on any store (full before/after images equal).  Each group uses its own
+-- entry so a refusal is never explained by an earlier placement.
+
+-- A container nest of n levels around a leaf (JSON depth counts containers only).
+create or replace function pg_temp.s12pl_nest(p_levels integer) returns jsonb language plpgsql immutable as $body$
+declare value jsonb := '1'::jsonb; n integer;
+begin
+  for n in 1..p_levels loop value := jsonb_build_object('k', value); end loop;
+  return value;
+end;
+$body$;
+-- A newer (or differently stated) revision of the same entry that becomes the entry's current draft pointer.
+create or replace function pg_temp.s12pl_extra_revision(p_tag text, p_new_tag text, p_number bigint, p_state text)
+returns uuid language plpgsql as $body$
+declare revision_uuid uuid := extensions.gen_random_uuid(); org uuid := pg_temp.s09d_id('ownerOrg');
+  stamp timestamptz := timestamptz '2026-10-08T12:00:00Z';
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id, template_version_id, taxonomy_version_ids,
+    parent_revision_ids, locale, payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at)
+  select revision_uuid, org, base.entry_id, p_number, base.schema_version_id, base.template_version_id, '[]'::jsonb,
+    jsonb_build_array(base.id), 'en-US', encode(extensions.digest(convert_to('s12pl:' || p_new_tag, 'utf8'), 'sha256'), 'hex'),
+    base.author_person_id, org, p_state, 1, 'valid', '{}'::jsonb, stamp, stamp
+  from platform_private.cms_entry_revisions base where base.id = pg_temp.s12pl_rev(p_tag);
+  update platform_private.cms_content_entries set current_draft_revision_id = revision_uuid
+   where id = pg_temp.s12pl_entry_id(p_tag);
+  insert into s12pl_ids(key, value) values (p_new_tag || ':revision', revision_uuid::text),
+    (p_new_tag || ':entry', pg_temp.s12pl_entry_id(p_tag)::text);
+  return revision_uuid;
+end;
+$body$;
+
+select pg_temp.s12pl_tentry('r1');
+-- ---------------------------------------------------------------------------- CAS and the request envelope --
+select * from pg_temp.s12pl_refused('stale', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb, 's12pl-stale-0001',
+  'linked', '99'), 'VERSION_MISMATCH', jsonb_build_object('expectedVersion', '99', 'currentVersion', '1'));
+select * from pg_temp.s12pl_refused('ifmatch-differs', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-ifm-0001') || jsonb_build_object('ifMatch', '2'), 'INVALID_REQUEST');
+select * from pg_temp.s12pl_refused('unknown-key', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-unk-0001') || jsonb_build_object('ownerId', 'forged'), 'INVALID_REQUEST');
+select * from pg_temp.s12pl_refused('missing-slot', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-mis-0001') - 'slotPath', 'INVALID_REQUEST');
+select * from pg_temp.s12pl_refused('bad-revision-id', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-brev-0001') || jsonb_build_object('revisionId', 'not-a-uuid'), 'INVALID_REQUEST');
+select * from pg_temp.s12pl_refused('short-idempotency', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-idem-0001') || jsonb_build_object('idempotencyKey', 'short'), 'INVALID_REQUEST');
+select * from pg_temp.s12pl_refused('version-zero', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-v0-0001') || jsonb_build_object('patternVersion', 0), 'VALIDATION_FAILED', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('version-fraction', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-v15-0001') || jsonb_build_object('patternVersion', 1.5), 'VALIDATION_FAILED', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('version-int32', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-vmax-0001') || jsonb_build_object('patternVersion', 2147483648), 'VALIDATION_FAILED', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('link-mode', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-lm-0001', 'implicit'), 'VALIDATION_FAILED', '["/linkMode"]'::jsonb);
+select pg_temp.s12pl_refused('slot-' || n, pg_temp.s12pl_request('r1', 'pa', slot, '{}'::jsonb, 's12pl-slot-' || n),
+  'VALIDATION_FAILED', '["/slotPath"]'::jsonb)
+from (values (1, 'header/0'), (2, '/a//b'), (3, '/a/'), (4, '/a/./b'), (5, '/a/../b'), (6, E'/a\nb'), (7, ''),
+  (8, '/' || repeat('x', 512)), (9, '/Main'), (10, '/m')) slots(n, slot);
+select * from pg_temp.s12pl_refused('digest-malformed', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-dm-0001', 'linked', null, 'ABC'), 'VALIDATION_FAILED', '["/blockRegistryDigest"]'::jsonb);
+select * from pg_temp.s12pl_refused('digest-uppercase', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-du-0001', 'linked', null, upper(pg_temp.s12pd_expected_digest())), 'VALIDATION_FAILED',
+  '["/blockRegistryDigest"]'::jsonb);
+select * from pg_temp.s12pl_refused('overrides-grammar-1', pg_temp.s12pl_request('r1', 'pa', '/main',
+  jsonb_build_object('hero/title', 1), 's12pl-og1-0001'), 'VALIDATION_FAILED', '["/overrides"]'::jsonb);
+select * from pg_temp.s12pl_refused('overrides-grammar-2', pg_temp.s12pl_request('r1', 'pa', '/main',
+  jsonb_build_object('/Hero', 1), 's12pl-og2-0001'), 'VALIDATION_FAILED', '["/overrides"]'::jsonb);
+select * from pg_temp.s12pl_refused('overrides-not-object', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-ono-0001') || jsonb_build_object('overrides', jsonb_build_array(1)), 'VALIDATION_FAILED', '["/overrides"]'::jsonb);
+select * from pg_temp.s12pl_refused('overrides-depth', pg_temp.s12pl_request('r1', 'pa', '/main',
+  jsonb_build_object('/hero/title', pg_temp.s12pl_nest(8)), 's12pl-od-0001'), 'VALIDATION_FAILED', '["/overrides"]'::jsonb);
+-- ------------------------------------------------------------------------------------- concealment, authority --
+select * from pg_temp.s12pl_refused('hidden-owner', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-ho-0001', 'linked', null, null, 'other'), 'NOT_FOUND', null, 'other');
+select * from pg_temp.s12pl_refused('unknown-revision', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-ur-0001') || jsonb_build_object('revisionId', 'a9120000-0000-4000-8000-0000000000ff'), 'NOT_FOUND');
+select * from pg_temp.s12pl_refused('unknown-pattern', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-up-0001') || jsonb_build_object('patternId', 'a9120000-0000-4000-8000-0000000000fe'), 'NOT_FOUND');
+select * from pg_temp.s12pl_refused('visible-no-edit', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-ne-0001', 'linked', null, null, 'designer2'), 'capability_missing', null, 'designer2');
+select * from pg_temp.s12pl_refused('anonymous', pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-an-0001') || jsonb_build_object('context', '{}'::jsonb), 'UNAUTHENTICATED', null, 'anonymous');
+select pg_temp.s12pl_run('acl-' || role_name, pg_temp.s12pl_request('r1', 'pa', '/main', '{}'::jsonb,
+  's12pl-acl-' || role_name), 'owner', role_name) from unnest(array['anon', 'authenticated']) role_name;
+select is(pg_temp.s12pl_state('acl-' || role_name), '42501', role_name || ': the real database role cannot execute the transport [P2-S12-AC-261]')
+from unnest(array['anon', 'authenticated']) role_name;
+select ok((select before_rows = after_rows and call_role = requested_role from s12pl_out where label = 'acl-' || role_name),
+  role_name || ': the ACL probe really ran as that role and wrote nothing') from unnest(array['anon', 'authenticated']) role_name;
+
+-- Authority is re-proved on every call: a granted, assigned author succeeds, then loses the grant.
+select pg_temp.s12pl_tentry('rv', 'designer2');
+select pg_temp.s12pl_run('rv-before', pg_temp.s12pl_request('rv', 'pa', '/main', '{}'::jsonb, 's12pl-rv-0001',
+  'linked', null, null, 'designer2'), 'designer2');
+select is(pg_temp.s12pl_state('rv-before'), '00000', 'control: the assigned, granted second author can place');
+select is(pg_temp.s09d_revoke_via_rpc('designer2', 'cms.author'), 'OK', 'setup: the real revoke command ends the author grant');
+select * from pg_temp.s12pl_refused('rv-after', pg_temp.s12pl_request('rv', 'pa', '/main/second', '{}'::jsonb, 's12pl-rv-0002',
+  'linked', null, null, 'designer2'), 'capability_missing', null, 'designer2');
+
+-- ----------------------------------------------------------------------------------------- revision editability --
+select pg_temp.s12pl_tentry('ne1');
+select pg_temp.s12pl_extra_revision('ne1', 'ne1b', 2, 'draft');
+select * from pg_temp.s12pl_refused('old-revision', pg_temp.s12pl_request('ne1', 'pa', '/main', '{}'::jsonb, 's12pl-ne1-0001'),
+  'revision_not_editable');
+select pg_temp.s12pl_run('current-revision', pg_temp.s12pl_request('ne1b', 'pa', '/main', '{}'::jsonb, 's12pl-ne1b-0001'));
+select * from pg_temp.s12pl_check('current-revision', 'ne1b', 'pa', array['/main/hero', '/main/cta'], 0);
+select pg_temp.s12pl_tentry('ne2');
+select pg_temp.s12pl_review('ne2', timestamptz '2026-10-08T12:00:00Z');
+select is(platform_private.cms_revision_effective_state(pg_temp.s12pl_rev('ne2')), 'submitted', 'setup: an open review makes the current revision effective submitted');
+select * from pg_temp.s12pl_refused('submitted-revision', pg_temp.s12pl_request('ne2', 'pa', '/main', '{}'::jsonb, 's12pl-ne2-0001'),
+  'revision_not_editable');
+select pg_temp.s12pl_tentry('ne3');
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_entries set lifecycle = 'archived' where id = pg_temp.s12pl_entry_id('ne3');
+select * from pg_temp.s12pl_refused('archived-entry', pg_temp.s12pl_request('ne3', 'pa', '/main', '{}'::jsonb, 's12pl-ne3-0001'),
+  'revision_not_editable');
+
+-- ---------------------------------------------------------------------------- pinned pattern state and fit --
+select pg_temp.s12pl_tentry('ps');
+select * from pg_temp.s12pl_refused('draft-pattern', pg_temp.s12pl_request('ps', 'pd', '/main', '{}'::jsonb, 's12pl-pd-0001'),
+  'pattern_version_not_active', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('absent-version', pg_temp.s12pl_request('ps', 'pa', '/main', '{}'::jsonb, 's12pl-pv-0001')
+  || jsonb_build_object('patternVersion', 99), 'pattern_version_not_active', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('incompatible-type', pg_temp.s12pl_request('ps', 'pi', '/main', '{}'::jsonb, 's12pl-pi-0001'),
+  'pattern_incompatible', '["/patternId"]'::jsonb);
+select * from pg_temp.s12pl_refused('digest-mismatch', pg_temp.s12pl_request('ps', 'pa', '/main', '{}'::jsonb, 's12pl-dx-0001',
+  'linked', null, repeat('f', 64)), 'block_registry_digest_mismatch', '["/blockRegistryDigest"]'::jsonb);
+
+-- ------------------------------------------------------------------------ override keys name pinned-tree nodes --
+select pg_temp.s12pl_tentry('ov');
+select * from pg_temp.s12pl_refused('override-ghost', pg_temp.s12pl_request('ov', 'pn', '/main',
+  jsonb_build_object('/ghost', 1), 's12pl-og-0001'), 'VALIDATION_FAILED', '["/overrides"]'::jsonb);
+select * from pg_temp.s12pl_refused('override-at-reference', pg_temp.s12pl_request('ov', 'pn', '/main',
+  jsonb_build_object('/shared', 1), 's12pl-or-0001'), 'VALIDATION_FAILED', '["/overrides"]'::jsonb);
+select * from pg_temp.s12pl_refused('override-missing-child', pg_temp.s12pl_request('ov', 'pn', '/main',
+  jsonb_build_object('/intro/missing', 1), 's12pl-om-0001'), 'VALIDATION_FAILED', '["/overrides"]'::jsonb);
+select * from pg_temp.s12pl_refused('override-without-chain', pg_temp.s12pl_request('ov', 'pn', '/main',
+  jsonb_build_object('/a/title', 1), 's12pl-oc-0001'), 'VALIDATION_FAILED', '["/overrides"]'::jsonb);
+select pg_temp.s12pl_tentry('ov2');
+select pg_temp.s12pl_run('override-depth-ok', pg_temp.s12pl_request('ov2', 'pa', '/main',
+  jsonb_build_object('/hero/title', pg_temp.s12pl_nest(7)), 's12pl-odok-0001'));
+select * from pg_temp.s12pl_check('override-depth-ok', 'ov2', 'pa', array['/main/hero', '/main/cta'], 0);
+
+-- ----------------------------------------------------------- row path bound: 248 octets (DEC-186) -------------
+-- A template slot is flat and exact (BE03c 1511: the slotPath must exist in the revision's template; slot key grammar
+-- `^[a-z][a-z0-9_-]{1,63}$`, template.ts:25; DEC-193 slot binding), so the slot path `/main` is 5 octets and a row path
+-- reaches the 248-octet bound only through the key chain of nested pattern references (DEC-181, DEC-186):
+-- `/main` + `/k1` + `/k2` + `/k3` + `/k4`, three 60-character reference keys and a leaf root key.
+-- 5 + 3 * (1 + 60) + (1 + 59) = 248 octets accepted; a 60-character leaf key makes 249 octets, refused at /slotPath.
+-- The key grammar is ASCII, so no row path can hold a multi-byte character and octets equal characters: the two former
+-- multi-byte controls (a nested `/main/ééé...` slotPath) were slot paths that no longer exist and are replaced by the
+-- exact-slot refusal below.
+create or replace function pg_temp.s12pl_chain(p_label text, p_keys text[]) returns setof text language plpgsql as $body$
+declare n integer := cardinality(p_keys); i integer;
+begin
+  return query select * from pg_temp.s12pl_pattern(p_label || '-' || n, 's12pl-' || p_label || '-' || n,
+    jsonb_build_array(pg_temp.s12pd_block(p_keys[n])));
+  for i in reverse n - 1 .. 1 loop
+    return query select * from pg_temp.s12pl_pattern(p_label || '-' || i, 's12pl-' || p_label || '-' || i,
+      jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', p_keys[i],
+        'patternId', pg_temp.s12pd_body(p_label || '-' || (i + 1))->'patternId',
+        'patternVersion', pg_temp.s12pd_body(p_label || '-' || (i + 1))->'patternVersion')));
+  end loop;
+end;
+$body$;
+select * from pg_temp.s12pl_chain('ch248', array['a' || repeat('x', 59), 'b' || repeat('x', 59), 'c' || repeat('x', 59),
+  'd' || repeat('x', 58)]);
+select * from pg_temp.s12pl_chain('ch249', array['a' || repeat('x', 59), 'b' || repeat('x', 59), 'c' || repeat('x', 59),
+  'd' || repeat('x', 59)]);
+select pg_temp.s12pl_tentry('len1');
+select pg_temp.s12pl_run('path-248', pg_temp.s12pl_request('len1', 'ch248-1', '/main', '{}'::jsonb, 's12pl-l248-0001'));
+select * from pg_temp.s12pl_check('path-248', 'len1', 'ch248-1', array['/main/a' || repeat('x', 59) || '/b' || repeat('x', 59)
+  || '/c' || repeat('x', 59) || '/d' || repeat('x', 58)], 0);
+select is((select max(octet_length(path)) from platform_private.cms_composition_instances
+  where revision_id = pg_temp.s12pl_rev('len1')), 248, 'the longest accepted row path is exactly 248 octets [DEC-186]');
+select pg_temp.s12pl_tentry('len2');
+select * from pg_temp.s12pl_refused('path-249', pg_temp.s12pl_request('len2', 'ch249-1', '/main', '{}'::jsonb,
+  's12pl-l249-0001'), 'VALIDATION_FAILED', '["/slotPath"]'::jsonb);
+select is((select count(*)::integer from platform_private.cms_composition_instances
+  where revision_id = pg_temp.s12pl_rev('len2')), 0, 'the 249-octet placement wrote nothing [DEC-186]');
+select pg_temp.s12pl_tentry('len3');
+select * from pg_temp.s12pl_refused('multibyte-nested-slot', pg_temp.s12pl_request('len3', 'pa', '/main/' || repeat('é', 119),
+  '{}'::jsonb, 's12pl-l249b-0001'), 'VALIDATION_FAILED', '["/slotPath"]'::jsonb);
+-- R1-009: octets, not characters (DEC-186). No producer can place a multi-byte slot (slot and node keys are ASCII), so the
+-- bound is pinned on the private plan helper directly, as the test owner, with no insert and no trigger change.
+-- '/main/' (6) + 119 two-octet characters (238) + the selected root '/cta' (4) = exactly 248 octets: accepted.
+-- 120 characters make 250 octets and are refused at /slotPath; a char_length regression would count 130 and accept them.
+select is((select jsonb_array_length(platform_private.cms_pattern_placement_selected_plan(
+    pg_temp.s09d_id('ownerOrg'), v, '/main/' || repeat('é', 119), '{}'::jsonb, '["/cta"]'::jsonb))
+  from platform_private.cms_pattern_versions v
+  where v.pattern_id = (pg_temp.s12pd_body('pa')->>'patternId')::uuid
+    and v.version = (pg_temp.s12pd_body('pa')->>'patternVersion')::integer),
+  1, 'R1-009: a 248-octet row path built from 119 two-octet characters is accepted by the plan helper');
+select is((select octet_length('/main/' || repeat('é', 119) || '/cta')), 248, 'R1-009 premise: that path is exactly 248 octets');
+select throws_ok(format($sql$
+    select platform_private.cms_pattern_placement_selected_plan(%L::uuid, v, %L, '{}'::jsonb, '["/cta"]'::jsonb)
+      from platform_private.cms_pattern_versions v
+     where v.pattern_id = %L::uuid and v.version = %s$sql$,
+    pg_temp.s09d_id('ownerOrg'), '/main/' || repeat('é', 120),
+    pg_temp.s12pd_body('pa')->>'patternId', pg_temp.s12pd_body('pa')->>'patternVersion'),
+  'P0001', 'VALIDATION_FAILED', 'R1-009: 120 two-octet characters make 250 octets and are refused (octet_length, not char_length)');
+
+-- ------------------------------------------------------------------ slotPath against the entry's template ----
+-- BE03c 1365 / P2-S12-AC-218 (root ruling, strict reading): the slotPath must exist in the revision's template, or be
+-- a root path when the entry has no template.  An entry with NO template accepts only `/`; an entry WITH a template
+-- must name one of the template's slots and `/` is refused there, even when a template slot is literally named root.
+select pg_temp.s12pl_tentry('tp');
+select * from pg_temp.s12pl_refused('slot-not-in-template', pg_temp.s12pl_request('tp', 'pa', '/nope', '{}'::jsonb, 's12pl-tp1-0001'),
+  'VALIDATION_FAILED', '["/slotPath"]'::jsonb);
+select * from pg_temp.s12pl_refused('root-with-template', pg_temp.s12pl_request('tp', 'pa', '/', '{}'::jsonb, 's12pl-tp2-0001'),
+  'VALIDATION_FAILED', '["/slotPath"]'::jsonb);
+select pg_temp.s12pl_run('slot-in-template', pg_temp.s12pl_request('tp', 'pa', '/main', '{}'::jsonb, 's12pl-tp3-0001'));
+select * from pg_temp.s12pl_check('slot-in-template', 'tp', 'pa', array['/main/hero', '/main/cta'], 0);
+
+select pg_temp.s12pl_entry('nt');
+select pg_temp.s12pl_refused('no-template-slot-' || n, pg_temp.s12pl_request('nt', 'pa', slot, '{}'::jsonb, 's12pl-nt-' || n),
+  'VALIDATION_FAILED', '["/slotPath"]'::jsonb)
+from (values (1, '/main'), (2, '/main/more'), (3, '/side'), (4, '/fresh/deep/er'), (5, '/root'), (6, '/root/x')) slots(n, slot);
+select pg_temp.s12pl_run('no-template-root', pg_temp.s12pl_request('nt', 'pa', '/', '{}'::jsonb, 's12pl-nt-root'));
+select * from pg_temp.s12pl_check('no-template-root', 'nt', 'pa', array['/hero', '/cta'], 0);
+
+select pg_temp.s12pl_tentry('tr', 'owner', 's12pl-template-root');
+select * from pg_temp.s12pl_refused('root-path-with-root-slot', pg_temp.s12pl_request('tr', 'pa', '/', '{}'::jsonb, 's12pl-tr-0001'),
+  'VALIDATION_FAILED', '["/slotPath"]'::jsonb);
+select * from pg_temp.s12pl_refused('main-not-in-root-template', pg_temp.s12pl_request('tr', 'pa', '/main', '{}'::jsonb, 's12pl-tr-0002'),
+  'VALIDATION_FAILED', '["/slotPath"]'::jsonb);
+select pg_temp.s12pl_run('root-slot-by-name', pg_temp.s12pl_request('tr', 'pa', '/root', '{}'::jsonb, 's12pl-tr-0003'));
+select * from pg_temp.s12pl_check('root-slot-by-name', 'tr', 'pa', array['/root/hero', '/root/cta'], 0);
+select is((select array_agg(path order by position) from platform_private.cms_composition_instances
+  where revision_id = pg_temp.s12pl_rev('tr')), array['/root/hero', '/root/cta'],
+  'the templated entry holds only the rows its named slot root produced: the path / never shares that slot [F6]');
+
+-- ------------------------------------------------------ path uniqueness and all-or-nothing --------------------
+select pg_temp.s12pl_tentry('cl');
+select pg_temp.s12pl_run('cl-first', pg_temp.s12pl_request('cl', 'pa', '/main', '{}'::jsonb, 's12pl-cl1-0001'));
+select is(pg_temp.s12pl_state('cl-first'), '00000', 'control: the first placement into main succeeds');
+select * from pg_temp.s12pl_refused('cl-second', pg_temp.s12pl_request('cl', 'pa', '/main', '{}'::jsonb, 's12pl-cl2-0001'), 'CONFLICT');
+select pg_temp.s12pl_tentry('at');
+select pg_temp.s12pl_row('at', '/main/tail', 'main', 3);
+select * from pg_temp.s12pl_refused('collide-on-last-root', pg_temp.s12pl_request('at', 'pn', '/main', '{}'::jsonb, 's12pl-at-0001'), 'CONFLICT');
+select is((select count(*)::integer from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('at')), 1,
+  'the placement whose LAST root collides wrote none of its five rows: all-or-nothing [P2-S12-AC-218]');

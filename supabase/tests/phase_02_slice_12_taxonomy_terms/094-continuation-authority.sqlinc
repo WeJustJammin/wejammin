@@ -1,0 +1,61 @@
+-- The continuation handler re-proves the job actor's curator capability under the position 1 locks (BE03c 1354 rule 1: "A writer takes its
+-- positions before it reads what it will write and re-proves its capability under the position 1 locks. A revocation committed first wins: the
+-- writer is refused 403 with the operation's catalog code and writes no row"; 1351 lists cms.taxonomy.merge_converge at positions 1, 3 and 6).
+-- The catalog code of CMS-03C-03 for a missing capability is `capability_missing` (050-authority).  What the refusal leaves behind: nothing is
+-- written (no assignment row, no job row, no outbox event, no audit record); the unconverged assignments stay current active rows of a MERGED
+-- term, which BE03c 1377 resolves permanently to its survivor ("the retired id resolves permanently to the survivor throughout"), and the next
+-- run under a holder of the capability converges them (the handler converges the whole acting party's merged terms).  [P2-S12-AC-018, AC-021]
+select pg_temp.s12tt_act('p-create-1', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'jp-retire');
+select pg_temp.s12tt_act('p-create-2', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'jp-survivor');
+select pg_temp.s12tt_act('p-merge', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'jp-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jp-survivor')));
+select is(pg_temp.s12tt_oc('p-merge'), 'ok', 'fixture: the retired term is merged while it holds no assignment');
+select pg_temp.s12tt_seed_revision('rp1');
+select pg_temp.s12tt_seed_revision('rp2');
+select pg_temp.s12tt_seed_revision('rp3');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('rp1'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jp-retire'), 1, 'active', 0);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('rp2'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jp-retire'), 1, 'active', 0);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('rp3'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jp-retire'), 1, 'active', 0);
+create temp table s12tt_auth_job on commit drop as
+select (select set_config('app.cms_rpc', 'true', true)) flag,
+       (platform_private.cms_request_taxonomy_merge_converge(pg_temp.s12ga_auth('owner'), pg_temp.s09d_id('ownerOrg'),
+          pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jp-retire'), 'a9186000-0000-4000-8000-0000000000d4')->>'jobId')::uuid job_id;
+select pg_temp.s12tt_claim('p-lease', (select job_id from s12tt_auth_job), 1);
+
+create temp table s12tt_auth_grant on commit drop as
+select * from identity_private.organization_actor_grant
+ where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s12ga_person('owner') and capability_code = 'cms.taxonomy_curator';
+select is((select count(*)::integer from s12tt_auth_grant), 1, 'fixture: the job actor holds exactly one curator grant');
+
+-- revoked: the grant is deactivated after the merge committed and the job was claimed
+update identity_private.organization_actor_grant set active = false
+ where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s12ga_person('owner') and capability_code = 'cms.taxonomy_curator';
+select pg_temp.s12tt_mark('before-revoked-run');
+select pg_temp.s12tt_run('p-revoked', pg_temp.s12tt_claimed('p-lease'));
+select is(pg_temp.s12tt_rout('p-revoked'), 'P0001:capability_missing',
+  'a job whose actor lost the curator capability is refused with the operation''s catalog code capability_missing [P2-S12-AC-018]');
+select ok(pg_temp.s12tt_same('before-revoked-run'),
+  'and the refusal wrote no assignment, job, audit or outbox row (BE03c 1354 rule 1: the writer writes no row) [P2-S12-AC-018]');
+select is(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')), 3,
+  'the tail stays what it was: three current active assignments of a merged term, none half-converged [P2-S12-AC-021]');
+select is((select term.lifecycle || ':' || (term.successor_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jp-survivor'))::text
+             from platform_private.cms_terms term where term.id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jp-retire')), 'merged:true',
+  'and the retired id still resolves to its survivor, so a stranded tail is never a wrong answer (BE03c 1377) [P2-S12-AC-003]');
+
+-- lapsed window (valid_through in the past) is the same refusal
+update identity_private.organization_actor_grant g set active = original.active, valid_from = current_date - 2, valid_through = current_date - 1
+  from s12tt_auth_grant original
+ where g.organization_id = original.organization_id and g.person_id = original.person_id and g.capability_code = original.capability_code;
+select pg_temp.s12tt_run('p-lapsed', pg_temp.s12tt_claimed('p-lease'));
+select is(pg_temp.s12tt_rout('p-lapsed'), 'P0001:capability_missing', 'a grant whose window ended yesterday is not authority for the continuation either [P2-S12-AC-018]');
+select ok(pg_temp.s12tt_same('before-revoked-run'), 'and it wrote nothing [P2-S12-AC-018]');
+
+-- restored: the same lease, a holder of the capability, converges the tail
+update identity_private.organization_actor_grant g set active = original.active, valid_from = original.valid_from, valid_through = original.valid_through
+  from s12tt_auth_grant original
+ where g.organization_id = original.organization_id and g.person_id = original.person_id and g.capability_code = original.capability_code;
+select ok(platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('owner'), 'cms.taxonomy_curator'),
+  'SETUP the original curator authority is restored');
+select pg_temp.s12tt_run('p-restored', pg_temp.s12tt_claimed('p-lease'));
+select is(pg_temp.s12tt_rout('p-restored'), 'ok:{"converged": 3, "remaining": 0, "continuationJobId": null}',
+  'once a holder of the capability runs the job the whole tail converges: a lost authority delays the tail, it does not lose it [P2-S12-AC-021]');

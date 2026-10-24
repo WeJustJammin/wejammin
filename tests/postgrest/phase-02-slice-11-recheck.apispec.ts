@@ -39,6 +39,7 @@ import {
 import {
   deadLetters,
   editedSourceFixture,
+  localeAggregateId,
   localeVariantFixture,
   outboxDisposition,
   seedPoisonHistory,
@@ -474,8 +475,9 @@ describe('[P2-S11-AC-113] the localization recheck through the real relay, consu
       eventType: 'cms.localization.changed.v1',
       schemaVersion: 1,
       producer: 'cms.composition',
-      aggregateType: 'cms_content_entry',
-      aggregateId: entryId,
+      // Root ruling 1: the locale aggregate (entry, locale), not the content entry (BE03c D12).
+      aggregateType: 'cms_locale_variant',
+      aggregateId: localeAggregateId(entryId, 'fr-FR'),
       correlationId: localizationCorrelationId,
     });
     expect(Object.keys(localizationEnvelope)).not.toContain('payload');

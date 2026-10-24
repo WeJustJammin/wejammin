@@ -1,0 +1,34 @@
+-- Identity of the patched producer: only the digest-mismatch statement differs from the applied body of
+-- 20261013100200_cms_define_template_per_owner.sql, and no pg_proc attribute moved.
+-- The md5 below is the md5 of that applied body (the text between its $body$ markers), computed by script.
+select is(
+  (select pg_catalog.length(proc.prosrc) - pg_catalog.length(pg_catalog.replace(proc.prosrc,
+     $n$    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$n$, ''))
+     from pg_catalog.pg_proc proc where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure),
+  pg_catalog.length($n$    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$n$),
+  'the producer raises the typed digest token exactly once, with DETAIL ["/blockRegistryDigest"] [BE03c 1273]');
+select is(
+  (select pg_catalog.md5(pg_catalog.replace(proc.prosrc,
+     $n$    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$n$,
+     $o$    raise exception 'CONFLICT' using errcode = 'P0001';$o$))
+     from pg_catalog.pg_proc proc where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure),
+  'd08ff99c25e9eb76719eb7ebe0f3ca98',
+  'with the one statement reversed, the producer body is byte-identical to the applied 20261013100200 body');
+select is(
+  (select pg_catalog.jsonb_build_object('lang', lang.lanname, 'secdef', proc.prosecdef, 'volatile', proc.provolatile,
+            'config', proc.proconfig, 'owner', pg_catalog.pg_get_userbyid(proc.proowner), 'returns', proc.prorettype::regtype::text,
+            'args', pg_catalog.oidvectortypes(proc.proargtypes), 'parallel', proc.proparallel, 'leakproof', proc.proleakproof,
+            'strict', proc.proisstrict, 'rows', proc.prorows, 'cost', proc.procost)
+     from pg_catalog.pg_proc proc join pg_catalog.pg_language lang on lang.oid = proc.prolang
+    where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure),
+  '{"lang":"plpgsql","secdef":true,"volatile":"v","config":["search_path=\"\""],"owner":"wejammin_cms_definer","returns":"jsonb","args":"jsonb","parallel":"u","leakproof":false,"strict":false,"rows":0,"cost":100}'::jsonb,
+  'the producer keeps language, SECURITY DEFINER, volatility, empty search_path, owner and signature');
+select ok(
+  (select bool_and(not pg_catalog.has_function_privilege(role_name, 'platform_private.cms_define_template(jsonb)'::regprocedure, 'EXECUTE'))
+     from (values ('public'::name), ('anon'::name), ('authenticated'::name), ('service_role'::name)) roles(role_name)),
+  'the private producer stays inaccessible to every API role');
+select ok(
+  pg_catalog.has_function_privilege('service_role', 'platform_api.cms_define_template(jsonb)'::regprocedure, 'EXECUTE')
+  and not pg_catalog.has_function_privilege('anon', 'platform_api.cms_define_template(jsonb)'::regprocedure, 'EXECUTE')
+  and not pg_catalog.has_function_privilege('authenticated', 'platform_api.cms_define_template(jsonb)'::regprocedure, 'EXECUTE'),
+  'the public wrapper is untouched: service_role only');

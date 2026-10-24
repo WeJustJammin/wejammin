@@ -1,0 +1,227 @@
+-- R11 / S16 / B9. Legal public producers only; no history UPDATE or fake approval.
+insert into s12edp_saved select 'R-original', jsonb_build_object('request', request, 'response', response,
+  'receipt', pg_temp.s12edp_receipt(request), 'template', pg_temp.s12gb_subj('edt-template'),
+  'review', pg_temp.s12gb_rev('edt-template'), 'image', pg_temp.s12edp_image())
+from s12edt_out where label = 'edt-bound';
+select pg_temp.s12edp_step('R-retire', $step$
+  select pg_temp.s12gb_act('edp-retire', 'owner', pg_temp.s12ga_review('edt-template'), 'retire')
+$step$);
+select ok(pg_temp.s12ga_out('edp-retire') = 'ok'
+  and pg_temp.s12ga_body('edp-retire')->>'action' = 'retire'
+  and pg_temp.s12ga_body('edp-retire')->>'subjectState' = 'retired'
+  and (select state = 'retired' and version = 1 and lifecycle_version = 5 and retired_at is not null
+    and content_hash::text = (select value#>>'{template,content_hash}' from s12edp_saved where key = 'R-original')
+    from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('edt-template'))
+  and (select version = 4 and state = 'approved' from platform_private.cms_governed_reviews
+    where id = pg_temp.s12ga_review('edt-template'))
+  and (select count(*) = 1 and bool_and(a->>'action' = 'cms.governed.retire'
+    and a->>'actor_id' = pg_temp.s09d_actor_id('owner','auth')
+    and a->>'acting_party_id' = pg_temp.s09d_id('ownerOrg')::text
+    and a->>'target_type' = 'cms_template_version' and a->>'decision' = 'allowed'
+    and a->>'reason_code' = 'CMS_GOVERNED_RETIRED'
+    and a->>'target_id' = pg_temp.s12ga_subject('edt-template')::text)
+    from jsonb_array_elements(pg_temp.s12edp_added((select value->'image' from s12edp_saved where key = 'R-original'),
+      pg_temp.s12edp_image(), 'audit_private.audit_events')) a)
+  and (select count(*) = 1 and bool_and(e->>'event_type' = 'cms.template.activated.v1'
+    and e->>'schema_version' = '1' and e->>'aggregate_type' = 'cms_template_version'
+    and e->>'aggregate_id' = pg_temp.s12ga_subject('edt-template')::text and e->>'aggregate_version' = '5'
+    and e->>'correlation_id' = (select min(a->>'correlation_id') from jsonb_array_elements(pg_temp.s12edp_added(
+      (select value->'image' from s12edp_saved where key = 'R-original'),pg_temp.s12edp_image(),'audit_private.audit_events')) a)
+    and e->'payload' = jsonb_build_object('templateId', pg_temp.s12ga_subject('edt-template'),
+      'templateVersionId', pg_temp.s12ga_subject('edt-template')))
+    from jsonb_array_elements(pg_temp.s12edp_added((select value->'image' from s12edp_saved where key = 'R-original'),
+      pg_temp.s12edp_image(), 'platform_private.outbox_events')) e),
+  'EDP-R01: actual ACTIVE-only retirement advances lifecycle/review and emits its exact audit/event');
+select ok((select v.state = 'active' and v.default_template_version_id = pg_temp.s12ga_subject('edt-template')
+  and a.state = 'compiled' and a.artifact_hash = v.definition_hash
+  from platform_private.cms_content_type_versions v join platform_private.cms_schema_artifacts a on a.id = v.schema_artifact_id
+  where v.id = pg_temp.s09d_id('edt-bound:version'))
+  and exists (select 1 from platform_private.cms_capability_grants g where g.owner_id = pg_temp.s09d_id('ownerOrg')
+    and g.subject_person_ref = pg_temp.s09d_actor_id('owner','person')::uuid and g.capability_code = 'cms.author'
+    and g.state = 'active' and g.valid_from <= current_date and g.valid_through >= current_date)
+  and exists (select 1 from identity_private.organization_actor_grant g where g.organization_id = pg_temp.s09d_id('ownerOrg')
+    and g.person_id = pg_temp.s09d_actor_id('owner','person')::uuid and g.capability_code = 'cms.author'
+    and g.active and g.valid_from <= current_date and (g.valid_through is null or g.valid_through >= current_date))
+  and exists (select 1 from platform_private.acting_context_binding b
+    where b.id = pg_temp.s09d_actor_id('owner','binding')::uuid and b.state = 'active' and b.expires_at > clock_timestamp()
+      and b.person_id = pg_temp.s09d_actor_id('owner','person')::uuid and b.acting_party_id = pg_temp.s09d_id('ownerOrg')),
+  'EDP-R02: withdrawal changes no active schema/default and the original real caller remains authorized');
+select pg_temp.s12edp_call('edp-retired', pg_temp.s12edp_request('edt-bound','RETIRED FRESH','s12edp-retired-fresh'));
+select is((select code || ':' || coalesce(message,'') from s12edp_calls where label = 'edp-retired'), 'P0001:CONFLICT',
+  'EDP-R03: a fresh request against an actually retired default is the existing CONFLICT');
+select ok((select coalesce(detail,'') = '' and response is null and coalesce(headers,'') = ''
+  and call_role = 'service_role' and restored from s12edp_calls where label = 'edp-retired'),
+  'EDP-R04: retired refusal has no detail/resource/replay header and restores its actual SQL context');
+select ok((select before_image = after_image from s12edp_calls where label = 'edp-retired'),
+  'EDP-R05: fresh retired refusal preserves every frozen-inventory row after retirement');
+select pg_temp.s12edp_call('edp-retired-replay', (select value->'request' from s12edp_saved where key = 'R-original'));
+select ok((select code = '00000' and call_role = 'service_role' and restored from s12edp_calls where label = 'edp-retired-replay'),
+  'EDP-R06: the exact completed request still succeeds through the real public RPC after withdrawal');
+select ok((select response = (select value->'response' from s12edp_saved where key = 'R-original')
+  and case when headers like '[%' then headers::jsonb else 'null'::jsonb end = '[{"x-cms-idempotent-replay":"true"}]'::jsonb
+  from s12edp_calls where label = 'edp-retired-replay'),
+  'EDP-R07: replay returns the identical canonical resource and the exact existing replay header');
+select is(pg_temp.s12edp_receipt((select value->'request' from s12edp_saved where key = 'R-original')),
+  (select value->'receipt' from s12edp_saved where key = 'R-original'), 'EDP-R08: completed receipt full row remains identical');
+select ok((select before_image = after_image from s12edp_calls where label = 'edp-retired-replay'),
+  'EDP-R09: replay leaves all history, timestamps, evidence/refcounts, audit/outbox and reservations identical');
+select pg_temp.s12edp_call('edp-mismatch', (select jsonb_set(value->'request','{values}',
+  (select jsonb_object_agg(k, to_jsonb('CHANGED PAYLOAD'::text)) from jsonb_object_keys(value#>'{request,values}') k))
+  from s12edp_saved where key = 'R-original'));
+select is((select code || ':' || coalesce(message,'') from s12edp_calls where label = 'edp-mismatch'), 'P0001:IDEMPOTENCY_MISMATCH',
+  'EDP-R10: changed business content gains no replay authority from the completed key');
+select ok((select before_image = after_image and response is null and restored from s12edp_calls where label = 'edp-mismatch')
+  and pg_temp.s12edp_receipt((select value->'request' from s12edp_saved where key = 'R-original')) =
+    (select value->'receipt' from s12edp_saved where key = 'R-original'),
+  'EDP-R11: fingerprint refusal neither changes the old receipt nor any persistent row');
+
+-- A new family avoids retiring a superseded subject or mutating the original EDT history.
+create function pg_temp.s12edp_mint(p_tag text, p_type uuid, p_key text, p_slots jsonb, p_version text default null)
+returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12ga_rpc('mint:' || p_tag, 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+    'templateKey',p_key,'compatibleTypeIds',jsonb_build_array(p_type),'slots',p_slots,
+    'reservedRegions','["header","now","record","detail","provenance"]'::jsonb,
+    'bindings','{}'::jsonb,'locale','en-US','audience','public','expectedVersion',p_version,
+    'idempotencyKey','s12edp-mint-' || p_tag) || case when p_version is null then '{}'::jsonb
+      else jsonb_build_object('ifMatch',p_version) end);
+  insert into s12gov_ids values (p_tag || ':subject', pg_temp.s12ga_body('mint:' || p_tag)->>'id');
+  perform pg_temp.s12ga_submit(p_tag,'owner'); perform pg_temp.s12gb_approve(p_tag);
+end;
+$body$;
+insert into s12edp_saved values ('S-before', pg_temp.s12edp_image());
+select pg_temp.s12edp_step('S-base', $step$
+  select pg_temp.s09d_create_type('edp-sbase','s12edpsuperseded'); select pg_temp.s09d_to_active('edp-sbase',array['rev3']);
+  select pg_temp.s12edp_mint('edp-st1', pg_temp.s09d_id('edp-sbase:type'), 's12edp-s-template',
+    '[{"key":"main","required":false,"allowedBlocks":[],"maxCount":7}]'::jsonb);
+  select pg_temp.s12gb_act('edp-st1-activate','owner',pg_temp.s12ga_review('edp-st1'));
+  select pg_temp.s09d_successor('edp-sbound','edp-sbase',p_default_template=>pg_temp.s12ga_subject('edp-st1'),p_bindings=>'[]'::jsonb);
+  select pg_temp.s09d_to_active('edp-sbound',array['rev3']);
+$step$);
+select pg_temp.s12edp_step('S-supersede', $step$
+  select pg_temp.s12edp_mint('edp-st2', pg_temp.s09d_id('edp-sbase:type'), 's12edp-s-template',
+    '[{"key":"other","required":false,"allowedBlocks":[],"maxCount":2}]'::jsonb, '1');
+  select pg_temp.s12gb_act('edp-st2-activate','owner',pg_temp.s12ga_review('edp-st2'));
+$step$);
+select ok(pg_temp.s12edp_schema_chain('edp-sbase',true) and pg_temp.s12edp_schema_chain('edp-sbound',false)
+  and pg_temp.s12edp_template_chain('edp-st1',true) and pg_temp.s12edp_template_chain('edp-st2',true)
+  and (select count(*) = 2 and bool_and(code = '00000') from s12edp_setup where label in ('S-base','S-supersede')),
+  'EDP-S01: every real schema/worker/review and both governed template producer chains succeeds');
+select ok((select old.state = 'superseded' and old.version = 1 and old.lifecycle_version = 5
+  and newer.state = 'active' and newer.version = 2 and newer.lifecycle_version = 4
+  and newer.template_id = old.template_id and newer.supersedes_id = old.id
+  and old.slots = '[{"key":"main","required":false,"allowedBlocks":[],"maxCount":7}]'::jsonb
+  and newer.slots = '[{"key":"other","required":false,"allowedBlocks":[],"maxCount":2}]'::jsonb
+  from platform_private.cms_template_versions old join platform_private.cms_template_versions newer
+    on newer.id = pg_temp.s12ga_subject('edp-st2') where old.id = pg_temp.s12ga_subject('edp-st1')),
+  'EDP-S02: real same-key S2 activation supersedes S1; definition IDs and literal slot trees remain distinct');
+select ok((select v.state = 'active' and v.default_template_version_id = pg_temp.s12ga_subject('edp-st1')
+  and v.owner_id = pg_temp.s09d_id('ownerOrg') and a.state = 'compiled' and a.artifact_hash = v.definition_hash
+  from platform_private.cms_content_type_versions v join platform_private.cms_schema_artifacts a on a.id = v.schema_artifact_id
+  where v.id = pg_temp.s09d_id('edp-sbound:version'))
+  and (select state = 'completed' and source_count = 0 and target_count = 0 and row_error_count = 0
+    from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('edp-sbound:plan'))
+  and not exists (select 1 from jsonb_each((select value->'stores' from s12edp_saved where key = 'S-before')) prior
+    where not (pg_temp.s12edp_image()->'stores'->prior.key @> prior.value)),
+  'EDP-S03: actual zero-population C1 still defaults S1, and every original EDT persistent row survives unchanged');
+select pg_temp.s12edp_call('edp-sbound', pg_temp.s12edp_request('edp-sbound','SUPERSEDED FIRST','s12edp-superseded-create'));
+select * from pg_temp.s12edp_check_saved('edp-sbound','SUPERSEDED FIRST',pg_temp.s12ga_subject('edp-st1'),
+  '[{"key":"main","required":false,"allowedBlocks":[],"maxCount":7}]'::jsonb);
+select ok(pg_temp.s12edp_delta('edp-sbound'), 'EDP-S16: superseded-default success appends only one complete exact create/effects set');
+
+-- B is a legal scheduled-template/default combination, NOT a fabricated blocked row.
+select pg_temp.s12edp_step('B-base', $step$
+  select pg_temp.s09d_create_type('edp-bbase','s12edpblocked'); select pg_temp.s09d_to_active('edp-bbase',array['rev3']);
+  select pg_temp.s12edp_mint('edp-bt', pg_temp.s09d_id('edp-bbase:type'), 's12edp-b-template',
+    '[{"key":"main","required":false,"allowedBlocks":[],"maxCount":7}]'::jsonb);
+$step$);
+select ok(pg_temp.s12edp_schema_chain('edp-bbase',true)
+  and (select code = '00000' from s12edp_setup where label = 'B-base')
+  and not exists (select 1 from platform_private.cms_content_entries where content_type_id = pg_temp.s09d_id('edp-bbase:type')),
+  'EDP-B01: actual independent B0 is active through all ten producers with an empty migration population');
+select ok(pg_temp.s12edp_template_chain('edp-bt',false)
+  and (select state = 'approved' and version = 2 from platform_private.cms_governed_reviews where id = pg_temp.s12ga_review('edp-bt'))
+  and exists (select 1 from platform_private.cms_governed_review_dependencies where review_id = pg_temp.s12ga_review('edp-bt')
+    and kind = 'content_type' and ref_id = pg_temp.s09d_id('edp-bbase:version')),
+  'EDP-B02: real BT approval freezes the exact original active B0 dependency');
+select pg_temp.s12edp_step('B-schedule', $step$
+  insert into s12edp_saved values ('B-schedule-start', to_jsonb(clock_timestamp()));
+  select pg_temp.s12gb_act('edp-b-schedule','owner',pg_temp.s12ga_review('edp-bt'),'schedule',p_after=>interval '62 seconds');
+$step$);
+select ok(pg_temp.s12ga_out('edp-b-schedule') = 'ok'
+  and pg_temp.s12ga_body('edp-b-schedule')->>'subjectState' = 'scheduled'
+  and (select state = 'pending' and version = 1 and lease_id is null and expected_version = 2
+    and resolved_at_utc >= (select (value#>>'{}')::timestamptz from s12edp_saved where key = 'B-schedule-start') + interval '62 seconds'
+    from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('edp-bt'))
+  and (select state = 'scheduled' and lifecycle_version = 4 from platform_private.cms_template_versions
+    where id = pg_temp.s12ga_subject('edp-bt')),
+  'EDP-B03: the real public producer accepted a future pending schedule and moved BT to scheduled');
+select pg_temp.s12edp_step('B-bind', $step$
+  select pg_temp.s09d_successor('edp-bbound','edp-bbase',p_default_template=>pg_temp.s12ga_subject('edp-bt'),p_bindings=>'[]'::jsonb);
+  select pg_temp.s09d_to_active('edp-bbound',array['rev3']);
+$step$);
+select ok(pg_temp.s12edp_schema_chain('edp-bbound',false)
+  and (select code = '00000' from s12edp_setup where label = 'B-bind')
+  and (select v.state = 'active' and a.state = 'compiled' and a.artifact_hash = v.definition_hash
+    and v.default_template_version_id = pg_temp.s12ga_subject('edp-bt')
+    from platform_private.cms_content_type_versions v join platform_private.cms_schema_artifacts a on a.id = v.schema_artifact_id
+    where v.id = pg_temp.s09d_id('edp-bbound:version'))
+  and (select state = 'scheduled' from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('edp-bt'))
+  and (select state = 'completed' and source_count = 0 and target_count = 0 and row_error_count = 0
+    from platform_private.cms_schema_migration_plans where id = pg_temp.s09d_id('edp-bbound:plan')),
+  'EDP-B04: all guarded producers admit active B1 with the exact still-scheduled default; otherwise this is a failed premise');
+-- Clock passage only, NOT a race witness. Never update schedule/lease times.
+select pg_temp.s12edp_step('B-due-claim', $step$
+  do $wait$
+  declare due timestamptz; deadline timestamptz := clock_timestamp() + interval '75 seconds';
+  begin
+    select resolved_at_utc into due from platform_private.cms_governed_activation_schedules
+      where review_id = pg_temp.s12ga_review('edp-bt') and state = 'pending';
+    if due is null then raise exception 'BT has no actual pending schedule'; end if;
+    while clock_timestamp() < due loop
+      if clock_timestamp() >= deadline then raise exception 'BT due-clock deadline exceeded'; end if;
+      perform pg_sleep(least(0.1, greatest(0, extract(epoch from due - clock_timestamp()))));
+    end loop;
+    insert into s12edp_saved values ('B-due-observed', jsonb_build_object('due',due,'observed',clock_timestamp()));
+    perform pg_temp.s12gb_claim('edp-b-claim');
+    insert into s12edp_saved values ('B-claimed', pg_temp.s12gb_sched('edp-bt'));
+  end;
+  $wait$;
+$step$);
+select ok((select code = '00000' from s12edp_setup where label = 'B-due-claim')
+  and (select (value->>'observed')::timestamptz >= (value->>'due')::timestamptz from s12edp_saved where key = 'B-due-observed')
+  and pg_temp.s12gb_sout('edp-b-claim') = 'ok' and jsonb_array_length(pg_temp.s12gb_sbody('edp-b-claim')) = 1
+  and (select value->>'state' = 'executing' and value->>'version' = '2' and value->>'expected_version' = '2'
+    and value->>'lease_id' = pg_temp.s12gb_claimed('edp-b-claim','edp-bt')->>'leaseId'
+    and value->>'id' = pg_temp.s12gb_claimed('edp-b-claim','edp-bt')->>'scheduleId'
+    and (value->>'lease_until')::timestamptz > clock_timestamp() from s12edp_saved where key = 'B-claimed'),
+  'EDP-B05: actual due clock and claim select only BT with its real executing version/lease fence');
+select pg_temp.s12edp_step('B-execute', $step$
+  select pg_temp.s12gb_exec('edp-b-execute',pg_temp.s12gb_sid('edp-bt'),
+    pg_temp.s12gb_claimed('edp-b-claim','edp-bt')->>'expectedVersion',
+    (pg_temp.s12gb_claimed('edp-b-claim','edp-bt')->>'leaseId')::uuid);
+$step$);
+select ok(pg_temp.s12gb_sout('edp-b-execute') = 'ok'
+  and pg_temp.s12gb_sbody('edp-b-execute') = jsonb_build_object('scheduleId',pg_temp.s12gb_sid('edp-bt'),
+    'outcome','blocked','reasonCode','dependency_changed','actualUtc',null,'deviationSeconds',null)
+  and (select state = 'blocked' and version = 3 and reason_code = 'dependency_changed' and lease_id is null and lease_until is null
+    from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('edp-bt'))
+  and (select state = 'blocked' and lifecycle_version = 5 and activated_at is null from platform_private.cms_template_versions
+    where id = pg_temp.s12ga_subject('edp-bt'))
+  and (select state = 'approved' and version = 2 and activated_at is null from platform_private.cms_governed_reviews
+    where id = pg_temp.s12ga_review('edp-bt')) and pg_temp.s12gb_events('edp-bt') = 0
+  and (select count(*) = 1 from audit_private.audit_events where action = 'cms.governed.schedule.block'
+    and target_id = pg_temp.s12gb_sid('edp-bt')),
+  'EDP-B06: real changed-dependency execution blocks BT, releases lease, preserves approval and emits no activation');
+-- A refused combined fixture must yield failed premise/assertions, not a builder abort.
+select pg_temp.s12edp_step('B-request', $step$
+  insert into s12edp_saved values ('B-request',pg_temp.s12edp_request('edp-bbound','BLOCKED FRESH','s12edp-blocked-fresh'));
+$step$);
+select pg_temp.s12edp_call('edp-blocked',(select value from s12edp_saved where key = 'B-request'));
+select is((select code || ':' || coalesce(message,'') from s12edp_calls where label = 'edp-blocked'), 'P0001:CONFLICT',
+  'EDP-B07: a fresh create against the actually blocked default is the existing CONFLICT');
+select ok((select coalesce(detail,'') = '' and response is null and coalesce(headers,'') = ''
+  and call_role = 'service_role' and restored from s12edp_calls where label = 'edp-blocked'),
+  'EDP-B08: blocked refusal leaks no detail/resource/identity and restores SQL context');
+select ok((select before_image = after_image from s12edp_calls where label = 'edp-blocked'),
+  'EDP-B09: blocked refusal changes no complete persistent row after the legitimate block effects');

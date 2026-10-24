@@ -1,0 +1,232 @@
+-- CC-SETUP: real signed registry + real compiled type + governed patterns.
+select ok((select count(*)=6 and bool_and(p.prorettype='jsonb'::regtype and not p.proretset and p.prokind='f')
+  from (values('platform_api.cms_create_revision(jsonb)'),('platform_private.cms_create_revision(jsonb)'),
+    ('platform_api.cms_resolve_conflict(jsonb)'),('platform_private.cms_resolve_conflict(jsonb)'),
+    ('platform_api.cms_restore_revision(jsonb)'),('platform_private.cms_restore_revision(jsonb)')) named(signature)
+  join pg_proc p on p.oid=to_regprocedure(named.signature)),
+  'CC-SETUP: exact public/private single-jsonb revision signatures return jsonb (absence is FAIL, not setup abort)');
+select pg_temp.p_register('cc-child',pg_temp.p_block_request('s12cc.child',1));
+select pg_temp.p_register('cc-root',pg_temp.p_block_request('s12cc.root',1,
+  '{"allowedChildren":["s12cc.child"],"slotRules":{"maxDepth":16,"maxNodes":512}}'));
+select is(pg_temp.s09d_outcome('cc-root') || pg_temp.s09d_outcome('cc-child'),'OKOK',
+  'CC-SETUP: root/child registered through signed CMS-03A-05');
+select ok((select count(*)=2 and bool_and(release_verified_at is not null and props_attestation_verified_at is not null)
+  from platform_private.cms_block_definition_versions where block_key in ('s12cc.root','s12cc.child')),
+  'CC-SETUP: both reachable identities have real release/props receipts');
+select ok(pg_temp.s12cc_policy_valid((select version_id from s12pd_types where ordinal=1)),
+  'CC-SETUP: genuine active type resolves current editorial policy, no projection replacement');
+select * from pg_temp.s12pl_pattern('cc-v1','s12cc-pattern',jsonb_build_array(
+  jsonb_build_object('kind','block','key','local','blockKey','s12cc.root','blockVersion',1,
+    'props',jsonb_build_object('title','ORIGINAL-ROOT'),'children',jsonb_build_array(
+      jsonb_build_object('kind','block','key','child','blockKey','s12cc.child','blockVersion',1,
+        'props',jsonb_build_object('title','ORIGINAL-CHILD'),'children','[]'::jsonb))),
+  pg_temp.s12pd_block('gone','[]','{"title":"REMOVED"}'),
+  pg_temp.s12pd_block('keep','[]','{"title":"KEPT-1"}')));
+select pg_temp.s09d_rpc('cc-template-main','platform_api.cms_define_template','owner',jsonb_build_object(
+  'templateKey','s12cc-main','compatibleTypeIds',jsonb_build_array((select id from s12pd_types where ordinal=1)),
+  'slots','[{"key":"main","required":false,"allowedBlocks":[],"maxCount":128}]'::jsonb,
+  'reservedRegions','["header","now","record","detail","provenance"]'::jsonb,'bindings','{}'::jsonb,
+  'locale','en-US','audience','public','expectedVersion',null,'idempotencyKey','s12cc-template-main'),true);
+select pg_temp.s09d_rpc('cc-template-side','platform_api.cms_define_template','owner',jsonb_build_object(
+  'templateKey','s12cc-side','compatibleTypeIds',jsonb_build_array((select id from s12pd_types where ordinal=1)),
+  'slots','[{"key":"side","required":false,"allowedBlocks":[],"maxCount":128}]'::jsonb,
+  'reservedRegions','["header","now","record","detail","provenance"]'::jsonb,'bindings','{}'::jsonb,
+  'locale','en-US','audience','public','expectedVersion',null,'idempotencyKey','s12cc-template-side'),true);
+select is(pg_temp.s09d_outcome('cc-template-main') || pg_temp.s09d_outcome('cc-template-side'),'OKOK',
+  'CC-SETUP: both compatible slot templates come from CMS-03C-01');
+
+select w.* from (values('cc-append'),('cc-conflict'),('cc-restore'),('cc-linked-inactive'),
+  ('cc-tree-withdraw'),('cc-prov')) tags(tag) cross join lateral pg_temp.s12cc_world(tags.tag) w;
+select * from pg_temp.s12cc_world('cc-legacy-inactive','detached');
+select * from pg_temp.s12cc_world('cc-legacy-withdraw','detached');
+select * from pg_temp.s12cc_world('cc-slot','linked','cc-template-main');
+
+-- Real detach creates a newer active head; the old linked active row is not
+-- superseded in place. Bindings have no public placement input: this one guarded
+-- append-only history fixture adds nonempty bindings without changing the tree.
+select pg_temp.s12pu_update('cc-detach:' || tag,pg_temp.s12pu_update_request(tag,'detach',
+  jsonb_build_array(pg_temp.s12pu_target(tag,case when tag='cc-slot' then '/main/local' else '/local' end)),
+  's12cc-detach-' || tag)) from s12cc_world where tag in
+    ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+select is(pg_temp.s12pu_state('cc-detach:' || tag),'00000',tag || ': real public detach succeeds')
+  from s12cc_world where tag in ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+do $body$
+declare w record; head platform_private.cms_composition_instances;
+begin
+  perform set_config('app.cms_rpc','true',true);
+  for w in select * from s12cc_world where tag in ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot') loop
+    select i.* into head from platform_private.cms_composition_instances i where revision_id=w.source_id
+      and path=case when w.tag='cc-slot' then '/main/local' else '/local' end order by version desc limit 1;
+    if head.detached_tree is not null and head.link_mode='detached' then
+      insert into platform_private.cms_composition_instances select (jsonb_populate_record(
+        null::platform_private.cms_composition_instances,to_jsonb(head) || jsonb_build_object(
+          'id',extensions.gen_random_uuid(),'version',head.version+1,
+          'bindings',jsonb_build_object('caption',jsonb_build_object('literal','BOUND-CAPTION'))))).*;
+    end if;
+  end loop;
+end;
+$body$;
+select is((select detached_tree from platform_private.cms_composition_instances where id=pg_temp.s12pu_head(tag,
+  case when tag='cc-slot' then '/main/local' else '/local' end)),(select tree from s12cc_literal),
+  tag || ': literal full local tree is independent of producer/serializer output')
+  from s12cc_world where tag in ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+
+-- New target removes gone; adopting removal appends retired over older active.
+select * from pg_temp.s12pl_pattern('cc-v2','s12cc-pattern',jsonb_build_array(
+  jsonb_build_object('kind','block','key','local','blockKey','s12cc.root','blockVersion',1,
+    'props',jsonb_build_object('title','TARGET-ROOT'),'children',jsonb_build_array(
+      jsonb_build_object('kind','block','key','child','blockKey','s12cc.child','blockVersion',1,
+        'props',jsonb_build_object('title','TARGET-CHILD'),'children','[]'::jsonb))),
+  pg_temp.s12pd_block('keep','[]','{"title":"KEPT-2"}')),null,true,'1');
+select pg_temp.s12pu_update('cc-gone:' || tag,pg_temp.s12pu_update_request(tag,'accept',jsonb_build_array(
+  pg_temp.s12pu_target(tag,case when tag='cc-slot' then '/main/gone' else '/gone' end,
+    '[{"path":"/gone","choice":"theirs"}]'::jsonb)),
+  's12cc-gone-' || tag,2)) from s12cc_world where tag in
+    ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+select is(pg_temp.s12pu_state('cc-gone:' || tag),'00000',tag || ': real single-root theirs choice adopts removal and retires gone')
+  from s12cc_world where tag in ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+select pg_temp.s12pu_update('cc-target:' || tag,pg_temp.s12pu_update_request(tag,'accept',jsonb_build_array(
+  pg_temp.s12pu_target(tag,case when tag='cc-slot' then '/main/keep' else '/keep' end)),
+  's12cc-target-' || tag,2)) from s12cc_world where tag in
+    ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+select is(pg_temp.s12pu_state('cc-target:' || tag),'00000',tag || ': independent real single-root accept advances keep pin without choices')
+  from s12cc_world where tag in ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+select pg_temp.s12cc_capture(tag) from s12cc_world;
+select is(jsonb_array_length(expected_heads),2,tag || ': newest-before-state fixture contains exactly local + keep')
+  from s12cc_world where tag in ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+select is((select jsonb_agg(e->'position' order by (e->>'position')::integer)
+  from jsonb_array_elements(expected_heads) e),'[0,2]'::jsonb,tag || ': independent source positions retain removal gap')
+  from s12cc_world where tag in ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+select is((select e->'bindings' from jsonb_array_elements(expected_heads) e where e->>'link_mode'='detached'),
+  '{"caption":{"literal":"BOUND-CAPTION"}}'::jsonb,tag || ': newest source bindings are nonempty discriminator')
+  from s12cc_world where tag in ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw','cc-slot');
+select ok((select count(*)=2 and bool_and(state='active') from platform_private.cms_composition_instances
+  where revision_id=w.source_id and path='/local' and version in (1,2))
+  and (select state='retired' from platform_private.cms_composition_instances where id=pg_temp.s12pu_head(w.tag,'/gone')),
+  w.tag || ': older active local/history and newer retired gone are real discriminators')
+  from s12cc_world w where tag in ('cc-append','cc-conflict','cc-restore','cc-tree-withdraw');
+
+-- CC-APP001: ordinary autosave carries newest heads, not all active history.
+select pg_temp.s12cc_call('CC-APP001','append',pg_temp.s12cc_request('cc-append','append','s12cc-append-001'));
+select * from pg_temp.s12cc_copied('CC-APP001','cc-append');
+select is((select jsonb_agg(path order by position) from platform_private.cms_composition_instances
+  where revision_id=(pg_temp.s12cc_body('CC-APP001')->>'id')::uuid),'["/local","/keep"]'::jsonb,
+  'CC-APP002: removed middle root is absent; gap/order preserved, never repacked');
+select is((select detached_tree from platform_private.cms_composition_instances
+  where revision_id=(pg_temp.s12cc_body('CC-APP001')->>'id')::uuid and path='/local'),(select tree from s12cc_literal),
+  'CC-APP003: carried detached snapshot equals independent literal, not origin/target pattern');
+select is((select value from platform_private.cms_entry_field_values where revision_id=
+  (pg_temp.s12cc_body('CC-APP001')->>'id')::uuid),'"EDITED"'::jsonb,'CC-APP004: real changed field reaches new draft');
+select is((select bindings from platform_private.cms_composition_instances where revision_id=
+  (pg_temp.s12cc_body('CC-APP001')->>'id')::uuid and path='/local'),'{"caption":{"literal":"BOUND-CAPTION"}}'::jsonb,
+  'CC-APP005: nonempty literal binding survives ordinary autosave');
+select * from pg_temp.s12cc_replay('CC-APP001','cc-append');
+
+-- CC-RES001: field-only historical current draft (explicit fixture), followed by
+-- actual conflicting append, never a forged ConflictRecord or inferred choice.
+select pg_temp.s12cc_current('cc-conflict');
+-- DEC-209 (BE03c receiving obligation 4): composition commands write only to the current draft,
+-- so the current draft (theirs) carries its OWN real placement, distinct from the base revision's
+-- detached local + accepted keep history. The resolved draft must carry theirs, never the base.
+select pg_temp.s12pl_run('cc-theirs-place',pg_temp.s12pl_request('cc-conflict','cc-v2','/',
+  '{"/local":{"title":"THEIRS-ROOT"},"/local/child":{"title":"THEIRS-CHILD"}}','s12cc-theirs-place','linked'));
+select is(pg_temp.s12pl_state('cc-theirs-place'),'00000','CC-RES-SETUP: real public placement writes composition to the current draft (theirs)');
+select pg_temp.s12cc_capture_carry('cc-conflict');
+select is((select jsonb_agg(jsonb_build_object('path',e->>'path','mode',e->>'link_mode') order by e->>'path')
+    from s12cc_world w,jsonb_array_elements(w.expected_heads) e where w.tag='cc-conflict'),
+  '[{"path":"/keep","mode":"linked"},{"path":"/local","mode":"linked"}]'::jsonb,
+  'CC-RES-SETUP: theirs heads (both linked) differ from the base heads (detached local) so the carry source is observable');
+select pg_temp.s12cc_call('CC-RES-conflict','append',pg_temp.s12cc_request('cc-conflict','append','s12cc-conflict-001','YOURS'));
+select is(pg_temp.s12cc_body('CC-RES-conflict')->>'kind','conflict','CC-RES-SETUP: actual stale same-field append records conflict disposition');
+select ok((select count(*)=1 and bool_and(state='open' and yours_source='proposed')
+  from platform_private.cms_conflict_records where entry_id=pg_temp.s12pl_entry_id('cc-conflict')),
+  'CC-RES-SETUP: actual public append created the one durable open conflict');
+select * from pg_temp.s12cc_refused('CC-RES-CAS','resolve',
+  pg_temp.s12cc_request('cc-conflict','resolve','s12cc-resolve-stale',null,'1'),'VERSION_MISMATCH');
+select pg_temp.s12cc_call('CC-RES001','resolve',pg_temp.s12cc_request('cc-conflict','resolve','s12cc-resolve-001'));
+select * from pg_temp.s12cc_copied('CC-RES001','cc-conflict');
+select is((select value from platform_private.cms_entry_field_values where revision_id=
+  (pg_temp.s12cc_body('CC-RES001')->>'id')::uuid),'"YOURS"'::jsonb,'CC-RES002: explicit yours choice wins, current/base values not substituted');
+select ok((select state='resolved' and resolved_revision_id=(pg_temp.s12cc_body('CC-RES001')->>'id')::uuid
+  from platform_private.cms_conflict_records where entry_id=pg_temp.s12pl_entry_id('cc-conflict')),
+  'CC-RES003: conflict resolution and new revision commit together');
+select is((select jsonb_agg(jsonb_build_object('path',path,'mode',link_mode,'pin',pattern_version,
+    'props',props) order by path)
+    from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('CC-RES001')->>'id')::uuid),
+  (select jsonb_agg(jsonb_build_object('path',e->>'path','mode',e->>'link_mode','pin',(e->>'pattern_version')::bigint,
+      'props',e->'props') order by e->>'path') from s12cc_world w,jsonb_array_elements(w.expected_heads) e
+    where w.tag='cc-conflict'),
+  'CC-RES004: resolved draft carries the current draft (theirs) placements: link mode, pin and props, DEC-209');
+select ok(not exists(select 1 from platform_private.cms_composition_instances i
+    where i.revision_id=(pg_temp.s12cc_body('CC-RES001')->>'id')::uuid
+      and (i.detached_tree is not null or i.bindings<>'{}'::jsonb or i.link_mode='detached')),
+  'CC-RES005: nothing from the conflict base revision (detached tree, literal binding) leaks into the resolved draft');
+select * from pg_temp.s12cc_replay('CC-RES001','cc-conflict');
+
+-- Append/resolve keep one effect pair. Restore additionally commits the exact
+-- chain-evidence pair (BE03b156/1711/2115), never one pair per carried row.
+create or replace function pg_temp.s12cc_effects(p_label text) returns setof text language plpgsql as $body$
+declare store text; n integer; expected_count integer; call_row s12cc_out; resource jsonb;
+  observed jsonb; common jsonb; expected_hash text; manifest_id uuid; source_schema uuid; entry_type uuid;
+begin
+  select * into call_row from s12cc_out where label=p_label;
+  foreach store in array array['platform_private.cms_entry_revisions','platform_private.idempotency_records',
+    'audit_private.audit_events','platform_private.outbox_events'] loop
+    select jsonb_array_length(after_rows->store)-jsonb_array_length(before_rows->store) into n
+      from s12cc_out where label=p_label;
+    expected_count := case when call_row.operation='restore' and store in
+      ('audit_private.audit_events','platform_private.outbox_events') then 2 else 1 end;
+    return next extensions.is(n,expected_count,p_label || case when expected_count=1
+      then ': exactly one new full row in ' else ': exactly two documented new full rows in ' end || store);
+  end loop;
+  if call_row.operation='restore' then
+    resource := pg_temp.s12cc_body(p_label);
+    select schema_version_id into source_schema from platform_private.cms_entry_revisions
+      where id=(call_row.request->>'revisionId')::uuid;
+    select content_type_id into entry_type from platform_private.cms_content_entries
+      where id=(call_row.request->>'entryId')::uuid;
+    expected_hash := pg_temp.s12cc_manifest_hash(entry_type,source_schema,source_schema);
+    select m.id into manifest_id from platform_private.cms_restore_chain_manifests m where m.manifest_hash::text=expected_hash;
+    common := jsonb_build_object('actor_id',pg_temp.s09d_actor_id('owner','auth'),
+      'acting_party_id',pg_temp.s09d_id('ownerOrg'),'decision','allowed',
+      'correlation_id',call_row.request#>'{context,correlationId}');
+    select coalesce(jsonb_agg(jsonb_build_object('action',a->'action','actor_id',a->'actor_id',
+      'acting_party_id',a->'acting_party_id','decision',a->'decision','correlation_id',a->'correlation_id',
+      'target_type',a->'target_type','target_id',a->'target_id','reason_code',a->'reason_code') order by a->>'action'),'[]')
+      into observed from jsonb_array_elements(call_row.after_rows->'audit_private.audit_events') a
+      where not (call_row.before_rows->'audit_private.audit_events' @> jsonb_build_array(a));
+    return next extensions.is(observed,jsonb_build_array(
+      common || jsonb_build_object('action','cms.entry.revision.restore','target_type','cms_content_entry',
+        'target_id',call_row.request->'entryId','reason_code','CMS_ENTRY_REVISION_CREATED'),
+      common || jsonb_build_object('action','cms.entry.revision.restore.chain','target_type','cms_restore_chain_manifest',
+        'target_id',manifest_id,'reason_code','CMS_ENTRY_RESTORE_CHAIN_APPLIED')),
+      p_label || ': exactly documented restore and chain audit identities, actor/scope/correlation, no per-composition audit');
+    common := jsonb_build_object('schema_version',1,'aggregate_type','cms_content_entry','aggregate_id',call_row.request->'entryId',
+      'aggregate_version',(call_row.request->>'expectedVersion')::bigint+1,'correlation_id',call_row.request#>'{context,correlationId}');
+    select coalesce(jsonb_agg(jsonb_build_object('event_type',e->'event_type','schema_version',e->'schema_version',
+      'aggregate_type',e->'aggregate_type','aggregate_id',e->'aggregate_id','aggregate_version',e->'aggregate_version',
+      'correlation_id',e->'correlation_id','payload',e->'payload') order by e->>'event_type'),'[]')
+      into observed from jsonb_array_elements(call_row.after_rows->'platform_private.outbox_events') e
+      where not (call_row.before_rows->'platform_private.outbox_events' @> jsonb_build_array(e));
+    return next extensions.is(observed,jsonb_build_array(
+      common || jsonb_build_object('event_type','cms.entry.revision-created.v1',
+        'payload',jsonb_build_object('entryId',call_row.request->'entryId','revisionId',resource->'id')),
+      common || jsonb_build_object('event_type','cms.entry.revision-restored.v1','payload',jsonb_build_object(
+        'entryId',call_row.request->'entryId','revisionId',resource->'id','sourceRevisionId',call_row.request->'revisionId',
+        'migrationChainId',call_row.request->'migrationChainId','chainHash',expected_hash,'edgeCount',0,'valueCount',1,'relationCount',0))),
+      p_label || ': exactly both documented events and complete safe payloads/aggregate/correlation, no field-value serialization');
+    foreach store in array array['audit_private.audit_events','platform_private.outbox_events'] loop
+      return next extensions.ok(not exists(select 1 from jsonb_array_elements(call_row.before_rows->store) old
+        where not (call_row.after_rows->store @> jsonb_build_array(old))),p_label || ': every old complete effect row unchanged in ' || store);
+    end loop;
+  end if;
+  foreach store in array array['platform_private.cms_entry_revisions','platform_private.cms_entry_field_values',
+    'platform_private.cms_entry_relations'] loop
+    return next extensions.ok(not exists(select 1 from s12cc_out o,jsonb_array_elements(o.before_rows->store) old
+      where o.label=p_label and not (o.after_rows->store @> jsonb_build_array(old))),
+      p_label || ': every historical full row immutable in ' || store);
+  end loop;
+end;
+$body$;
+select * from pg_temp.s12cc_effects('CC-APP001');
+select * from pg_temp.s12cc_effects('CC-RES001');

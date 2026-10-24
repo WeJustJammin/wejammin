@@ -1,0 +1,79 @@
+-- Pure helper inputs only: no durable pattern/placement producer is claimed.
+-- Run before020 changes any signed block lifecycle. Expected tuples are literal,
+-- not obtained from a registry-digest, graph, manifest or provider implementation.
+select is((select owner_slice::text from platform_private.cms_preflight_registry
+ where category='pattern' order by version desc limit 1),'slice-12',
+ 'PC-RD-REG: highest pattern registry row retains the original exact slice-12 owner metadata');
+create function pg_temp.s12pr_readonly_digest() returns setof text language plpgsql as $body$
+declare identity constant text:='platform_private.cms_pattern_registry_digest_readonly(uuid,jsonb)';
+ proc pg_catalog.pg_proc%rowtype; test_case record; actual text; code text; message text;
+ checked_role text; role_private boolean; all_private boolean:=true;
+ prior_rpc text:=current_setting('app.cms_rpc',true); prior_role text:=current_setting('role');
+ prior_user text:=current_user; before_rows jsonb:=pg_temp.s12pc_snapshot();
+ supported_tree constant jsonb:='[
+  {"kind":"block","key":"root","blockKey":"s12cs.root","blockVersion":1,"props":{},"children":[]},
+  {"kind":"block","key":"leaf","blockKey":"s12cs.leaf","blockVersion":2,"props":{},"children":[]},
+  {"kind":"block","key":"duplicate","blockKey":"s12cs.root","blockVersion":1,"props":{},"children":[]}]';
+ supported_tuples constant jsonb:='[
+  {"blockKey":"s12cs.leaf","blockVersion":2,"releaseDigest":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+   "propsSchemaHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","rendererRef":"cms/renderers/hero/1","lifecycle":"supported"},
+  {"blockKey":"s12cs.root","blockVersion":1,"releaseDigest":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+   "propsSchemaHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","rendererRef":"cms/renderers/hero/1","lifecycle":"supported"}]';
+ missing_tree constant jsonb:='[
+  {"kind":"block","key":"missing","blockKey":"s12pc.not-registered","blockVersion":1,"props":{},"children":[]}]';
+ missing_version_tree constant jsonb:='[
+  {"kind":"block","key":"unregistered-version","blockKey":"s12cs.root","blockVersion":123456789,"props":{},"children":[]}]';
+begin
+ select p.* into proc from pg_catalog.pg_proc p where p.oid=to_regprocedure(identity);
+ if not found then return next extensions.fail('PC-RD00: exact read-only digest signature available'); return; end if;
+ if proc.proowner<>'wejammin_cms_definer'::regrole or proc.prosecdef or proc.prokind<>'f'
+  or proc.provolatile<>'s' or proc.proretset or proc.prorettype<>'text'::regtype
+  or proc.proconfig is distinct from array['search_path=""']::text[]
+  or proc.prolang<>(select oid from pg_language where lanname='sql') then
+  return next extensions.fail('PC-RD00: exact private SQL/STABLE/invoker scalar-text helper attributes'); return;
+ end if;
+ foreach checked_role in array array['anon','authenticated','service_role'] loop
+  role_private:=not coalesce(has_function_privilege(to_regrole(checked_role),proc.oid,'EXECUTE'),true);
+  return next extensions.ok(role_private,'PC-RD-ACL-'||checked_role||': exact read-only helper denies EXECUTE including PUBLIC/inherited grants');
+  all_private:=all_private and role_private;
+ end loop;
+ if not all_private then return; end if;
+ return next extensions.is((select count(*)::integer from platform_private.cms_block_definition_versions b
+  where (b.block_key,b.block_version) in (('s12cs.root',1),('s12cs.leaf',2)) and b.state='registered'
+   and coalesce((select e.to_lifecycle from platform_private.cms_block_definition_lifecycle_events e
+    where e.block_definition_version_id=b.id order by e.created_at desc,e.id desc limit 1),'supported')='supported'),2,
+  'PC-RD-P01: both literal known tuples have actual registered/supported signed prerequisites');
+ return next extensions.is((select count(*)::integer from platform_private.cms_block_definition_versions
+  where block_key='s12pc.not-registered'),0,'PC-RD-P02: missing-key input is actually unregistered at every version');
+ return next extensions.is((select count(*)::integer from platform_private.cms_block_definition_versions
+  where block_key='s12cs.root' and block_version=123456789),0,
+  'PC-RD-P03: known-key/unregistered-version input has no matching registry row');
+ for test_case in select * from (values
+  ('PC-RD01-supported',supported_tree,platform_private.cms_jcs_sha256(supported_tuples)),
+  ('PC-RD02-empty','[]'::jsonb,'4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'),
+  ('PC-RD03-missing-key',missing_tree,null::text),
+  ('PC-RD04-missing-version',missing_version_tree,null::text),
+  ('PC-RD05-mixed',supported_tree||missing_tree,null::text)
+ ) cases(label,tree,expected_digest) loop
+  actual:=null; code:='00000'; message:=null;
+  perform set_config('app.cms_rpc','true',true);
+  begin
+   execute 'select platform_private.cms_pattern_registry_digest_readonly($1,$2)' into actual
+    using pg_temp.s09d_id('ownerOrg'),test_case.tree;
+  exception when others then get stacked diagnostics code=returned_sqlstate,message=message_text;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+  return next extensions.is(code,'00000',test_case.label||': actual scalar helper executes without an exception');
+  return next extensions.is(actual,test_case.expected_digest,
+   test_case.label||': independent exact digest or SQL NULL, never a hash of an unresolved tuple');
+ end loop;
+ return next extensions.is(platform_private.cms_jcs_sha256('[]'::jsonb),
+  '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945',
+  'PC-RD06: empty helper input uses the independently pinned JCS empty-array digest');
+ return next extensions.is(pg_temp.s12pc_snapshot(),before_rows,'PC-RD07: pure helper calls preserve every captured persistent store');
+ return next extensions.ok(current_user=prior_user and current_setting('role')=prior_role
+  and coalesce(current_setting('app.cms_rpc',true),'')=coalesce(prior_rpc,''),
+  'PC-RD08: pure helper calls restore the exact caller role/RPC context');
+end;
+$body$;
+select * from pg_temp.s12pr_readonly_digest();

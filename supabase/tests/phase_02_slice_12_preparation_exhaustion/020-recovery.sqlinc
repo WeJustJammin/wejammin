@@ -1,0 +1,210 @@
+-- 020-recovery.sqlinc — the DEC-184 recoverability outcome as a proposed fix
+-- witness: an expired "verifying" plan is re-leased through the normal fenced
+-- claim path and then terminally rolled back so a new CMS-03A-10 attempt is
+-- admitted.  BE03a:2488 currently states a verifying plan cannot be re-leased;
+-- this witnesses the DEC-184 outcome and is not acceptance proof until root
+-- reconciles authority.  The lease is a REAL short worker lease that lapses on
+-- server time (bounded wait); no guard is disabled and no field is written by hand.
+
+-- ---- Zero-row additive plan --------------------------------------------------
+select pg_temp.s09d_create_type('ex', 's12prepex');
+select pg_temp.s09d_to_active('ex');
+select pg_temp.s09d_successor('ex2', 'ex');
+select pg_temp.s09d_dry_run('ex2');
+-- A 15 s worker lease is ample for the short stage calls that follow and far less
+-- flaky than a 2 s lease under a loaded CI host.
+select pg_temp.s12_to_verifying('ex2', '15000');
+select is(pg_temp.s09d_outcome('ex2.begin'), 'OK',
+  'S12 fixture: a real successor plan reaches the verifying state through the worker RPCs');
+select is(pg_temp.s09d_read('cms_schema_migration_plans', 'state', pg_temp.s09d_id('ex2:plan')), 'verifying',
+  'S12 fixture: the plan under test is verifying');
+create temp table s12_ex on commit drop as
+  select pg_temp.s09d_id('ex2:plan') as plan, pg_temp.s09d_id('ex2:version') as version,
+         pg_temp.s12_v(pg_temp.s09d_id('ex2:plan')) as held_version,
+         pg_temp.s12_token(pg_temp.s09d_id('ex2:plan')) as held_token,
+         pg_temp.s12_plan_preserved(pg_temp.s09d_id('ex2:plan')) as preserved,
+         pg_temp.s12_report_row(pg_temp.s09d_id('ex2:plan')) as report;
+select ok((select (report->>'sealed_at') is not null and report->>'result' = 'pass'
+                   and report->>'source_hash' is not null and report->>'target_hash' is not null
+                   and report->>'compiler_hash' is not null
+             from s12_ex),
+  'S12 fixture: the verifying plan carries a sealed producer report with exact fingerprints');
+select pg_temp.s12_expire_lease((select plan from s12_ex));
+select ok(pg_temp.s12_expires((select plan from s12_ex)) < clock_timestamp(),
+  'S12 fixture: the verifying plan''s worker lease has really expired on server time');
+
+select pg_temp.s09d_session('owner', 'service_role');
+create temp table s12_recover_claim on commit drop as
+  select pg_temp.s09d_call('ex2.recover.claim', 'platform_api.cms_claim_schema_migration_lease',
+    pg_temp.s12_base('ex2.recover.get', (select plan from s12_ex), (select version from s12_ex))
+    || jsonb_build_object('expectedVersion', pg_temp.s12_v((select plan from s12_ex))::text,
+         'leaseOwner', 's12-recover', 'workerId', 's12-recover', 'leaseDurationMs', '30000',
+         'now', clock_timestamp()::text)) as claim;
+select ok(
+  (select (claim->>'acquired')::boolean and claim->'plan'->>'state' = 'verifying'
+     and claim->>'leaseToken' is not null from s12_recover_claim),
+  'DEC-184 witness: an expired verifying plan is re-leased with a fresh token, staying verifying [P2-S12-AC-050]');
+select ok(
+  pg_temp.s12_plan_preserved((select plan from s12_ex)) = (select preserved from s12_ex),
+  'DEC-184 witness: the re-lease preserves the full plan content (state, cursor, counts, classification, transform, sealed report)');
+select ok(
+  pg_temp.s12_report_row((select plan from s12_ex)) = (select report from s12_ex),
+  'DEC-184 witness: the re-lease preserves the full sealed report row');
+select ok(
+  (select claim->'plan'->>'version' = ((select held_version from s12_ex) + 1)::text
+     and claim->'plan'->>'sourceCount' = (select preserved->>'source_count' from s12_ex)
+     and claim->'plan'->>'cursor' = (select preserved->>'cursor' from s12_ex)
+     and claim->'plan'->>'targetCount' = (select preserved->>'target_count' from s12_ex)
+     and claim->'plan'->>'sourceHash' = (select report->>'source_hash' from s12_ex)
+     and claim->'plan'->>'targetHash' = (select report->>'target_hash' from s12_ex)
+     and claim->'plan'->>'compilerHash' = (select report->>'compiler_hash' from s12_ex)
+   from s12_recover_claim),
+  'DEC-184 witness: the re-lease advances only the CAS version, preserving counts and every fingerprint');
+select ok(
+  (select claim->>'leaseToken' is not null
+     and claim->>'leaseToken' is distinct from (select held_token from s12_ex)
+   from s12_recover_claim),
+  'DEC-184 witness: the fresh lease token differs from the lapsed one');
+
+select pg_temp.s09d_call('ex2.oldtoken', 'platform_api.cms_rollback_schema_migration',
+  pg_temp.s12_base('ex2.oldtoken.get', (select plan from s12_ex), (select version from s12_ex))
+  || jsonb_build_object('expectedVersion', pg_temp.s12_v((select plan from s12_ex))::text,
+       'leaseToken', (select held_token from s12_ex),
+       'reasonCode', 'MIGRATION_RETRIES_EXHAUSTED', 'retryable', false,
+       'fallbackVersionId', pg_temp.s09d_id('ex:version'),
+       'preserveOldActive', true, 'deleteRows', false));
+select is(pg_temp.s09d_outcome('ex2.oldtoken'), 'LEASE_EXPIRED',
+  'DEC-184 witness: the lapsed token cannot roll the plan back after the fresh re-lease');
+
+create temp table s12_rollback on commit drop as
+  select pg_temp.s09d_call('ex2.rollback', 'platform_api.cms_rollback_schema_migration',
+    pg_temp.s12_base('ex2.rollback.get', (select plan from s12_ex), (select version from s12_ex))
+    || jsonb_build_object(
+         'expectedVersion', (select claim->'plan'->>'version' from s12_recover_claim),
+         'leaseToken', (select claim->>'leaseToken' from s12_recover_claim),
+         'reasonCode', 'MIGRATION_RETRIES_EXHAUSTED', 'retryable', false,
+         'fallbackVersionId', pg_temp.s09d_id('ex:version'),
+         'preserveOldActive', true, 'deleteRows', false)) as rollback;
+select ok(
+  (select rollback->'plan'->>'state' = 'failed_terminal' from s12_rollback),
+  'DEC-184 witness: the re-leased verifying plan terminally rolls back [P2-S12-AC-050]');
+select is(pg_temp.s09d_read('cms_schema_migration_plans', 'state', (select plan from s12_ex)), 'failed_terminal',
+  'DEC-184 witness: the plan is durably failed_terminal after the rollback');
+select is((select state from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('ex:version')), 'active',
+  'DEC-184 witness: the rollback preserves the old active source version');
+
+select pg_temp.s09d_dry_run('ex2', 'owner', null, null, 's12-post-rollback-' || substr(extensions.gen_random_uuid()::text, 1, 8));
+select ok(pg_temp.s09d_outcome('ex2:dryRun') = 'OK',
+  'DEC-184 witness: a new CMS-03A-10 attempt is admitted after the rollback [P2-S12-AC-050]');
+select ok(
+  pg_temp.s09d_read('cms_schema_migration_plans', 'state', (select plan from s12_ex)) = 'failed_terminal'
+  and pg_temp.s09d_id('ex2:plan') is distinct from (select plan from s12_ex),
+  'DEC-184 witness: the terminal plan is retained as evidence while the new attempt supersedes it');
+
+-- ---- Positive-source-row plan ------------------------------------------------
+-- Real entries are created by CMS-03B-10 and scanned by the worker helpers; the
+-- database derives the counters.  This exercises the recovery with a non-zero
+-- source count, a populated sealed report and real source rows that must survive.
+select pg_temp.s09g_grant('px:author', 'owner', 'owner', 'cms.author', pg_temp.s09g_day(5));
+select pg_temp.s09d_create_type('px', 's12preppx');
+select pg_temp.s09d_to_active('px');
+select pg_temp.s09w_entry('px:e1', 'px', 'Alpha');
+select pg_temp.s09w_entry('px:e2', 'px', 'Beta');
+select pg_temp.s09d_successor('px2', 'px');
+select pg_temp.s09d_dry_run('px2');
+select pg_temp.s12_positive_verifying('px2', '15000');
+select is(pg_temp.s09d_read('cms_schema_migration_plans', 'state', pg_temp.s09d_id('px2:plan')), 'verifying',
+  'S12 fixture: a real positive-source-row plan reaches the verifying state');
+create temp table s12_px on commit drop as
+  select pg_temp.s09d_id('px2:plan') as plan, pg_temp.s09d_id('px2:version') as version,
+         pg_temp.s09d_id('px:version') as source_version,
+         pg_temp.s12_v(pg_temp.s09d_id('px2:plan')) as held_version,
+         pg_temp.s12_token(pg_temp.s09d_id('px2:plan')) as held_token,
+         pg_temp.s12_plan_preserved(pg_temp.s09d_id('px2:plan')) as preserved,
+         pg_temp.s12_report_row(pg_temp.s09d_id('px2:plan')) as report,
+         pg_temp.s09d_scalar(format('select count(*)::text from platform_private.cms_entry_revisions where schema_version_id = %L',
+           pg_temp.s09d_id('px:version'))) as source_rows,
+         pg_temp.s12_source_rows(pg_temp.s09d_id('px:version')) as source_content;
+select ok((select (preserved->>'source_count')::bigint = 2 and (preserved->>'migrated_count')::bigint = 2
+             and (preserved->>'target_count')::bigint = 2 and (preserved->>'row_error_count')::bigint = 0
+             and (report->>'sealed_at') is not null and report->>'result' = 'pass'
+             from s12_px),
+  'S12 fixture: the positive plan carries derived non-zero counts and a sealed pass report');
+select pg_temp.s12_expire_lease((select plan from s12_px));
+select ok(pg_temp.s12_expires((select plan from s12_px)) < clock_timestamp(),
+  'S12 fixture: the positive plan''s worker lease has really expired on server time');
+
+select pg_temp.s09d_session('owner', 'service_role');
+create temp table s12_px_claim on commit drop as
+  select pg_temp.s09d_call('px2.recover.claim', 'platform_api.cms_claim_schema_migration_lease',
+    pg_temp.s12_base('px2.recover.get', (select plan from s12_px), (select version from s12_px))
+    || jsonb_build_object('expectedVersion', pg_temp.s12_v((select plan from s12_px))::text,
+         'leaseOwner', 's12-recover', 'workerId', 's12-recover', 'leaseDurationMs', '30000',
+         'now', clock_timestamp()::text)) as claim;
+select ok(
+  (select (claim->>'acquired')::boolean and claim->'plan'->>'state' = 'verifying' from s12_px_claim),
+  'DEC-184 witness (positive rows): an expired verifying plan is re-leased, staying verifying [P2-S12-AC-050]');
+select ok(
+  pg_temp.s12_plan_preserved((select plan from s12_px)) = (select preserved from s12_px),
+  'DEC-184 witness (positive rows): the re-lease preserves the full plan content including the non-zero counts');
+select ok(
+  pg_temp.s12_report_row((select plan from s12_px)) = (select report from s12_px),
+  'DEC-184 witness (positive rows): the re-lease preserves the full sealed report row');
+select ok(
+  (select claim->'plan'->>'version' = ((select held_version from s12_px) + 1)::text
+     and claim->'plan'->>'cursor' = (select preserved->>'cursor' from s12_px)
+     and claim->'plan'->>'sourceCount' = (select preserved->>'source_count' from s12_px)
+     and claim->'plan'->>'targetCount' = (select preserved->>'target_count' from s12_px)
+     and claim->'plan'->>'migratedCount' = (select preserved->>'migrated_count' from s12_px)
+     and claim->'plan'->>'rowErrorCount' = (select preserved->>'row_error_count' from s12_px)
+     and claim->'plan'->>'sourceHash' = (select report->>'source_hash' from s12_px)
+     and claim->'plan'->>'targetHash' = (select report->>'target_hash' from s12_px)
+     and claim->'plan'->>'compilerHash' = (select report->>'compiler_hash' from s12_px)
+   from s12_px_claim),
+  'DEC-184 witness (positive rows): the re-lease advances only the CAS version, preserving cursor, every derived count and every fingerprint');
+select ok(
+  (select claim->>'leaseToken' is not null
+     and claim->>'leaseToken' is distinct from (select held_token from s12_px) from s12_px_claim),
+  'DEC-184 witness (positive rows): the fresh lease token differs from the lapsed one');
+
+select pg_temp.s09d_call('px2.oldtoken', 'platform_api.cms_rollback_schema_migration',
+  pg_temp.s12_base('px2.oldtoken.get', (select plan from s12_px), (select version from s12_px))
+  || jsonb_build_object('expectedVersion', pg_temp.s12_v((select plan from s12_px))::text,
+       'leaseToken', (select held_token from s12_px),
+       'reasonCode', 'MIGRATION_RETRIES_EXHAUSTED', 'retryable', false,
+       'fallbackVersionId', (select source_version from s12_px),
+       'preserveOldActive', true, 'deleteRows', false));
+select is(pg_temp.s09d_outcome('px2.oldtoken'), 'LEASE_EXPIRED',
+  'DEC-184 witness (positive rows): the lapsed token cannot roll the plan back after the fresh re-lease');
+
+create temp table s12_px_rollback on commit drop as
+  select pg_temp.s09d_call('px2.rollback', 'platform_api.cms_rollback_schema_migration',
+    pg_temp.s12_base('px2.rollback.get', (select plan from s12_px), (select version from s12_px))
+    || jsonb_build_object(
+         'expectedVersion', (select claim->'plan'->>'version' from s12_px_claim),
+         'leaseToken', (select claim->>'leaseToken' from s12_px_claim),
+         'reasonCode', 'MIGRATION_RETRIES_EXHAUSTED', 'retryable', false,
+         'fallbackVersionId', (select source_version from s12_px),
+         'preserveOldActive', true, 'deleteRows', false)) as rollback;
+select ok(
+  (select rollback->'plan'->>'state' = 'failed_terminal' from s12_px_rollback),
+  'DEC-184 witness (positive rows): the re-leased verifying plan terminally rolls back [P2-S12-AC-050]');
+select is((select state from platform_private.cms_content_type_versions where id = (select source_version from s12_px)), 'active',
+  'DEC-184 witness (positive rows): the rollback preserves the old active source version');
+select is(
+  pg_temp.s09d_scalar(format('select count(*)::text from platform_private.cms_entry_revisions where schema_version_id = %L',
+    (select source_version from s12_px))),
+  (select source_rows from s12_px),
+  'DEC-184 witness (positive rows): the rollback keeps the same source-row count (deleteRows false)');
+select is(
+  pg_temp.s12_source_rows((select source_version from s12_px)),
+  (select source_content from s12_px),
+  'DEC-184 witness (positive rows): the rollback preserves the exact source rows by identity and content (no delete+replace)');
+
+select pg_temp.s09d_dry_run('px2', 'owner', null, null, 's12-px-post-' || substr(extensions.gen_random_uuid()::text, 1, 8));
+select ok(pg_temp.s09d_outcome('px2:dryRun') = 'OK',
+  'DEC-184 witness (positive rows): a new CMS-03A-10 attempt is admitted after the rollback');
+select ok(
+  pg_temp.s09d_read('cms_schema_migration_plans', 'state', (select plan from s12_px)) = 'failed_terminal'
+  and pg_temp.s09d_id('px2:plan') is distinct from (select plan from s12_px),
+  'DEC-184 witness (positive rows): the original terminal plan is retained as evidence while the new attempt supersedes it');

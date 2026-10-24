@@ -47,22 +47,38 @@ select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0001', 'h11.first', r
 select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0002', 'h11.second', repeat('b', 64));
 select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0004', 'h11.slotonly', repeat('d', 64));
 
-select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions', jsonb_build_object(
-  'id', 'a9200000-0000-4000-8000-0000000c0002', 'owner_id', pg_temp.h11w_org(), 'state', 'active', 'version', 1,
-  'pattern_key', 'h11-pattern-b', 'block_tree', '{"nodes":[{"blockKey":"h11.first"}]}'::jsonb,
-  'block_registry_digest', repeat('a', 64), 'content_hash', repeat('e', 64), 'owner_capability', 'cms.template_designer',
-  'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
-  'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z'));
-select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions', jsonb_build_object(
-  'id', 'a9200000-0000-4000-8000-0000000c0001', 'owner_id', pg_temp.h11w_org(), 'state', 'active', 'version', 1,
-  'pattern_key', 'h11-pattern-a', 'block_tree', '{"nodes":[{"blockKey":"h11.first"}]}'::jsonb,
-  'block_registry_digest', repeat('a', 64), 'content_hash', repeat('f', 64), 'owner_capability', 'cms.template_designer',
-  'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
-  'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z'));
--- instance builder with an explicit pattern id (the world helper names one pattern)
+-- PatternVersion row image (BE03c 1425, E14, DEC-188).  Labelled raw fixture: the ids, the content hashes and the
+-- `active` state are fixed by these suites and are not producer-reachable (cms_create_pattern_version writes a
+-- draft whose hash is derived, and only governed activation moves it), so the row is written raw, under
+-- h11_raw_exec, but every column satisfies the production CHECKs: the PatternNode forest, the world content type as
+-- the one compatible type id, node_count 1 and the lineage columns.  A first version is its own lineage (pattern_id = id); a successor
+-- names its parent row in supersedes_id and carries the parent's lineage id.
+create or replace function pg_temp.h11m_pattern_row(
+  p_id uuid, p_key text, p_version integer, p_hash text, p_state text default 'active',
+  p_lineage uuid default null, p_supersedes uuid default null,
+  p_at timestamptz default timestamptz '2026-10-08T12:00:00Z'
+)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'id', p_id, 'owner_id', pg_temp.h11w_org(), 'state', p_state, 'version', p_version,
+    'lifecycle_version', 1, 'pattern_id', coalesce(p_lineage, p_id), 'supersedes_id', p_supersedes,
+    'pattern_key', p_key,
+    'block_tree', '[{"kind":"block","key":"root","blockKey":"h11.first","blockVersion":1,"props":{},"children":[]}]'::jsonb,
+    'compatible_type_ids', jsonb_build_array((select value from h11w_ids where key = 'typeId')), 'node_count', 1,
+    'block_registry_digest', repeat('a', 64), 'content_hash', p_hash, 'owner_capability', 'cms.template_designer',
+    'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
+    'created_at', p_at, 'updated_at', p_at)
+$body$;
+select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions',
+  pg_temp.h11m_pattern_row('a9200000-0000-4000-8000-0000000c0002', 'h11-pattern-b', 1, repeat('e', 64)));
+select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions',
+  pg_temp.h11m_pattern_row('a9200000-0000-4000-8000-0000000c0001', 'h11-pattern-a', 1, repeat('f', 64)));
+-- instance builder with an explicit pattern lineage id and pinned version (the world helper names one pattern)
 create or replace function pg_temp.h11m_instance(
   p_tag text, p_revision uuid, p_path text, p_block text, p_pattern uuid default null,
-  p_state text default 'draft', p_block_version integer default 1
+  p_state text default 'draft', p_block_version integer default 1, p_pattern_version integer default 1
 )
 returns void
 language plpgsql
@@ -71,18 +87,24 @@ begin
   perform set_config('app.cms_rpc', 'true', true);
   insert into platform_private.cms_composition_instances(
     id, owner_id, state, version, revision_id, path, slot_key, block_key, block_version,
-    pattern_id, pattern_version, block_registry_digest, link_mode, created_by
+    pattern_id, pattern_version, block_registry_digest, link_mode, created_by, position
   ) values (
     pg_temp.h11w_uuid(p_tag), pg_temp.h11w_org(), p_state, 1, p_revision, p_path, 'primary',
-    p_block, p_block_version, p_pattern, case when p_pattern is null then null else 1 end,
+    p_block, p_block_version, p_pattern, case when p_pattern is null then null else p_pattern_version end,
     repeat('a', 64), case when p_pattern is null then 'detached' else 'linked' end,
-    (select value::uuid from s10_ids where key = 'creatorAuth'));
+    (select value::uuid from s10_ids where key = 'creatorAuth'),
+    -- DEC-185 (BE03c 1463): the path's existing position, else one above the slot's greatest (0 for an empty slot).
+    coalesce(
+      (select e.position from platform_private.cms_composition_instances e
+        where e.revision_id = p_revision and e.slot_key = 'primary' and e.path = p_path limit 1),
+      (select coalesce(max(e.position) + 1, 0) from platform_private.cms_composition_instances e
+        where e.revision_id = p_revision and e.slot_key = 'primary')));
 end;
 $body$;
 
 select pg_temp.h11_raw_insert('platform_private.cms_template_versions', jsonb_build_object(
   'id', 'a9200000-0000-4000-8000-0000000d0001', 'template_id', 'a9200000-0000-4000-8000-0000000d0001', 'owner_id', pg_temp.h11w_org(), 'state', 'active',
-  'version', 1, 'template_key', 'h11-template',
+  'version', 1, 'lifecycle_version', 1, 'template_key', 'h11-template',
   'compatible_type_ids', jsonb_build_array((select value from h11w_ids where key = 'typeId')),
   'slots', jsonb_build_array(jsonb_build_object('key', 'primary', 'required', false, 'maxCount', 4,
     'allowedBlocks', jsonb_build_array(

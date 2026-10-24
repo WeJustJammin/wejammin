@@ -149,12 +149,12 @@ select 'a9120000-0000-4000-8000-000000000301',
 
 insert into platform_private.cms_related_content_rules(
   id, owner_id, version, source_entry_id, rule_key, rule_version,
-  mode, reason_code, created_by
+  mode, reason_code, max_candidates, created_by
 )
 select 'a9120000-0000-4000-8000-000000000302',
        (select value::uuid from s10_ids where key = 'organization'),
        1, (select value::uuid from s10_ids where key = 'entryId'),
-       'similar-genre', 1, 'derived', 'MATCHED_RULE',
+       'shared-terms', 1, 'derived', 'SHARED_TERMS', 4,
        (select value::uuid from s10_ids where key = 'creatorAuth');
 
 select throws_ok(
@@ -183,12 +183,12 @@ select throws_ok(
 );
 select throws_ok(
   $$insert into platform_private.cms_related_content_rules(
-      owner_id, version, source_entry_id, target_entry_id, mode,
-      reason_code, created_by
+      owner_id, version, source_entry_id, target_entry_id, rule_key, rule_version,
+      mode, reason_code, max_candidates, created_by
     ) select (select value::uuid from s10_ids where key = 'organization'),
       2, (select value::uuid from s10_ids where key = 'entryId'),
       (select value::uuid from s10_ids where key = 'entryId'),
-      'derived', 'MATCHED_RULE',
+      'shared-terms', 1, 'derived', 'SHARED_TERMS', 4,
       (select value::uuid from s10_ids where key = 'creatorAuth')$$,
   '23514', null, 'derived rule cannot hardcode a target entry'
 );

@@ -1,0 +1,119 @@
+-- CMS-03C-05 first write, strict resource, append-only rows, audit-only evidence (no outbox event),
+-- eligibleCount, idempotent replay (BE03c 163, 1380-1384, 1510; tracker P2-S12-AC-059, AC-061, AC-228,
+-- AC-230).  The caller is the creator (cms.author + cms.editor grants, author assignments on the sources).
+
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+                          (select value::uuid from s10_ids where key = 'organization'));
+select set_config('app.correlation_id', 'a9200000-0000-4000-8000-0000000000e5', true);
+
+create temp table r12_audit_before on commit drop as
+select count(*)::integer as audit_rows,
+       (select count(*)::integer from platform_private.outbox_events) as outbox_rows
+  from audit_private.audit_events where action = 'cms.related_content.curate';
+
+create temp table r12_a1 on commit drop as
+select pg_temp.r12_req('srcA', array['c3', 'c1'], array['c4', 'x6'], pg_temp.r12_rule('same-type-recent', 5), 'r12-srcA-write-0001') as request;
+create temp table r12_a1_out on commit drop as
+select pg_temp.r12_curate(request) as response from r12_a1;
+
+select ok(not ((select response from r12_a1_out) ? '__error'),
+  'a first curation by an assigned author succeeds (got ' || coalesce((select response::text from r12_a1_out), 'null') || ') [P2-S12-AC-059]');
+select is((select array_agg(k order by k) from jsonb_object_keys((select response from r12_a1_out)) k),
+  array['contentHash', 'createdAt', 'derivedRule', 'eligibleCount', 'exclusions', 'id', 'pins', 'sourceEntryId', 'state', 'updatedAt', 'version'],
+  'the answer is exactly the RelatedContentResource members [P2-S12-AC-059]');
+select is((select response->>'id' from r12_a1_out), pg_temp.r12_id('srcA')::text, 'the resource id is the source entry id (the rule set is the entry aggregate) [P2-S12-AC-059]');
+select is((select response->>'sourceEntryId' from r12_a1_out), pg_temp.r12_id('srcA')::text, 'sourceEntryId names the source [P2-S12-AC-059]');
+select is((select response->>'version' from r12_a1_out), '2', 'the resource version is the NEW entry aggregate version, the next If-Match operand [P2-S12-AC-061]');
+select is(pg_temp.r12_version('srcA'), 2::bigint, 'the source entry aggregate version advanced by exactly one (CAS) [P2-S12-AC-061]');
+select is((select response->>'state' from r12_a1_out), 'active', 'a rule set with active items is active [P2-S12-AC-059]');
+select is(pg_temp.r12_names((select response->'pins' from r12_a1_out)), 'c3,c1', 'pins keep array order [P2-S12-AC-228]');
+select is(pg_temp.r12_names((select response->'exclusions' from r12_a1_out)), 'c4,x6', 'exclusions keep array order [P2-S12-AC-228]');
+select is((select response->'derivedRule' from r12_a1_out), '{"key":"same-type-recent","version":"1"}'::jsonb,
+  'the derived rule answers only key and version [P2-S12-AC-059]');
+select is((select response->>'eligibleCount' from r12_a1_out), '2',
+  'an unpublished source evaluates no derived candidates: eligibleCount is the two eligible pins [P2-S12-AC-230]');
+select is((select response->>'contentHash' from r12_a1_out),
+  pg_temp.h11_sha256('{"derivedRule":{"key":"same-type-recent","maxCandidates":5,"version":"1"},"exclusions":["' || pg_temp.r12_id('c4') || '","' || pg_temp.r12_id('x6')
+    || '"],"pins":["' || pg_temp.r12_id('c3') || '","' || pg_temp.r12_id('c1') || '"]}'),
+  'contentHash is the SHA-256 of the JCS { derivedRule { key, maxCandidates, version }, exclusions, pins } [P2-S12-AC-059]');
+select is((select response->>'createdAt' = response->>'updatedAt'
+             and response->>'updatedAt' = platform_private.auth_iso_time((select updated_at from platform_private.cms_content_entries where id = pg_temp.r12_id('srcA')))
+             from r12_a1_out), true, 'createdAt equals updatedAt equals the entry update instant [P2-S12-AC-228]');
+
+select is(pg_temp.r12_stored('srcA'),
+  'derived:-:-:active:1,exclude:c4:-:active:1,exclude:x6:-:active:1,pin:c1:1:active:1,pin:c3:0:active:1',
+  'pins are stored in array order as position, exclusions and the derived rule as active version-1 rows [P2-S12-AC-228]');
+select is((select count(*)::integer from platform_private.cms_related_content_rules where source_entry_id = pg_temp.r12_id('srcA')), 5,
+  'exactly five rule rows were appended [P2-S12-AC-228]');
+select is(pg_temp.r12_text(format($q$select rule_key || '/' || rule_version || '/' || max_candidates || '/' || reason_code || '/' || (target_entry_id is null)::text || '/' || coalesce(position::text, 'null')
+             from platform_private.cms_related_content_rules where source_entry_id = %L and mode = 'derived'$q$, pg_temp.r12_id('srcA'))),
+  'same-type-recent/1/5/SAME_TYPE_RECENT/true/null',
+  'the derived row carries the registry key and version, its bound, the registry reason (stored upper case) and no target [P2-S12-AC-229]');
+select is((select string_agg(distinct reason_code, ',') from platform_private.cms_related_content_rules where source_entry_id = pg_temp.r12_id('srcA') and mode = 'pin'),
+  'MANUAL_PIN', 'pin rows carry the manual-pin reason [P2-S12-AC-228]');
+select is((select count(*)::integer from platform_private.cms_related_content_rules rule
+            where rule.source_entry_id = pg_temp.r12_id('srcA') and rule.owner_id = pg_temp.h11w_org()
+              and rule.updated_at = rule.created_at and rule.created_by = (select value::uuid from s10_ids where key = 'creatorAuth')
+              and rule.created_at = (select updated_at from platform_private.cms_content_entries where id = pg_temp.r12_id('srcA'))), 5,
+  'every row copies the entry owner, the acting user and one snapshot instant (append-only: updated_at = created_at) [P2-S12-AC-228]');
+
+select is((select count(*)::integer from audit_private.audit_events where action = 'cms.related_content.curate' and target_id = pg_temp.r12_id('srcA')),
+  1, 'one audit record names the curation [P2-S12-AC-061]');
+select is((select count(*)::integer from platform_private.outbox_events where aggregate_id = pg_temp.r12_id('srcA') or payload->>'entryId' = pg_temp.r12_id('srcA')::text),
+  0, 'no outbox event is emitted: the command emits none until publication [P2-S12-AC-061]');
+select is((select count(*)::integer from platform_private.outbox_events) - (select outbox_rows from r12_audit_before), 0,
+  'the whole call wrote no outbox row at all [P2-S12-AC-061]');
+select is((select count(*)::integer from platform_private.idempotency_records
+            where operation = 'CMS-03C-05' and state = 'completed'
+              and key_hash = platform_private.cms_key_hash('r12-srcA-write-0001')), 1,
+  'the idempotency receipt is completed under operation CMS-03C-05 [P2-S12-AC-061]');
+
+-- Replay and mismatch.
+select is(pg_temp.r12_curate((select request from r12_a1)), (select response from r12_a1_out),
+  'replaying the same key and body answers the stored response byte for byte [P2-S12-AC-061]');
+select is(pg_temp.r12_version('srcA'), 2::bigint, 'the replay did not advance the entry [P2-S12-AC-061]');
+select is((select count(*)::integer from platform_private.cms_related_content_rules where source_entry_id = pg_temp.r12_id('srcA')), 5, 'the replay appended no row [P2-S12-AC-061]');
+select is((select count(*)::integer from audit_private.audit_events where action = 'cms.related_content.curate' and target_id = pg_temp.r12_id('srcA')), 1,
+  'the replay wrote no second audit record [P2-S12-AC-061]');
+select is((select pg_temp.r12_curate((request || '{"pins":[]}'::jsonb)) ->> '__error' from r12_a1), 'IDEMPOTENCY_MISMATCH',
+  'the same key with another body is an idempotency mismatch [P2-S12-AC-061]');
+select is(pg_temp.r12_stored('srcA'),
+  'derived:-:-:active:1,exclude:c4:-:active:1,exclude:x6:-:active:1,pin:c1:1:active:1,pin:c3:0:active:1',
+  'the mismatch changed nothing [P2-S12-AC-061]');
+
+-- eligibleCount (BE03c 1383): eligible pins + derived candidates for the source revision locale and the
+-- audience of the source's most recent active publication; 0 derived when it has none.  The public
+-- candidates of (en-US, public) at this point are c1 c3 c5 c6 c7 srcm x6 x7 xo (c2 is pinned, c4 excluded).
+select is((select pg_temp.r12_curate(pg_temp.r12_req('srcp', array['c2'], array['c4'], pg_temp.r12_rule('shared-terms', 2), 'r12-srcp-count-0001'))->>'eligibleCount'),
+  '3', 'a published source: one pin plus the two derived candidates its maxCandidates allows [P2-S12-AC-230]');
+select is((select pg_temp.r12_curate(pg_temp.r12_req('srcp', array['c2'], array['c4'], pg_temp.r12_rule('shared-terms', 128), 'r12-srcp-count-0002'))->>'eligibleCount'),
+  '10', 'with room for all candidates: one pin plus the nine eligible public candidates (pinned and excluded entries are not candidates) [P2-S12-AC-230]');
+select is((select pg_temp.r12_curate(pg_temp.r12_req('srcp', array['c2'], array['c4'], null, 'r12-srcp-count-0003'))->>'eligibleCount'),
+  '1', 'no derived rule: eligibleCount is the pins alone [P2-S12-AC-230]');
+select is((select pg_temp.r12_curate(pg_temp.r12_req('srcB', array['c1'], array[]::text[], pg_temp.r12_rule('same-type-recent', 5), 'r12-srcB-count-0001'))->>'eligibleCount'),
+  '1', 'a source with no publication has 0 derived candidates: one pin, eligibleCount 1 [P2-S12-AC-230]');
+select is((select pg_temp.r12_curate(pg_temp.r12_req('srcm', array[]::text[], array[]::text[], pg_temp.r12_rule('same-type-recent', 8), 'r12-srcm-count-0001'))->>'eligibleCount'),
+  '1', 'the audience is that of the most recent active publication (members): only x4 is a members candidate, not the nine public ones [P2-S12-AC-230]');
+select is((select pg_temp.r12_curate(pg_temp.r12_req('srcp', array['c2'], array['c4'], pg_temp.r12_rule('shared-terms', 128), 'r12-srcp-count-0004'))->>'eligibleCount'),
+  '10', 'eligibleCount is recomputed on every write from live publications, not read from an earlier write [P2-S12-AC-230]');
+
+-- contentHash must distinguish rule sets that differ only in maxCandidates (fix pass F1; BE03c states no hash
+-- recipe for RelatedContentResource, so the recipe is the lane's and covers every stored rule input).
+create temp table r12_h1 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcT', array['c3'], array['c4'], pg_temp.r12_rule('same-type-recent', 4), 'r12-srcT-hash-0001')) as response;
+create temp table r12_h2 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcT', array['c3'], array['c4'], pg_temp.r12_rule('same-type-recent', 5), 'r12-srcT-hash-0002')) as response;
+select ok(not ((select response from r12_h1) ? '__error') and not ((select response from r12_h2) ? '__error'),
+  'two curations differing only in maxCandidates both succeed (got ' || coalesce((select response::text from r12_h1), 'null') || ' / ' || coalesce((select response::text from r12_h2), 'null') || ') [P2-S12-AC-059]');
+select isnt((select response->>'contentHash' from r12_h1), (select response->>'contentHash' from r12_h2),
+  'rule sets differing only in maxCandidates do not hash equal [P2-S12-AC-059]');
+select is((select response->>'contentHash' from r12_h1),
+  pg_temp.h11_sha256('{"derivedRule":{"key":"same-type-recent","maxCandidates":4,"version":"1"},"exclusions":["' || pg_temp.r12_id('c4')
+    || '"],"pins":["' || pg_temp.r12_id('c3') || '"]}'),
+  'the hash input names maxCandidates 4 beside key and version [P2-S12-AC-059]');
+select is((select response->>'contentHash' from r12_h2),
+  pg_temp.h11_sha256('{"derivedRule":{"key":"same-type-recent","maxCandidates":5,"version":"1"},"exclusions":["' || pg_temp.r12_id('c4')
+    || '"],"pins":["' || pg_temp.r12_id('c3') || '"]}'),
+  'the hash input names maxCandidates 5 beside key and version [P2-S12-AC-059]');
+select is((select response->>'contentHash' from r12_a1_out) <> (select response->>'contentHash' from r12_h2), true,
+  'a different pin set with the same bound hashes differently (control: pins still hash) [P2-S12-AC-059]');

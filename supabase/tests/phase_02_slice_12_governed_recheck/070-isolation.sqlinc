@@ -1,0 +1,148 @@
+-- AC-203 (BE03c "Invalidation": the job is idempotent and bounded, 500 reviews per run with a continuation cursor) and the lock order
+-- (BE03c "Slice 12 lock order", row `cms_recheck_governed_reviews`): review R3-08 (one failing review must neither abort the run nor pin the
+-- cursor) and R3-20 (the subject row is locked before the dependency reads of the verdict).
+-- The spec is silent on a failure inside ONE review of a run; the bounded-run rule (the cursor advances) is what is implemented and the
+-- choice is recorded as a BOUNDARY in the lane report.  Faults are the labelled kind of governed_activation/000-world s12gb_fault_on: the
+-- test-admin replaces the source of ONE existing private function with a guard in front of its body, and restores it byte for byte, owner
+-- and ACL unchanged; nothing else is faked and no trigger is touched.
+create temp table s12fr_fault(
+  signature text primary key, saved text not null, source_md5 text not null, acl_before text, owner_before text) on commit drop;
+
+create or replace function pg_temp.s12fr_fault_on(p_signature text, p_guard text) returns void language plpgsql as $body$
+declare
+  target oid := to_regprocedure(p_signature);
+  def text; src text; owner_name text; acl text;
+begin
+  if current_user <> 'postgres' or target is null then
+    raise exception 'fault installation requires the test-admin and the existing function';
+  end if;
+  select pg_get_functiondef(proc.oid), proc.prosrc, pg_get_userbyid(proc.proowner), proc.proacl::text
+    into def, src, owner_name, acl from pg_proc proc where proc.oid = target;
+  if owner_name <> 'wejammin_cms_definer' or (length(def) - length(replace(def, src, ''))) <> length(src) then
+    raise exception 'unexpected function metadata; no automatic repair';
+  end if;
+  insert into s12fr_fault(signature, saved, source_md5, acl_before, owner_before) values (p_signature, def, md5(src), acl, owner_name);
+  execute replace(def, src, regexp_replace(src, '\mbegin\M', E'begin\n' || p_guard || E'\n'));
+end;
+$body$;
+
+create or replace function pg_temp.s12fr_fault_off(p_signature text) returns boolean language plpgsql as $body$
+declare
+  saved record; restored boolean;
+begin
+  select * into strict saved from s12fr_fault where signature = p_signature;
+  execute saved.saved;
+  select md5(proc.prosrc) = saved.source_md5 and proc.proacl::text is not distinct from saved.acl_before
+         and pg_get_userbyid(proc.proowner) = saved.owner_before
+    into restored from pg_proc proc where proc.oid = to_regprocedure(p_signature);
+  delete from s12fr_fault where signature = p_signature;
+  return coalesce(restored, false);
+end;
+$body$;
+
+-- The guard: raise for the review named by the transaction-local setting s12fr.poison with the SQLSTATE in s12fr.poison_state.
+create or replace function pg_temp.s12fr_guard() returns text language sql immutable as $body$
+  select $g$if p_review_id = nullif(pg_catalog.current_setting('s12fr.poison', true), '')::uuid then
+    raise exception 'POISONED_REVIEW_FOR_TEST' using errcode = coalesce(nullif(pg_catalog.current_setting('s12fr.poison_state', true), ''), 'XX000');
+  end if;$g$ $body$;
+create or replace function pg_temp.s12fr_poison(p_review uuid, p_state text default 'XX000') returns void language sql as $body$
+  select pg_catalog.set_config('s12fr.poison', coalesce(p_review::text, ''), true),
+         pg_catalog.set_config('s12fr.poison_state', p_state, true) $body$;
+
+-- ------------------------------------------------------------------------------ fixtures: four live reviews of one lineage
+select pg_temp.s12gb_approved('iso1', array['typeA'], 'rev1');
+select pg_temp.s12gb_approved('iso2', array['typeA'], 'designer2');
+select pg_temp.s12gb_approved('iso3', array['typeA'], 'x05');
+select pg_temp.s12gb_approved('iso4', array['typeA'], 'x06');
+create temp table s12fr_iso on commit drop as
+select row_number() over (order by review.id) as position, review.id as review_id,
+       (select decision.reviewer_person_id from platform_private.cms_governed_review_decisions decision
+         where decision.review_id = review.id and decision.decision = 'approve') as approver
+  from platform_private.cms_governed_reviews review
+ where review.id in (select pg_temp.s12ga_review(t) from unnest(array['iso1', 'iso2', 'iso3', 'iso4']) t);
+create or replace function pg_temp.s12fr_iso_id(p_position integer) returns uuid language sql stable as $body$
+  select review_id from s12fr_iso where position = p_position $body$;
+create or replace function pg_temp.s12fr_iso_tag(p_position integer) returns text language sql stable as $body$
+  select t from unnest(array['iso1', 'iso2', 'iso3', 'iso4']) t where pg_temp.s12ga_review(t) = pg_temp.s12fr_iso_id(p_position) $body$;
+create or replace function pg_temp.s12fr_iso_mark_all() returns void language sql as $body$
+  select pg_temp.s12gr_mark('iso:' || p, pg_temp.s12fr_iso_tag(p)) from generate_series(1, 4) p $body$;
+select pg_temp.s12fr_iso_mark_all();
+select ok((select count(*) = 4 and bool_and(review.state = 'approved' and review.activated_at is null)
+             from platform_private.cms_governed_reviews review where review.id in (select review_id from s12fr_iso))
+    and (select count(*) = 4 and count(distinct approver) = 4 from s12fr_iso)
+    and not exists (select 1 from platform_private.cms_governed_reviews review
+                     where review.state in ('open', 'approved') and review.activated_at is null
+                       and review.id not in (select review_id from s12fr_iso)
+                       and exists (select 1 from platform_private.cms_governed_review_dependencies dependency
+                                    where dependency.review_id = review.id and dependency.kind = 'content_type'
+                                      and dependency.ref_id = pg_temp.s12gr_type_a_active())),
+  'fixture: exactly four live typeA-bound reviews exist, each approved by a different person [P2-S12-AC-203]');
+
+-- ---------------------------------------------- R3-08 (1): a verdict that fails for a reason other than a lock never stops the run
+select pg_temp.s12fr_fault_on('platform_private.cms_governed_recheck_verdict(uuid)', pg_temp.s12fr_guard());
+select pg_temp.s12fr_poison(pg_temp.s12fr_iso_id(2));
+-- the third review loses its approver by the calendar (the loss no trigger covers), so the run has real work AFTER the poisoned review
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), (select approver from s12fr_iso where position = 3), 'cms.reviewer');
+select pg_temp.s12gr_run('iso-a1', 'content_type', pg_temp.s12gr_type_a_active(), null, 2);
+select is(pg_temp.s12gb_sbody('iso-a1'), pg_temp.s12gr_result(2, 0, 0, 1, pg_temp.s12fr_iso_id(2)),
+  'a batch of two over a poisoned second review examines both, counts the poisoned one unavailable and returns ITS id as the cursor: the run is not aborted and the cursor is not pinned before it [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_untouched('iso:1', pg_temp.s12fr_iso_tag(1)) and pg_temp.s12gr_untouched('iso:2', pg_temp.s12fr_iso_tag(2)),
+  'the poisoned review is left live and byte-identical (its sub-transaction was rolled back) and so is the review before it [P2-S12-AC-203]');
+select pg_temp.s12gr_run('iso-a2', 'content_type', pg_temp.s12gr_type_a_active(), pg_temp.s12fr_iso_id(2), 2);
+select is(pg_temp.s12gb_sbody('iso-a2'), pg_temp.s12gr_result(2, 0, 1, 0, null),
+  'the continuation from the cursor handles the reviews behind the poisoned one: the lapsed approver''s review is invalidated reviewer_authority_changed and the last review holds [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_invalidated('iso:3', pg_temp.s12fr_iso_tag(3), 'reviewer_authority_changed')
+    and pg_temp.s12gr_untouched('iso:4', pg_temp.s12fr_iso_tag(4)) and pg_temp.s12gr_untouched('iso:2', pg_temp.s12fr_iso_tag(2)),
+  'only the review behind the poisoned one changed; the poisoned one is still live [P2-S12-AC-203]');
+select ok(pg_temp.s12fr_fault_off('platform_private.cms_governed_recheck_verdict(uuid)'),
+  'the labelled fault is removed and the verdict function restored byte for byte, owner and ACL unchanged [P2-S12-AC-203]');
+select pg_temp.s12fr_poison(null);
+select pg_temp.s12gr_run('iso-a3', 'content_type', pg_temp.s12gr_type_a_active());
+select is(pg_temp.s12gb_sbody('iso-a3'), pg_temp.s12gr_result(3, 0, 0, 0, null),
+  'once the fault is gone the previously poisoned review is evaluated normally and holds: the next run is the ordinary one [P2-S12-AC-203]');
+select pg_temp.s12fr_iso_mark_all();
+
+-- -------------------------------- R3-08 (2): an invalidation that fails is rolled back to the review''s state at selection
+select pg_temp.s12fr_restore();
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), (select approver from s12fr_iso where position = 4), 'cms.reviewer');
+select pg_temp.s12fr_fault_on('platform_private.cms_governed_invalidate_approved_review(uuid, text, uuid, uuid, uuid)', pg_temp.s12fr_guard());
+select pg_temp.s12fr_poison(pg_temp.s12fr_iso_id(4));
+select pg_temp.s12gr_run('iso-b1', 'content_type', pg_temp.s12gr_type_a_active());
+select is(pg_temp.s12gb_sbody('iso-b1'), pg_temp.s12gr_result(3, 0, 0, 1, null),
+  'a review whose invalidation fails is counted unavailable and the other reviews of the run are still handled (the run answers, it does not raise) [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_untouched('iso:4', pg_temp.s12fr_iso_tag(4)) and pg_temp.s12gr_untouched('iso:1', pg_temp.s12fr_iso_tag(1))
+    and pg_temp.s12gr_untouched('iso:2', pg_temp.s12fr_iso_tag(2))
+    and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12fr_iso_id(4)) = 0,
+  'the half-applied invalidation left nothing behind: the review stays approved at its version, its subject is not back in draft and no audit record exists [P2-S12-AC-203]');
+select ok(pg_temp.s12fr_fault_off('platform_private.cms_governed_invalidate_approved_review(uuid, text, uuid, uuid, uuid)'),
+  'the labelled fault is removed and the invalidation function restored byte for byte, owner and ACL unchanged [P2-S12-AC-203]');
+select pg_temp.s12fr_poison(null);
+select pg_temp.s12gr_run('iso-b2', 'content_type', pg_temp.s12gr_type_a_active());
+select is(pg_temp.s12gb_sbody('iso-b2'), pg_temp.s12gr_result(3, 0, 1, 0, null),
+  'the retry (the same job re-delivered) invalidates the review that failed before: the isolated failure was recoverable [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_invalidated('iso:4', pg_temp.s12fr_iso_tag(4), 'reviewer_authority_changed'),
+  'the review is invalidated reviewer_authority_changed (version + 1, subject back to draft) by the retry [P2-S12-AC-203]');
+select pg_temp.s12fr_restore();
+
+-- -------------------------------------- a lock failure is NOT isolated: it is the typed retryable CONFLICT and the run rolls back whole
+select pg_temp.s12fr_iso_mark_all();
+select pg_temp.s12fr_fault_on('platform_private.cms_governed_recheck_verdict(uuid)', pg_temp.s12fr_guard());
+select pg_temp.s12fr_poison(pg_temp.s12fr_iso_id(2), '55P03');
+select pg_temp.s12gr_run('iso-c1', 'content_type', pg_temp.s12gr_type_a_active());
+select pg_temp.s12fr_poison(pg_temp.s12fr_iso_id(2), '40P01');
+select pg_temp.s12gr_run('iso-c2', 'content_type', pg_temp.s12gr_type_a_active());
+select ok(pg_temp.s12fr_fault_off('platform_private.cms_governed_recheck_verdict(uuid)'),
+  'the labelled fault is removed and the verdict function restored byte for byte [P2-S12-AC-203]');
+select pg_temp.s12fr_poison(null);
+select is(pg_temp.s12gb_sout('iso-c1') || '|' || pg_temp.s12gb_sout('iso-c2'), 'P0001:CONFLICT|P0001:CONFLICT',
+  'a lock_not_available and a deadlock_detected inside the run are the typed retryable CONFLICT, not an isolated failure [P2-S12-AC-203]');
+select ok(pg_temp.s12gr_untouched('iso:1', pg_temp.s12fr_iso_tag(1)) and pg_temp.s12gr_untouched('iso:2', pg_temp.s12fr_iso_tag(2)),
+  'the failed runs committed nothing: the reviews are byte-identical and the job can be retried whole [P2-S12-AC-203]');
+
+-- ------------------------------------------------------------------ R3-20: the subject row is locked before the verdict
+select ok(
+  (select position('cms_governed_subject_resolve' in proc.prosrc) > 0
+          and position('cms_governed_subject_resolve' in proc.prosrc) < position('cms_governed_recheck_verdict' in proc.prosrc)
+          and proc.prosrc ~ 'cms_governed_subject_resolve\(\s*review_row\.subject_kind,\s*review_row\.subject_id,\s*true\)'
+     from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_recheck_governed_reviews(jsonb)')),
+  'the run locks the subject version row FOR UPDATE (position 3) before it calls the verdict whose block digest takes FOR SHARE on the reachable block rows, so the verdict is decided under the subject lock and no block lock precedes it [P2-S12-AC-203]');

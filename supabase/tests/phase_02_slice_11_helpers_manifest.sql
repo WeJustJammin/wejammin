@@ -14,7 +14,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(88);
+select plan(92);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
@@ -38,15 +38,18 @@ as $body$
 $body$;
 
 \ir phase_02_slice_11_helpers/003-registry.sqlinc
+\ir phase_02_slice_11_pattern_forest.sqlinc
 
 insert into platform_private.cms_taxonomy_versions(
   id, owner_id, version, taxonomy_key, owner_capability, shape,
   allowlisted_type_keys, allowlisted_field_keys, content_hash, created_by
 ) values (pg_temp.h11w_uuid('tax1'), pg_temp.h11w_org(), 1, 'h11-genres', 'cms.taxonomy_curator',
   'flat', '[]'::jsonb, '[]'::jsonb, repeat('a', 64), (select value::uuid from s10_ids where key = 'creatorAuth'));
+-- taxonomy_id (BE03c 1371/1428; 20261014120000): h11_raw_exec disables the lineage-fill trigger, so the row names its lineage
+-- (the version-1 row's id) itself.
 select pg_temp.h11_raw_insert('platform_private.cms_terms', jsonb_build_object(
   'id', t.id, 'owner_id', pg_temp.h11w_org(), 'lifecycle', 'active', 'version', t.version,
-  'taxonomy_version_id', pg_temp.h11w_uuid('tax1'), 'term_key', t.term_key, 'aliases', '[]'::jsonb,
+  'taxonomy_id', pg_temp.h11w_uuid('tax1'), 'taxonomy_version_id', pg_temp.h11w_uuid('tax1'), 'term_key', t.term_key, 'aliases', '[]'::jsonb,
   'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
   'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z'))
 from (values
@@ -175,10 +178,15 @@ select is(pg_temp.h11m_build('tpl')->'blocks',
 -- ---------------------------------------------------------------------------
 -- blocks and patterns from composition instances
 -- ---------------------------------------------------------------------------
+-- Forests (DEC-193, BE03c 1511): each pinned row's path is the key chain of a block root of its pattern version.
+select pg_temp.h11x_forest('a9200000-0000-4000-8000-0000000c0002', 'h11.first', array['b', 'd']);
+select pg_temp.h11x_forest('a9200000-0000-4000-8000-0000000c0001', 'h11.first', array['a', 'c']);
 select pg_temp.h11w_revision('comp');
 select pg_temp.h11m_instance('comp:i1', pg_temp.h11w_uuid('comp:revision'), '/a', 'h11.third');
 select pg_temp.h11m_instance('comp:i2', pg_temp.h11w_uuid('comp:revision'), '/b', 'h11.first', 'a9200000-0000-4000-8000-0000000c0002');
-select pg_temp.h11m_instance('comp:i3', pg_temp.h11w_uuid('comp:revision'), '/c', 'h11.second', 'a9200000-0000-4000-8000-0000000c0001');
+select pg_temp.h11m_instance('comp:i3', pg_temp.h11w_uuid('comp:revision'), '/c', 'h11.first', 'a9200000-0000-4000-8000-0000000c0001');
+-- h11.second stays in the manifest as a standalone block: a pattern that reached it would go stale once test 72 deprecates it (DEC-199).
+select pg_temp.h11m_instance('comp:i6', pg_temp.h11w_uuid('comp:revision'), '/f', 'h11.second');
 select pg_temp.h11m_instance('comp:i4', pg_temp.h11w_uuid('comp:revision'), '/d', 'h11.first', 'a9200000-0000-4000-8000-0000000c0002', 'active');
 select pg_temp.h11m_instance('comp:i5', pg_temp.h11w_uuid('comp:revision'), '/e', 'h11.slotonly', null, 'retired');
 select is(pg_temp.h11m_build('comp')->'blocks',
@@ -192,6 +200,30 @@ select is(pg_temp.h11m_build('comp')->'patterns',
     jsonb_build_object('id', 'a9200000-0000-4000-8000-0000000c0001', 'hash', repeat('f', 64)),
     jsonb_build_object('id', 'a9200000-0000-4000-8000-0000000c0002', 'hash', repeat('e', 64))),
   'patterns: each PatternVersion once, ascending by id, hash = content_hash [P2-S11-AC-088]');
+
+-- A placement pins the stable (patternId, patternVersion) of PatternPlacementRequest (BE03c 219, 1426): pattern_id is
+-- the LINEAGE id (the id of the version-1 row), pattern_version selects the version row.  The manifest freezes the
+-- pinned VERSION ROW (its id and content_hash), never the lineage's version-1 row.  Review finding F12.
+select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions',
+  pg_temp.h11m_pattern_row('a9200000-0000-4000-8000-0000000c0011', 'h11-lineage', 1, repeat('1', 64), 'superseded'));
+select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions',
+  pg_temp.h11m_pattern_row('a9200000-0000-4000-8000-0000000c0012', 'h11-lineage', 2, repeat('2', 64), 'active',
+    'a9200000-0000-4000-8000-0000000c0011', 'a9200000-0000-4000-8000-0000000c0011',
+    timestamptz '2026-10-09T12:00:00Z'));
+select pg_temp.h11x_forest('a9200000-0000-4000-8000-0000000c0011', 'h11.first', array['a']);
+select pg_temp.h11x_forest('a9200000-0000-4000-8000-0000000c0012', 'h11.first', array['a']);
+select pg_temp.h11w_revision('lin2');
+select pg_temp.h11m_instance('lin2:i1', pg_temp.h11w_uuid('lin2:revision'), '/a', 'h11.first',
+  'a9200000-0000-4000-8000-0000000c0011', 'draft', 1, 2);
+select is(pg_temp.h11m_build('lin2')->'patterns',
+  jsonb_build_array(jsonb_build_object('id', 'a9200000-0000-4000-8000-0000000c0012', 'hash', repeat('2', 64))),
+  'patterns: an instance pinned to version 2 of a lineage freezes the version-2 row id and content_hash, not the version-1 row [P2-S11-AC-088]');
+select pg_temp.h11w_revision('lin1');
+select pg_temp.h11m_instance('lin1:i1', pg_temp.h11w_uuid('lin1:revision'), '/a', 'h11.first',
+  'a9200000-0000-4000-8000-0000000c0011', 'draft', 1, 1);
+select is(pg_temp.h11m_build('lin1')->'patterns',
+  jsonb_build_array(jsonb_build_object('id', 'a9200000-0000-4000-8000-0000000c0011', 'hash', repeat('1', 64))),
+  'patterns: an instance pinned to version 1 of the same lineage freezes the version-1 row [P2-S11-AC-088]');
 
 select pg_temp.h11w_revision('ghost');
 select pg_temp.h11m_instance('ghost:i1', pg_temp.h11w_uuid('ghost:revision'), '/a', 'h11.unregistered');
@@ -338,12 +370,12 @@ select pg_temp.h11_raw_exec('platform_private.cms_block_definition_versions', fo
   pg_temp.h11w_org(), pg_temp.h11w_uuid('principal')));
 select pg_temp.h11w_revision('big');
 select pg_temp.h11_raw_exec('platform_private.cms_composition_instances', format(
-  'insert into platform_private.cms_composition_instances(id, owner_id, state, version, revision_id, path, slot_key, block_key, block_version, block_registry_digest, link_mode, created_by) select (''a9210000-0000-4000-8000-'' || lpad(to_hex(n), 12, ''0''))::uuid, %L::uuid, ''draft'', 1, %L::uuid, ''/p'' || n, ''primary'', ''h11.bulk'' || n, 1, repeat(''a'', 64), ''detached'', %L::uuid from generate_series(1, 128) n',
+  'insert into platform_private.cms_composition_instances(id, owner_id, state, version, revision_id, path, slot_key, block_key, block_version, block_registry_digest, link_mode, created_by, position) select (''a9210000-0000-4000-8000-'' || lpad(to_hex(n), 12, ''0''))::uuid, %L::uuid, ''draft'', 1, %L::uuid, ''/p'' || n, ''primary'', ''h11.bulk'' || n, 1, repeat(''a'', 64), ''detached'', %L::uuid, n - 1 from generate_series(1, 128) n',
   pg_temp.h11w_org(), pg_temp.h11w_uuid('big:revision'), (select value::uuid from s10_ids where key = 'creatorAuth')));
 select is(pg_temp.h11m_build('big') is not null, true, 'control: 128 reachable blocks (4 + 128 = 132 entries, at the group cap) still build [P2-S11-AC-087]');
 select pg_temp.h11w_revision('big2');
 select pg_temp.h11_raw_exec('platform_private.cms_composition_instances', format(
-  'insert into platform_private.cms_composition_instances(id, owner_id, state, version, revision_id, path, slot_key, block_key, block_version, block_registry_digest, link_mode, created_by) select (''a9230000-0000-4000-8000-'' || lpad(to_hex(n), 12, ''0''))::uuid, %L::uuid, ''draft'', 1, %L::uuid, ''/p'' || n, ''primary'', ''h11.bulk'' || n, 1, repeat(''a'', 64), ''detached'', %L::uuid from generate_series(1, 128) n',
+  'insert into platform_private.cms_composition_instances(id, owner_id, state, version, revision_id, path, slot_key, block_key, block_version, block_registry_digest, link_mode, created_by, position) select (''a9230000-0000-4000-8000-'' || lpad(to_hex(n), 12, ''0''))::uuid, %L::uuid, ''draft'', 1, %L::uuid, ''/p'' || n, ''primary'', ''h11.bulk'' || n, 1, repeat(''a'', 64), ''detached'', %L::uuid, n - 1 from generate_series(1, 128) n',
   pg_temp.h11w_org(), pg_temp.h11w_uuid('big2:revision'), (select value::uuid from s10_ids where key = 'creatorAuth')));
 select pg_temp.h11_raw_exec('platform_private.cms_entry_relations', format(
   'insert into platform_private.cms_entry_relations(owner_id, state, version, revision_id, field_id, field_definition_id, target_kind, target_id, expected_target_version, position, on_unavailable, created_at, updated_at) select %L::uuid, ''active'', 1, %L::uuid, %L::uuid, %L::uuid, ''content'', (''a9240000-0000-4000-8000-'' || lpad(to_hex(n), 12, ''0''))::uuid, 1, n, ''block'', timestamptz ''2026-10-08T12:00:00Z'', timestamptz ''2026-10-08T12:00:00Z'' from generate_series(1, 128) n',
@@ -388,8 +420,10 @@ as $body$
 $body$;
 
 select pg_temp.h11w_revision('cur', 'creatorPerson', 'en-US', '[]'::jsonb, null, 1, 'a9200000-0000-4000-8000-0000000d0001'::uuid);
-select pg_temp.h11m_instance('cur:i1', pg_temp.h11w_uuid('cur:revision'), '/a', 'h11.second', 'a9200000-0000-4000-8000-0000000c0001');
+select pg_temp.h11m_instance('cur:i1', pg_temp.h11w_uuid('cur:revision'), '/primary/a', 'h11.first', 'a9200000-0000-4000-8000-0000000c0001');
 select pg_temp.h11m_instance('cur:i2', pg_temp.h11w_uuid('cur:revision'), '/b', 'h11.third');
+-- standalone h11.second: test 72 deprecates it, and a live pattern pin that reached it would go stale (DEC-199 digest).
+select pg_temp.h11m_instance('cur:i3', pg_temp.h11w_uuid('cur:revision'), '/primary/z', 'h11.second');
 create temp table h11m_cur on commit drop as select pg_temp.h11m_build('cur') as manifest;
 select is(pg_temp.h11m_current((select manifest from h11m_cur)), 'true',
   'a freshly built manifest of a revision with template, blocks and patterns is current [P2-S11-AC-090]');
@@ -403,6 +437,16 @@ select is(pg_temp.h11m_current((select jsonb_set(manifest, '{schema,schemaArtifa
   'a schema artifact whose hash differs is not current [P2-S11-AC-090]');
 select is(pg_temp.h11m_current((select jsonb_set(manifest, '{template,hash}', to_jsonb(repeat('0', 64))) from h11m_cur)), 'false',
   'a template whose digest differs is not current [P2-S11-AC-090]');
+select pg_temp.h11w_revision('lincur2', 'creatorPerson', 'en-US', '[]'::jsonb, null, 1, 'a9200000-0000-4000-8000-0000000d0001'::uuid);
+select pg_temp.h11m_instance('lincur2:i1', pg_temp.h11w_uuid('lincur2:revision'), '/primary/a', 'h11.first',
+  'a9200000-0000-4000-8000-0000000c0011', 'draft', 1, 2);
+select is(pg_temp.h11m_current(pg_temp.h11m_build('lincur2')), 'true',
+  'a manifest freezing the active version 2 of a lineage is current [P2-S11-AC-090]');
+select pg_temp.h11w_revision('lincur1', 'creatorPerson', 'en-US', '[]'::jsonb, null, 1, 'a9200000-0000-4000-8000-0000000d0001'::uuid);
+select pg_temp.h11m_instance('lincur1:i1', pg_temp.h11w_uuid('lincur1:revision'), '/primary/a', 'h11.first',
+  'a9200000-0000-4000-8000-0000000c0011', 'draft', 1, 1);
+select is(pg_temp.h11m_current(pg_temp.h11m_build('lincur1')), 'false',
+  'a manifest freezing the superseded version 1 of a lineage is not current [P2-S11-AC-090]');
 select is(pg_temp.h11m_current((select jsonb_set(manifest, '{patterns,0,hash}', to_jsonb(repeat('0', 64))) from h11m_cur)), 'false',
   'a pattern whose content hash differs is not current [P2-S11-AC-090]');
 select is(pg_temp.h11m_current((select jsonb_set(manifest, '{blocks,0,hash}', to_jsonb(repeat('0', 64))) from h11m_cur)), 'false',

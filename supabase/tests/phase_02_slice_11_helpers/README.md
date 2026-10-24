@@ -7,15 +7,16 @@ manifest, the D19 preflight registry evaluation, the review invalidation core, t
 and the pinned tzdb release. They are includes, not discovered tests: each executable
 `../phase_02_slice_11_helpers_*.sql` opens one transaction, includes the fragments with psql `\ir`, and rolls back.
 
-| Fragment                                    | Content                                                                                                                                                                                                                            |
-| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `000-helpers.sqlinc`                        | `pg_temp` probes: statement outcome (`00000`, `P0001:<message>` or the SQLSTATE), scalar and JSON readers, definer/return-type/volatility inspectors that answer false or empty for an absent object, SHA-256 and raw table writes |
-| `001-world.sqlinc`                          | the `h11doc` content type created by the real `cms_create_type_draft` RPC, with one field of every kind the manifest, the reference counter and the preflight providers read, activated with the seeded editorial workflow policy  |
-| `002-reviews.sqlinc`                        | review builders written through the real data-model guards: members with standing grants, reviews, assignments and decisions (decision row first, then the review CAS)                                                             |
-| `003-registry.sqlinc`                       | block, lifecycle, template, pattern and taxonomy registry fixtures (`h11m_block`, `h11m_lifecycle`, `h11m_instance`)                                                                                                               |
-| `004-lineage.sqlinc`                        | publication-lineage builders shared by the two lineage entrypoints (`h11l_review`, `h11l_publish`, `h11l_tombstone`, `h11l_append`, `h11l_rows`)                                                                                   |
-| `005-schedule-precision-expressions.sqlinc` | SELECT-only projections of complete installed schedule arithmetic expressions, with unique extraction and a closed lexical vocabulary; no RPC, persistent fixture, clock override or imported TAP assertions                       |
-| `version-set-parity.sqlinc`                 | one JSON fixture file read by BOTH the SQL projection test and the TypeScript `versionSetOf` / `versionSetMatchesManifest` test, so the two implementations cannot drift                                                           |
+| Fragment                                    | Content                                                                                                                                                                                                                                                                |
+| ------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `000-helpers.sqlinc`                        | `pg_temp` probes: statement outcome (`00000`, `P0001:<message>` or the SQLSTATE), scalar and JSON readers, definer/return-type/volatility inspectors that answer false or empty for an absent object, SHA-256 and raw table writes                                     |
+| `001-world.sqlinc`                          | the `h11doc` content type created by the real `cms_create_type_draft` RPC, with one field of every kind the manifest, the reference counter and the preflight providers read, activated with the seeded editorial workflow policy                                      |
+| `002-reviews.sqlinc`                        | review builders written through the real data-model guards: members with standing grants, reviews, assignments and decisions (decision row first, then the review CAS)                                                                                                 |
+| `003-registry.sqlinc`                       | block, lifecycle, template, pattern and taxonomy registry fixtures (`h11m_block`, `h11m_lifecycle`, `h11m_instance`)                                                                                                                                                   |
+| `004-lineage.sqlinc`                        | publication-lineage builders shared by the two lineage entrypoints (`h11l_review`, `h11l_publish`, `h11l_tombstone`, `h11l_append`, `h11l_rows`)                                                                                                                       |
+| `005-schedule-precision-expressions.sqlinc` | SELECT-only projections of complete installed schedule arithmetic expressions, with unique extraction and a closed lexical vocabulary; no RPC, persistent fixture, clock override or imported TAP assertions                                                           |
+| `006-delivery-receivers.sqlinc`             | DEC-197 guarded publication storage seeds with real revision/review evidence and E3 JCS hashes; idempotent complete publication-specific receivers; exact consumer FK catalog and rollback-only SQLSTATE/constraint probes; no TAP, producer events or guard disabling |
+| `version-set-parity.sqlinc`                 | one JSON fixture file read by BOTH the SQL projection test and the TypeScript `versionSetOf` / `versionSetMatchesManifest` test, so the two implementations cannot drift                                                                                               |
 
 | Entrypoint                                             | Covers                                                                                                                                                                                                            |
 | ------------------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -32,6 +33,8 @@ and the pinned tzdb release. They are includes, not discovered tests: each execu
 | `../phase_02_slice_11_helpers_lineage_append_only.sql` | the lineage is append-only, observed: competing writer refused as publication_conflict, earlier rows unchanged, no UPDATE/DELETE privilege, table guard refuses the owner (E3)                                    |
 | `../phase_02_slice_11_helpers_tzdb.sql`                | `cms_tzdb_version`: the pinned IANA release equals the contract constant                                                                                                                                          |
 | `../phase_02_slice_11_schedule_precision.sql`          | Installed offset/horizon/DETAIL, pending/retry due, both claim orderings, deviation and workflow formatting expressions; ancillary column/guard metadata, not persistence, locks, RLS, CAS or genuine sweep proof |
+| `../phase_02_slice_11_projection_state.sql`            | Aggregate derivation, exact receiving FKs, real orphan/cross-publication refusals and unchanged lineage/audit/outbox behavior through legitimate receiver fixtures                                                |
+| `../phase_02_slice_11_projection_state_reads.sql`      | Publication-specific workflow projection states and reads leaving canonical, consumer and receiving storage unchanged                                                                                             |
 
 ## Adding a test
 
@@ -45,6 +48,19 @@ false or empty so a RED run reports every gap. Keep every file below 400 lines.
 The isolated schedule-precision entrypoint needs only the JWT prelude, pgTAP and
 `005-schedule-precision-expressions.sqlinc`. It supplies typed scalar operands to
 unchanged expressions extracted from this database; it does not build the RPC world.
+
+The receiving fragment follows `004-lineage.sqlinc`. Call `h11d_publication(id, revision,
+audience, timestamp)` only after a real qualifying approved review exists. It makes a
+labelled, guarded storage fixture, not an append producer: real append calls retain
+their existing audit/outbox assertions. `h11d_receiver(publication_version_id, variant)`
+never creates a missing publication. Each real publication/variant gets a complete
+projection and distinct ready manifest, with the ordinal allocated by the private
+identity. The sealed hash covers the registered real version rows at that creation,
+sorted by canonical UUID and using immutable stored `publication_hash` values.
+Later appended probe rows extend the fixture input without rewriting old artifacts.
+No compiler completeness, activation, pointer, delivery writer or runtime grant is
+claimed. `h11d_consumer_fk` checks validated ordered restrictive FKs and their actual
+parent unique indexes; `h11d_diag` rolls back accepted and rejected probes alike.
 
 ## Conventions
 

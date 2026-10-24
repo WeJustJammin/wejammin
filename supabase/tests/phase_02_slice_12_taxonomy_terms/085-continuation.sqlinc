@@ -1,0 +1,200 @@
+-- Merge convergence beyond the in-transaction batch: the idempotent batch function, its bounds, the continuation request and the job
+-- handler of cms.taxonomy.merge_converge.  BE03c 1377 ("up to 5,000 assignments converge in the same transaction, a larger set continues
+-- through the idempotent job cms.taxonomy.merge_converge from a durable cursor, and the retired id resolves permanently to the survivor
+-- throughout"), 1334 (job transport: a BE00 jobs row bound to the actor and acting party), 1351 (lock positions).  The 5,000 boundary
+-- of the real command (5,001 real assignments, exactly 5,000 converged, one queued job, the handler converging the rest) is 097-bulk-continuation;
+-- here the SAME batch function runs with a small batch so every cursor step is observable.  The handler is driven only through its registered
+-- transport platform_api.cms_run_taxonomy_merge_converge under the real service_role with the RPC context cleared (no helper pre-sets it).
+-- [P2-S12-AC-003, AC-019, AC-021]
+select pg_temp.s12tt_act('k-create-1', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'tc-retire');
+select pg_temp.s12tt_act('k-create-2', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'tc-survivor');
+select pg_temp.s12tt_act('k-create-3', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'tj-retire');
+select pg_temp.s12tt_act('k-create-4', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'tj-survivor');
+select pg_temp.s12tt_act('k-merge-c', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'tc-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-survivor')));
+select pg_temp.s12tt_act('k-merge-j', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'tj-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tj-survivor')));
+select ok(pg_temp.s12tt_oc('k-merge-c') = 'ok' and pg_temp.s12tt_oc('k-merge-j') = 'ok', 'fixture: two terms are merged while they hold no assignment');
+select pg_temp.s12tt_seed_revision('r4');
+select pg_temp.s12tt_seed_revision('r5');
+select pg_temp.s12tt_seed_revision('r6');
+-- the unconverged tail: assignment rows that point at a merged term (the state a merge with more than 5,000 assignments leaves behind)
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r4'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-retire'), 1, 'active', 0);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r5'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-retire'), 1, 'active', 1);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r6'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-retire'), 1, 'active', 2);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r4'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tj-retire'), 1, 'active', 5);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r5'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tj-retire'), 1, 'active', 6);
+
+select is(pg_temp.s12tt_converge(pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-retire'), 2), '{"converged": 2, "remaining": 1}'::jsonb,
+  'a batch of 2 converges 2 of the 3 unconverged assignments and reports 1 remaining [P2-S12-AC-003]');
+select is((select count(*)::integer from platform_private.cms_term_assignments assignment
+            where assignment.term_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-survivor') and assignment.state = 'active'), 2,
+  'exactly two survivor rows were appended by the first batch [P2-S12-AC-003]');
+select is(pg_temp.s12tt_converge(pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-retire'), 2), '{"converged": 1, "remaining": 0}'::jsonb,
+  'the continuation converges the last assignment and reports none remaining [P2-S12-AC-003]');
+select is(pg_temp.s12tt_converge(pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-retire'), 2), '{"converged": 0, "remaining": 0}'::jsonb,
+  'a further run finds nothing: the convergence is exactly-once per assignment [P2-S12-AC-003]');
+select is(pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r4')) || '#' || pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r5')) || '#' || pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r6')),
+  'tc-retire:active:1:0|tc-retire:superseded:2:0|tc-survivor:active:1:0|tj-retire:active:1:5#'
+  || 'tc-retire:active:1:1|tc-retire:superseded:2:1|tc-survivor:active:1:1|tj-retire:active:1:6#'
+  || 'tc-retire:active:1:2|tc-retire:superseded:2:2|tc-survivor:active:1:2',
+  'across the batches every assignment of tc-retire is superseded once and re-pointed once; tj-retire is untouched [P2-S12-AC-003]');
+
+select is(pg_temp.s12tt_try('select platform_private.cms_converge_taxonomy_merge(''' || pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-retire') || ''', 0)'),
+  'P0001:VALIDATION_FAILED', 'a batch of 0 is refused [P2-S12-AC-021]');
+select is(pg_temp.s12tt_try('select platform_private.cms_converge_taxonomy_merge(''' || pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-retire') || ''', 5001)'),
+  'P0001:VALIDATION_FAILED', 'a batch above the 5,000 in-transaction ceiling is refused [P2-S12-AC-021]');
+select is(pg_temp.s12tt_try('select platform_private.cms_converge_taxonomy_merge(''' || pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tc-retire') || ''', null)'),
+  'P0001:VALIDATION_FAILED', 'a null batch is refused [P2-S12-AC-021]');
+select is(pg_temp.s12tt_try('select platform_private.cms_converge_taxonomy_merge(''' || pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'ab') || ''', 10)'),
+  'P0001:CONFLICT', 'only a merged term converges: an active term is refused [P2-S12-AC-003]');
+select is(pg_temp.s12tt_try('select platform_private.cms_converge_taxonomy_merge(''a9186000-0000-4000-8000-0000000000f4'', 10)'),
+  'P0001:NOT_FOUND', 'an unknown term id is NOT_FOUND [P2-S12-AC-003]');
+
+-- the continuation request and the job handler ----------------------------------------------------------------------------------------
+select pg_temp.s12tt_mark('before-job');
+create temp table s12tt_job on commit drop as
+select (select set_config('app.cms_rpc', 'true', true)) flag,
+       platform_private.cms_request_taxonomy_merge_converge(pg_temp.s12ga_auth('owner'), pg_temp.s09d_id('ownerOrg'),
+         pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tj-retire'), 'a9186000-0000-4000-8000-0000000000c9') first_call,
+       platform_private.cms_request_taxonomy_merge_converge(pg_temp.s12ga_auth('owner'), pg_temp.s09d_id('ownerOrg'),
+         pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tj-retire'), 'a9186000-0000-4000-8000-0000000000c9') second_call;
+select ok((select first_call->>'jobId' = second_call->>'jobId' and (first_call->>'replayed')::boolean is false and (second_call->>'replayed')::boolean is true
+             from s12tt_job),
+  'requesting the continuation twice for one retired term names one job: the second call is a replay [P2-S12-AC-021]');
+select ok(
+  (select count(*) = 1 and bool_and(job.state = 'queued' and job.version = 1 and job.actor_id = pg_temp.s12ga_auth('owner')
+            and job.acting_party_id = pg_temp.s09d_id('ownerOrg') and job.id = (select (first_call->>'jobId')::uuid from s12tt_job))
+     from platform_private.jobs job where job.job_type = 'cms.taxonomy.merge_converge'),
+  'exactly one queued BE00 job row of type cms.taxonomy.merge_converge exists, bound to the actor and the acting party [P2-S12-AC-021]');
+
+-- the registered transport: strict request, no pre-set context ---------------------------------------------------------------------------
+-- The request is { claimedJob: { jobId, version, leaseToken }, batch? } (the claimed BE00 lease, the CMS-03C-19 / dry-run claim shape); the
+-- lease and state fence itself is 096-job-fence, the capability re-proof 094-continuation-authority, the chained jobs 096-chained-continuation.
+create temp table s12tt_other_job on commit drop as
+select (select set_config('app.cms_rpc', 'true', true)) flag, job.job_id
+  from platform_private.accept_job_with_outbox(pg_temp.s12ga_auth('owner'), pg_temp.s09d_id('ownerOrg'),
+         'platform.object.verify', 'a9186000-0000-4000-8000-0000000000c8', extensions.digest('s12tt-other-job', 'sha256'),
+         extensions.digest('s12tt-other-job-request', 'sha256'), clock_timestamp() + interval '1 day') job;
+select pg_temp.s12tt_claim('c-j', (select (first_call->>'jobId')::uuid from s12tt_job), 1);
+select pg_temp.s12tt_claim('c-other', (select job_id from s12tt_other_job), 1);
+select pg_temp.s12tt_mark('before-transport-faults');
+select pg_temp.s12tt_run('t-unknown', jsonb_build_object('claimedJob', jsonb_build_object('jobId', 'a9186000-0000-4000-8000-0000000000f5',
+  'version', '2', 'leaseToken', 'a9186000-0000-4000-8000-0000000000f6')));
+select pg_temp.s12tt_run('t-other-type', pg_temp.s12tt_claimed('c-other'));
+select is(array[pg_temp.s12tt_rout('t-unknown'), pg_temp.s12tt_rout('t-other-type')], array_fill('P0001:NOT_FOUND'::text, array[2]),
+  'an unknown job and a claimed job of another type are NOT_FOUND through the transport [P2-S12-AC-021]');
+
+select pg_temp.s12tt_run(shape.label, shape.request)
+  from (values
+    ('s-empty', '{}'::jsonb),
+    ('s-batch-only', '{"batch":5}'::jsonb),
+    ('s-root-extra', pg_temp.s12tt_claimed('c-j') || '{"cursor":"x"}'::jsonb),
+    ('s-old-jobid', '{"jobId":"a9186000-0000-4000-8000-0000000000f5"}'::jsonb),
+    ('s-claim-extra', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,extra}', '1')),
+    ('s-claim-no-token', pg_temp.s12tt_claimed('c-j') #- '{claimedJob,leaseToken}'),
+    ('s-claim-no-version', pg_temp.s12tt_claimed('c-j') #- '{claimedJob,version}'),
+    ('s-claim-no-job', pg_temp.s12tt_claimed('c-j') #- '{claimedJob,jobId}'),
+    ('s-job-uuid', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,jobId}', '"not-a-uuid"')),
+    ('s-job-number', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,jobId}', '5')),
+    ('s-token-uuid', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,leaseToken}', '"x"')),
+    ('s-token-number', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,leaseToken}', '7')),
+    ('s-version-number', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,version}', '2')),
+    ('s-version-zero', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,version}', '"0"')),
+    ('s-version-leading', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,version}', '"02"')),
+    ('s-version-negative', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,version}', '"-1"')),
+    ('s-version-fraction', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,version}', '"1.5"')),
+    ('s-version-empty', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,version}', '""')),
+    ('s-version-overflow', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob,version}', '"9223372036854775808"')),
+    ('s-claim-string', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob}', '"x"')),
+    ('s-claim-array', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob}', '[]')),
+    ('s-claim-null', jsonb_set(pg_temp.s12tt_claimed('c-j'), '{claimedJob}', 'null')),
+    ('s-root-array', '[]'::jsonb),
+    ('s-root-null', 'null'::jsonb),
+    ('s-batch-zero', pg_temp.s12tt_claimed('c-j') || '{"batch":0}'::jsonb),
+    ('s-batch-over', pg_temp.s12tt_claimed('c-j') || '{"batch":5001}'::jsonb),
+    ('s-batch-text', pg_temp.s12tt_claimed('c-j') || '{"batch":"5"}'::jsonb),
+    ('s-batch-fraction', pg_temp.s12tt_claimed('c-j') || '{"batch":1.5}'::jsonb),
+    ('s-batch-null', pg_temp.s12tt_claimed('c-j') || '{"batch":null}'::jsonb)
+  ) shape(label, request);
+select is((select coalesce(string_agg(sys.label, ',' order by sys.label), '') from pg_temp.s12gb_sys sys
+            where sys.label like 's-%' and pg_temp.s12tt_rout(sys.label) <> 'P0001:INVALID_REQUEST'), '',
+  'every request that is not exactly { claimedJob: { jobId, version, leaseToken }, batch? } with UUIDs, a decimal bigint version and a batch of 1 .. 5000 is INVALID_REQUEST (29 shapes) [P2-S12-AC-021]');
+select is((select count(*)::integer from pg_temp.s12gb_sys sys where sys.label like 's-%'), 29, 'all 29 malformed shapes were actually sent [P2-S12-AC-021]');
+select ok(pg_temp.s12tt_same('before-transport-faults'), 'the transport refusals changed no store [P2-S12-AC-021]');
+
+-- the transport converges the merged terms of the job's party and restores the caller''s context -------------------------------------------
+select pg_temp.s12tt_run('t-run', pg_temp.s12tt_claimed('c-j'));
+select is(pg_temp.s12tt_rout('t-run'), 'ok:{"converged": 2, "remaining": 0, "continuationJobId": null}',
+  'through the transport the handler converges every unconverged assignment of the merged terms of the job''s party and names no continuation [P2-S12-AC-021]');
+select is(coalesce(current_setting('app.cms_rpc', true), ''), '',
+  'the transport restores the RPC context flag it found (it did not leak the handler''s flag) [P2-S12-AC-021]');
+select is((select count(*)::integer from pg_temp.s12gb_sys where label = 't-run' and rpc_user = 'service_role'), 1,
+  'the call really ran as service_role [P2-S12-AC-018]');
+select is(pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r4')) like '%tj-retire:superseded:2:5|tj-survivor:active:1:5%'
+          and pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r5')) like '%tj-retire:superseded:2:6|tj-survivor:active:1:6%', true,
+  'the handler superseded the tj-retire rows and appended the tj-survivor rows [P2-S12-AC-003]');
+select pg_temp.s12tt_run('t-run-again', pg_temp.s12tt_claimed('c-j'));
+select is(pg_temp.s12tt_rout('t-run-again'), 'ok:{"converged": 0, "remaining": 0, "continuationJobId": null}',
+  'running the handler again under the same lease is a no-op: the job is idempotent on re-delivery [P2-S12-AC-021]');
+select ok((select job.state = 'running' and job.version = claim.version and job.lease_token = claim.token and job.progress is null and job.result_ref is null
+             from platform_private.jobs job join s12tt_claims claim on claim.job_id = job.id where claim.label = 'c-j'),
+  'the handler never writes the job row: the BE00 runtime owns its lease, version and outcome (the definer holds SELECT only) [P2-S12-AC-021]');
+
+-- a bounded batch: the handler reports what is left and hands the rest to a FRESH job ---------------------------------------------------
+select pg_temp.s12tt_act('k-create-5', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'tk-retire');
+select pg_temp.s12tt_act('k-create-6', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'tk-survivor');
+select pg_temp.s12tt_act('k-merge-k', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'tk-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tk-survivor')));
+select pg_temp.s12tt_seed_revision('r7');
+select pg_temp.s12tt_seed_revision('r8');
+select pg_temp.s12tt_seed_revision('r9');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r7'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tk-retire'), 1, 'active', 0);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r8'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tk-retire'), 1, 'active', 0);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r9'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tk-retire'), 1, 'active', 0);
+create temp table s12tt_job_k on commit drop as
+select (select set_config('app.cms_rpc', 'true', true)) flag,
+       platform_private.cms_request_taxonomy_merge_converge(pg_temp.s12ga_auth('owner'), pg_temp.s09d_id('ownerOrg'),
+         pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tk-retire'), 'a9186000-0000-4000-8000-0000000000ca') call;
+create temp table s12tt_jobs_k_before on commit drop as
+select id from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge';
+select pg_temp.s12tt_claim('c-k', (select (call->>'jobId')::uuid from s12tt_job_k), 1);
+select pg_temp.s12tt_run('t-k-1', pg_temp.s12tt_claimed('c-k', 1));
+select pg_temp.s12tt_run('t-k-2', pg_temp.s12tt_claimed('c-k', 1));
+select is(regexp_replace(pg_temp.s12tt_rout('t-k-1'), '[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}', 'UUID'),
+  'ok:{"converged": 1, "remaining": 2, "continuationJobId": "UUID"}',
+  'a handler budget of 1 over three unconverged assignments converges 1, reports 2 left and names a continuation job [P2-S12-AC-021]');
+select is((pg_temp.s12tt_rout('t-k-2') like 'ok:%{"converged": 1, "remaining": 1, "continuationJobId": "%"}')
+          and substring(pg_temp.s12tt_rout('t-k-2') from '"continuationJobId": "([^"]+)"') = substring(pg_temp.s12tt_rout('t-k-1') from '"continuationJobId": "([^"]+)"'), true,
+  'a re-delivery of the same job under the same lease converges one more and names the SAME continuation job: the continuation is idempotent per job [P2-S12-AC-021]');
+select is((select count(*)::integer from platform_private.jobs job where job.job_type = 'cms.taxonomy.merge_converge'
+            and job.id not in (select id from s12tt_jobs_k_before)), 1,
+  'the two runs created exactly ONE fresh continuation job [P2-S12-AC-021]');
+select ok((select fresh.state = 'queued' and fresh.version = 1 and jsonb_array_length(fresh.attempts) = 0 and fresh.id <> origin.id
+                  and fresh.actor_id = origin.actor_id and fresh.acting_party_id = origin.acting_party_id and fresh.correlation_id = origin.correlation_id
+             from platform_private.jobs fresh, platform_private.jobs origin
+            where origin.id = (select (call->>'jobId')::uuid from s12tt_job_k)
+              and fresh.id = (substring(pg_temp.s12tt_rout('t-k-1') from '"continuationJobId": "([^"]+)"'))::uuid),
+  'the continuation is a fresh queued BE00 job (version 1, no attempt yet) bound to the same actor, acting party and correlation [P2-S12-AC-021]');
+select pg_temp.s12tt_claim('c-k2', (substring(pg_temp.s12tt_rout('t-k-1') from '"continuationJobId": "([^"]+)"'))::uuid, 1);
+select pg_temp.s12tt_run('t-k-3', pg_temp.s12tt_claimed('c-k2', 1));
+select pg_temp.s12tt_run('t-k-4', pg_temp.s12tt_claimed('c-k2', 1));
+select is(array[pg_temp.s12tt_rout('t-k-3'), pg_temp.s12tt_rout('t-k-4')],
+  array['ok:{"converged": 1, "remaining": 0, "continuationJobId": null}', 'ok:{"converged": 0, "remaining": 0, "continuationJobId": null}'],
+  'the continuation job converges the last assignment, names no further job, and is itself idempotent [P2-S12-AC-021]');
+select is((select count(*)::integer from platform_private.cms_term_assignments assignment
+            where assignment.term_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'tk-survivor') and assignment.state = 'active'), 3,
+  'the three tk-retire assignments now point at the survivor, once each [P2-S12-AC-003]');
+
+-- positions and order (BE03c 1338, 1344, 1351) ----------------------------------------------------------------------------------------
+select ok((select p.prosrc ~ 'cms_lock_governed_authority' and p.prosrc ~ 'for share' and p.prosrc ~ 'order by' from pg_proc p
+            where p.oid = to_regprocedure('platform_private.cms_run_taxonomy_merge_converge(uuid,bigint,uuid,integer)')),
+  'the handler takes position 1 (the curator''s grant rows, FOR SHARE) and position 3 (the ACTIVE version row, FOR SHARE) before the position 6 term rows (BE03c 1351) [P2-S12-AC-021]');
+select ok((select position('cms_lock_governed_authority' in p.prosrc) < position('cms_person_holds_capability' in p.prosrc)
+                  and position('cms_person_holds_capability' in p.prosrc) < position('for share' in p.prosrc)
+                  and position('for share' in p.prosrc) < position('for update' in p.prosrc)
+             from pg_proc p where p.oid = to_regprocedure('platform_private.cms_run_taxonomy_merge_converge(uuid,bigint,uuid,integer)')),
+  'the handler order is: position 1 locks, the capability re-proof under them, position 3 FOR SHARE, position 6 FOR UPDATE (BE03c 1351, rule 1) [P2-S12-AC-021]');
+select ok((select p.prosrc ~ 'where locked\.id in \(' and p.prosrc ~ 'order by locked\.id' and p.prosrc ~ 'for update' from pg_proc p
+            where p.oid = to_regprocedure('platform_private.cms_converge_taxonomy_merge(uuid,integer)')),
+  'the convergence batch locks the retired term and its survivor in ONE statement in ascending id order, never retired-then-survivor (BE03c 1338) [P2-S12-AC-021]');

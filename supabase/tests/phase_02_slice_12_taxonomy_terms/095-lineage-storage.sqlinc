@@ -1,0 +1,94 @@
+-- Term storage keyed to the vocabulary lineage: term ids and keys are stable across taxonomy versions and merges.  BE03c 1371 ("the terms
+-- belong to the vocabulary, not to a version ... `cms_terms` carries `taxonomy_id` and `UNIQUE (taxonomy_id, term_key, version)`, so a
+-- successor version never duplicates or re-keys a term"), 1428 (TaxonomyTerm row), 1489, 1539; the stored guards 20260927350000-410000.
+-- [P2-S12-AC-003, AC-016; IA03 AC-CMS-14]
+select ok(
+  exists (select 1 from pg_attribute where attrelid = to_regclass('platform_private.cms_terms') and attname = 'taxonomy_id' and attnotnull and not attisdropped
+            and atttypid = 'uuid'::regtype),
+  'cms_terms carries a NOT NULL uuid taxonomy_id (the vocabulary lineage) [P2-S12-AC-003]');
+select is((select pg_get_constraintdef(oid) from pg_constraint where conrelid = to_regclass('platform_private.cms_terms') and conname = 'cms_terms_taxonomy_key_version_key'),
+  'UNIQUE (taxonomy_id, term_key, version)', 'UNIQUE (taxonomy_id, term_key, version) replaces the version-keyed unique under its old name (BE03c 1428) [P2-S12-AC-003]');
+select is((select pg_get_constraintdef(oid) from pg_constraint where conrelid = to_regclass('platform_private.cms_terms') and conname = 'cms_terms_taxonomy_stable_key_key'),
+  'UNIQUE (taxonomy_id, term_key)', 'a term key is stable per vocabulary across every CAS version and every taxonomy version [P2-S12-AC-003]');
+select ok(coalesce((select bool_and(pg_get_constraintdef(oid) like 'FOREIGN KEY (parent_term_id, taxonomy_id, owner_id) REFERENCES platform_private.cms_terms(id, taxonomy_id, owner_id)%')
+                      from pg_constraint where conrelid = to_regclass('platform_private.cms_terms') and conname = 'cms_terms_parent_taxonomy_owner_fkey' and convalidated), false)
+    and coalesce((select bool_and(pg_get_constraintdef(oid) like 'FOREIGN KEY (successor_id, taxonomy_id, owner_id) REFERENCES platform_private.cms_terms(id, taxonomy_id, owner_id)%')
+                    from pg_constraint where conrelid = to_regclass('platform_private.cms_terms') and conname = 'cms_terms_successor_taxonomy_owner_fkey' and convalidated), false),
+  'parent and merge successor are bound to the same vocabulary LINEAGE and owner (a different taxonomy version of it is fine) [P2-S12-AC-003]');
+select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('platform_private.cms_terms') and contype = 'f' and convalidated
+                    and pg_get_constraintdef(oid) like 'FOREIGN KEY (taxonomy_version_id, taxonomy_id, owner_id) REFERENCES platform_private.cms_taxonomy_versions(id, taxonomy_id, owner_id)%'),
+  'the version a term was written under must belong to the term''s own lineage and owner [P2-S12-AC-003]');
+select ok(exists (select 1 from pg_constraint where conrelid = to_regclass('platform_private.cms_term_assignments')
+                    and conname = 'cms_term_assignments_term_taxonomy_owner_fkey' and contype = 'f' and convalidated
+                    and pg_get_constraintdef(oid) like 'FOREIGN KEY (term_id, taxonomy_version_id, owner_id) REFERENCES platform_private.cms_terms(id, taxonomy_version_id, owner_id)%'),
+  'control: the assignment foreign key (term, write-version, owner) is unchanged [P2-S12-AC-003]');
+
+-- A successor version keeps every term: ids and keys stable, no duplicate, no re-key. ----------------------------------------------------
+select pg_temp.s12tt_vocab('vs', 'hierarchical');
+select pg_temp.s12tt_act('l-a', 'owner', pg_temp.s12tt_lineage('vs'), 'create', 'sv-a');
+select pg_temp.s12tt_act('l-b', 'owner', pg_temp.s12tt_lineage('vs'), 'create', 'sv-b', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vs'), 'sv-a')));
+select ok(pg_temp.s12tt_oc('l-a') = 'ok' and pg_temp.s12tt_oc('l-b') = 'ok', 'fixture: two terms written under version 1 of vs');
+create temp table s12tt_before_successor on commit drop as
+select pg_temp.s12tt_snap() snapshot, (select jsonb_agg(to_jsonb(t) order by t.id) from platform_private.cms_terms t where t.taxonomy_id = pg_temp.s12tt_lineage('vs')) terms,
+       pg_temp.s12tt_active_id(pg_temp.s12tt_lineage('vs')) v1_id;
+select pg_temp.s12tt_vocab('vs2', 'hierarchical', '[]'::jsonb, true, 'vs');
+select is(pg_temp.s12tt_lineage('vs2'), pg_temp.s12tt_lineage('vs'), 'the successor version belongs to the same vocabulary lineage [P2-S12-AC-003]');
+select ok(pg_temp.s12tt_active(pg_temp.s12tt_lineage('vs')) = '2'
+    and (select state = 'superseded' from platform_private.cms_taxonomy_versions where id = (select v1_id from s12tt_before_successor)),
+  'activating the successor makes version 2 active and supersedes version 1 [P2-S12-AC-003]');
+select is((select jsonb_agg(to_jsonb(t) order by t.id) from platform_private.cms_terms t where t.taxonomy_id = pg_temp.s12tt_lineage('vs')),
+  (select terms from s12tt_before_successor),
+  'the successor version duplicated, re-keyed and touched no term: ids, keys, versions and write-versions are byte-identical [P2-S12-AC-003]');
+select pg_temp.s12tt_act('l-stale', 'owner', pg_temp.s12tt_lineage('vs'), 'create', 'sv-stale', '{"expectedVersion":"1","ifMatch":"1"}'::jsonb);
+select is(pg_temp.s12tt_oc('l-stale'), 'P0001:CONFLICT', 'the old active version number is now a stale operand: 409 [P2-S12-AC-019]');
+select pg_temp.s12tt_act('l-nonroot', 'owner', (select id from platform_private.cms_taxonomy_versions where taxonomy_id = pg_temp.s12tt_lineage('vs') and version = 2),
+  'create', 'sv-nonroot');
+select is(pg_temp.s12tt_oc('l-nonroot'), 'P0001:NOT_FOUND', 'the id of a successor version row is not a vocabulary lineage id: 404 [P2-S12-AC-018]');
+select pg_temp.s12tt_act('l-c', 'owner', pg_temp.s12tt_lineage('vs'), 'create', 'sv-c', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vs'), 'sv-a')));
+select ok(pg_temp.s12tt_oc('l-c') = 'ok'
+    and (select taxonomy_version_id = pg_temp.s12tt_active_id(pg_temp.s12tt_lineage('vs')) and taxonomy_id = pg_temp.s12tt_lineage('vs') and parent_term_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vs'), 'sv-a')
+          from platform_private.cms_terms where term_key = 'sv-c' and taxonomy_id = pg_temp.s12tt_lineage('vs')),
+  'a term created under version 2 takes a version-1 term as parent: the parent link crosses taxonomy versions inside one vocabulary [P2-S12-AC-003]');
+select pg_temp.s12tt_act('l-merge-across', 'owner', pg_temp.s12tt_lineage('vs'), 'merge', 'sv-b', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vs'), 'sv-c')));
+select ok(pg_temp.s12tt_oc('l-merge-across') = 'ok'
+    and (select successor_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vs'), 'sv-c') and lifecycle = 'merged' and taxonomy_version_id = (select v1_id from s12tt_before_successor)
+          from platform_private.cms_terms where term_key = 'sv-b' and taxonomy_id = pg_temp.s12tt_lineage('vs')),
+  'a version-1 term merges into a version-2 term: the permanent redirect crosses taxonomy versions, the retired row keeps its write-version [P2-S12-AC-003]');
+select pg_temp.s12tt_act('l-dup-key', 'owner', pg_temp.s12tt_lineage('vs'), 'create', 'sv-a');
+select is(pg_temp.s12tt_oc('l-dup-key'), 'P0001:CONFLICT', 'under the successor version a key written under version 1 is still taken: keys are stable per vocabulary [P2-S12-AC-003]');
+
+-- Direct writes: the stored guards still hold with the re-keyed storage ------------------------------------------------------------------
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.s12tt_try($$update platform_private.cms_terms set lifecycle = 'active', version = version + 1, updated_at = clock_timestamp()
+                               where id = '$$ || pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vs'), 'sv-b') || $$'$$), 'P0001:CONFLICT',
+  'a merged term cannot reactivate [P2-S12-AC-003]');
+select is(pg_temp.s12tt_try($$update platform_private.cms_terms set lifecycle = 'active', version = version + 1, updated_at = clock_timestamp()
+                               where id = '$$ || pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha') || $$'$$), 'P0001:CONFLICT',
+  'a deprecated term cannot go back to active [P2-S12-AC-003]');
+select is(pg_temp.s12tt_try($$update platform_private.cms_terms set taxonomy_id = '$$ || pg_temp.s12tt_lineage('vf') || $$', version = version + 1, updated_at = clock_timestamp()
+                               where id = '$$ || pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vs'), 'sv-a') || $$'$$), 'P0001:CONFLICT',
+  'a term can never move to another vocabulary: taxonomy_id is immutable [P2-S12-AC-003]');
+select is(pg_temp.s12tt_sqlstate($$insert into platform_private.cms_terms(owner_id, taxonomy_version_id, term_key, version, created_by)
+                               select owner_id, id, 'sv-a', 1, created_by from platform_private.cms_taxonomy_versions
+                                where taxonomy_id = '$$ || pg_temp.s12tt_lineage('vs') || $$' and version = 2$$), '23505',
+  'a second row for a key of the vocabulary is a unique violation even under another taxonomy version [P2-S12-AC-003]');
+select is(pg_temp.s12tt_sqlstate($$insert into platform_private.cms_terms(owner_id, taxonomy_version_id, term_key, version, parent_term_id, created_by)
+                               select owner_id, id, 'sv-cross', 1, '$$ || pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'ab') || $$', created_by
+                                 from platform_private.cms_taxonomy_versions where taxonomy_id = '$$ || pg_temp.s12tt_lineage('vs') || $$' and version = 2$$),
+  '23503',
+  'a parent from another vocabulary is a foreign key violation [P2-S12-AC-003]');
+select is(pg_temp.s12tt_sqlstate($$insert into platform_private.cms_terms(owner_id, taxonomy_version_id, taxonomy_id, term_key, version, created_by)
+                               select owner_id, id, '$$ || pg_temp.s12tt_lineage('vf') || $$', 'sv-wrong-lineage', 1, created_by
+                                 from platform_private.cms_taxonomy_versions where taxonomy_id = '$$ || pg_temp.s12tt_lineage('vs') || $$' and version = 2$$),
+  '23503',
+  'a term cannot claim a lineage other than that of the version it was written under [P2-S12-AC-003]');
+select is((select count(*)::integer from platform_private.cms_terms where taxonomy_id is null), 0, 'no term row lacks a vocabulary lineage [P2-S12-AC-003]');
+
+-- events: one unique identity per committed action ------------------------------------------------------------------------------------
+select ok((select count(*) = count(distinct (event.aggregate_type, event.aggregate_id, event.aggregate_version)) and count(*) > 20
+             from platform_private.outbox_events event where event.event_type = 'cms.taxonomy.changed.v1' and event.aggregate_type = 'cms_term'),
+  'every term action has its own (aggregateType, aggregateId, aggregateVersion) identity: no two actions share an outbox dedupe key (BE03c 1561) [P2-S12-AC-021]');
+select ok((select count(*) = count(distinct audit.id) from audit_private.audit_events audit where audit.action like 'cms.taxonomy.term.%'), 'control: audit ids are unique');

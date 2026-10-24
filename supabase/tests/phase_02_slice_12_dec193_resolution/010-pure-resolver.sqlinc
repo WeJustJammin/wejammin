@@ -1,0 +1,197 @@
+-- Proposed PRIVATE seam, not a new public DTO: four jsonb inputs -> jsonb.
+-- B/T are canonical root snapshots; JSONB null means target root absent.
+-- SQL NULL is malformed input. O is authoritative key-presence, not a nullable
+-- public `yours` value. Every invocation is catalog-guarded by s12rs_pure.
+create or replace function pg_temp.s12rs_private_contract() returns setof text
+language plpgsql as $body$
+declare proc oid := to_regprocedure('platform_private.cms_pattern_update_resolve(jsonb,jsonb,jsonb,jsonb)');
+begin
+  if proc is null or not exists (select 1 from pg_proc where oid = proc
+    and prorettype = 'jsonb'::regtype and not proretset and prokind='f') then
+    return next extensions.fail('RESOLVE-00: exact private signature returning jsonb exists');
+    return;
+  end if;
+  return next extensions.ok((select provolatile = 'i' and not prosecdef
+    and coalesce(proconfig @> array['search_path=""'], false) from pg_proc where oid = proc),
+    'RESOLVE-00: immutable invoker and empty search_path metadata');
+  return next extensions.is((select pg_get_userbyid(proowner) from pg_proc where oid=proc),
+    'wejammin_cms_definer','RESOLVE-00: private helper belongs to the CMS owner');
+  return next extensions.ok(not has_function_privilege('anon', proc, 'EXECUTE')
+    and not has_function_privilege('authenticated', proc, 'EXECUTE')
+    and not has_function_privilege('service_role', proc, 'EXECUTE')
+    and not exists (select 1 from pg_proc p cross join lateral
+      aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) a
+      where p.oid = proc and a.grantee = 0 and a.privilege_type = 'EXECUTE'),
+    'RESOLVE-00: PUBLIC/anon/authenticated/service_role cannot execute the private helper');
+end;
+$body$;
+select * from pg_temp.s12rs_private_contract();
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-01 ancestor structure yours / descendant props theirs', b, t, o,
+  '[{"path":"/panel","choice":"yours"},{"path":"/panel/leaf","choice":"theirs"}]',
+  pg_temp.s12rs_result('detached', yours_tree)) check_line where name = 'main';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-02 reverse answer order', b, t, o,
+  '[{"path":"/panel/leaf","choice":"theirs"},{"path":"/panel","choice":"yours"}]',
+  pg_temp.s12rs_result('detached', yours_tree)) check_line where name = 'main';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-03 ancestor theirs / descendant yours', b, t, o,
+  '[{"path":"/panel","choice":"theirs"},{"path":"/panel/leaf","choice":"yours"}]',
+  pg_temp.s12rs_result('linked', theirs_tree,
+    '{"/panel/leaf":{"title":"MY-LEAF"},"/panel/note":{"title":"MY-NOTE"}}')) check_line where name = 'main';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-04 descendant yours reverse order', b, t, o,
+  '[{"path":"/panel/leaf","choice":"yours"},{"path":"/panel","choice":"theirs"}]',
+  pg_temp.s12rs_result('linked', theirs_tree,
+    '{"/panel/leaf":{"title":"MY-LEAF"},"/panel/note":{"title":"MY-NOTE"}}')) check_line where name = 'main';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-05 highest removed-root yours carries every suppressed L descendant', b, t, o,
+  '[{"path":"/gone","choice":"yours"}]', pg_temp.s12rs_result('detached', local_tree)) check_line where name = 'removed';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-06 removed-root theirs is explicit retirement', b, t, o,
+  '[{"path":"/gone","choice":"theirs"}]', pg_temp.s12rs_result('retired', 'null')) check_line where name = 'removed';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-07 highest membership frontiers yours carry suppressed deep subtree', b, t, o,
+  '[{"path":"/fork","choice":"yours"},{"path":"/fork/child","choice":"yours"},{"path":"/fork/add","choice":"yours"}]',
+  pg_temp.s12rs_result('detached', local_tree)) check_line where name = 'presence';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-08 highest added frontier theirs carries its unlisted descendants', b, t, o,
+  '[{"path":"/fork/add","choice":"theirs"},{"path":"/fork/child","choice":"theirs"},{"path":"/fork","choice":"theirs"}]',
+  pg_temp.s12rs_result('linked', t)) check_line where name = 'presence';
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-09 explicit descendant structure theirs survives ancestor yours', b, t, o,
+  '[{"path":"/digest","choice":"yours"},{"path":"/digest/child","choice":"theirs"}]',
+  pg_temp.s12rs_result('detached', yours_tree)) check_line where name = 'digest';
+
+-- All literals below are complete independent snapshots, not mutations of an
+-- expected diff/production result. JSON null and missing O keys differ on purpose.
+create temp table s12rs_single(b jsonb, t jsonb) on commit drop;
+insert into s12rs_single values (
+  '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["solo"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"B"}}]}',
+  '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["solo"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"T"}}]}');
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-10 absent O auto-adopts noncolliding target props', b, t, '{}', '[]', pg_temp.s12rs_result('linked', t)) check_line;
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-11 present JSON null is a real yours answer', b, t, '{"/solo":null}',
+  '[{"path":"/solo","choice":"yours"}]', pg_temp.s12rs_result('linked',
+  '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["solo"],"blockKey":"s12pd.block","blockVersion":1,"props":null}]}',
+  '{"/solo":null}')) check_line;
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-12 O equal to B is noncolliding and dropped on changed target', b, t,
+  '{"/solo":{"title":"B"}}', '[]', pg_temp.s12rs_result('linked', t)) check_line;
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-13 unchanged target preserves a redundant authoritative O key', b, b,
+  '{"/solo":{"title":"B"}}', '[]', pg_temp.s12rs_result('linked', b, '{"/solo":{"title":"B"}}')) check_line;
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-14 identical eligible newer content is linked, never noop or retirement', b, b,
+  '{}', '[]', pg_temp.s12rs_result('linked', b)) check_line;
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-15 structure theirs preserves O only when target props equal B', b,
+  '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["solo"],"blockKey":"s12pd.block","blockVersion":2,"props":{"title":"B"}}]}',
+  '{"/solo":{"title":"LOCAL"}}', '[{"path":"/solo","choice":"theirs"}]',
+  pg_temp.s12rs_result('linked',
+  '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["solo"],"blockKey":"s12pd.block","blockVersion":2,"props":{"title":"LOCAL"}}]}',
+  '{"/solo":{"title":"LOCAL"}}')) check_line;
+
+-- Child topology changes are independent selectors, even below a selected local
+-- ancestor. Four complete answers also exercise every one of their 24 orders.
+create temp table s12rs_nested(b jsonb, t jsonb, expected jsonb) on commit drop;
+insert into s12rs_nested values (
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["root"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"R1"}},
+    {"parent":0,"keySegments":["branch"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"B1"}},
+    {"parent":1,"keySegments":["old"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"OLD"}}]}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["root"],"blockKey":"s12pd.block","blockVersion":2,"props":{"title":"R2"}},
+    {"parent":0,"keySegments":["branch"],"blockKey":"s12pd.block","blockVersion":2,"props":{"title":"B2"}},
+    {"parent":1,"keySegments":["new"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"NEW"}}]}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["root"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"LOCAL"}},
+    {"parent":0,"keySegments":["branch"],"blockKey":"s12pd.block","blockVersion":2,"props":{"title":"B2"}},
+    {"parent":1,"keySegments":["new"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"NEW"}}]}');
+with answers as (select '[{"path":"/root","choice":"yours"},{"path":"/root/branch","choice":"theirs"},
+  {"path":"/root/branch/old","choice":"theirs"},{"path":"/root/branch/new","choice":"theirs"}]'::jsonb as items),
+orders as (select array[a,b,c,d] as ord from generate_series(0,3) a cross join generate_series(0,3) b
+  cross join generate_series(0,3) c cross join generate_series(0,3) d
+  where a<>b and a<>c and a<>d and b<>c and b<>d and c<>d)
+select check_line.* from s12rs_nested f cross join answers cross join orders
+cross join lateral pg_temp.s12rs_pure('RESOLVE-16 child topology / order ' || ord::text, f.b, f.t,
+  '{"/root":{"title":"LOCAL"}}', jsonb_build_array(items->ord[1],items->ord[2],items->ord[3],items->ord[4]),
+  pg_temp.s12rs_result('detached', expected)) check_line;
+
+-- Large canonical inputs need not fit the PUBLIC 128-path / 256 KiB diff read.
+-- The boundary builder enumerates nodes independently; it calls no product helper.
+create or replace function pg_temp.s12rs_fanout(p_count integer, p_title text) returns jsonb
+language sql immutable as $body$
+  select jsonb_build_object('format', 'cms.detached_tree.v1', 'nodes', jsonb_agg(
+    jsonb_build_object('parent', case when n=0 then null else 0 end,
+      'keySegments', jsonb_build_array(case when n=0 then 'wide' else 'n' || n end),
+      'blockKey', 's12pd.block', 'blockVersion', 1, 'props', jsonb_build_object('title', p_title)) order by n))
+  from generate_series(0, p_count-1) n
+$body$;
+select * from pg_temp.s12rs_pure('RESOLVE-17 156 noncolliding changes exceed only the read limit',
+  pg_temp.s12rs_fanout(156, 'B'), pg_temp.s12rs_fanout(156, 'T'), '{}', '[]',
+  pg_temp.s12rs_result('linked', pg_temp.s12rs_fanout(156, 'T')));
+select * from pg_temp.s12rs_pure('RESOLVE-18 512 nodes / >256 KiB has no snapshot aggregate cap',
+  pg_temp.s12rs_fanout(512, repeat('b',600)), pg_temp.s12rs_fanout(512, repeat('t',600)), '{}', '[]',
+  pg_temp.s12rs_result('linked', pg_temp.s12rs_fanout(512, repeat('t',600))));
+select ok(octet_length(pg_temp.s12rs_fanout(512, repeat('t',600))::text) > 262144,
+  'RESOLVE-18 control: the exact accepted candidate really exceeds 256 KiB');
+
+-- B and T each have <=258 nodes. Selecting one old and one new membership
+-- frontier can yield 512 or 513; final-tree validation must not silently prune.
+create or replace function pg_temp.s12rs_mixed(p_left integer, p_right integer) returns jsonb
+language plpgsql immutable as $body$
+declare nodes jsonb := '[{"parent":null,"keySegments":["mix"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"M"}},
+  {"parent":0,"keySegments":["left"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"L"}}]';
+  n integer; right_index integer;
+begin
+  if p_left >= 0 then
+    nodes := nodes || jsonb_build_array(jsonb_build_object('parent',1,'keySegments',jsonb_build_array('sub'),
+      'blockKey','s12pd.block','blockVersion',1,'props','{"title":"S"}'::jsonb));
+    for n in 1..p_left loop nodes := nodes || jsonb_build_array(jsonb_build_object('parent',2,
+      'keySegments',jsonb_build_array('n'||n),'blockKey','s12pd.block','blockVersion',1,'props','{"title":"D"}'::jsonb)); end loop;
+  end if;
+  right_index := jsonb_array_length(nodes);
+  nodes := nodes || jsonb_build_array(jsonb_build_object('parent',0,'keySegments',jsonb_build_array('right'),
+    'blockKey','s12pd.block','blockVersion',1,'props','{"title":"R"}'::jsonb));
+  if p_right >= 0 then
+    nodes := nodes || jsonb_build_array(jsonb_build_object('parent',right_index,'keySegments',jsonb_build_array('sub'),
+      'blockKey','s12pd.block','blockVersion',1,'props','{"title":"S"}'::jsonb));
+    for n in 1..p_right loop nodes := nodes || jsonb_build_array(jsonb_build_object('parent',right_index+1,
+      'keySegments',jsonb_build_array('n'||n),'blockKey','s12pd.block','blockVersion',1,'props','{"title":"D"}'::jsonb)); end loop;
+  end if;
+  return jsonb_build_object('format','cms.detached_tree.v1','nodes',nodes);
+end;
+$body$;
+select * from pg_temp.s12rs_pure('RESOLVE-19 hybrid exactly 512 nodes',
+  pg_temp.s12rs_mixed(254,-1), pg_temp.s12rs_mixed(-1,253), '{}',
+  '[{"path":"/mix/left","choice":"yours"},{"path":"/mix/left/sub","choice":"yours"},
+    {"path":"/mix/right","choice":"theirs"},{"path":"/mix/right/sub","choice":"theirs"}]',
+  pg_temp.s12rs_result('detached', pg_temp.s12rs_mixed(254,253)));
+select * from pg_temp.s12rs_pure('RESOLVE-20 hybrid 513 nodes refuses instead of losing an answer',
+  pg_temp.s12rs_mixed(254,-1), pg_temp.s12rs_mixed(-1,254), '{}',
+  '[{"path":"/mix/left","choice":"yours"},{"path":"/mix/left/sub","choice":"yours"},
+    {"path":"/mix/right","choice":"theirs"},{"path":"/mix/right/sub","choice":"theirs"}]',
+  null, 'P0001:VALIDATION_FAILED');
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-21 SQL NULL target is malformed, not removed or no-update', b, null, '{}', '[]', null,
+  'P0001:VALIDATION_FAILED') check_line;
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-22 SQL NULL base is malformed', null, t, '{}', '[]', null, 'P0001:VALIDATION_FAILED') check_line;
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-23 SQL NULL overrides is malformed', b, t, null, '[]', null, 'P0001:VALIDATION_FAILED') check_line;
+select check_line.* from s12rs_single cross join lateral pg_temp.s12rs_pure(
+  'RESOLVE-24 SQL NULL choices is malformed', b, t, '{}', null, null, 'P0001:VALIDATION_FAILED') check_line;
+select * from pg_temp.s12rs_pure('RESOLVE-31 expanded namespace addresses preserve relative keySegments',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["outer","panel"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"B"}},
+    {"parent":0,"keySegments":["shared","leaf"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"L1"}}]}',
+  '{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["outer","panel"],"blockKey":"s12pd.block","blockVersion":2,"props":{"title":"T"}},
+    {"parent":0,"keySegments":["shared","leaf"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"L2"}}]}',
+  '{"/outer/panel/shared/leaf":null}',
+  '[{"path":"/outer/panel/shared/leaf","choice":"theirs"},{"path":"/outer/panel","choice":"yours"}]',
+  pg_temp.s12rs_result('detached','{"format":"cms.detached_tree.v1","nodes":[
+    {"parent":null,"keySegments":["outer","panel"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"B"}},
+    {"parent":0,"keySegments":["shared","leaf"],"blockKey":"s12pd.block","blockVersion":1,"props":{"title":"L2"}}]}'));

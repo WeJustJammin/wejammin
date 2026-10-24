@@ -1,0 +1,89 @@
+-- Literal subset and namespace oracles over actual public placements.
+select pg_temp.s12pl_entry(tag) from (values('sr-all'),('sr-subset'),('sr-nested'),
+  ('sr-detached'),('sr-unselected'),('sr-prefix'),('sr-path248'),('sr-path249'),
+  ('sr-path585'),('sr-short'),('sr-max'),('sr-override')) tags(tag);
+select pg_temp.s12pl_run('sr-all',pg_temp.s12sr_request('all','sr-all'));
+select * from pg_temp.s12sr_check('sr-all','sr-all','sr-main',
+  '[["/a","1",0,"s12pd.block",1],["/b","1",1,"s12pd.block",1],
+    ["/c","1",2,"s12pd.block",1],["/d","1",3,"s12pd.wide",1]]','{}',true);
+select pg_temp.s12pl_run('sr-subset',pg_temp.s12sr_request('subset','sr-subset','sr-main',
+  '["/c","/a"]','{"/a/leaf":null,"/c":42}'));
+select * from pg_temp.s12sr_check('sr-subset','sr-subset','sr-main',
+  '[["/a","1",0,"s12pd.block",1],["/c","1",1,"s12pd.block",1]]',
+  '{"/a":{"/a/leaf":null},"/c":{"/c":42}}',true);
+select pg_temp.s12pl_run('sr-nested',pg_temp.s12sr_request('nested','sr-nested','pn',
+  '["/tail","/shared/b","/shared/a"]','{"/shared/a/title":[null,"mine",false]}'));
+select * from pg_temp.s12sr_check('sr-nested','sr-nested','pn',
+  '[["/shared/a","1",0,"s12pd.block",1],["/shared/b","1",1,"s12pd.block",1],
+    ["/tail","1",2,"s12pd.block",1]]','{"/shared/a":{"/shared/a/title":[null,"mine",false]}}');
+select pg_temp.s12pl_run('sr-detached',pg_temp.s12sr_request('detached','sr-detached','sr-main',
+  '["/a"]','{}','/','detached'));
+select * from pg_temp.s12sr_check('sr-detached','sr-detached','sr-main',
+  '[["/a","1",0,"s12pd.block",1]]','{}',true,'detached');
+
+-- A real occupied unselected path cannot veto a disjoint selected placement.
+select pg_temp.s12pl_run('sr-unselected-first',pg_temp.s12sr_request('unselected-first',
+  'sr-unselected','sr-main','["/d"]'));
+select * from pg_temp.s12sr_check('sr-unselected-first','sr-unselected','sr-main',
+  '[["/d","1",0,"s12pd.wide",1]]','{}',true);
+select pg_temp.s12pl_run('sr-unselected-next',pg_temp.s12sr_request('unselected-next',
+  'sr-unselected','sr-main','["/a"]'));
+select * from pg_temp.s12sr_check('sr-unselected-next','sr-unselected','sr-main',
+  '[["/a","1",1,"s12pd.block",1]]','{}',true);
+select * from pg_temp.s12pl_refused('sr-occupied-one-of-two',pg_temp.s12sr_request('occupied-two',
+  'sr-unselected','sr-main','["/b","/d"]'),'CONFLICT','["/slotPath"]');
+
+-- Segment identity, never naive startsWith('/a'): /ab is another root.
+select * from pg_temp.s12pl_refused('sr-prefix-override',pg_temp.s12sr_request('prefix-o',
+  'sr-prefix','sr-prefix','["/a"]','{"/ab":null}'),'VALIDATION_FAILED','["/overrides"]');
+select pg_temp.s12pl_run('sr-prefix',pg_temp.s12sr_request('prefix','sr-prefix','sr-prefix','["/ab"]'));
+select * from pg_temp.s12sr_check('sr-prefix','sr-prefix','sr-prefix','[["/ab","1",0,"s12pd.block",1]]');
+select checks.* from (values
+  ('unselected','{"/b":1}'::jsonb),('missing','{"/a/missing":1}'::jsonb)
+) c(label,overrides) cross join lateral pg_temp.s12pl_refused('sr-override-' || label,
+  pg_temp.s12sr_request('override-' || label,'sr-override','sr-main','["/a"]',overrides),
+  'VALIDATION_FAILED','["/overrides"]') checks;
+select * from pg_temp.s12pl_refused('sr-reference-override',pg_temp.s12sr_request('reference-o',
+  'sr-override','pn','["/shared/a"]','{"/shared":1}'),'VALIDATION_FAILED','["/overrides"]');
+
+-- The same 248 cap applies after selecting and joining paths. Nonselected
+-- overlong siblings are not rows and must not cause a spurious /slotPath refusal.
+select pg_temp.s12pl_run('sr-path248',pg_temp.s12sr_request('path248','sr-path248','sr-long3',
+  jsonb_build_array((select path from s12sr_paths where name='row248'))));
+select * from pg_temp.s12sr_check('sr-path248','sr-path248','sr-long3',
+  jsonb_build_array(jsonb_build_array((select path from s12sr_paths where name='row248'),
+    '1',0,'s12pd.block',1)));
+select * from pg_temp.s12pl_refused('sr-path249',pg_temp.s12sr_request('path249','sr-path249',
+  'sr-long3',jsonb_build_array((select path from s12sr_paths where name='row249'))),
+  'VALIDATION_FAILED','["/slotPath"]');
+select * from pg_temp.s12pl_refused('sr-path585',pg_temp.s12sr_request('path585','sr-path585',
+  'sr-long8',jsonb_build_array((select path from s12sr_paths where name='row585'))),
+  'VALIDATION_FAILED','["/slotPath"]');
+select pg_temp.s12pl_run('sr-short',pg_temp.s12sr_request('short','sr-short','sr-long8','["/short"]'));
+select * from pg_temp.s12sr_check('sr-short','sr-short','sr-long8','[["/short","1",0,"s12pd.block",1]]');
+
+-- Existing real template: exact flat slot stays required. Selecting cannot
+-- manufacture a nested slot or erase the template-less slash distinction.
+select pg_temp.s12pl_tentry('sr-template');
+select pg_temp.s12pl_run('sr-template',pg_temp.s12sr_request('template','sr-template','pn',
+  '["/shared/b","/intro"]','{}','/main'));
+select * from pg_temp.s12sr_check('sr-template','sr-template','pn',
+  '[["/main/intro","1",0,"s12pd.block",1],["/main/shared/b","1",1,"s12pd.block",1]]');
+select * from pg_temp.s12pl_refused('sr-template-nested',pg_temp.s12sr_request('template-nested',
+  'sr-template','sr-main','["/a"]','{}','/main/sidebar'),'VALIDATION_FAILED','["/slotPath"]');
+select * from pg_temp.s12pl_refused('sr-template-root',pg_temp.s12sr_request('template-root',
+  'sr-template','sr-main','["/a"]'),'VALIDATION_FAILED','["/slotPath"]');
+select * from pg_temp.s12pl_refused('sr-no-template-slot',pg_temp.s12sr_request('no-template-slot',
+  'sr-override','sr-main','["/a"]','{}','/main'),'VALIDATION_FAILED','["/slotPath"]');
+
+-- Full512 supplied in reverse order. Independent index arithmetic describes
+-- the known 32x16 fixture, not the production expander or selected-plan output.
+select pg_temp.s12pl_run('sr-max',pg_temp.s12sr_request('max','sr-max','pb',
+  (select jsonb_agg('/nested' || n || '/root' || m order by n desc,m desc)
+    from generate_series(1,32) n,generate_series(1,16) m)));
+select * from pg_temp.s12sr_check('sr-max','sr-max','pb',
+  (select jsonb_agg(jsonb_build_array('/nested' || n || '/root' || m,'1',
+    (n-1)*16+m-1,'s12pd.block',1) order by n,m)
+    from generate_series(1,32) n,generate_series(1,16) m));
+select is((select count(*)::integer from platform_private.cms_composition_instances
+  where revision_id=pg_temp.s12pl_rev('sr-max')),512,'SR-512: exact bounded row set persisted');

@@ -1,0 +1,87 @@
+-- cmsTaxonomyTermsRead: surface, the signing environment, the exact page, items against an independent oracle, the lifecycle filter,
+-- merged terms with their successor, the page version and the absence of any owner or authority field.  BE03c 166-167, 1170-1186,
+-- 1377, 1480; contract taxonomy-term-list.ts.  [P2-S12-AC-183, AC-185, AC-186]
+select has_function('platform_api', 'cms_list_taxonomy_terms', array['jsonb'],
+  'cmsTaxonomyTermsRead has a named platform API RPC (BE03c 1447) [P2-S12-AC-183]');
+select has_function('platform_private', 'cms_list_taxonomy_terms', array['jsonb'], 'the unsigned keyset reader is a named private function [P2-S12-AC-183]');
+select has_function('platform_private', 'cms_list_taxonomy_terms_signed', array['jsonb'], 'the signed-cursor wrapper is a named private function [P2-S12-AC-186]');
+select ok(has_function_privilege('service_role', to_regprocedure('platform_api.cms_list_taxonomy_terms(jsonb)'), 'execute')
+    and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_api.cms_list_taxonomy_terms(jsonb)'), 'execute'))
+                    from (values ('public'), ('anon'), ('authenticated')) roles(role_name)), false)
+    and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_private.cms_list_taxonomy_terms(jsonb)'), 'execute')
+                                  and not has_function_privilege(role_name, to_regprocedure('platform_private.cms_list_taxonomy_terms_signed(jsonb)'), 'execute'))
+                    from (values ('public'), ('anon'), ('authenticated'), ('service_role')) roles(role_name)), false),
+  'only service_role executes the transport; the private readers are closed to every API role [P2-S12-AC-185]');
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""']) from pg_proc p
+                     where p.oid in (to_regprocedure('platform_api.cms_list_taxonomy_terms(jsonb)'), to_regprocedure('platform_private.cms_list_taxonomy_terms(jsonb)'),
+                                     to_regprocedure('platform_private.cms_list_taxonomy_terms_signed(jsonb)'))), false),
+  'the three functions are SECURITY DEFINER with an empty search_path [P2-S12-AC-185]');
+
+-- the signing environment is part of the contract: no Vault key, no page ---------------------------------------------------------------
+select pg_temp.s12tr_read('t-nokey', 'owner', pg_temp.s12tt_lineage('vr'));
+select is(pg_temp.s12tt_oc('t-nokey'), 'P0001:DEPENDENCY_UNAVAILABLE',
+  'without a valid Vault signing key the read fails closed: DEPENDENCY_UNAVAILABLE, never an unsigned page [P2-S12-AC-187]');
+-- This fixed key exists only inside the rolled-back pgTAP transaction; it is never an operational signing value.
+select vault.create_secret(repeat('a1', 32), 'cms_editorial_history_cursor_active', 'pgTAP transaction-only taxonomy read test key');
+
+select pg_temp.s12tt_mark('before-reads');
+select pg_temp.s12tr_read('t-all', 'owner', pg_temp.s12tt_lineage('vr'));
+select is(pg_temp.s12tt_oc('t-all'), 'ok', 'a curator reads the terms of their vocabulary [P2-S12-AC-183]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('t-all')), 'page,taxonomyId',
+  'the transport answers the witness { taxonomyId, page } so an empty page is never mistaken for an absent vocabulary [P2-S12-AC-183]');
+select is(pg_temp.s12ga_body('t-all')->>'taxonomyId', pg_temp.s12tt_lineage('vr')::text, 'the witness names the lineage that was asked for [P2-S12-AC-183]');
+select is(pg_temp.s12ga_keys(pg_temp.s12tr_page('t-all')), 'items,nextCursor,pageVersion', 'the page is exactly TaxonomyTermListPage [P2-S12-AC-183]');
+select is(pg_temp.s12tr_keys(pg_temp.s12tr_page('t-all')), array['tr-a', 'tr-b', 'tr-c', 'tr-d', 'tr-e', 'tr-f', 'tr-g'],
+  'all seven terms, every lifecycle, in termKey ASC order [P2-S12-AC-183]');
+select is(pg_temp.s12ga_keys(pg_temp.s12tr_page('t-all')->'items'->0), 'aliases,labels,lifecycle,parentId,successorId,termId,termKey,version',
+  'each item is exactly TaxonomyTermListItem (8 members) and carries no owner, actor or authority member [P2-S12-AC-185]');
+select is((select jsonb_agg(item order by ordinality) from jsonb_array_elements(pg_temp.s12tr_page('t-all')->'items') with ordinality t(item, ordinality)),
+  (select jsonb_agg(pg_temp.s12tr_item(term.id) order by term.term_key collate "C", term.id)
+     from platform_private.cms_terms term where term.taxonomy_id = pg_temp.s12tt_lineage('vr')),
+  'every item equals the independently built row: id, key, lifecycle, version, parent, successor, the CURRENT label of each locale and the aliases [P2-S12-AC-183]');
+select is(pg_temp.s12tr_page('t-all')->'items'->0->'labels', '[{"locale":"en-US","label":"Apple"},{"locale":"fr-FR","label":"Pomme"}]'::jsonb,
+  'labels are the current label of each locale ordered by locale [P2-S12-AC-183]');
+select is((select item->'labels' from jsonb_array_elements(pg_temp.s12tr_page('t-all')->'items') item where item->>'termKey' = 'tr-e'),
+  '[{"locale":"en-US","label":"Elderberry Prime"},{"locale":"es-ES","label":"Sauco"}]'::jsonb,
+  'a renamed term lists its newest label versions, not the superseded ones [P2-S12-AC-183]');
+select is((select item->'aliases' from jsonb_array_elements(pg_temp.s12tr_page('t-all')->'items') item where item->>'termKey' = 'tr-f'), '["figs", "common-fig"]'::jsonb,
+  'aliases are listed [P2-S12-AC-183]');
+select ok((select item->>'lifecycle' = 'merged' and item->>'successorId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vr'), 'tr-d')::text
+             and item->>'version' = '2' and jsonb_typeof(item->'version') = 'string'
+             from jsonb_array_elements(pg_temp.s12tr_page('t-all')->'items') item where item->>'termKey' = 'tr-c'),
+  'a merged term is listed WITH its successor, so the redirect is visible to the curator (BE03c 1480) [P2-S12-AC-185]');
+select ok((select bool_and((item->>'lifecycle' = 'merged') = (item->>'successorId' is not null)) from jsonb_array_elements(pg_temp.s12tr_page('t-all')->'items') item),
+  'successorId exists exactly when the term is merged [P2-S12-AC-185]');
+select ok(pg_temp.s12tr_page('t-all')->'nextCursor' = 'null'::jsonb and pg_temp.s12tr_page('t-all')->>'pageVersion' ~ '^[1-9][0-9]*$'
+    and jsonb_typeof(pg_temp.s12tr_page('t-all')->'pageVersion') = 'string',
+  'a final page has no cursor and a decimal-string pageVersion [P2-S12-AC-186]');
+select is(pg_temp.s12tr_page('t-all')->>'pageVersion',
+  pg_temp.s12tr_page_version((select array_agg(id) from platform_private.cms_terms where taxonomy_id = pg_temp.s12tt_lineage('vr'))),
+  'pageVersion is the page''s high-water update instant in UTC microseconds [P2-S12-AC-186]');
+select ok(pg_temp.s12ga_body('t-all')::text !~ '(owner|actor|created_by|createdBy|tenure|capability|binding)',
+  'no owner, actor, creator, membership, capability or binding word appears anywhere in the body [P2-S12-AC-185]');
+
+-- lifecycle filter ----------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12tr_read('t-active', 'owner', pg_temp.s12tt_lineage('vr'), '{"lifecycle":"active"}'::jsonb);
+select pg_temp.s12tr_read('t-deprecated', 'owner', pg_temp.s12tt_lineage('vr'), '{"lifecycle":"deprecated"}'::jsonb);
+select pg_temp.s12tr_read('t-merged', 'owner', pg_temp.s12tt_lineage('vr'), '{"lifecycle":"merged"}'::jsonb);
+select is(pg_temp.s12tr_keys(pg_temp.s12tr_page('t-active')), array['tr-a', 'tr-d', 'tr-e', 'tr-f', 'tr-g'], 'lifecycle=active lists only active terms [P2-S12-AC-184]');
+select is(pg_temp.s12tr_keys(pg_temp.s12tr_page('t-deprecated')), array['tr-b'], 'lifecycle=deprecated lists only deprecated terms [P2-S12-AC-184]');
+select is(pg_temp.s12tr_keys(pg_temp.s12tr_page('t-merged')), array['tr-c'], 'lifecycle=merged lists only merged terms [P2-S12-AC-184]');
+
+-- a vocabulary without terms and a draft vocabulary: an empty page, not a 404 ------------------------------------------------------------
+select pg_temp.s12tr_read('t-empty-draft', 'owner', pg_temp.s12tt_lineage('vd'));
+select ok(pg_temp.s12tt_oc('t-empty-draft') = 'ok' and pg_temp.s12tr_page('t-empty-draft') = '{"items":[],"nextCursor":null,"pageVersion":"1"}'::jsonb
+    and pg_temp.s12ga_body('t-empty-draft')->>'taxonomyId' = pg_temp.s12tt_lineage('vd')::text,
+  'a draft vocabulary of the caller''s organization has an empty page with pageVersion "1" and the witness proves it exists [P2-S12-AC-183]');
+
+-- the page version moves with the data -----------------------------------------------------------------------------------------------------
+select pg_temp.s12tr_read('t-again', 'owner', pg_temp.s12tt_lineage('vr'));
+select is(pg_temp.s12tr_page('t-again'), pg_temp.s12tr_page('t-all'), 'a second read of unchanged data returns the identical page and version [P2-S12-AC-186]');
+select ok(pg_temp.s12tt_same('before-reads'),
+  'the reads so far changed no term, label, assignment, audit, outbox, idempotency or job row: the read is mutation-free [P2-S12-AC-186]');
+select pg_temp.s12tt_act('x-tr-h', 'owner', pg_temp.s12tt_lineage('vr'), 'create', 'tr-h', '{"labels":[{"locale":"en-US","label":"Honeydew"}]}'::jsonb);
+select pg_temp.s12tr_read('t-after-write', 'owner', pg_temp.s12tt_lineage('vr'));
+select ok(pg_temp.s12tr_keys(pg_temp.s12tr_page('t-after-write')) = array['tr-a', 'tr-b', 'tr-c', 'tr-d', 'tr-e', 'tr-f', 'tr-g', 'tr-h']
+    and (pg_temp.s12tr_page('t-after-write')->>'pageVersion')::numeric > (pg_temp.s12tr_page('t-all')->>'pageVersion')::numeric,
+  'a committed term action adds the term and strictly advances the page version (the ETag) [P2-S12-AC-186]');

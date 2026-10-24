@@ -1,0 +1,75 @@
+-- P2-S12-AC-124/125/127: actual command success and persistence, not schema-only tests.
+select has_function('platform_api', 'cms_create_taxonomy_version', array['jsonb'],
+  'proposed transport: named taxonomy-create API RPC exists');
+select has_function('platform_private', 'cms_create_taxonomy_version', array['jsonb'],
+  'proposed transport: atomic private taxonomy-create implementation exists');
+select is(pg_temp.s12td_request('ab', 's12td-null-control')->'expectedVersion', 'null'::jsonb,
+  'HARNESS first expectedVersion is JSON null, not text null');
+select ok(not (pg_temp.s12td_request('ab', 's12td-null-control') ? 'ifMatch'),
+  'HARNESS first request has no If-Match operand');
+select is(pg_temp.s12td_request('ab', 's12td-edit-control', '{}'::jsonb, '1')->'expectedVersion',
+  '"1"'::jsonb, 'HARNESS successor expectedVersion is decimal text');
+
+select pg_temp.s12td_run('flat-first', pg_temp.s12td_request('s12td-flat', 's12td-flat-0001'));
+select * from pg_temp.s12td_created('flat-first');
+select pg_temp.s12td_run('flat-replay',
+  (select request from s12td_calls where label = 'flat-first'));
+select * from pg_temp.s12td_replay('flat-replay', 'flat-first');
+
+-- Each endpoint of each bound succeeds; six domains includes all five unbuilt
+-- Phase 2 providers. This MUST NOT refuse canonical_source_unavailable at create.
+select pg_temp.s12td_run('maximum', pg_temp.s12td_request(repeat('a',64), 's12td-max-0001',
+  jsonb_build_object('shape','hierarchical',
+    'allowedTypeKeys',(select jsonb_agg('type_' || i order by i) from generate_series(1,64) i),
+    'allowedFieldKeys',(select jsonb_agg('field_' || i order by i) from generate_series(1,64) i),
+    'canonicalOverlapDomains','["role","instrument","gear","place","rights","jurisdiction"]'::jsonb)));
+select * from pg_temp.s12td_created('maximum');
+select pg_temp.s12td_run('minimum', pg_temp.s12td_request('ab', 's12td-min-0001',
+  jsonb_build_object('allowedTypeKeys',jsonb_build_array('ab'),
+    'allowedFieldKeys',jsonb_build_array('ab'))));
+select * from pg_temp.s12td_created('minimum');
+select pg_temp.s12td_run('max-key-members', pg_temp.s12td_request('s12td-max-members',
+  's12td-members-0001', jsonb_build_object(
+    'allowedTypeKeys',jsonb_build_array(repeat('t',64)),
+    'allowedFieldKeys',jsonb_build_array(repeat('f',64)))));
+select * from pg_temp.s12td_created('max-key-members');
+select pg_temp.s12td_run('minimum-idempotency',
+  pg_temp.s12td_request('s12td-min-idem', 'tdkey001'));
+select * from pg_temp.s12td_created('minimum-idempotency');
+select pg_temp.s12td_run('maximum-idempotency',
+  pg_temp.s12td_request('s12td-max-idem', repeat('i',128)));
+select * from pg_temp.s12td_created('maximum-idempotency');
+
+-- Taxonomy has no reserved route-segment key set (key-grammar.ts:61-65).
+select pg_temp.s12td_run('reserved-' || key,
+  pg_temp.s12td_request(key, 's12td-reserved-' || key))
+from (values ('context'), ('versions'), ('selector'), ('new')) v(key);
+select result from (values ('context'), ('versions'), ('selector'), ('new')) v(key)
+cross join lateral pg_temp.s12td_created('reserved-' || key) result;
+
+select pg_temp.s12td_run('domain-' || domain, pg_temp.s12td_request('s12td-' || domain,
+  's12td-domain-' || domain, jsonb_build_object('canonicalOverlapDomains',jsonb_build_array(domain))))
+from (values ('role'), ('instrument'), ('gear'), ('place'), ('rights'), ('jurisdiction')) v(domain);
+select result from (values ('role'), ('instrument'), ('gear'), ('place'), ('rights'), ('jurisdiction')) v(domain)
+cross join lateral pg_temp.s12td_created('domain-' || domain) result;
+
+-- Exact full response replay and fingerprint mismatch both precede uniqueness.
+select pg_temp.s12td_run('changed-body', (select request from s12td_calls where label = 'flat-first')
+  || '{"shape":"hierarchical"}'::jsonb);
+select * from pg_temp.s12td_refusal('changed-body', 'IDEMPOTENCY_MISMATCH');
+select pg_temp.s12td_run('changed-key-path', (select request from s12td_calls where label = 'flat-first')
+  || '{"taxonomyKey":"s12td-other-key"}'::jsonb);
+select * from pg_temp.s12td_refusal('changed-key-path', 'IDEMPOTENCY_MISMATCH');
+select pg_temp.s12td_run('same-owner-duplicate',
+  pg_temp.s12td_request('s12td-flat', 's12td-duplicate-new-key'));
+select * from pg_temp.s12td_refusal('same-owner-duplicate', 'CONFLICT');
+
+-- Same (key, version) under another real owner succeeds. Global uniqueness
+-- would wrongly leak that A used this key.
+select pg_temp.s12td_as('B', 'B');
+select pg_temp.s12td_run('other-owner-same-key',
+  pg_temp.s12td_request('s12td-flat', 's12td-owner-b-0001'));
+select * from pg_temp.s12td_created('other-owner-same-key');
+select isnt(pg_temp.s12td_body('other-owner-same-key')->>'taxonomyId',
+  pg_temp.s12td_body('flat-first')->>'taxonomyId', 'per-owner key yields distinct lineages');
+select pg_temp.s12td_as('A');

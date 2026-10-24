@@ -17,7 +17,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(165);
+select plan(167);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -170,22 +170,51 @@ select is(
 select is(
   (select string_agg(category || '=' || provider_key || '@' || provider_version || '/' || provider_kind || '/' || coalesce(reference_kind, '-'), ',')
      from platform_private.cms_preflight_registry_current()),
-  'contract=preflight.contract@1/database/-,schema=preflight.schema@1/database/-,template=preflight.template@1/database/-,block=preflight.block@1/database/-,pattern=preflight.reference_gate@1/reference_gate/pattern,taxonomy=preflight.reference_gate@1/reference_gate/taxonomy,settings=preflight.settings@1/database/-,relation=preflight.relation@1/database/-,privacy=preflight.reference_gate@1/reference_gate/privacy,security=preflight.security@1/database/-,accessibility=cms.a11y.structural@1/worker/-,media=preflight.reference_gate@1/reference_gate/media,route=preflight.reference_gate@1/reference_gate/route,locale=preflight.reference_gate@1/reference_gate/locale,migration=preflight.migration@1/database/-,domain_binding=preflight.domain_binding@1/database/-,revocation=preflight.revocation@1/database/-',
+  'contract=preflight.contract@1/database/-,schema=preflight.schema@1/database/-,template=preflight.template@1/database/-,block=preflight.block@1/database/-,pattern=cms.pattern.active_digest@1/database/-,taxonomy=preflight.reference_gate@1/reference_gate/taxonomy,settings=preflight.settings@1/database/-,relation=preflight.relation@1/database/-,privacy=preflight.reference_gate@1/reference_gate/privacy,security=preflight.security@1/database/-,accessibility=cms.a11y.structural@1/worker/-,media=preflight.reference_gate@1/reference_gate/media,route=preflight.reference_gate@1/reference_gate/route,locale=cms.locale.no_fallback_gate@1/database/-,migration=preflight.migration@1/database/-,domain_binding=preflight.domain_binding@1/database/-,revocation=preflight.revocation@1/database/-',
   'the registry rows equal the TypeScript CMS_PREFLIGHT_REGISTRY row for row (key, version, kind, reference kind) [P2-S11-AC-093]');
 
+-- Privileged reader-fixture substitutions use the existing raw helper, never caller authority.
+-- Track exact created ids; cleanup must preserve real successor rows, including pattern/locale v2.
+create temp table h11p_registry_before on commit drop as
+  select coalesce(jsonb_agg(to_jsonb(registry_row)
+    order by registry_row.category collate "C",registry_row.version,registry_row.id),'[]'::jsonb) as row_images
+  from platform_private.cms_preflight_registry registry_row;
+create temp table h11p_registry_probe_rows(
+  probe text, category text, id uuid unique, registry_version bigint,
+  primary key(probe,category)) on commit drop;
+create function pg_temp.h11p_registry_probe(p_probe text,p_category text,p_owner_slice text,
+  p_provider_key text,p_provider_version bigint,p_provider_kind text,p_reference_kind text default null)
+returns void language plpgsql as $body$
+declare row_id uuid:=extensions.gen_random_uuid(); next_version bigint;
+begin
+  select coalesce(max(version),0)+1 into next_version
+    from platform_private.cms_preflight_registry where category=p_category;
+  perform pg_temp.h11_raw_insert('platform_private.cms_preflight_registry',jsonb_build_object(
+    'id',row_id,'owner_id','0d6a0d6a-0000-4000-8000-000000000134','state','seeded',
+    'version',next_version,'category',p_category,'owner_slice',p_owner_slice,'provider_key',p_provider_key,
+    'provider_version',p_provider_version,'provider_kind',p_provider_kind,'reference_kind',p_reference_kind,
+    'created_at',now(),'updated_at',now()));
+  insert into h11p_registry_probe_rows values(p_probe,p_category,row_id,next_version);
+end;
+$body$;
+create function pg_temp.h11p_registry_cleanup(p_probe text) returns void language plpgsql as $body$
+begin
+  perform pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',format(
+    'delete from platform_private.cms_preflight_registry where id in
+      (select id from pg_temp.h11p_registry_probe_rows where probe=%L)',p_probe));
+  delete from h11p_registry_probe_rows where probe=p_probe;
+end;
+$body$;
+
 -- A newer row of a category replaces the older one in the view (a later slice registers its provider).
-select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
-  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
-  'version', 2, 'category', 'media', 'owner_slice', 'slice-14', 'provider_key', 'cms.media.referenced',
-  'provider_version', 3, 'provider_kind', 'database', 'reference_kind', null,
-  'created_at', now(), 'updated_at', now()));
+select pg_temp.h11p_registry_probe('media-view','media','slice-14','cms.media.referenced',3,'database');
 select is(
   (select provider_key || '@' || provider_version || '/' || registry_version from platform_private.cms_preflight_registry_current() where category = 'media'),
-  'cms.media.referenced@3/2', 'the current row of a category is the one with the greatest registry version [P2-S11-AC-093]');
+  'cms.media.referenced@3/' || (select registry_version::text from h11p_registry_probe_rows where probe='media-view'),
+  'the current row of a category is the one with the greatest registry version [P2-S11-AC-093]');
 select is((select count(*)::integer from platform_private.cms_preflight_registry_current()), 17,
   'the view still lists exactly one row per category [P2-S11-AC-093]');
-select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
-  $$delete from platform_private.cms_preflight_registry where category = 'media' and version = 2$$);
+select pg_temp.h11p_registry_cleanup('media-view');
 
 -- ---------------------------------------------------------------------------
 -- The accessibility binding hash: SHA-256 of the literal JCS the Worker also computes.
@@ -435,20 +464,23 @@ select is(pg_temp.h11p_res(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'blk
   'a withdrawn block fails block_withdrawn [P2-S11-AC-095]');
 
 -- ---------------------------------------------------------------------------
--- 5, 6, 9, 12, 13, 14: the generic reference gate (D19)
+-- 5 pattern provider; 6, 9, 12, 13 generic reference gates (D19); 14 locale provider.
 -- ---------------------------------------------------------------------------
 select pg_temp.h11w_revision('gate-pattern');
 select pg_temp.h11p_assignment('gate-pattern', 'creatorPerson');
-select pg_temp.h11m_instance('gate-pattern:i1', pg_temp.h11w_uuid('gate-pattern:revision'), '/a', 'h11.first', 'a9200000-0000-4000-8000-0000000c0001');
-select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-pattern'))), 'pattern:failed/provider_unbuilt_reference',
-  'a composition instance naming a PatternVersion fails the pattern gate with provider_unbuilt_reference and nothing else [P2-S11-AC-094]');
+-- The labelled legacy pin has actual root /root and a deliberately stale stored registry digest.
+select pg_temp.h11m_instance('gate-pattern:i1', pg_temp.h11w_uuid('gate-pattern:revision'), '/root', 'h11.first', 'a9200000-0000-4000-8000-0000000c0001');
+select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-pattern'))), 'pattern:failed/pattern_digest_changed',
+  'the legacy pin reaches the current pattern provider and fails only its stale registry digest [DEC-199; P2-S11-AC-093]');
 select is((select r->>'blockingCount' from jsonb_array_elements(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-pattern'))->'results') r where r->>'category' = 'pattern'),
-  '1', 'the gate result carries the reference count [P2-S11-AC-094]');
+  '1', 'the pattern provider result carries exactly one offending live pin [DEC-199; P2-S11-AC-093]');
 
 select pg_temp.h11w_revision('gate-tax', 'creatorPerson', 'en-US', jsonb_build_array(pg_temp.h11w_uuid('taxv')));
 select pg_temp.h11p_assignment('gate-tax', 'creatorPerson');
 select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-tax'))), 'taxonomy:failed/provider_unbuilt_reference',
   'a recorded taxonomy version fails the taxonomy gate [P2-S11-AC-094]');
+select is((select r->>'blockingCount' from jsonb_array_elements(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-tax'))->'results') r where r->>'category' = 'taxonomy'),
+  '1', 'the remaining generic taxonomy reference gate carries the exact reference count [P2-S11-AC-094]');
 
 select pg_temp.h11w_revision('gate-priv');
 select pg_temp.h11p_assignment('gate-priv', 'creatorPerson');
@@ -475,68 +507,51 @@ select pg_temp.h11w_revision('gate-loc');
 select pg_temp.h11p_assignment('gate-loc', 'creatorPerson');
 select pg_temp.h11_raw_exec('platform_private.cms_field_definition_versions',
   $$update platform_private.cms_field_definition_versions set localization_mode = 'no_fallback' where field_key = 'legal'$$);
-select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-loc'))), 'locale:failed/provider_unbuilt_reference',
-  'a schema that declares a no_fallback field is a locale reference even for a source-locale revision [P2-S11-AC-094]');
+select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-loc'))), 'locale:failed/no_fallback_missing',
+  'a source-locale revision that holds no value for the schema''s no_fallback field fails the locale gate with no_fallback_missing (cms.locale.no_fallback_gate replaces the reference gate, P2-S12-AC-240) [P2-S11-AC-094]');
 select pg_temp.h11_raw_exec('platform_private.cms_field_definition_versions',
   $$update platform_private.cms_field_definition_versions set localization_mode = 'localized' where field_key = 'legal'$$);
 select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-loc'))), '',
   'control: without the no_fallback field the locale gate passes [P2-S11-AC-094]');
 
 -- The registry row, not a constant, decides the provider: a newer media row is a database provider.
-select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
-  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
-  'version', 2, 'category', 'media', 'owner_slice', 'slice-14', 'provider_key', 'cms.media.referenced',
-  'provider_version', 1, 'provider_kind', 'database', 'reference_kind', null, 'created_at', now(), 'updated_at', now()));
+select pg_temp.h11p_registry_probe('media-dispatch','media','slice-14','cms.media.referenced',1,'database');
 select is(pg_temp.h11p_res(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-media')), 'media'), 'unavailable/provider_unavailable',
   'a category whose current registry row is a provider this slice does not implement is unavailable (provider_unavailable), never silently passed [P2-S11-AC-093]');
-select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
-  $$delete from platform_private.cms_preflight_registry where category = 'media' and version = 2$$);
+select pg_temp.h11p_registry_cleanup('media-dispatch');
 
 -- Dispatch is on (provider_key, provider_version), not on the key alone (DEC-160): every provider this slice implements is
 -- version 1, so a newer registry row naming the SAME key at another version is unavailable, never evaluated as version 1.
-select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
-  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
-  'version', 2, 'category', 'contract', 'owner_slice', 'slice-10', 'provider_key', 'preflight.contract',
-  'provider_version', 2, 'provider_kind', 'database', 'reference_kind', null, 'created_at', now(), 'updated_at', now()));
+select pg_temp.h11p_registry_probe('contract-v2','contract','slice-10','preflight.contract',2,'database');
 select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok'))), 'contract:unavailable/provider_unavailable',
-  'registry version 2 naming preflight.contract at provider version 2 is unavailable (provider_unavailable) although every v1 contract check passes, and marks no other category [P2-S11-AC-093]');
-select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
-  $$delete from platform_private.cms_preflight_registry where category = 'contract' and version = 2$$);
-select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
-  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
-  'version', 2, 'category', 'contract', 'owner_slice', 'slice-10', 'provider_key', 'preflight.contract',
-  'provider_version', 1, 'provider_kind', 'database', 'reference_kind', null, 'created_at', now(), 'updated_at', now()));
+  'a newer registry row naming preflight.contract at provider version 2 is unavailable (provider_unavailable) although every v1 contract check passes, and marks no other category [P2-S11-AC-093]');
+select pg_temp.h11p_registry_cleanup('contract-v2');
+select pg_temp.h11p_registry_probe('contract-v1','contract','slice-10','preflight.contract',1,'database');
 select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok'))), '',
-  'control: registry version 2 that still names provider version 1 is the implemented provider and passes [P2-S11-AC-093]');
-select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
-  $$delete from platform_private.cms_preflight_registry where category = 'contract' and version = 2$$);
+  'control: a newer registry row that still names provider version 1 is the implemented provider and passes [P2-S11-AC-093]');
+select pg_temp.h11p_registry_cleanup('contract-v1');
 
 -- A database row naming a key and version this migration implements for a category it has NO branch for is neither
 -- unavailable (the key and version are the implemented ones) nor a pass: the dispatch has no provider for it, a drift
 -- between the registry and this evaluator.  The evaluation fails closed with a typed internal error in every phase;
 -- it never reports the category as silently passed (a test-only newer `pattern` row, removed again at once).
-select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
-  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
-  'version', 2, 'category', 'pattern', 'owner_slice', 'slice-12', 'provider_key', 'preflight.pattern',
-  'provider_version', 1, 'provider_kind', 'database', 'reference_kind', null, 'created_at', now(), 'updated_at', now()));
+select pg_temp.h11p_registry_probe('pattern-gap','pattern','slice-12','preflight.pattern',1,'database');
 select is(pg_temp.h11p_err(pg_temp.h11p_request('submit', 'ok')), 'P0001:INTERNAL_ERROR',
   'a database registry row with no implementation in the evaluator (preflight.pattern at version 1) fails closed with INTERNAL_ERROR in the submit phase, never a silent pass [P2-S11-AC-093]');
 select is(pg_temp.h11p_err(pg_temp.h11p_request('publish', 'ok')), 'P0001:INTERNAL_ERROR',
   'and in the publish phase: the dispatch gap is a registry/evaluator drift, not a property of the phase [P2-S11-AC-093]');
-select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
-  $$delete from platform_private.cms_preflight_registry where category = 'pattern' and version = 2$$);
+select pg_temp.h11p_registry_cleanup('pattern-gap');
 select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok'))), '',
   'control: with the unimplemented row removed the same request evaluates and passes again [P2-S11-AC-093]');
 
 -- Every kind and every category: a version-2 row of each of the seventeen current providers (database, reference_gate, worker).
+-- The row is the NEXT registry version of each category (a later slice, such as the locale gate of Slice 12, may already
+-- have registered version 2); its provider_version stays 2, and the cleanup removes only the rows this test seeded.
 -- DEC-160 / BE03b "Unavailable reasons": an unavailable result carries provider_unavailable for every database or
 -- reference-gate category and checker_failed for category 11 (accessibility, the worker provider); no other unavailable
 -- token exists.  A version-2 accessibility row is therefore unavailable/checker_failed, never provider_unavailable.
-select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
-  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
-  'version', 2, 'category', current_row.category, 'owner_slice', current_row.owner_slice,
-  'provider_key', current_row.provider_key, 'provider_version', 2, 'provider_kind', current_row.provider_kind,
-  'reference_kind', current_row.reference_kind, 'created_at', now(), 'updated_at', now()))
+select pg_temp.h11p_registry_probe('all-v2',current_row.category,current_row.owner_slice,
+  current_row.provider_key,2,current_row.provider_kind,current_row.reference_kind)
   from platform_private.cms_preflight_registry_current() current_row;
 create temp table h11p_v2_report on commit drop as
   select pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok', 'creatorPerson', '{}',
@@ -561,29 +576,25 @@ select is((select count(*)::integer from h11p_v2_report, jsonb_array_elements(re
   0, 'no accessibility result ever carries the forbidden reason provider_unavailable [P2-S11-AC-093]');
 select is((select (report->>'passed')::boolean from h11p_v2_report), false,
   'passed is false when any provider version is unimplemented [P2-S11-AC-097]');
-select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
-  $$delete from platform_private.cms_preflight_registry where version = 2$$);
+select pg_temp.h11p_registry_cleanup('all-v2');
 
 -- A worker accessibility row that names a provider key this slice does not implement (same provider version) is the
 -- same unavailable result under the same token; a worker row of any OTHER category keeps provider_unavailable.
-select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
-  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
-  'version', 2, 'category', 'accessibility', 'owner_slice', 'slice-16', 'provider_key', 'cms.a11y.deep',
-  'provider_version', 1, 'provider_kind', 'worker', 'reference_kind', null, 'created_at', now(), 'updated_at', now()));
+select pg_temp.h11p_registry_probe('accessibility-key','accessibility','slice-16','cms.a11y.deep',1,'worker');
 select is(pg_temp.h11p_res(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok') - 'evidence'), 'accessibility'),
   'unavailable/checker_failed',
   'a worker accessibility row naming an unimplemented provider key is unavailable/checker_failed, never provider_unavailable [P2-S11-AC-093]');
-select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
-  $$delete from platform_private.cms_preflight_registry where category = 'accessibility' and version = 2$$);
-select pg_temp.h11_raw_insert('platform_private.cms_preflight_registry', jsonb_build_object(
-  'id', extensions.gen_random_uuid(), 'owner_id', '0d6a0d6a-0000-4000-8000-000000000134', 'state', 'seeded',
-  'version', 2, 'category', 'security', 'owner_slice', 'slice-16', 'provider_key', 'cms.security.deep',
-  'provider_version', 1, 'provider_kind', 'worker', 'reference_kind', null, 'created_at', now(), 'updated_at', now()));
+select pg_temp.h11p_registry_cleanup('accessibility-key');
+select pg_temp.h11p_registry_probe('security-worker','security','slice-16','cms.security.deep',1,'worker');
 select is(pg_temp.h11p_res(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'ok')), 'security'),
   'unavailable/provider_unavailable',
   'a worker row of a non-accessibility category keeps provider_unavailable (only category 11 reports checker_failed) [P2-S11-AC-093]');
-select pg_temp.h11_raw_exec('platform_private.cms_preflight_registry',
-  $$delete from platform_private.cms_preflight_registry where category = 'security' and version = 2$$);
+select pg_temp.h11p_registry_cleanup('security-worker');
+select is((select coalesce(jsonb_agg(to_jsonb(registry_row)
+    order by registry_row.category collate "C",registry_row.version,registry_row.id),'[]'::jsonb)
+    from platform_private.cms_preflight_registry registry_row),
+  (select row_images from h11p_registry_before),
+  'all temporary registry probes preserve every original full row, including real pattern/locale successors [P2-S11-AC-093]');
 
 -- ---------------------------------------------------------------------------
 -- 7 settings
@@ -842,10 +853,10 @@ select is(pg_temp.h11p_res(pg_temp.h11p_eval(pg_temp.h11p_request('schedule', 'r
 select pg_temp.h11w_revision('multi');
 select pg_temp.h11p_assignment('multi', 'creatorPerson');
 select pg_temp.h11p_rawvalue(pg_temp.h11w_uuid('multi:revision'), 'title', to_jsonb('<script>x</script>'::text));
-select pg_temp.h11m_instance('multi:i1', pg_temp.h11w_uuid('multi:revision'), '/a', 'h11.first', 'a9200000-0000-4000-8000-0000000c0001');
+select pg_temp.h11m_instance('multi:i1', pg_temp.h11w_uuid('multi:revision'), '/root', 'h11.first', 'a9200000-0000-4000-8000-0000000c0001');
 select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'multi', 'creatorPerson', '{}', pg_temp.h11p_evidence('multi', 'blocked', 2),
     jsonb_set(pg_temp.h11p_manifest('multi'), '{settings,version}', '"9"')))),
-  'accessibility:failed/blocking_finding,pattern:failed/provider_unbuilt_reference,security:failed/unsafe_content,settings:failed/settings_changed',
+  'accessibility:failed/blocking_finding,pattern:failed/pattern_digest_changed,security:failed/unsafe_content,settings:failed/settings_changed',
   'four independent failures in one revision are all reported, in the same report [P2-S11-AC-097]');
 select is((pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'multi', 'creatorPerson', '{}', pg_temp.h11p_evidence('multi', 'blocked', 2)))->>'passed')::boolean, false,
   'passed is false when any category failed [P2-S11-AC-097]');
@@ -854,7 +865,7 @@ select is(jsonb_array_length(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'm
 
 -- A failed category and an unavailable one together: both are present for the caller to aggregate.
 select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'multi', 'creatorPerson', '{}', pg_temp.h11p_evidence('multi', 'failed', 0)))),
-  'accessibility:unavailable/checker_failed,pattern:failed/provider_unbuilt_reference,security:failed/unsafe_content',
+  'accessibility:unavailable/checker_failed,pattern:failed/pattern_digest_changed,security:failed/unsafe_content',
   'failed and unavailable results coexist; the caller applies failed => 422, else unavailable => 503 [P2-S11-AC-097]');
 
 -- ---------------------------------------------------------------------------

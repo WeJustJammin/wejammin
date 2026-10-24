@@ -1,0 +1,43 @@
+-- DEC-210 / CMS-03C-02: a placement keeps every pinned block's allowedChildren and slotRules over the block nodes it
+-- WRITES (the selected roots' subtrees, nested references expanded in place): 422 block_rules_violated at /roots when
+-- roots are named, else at /patternVersion.  The patterns here were saved before the rule (040-legacy-setup).
+create or replace function pg_temp.brp_place(p_tag text, p_pattern text, p_label text, p_roots jsonb default null)
+returns jsonb language plpgsql as $body$
+begin
+  perform pg_temp.s12pl_entry(p_tag);
+  return pg_temp.s12pl_request(p_tag, p_pattern, '/', '{}'::jsonb, 'br-' || p_label || '-idem')
+    || case when p_roots is null then '{}'::jsonb else jsonb_build_object('roots', p_roots) end;
+end;
+$body$;
+select * from pg_temp.s12pl_refused('P01', pg_temp.brp_place('brp-1', 'brl-nodes', 'p01'),
+  'block_rules_violated', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('P02', pg_temp.brp_place('brp-2', 'brl-child', 'p02'),
+  'block_rules_violated', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('P03', pg_temp.brp_place('brp-3', 'brl-multi', 'p03', '["/bad"]'::jsonb),
+  'block_rules_violated', '["/roots"]'::jsonb);
+select * from pg_temp.s12pl_refused('P04', pg_temp.brp_place('brp-4', 'brl-multi', 'p04'),
+  'block_rules_violated', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('P05', pg_temp.brp_place('brp-5', 'brl-nested', 'p05'),
+  'block_rules_violated', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('P06', pg_temp.brp_place('brp-6', 'brl-nested', 'p06', '["/t"]'::jsonb),
+  'block_rules_violated', '["/roots"]'::jsonb);
+-- an empty allow-list (a br.leaf parent) and a depth over maxDepth are refused through the real placement, not only by the pure check
+select * from pg_temp.s12pl_refused('P09', pg_temp.brp_place('brp-9', 'brl-empty', 'p09'),
+  'block_rules_violated', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('P10', pg_temp.brp_place('brp-10', 'brl-deep', 'p10'),
+  'block_rules_violated', '["/patternVersion"]'::jsonb);
+select * from pg_temp.s12pl_refused('P11', pg_temp.brp_place('brp-11', 'brl-empty', 'p11', '["/r"]'::jsonb),
+  'block_rules_violated', '["/roots"]'::jsonb);
+select * from pg_temp.s12pl_refused('P12', pg_temp.brp_place('brp-12', 'brl-deep', 'p12', '["/s"]'::jsonb),
+  'block_rules_violated', '["/roots"]'::jsonb);
+
+-- the tree written is what is checked: the clean root of a pre-rule multi-root pattern places, its violating sibling does not
+select pg_temp.s12pl_run('P07', pg_temp.brp_place('brp-7', 'brl-multi', 'p07', '["/ok"]'::jsonb));
+select is(pg_temp.s12pl_state('P07'), '00000', 'P07: placing only the clean root of a pre-rule pattern is not refused');
+select is((select array_agg(path order by path) from platform_private.cms_composition_instances
+    where revision_id = pg_temp.s12pl_rev('brp-7')), array['/ok'], 'P07: exactly the selected clean root was written');
+-- a pattern that satisfies its rules places as before (controls: a forest of leaf roots, and a valid nested tree)
+select pg_temp.s12pl_run('P08', pg_temp.brp_place('brp-8', 'brn-three', 'p08'));
+select is(pg_temp.s12pl_state('P08'), '00000', 'P08: a rule-satisfying pattern is placed');
+select is((select count(*)::integer from platform_private.cms_composition_instances
+    where revision_id = pg_temp.s12pl_rev('brp-8')), 3, 'P08: all three leaf roots were written');

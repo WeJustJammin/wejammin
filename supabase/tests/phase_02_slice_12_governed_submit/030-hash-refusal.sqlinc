@@ -1,0 +1,73 @@
+-- Governed-fix lane, defect 4 (BE03c 389, 1259; FE03 1115): a stored-hash mismatch is a request validation failure,
+-- 422 at /subjectHash, raised as VALIDATION_FAILED with the pointer-array DETAIL ["/subjectHash"].  409
+-- subject_not_submittable stays for a subject that is not draft or already has a live review.  Include AFTER the
+-- role-control assertion: it adds governed calls, and that control counts exactly nine.  Plan contribution: 15.
+select pg_temp.s12gov_mint('hashsubject', ARRAY['typeA'], 's12gov-template-create-0004');
+select pg_temp.s12gov_mint('hashother', ARRAY['typeA'], 's12gov-template-create-0005');
+select ok(
+  (select state = 'draft' and lifecycle_version = 1 and content_hash::text ~ '^[a-f0-9]{64}$'
+     from platform_private.cms_template_versions
+    where id = (select value::uuid from s12gov_ids where key = 'hashsubject'))
+  and pg_temp.s12gov_subject_hash((select value::uuid from s12gov_ids where key = 'hashsubject'))
+      is distinct from pg_temp.s12gov_subject_hash((select value::uuid from s12gov_ids where key = 'hashother')),
+  'control: two real draft templates carry distinct stored 64-hex hashes [P2-S12-AC-249]');
+
+insert into s12gov_idsnap(label, snapshot)
+values ('before-hash', pg_temp.s12gov_scope((select value::uuid from s12gov_ids where key = 'hashsubject')));
+select pg_temp.s12gov_as('Creator');
+select pg_temp.s12gov_submit(pg_temp.s12gov_request(
+  (select value::uuid from s12gov_ids where key = 'hashsubject'), repeat('f', 64), 's12gov-submit-0007'));
+select pg_temp.s12gov_capture('hash-wrong');
+select is(pg_temp.s12gov_state('hash-wrong'), 'P0001',
+  'a stored-hash mismatch raises the governed command refusal SQLSTATE [P2-S12-AC-249]');
+select is(pg_temp.s12gov_message('hash-wrong'), 'VALIDATION_FAILED',
+  'a stored-hash mismatch is VALIDATION_FAILED (422), not subject_not_submittable (409) [P2-S12-AC-249]');
+select is(
+  (select case when detail ~ '^\[' then detail::jsonb end from s12gov_cap where label = 'hash-wrong'),
+  '["/subjectHash"]'::jsonb,
+  'the hash mismatch names exactly the /subjectHash pointer [P2-S12-AC-249]');
+select is(pg_temp.s12gov_body('hash-wrong'), null::jsonb, 'the hash mismatch returns no body [P2-S12-AC-249]');
+select is(
+  pg_temp.s12gov_scope((select value::uuid from s12gov_ids where key = 'hashsubject')),
+  (select snapshot from s12gov_idsnap where label = 'before-hash'),
+  'the hash refusal leaves subject, review, dependency and idempotency rows unchanged (audit/outbox count-only) [P2-S12-AC-249]');
+select is(pg_temp.s12gov_live_reviews((select value::uuid from s12gov_ids where key = 'hashsubject')), 0,
+  'the hash refusal commits no review [P2-S12-AC-249]');
+
+-- another subject's valid hash is still a mismatch for this subject
+select pg_temp.s12gov_submit(pg_temp.s12gov_request(
+  (select value::uuid from s12gov_ids where key = 'hashsubject'),
+  pg_temp.s12gov_subject_hash((select value::uuid from s12gov_ids where key = 'hashother')), 's12gov-submit-0008'));
+select pg_temp.s12gov_capture('hash-other');
+select ok(
+  pg_temp.s12gov_state('hash-other') = 'P0001' and pg_temp.s12gov_message('hash-other') = 'VALIDATION_FAILED'
+    and (select detail::jsonb from s12gov_cap where label = 'hash-other') = '["/subjectHash"]'::jsonb,
+  'another subject''s valid hash is the same 422 /subjectHash refusal [P2-S12-AC-249]');
+select is(
+  pg_temp.s12gov_scope((select value::uuid from s12gov_ids where key = 'hashsubject')),
+  (select snapshot from s12gov_idsnap where label = 'before-hash'),
+  'the cross-subject hash refusal also leaves every scoped store unchanged [P2-S12-AC-249]');
+
+-- positive control: the correct hash submits, so the refusals above were hash-specific
+select pg_temp.s12gov_submit(pg_temp.s12gov_request(
+  (select value::uuid from s12gov_ids where key = 'hashsubject'),
+  pg_temp.s12gov_subject_hash((select value::uuid from s12gov_ids where key = 'hashsubject')), 's12gov-submit-0009'));
+select pg_temp.s12gov_capture('hash-right');
+select is(pg_temp.s12gov_state('hash-right'), '00000',
+  'control: the stored hash submits the same draft, so the refusals were hash-specific [P2-S12-AC-249]');
+select is(pg_temp.s12gov_live_reviews((select value::uuid from s12gov_ids where key = 'hashsubject')), 1,
+  'control: exactly one live review exists after the accepted submit [P2-S12-AC-249]');
+
+-- a subject already in review with a correct hash and a fresh key stays 409 subject_not_submittable
+select pg_temp.s12gov_submit(pg_temp.s12gov_request(
+  (select value::uuid from s12gov_ids where key = 'hashsubject'),
+  pg_temp.s12gov_subject_hash((select value::uuid from s12gov_ids where key = 'hashsubject')), 's12gov-submit-0010'));
+select pg_temp.s12gov_capture('hash-state');
+select is(pg_temp.s12gov_message('hash-state'), 'subject_not_submittable',
+  'a non-draft subject with the correct hash stays 409 subject_not_submittable [P2-S12-AC-251]');
+select is(pg_temp.s12gov_live_reviews((select value::uuid from s12gov_ids where key = 'hashsubject')), 1,
+  'the state refusal leaves exactly one live review [P2-S12-AC-251]');
+select ok(
+  (select count(*) = 4 from s12gov_rpc_receipts where ordinal > 9 and rpc_user = 'service_role'
+     and before_user = after_user and before_role = after_role),
+  'role control: the four added governed calls execute as service_role and restore role [P2-S12-AC-064]');

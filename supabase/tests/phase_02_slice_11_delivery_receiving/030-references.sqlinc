@@ -1,0 +1,94 @@
+-- Real A/B publications and complete receivers exist before any negative probe.
+select set_config('app.cms_rpc','true',true);
+select is(pg_temp.dr_result(pg_temp.dr_consumer_sql('consumer-a','a','projection-a'),true)->>'state','00000',
+  'DR-R01 full publication A -> manifest A -> projection A -> consumer A chain succeeds [DEC-197]');
+select is(pg_temp.dr_scalar(format('select count(*) from platform_private.projection_consumer_state c
+  join platform_private.publication_projection p on (p.publication_id,p.id)=(c.publication_id,c.projection_id)
+  join platform_private.route_manifest_version m on m.id=p.route_manifest_id
+  join platform_private.cms_publication_versions v on v.id=p.publication_id where c.id=%L',pg_temp.dr_id('consumer-a'))),
+  '1','DR-R02 positive chain resolves all actual publication VERSION, projection and manifest parents');
+
+select is(pg_temp.dr_diag(pg_temp.dr_projection_sql('missing-publication','missing-publication','manifest-a')),
+  '23503:' || coalesce(pg_temp.dr_fk('platform_private.publication_projection',array['publication_id'],
+    'platform_private.cms_publication_versions',array['id']),'<missing-publication-fk>'),
+  'DR-R03 missing publication VERSION fails specifically the projection publication FK');
+select is(pg_temp.dr_diag(pg_temp.dr_projection_sql('missing-manifest','a','missing-manifest')),
+  '23503:' || coalesce(pg_temp.dr_fk('platform_private.publication_projection',array['route_manifest_id'],
+    'platform_private.route_manifest_version',array['id']),'<missing-manifest-fk>'),
+  'DR-R04 missing manifest fails specifically the projection manifest FK');
+select is(pg_temp.dr_diag(pg_temp.dr_consumer_sql('missing-projection','a','missing-projection')),
+  '23503:' || coalesce(pg_temp.dr_fk('platform_private.projection_consumer_state',array['projection_id'],
+    'platform_private.publication_projection',array['id']),'<missing-direct-projection-fk>'),
+  'DR-R05 existing publication plus absent projection fails the direct projection FK, not write guard');
+select is(pg_temp.dr_diag(pg_temp.dr_consumer_sql('missing-consumer-publication','missing-publication','projection-a')),
+  '23503:' || coalesce(pg_temp.dr_fk('platform_private.projection_consumer_state',array['publication_id'],
+    'platform_private.cms_publication_versions',array['id']),'<missing-existing-publication-fk>'),
+  'DR-R06 absent consumer publication still fails the retained publication VERSION FK');
+select is(pg_temp.dr_scalar(format('select count(*) from platform_private.publication_projection
+  where id=%L and publication_id=%L',pg_temp.dr_id('projection-b'),(select id from dr_publications where label='b'))),
+  '1','DR-R07 cross-publication control: B is an existing valid projection of real publication B');
+select is(pg_temp.dr_diag(pg_temp.dr_consumer_sql('cross-publication','a','projection-b')),
+  '23503:' || coalesce(pg_temp.dr_fk('platform_private.projection_consumer_state',array['publication_id','projection_id'],
+    'platform_private.publication_projection',array['publication_id','id']),'<missing-composite-fk>'),
+  'DR-R08 real publication A using valid projection B fails ONLY the composite same-publication FK');
+select is(pg_temp.dr_scalar(format('select count(*) from platform_private.projection_consumer_state where id=%L',
+  pg_temp.dr_id('cross-publication'))),'0','DR-R09 rejected cross-publication insert leaves no consumer row');
+select is(pg_temp.dr_diag(format('delete from platform_private.publication_projection where id=%L',pg_temp.dr_id('projection-a'))),
+  '23503:' || coalesce(pg_temp.dr_fk('platform_private.projection_consumer_state',array['projection_id'],
+    'platform_private.publication_projection',array['id']),'<missing-direct-projection-fk>'),
+  'DR-R10 deleting a referenced projection fails the consumer direct FK without cascading rows');
+select is(pg_temp.dr_scalar(format('select count(*) from platform_private.projection_consumer_state where id=%L',
+  pg_temp.dr_id('consumer-a'))),'1','DR-R11 restrictive parent delete leaves the original consumer intact');
+select is(pg_temp.dr_diag(pg_temp.dr_projection_sql('duplicate-projection','a','manifest-a')),
+  '23505:' || coalesce(pg_temp.dr_key('platform_private.publication_projection','u',
+    array['publication_id','route_manifest_id','locale','audience','version']),'<missing-identity-unique>'),
+  'DR-R12 duplicate full projection identity fails its five-column unique constraint');
+select is(pg_temp.dr_diag(format('insert into platform_private.route_manifest_version
+  (id,version_no,publication_set_hash,state,generated_at,activated_at) overriding system value
+  select %L,version_no,publication_set_hash,state,generated_at,activated_at
+  from platform_private.route_manifest_version where id=%L',pg_temp.dr_id('duplicate-ordinal'),pg_temp.dr_id('manifest-a'))),
+  '23505:' || coalesce(pg_temp.dr_key('platform_private.route_manifest_version','u',array['version_no']),'<missing-ordinal-unique>'),
+  'DR-R13 same global manifest ordinal fails its unique constraint');
+
+-- No blanket immutability on projections: future revoke/tombstone/purge needs them.
+select is((select (r->>'state') || '/' || (r->>'rows') from
+  (select pg_temp.dr_result(pg_temp.dr_projection_sql('mutable-projection','c','manifest-a'),true) r) q),'00000/1',
+  'DR-R14 unreferenced projection C has a complete legitimate receiver');
+select is((select (r->>'state') || '/' || (r->>'rows') from
+  (select pg_temp.dr_result(format('update platform_private.publication_projection set state=''revoked'',
+  version=version+1,updated_at=updated_at+interval ''1 second'' where id=%L',pg_temp.dr_id('mutable-projection')),true) r) q),
+  '00000/1','DR-R15 projection can advance to revoked; manifest immutability is not imposed on it');
+select is((select (r->>'state') || '/' || (r->>'rows') from
+  (select pg_temp.dr_result(format('delete from platform_private.publication_projection where id=%L',
+  pg_temp.dr_id('mutable-projection')),true) r) q),'00000/1',
+  'DR-R16 an unreferenced projection can be purged; only actual references restrict deletion');
+
+-- Receiving storage leaves the existing aggregate derivation unchanged.
+select is(pg_temp.dr_scalar(format('select platform_private.cms_publication_projection_state(%L)',
+  (select id from dr_publications where label='a'))),'pending',
+  'DR-R17 one of eight required consumer reports still derives pending [P2-S11-AC-116]');
+select is(pg_temp.dr_result(pg_temp.dr_consumer_sql('aggregate-' || consumer,'a','projection-a',
+  jsonb_build_object('consumer',consumer)),true)->>'state','00000',
+  'DR-R18 real same-publication receiver accepts consumer ' || consumer)
+from unnest(array['render','menu','media','search','sitemap','cache','social']) consumer;
+select is(pg_temp.dr_scalar(format('select platform_private.cms_publication_projection_state(%L)',
+  (select id from dr_publications where label='a'))),'converged',
+  'DR-R19 eight active reports through a legitimate projection derive converged');
+select is(pg_temp.dr_result(pg_temp.dr_projection_sql('projection-a-new','a','manifest-b'),true)->>'state','00000',
+  'DR-R20 second A projection uses a distinct legitimate manifest identity dimension');
+select is(pg_temp.dr_result(pg_temp.dr_consumer_sql('aggregate-new-blocked','a','projection-a-new',
+  '{"state":"blocked","last_error_code":"consumer_failed","updated_at":"2026-10-16T12:01:00Z","version":2}'),true)->>'state',
+  '00000','DR-R21 newer blocked report belongs to publication A through its own second projection');
+select is(pg_temp.dr_scalar(format('select platform_private.cms_publication_projection_state(%L)',
+  (select id from dr_publications where label='a'))),'degraded',
+  'DR-R22 newest blocked consumer still derives degraded with real same-publication receivers');
+select is(pg_temp.dr_scalar(format('select platform_private.cms_publication_projection_state(%L)',
+  (select id from dr_publications where label='b'))),'pending',
+  'DR-R23 publication B is still pending; A reports cannot converge or degrade B');
+select is(r->>'state' || ':' || coalesce(r->>'constraint',''),'P0001:',
+  'DR-R24 referenced immutable publication parent refuses deletion at its existing guard (not claimed as FK execution)')
+from (select pg_temp.dr_result(format('delete from platform_private.cms_publication_versions where id=%L',
+  (select id from dr_publications where label='a'))) r) q;
+select is(pg_temp.dr_result(format('delete from platform_private.cms_publication_versions where id=%L',
+  (select id from dr_publications where label='a')))->>'message','IMMUTABLE_RECORD',
+  'DR-R25 existing parent refusal is specifically IMMUTABLE_RECORD; restrictive FK actions are independently catalog-checked');

@@ -49,6 +49,12 @@ select no_plan();
 -- invalidation", tracker P2-S11-AC-113): cms_dependency_recheck_resolve_event, which the six
 -- source-event consumers call to reread a committed event as a dependency index lookup, and
 -- cms_dependency_recheck_run, one bounded run of the cms.review.dependency_recheck job.
+-- Slice 12 adds nineteen more service-role-only Worker-called RPCs to the supporting set (BE03c CMS-03C-02, -03, -05,
+-- -06 to -13, -16, -17, cmsPatternLatestRead, cmsTaxonomyVersionsRead, cmsTaxonomyTermsRead, the CMS-03C-19 sweep pair
+-- and the cms.taxonomy.merge_converge job handler); each is listed with its migration in the supporting set below.
+-- The integration pass adds eight more (the CMS-03C-14/-15 wrappers, the taxonomy merge recovery sweep, the governed-recheck pair, the
+-- DEC-208 locale observability read and the linked-update scan pair); each is on its own line, with its lane and migration, at the end of the
+-- supporting set.  The counts in the last assertion's description are taken from the three sets, never typed.
 
 create temp table r8a_original(fn text primary key, human boolean) on commit drop;
 insert into r8a_original values
@@ -127,7 +133,59 @@ insert into r8a_supporting values
   ('cms_load_quality_gate_input'),
   -- Slice 11: dependency recheck (consumers and the job)
   ('cms_dependency_recheck_resolve_event'),
-  ('cms_dependency_recheck_run');
+  ('cms_dependency_recheck_run'),
+  -- Slice 12 (BE03c route registry; every one is Worker-called and service-role only): governed definition review
+  -- commands and reads, CMS-03C-06/-07/-08/-10/-11 (20261013300810, 20261014010210, 20261014010110, 20261014010310,
+  -- 20261014010410 public wrappers) and CMS-03C-09 activation (20261014070410)
+  ('cms_submit_governed_review'),
+  ('cms_record_governed_decision'),
+  ('cms_assign_governed_reviewer'),
+  ('cms_get_governed_review'),
+  ('cms_list_governed_reviews'),
+  ('cms_activate_governed_subject'),
+  -- Slice 12: the CMS-03C-19 scheduled sweep (20261014070510 claim, 20261014070610 execute)
+  ('cms_claim_due_governed_activations'),
+  ('cms_execute_governed_activation'),
+  -- Slice 12: pattern definition and composition, CMS-03C-12 (20261014020500), cmsPatternLatestRead (20261014020500),
+  -- CMS-03C-02 (20261014110400), CMS-03C-13 (20261014140310)
+  ('cms_create_pattern_version'),
+  ('cms_pattern_latest'),
+  ('cms_insert_pattern_instance'),
+  ('cms_list_pattern_selector'),
+  -- Slice 12: taxonomy, CMS-03C-16 (20261014030300), cmsTaxonomyVersionsRead (20261014030400), CMS-03C-03 (20261014120510),
+  -- cmsTaxonomyTermsRead (20261014120610), CMS-03C-17 (20261014120710), and the BE00 job cms.taxonomy.merge_converge
+  -- handler transport (20261014120310, BE03c 1370)
+  ('cms_create_taxonomy_version'),
+  ('cms_list_taxonomy_versions'),
+  ('cms_act_taxonomy_term'),
+  ('cms_list_taxonomy_terms'),
+  ('cms_list_taxonomy_selector'),
+  ('cms_run_taxonomy_merge_converge'),
+  -- Slice 12: related content, CMS-03C-05 (20261014060500) and cmsRelatedContentRead (DEC-195, 20261014200010)
+  ('cms_curate_related_content'),
+  ('cms_get_related_content'),
+  -- Slice 12: cmsLocaleVariantRead (DEC-205, 20261022020010)
+  ('cms_get_locale_variant'),
+  -- Slice 12: cmsCompositionInstancesRead (DEC-206, 20261022050010)
+  ('cms_list_composition_instances'),
+  -- Slice 12 (integration pins): the eight further service-role-only, Worker-called wrappers of the promoted lanes, one per line,
+  -- each with the migration that grants it to service_role only.
+  -- pattern-updates lane, CMS-03C-14 safe read of an instance's update diff (20261014140410)
+  ('cms_get_instance_update_diff'),
+  -- pattern-updates lane, CMS-03C-15 accept/detach command (20261014140610)
+  ('cms_apply_pattern_update'),
+  -- dec194 lane / DEC-194, the bounded taxonomy merge convergence recovery sweep (20261014190010)
+  ('cms_reconcile_taxonomy_merge_converge'),
+  -- governed-recheck lane, P2-S12-AC-202/203: one bounded run of cms.governed_review.recheck (20261022030100) ...
+  ('cms_recheck_governed_reviews'),
+  -- ... and the identity lookup the governed recheck consumer rereads a committed source event with (20261022030300)
+  ('cms_governed_recheck_resolve_event'),
+  -- dec208 lane / DEC-208, DEC-213: the per-minute database-side locale observability aggregate read (20261022100020)
+  ('cms_locale_observability_read'),
+  -- linked-scan lane / DEC-222, P2-S12-AC-212/213: one bounded run of cms.pattern.linked_update_scan (20261022110200) ...
+  ('cms_scan_linked_pattern_updates'),
+  -- ... and the identity lookup of the pattern-activation event it is queued with (20261022110300)
+  ('cms_linked_scan_resolve_event');
 
 create temp table r8a_internal(fn text primary key) on commit drop;
 insert into r8a_internal values
@@ -195,7 +253,8 @@ select is((select count(distinct p.proname)::integer
      where p.pronamespace = 'platform_api'::regnamespace and p.proname like 'cms\_%'
        and (has_function_privilege('service_role', p.oid, 'execute') or has_function_privilege('authenticated', p.oid, 'execute'))),
   (select count(*)::integer from (select fn from r8a_original union all select fn from r8a_amendment union all select fn from r8a_supporting) e),
-  'every enumerated RPC is executable by an API role and nothing else is: 8 + 10 + 54 [P2-S09-AC-180]');
+  format('every enumerated RPC is executable by an API role and nothing else is: %s + %s + %s [P2-S09-AC-180]',
+    (select count(*) from r8a_original), (select count(*) from r8a_amendment), (select count(*) from r8a_supporting)));
 
 select * from finish();
 rollback;

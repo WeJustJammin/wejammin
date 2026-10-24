@@ -1,0 +1,145 @@
+-- TEST ONLY. Substitution accepts a generated identifier and UUID, never caller SQL.
+-- Unexposed owner schema. No replacement/wrapper/surrogate production RPC.
+create table __SCHEMA__.world(ids jsonb not null);
+create table __SCHEMA__.observations(
+  producer text not null check (producer in ('ordinary', 'continuation', 'recovery')),
+  nonce uuid not null, job_id uuid not null unique,
+  isolation text not null check (isolation in ('read uncommitted', 'read committed', 'repeatable read', 'serializable')),
+  backend_pid integer not null, transaction_id text not null,
+  service_claim boolean not null, service_role boolean not null, cms_rpc boolean not null,
+  public_caller boolean not null, private_caller boolean not null, acceptance_caller boolean not null
+);
+alter table __SCHEMA__.world enable row level security;
+alter table __SCHEMA__.observations enable row level security;
+
+-- Inherited guarded SQL fixtures establish a real active vocabulary and type.
+-- Entry/revision/assignment rows are labelled fixture forgeries (10001 rows),
+-- not claimed CMS authoring producers. The sentinel job is real BE00 fixture history.
+create function __SCHEMA__.bootstrap() returns void language plpgsql as $body$
+declare tax uuid := pg_temp.s12tt_lineage('vf'); source uuid; survivor uuid; sentinel uuid;
+begin
+  perform pg_temp.s12tt_act('iso-source', 'owner', tax, 'create', 'iso-source');
+  perform pg_temp.s12tt_act('iso-survivor', 'owner', tax, 'create', 'iso-survivor');
+  if pg_temp.s12ga_out('iso-source') <> 'ok' or pg_temp.s12ga_out('iso-survivor') <> 'ok' then
+    raise exception 'fixture term producers failed';
+  end if;
+  source := pg_temp.s12tt_term_id(tax, 'iso-source');
+  survivor := pg_temp.s12tt_term_id(tax, 'iso-survivor');
+  if pg_temp.s12tt_seed_bulk('dec194-rpc-isolation', 10001, source) <> 10001 then
+    raise exception 'fixture assignment cardinality';
+  end if;
+  sentinel := pg_temp.s12dc_job('iso-upstream', 'owner', pg_temp.s09d_id('ownerOrg'), 194001);
+  perform pg_temp.s12dc_settle('iso-upstream', sentinel, 'cancelled', 'S12_ISOLATION_FIXTURE');
+  insert into __SCHEMA__.world
+  select jsonb_build_object('authUserId', auth_user_id, 'personId', person_id,
+    'partyId', party_id, 'bindingId', binding_id, 'taxonomyId', tax,
+    'sourceId', source, 'survivorId', survivor, 'sourceKey', 'iso-source',
+    'expectedVersion', pg_temp.s12tt_active(tax), 'upstreamJobId', sentinel)
+    from s09d_actor where key = 'owner';
+  if (select count(*) from __SCHEMA__.world) <> 1 or source is null or survivor is null
+    or exists (select 1 from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge'
+      and state in ('queued', 'running')) then raise exception 'fixture world invalid'; end if;
+end;
+$body$;
+
+-- Only THIS nonce's actual production requests can produce an observation.
+-- PG_CONTEXT remains local: persist whitelisted booleans, never SQL/body/claims.
+create function __SCHEMA__.observe_job() returns trigger
+language plpgsql security definer set search_path = '' as $body$
+declare headers jsonb; claims jsonb; producer text; stack text; public_name text; private_name text;
+  isolation_value text; expected_non_rc text;
+begin
+  headers := nullif(pg_catalog.current_setting('request.headers', true), '')::jsonb;
+  if new.job_type <> 'cms.taxonomy.merge_converge'
+    or headers->>'x-s12-dec194-probe' is distinct from '__NONCE__' then return new; end if;
+  producer := headers->>'x-s12-dec194-producer';
+  case producer
+    when 'ordinary' then public_name := 'platform_api.cms_act_taxonomy_term('; private_name := 'platform_private.cms_act_taxonomy_term(';
+    when 'continuation' then public_name := 'platform_api.cms_run_taxonomy_merge_converge('; private_name := 'platform_private.cms_run_taxonomy_merge_converge(';
+    when 'recovery' then public_name := 'platform_api.cms_reconcile_taxonomy_merge_converge('; private_name := 'platform_private.cms_reconcile_taxonomy_merge_converge(';
+    else raise exception 'DEC194_PROBE_INVALID_PRODUCER';
+  end case;
+  claims := nullif(pg_catalog.current_setting('request.jwt.claims', true), '')::jsonb;
+  get diagnostics stack = pg_context;
+  isolation_value := pg_catalog.current_setting('transaction_isolation');
+  expected_non_rc := headers->>'x-s12-dec194-expect-non-rc';
+  if expected_non_rc is not null then
+    -- Optional instrumentation sensitivity ONLY, not production protection.
+    -- Root changes/restores the real role setting and reloads the ALT REST pool.
+    if expected_non_rc not in ('repeatable read', 'serializable')
+      or isolation_value <> expected_non_rc then raise exception 'DEC194_PROBE_OVERRIDE_IGNORED'; end if;
+    if coalesce(claims->>'role' = 'service_role', false) is not true
+      or pg_catalog.current_setting('role', true) <> 'service_role'
+      or coalesce(pg_catalog.current_setting('app.cms_rpc', true) = 'true', false) is not true
+      or pg_catalog.strpos(stack, public_name) = 0 or pg_catalog.strpos(stack, private_name) = 0
+      or pg_catalog.strpos(stack, 'platform_private.accept_job_with_outbox(') = 0
+    then raise exception 'DEC194_PROBE_WRONG_CALLER'; end if;
+    raise exception 'DEC194_PROBE_NON_RC_%', pg_catalog.replace(pg_catalog.upper(isolation_value), ' ', '_');
+  end if;
+  insert into __SCHEMA__.observations values (
+    producer, '__NONCE__', new.id, isolation_value,
+    pg_catalog.pg_backend_pid(), pg_catalog.txid_current()::text,
+    coalesce(claims->>'role' = 'service_role', false),
+    pg_catalog.current_setting('role', true) = 'service_role',
+    coalesce(pg_catalog.current_setting('app.cms_rpc', true) = 'true', false),
+    pg_catalog.strpos(stack, public_name) > 0, pg_catalog.strpos(stack, private_name) > 0,
+    pg_catalog.strpos(stack, 'platform_private.accept_job_with_outbox(') > 0
+  );
+  return new;
+end;
+$body$;
+
+-- These inspection functions are NOT exposed to PostgREST or called by Worker.
+create function __SCHEMA__.facts() returns jsonb language plpgsql as $body$
+declare previous_rpc text := coalesce(current_setting('app.cms_rpc', true), ''); result jsonb;
+begin
+  -- Diagnostic read seam only. No request claim is written; actual HTTP
+  -- transactions cannot inherit this separate postgres inspection connection.
+  perform set_config('app.cms_rpc', 'true', true);
+  with current_assignments as (
+    select a.* from platform_private.cms_term_assignments a
+     where not exists (select 1 from platform_private.cms_term_assignments later
+       where later.revision_id = a.revision_id and later.field_definition_id = a.field_definition_id
+         and later.term_id = a.term_id and later.version > a.version)
+  )
+  select jsonb_build_object(
+    'work', (select count(*) from platform_private.cms_taxonomy_merge_work((ids->>'partyId')::uuid, null)),
+    'sourceAssignments', (select count(*) from current_assignments
+      where term_id = (ids->>'sourceId')::uuid and state = 'active'),
+    'survivorAssignments', (select count(*) from current_assignments
+      where term_id = (ids->>'survivorId')::uuid and state = 'active'),
+    'sourceState', (select lifecycle from platform_private.cms_terms where id = (ids->>'sourceId')::uuid),
+    'sourceSurvivor', (select successor_id from platform_private.cms_terms where id = (ids->>'sourceId')::uuid),
+    'live', (select count(*) from platform_private.jobs where acting_party_id = (ids->>'partyId')::uuid
+      and job_type = 'cms.taxonomy.merge_converge' and state in ('queued', 'running')))
+  into result from __SCHEMA__.world;
+  perform set_config('app.cms_rpc', previous_rpc, true);
+  return result;
+end;
+$body$;
+
+create function __SCHEMA__.snapshot() returns jsonb language sql stable as $body$
+  select jsonb_build_object(
+    'jobs', coalesce((select jsonb_agg(to_jsonb(j) order by j.id) from platform_private.jobs j
+      where j.job_type = 'cms.taxonomy.merge_converge'), '[]'::jsonb),
+    'events', coalesce((select jsonb_agg(to_jsonb(e) order by e.id) from platform_private.outbox_events e
+      where e.event_type = 'job.requested' and e.payload->>'jobType' = 'cms.taxonomy.merge_converge'), '[]'::jsonb),
+    'audit', coalesce((select jsonb_agg(to_jsonb(a) order by a.id) from audit_private.audit_events a
+      where a.action = 'job.accepted' and a.target_id in
+        (select id from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge')), '[]'::jsonb),
+    'receipts', coalesce((select jsonb_agg(to_jsonb(r) order by r.id) from platform_private.idempotency_records r
+      where r.operation = 'cms.taxonomy.merge_converge'), '[]'::jsonb),
+    'associations', coalesce((select jsonb_agg(to_jsonb(r) order by r.failed_job_id)
+      from platform_private.taxonomy_merge_recoveries r), '[]'::jsonb),
+    'rollbackDigest', md5(
+      (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.cms_terms r) ||
+      (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.cms_term_labels r) ||
+      (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.cms_term_assignments r) ||
+      (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.cms_taxonomy_versions r) ||
+      (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.idempotency_records r) ||
+      (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.outbox_events r) ||
+      (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from audit_private.audit_events r)))
+$body$;
+
+revoke all on all tables in schema __SCHEMA__ from public, anon, authenticated, service_role;
+revoke all on all functions in schema __SCHEMA__ from public, anon, authenticated, service_role;

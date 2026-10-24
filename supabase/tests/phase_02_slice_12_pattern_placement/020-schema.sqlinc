@@ -1,0 +1,56 @@
+-- Schema, grant and catalog assertions of CMS-03C-02 (BE03c Permission/RLS and grants 1447, Canonical records 1426;
+-- tracker P2-S12-AC-258 position clause, AC-261).  Static catalog facts only; behavior is in 040 onward.
+
+select has_function('platform_api', 'cms_insert_pattern_instance', array['jsonb'],
+  'CMS-03C-02 has the named platform_api transport (BE03c 1365) [P2-S12-AC-010]');
+select has_function('platform_private', 'cms_insert_pattern_instance', array['jsonb'],
+  'CMS-03C-02 has the atomic private implementation [P2-S12-AC-010]');
+select ok(pg_temp.s09d_service_only('platform_api.cms_insert_pattern_instance(jsonb)'),
+  'only service_role may execute the transport: anon and authenticated may not [P2-S12-AC-261]');
+select ok(to_regprocedure('platform_private.cms_insert_pattern_instance(jsonb)') is not null
+  and not has_function_privilege('service_role', 'platform_private.cms_insert_pattern_instance(jsonb)', 'execute')
+  and not has_function_privilege('anon', 'platform_private.cms_insert_pattern_instance(jsonb)', 'execute')
+  and not has_function_privilege('authenticated', 'platform_private.cms_insert_pattern_instance(jsonb)', 'execute')
+  and not exists (select 1 from pg_proc p
+    cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+    where p.oid = to_regprocedure('platform_private.cms_insert_pattern_instance(jsonb)') and acl.grantee = 0),
+  'the private body is executable by no application role and not by PUBLIC [P2-S12-AC-261]');
+select ok((select bool_and(p.prosecdef and p.proowner::regrole::text = 'wejammin_cms_definer'
+    and p.proconfig = array['search_path=""']::text[] and p.provolatile = 'v')
+  from pg_proc p where p.oid in (to_regprocedure('platform_private.cms_insert_pattern_instance(jsonb)'),
+    to_regprocedure('platform_api.cms_insert_pattern_instance(jsonb)'))),
+  'both bodies are volatile SECURITY DEFINER, owned by the CMS definer, with an empty search_path [P2-S12-AC-261]');
+select ok(to_regprocedure('platform_api.cms_insert_pattern_instance(jsonb)') is not null
+  and not exists (select 1 from pg_proc p
+    cross join lateral aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+    where p.oid = to_regprocedure('platform_api.cms_insert_pattern_instance(jsonb)') and acl.grantee = 0),
+  'PUBLIC has no execute on the transport [P2-S12-AC-261]');
+
+-- DEC-185 / AC-258: `position integer NOT NULL CHECK (position >= 0)` with an index for the slot-greatest lookup.
+select is((select format_type(a.atttypid, a.atttypmod) || ':' || a.attnotnull::text
+    from pg_attribute a where a.attrelid = 'platform_private.cms_composition_instances'::regclass
+     and a.attname = 'position' and not a.attisdropped),
+  'integer:true', 'cms_composition_instances.position is integer NOT NULL [P2-S12-AC-258]');
+select ok(exists (select 1 from pg_constraint c where c.conrelid = 'platform_private.cms_composition_instances'::regclass
+    and c.conname = 'cms_composition_instances_position_check' and replace(pg_get_constraintdef(c.oid), '"', '') ilike '%position >= 0%'),
+  'position carries CHECK (position >= 0) [P2-S12-AC-258]');
+select ok(exists (select 1 from pg_indexes i where i.schemaname = 'platform_private'
+    and i.tablename = 'cms_composition_instances' and replace(i.indexdef, '"', '') ilike '%(revision_id, slot_key, position)%'),
+  'an index on (revision_id, slot_key, position) serves the slot-greatest lookup [P2-S12-AC-258]');
+select pg_temp.s12pl_entry('schema');
+select is(pg_temp.s12pl_try(format('select pg_temp.s12pl_row(%L, %L, %L, -1)', 'schema', '/main/neg', 'main')), '23514',
+  'a negative position is refused by the CHECK (23514) [P2-S12-AC-258]');
+select is(pg_temp.s12pl_try(format($sql$
+  insert into platform_private.cms_composition_instances(owner_id, state, version, created_at, updated_at, revision_id,
+    path, slot_key, block_key, block_version, block_registry_digest, link_mode, created_by)
+  select %L::uuid, 'active', 1, now(), now(), %L::uuid, '/main/nopos', 'main', 's12pd.block', 1, repeat('a', 64),
+    'detached', %L::uuid$sql$, pg_temp.s09d_id('ownerOrg'), pg_temp.s12pl_rev('schema'),
+    (select auth_user_id from s09d_actor where key = 'owner'))), '23502',
+  'a row without a position is refused by NOT NULL (23502) [P2-S12-AC-258]');
+select is(pg_temp.s12pl_try(format($sql$update platform_private.cms_composition_instances set position = 5
+  where revision_id = %L::uuid$sql$, pg_temp.s12pl_rev('schema'))), '00000',
+  'control: an update on an empty revision matches no row and is harmless');
+select pg_temp.s12pl_row('schema', '/main/kept', 'main', 3);
+select is(pg_temp.s12pl_try(format($sql$update platform_private.cms_composition_instances set position = 5
+  where revision_id = %L::uuid$sql$, pg_temp.s12pl_rev('schema'))), 'P0001',
+  'a stored row is append-only: its position cannot be updated (immutable guard) [P2-S12-AC-258]');

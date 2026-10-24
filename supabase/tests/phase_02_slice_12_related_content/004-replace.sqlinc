@@ -1,0 +1,73 @@
+-- CMS-03C-05 whole-rule-set replacement as append-only versions (BE03c 1381, 1432, 1542; tracker
+-- P2-S12-AC-062, AC-228): removed items get `revoked` rows, new items `active` rows, a changed pin position or
+-- rule a revoke-then-add pair, nothing is ever updated or deleted.
+
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+                          (select value::uuid from s10_ids where key = 'organization'));
+
+-- A: first set.
+create temp table r12_ra on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcR', array['c1', 'c2', 'c3'], array['c4'], pg_temp.r12_rule('shared-terms', 4), 'r12-srcR-0001')) as response;
+select is(pg_temp.r12_stored('srcR'),
+  'derived:-:-:active:1,exclude:c4:-:active:1,pin:c1:0:active:1,pin:c2:1:active:1,pin:c3:2:active:1',
+  'A: three pins at positions 0..2, one exclusion and a shared-terms rule are active version-1 rows [P2-S12-AC-228]');
+
+-- B: c2 removed, c1/c3 reordered, c5 excluded as well, rule changed.
+create temp table r12_rb on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcR', array['c3', 'c1'], array['c4', 'c5'], pg_temp.r12_rule('same-type-recent', 2), 'r12-srcR-0002')) as response;
+select ok(not ((select response from r12_rb) ? '__error'), 'B: the replacement succeeds (got ' || coalesce((select response::text from r12_rb), 'null') || ') [P2-S12-AC-228]');
+select is(pg_temp.r12_history('srcR'),
+  'derived:-:active:1,derived:-:revoked:2,derived:-:active:3,exclude:c4:active:1,exclude:c5:active:1,pin:c1:active:1,pin:c1:revoked:2,pin:c1:active:3,pin:c2:active:1,pin:c2:revoked:2,pin:c3:active:1,pin:c3:revoked:2,pin:c3:active:3',
+  'B: a removed pin is revoked (v2); a moved pin is revoked (v2) then active again (v3); the changed rule is revoked then added; an unchanged exclusion adds nothing; a new exclusion is active v1 [P2-S12-AC-228]');
+select is(pg_temp.r12_stored('srcR'),
+  'derived:-:-:active:3,exclude:c4:-:active:1,exclude:c5:-:active:1,pin:c1:1:active:3,pin:c3:0:active:3',
+  'B: the live set is the new request: pins c3 (0), c1 (1), both exclusions and the same-type-recent rule [P2-S12-AC-228]');
+select is(pg_temp.r12_names((select response->'pins' from r12_rb)) || '|' || pg_temp.r12_names((select response->'exclusions' from r12_rb)) || '|' || (select response->'derivedRule'->>'key' from r12_rb),
+  'c3,c1|c4,c5|same-type-recent', 'B: the answer echoes the replacement [P2-S12-AC-059]');
+select is((select response->>'version' from r12_rb), '3', 'B: the resource version is the entry version after two writes [P2-S12-AC-061]');
+select is((select rule_key from platform_private.cms_related_content_rules
+            where source_entry_id = pg_temp.r12_id('srcR') and mode = 'derived' and state = 'revoked'), 'shared-terms',
+  'B: a revoked derived row keeps the rule it ended [P2-S12-AC-228]');
+
+-- C: the same set again changes no row but still advances the entry (a command ran).
+create temp table r12_history_c on commit drop as select pg_temp.r12_history('srcR') as history;
+create temp table r12_rc on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcR', array['c3', 'c1'], array['c4', 'c5'], pg_temp.r12_rule('same-type-recent', 2), 'r12-srcR-0003')) as response;
+select is(pg_temp.r12_history('srcR'), (select history from r12_history_c), 'C: an identical replacement appends no row [P2-S12-AC-228]');
+select is((select response->>'version' from r12_rc), '4', 'C: yet the entry version advances (CAS) [P2-S12-AC-061]');
+
+-- The rule bound alone changing is a rule change.
+create temp table r12_rc2 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcR', array['c3', 'c1'], array['c4', 'c5'], pg_temp.r12_rule('same-type-recent', 3), 'r12-srcR-0004')) as response;
+select is(pg_temp.r12_text(format($q$select string_agg(state || ':' || version || ':' || max_candidates, ',' order by version)
+             from platform_private.cms_related_content_rules where source_entry_id = %L and mode = 'derived'$q$, pg_temp.r12_id('srcR'))),
+  'active:1:4,revoked:2:4,active:3:2,revoked:4:2,active:5:3',
+  'a changed maxCandidates revokes the old row and adds the new bound [P2-S12-AC-229]');
+
+-- D: empty everything.
+create temp table r12_rd on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcR', array[]::text[], array[]::text[], null, 'r12-srcR-0005')) as response;
+select is(pg_temp.r12_stored('srcR'), '', 'D: an empty request revokes every item; nothing stays active [P2-S12-AC-228]');
+select is((select response->>'state' || '|' || jsonb_array_length(response->'pins') || '|' || jsonb_array_length(response->'exclusions') || '|' || coalesce(response->>'derivedRule', 'null') || '|' || (response->>'eligibleCount')
+             from r12_rd), 'revoked|0|0|null|0',
+  'D: the resource is revoked with empty lists, no rule and eligibleCount 0 [P2-S12-AC-059]');
+select is((select count(*)::integer from platform_private.cms_related_content_rules rule
+            where rule.source_entry_id = pg_temp.r12_id('srcR') and rule.state = 'revoked'
+              and rule.created_at = (select updated_at from platform_private.cms_content_entries where id = pg_temp.r12_id('srcR'))), 5,
+  'D: five revoked rows were appended in the one write, one per live item [P2-S12-AC-228]');
+
+-- E: an item removed earlier returns as a NEW version above its revoked row.
+create temp table r12_re on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcR', array['c1'], array[]::text[], null, 'r12-srcR-0006')) as response;
+select is((select state || ':' || version || ':' || position from platform_private.cms_related_content_rules
+            where source_entry_id = pg_temp.r12_id('srcR') and target_entry_id = pg_temp.r12_id('c1') and mode = 'pin' order by version desc limit 1),
+  'active:5:0', 'E: a re-added pin is a new active row above its revoked history (v5) [P2-S12-AC-228]');
+
+-- Append-only: the table refuses UPDATE and DELETE even in the RPC context.
+select set_config('app.cms_rpc', 'true', true);
+select isnt(pg_temp.r12_try(format($$update platform_private.cms_related_content_rules set reason_code = 'MANUAL_EXCLUSION' where source_entry_id = %L$$, pg_temp.r12_id('srcR'))),
+  'OK', 'a stored rule row cannot be updated [P2-S12-AC-228]');
+select isnt(pg_temp.r12_try(format($$delete from platform_private.cms_related_content_rules where source_entry_id = %L$$, pg_temp.r12_id('srcR'))),
+  'OK', 'a stored rule row cannot be deleted [P2-S12-AC-228]');
+select is((select count(*)::integer from platform_private.cms_related_content_rules where source_entry_id = pg_temp.r12_id('srcR') and reason_code = 'MANUAL_EXCLUSION'
+             and mode <> 'exclude'), 0, 'the refused UPDATE changed nothing [P2-S12-AC-228]');

@@ -1,0 +1,193 @@
+-- BE03c1545/1563 ordinary append/resolve only. DEC-198 pending controls are in017;
+-- historical excluded-parent semantics remain HELD, not inferred here.
+select ok(exists(select 1 from pg_attribute a where a.attrelid=
+  'platform_private.cms_composition_instances'::regclass and a.attname='carried_from_id'
+  and a.atttypid='uuid'::regtype and not a.attnotnull and not a.atthasdef and not a.attisdropped),
+  'CB-STORAGE001: private provenance is nullable UUID with no invented default/backfill');
+select ok((select jsonb_array_length(tree->'nodes')=512 and octet_length(tree::text)>262144
+  and tree#>'{nodes,1,props}'='null'::jsonb and tree#>'{nodes,2,props}'='42'::jsonb
+  and tree#>'{nodes,3,props}'='"scalar"'::jsonb from s12cb_literal),
+  'CB-WIDE-SETUP: independent 512-node snapshot exceeds aggregate256KiB and retains nonobjects');
+
+select pg_temp.s12cb_world(tag) from (values('cb-base'),('cb-parent'),('cb-wide-app'),
+  ('cb-wide-res'),('cb-fault-app'),('cb-fault-res'),('cb-fk-a'),('cb-fk-b'),('cb-replace')) tags(tag);
+-- DEC-209: the two conflict-resolution worlds hold their composition on the current draft (theirs).
+select pg_temp.s12cc_theirs_first(tag) from (values('cb-wide-res'),('cb-fault-res')) tags(tag);
+select pg_temp.s12cb_row(tag,'/legacy',0) from (values('cb-base'),('cb-wide-app'),('cb-wide-res'),
+  ('cb-fk-a'),('cb-fk-b')) tags(tag);
+select pg_temp.s12cb_row(tag,'/other',7) from (values('cb-base'),('cb-fault-app'),('cb-fault-res')) tags(tag);
+select pg_temp.s12cb_row(tag,'/first',0) from (values('cb-fault-app'),('cb-fault-res')) tags(tag);
+select pg_temp.s12cb_row(tag,'/wide',9,null,(select tree from s12cb_literal))
+  from (values('cb-wide-app'),('cb-wide-res')) tags(tag);
+select pg_temp.s12cb_row('cb-parent','/parent',10);
+select pg_temp.s12cb_row('cb-replace','/keep',13);
+select pg_temp.s12cb_row('cb-parent','/parent/child',2,
+  (select id from s12cb_rows where tag='cb-parent' and path='/parent'),null,
+  pg_temp.s09d_actor_id('designer2','auth')::uuid);
+select ok((select child.parent_instance_id=parent.id and child.revision_id=parent.revision_id
+  and child.owner_id=parent.owner_id and child.position<parent.position and child.created_by<>parent.created_by
+  from platform_private.cms_composition_instances child join s12cb_rows c on c.id=child.id
+  join s12cb_rows p on p.tag=c.tag and p.path='/parent'
+  join platform_private.cms_composition_instances parent on parent.id=p.id
+  where c.tag='cb-parent' and c.path='/parent/child'),
+  'CB-PARENT-SETUP: valid selected parent, distinct existing creator; order opposes insertion dependency');
+select ok((select count(*)=2 and bool_and(detached_tree is null and pattern_id is null)
+  from platform_private.cms_composition_instances where revision_id=pg_temp.s12pl_rev('cb-base')),
+  'CB-LEGACY-SETUP: two valid standalone detached NULL-tree rows need no fabricated pattern pin');
+select pg_temp.s12cc_capture(tag) from s12cc_world where tag like 'cb-%';
+
+-- Re-placement is the real producer; only the prior legacy tombstone is seeded.
+do $body$
+begin
+  perform set_config('app.cms_rpc','true',true);
+  insert into platform_private.cms_composition_instances select (jsonb_populate_record(
+    null::platform_private.cms_composition_instances,to_jsonb(i) || jsonb_build_object(
+      'id',extensions.gen_random_uuid(),'state','retired','version',2))).*
+    from platform_private.cms_composition_instances i
+    where id=(select id from s12cb_rows where tag='cb-replace' and path='/keep');
+end;
+$body$;
+select pg_temp.s12pl_run('CB-REPLACE',pg_temp.s12pl_request('cb-replace','cc-v2','/','{}',
+  's12cb-replace') || '{"roots":["/keep"]}'::jsonb);
+select is(pg_temp.s12pl_state('CB-REPLACE'),'00000','CB-REPLACE-SETUP: public placement revives only selected retired root');
+select ok((select state='active' and version=3 and position=13 from platform_private.cms_composition_instances
+  where revision_id=pg_temp.s12pl_rev('cb-replace') and path='/keep' order by version desc limit 1),
+  'CB-REPLACE-SETUP: newest active v3 follows retired v2 and preserves original position13');
+select pg_temp.s12cc_capture('cb-replace');
+select pg_temp.s12cc_call('CB-APP-REPLACE','append',
+  pg_temp.s12cc_request('cb-replace','append','s12cb-app-replace'));
+select * from pg_temp.s12cb_copied('CB-APP-REPLACE','cb-replace');
+
+-- Stale but nonconflicting: proposal equals CURRENT, while base composition is
+-- nonempty and the actual current revision is explicitly composition-empty.
+select pg_temp.s12cc_current('cb-base');
+select ok((select current_id<>source_id from s12cc_world where tag='cb-base')
+  and not exists(select 1 from platform_private.cms_composition_instances
+    where revision_id=pg_temp.s12pl_rev('cb-base')),
+  'CB-BASE-SETUP: actual distinct current has no composition; base has two literal rows');
+select pg_temp.s12cc_call('CB-APP-BASE','append',
+  pg_temp.s12cc_request('cb-base','append','s12cb-app-base','CURRENT'));
+select * from pg_temp.s12cb_copied('CB-APP-BASE','cb-base');
+select is((select value from platform_private.cms_entry_field_values where revision_id=
+  (pg_temp.s12cc_body('CB-APP-BASE')->>'id')::uuid),'"CURRENT"'::jsonb,
+  'CB-APP-BASE: current field semantics remain independent of base composition authority');
+
+select pg_temp.s12cc_call('CB-APP-PARENT','append',
+  pg_temp.s12cc_request('cb-parent','append','s12cb-app-parent'));
+select * from pg_temp.s12cb_copied('CB-APP-PARENT','cb-parent');
+select ok((select count(*)=2 and bool_and(revision_id=(pg_temp.s12cc_body('CB-APP-PARENT')->>'id')::uuid)
+  from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('CB-APP-PARENT')->>'id')::uuid),
+  'CB-APP-PARENT: both selected rows exist in one destination revision, not source-linked children');
+
+-- A second real append starts from the first newly created revision. Never
+-- manufacture a first-generation carry row merely to make provenance pass.
+insert into s12pl_ids select 'cb-generation:entry',pg_temp.s12pl_entry_id('cb-parent')::text
+  where pg_temp.s12cc_body('CB-APP-PARENT')->>'id' is not null
+  union all select 'cb-generation:revision',pg_temp.s12cc_body('CB-APP-PARENT')->>'id'
+  where pg_temp.s12cc_body('CB-APP-PARENT')->>'id' is not null;
+insert into s12cc_world(tag,source_id,current_id) select 'cb-generation',id,id
+  from platform_private.cms_entry_revisions where id=(pg_temp.s12cc_body('CB-APP-PARENT')->>'id')::uuid;
+select pg_temp.s12cc_capture('cb-generation');
+select is((select jsonb_array_length(expected_heads) from s12cc_world where tag='cb-generation'),2,
+  'CB-GENERATION-SETUP: first public append really produced two rows, not an empty premise');
+select pg_temp.s12cc_call('CB-APP-GENERATION','append',
+  pg_temp.s12cc_request('cb-generation','append','s12cb-app-generation','SECOND') || jsonb_build_object(
+    'baseRevision',(select revision_number::text from platform_private.cms_entry_revisions
+      where id=pg_temp.s12pl_rev('cb-generation'))))
+  from s12cc_world where tag='cb-generation';
+select * from pg_temp.s12cb_copied('CB-APP-GENERATION','cb-generation');
+select ok((select count(*)=2 and bool_and(i.id<>source.id
+  and source.revision_id=pg_temp.s12pl_rev('cb-generation')
+  and (to_jsonb(source)->>'carried_from_id') is not null
+  and to_jsonb(i)->>'carried_from_id'<>to_jsonb(source)->>'carried_from_id')
+  from platform_private.cms_composition_instances i
+  join platform_private.cms_composition_instances source on source.id=(to_jsonb(i)->>'carried_from_id')::uuid
+  where i.revision_id=(pg_temp.s12cc_body('CB-APP-GENERATION')->>'id')::uuid),
+  'CB-GENERATION: carried source is immediate first-generation identity, not original ancestor');
+
+select pg_temp.s12cc_call('CB-APP-WIDE','append',
+  pg_temp.s12cc_request('cb-wide-app','append','s12cb-app-wide'));
+select * from pg_temp.s12cb_copied('CB-APP-WIDE','cb-wide-app');
+select ok((select count(*)=1 and bool_and(detached_tree=(select tree from s12cb_literal))
+  from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('CB-APP-WIDE')->>'id')::uuid
+    and path='/wide'), 'CB-APP-WIDE: all512 nodes and exact scalar/null/large values copy without aggregate cap');
+select ok((select count(*)=1 and bool_and(detached_tree is null and pattern_id is null)
+  from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('CB-APP-WIDE')->>'id')::uuid
+    and path='/legacy'), 'CB-APP-LEGACY: SQL NULL legacy tree/pin remain NULL, not synthesized');
+select pg_temp.s12cc_call('CB-RES-CONFLICT','append',
+  pg_temp.s12cc_request('cb-wide-res','append','s12cb-res-conflict','YOURS'));
+select is(pg_temp.s12cc_body('CB-RES-CONFLICT')->>'kind','conflict','CB-RES-SETUP: real conflicting append disposition');
+select pg_temp.s12cc_call('CB-RES-WIDE','resolve',
+  pg_temp.s12cc_request('cb-wide-res','resolve','s12cb-res-wide'));
+select * from pg_temp.s12cb_copied('CB-RES-WIDE','cb-wide-res');
+select ok((select count(*)=1 and bool_and(detached_tree=(select tree from s12cb_literal))
+  from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('CB-RES-WIDE')->>'id')::uuid
+    and path='/wide'), 'CB-RES-WIDE: resolve copies exact full512-node snapshot of the current draft (theirs), DEC-209');
+select ok((select count(*)=1 and bool_and(detached_tree is null and pattern_id is null)
+  from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('CB-RES-WIDE')->>'id')::uuid
+    and path='/legacy'), 'CB-RES-LEGACY: resolve preserves SQL NULL legacy tree/pin');
+
+-- The already established other actor/organization supplies the foreign source.
+-- Its schema is a real draft producer result; no new identity/activation is forged.
+select pg_temp.s09d_create_type('cb-other-type','s12cb_other','editorial','other');
+select is(pg_temp.s09d_outcome('cb-other-type:create'),'OK','CB-FK-SETUP: real other-owner draft type exists');
+select pg_temp.s12cb_world('cb-other','other',pg_temp.s09d_id('cb-other-type:type'),pg_temp.s09d_id('cb-other-type:version'))
+  where pg_temp.s09d_id('cb-other-type:type') is not null and pg_temp.s09d_id('cb-other-type:version') is not null;
+select pg_temp.s12cb_row('cb-other','/legacy',0) from s12cc_world where tag='cb-other';
+select ok((select source.owner_id=pg_temp.s09d_id('otherOrg') and target.owner_id=pg_temp.s09d_id('ownerOrg')
+  and source.owner_id<>target.owner_id from platform_private.cms_composition_instances source
+  join s12cb_rows s on s.id=source.id and s.tag='cb-other'
+  cross join platform_private.cms_composition_instances target
+  join s12cb_rows t on t.id=target.id and t.tag='cb-fk-b'),
+  'CB-FK-SETUP: actual valid source/destination owners differ');
+select ok((select a.owner_id=b.owner_id and a.id<>b.id and a.revision_id<>b.revision_id
+  from platform_private.cms_composition_instances a join s12cb_rows x on x.id=a.id and x.tag='cb-fk-a'
+  cross join platform_private.cms_composition_instances b join s12cb_rows y on y.id=b.id and y.tag='cb-fk-b'),
+  'CB-FK-SAME-OWNER-SETUP: distinct actual revisions share owner; provenance must cross revision boundary');
+select * from pg_temp.s12cb_provenance('CB-FK-NULL','cb-fk-b',null,'00000');
+select * from pg_temp.s12cb_provenance('CB-FK-SAME-OWNER','cb-fk-b',
+  (select id from s12cb_rows where tag='cb-fk-a' and path='/legacy'),'00000');
+select ok(not exists(select 1 from platform_private.cms_composition_instances
+  where id='c193ffff-0000-4000-8000-000000000001'), 'CB-FK-MISSING-SETUP: labelled source UUID genuinely absent');
+select * from pg_temp.s12cb_provenance('CB-FK-MISSING','cb-fk-b','c193ffff-0000-4000-8000-000000000001','23503');
+select * from pg_temp.s12cb_provenance('CB-FK-CROSS-OWNER','cb-fk-b',
+  (select id from s12cb_rows where tag='cb-other' and path='/legacy'),'23503');
+
+-- Old revisions' live review invalidation must roll back with a later copy fault.
+select pg_temp.s12pl_review('cb-fault-app',clock_timestamp());
+select set_config('s12cc.boundary_fault_entry',pg_temp.s12pl_entry_id('cb-fault-app')::text,true);
+select pg_temp.s12cc_call('CB-FAULT-APP','append',
+  pg_temp.s12cc_request('cb-fault-app','append','s12cb-fault-app'));
+select set_config('s12cc.boundary_fault_entry','',true);
+select pg_temp.s12cc_call('CB-FAULT-RES-CONFLICT','append',
+  pg_temp.s12cc_request('cb-fault-res','append','s12cb-fault-res-conflict','YOURS'));
+select is(pg_temp.s12cc_body('CB-FAULT-RES-CONFLICT')->>'kind','conflict',
+  'CB-FAULT-RES-SETUP: real open conflict exists before injected resolve failure');
+select pg_temp.s12pl_review('cb-fault-res',clock_timestamp());
+select set_config('s12cc.boundary_fault_entry',pg_temp.s12pl_entry_id('cb-fault-res')::text,true);
+select pg_temp.s12cc_call('CB-FAULT-RES','resolve',
+  pg_temp.s12cc_request('cb-fault-res','resolve','s12cb-fault-res'));
+select set_config('s12cc.boundary_fault_entry','',true);
+select is(state || ':' || coalesce(message,''),'P0001:S12CB_SECOND_CARRY_FAULT',
+  label || ': exact later copied-row fault') from s12cc_out where label in ('CB-FAULT-APP','CB-FAULT-RES');
+select ok(before_rows=after_rows,label || ': complete durable image rolls back revision/composition/conflict/review/reservation/audit/outbox')
+  from s12cc_out where label in ('CB-FAULT-APP','CB-FAULT-RES');
+select ok(doc#>>'{first,revision_id}'=doc#>>'{second,revision_id}'
+  and doc#>>'{first,id}'<>doc#>>'{second,id}'
+  and doc#>>'{first,carried_from_id}'<>doc#>>'{second,carried_from_id}'
+  and exists(select 1 from s12cb_rows r where r.tag=case operation when 'append' then 'cb-fault-app' else 'cb-fault-res' end
+    and r.id::text=doc#>>'{first,carried_from_id}')
+  and exists(select 1 from s12cb_rows r where r.tag=case operation when 'append' then 'cb-fault-app' else 'cb-fault-res' end
+    and r.id::text=doc#>>'{second,carried_from_id}'),
+  label || ': raw fault witness saw first actual copy before distinct second source row')
+  from s12cc_out cross join lateral(values(pg_temp.s12cb_fault_image(detail))) d(doc)
+    where label in ('CB-FAULT-APP','CB-FAULT-RES');
+select ok((select count(*)=2 and bool_and(state='open') from platform_private.cms_editorial_reviews
+  where entry_id in (pg_temp.s12pl_entry_id('cb-fault-app'),pg_temp.s12pl_entry_id('cb-fault-res'))),
+  'CB-FAULT-REVIEWS: both preexisting live reviews remain open after rollback');
+select ok((select count(*)=1 and bool_and(state='open' and resolved_revision_id is null)
+  from platform_private.cms_conflict_records where entry_id=pg_temp.s12pl_entry_id('cb-fault-res')),
+  'CB-FAULT-CONFLICT: actual conflict remains unresolved after failed copy');
+drop trigger s12cb_copy_fault on platform_private.cms_composition_instances;
+select ok(not exists(select 1 from pg_trigger where tgname='s12cb_copy_fault'),
+  'CB-FAULT-CLEANUP: only test-owned injection removed; production guards never disabled');

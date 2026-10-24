@@ -1,0 +1,51 @@
+-- CMS-03C-15 accept adopts the TARGET version's block identity and registry digest, not just its props (BE03c 1367 "appends an `active` row
+-- pinned to the target version"; Canonical records 1426: a composition row carries blockKey, blockVersion and blockRegistryDigest of the pinned
+-- tree).  A root whose block version moved from 1 to 2 must come out as block version 2 with the digest of the version-2 tree; the oracle is
+-- built independently (s12puc_digest), so an accept that kept the head's identity or digest fails these assertions.  [AC-118, AC-121]
+select is(pg_temp.s12puc_digest(array[1]), pg_temp.s12pd_expected_digest(),
+  'oracle self-check: the independent digest of block version 1 equals the placement suites'' expected digest');
+select isnt(pg_temp.s12puc_digest(array[2]), pg_temp.s12puc_digest(array[1]),
+  'non-vacuity: the digest of the version-2 tree is not the digest of the version-1 tree');
+select is((select string_agg(path || '=' || block_key || '@' || block_version::text || '/' || btrim(block_registry_digest::text), ',' order by path)
+             from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('bv1')),
+  '/roota=s12pd.block@1/' || pg_temp.s12puc_digest(array[1]) || ',/rootb=s12pd.block@1/' || pg_temp.s12puc_digest(array[1]),
+  'setup: both roots of the placement are pinned to block version 1 and its digest before the update');
+
+-- A changed block identity is a `structure` collision (DEC-193): a bulk accept of both roots is refused 409 diff_has_collisions, never adopted
+-- silently, and each root is then answered by its own single-instance request with an explicit `theirs` choice (choices are accepted only for a
+-- single-instance request).  roota changes block version AND props (A1 -> A2); rootb changes ONLY its block version (props equal): both adopt block
+-- version 2 and the digest of the target tree (which names block version 2 alone)
+select * from pg_temp.s12pu_refused('u-bv1-bulk-structure', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('bv1', 'accept', jsonb_build_array(
+    pg_temp.s12pu_target('bv1', '/roota'), pg_temp.s12pu_target('bv1', '/rootb')), 's12pu-bv1-0003', 2),
+  'diff_has_collisions', '["/instances/0/instanceId"]'::jsonb);
+select pg_temp.s12pu_update('u-bv1a', pg_temp.s12pu_update_request('bv1', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('bv1', '/roota', '[{"path":"/roota","choice":"theirs"}]'::jsonb)), 's12pu-bv1-0001', 2));
+select * from pg_temp.s12puc_check('u-bv1a', 'bv1', array['/roota'], jsonb_build_array(
+  jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb,
+    'blockKey', 's12pd.block', 'blockVersion', '2', 'digest', pg_temp.s12puc_digest(array[2]))));
+select pg_temp.s12pu_update('u-bv1b', pg_temp.s12pu_update_request('bv1', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('bv1', '/rootb', '[{"path":"/rootb","choice":"theirs"}]'::jsonb)), 's12pu-bv1-0002', 2));
+select * from pg_temp.s12puc_check('u-bv1b', 'bv1', array['/rootb'], jsonb_build_array(
+  jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb,
+    'blockKey', 's12pd.block', 'blockVersion', '2', 'digest', pg_temp.s12puc_digest(array[2]))));
+select is((select string_agg(path || '=' || block_key || '@' || block_version::text || '/' || btrim(block_registry_digest::text) || '/p' || pattern_version::text,
+                             ',' order by path)
+             from (select distinct on (path) * from platform_private.cms_composition_instances
+                    where revision_id = pg_temp.s12pl_rev('bv1') order by path, version desc) heads),
+  '/roota=s12pd.block@2/' || pg_temp.s12puc_digest(array[2]) || '/p2,/rootb=s12pd.block@2/' || pg_temp.s12puc_digest(array[2]) || '/p2',
+  'the heads of both roots are block version 2, the version-2 digest and pattern version 2: a block-version-only change is adopted too');
+select ok((select count(*) = 2 and bool_and(block_version = 1 and btrim(block_registry_digest::text) = pg_temp.s12puc_digest(array[1]))
+             from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('bv1') and version = 1),
+  'the version-1 rows keep block version 1 and the version-1 digest: the history is not rewritten');
+
+-- the target tree's nested closure must be active when the write adopts it: a nested version superseded after the target was activated is
+-- refused with the typed 422 at the request member that named the target (/targetPatternVersion), never a /patternId member the request does
+-- not have.  [AC-122, FE03 885]
+select * from pg_temp.s12pu_refused('n-nested-superseded', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('nna1', 'accept', jsonb_build_array(pg_temp.s12pu_target('nna1', '/top')), 's12pu-nna1-0001', 2),
+  'nested_pattern_not_active', '["/targetPatternVersion"]'::jsonb);
+select * from pg_temp.s12pu_refused('n-nested-superseded-bulk', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('nna1', 'accept', jsonb_build_array(pg_temp.s12pu_target('nna1', '/top'), pg_temp.s12pu_target('nna1', '/shared/leaf')),
+    's12pu-nna1-0002', 2),
+  'nested_pattern_not_active', '["/targetPatternVersion"]'::jsonb);

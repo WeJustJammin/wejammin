@@ -1,0 +1,84 @@
+-- Locale observability lane helpers (DEC-208).  Include AFTER the Slice 10 RPC fixtures,
+-- phase_02_slice_12_locale_variant/000-helpers.sqlinc and phase_02_slice_12_locale_resolution/001-world.sqlinc.
+-- Everything resolves through a probe so an absent function yields a failing assertion, not an aborted run.
+
+-- The read as the Worker calls it: two timestamptz bounds as text (null passes SQL NULL).
+create or replace function pg_temp.l208_read(p_start text, p_end text)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.l12_json(format('select platform_api.cms_locale_observability_read(%L::timestamptz, %L::timestamptz)', p_start, p_end))
+$body$;
+
+-- SQLSTATE and message of the read.
+create or replace function pg_temp.l208_try(p_start text, p_end text)
+returns text
+language sql
+as $body$
+  select pg_temp.l12_try(format('select platform_api.cms_locale_observability_read(%L::timestamptz, %L::timestamptz)', p_start, p_end))
+$body$;
+
+-- DETAIL of the refusal of the read, as jsonb (null when it succeeds, or when the DETAIL is not JSON).
+create or replace function pg_temp.l208_detail(p_start text, p_end text)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  detail_text text;
+begin
+  begin
+    execute format('select platform_api.cms_locale_observability_read(%L::timestamptz, %L::timestamptz)', p_start, p_end);
+    return null;
+  exception when others then
+    get stacked diagnostics detail_text = pg_exception_detail;
+  end;
+  begin
+    return detail_text::jsonb;
+  exception when others then
+    return null;
+  end;
+end;
+$body$;
+
+-- Runs a statement as a database role and returns its text result, or '__error <sqlstate>'.  The role is reset on both paths.
+create or replace function pg_temp.l208_as_role(p_role text, p_sql text)
+returns text
+language plpgsql
+as $body$
+declare
+  result text;
+begin
+  execute format('set local role %I', p_role);
+  begin
+    execute p_sql into result;
+  exception when others then
+    result := '__error ' || sqlstate;
+  end;
+  reset role;
+  return result;
+end;
+$body$;
+
+-- Acting as one of the Slice 10 fixture principals (creatorAuth, editorAuth, ...).
+create or replace function pg_temp.l208_as(p_key text)
+returns void
+language sql
+as $body$
+  select pg_temp.s10_rpc_as((select value::uuid from s10_ids where key = p_key),
+                            (select value::uuid from s10_ids where key = 'organization'))
+$body$;
+
+-- Counts that a read must not move.
+create or replace function pg_temp.l208_evidence()
+returns text
+language sql
+stable
+as $body$
+  select (select count(*) from platform_private.cms_locale_variants)::text || '/'
+      || (select count(*) from platform_private.cms_entry_revisions)::text || '/'
+      || (select count(*) from platform_private.cms_entry_field_values)::text || '/'
+      || (select count(*) from audit_private.audit_events)::text || '/'
+      || (select count(*) from platform_private.idempotency_records)::text || '/'
+      || (select count(*) from platform_private.outbox_events)::text || '/'
+      || (select coalesce(sum(version), 0) from platform_private.cms_content_entries)::text
+$body$;

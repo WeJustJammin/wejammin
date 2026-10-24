@@ -75,7 +75,7 @@ select ok(
 );
 
 select ok(
-  to_regclass('platform_private.cms_taxonomy_versions_key_version_key') is not null
+  to_regclass('platform_private.cms_taxonomy_versions_owner_key_version_unique') is not null
     and to_regclass('platform_private.cms_terms_taxonomy_key_version_key') is not null
     and to_regclass('platform_private.cms_term_labels_term_locale_version_key') is not null
     and to_regclass('platform_private.cms_term_assignments_revision_field_term_version_key') is not null,

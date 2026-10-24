@@ -1,0 +1,214 @@
+-- Owned CMS-03C-06 helpers. S09 initializes the real local owner BEFORE the legacy S10/h11
+-- neighbor controls. No governed subject or authority derives from those legacy fixtures.
+-- S09's local Auth/member scaffolding is not hosted identity, membership or MFA evidence.
+-- 005 produces both active types, real standing grants and ordinary draft templates.
+
+create temp table s12gov_ids(key text primary key, value text not null) on commit drop;
+insert into s12gov_ids(key, value)
+select 'orgA', pg_temp.s09d_id('ownerOrg')::text
+union all select 'personCreator', pg_temp.s09d_actor_id('owner', 'person')
+union all select 'personEditor', pg_temp.s09d_actor_id('designer2', 'person')
+union all select 'personStranger', pg_temp.s09d_actor_id('other', 'person')
+union all select 'authCreator', pg_temp.s09d_actor_id('owner', 'auth')
+union all select 'authEditor', pg_temp.s09d_actor_id('designer2', 'auth')
+union all select 'authStranger', pg_temp.s09d_actor_id('other', 'auth');
+
+-- Restore the S09 actor envelope after unrelated legacy setup. This is not SET ROLE.
+create or replace function pg_temp.s12gov_as(p_identity text)
+returns void
+language plpgsql
+as $body$
+declare actor_key text;
+begin
+  actor_key := case p_identity when 'Creator' then 'owner' when 'Editor' then 'designer2'
+    when 'Stranger' then 'other' end;
+  if actor_key is null then raise exception 'unknown governed fixture actor'; end if;
+  insert into s12gov_ids values ('selectedActor', actor_key)
+    on conflict (key) do update set value = excluded.value;
+  perform pg_temp.s09d_session(actor_key);
+end;
+$body$;
+
+create or replace function pg_temp.s12gov_context() returns jsonb language sql volatile as $body$
+  select pg_temp.s09d_context(value, true) from s12gov_ids where key = 'selectedActor'
+$body$;
+
+-- One draft template (CMS-03C-01) through the real command.  p_compatible names the content type
+-- the template binds; p_tag distinguishes the subjects.
+create or replace function pg_temp.s12gov_mint(p_tag text, p_compatible text[], p_idem text)
+returns uuid
+language plpgsql
+as $body$
+declare response jsonb; subject uuid;
+begin
+  perform pg_temp.s12gov_as('Creator');
+  response := platform_api.cms_define_template(jsonb_build_object(
+        'templateKey', 's12gov-' || p_tag,
+        'compatibleTypeIds', (select pg_catalog.jsonb_agg(bound.id order by bound.id) from (
+          select (select value::uuid from s12gov_ids where key = k) as id
+            from pg_catalog.unnest(p_compatible) k) bound),
+        'slots', '[]'::jsonb,
+        'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+        'bindings', '{}'::jsonb,
+        'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+        'idempotencyKey', p_idem,
+        'context', pg_temp.s12gov_context()));
+  if response is null or response->>'state' is distinct from 'draft' then
+    raise exception 'real template producer did not return a draft';
+  end if;
+  subject := (response->>'id')::uuid;
+  insert into s12gov_ids(key, value) values (p_tag, subject::text)
+    on conflict (key) do update set value = excluded.value;
+  insert into s12gov_ids(key, value) values (p_tag || ':lineage', (
+    select template_id::text from platform_private.cms_template_versions where id = subject))
+    on conflict (key) do update set value = excluded.value;
+  return subject;
+end;
+$body$;
+
+-- The stored definition hash the server freezes as the subject hash.
+create or replace function pg_temp.s12gov_subject_hash(p_subject uuid)
+returns text
+language sql
+stable
+as $body$
+  select row.content_hash::text
+    from platform_private.cms_template_versions row
+   where row.id = p_subject
+$body$;
+
+-- One CMS-03C-06 request (the exact GovernedReviewSubmissionRequest members plus the transport
+-- context and key every CMS command carries).
+create or replace function pg_temp.s12gov_request(
+  p_subject uuid, p_hash text, p_idem text
+)
+returns jsonb
+language sql
+volatile
+as $body$
+  select jsonb_build_object(
+    'subjectKind', 'template_version',
+    'subjectId', p_subject,
+    'subjectHash', p_hash,
+    'idempotencyKey', p_idem,
+    'context', pg_temp.s12gov_context())
+$body$;
+
+create temp table s12gov_rpc_receipts(
+  ordinal bigint generated always as identity, body jsonb, state text, message text, detail text,
+  before_user text, rpc_user text, after_user text, before_role text, after_role text) on commit drop;
+
+-- Actual public-role boundary. Only the RPC is caught; role changes, receipt writes and
+-- restoration failures abort the test transaction. No definer wrapper or permission widening.
+create or replace function pg_temp.s12gov_submit(p_request jsonb)
+returns void
+language plpgsql security invoker
+as $body$
+declare
+  saved_user text := current_user; saved_role text := current_setting('role'); rpc_user text;
+  response jsonb; result_state text := '00000'; result_message text; result_detail text;
+begin
+  execute 'set local role service_role';
+  rpc_user := current_user;
+  begin
+    response := platform_api.cms_submit_governed_review(p_request);
+  exception when others then
+    get stacked diagnostics result_state = returned_sqlstate,
+      result_message = message_text, result_detail = pg_exception_detail;
+  end;
+  perform set_config('role', saved_role, true);
+  if current_user is distinct from saved_user or current_setting('role') is distinct from saved_role then
+    raise exception 'governed RPC role restoration failed';
+  end if;
+  insert into pg_temp.s12gov_rpc_receipts(body, state, message, detail,
+    before_user, rpc_user, after_user, before_role, after_role)
+  values(response, result_state, result_message, result_detail,
+    saved_user, rpc_user, current_user, saved_role, current_setting('role'));
+end;
+$body$;
+
+-- Labeled immutable captures: a successful body is stored once per label and never overwritten, so a
+-- later refusal cannot null an earlier success oracle.
+create temp table s12gov_cap(
+  label text primary key, body jsonb, state text, message text, detail text) on commit drop;
+
+create or replace function pg_temp.s12gov_capture(p_label text)
+returns void
+language plpgsql
+as $body$
+begin
+  insert into s12gov_cap(label, body, state, message, detail)
+  select p_label, body, state, message, detail from pg_temp.s12gov_rpc_receipts
+    order by ordinal desc limit 1
+  on conflict (label) do update
+    set body = coalesce(s12gov_cap.body, excluded.body),
+        state = excluded.state, message = excluded.message, detail = excluded.detail;
+end;
+$body$;
+
+create or replace function pg_temp.s12gov_body(p_label text)
+returns jsonb
+language sql
+stable
+as $body$
+  select body from s12gov_cap where label = p_label
+$body$;
+
+create or replace function pg_temp.s12gov_state(p_label text)
+returns text
+language sql
+stable
+as $body$
+  select state from s12gov_cap where label = p_label
+$body$;
+
+create or replace function pg_temp.s12gov_message(p_label text)
+returns text
+language sql
+stable
+as $body$
+  select message from s12gov_cap where label = p_label
+$body$;
+
+-- Live reviews of one subject: the spec partial unique counts a review live while its state is
+-- 'open' or 'approved' (BE03c:1428).
+create or replace function pg_temp.s12gov_live_reviews(p_subject uuid)
+returns integer
+language sql
+stable
+as $body$
+  select count(*)::integer
+    from platform_private.cms_governed_reviews review
+   where review.subject_id = p_subject
+     and review.state in ('open', 'approved')
+$body$;
+
+-- A one-row digest of the COVERED stores a refusal must leave untouched.  The review, dependency and
+-- subject rows are hashed by FULL CONTENT in deterministic order, so an in-place change of a version,
+-- hash or state is caught even when the row count is unchanged; audit and outbox are append-only, so
+-- their row COUNTS suffice for "no new row".  Scope limit (2026-10-13): this oracle does NOT include
+-- idempotency_records and covers audit/outbox by count only, so it is NOT a full-store atomicity proof;
+-- equality alone is not success evidence; the separate submission and fixture controls must pass.
+create or replace function pg_temp.s12gov_snapshot(p_subject uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select jsonb_build_object(
+    'reviews', (
+      select coalesce(pg_catalog.string_agg(pg_catalog.to_jsonb(r)::text, '|' order by r.id), '')
+        from platform_private.cms_governed_reviews r where r.subject_id = p_subject),
+    'dependencies', (
+      select coalesce(pg_catalog.string_agg(pg_catalog.to_jsonb(d)::text, '|' order by d.kind, d.ref_id), '')
+        from platform_private.cms_governed_review_dependencies d
+        join platform_private.cms_governed_reviews r on r.id = d.review_id
+       where r.subject_id = p_subject),
+    'subject', (
+      select pg_catalog.to_jsonb(t)::text
+        from platform_private.cms_template_versions t where t.id = p_subject),
+    'auditCount', (select count(*) from audit_private.audit_events),
+    'outboxCount', (select count(*) from platform_private.outbox_events)
+  )::text
+$body$;

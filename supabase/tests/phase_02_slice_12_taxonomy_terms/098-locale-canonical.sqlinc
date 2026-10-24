@@ -1,0 +1,42 @@
+-- Label locales have ONE stored form.  The contract (CmsLocaleSchema) accepts a locale in any case and has no canonical form, and a label
+-- lineage is (term, locale): `en-US` and `en-us` would otherwise become two lineages that a case-sensitive reader never joins.  The producer
+-- dedupes a request's locales case-insensitively (040) and now also STORES the BCP 47 case form (language lower, 4-letter script Title,
+-- 2-letter region or 3-digit region UPPER, singleton and private-use subtags lower), so a rename in another case appends a version to the
+-- same lineage; the readers match the canonical form, so the requested case does not matter.  [P2-S12-AC-016, AC-131; BE03c 1377, 1429]
+select has_function('platform_private', 'cms_term_locale_canonical', array['text'], 'the locale canonical form is a named private function [P2-S12-AC-016]');
+select ok(coalesce((select bool_and(p.provolatile = 'i' and p.proconfig @> array['search_path=""'] and not has_function_privilege('service_role', p.oid, 'execute')
+                           and not has_function_privilege('authenticated', p.oid, 'execute') and not has_function_privilege('anon', p.oid, 'execute'))
+                      from pg_proc p where p.oid = to_regprocedure('platform_private.cms_term_locale_canonical(text)')), false),
+  'it is IMMUTABLE with an empty search_path and executable by no API role [P2-S12-AC-016]');
+select is(
+  (select jsonb_object_agg(input, platform_private.cms_term_locale_canonical(input)) from unnest(array[
+    'en', 'EN', 'en-us', 'EN-US', 'en-Us', 'zh-hant-tw', 'ZH-HANT-TW', 'sr-latn-rs', 'es-419', 'ES-419', 'de-1996', 'de-ch-1901', 'DE-CH-1901',
+    'fil-ph', 'en-x-priv', 'EN-X-PRIV', 'en-US-x-Twain', 'en-a-bbb-ccc', 'abcdefgh', 'ABCDEFGH-12345678']) input),
+  '{"en":"en","EN":"en","en-us":"en-US","EN-US":"en-US","en-Us":"en-US","zh-hant-tw":"zh-Hant-TW","ZH-HANT-TW":"zh-Hant-TW","sr-latn-rs":"sr-Latn-RS",
+    "es-419":"es-419","ES-419":"es-419","de-1996":"de-1996","de-ch-1901":"de-CH-1901","DE-CH-1901":"de-CH-1901","fil-ph":"fil-PH","en-x-priv":"en-x-priv",
+    "EN-X-PRIV":"en-x-priv","en-US-x-Twain":"en-US-x-twain","en-a-bbb-ccc":"en-a-bbb-ccc","abcdefgh":"abcdefgh","ABCDEFGH-12345678":"abcdefgh-12345678"}'::jsonb,
+  'the canonical form follows the BCP 47 case convention for language, script, region, variant, singleton and private-use subtags [P2-S12-AC-016]');
+
+-- the producer stores the canonical form and a rename in another case joins the same label lineage --------------------------------------
+select pg_temp.s12tt_act('lc-create', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'loc-term', jsonb_build_object(
+  'labels', '[{"locale":"en-us","label":"Loc"},{"locale":"ZH-hant-tw","label":"Loc ZH"}]'::jsonb));
+select is(pg_temp.s12tt_oc('lc-create'), 'ok', 'a term is created with labels whose locales are not in canonical case [P2-S12-AC-016]');
+select is((select jsonb_agg(label_row.locale order by label_row.locale collate "C") from platform_private.cms_term_labels label_row
+            where label_row.term_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'loc-term')),
+  '["en-US", "zh-Hant-TW"]'::jsonb, 'the stored locales are the canonical forms en-US and zh-Hant-TW [P2-S12-AC-016]');
+select pg_temp.s12tt_act('lc-rename', 'owner', pg_temp.s12tt_lineage('vf'), 'rename', 'loc-term', jsonb_build_object(
+  'labels', '[{"locale":"EN-US","label":"Loc Prime"}]'::jsonb));
+select is(pg_temp.s12tt_oc('lc-rename'), 'ok', 'a rename in another case of the same locale is accepted [P2-S12-AC-016]');
+select is((select jsonb_agg(jsonb_build_object('locale', label_row.locale, 'version', label_row.version) order by label_row.locale collate "C", label_row.version)
+             from platform_private.cms_term_labels label_row where label_row.term_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'loc-term')),
+  '[{"locale":"en-US","version":1},{"locale":"en-US","version":2},{"locale":"zh-Hant-TW","version":1}]'::jsonb,
+  'it appended version 2 to the en-US lineage: no second lineage exists under another case [P2-S12-AC-016]');
+select is(pg_temp.s12tt_labels(pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'loc-term')),
+  '[{"locale":"en-US","label":"Loc Prime"},{"locale":"zh-Hant-TW","label":"Loc ZH"}]'::jsonb,
+  'the current labels are the canonical locales with the newest label of each [P2-S12-AC-016]');
+select pg_temp.s12tt_mark('before-locale-dup');
+select pg_temp.s12tt_act('lc-dup-case', 'owner', pg_temp.s12tt_lineage('vf'), 'rename', 'loc-term', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"One"},{"locale":"EN-us","label":"Two"}]'::jsonb));
+select is(pg_temp.s12tt_oc('lc-dup-case'), 'P0001:VALIDATION_FAILED#["/labels/1/locale"]',
+  'two entries that differ only in locale case are one locale named twice: 422 at the second [P2-S12-AC-017]');
+select ok(pg_temp.s12tt_same('before-locale-dup'), 'the refusal changed nothing [P2-S12-AC-017]');

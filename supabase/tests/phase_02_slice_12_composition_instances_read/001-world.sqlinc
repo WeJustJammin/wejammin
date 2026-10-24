@@ -1,0 +1,79 @@
+-- cmsCompositionInstancesRead world (DEC-206).  Every pattern is created by CMS-03C-12 and activated through the governed chain, every
+-- placement is the real CMS-03C-02 producer, the detach is the real CMS-03C-15 command.  The ONLY fixture writes are labelled below:
+--   * s12ci_next_row  a copy of a head as the next version in a given state (the linked-update scan / retire output; as the diff suite does)
+--   * s12pu_pending   the pending_diff row a linked-update scan appends (shared helper)
+--   * s12pl_row       one legacy standalone row in a slot the template does not declare (rank 100000)
+--   * entry fixtures  an entry with no current draft revision, and a second revision flipped to current (cursor binding)
+-- Lineages -> roots (forest order = authored position order):
+--   ci-a [zeta, alpha]   ci-b [bb, ba]   ci-c [aa, zz]   ci-d [solo]   ci-p16 [root1..root16]   ci-big [nested1..nested32 -> ci-p16] = 512 rows
+select * from pg_temp.s12pl_pattern('cia', 'ci-a', jsonb_build_array(pg_temp.s12pd_block('zeta'), pg_temp.s12pd_block('alpha')));
+select * from pg_temp.s12pl_pattern('cib', 'ci-b', jsonb_build_array(pg_temp.s12pd_block('bb'), pg_temp.s12pd_block('ba')));
+select * from pg_temp.s12pl_pattern('cic', 'ci-c', jsonb_build_array(pg_temp.s12pd_block('aa'), pg_temp.s12pd_block('zz')));
+select * from pg_temp.s12pl_pattern('cid', 'ci-d', jsonb_build_array(pg_temp.s12pd_block('solo')));
+select * from pg_temp.s12pl_pattern('cip16', 'ci-p16', pg_temp.s12pd_forest(16));
+select * from pg_temp.s12pl_pattern('cibig', 'ci-big', pg_temp.s12pl_refs('cip16', 32));
+
+-- A real template with slots main (ordinal 1) and side (ordinal 2).
+select pg_temp.s09d_rpc('s12pu-template', 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+  'templateKey', 's12ci-tpl', 'compatibleTypeIds', jsonb_build_array((select id from s12pd_types where ordinal = 1)),
+  'slots', jsonb_build_array(
+    jsonb_build_object('key', 'main', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128),
+    jsonb_build_object('key', 'side', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128)),
+  'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+  'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+  'idempotencyKey', 's12ci-template-0001'), true);
+select is(pg_temp.s09d_outcome('s12pu-template'), 'OK', 'setup: a real draft template declares the slots main and side');
+
+-- A copy of a path's head as the next version in the given state (labelled fixture, guarded insert under app.cms_rpc).
+create or replace function pg_temp.s12ci_next_row(p_tag text, p_path text, p_state text) returns uuid
+language plpgsql as $body$
+declare head_row platform_private.cms_composition_instances; row_id uuid := extensions.gen_random_uuid(); stamp timestamptz := clock_timestamp();
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select * into head_row from platform_private.cms_composition_instances
+   where revision_id = pg_temp.s12pl_rev(p_tag) and path = p_path order by version desc limit 1;
+  insert into platform_private.cms_composition_instances
+  select (jsonb_populate_record(null::platform_private.cms_composition_instances, to_jsonb(head_row)
+    || jsonb_build_object('id', row_id, 'state', p_state, 'version', head_row.version + 1, 'created_at', stamp, 'updated_at', stamp))).*;
+  return row_id;
+end;
+$body$;
+
+-- ord1: an untemplated entry, three placements in the one root slot.  Authored positions: zeta 0, alpha 1, bb 2, ba 3, aa 4, zz 5.
+select * from pg_temp.s12pu_place('ord1', 'cia');
+select pg_temp.s12pl_run('ord1-b', pg_temp.s12pl_request('ord1', 'cib', '/', '{}'::jsonb, 's12ci-ord1-b'));
+select pg_temp.s12pl_run('ord1-c', pg_temp.s12pl_request('ord1', 'cic', '/', '{}'::jsonb, 's12ci-ord1-c'));
+select is(pg_temp.s12pl_state('ord1-b') || '/' || pg_temp.s12pl_state('ord1-c'), '00000/00000', 'setup: the second and third placements into the same slot succeed');
+
+-- tpl1: a templated entry; side is placed BEFORE main, then main twice.  Positions are per slot: main zeta 0, alpha 1, aa 2, zz 3; side bb 0, ba 1.
+select * from pg_temp.s12pu_place('tpl1', 'cib', '{}'::jsonb, 'linked', '/side', true);
+select pg_temp.s12pl_run('tpl1-a', pg_temp.s12pl_request('tpl1', 'cia', '/main', '{}'::jsonb, 's12ci-tpl1-a'));
+select pg_temp.s12pl_run('tpl1-c', pg_temp.s12pl_request('tpl1', 'cic', '/main', '{}'::jsonb, 's12ci-tpl1-c'));
+select is(pg_temp.s12pl_state('tpl1-a') || '/' || pg_temp.s12pl_state('tpl1-c'), '00000/00000', 'setup: two placements into the main slot of the templated entry succeed');
+-- LABELLED FIXTURE: one legacy standalone row in a slot the template does not declare (sorts after every declared slot).
+select pg_temp.s12pl_row('tpl1', '/ghost/x', 'ghost', 0);
+
+-- heads1: newest row per path, and the states.  zeta and alpha (ci-a), bb and ba (ci-b), solo (ci-d).
+select * from pg_temp.s12pu_place('heads1', 'cia');
+select pg_temp.s12pl_run('heads1-b', pg_temp.s12pl_request('heads1', 'cib', '/', '{}'::jsonb, 's12ci-heads1-b'));
+select pg_temp.s12pl_run('heads1-d', pg_temp.s12pl_request('heads1', 'cid', '/', '{}'::jsonb, 's12ci-heads1-d'));
+select is(pg_temp.s12pl_state('heads1-b') || '/' || pg_temp.s12pl_state('heads1-d'), '00000/00000', 'setup: three placements into the heads1 entry succeed');
+select pg_temp.s12pu_pending('heads1', '/alpha', 2) as pending_row \gset
+select pg_temp.s12ci_next_row('heads1', '/bb', 'superseded') as superseded_row \gset
+select pg_temp.s12ci_next_row('heads1', '/solo', 'retired') as retired_row \gset
+
+-- det1: a real CMS-03C-15 detach (a detached head that carries its own local tree) beside a linked head.
+select * from pg_temp.s12pu_place('det1', 'cia');
+select pg_temp.s12pu_update('det-run', pg_temp.s12pu_update_request('det1', 'detach', jsonb_build_array(pg_temp.s12pu_target('det1', '/zeta')), 's12ci-det1-0001'));
+select is(pg_temp.s12pu_state('det-run'), '00000', 'setup: the real CMS-03C-15 detach of /zeta succeeds');
+
+-- empty1: a draft revision with no composition rows.  norev1: an entry with no current draft revision (labelled fixture).
+select pg_temp.s12pl_entry('empty1');
+select pg_temp.s12pl_entry('norev1');
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_entries set current_draft_revision_id = null where id = pg_temp.s12pl_entry_id('norev1');
+
+-- big1: 512 rows in one placement (32 nested references x 16 roots), the paging subject.
+select * from pg_temp.s12pu_place('big1', 'cibig');
+-- other1: a second entry that never received a cursor of big1.
+select * from pg_temp.s12pu_place('other1', 'cid');

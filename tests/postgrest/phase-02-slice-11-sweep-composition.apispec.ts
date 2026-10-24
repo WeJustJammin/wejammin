@@ -1,4 +1,10 @@
-/** Real CMS20 claim/load/execute composition and all four lineage actions. */
+/**
+ * Real CMS20 claim/load/execute composition and all four lineage actions.
+ *
+ * Shared-database rule: the sweep claims EVERY due schedule (and recovers every expired lease) and
+ * `db:api-test` commits fixtures across files without a reset, so claims and effect digests are judged only
+ * over THIS file's own schedules (`worldIds`). See tests/postgrest/README.md "Shared database".
+ */
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   PublicationResourceSchema,
@@ -43,6 +49,10 @@ import {
   captureScheduleRecoveryProof,
   assertScheduleRecoveryProof,
 } from './support/phase-02-slice-11-schedule-recovery-proof';
+import {
+  expectWorldClaims,
+  scopedSnapshotDigest,
+} from './support/phase-02-slice-11-world-scope';
 
 type Subject = Readonly<{
   draft: ReviewedDraft;
@@ -54,6 +64,10 @@ type Subject = Readonly<{
 let world: S11World;
 let stack: S11Stack;
 const subjects: Subject[] = [];
+/** Every schedule this file created; the only schedules whose claims and rows these tests judge. */
+const worldIds: string[] = [];
+/** Effect digest over this file's own rows: another suite's due schedule cannot move it. */
+const ownDigest = () => scopedSnapshotDigest(worldIds);
 let trace: SweepTrace;
 
 beforeAll(async () => {
@@ -95,6 +109,7 @@ beforeAll(async () => {
       action,
       headId,
     });
+    worldIds.push(accepted.id);
   }
 }, 120_000);
 
@@ -106,15 +121,21 @@ describe('CMS-03B-20 real lineage and replay', () => {
         .sort()
         .at(-1) as string,
     );
-    const before = snapshotDigest();
+    const before = ownDigest();
     const recoveryBefore = captureScheduleRecoveryProof();
     trace = await tick();
-    const recoveredCount = assertScheduleRecoveryProof(recoveryBefore);
+    // The expired-lease recovery proof stays global (it proves every actual transition of the sweep); only
+    // the recoveries that wrote an audit row for THIS file's schedules belong to its scoped audit delta.
+    assertScheduleRecoveryProof(recoveryBefore);
+    const ownRecovered = recoveryBefore.candidates.filter((candidate) =>
+      worldIds.includes(candidate.id),
+    ).length;
     expectOperandChain(trace);
     const claims = claimsOf(trace);
-    expectSafeEqual(
-      claims.map((claim) => claim.scheduleId).sort(),
-      subjects.map((subject) => subject.id).sort(),
+    expectWorldClaims(
+      claims,
+      worldIds,
+      subjects.map((subject) => subject.id),
       'exact due schedule set',
     );
     for (const subject of subjects) {
@@ -189,12 +210,12 @@ describe('CMS-03B-20 real lineage and replay', () => {
         ).toBe('1');
       }
     }
-    expectScheduleEffects(before, snapshotDigest(), {
+    expectScheduleEffects(before, ownDigest(), {
       'platform_private.cms_publication_schedules': 0,
       'platform_private.cms_publication_versions': 4,
       'platform_private.cms_command_accessibility_evidence': 4,
       'platform_private.outbox_events': 4,
-      'audit_private.audit_events': 4 + recoveredCount,
+      'audit_private.audit_events': 4 + ownRecovered,
     });
   }, 150_000);
 
@@ -230,8 +251,9 @@ describe('CMS-03B-20 real lineage and replay', () => {
     );
     expectStatus(response, 202);
     const schedule = PublicationScheduleResourceSchema.parse(response.body);
+    worldIds.push(schedule.id);
     await sleepUntil(schedule.resolvedUtc);
-    let beforeExecute: ReturnType<typeof snapshotDigest> | undefined;
+    let beforeExecute: ReturnType<typeof ownDigest> | undefined;
     const trace = await tick([], async (request) => {
       if (request.scheduleId !== schedule.id) return;
       // Read actual CAS values; invoke the public append, which invalidates the
@@ -258,7 +280,7 @@ describe('CMS-03B-20 real lineage and replay', () => {
         },
       );
       expectStatus(appended, 201);
-      beforeExecute = snapshotDigest();
+      beforeExecute = ownDigest();
     });
     expectOperandChain(trace);
     expectSafeEqual(
@@ -275,7 +297,7 @@ describe('CMS-03B-20 real lineage and replay', () => {
     );
     if (beforeExecute === undefined)
       throw new Error('actual execution barrier was not reached');
-    expectScheduleEffects(beforeExecute, snapshotDigest(), {
+    expectScheduleEffects(beforeExecute, ownDigest(), {
       'platform_private.cms_publication_schedules': 0,
       'audit_private.audit_events': 1,
     });
@@ -299,8 +321,9 @@ describe('CMS-03B-20 real lineage and replay', () => {
     );
     expectStatus(response, 202);
     const schedule = PublicationScheduleResourceSchema.parse(response.body);
+    worldIds.push(schedule.id);
     await sleepUntil(schedule.resolvedUtc);
-    let beforeExecute: ReturnType<typeof snapshotDigest> | undefined;
+    let beforeExecute: ReturnType<typeof ownDigest> | undefined;
     const trace = await tick([], async (request) => {
       if (request.scheduleId !== schedule.id) return;
       // The claim and the proof load already happened against an active entry. There is no public archive route in
@@ -312,7 +335,7 @@ describe('CMS-03B-20 real lineage and replay', () => {
         update platform_private.cms_content_entries set lifecycle = 'archived'
          where id = '${draft.entryId}' and lifecycle = 'active';
         commit;`);
-      beforeExecute = snapshotDigest();
+      beforeExecute = ownDigest();
     });
     expectOperandChain(trace);
     expectSafeEqual(
@@ -331,7 +354,7 @@ describe('CMS-03B-20 real lineage and replay', () => {
       throw new Error('actual execution barrier was not reached');
     // One schedule row changed (state cancelled), one audit record written; no outbox event, no lineage row, no
     // accessibility summary and no idempotency record.
-    expectScheduleEffects(beforeExecute, snapshotDigest(), {
+    expectScheduleEffects(beforeExecute, ownDigest(), {
       'platform_private.cms_publication_schedules': 0,
       'audit_private.audit_events': 1,
     });

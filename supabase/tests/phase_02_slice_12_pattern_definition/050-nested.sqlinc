@@ -1,0 +1,125 @@
+-- Positive nested fixtures require CMS-03C-06/08/07/09. These exact names are
+-- normative BE03c:1447; the jsonb transport follows existing CMS RPCs.
+-- Every transition must succeed; no conditional skip or synthetic active row.
+-- The reason a governed step was refused, as a TAP diagnostic (nothing when it succeeded).
+create or replace function pg_temp.s12pd_why(p_step text) returns text language sql stable as $body$
+  select case when state = '00000' then '' else extensions.diag(p_step || ' refused ' || state || ' ' ||
+    coalesce(message, '') || ' ' || coalesce(detail, '')) end
+  from s12pd_out where label = p_step
+$body$;
+create or replace function pg_temp.s12pd_activate(p_label text) returns setof text
+language plpgsql as $body$
+declare body jsonb := pg_temp.s12pd_body(p_label); review jsonb; decision jsonb;
+begin
+  perform pg_temp.s12pd_run(p_label || ':submit',
+    jsonb_build_object('subjectKind','pattern_version','subjectId',body->'id',
+      'subjectHash',body->'contentHash','idempotencyKey','s12pd-' || p_label || '-submit',
+      'context',pg_temp.s09d_context('owner',true)),'owner','service_role','submit');
+  review := pg_temp.s12pd_body(p_label || ':submit');
+  if pg_temp.s12pd_why(p_label || ':submit') <> '' then return next pg_temp.s12pd_why(p_label || ':submit'); end if;
+  return next extensions.is(pg_temp.s12pd_state(p_label || ':submit'),'00000',
+    p_label || ': prerequisite real governed submission');
+  return next extensions.is(pg_temp.s12pd_row(p_label)->'version','1'::jsonb,
+    p_label || ': submission preserves immutable definition version [P2-S12-AC-100]');
+  return next extensions.is(pg_temp.s12pd_row(p_label)->'lifecycle_version','2'::jsonb,
+    p_label || ': submission advances only lifecycle once (DEC-188)');
+  perform pg_temp.s12pd_run(p_label || ':assign',
+    jsonb_build_object('reviewId',review->'id','action','create',
+      'expectedVersion',review->'version','ifMatch',review->'version',
+      'reviewerPersonId',pg_temp.s09d_actor_id('rev1','person'),
+      'expiresAt',to_char((clock_timestamp()+interval '1 day') at time zone 'UTC',
+        'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'reason','Pattern nested fixture',
+      'idempotencyKey','s12pd-' || p_label || '-assign',
+      'context',pg_temp.s09d_context('owner',true)),'owner','service_role','assign');
+  if pg_temp.s12pd_why(p_label || ':assign') <> '' then return next pg_temp.s12pd_why(p_label || ':assign'); end if;
+  return next extensions.is(pg_temp.s12pd_state(p_label || ':assign'),'00000',
+    p_label || ': prerequisite real independent reviewer assignment');
+  perform pg_temp.s12pd_run(p_label || ':decide',
+    jsonb_build_object('reviewId',review->'id','decision','approve','reason','Pattern fixture approved',
+      'expectedVersion',review->'version','ifMatch',review->'version',
+      'idempotencyKey','s12pd-' || p_label || '-decide',
+      'context',pg_temp.s09d_context('rev1',true)),'rev1','service_role','decide');
+  decision := pg_temp.s12pd_body(p_label || ':decide');
+  if pg_temp.s12pd_why(p_label || ':decide') <> '' then return next pg_temp.s12pd_why(p_label || ':decide'); end if;
+  return next extensions.is(pg_temp.s12pd_state(p_label || ':decide'),'00000',
+    p_label || ': prerequisite real independent approval');
+  return next extensions.is(decision->>'state','approved',p_label || ': review is approved');
+  return next extensions.is(pg_temp.s12pd_row(p_label)->'lifecycle_version','3'::jsonb,
+    p_label || ': approval advances lifecycle exactly once (DEC-188)');
+  perform pg_temp.s12pd_run(p_label || ':activate',
+    jsonb_build_object('reviewId',review->'id','action','activate',
+      'expectedVersion',decision->'version','ifMatch',decision->'version',
+      'idempotencyKey','s12pd-' || p_label || '-activate',
+      'context',pg_temp.s09d_context('owner',true)),'owner','service_role','activate');
+  if pg_temp.s12pd_why(p_label || ':activate') <> '' then return next pg_temp.s12pd_why(p_label || ':activate'); end if;
+  return next extensions.is(pg_temp.s12pd_state(p_label || ':activate'),'00000',
+    p_label || ': prerequisite real governed activation');
+  return next extensions.is(pg_temp.s12pd_row(p_label)->>'state','active',
+    p_label || ': producer leaves a real active nested version [P2-S12-AC-211]');
+  return next extensions.is(pg_temp.s12pd_row(p_label)->'version','1'::jsonb,
+    p_label || ': activation never changes the definition pin (DEC-188)');
+  return next extensions.is(pg_temp.s12pd_row(p_label)->'lifecycle_version','4'::jsonb,
+    p_label || ': activate advances lifecycle exactly once (DEC-188)');
+  return next extensions.ok(body->>'contentHash' is not null and
+    pg_temp.s12pd_row(p_label)->>'content_hash'=body->>'contentHash',
+    p_label || ': lifecycle transitions preserve the definition hash (DEC-188)');
+end;
+$body$;
+create or replace function pg_temp.s12pd_refs(p_label text,p_count integer) returns jsonb
+language sql stable as $body$
+  select jsonb_agg(jsonb_build_object('kind','pattern','key','nested' || n,
+    'patternId',pg_temp.s12pd_body(p_label)->'patternId',
+    'patternVersion',pg_temp.s12pd_body(p_label)->'patternVersion') order by n)
+  from generate_series(1,p_count) n
+$body$;
+
+select pg_temp.s12pd_run('child',pg_temp.s12pd_request('s12pd-child',
+  pg_temp.s12pd_forest(16),null,'s12pd-child'));
+select is(pg_temp.s12pd_state('child'),'00000','nested fixture starts as a real draft [P2-S12-AC-100]');
+select * from pg_temp.s12pd_refused('nested-draft',pg_temp.s12pd_request('s12pd-nested-draft',
+  pg_temp.s12pd_refs('child',1),null,'s12pd-nested-draft'),
+  'VALIDATION_FAILED','nested_pattern_not_active');
+select * from pg_temp.s12pd_activate('child');
+
+select pg_temp.s12pd_run('nested',pg_temp.s12pd_request('s12pd-nested',
+  pg_temp.s12pd_refs('child',1),null,'s12pd-nested'));
+select is(pg_temp.s12pd_state('nested'),'00000','active compatible nested reference accepted [P2-S12-AC-211]');
+select is(pg_temp.s12pd_body('nested')->'nodeCount','16'::jsonb,
+  'one reference expands to sixteen block nodes [P2-S12-AC-211]');
+select is(pg_temp.s12pd_body('nested')->>'blockRegistryDigest',pg_temp.s12pd_expected_digest(),
+  'nested blocks enter the deduplicated registry digest [P2-S12-AC-193]');
+select is(pg_temp.s12pd_row('nested')->'block_tree',pg_temp.s12pd_refs('child',1),
+  'stored forest pins the exact nested lineage and definition version [P2-S12-AC-101]');
+select * from pg_temp.s12pd_refused('nested-incompatible',pg_temp.s12pd_request('s12pd-nested-bad-type',
+  pg_temp.s12pd_refs('child',1),null,'s12pd-nested-bad-type') || jsonb_build_object(
+    'compatibleTypeIds',jsonb_build_array((select id from s12pd_types where ordinal=2))),
+  -- CMS-03C-12 explicitly shares this token for inactive OR incompatible (BE03c:396,1612).
+  'VALIDATION_FAILED','nested_pattern_not_active');
+select * from pg_temp.s12pd_refused('self-lineage-cycle',pg_temp.s12pd_request('s12pd-child',
+  pg_temp.s12pd_refs('child',1),'1','s12pd-self-cycle',null,'1'),'CONFLICT','pattern_cycle');
+
+select pg_temp.s12pd_run('expanded-512',pg_temp.s12pd_request('s12pd-expanded-max',
+  pg_temp.s12pd_refs('child',32),null,'s12pd-expanded-max'));
+select is(pg_temp.s12pd_state('expanded-512'),'00000',
+  '32 references on distinct paths may share one lineage without a cycle [P2-S12-AC-211]');
+select is(pg_temp.s12pd_body('expanded-512')->'nodeCount','512'::jsonb,
+  '32 references times 16 blocks store 512 expanded nodes [P2-S12-AC-211]');
+select * from pg_temp.s12pd_refused('expanded-513',pg_temp.s12pd_request('s12pd-expanded-over',
+  jsonb_build_array(pg_temp.s12pd_block('wrapper',pg_temp.s12pd_refs('child',32))),
+  null,'s12pd-expanded-over'),'VALIDATION_FAILED','pattern_nodes_exceeded');
+
+select * from pg_temp.s12pd_activate('nested');
+select * from pg_temp.s12pd_refused('indirect-lineage-cycle',pg_temp.s12pd_request('s12pd-child',
+  pg_temp.s12pd_refs('nested',1),'1','s12pd-indirect-cycle',null,'1'),'CONFLICT','pattern_cycle');
+create temp table s12pd_nested_pin on commit drop as
+select pg_temp.s12pd_row('nested') as row_data;
+select pg_temp.s12pd_run('child-successor',pg_temp.s12pd_request('s12pd-child',
+  pg_temp.s12pd_forest(17),'1','s12pd-child-successor',null,'1'));
+select is(pg_temp.s12pd_state('child-successor'),'00000',
+  'a successor compares definition 1 despite lifecycle 4 [P2-S12-AC-103]');
+select ok(pg_temp.s12pd_state('child-successor')='00000'
+  and pg_temp.s12pd_row('nested') is not null
+  and pg_temp.s12pd_row('nested')=(select row_data from s12pd_nested_pin),
+  'child successor leaves every pinned parent definition column unchanged [P2-S12-AC-103]');
+select is(pg_temp.s12pd_row('nested')#>'{block_tree,0,patternVersion}','1'::jsonb,
+  'existing nested pin stays on definition 1 after successor creation [P2-S12-AC-101]');

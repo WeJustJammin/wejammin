@@ -15,7 +15,9 @@ import {
   type EffectSnapshot,
   type RowTextOverrides,
   type SnapshotOptions,
+  DEFAULT_ROW_TEXT,
   decodeSnapshot,
+  tableDigestSql,
 } from './phase-02-slice-11-snapshot-core';
 import { psql } from './stack';
 
@@ -28,30 +30,6 @@ export type {
   RowTextOverrides,
   SnapshotOptions,
 } from './phase-02-slice-11-snapshot-core';
-
-const DEFAULT_ROW_TEXT = 'pg_catalog.to_jsonb(t)::text';
-
-/**
- * `<count>:<sha256>` for one table, SQL-side, as a jsonb object. The whole
- * ordered row text is hashed in the database by default (a changed value moves
- * the digest even at an unchanged count); with `valueBlind` only the count is
- * hashed, which is the boundary the projection control must detect as broken.
- */
-const tableDigestSql = (
-  table: string,
-  rowText: string,
-  valueBlind: boolean,
-): string =>
-  valueBlind
-    ? `select jsonb_build_object('count', count(*), 'sha',
-         pg_catalog.encode(pg_catalog.sha256(
-           pg_catalog.convert_to(count(*)::text, 'utf8')), 'hex'))
-       from ${table} t`
-    : `select jsonb_build_object('count', count(*), 'sha',
-         coalesce(pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
-           coalesce(pg_catalog.string_agg(${rowText}, E'\n'
-             order by ${rowText}), ''), 'utf8')), 'hex'), ''))
-       from ${table} t`;
 
 export const snapshotDigest = (
   rowTextOverrides: RowTextOverrides = {},

@@ -12,7 +12,7 @@ create extension if not exists pgtap with schema extensions;
 commit;
 
 begin;
-select plan(18);
+select plan(21);
 
 \ir phase_02_slice_10_rpc/000-helpers.sqlinc
 \ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
@@ -23,6 +23,8 @@ select plan(18);
 \ir phase_02_slice_11_helpers/000-helpers.sqlinc
 \ir phase_02_slice_11_helpers/001-world.sqlinc
 \ir phase_02_slice_11_helpers/002-reviews.sqlinc
+\ir phase_02_slice_11_helpers/004-lineage.sqlinc
+\ir phase_02_slice_11_helpers/006-delivery-receivers.sqlinc
 \ir phase_02_slice_11_rpc_review/000-world.sqlinc
 \ir phase_02_slice_11_rpc_review/020-decision.sqlinc
 \ir phase_02_slice_11_rpc_review/030-submit.sqlinc
@@ -35,20 +37,57 @@ select ok(
 
 select pg_temp.r11_entry('psr-1');
 select pg_temp.r11_entry('psr-2');
+select pg_temp.h11r_member('reviewer01', array['cms.reviewer']);
+-- Workflow reads project the stored review manifest, not merely its dependency hash.
+select pg_temp.r11r_review('rv-psr-1', 'psr-1');
+select pg_temp.r11_assign_now('rv-psr-1-asg', 'rv-psr-1', 'reviewer01');
+select pg_temp.r11_decide_now('rv-psr-1-dec', 'rv-psr-1', 'reviewer01', 'rv-psr-1-asg', 'approve');
+select pg_temp.r11r_review('rv-psr-2', 'psr-2');
+select pg_temp.r11_assign_now('rv-psr-2-asg', 'rv-psr-2', 'reviewer01');
+select pg_temp.r11_decide_now('rv-psr-2-dec', 'rv-psr-2', 'reviewer01', 'rv-psr-2-asg', 'approve');
 
 -- psr-1 carries four one-row lineages (audiences ra..rd); psr-2 one row (re) with blocked consumers.
 create or replace function pg_temp.psr_pub(p_n integer)
 returns uuid language sql immutable as $body$
   select ('a9600000-0000-4000-8000-' || lpad(p_n::text, 12, '0'))::uuid
 $body$;
-select pg_temp.h11r_raw_insert('platform_private.cms_publication_versions', pg_temp.s11_publication_row(jsonb_build_object(
-  'id', pg_temp.psr_pub(n), 'publication_id', pg_temp.psr_pub(n),
-  'entry_id', pg_temp.h11w_uuid(case when n = 5 then 'psr-2' else 'psr-1' end || ':entry'),
-  'revision_id', pg_temp.h11w_uuid(case when n = 5 then 'psr-2' else 'psr-1' end || ':revision'),
-  'audience', 'r' || chr(96 + n), 'publication_hash', pg_temp.s11_hex('psr-' || n),
-  'created_at', timestamptz '2026-10-05 12:00:00+00' + (n * interval '1 minute'),
-  'updated_at', timestamptz '2026-10-05 12:00:00+00' + (n * interval '1 minute'))))
+-- Guarded storage fixtures preserve the publication ordering; real append/event proof stays separate.
+select pg_temp.h11d_publication(pg_temp.psr_pub(n),
+  pg_temp.h11w_uuid(case when n = 5 then 'psr-2' else 'psr-1' end || ':revision'),
+  'r' || chr(96 + n), timestamptz '2026-10-05 12:00:00+00' + (n * interval '1 minute'))
   from generate_series(1, 5) n;
+select is((select count(*)::integer from platform_private.cms_publication_versions p
+  join pg_temp.h11d_publications f on f.id = p.id
+  where p.publication_hash::text = pg_temp.h11_sha256(platform_private.cms_jcs(jsonb_build_object(
+    'action', p.action, 'audience', p.audience, 'dependencyHash', p.dependency_hash,
+    'entryId', p.entry_id, 'locale', p.locale, 'publicationId', p.publication_id,
+    'revisionId', p.revision_id, 'supersedesId', p.supersedes_id, 'version', p.version, 'versionSet', p.version_set)))
+  and exists (select 1 from platform_private.cms_editorial_reviews review
+    join platform_private.cms_entry_revisions revision on revision.id = review.revision_id
+    where review.revision_id = p.revision_id and review.state = 'approved'
+      and review.dependency_hash = p.dependency_hash
+      and review.dependency_hash = platform_private.cms_jcs_sha256(review.dependency_manifest)
+      and review.frozen_hash = revision.payload_hash
+      and review.activation_evidence = review.dependency_manifest#>'{schema,activationEvidence}'
+      and p.activation_evidence_hash = platform_private.cms_activation_evidence_hash(review.id)
+      and platform_private.cms_version_set_matches_manifest(p.version_set, review.dependency_manifest))),
+  5, 'DEC197-PSR-P01 five guarded publication VERSION fixtures have matching real review evidence/version sets and exact E3 JCS hashes');
+select pg_temp.h11d_receiver(pg_temp.psr_pub(n)) from generate_series(1, 5) n;
+select ok((select count(*) = 5 and count(distinct p.id) = 5 and count(distinct m.id) = 5
+  from pg_temp.h11d_receivers r join platform_private.publication_projection p on p.id = r.projection_id
+  join platform_private.route_manifest_version m on m.id = p.route_manifest_id
+  join platform_private.cms_publication_versions v on v.id = p.publication_id
+  where r.publication_id = v.id and r.manifest_id = m.id and p.locale = v.locale and p.audience = v.audience
+    and m.state = 'ready' and m.activated_at is null),
+  'DEC197-PSR-P02 each publication, including unreported ra, has its own complete receiver chain');
+select ok((select count(*) = 5 and bool_and(jsonb_array_length(r.frozen_input->'publicationVersions') = 5
+  and m.publication_set_hash = pg_temp.h11_sha256(platform_private.cms_jcs(r.frozen_input))
+  and r.frozen_input = (select jsonb_build_object('publicationVersions', jsonb_agg(
+    jsonb_build_object('publicationVersionId', p.id::text, 'publicationHash', p.publication_hash::text)
+    order by p.id::text collate "C")) from pg_temp.h11d_publications f
+    join platform_private.cms_publication_versions p on p.id = f.id))
+  from pg_temp.h11d_receivers r join platform_private.route_manifest_version m on m.id = r.manifest_id),
+  'DEC197-PSR-P03 sealed fixture hashes cover the actual sorted five-row frozen publication VERSION set');
 
 create or replace function pg_temp.psr_row(p_pub integer, p_consumer text, p_state text)
 returns void language plpgsql as $body$
@@ -57,7 +96,7 @@ begin
   insert into platform_private.projection_consumer_state(
     publication_id, projection_id, consumer, expected_version, state, last_error_code, updated_at, version
   ) values (
-    pg_temp.psr_pub(p_pub), pg_temp.h11w_uuid('psr-projection'), p_consumer, 1, p_state,
+    pg_temp.psr_pub(p_pub), pg_temp.h11d_receiver(pg_temp.psr_pub(p_pub)), p_consumer, 1, p_state,
     case when p_state = 'blocked' then 'consumer_failed' end, clock_timestamp(), 1);
 end;
 $body$;
@@ -83,6 +122,9 @@ returns text language sql stable security definer set search_path = '' as $body$
   select pg_temp.r11r_effects()
     || '/' || (select count(*) from platform_private.projection_consumer_state)::text
     || '/' || (select coalesce(sum(version), 0) from platform_private.projection_consumer_state)::text
+    || '/' || (select count(*) from platform_private.route_manifest_version)::text
+    || '/' || (select count(*) from platform_private.publication_projection)::text
+    || '/' || (select coalesce(sum(version), 0) from platform_private.publication_projection)::text
 $body$;
 
 insert into psr_snap(label, effects) values ('before', pg_temp.psr_effects());

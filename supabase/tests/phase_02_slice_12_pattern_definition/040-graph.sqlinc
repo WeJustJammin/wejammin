@@ -1,0 +1,79 @@
+-- Deterministic literal forests. No implementation traversal is reused.
+create or replace function pg_temp.s12pd_depth(p_depth integer) returns jsonb
+language plpgsql immutable as $body$
+declare forest jsonb := '[]'::jsonb; n integer;
+begin
+  for n in reverse p_depth..1 loop
+    forest := jsonb_build_array(pg_temp.s12pd_block('level' || n,forest));
+  end loop;
+  return forest;
+end;
+$body$;
+-- 16 roots + 31 children per root = 512; an extra child gives 513, while
+-- each sibling list remains within its independent 32-node bound.
+create or replace function pg_temp.s12pd_nodes(p_extra boolean) returns jsonb
+language sql immutable as $body$
+  select jsonb_agg(pg_temp.s12pd_block('root' || n,
+    pg_temp.s12pd_forest(case when p_extra and n=1 then 32 else 31 end)) order by n)
+  from generate_series(1,16) n
+$body$;
+
+select pg_temp.s12pd_run('depth-eight',pg_temp.s12pd_request('s12pd-depth-eight',
+  pg_temp.s12pd_depth(8),null,'s12pd-depth-eight'));
+select is(pg_temp.s12pd_state('depth-eight'),'00000','depth 8 accepted [P2-S12-AC-211]');
+select is(pg_temp.s12pd_body('depth-eight')->'nodeCount','8'::jsonb,
+  'depth-8 chain stores all eight nodes [P2-S12-AC-211]');
+select * from pg_temp.s12pd_refused('depth-nine',pg_temp.s12pd_request('s12pd-depth-nine',
+  pg_temp.s12pd_depth(9),null,'s12pd-depth-nine'),'VALIDATION_FAILED','pattern_depth_exceeded');
+select pg_temp.s12pd_run('nodes-512',pg_temp.s12pd_request('s12pd-nodes-max',
+  pg_temp.s12pd_nodes(false),null,'s12pd-nodes-max'));
+select is(pg_temp.s12pd_state('nodes-512'),'00000','512 nodes accepted [P2-S12-AC-211]');
+select is(pg_temp.s12pd_body('nodes-512')->'nodeCount','512'::jsonb,
+  'node count stores the exact maximum [P2-S12-AC-211]');
+select * from pg_temp.s12pd_refused('nodes-513',pg_temp.s12pd_request('s12pd-nodes-over',
+  pg_temp.s12pd_nodes(true),null,'s12pd-nodes-over'),'VALIDATION_FAILED','pattern_nodes_exceeded');
+select pg_temp.s12pd_run('roots-32',pg_temp.s12pd_request('s12pd-roots-max',
+  pg_temp.s12pd_forest(32),null,'s12pd-roots-max'));
+select is(pg_temp.s12pd_state('roots-32'),'00000','32 roots accepted [P2-S12-AC-101]');
+select is(pg_temp.s12pd_body('roots-32')->'nodeCount','32'::jsonb,
+  '32 roots persist as 32 nodes [P2-S12-AC-211]');
+select pg_temp.s12pd_refused('roots-' || n,pg_temp.s12pd_request('s12pd-roots-' || n,
+  pg_temp.s12pd_forest(n),null,'s12pd-roots-' || n),'VALIDATION_FAILED')
+from unnest(array[0,33]) n;
+select * from pg_temp.s12pd_refused('duplicate-sibling',pg_temp.s12pd_request('s12pd-dupe-sibling',
+  jsonb_build_array(pg_temp.s12pd_block('same'),pg_temp.s12pd_block('same')),null,
+  's12pd-dupe-sibling'),'VALIDATION_FAILED');
+select * from pg_temp.s12pd_refused('unknown-block',pg_temp.s12pd_request('s12pd-unknown-block',
+  jsonb_build_array(pg_temp.s12pd_block() || '{"blockKey":"s12pd.missing"}'::jsonb),
+  null,'s12pd-unknown-block'),'VALIDATION_FAILED');
+select * from pg_temp.s12pd_refused('unregistered-version',pg_temp.s12pd_request('s12pd-bad-block-ver',
+  jsonb_build_array(pg_temp.s12pd_block() || '{"blockVersion":2}'::jsonb),
+  null,'s12pd-unregistered-version'),'VALIDATION_FAILED');
+select * from pg_temp.s12pd_refused('bad-props',pg_temp.s12pd_request('s12pd-bad-props',
+  jsonb_build_array(pg_temp.s12pd_block('hero','[]','{"title":42}')),
+  null,'s12pd-bad-props'),'VALIDATION_FAILED');
+select * from pg_temp.s12pd_refused('bad-node-key',pg_temp.s12pd_request('s12pd-bad-node-key',
+  jsonb_build_array(pg_temp.s12pd_block('Uppercase')),null,'s12pd-bad-node-key'),'VALIDATION_FAILED');
+select * from pg_temp.s12pd_refused('bad-block-key',pg_temp.s12pd_request('s12pd-bad-block-key',
+  jsonb_build_array(pg_temp.s12pd_block() || '{"blockKey":"../secret"}'::jsonb),
+  null,'s12pd-bad-block-key'),'VALIDATION_FAILED');
+
+select pg_temp.s12pd_run('types-64',pg_temp.s12pd_request('s12pd-types-max',
+  pg_temp.s12pd_forest(1),null,'s12pd-types-max') || jsonb_build_object(
+    'compatibleTypeIds',(select jsonb_agg(id order by ordinal) from s12pd_types where ordinal<=64)));
+select is(pg_temp.s12pd_state('types-64'),'00000','64 distinct active types accepted [P2-S12-AC-101]');
+select is(pg_temp.s12pd_body('types-64')->'compatibleTypeIds',
+  (select jsonb_agg(id order by ordinal) from s12pd_types where ordinal<=64),
+  'all 64 compatible type ids survive persistence [P2-S12-AC-101]');
+select * from pg_temp.s12pd_refused('types-empty',pg_temp.s12pd_request('s12pd-types-empty',
+  pg_temp.s12pd_forest(1),null,'s12pd-types-empty') || '{"compatibleTypeIds":[]}'::jsonb,'VALIDATION_FAILED');
+select * from pg_temp.s12pd_refused('types-duplicate',pg_temp.s12pd_request('s12pd-types-duplicate',
+  pg_temp.s12pd_forest(1),null,'s12pd-types-duplicate') || jsonb_build_object('compatibleTypeIds',
+    jsonb_build_array((select id from s12pd_types where ordinal=1),
+      (select id from s12pd_types where ordinal=1))),'VALIDATION_FAILED');
+select * from pg_temp.s12pd_refused('types-65',pg_temp.s12pd_request('s12pd-types-over',
+  pg_temp.s12pd_forest(1),null,'s12pd-types-over') || jsonb_build_object('compatibleTypeIds',
+    (select jsonb_agg(id order by ordinal) from s12pd_types)),'VALIDATION_FAILED');
+select * from pg_temp.s12pd_refused('type-inactive',pg_temp.s12pd_request('s12pd-type-inactive',
+  pg_temp.s12pd_forest(1),null,'s12pd-type-inactive') || jsonb_build_object('compatibleTypeIds',
+    jsonb_build_array(pg_temp.s09d_id('s12pd-draft-type:type'))),'VALIDATION_FAILED');

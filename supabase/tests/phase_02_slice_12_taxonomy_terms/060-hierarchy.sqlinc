@@ -1,0 +1,120 @@
+-- CMS-03C-03 hierarchy: `parentId` other than null needs the hierarchical shape, the parent must be a live term of the same vocabulary,
+-- a term can never become its own ancestor, and a parent is APPLIED only by `create` and `rename` (decision D3).
+-- BE03c 1377 ("`parentId` other than null needs shape `hierarchical`"), 372-374 (survivorId/parentId cannot be self/cyclic/merged),
+-- 1608 (parent cycles); the stored cycle guard 20260927380000.  [P2-S12-AC-016, AC-017, AC-003]
+select pg_temp.s12tt_mark('before-hierarchy');
+select pg_temp.s12tt_act('hp-flat', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'flat-child', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha')));
+select is(pg_temp.s12tt_oc('hp-flat'), 'P0001:VALIDATION_FAILED#["/parentId"]',
+  'a parent in a flat vocabulary is 422 at /parentId: the shape is flat [P2-S12-AC-017]');
+select pg_temp.s12tt_act('hp-flat-rename', 'owner', pg_temp.s12tt_lineage('vf'), 'rename', 'alpha', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'ab')));
+select is(pg_temp.s12tt_oc('hp-flat-rename'), 'P0001:VALIDATION_FAILED#["/parentId"]',
+  'a flat vocabulary refuses a parent on rename as well [P2-S12-AC-017]');
+select ok(pg_temp.s12tt_same('before-hierarchy'), 'the flat-vocabulary refusals changed nothing [P2-S12-AC-017]');
+
+select pg_temp.s12tt_act('h-root', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'root-a');
+select pg_temp.s12tt_act('h-child', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'child-a', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'root-a')));
+select pg_temp.s12tt_act('h-grand', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'grand-a', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'child-a')));
+select ok(pg_temp.s12tt_oc('h-root') = 'ok' and pg_temp.s12tt_oc('h-child') = 'ok' and pg_temp.s12tt_oc('h-grand') = 'ok'
+    and pg_temp.s12ga_body('h-root')->'parentId' = 'null'::jsonb
+    and pg_temp.s12ga_body('h-child')->>'parentId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'root-a')::text
+    and pg_temp.s12ga_body('h-grand')->>'parentId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'child-a')::text,
+  'a hierarchical vocabulary accepts a root, a child and a grandchild; each resource names its parent [P2-S12-AC-016]');
+select ok(
+  (select parent_term_id from platform_private.cms_terms where id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'child-a'))
+    = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'root-a')
+  and (select taxonomy_version_id from platform_private.cms_terms where id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'child-a'))
+    = pg_temp.s12tt_active_id(pg_temp.s12tt_lineage('vh')),
+  'the stored parent pointer and the write-time version are right [P2-S12-AC-016]');
+
+select pg_temp.s12tt_mark('before-parent-faults');
+select pg_temp.s12tt_act('hp-absent', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'orphan-a', jsonb_build_object(
+  'parentId', 'a9186000-0000-4000-8000-0000000000f2'));
+select pg_temp.s12tt_act('hp-foreign-vocabulary', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'orphan-b', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha')));
+select pg_temp.s12tt_act('hp-cycle-descendant', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'root-a', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'grand-a')));
+select pg_temp.s12tt_act('hp-cycle-child', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'root-a', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'child-a')));
+select pg_temp.s12tt_act('hp-cycle-self', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'root-a', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'root-a')));
+select is(pg_temp.s12tt_oc('hp-absent'), 'P0001:VALIDATION_FAILED#["/parentId"]', 'an unknown parent is 422 at /parentId [P2-S12-AC-017]');
+select is(pg_temp.s12tt_oc('hp-foreign-vocabulary'), pg_temp.s12tt_oc('hp-absent'),
+  'a parent from another vocabulary is refused exactly like an absent one: no cross-vocabulary oracle [P2-S12-AC-017]');
+select is(pg_temp.s12tt_oc('hp-cycle-descendant'), 'P0001:VALIDATION_FAILED#["/parentId"]', 'a root cannot move below its grandchild (cycle) [P2-S12-AC-017]');
+select is(pg_temp.s12tt_oc('hp-cycle-child'), 'P0001:VALIDATION_FAILED#["/parentId"]', 'a root cannot move below its child (cycle) [P2-S12-AC-017]');
+select is(pg_temp.s12tt_oc('hp-cycle-self'), 'P0001:VALIDATION_FAILED#["/parentId"]', 'a term cannot be its own parent [P2-S12-AC-017]');
+select ok(pg_temp.s12tt_same('before-parent-faults'), 'every parent refusal left the hierarchy and every store identical [P2-S12-AC-003]');
+
+-- re-parenting by rename: to the root and back ----------------------------------------------------------------------------------------
+select pg_temp.s12tt_act('hp-detach', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'child-a');
+select ok(pg_temp.s12tt_oc('hp-detach') = 'ok' and pg_temp.s12ga_body('hp-detach')->'parentId' = 'null'::jsonb
+    and (select parent_term_id is null from platform_private.cms_terms where id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'child-a')),
+  'rename with parentId null moves a child to the root; its own child keeps pointing at it [P2-S12-AC-016]');
+select pg_temp.s12tt_act('hp-attach', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'child-a', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'root-a')));
+select ok(pg_temp.s12tt_oc('hp-attach') = 'ok'
+    and pg_temp.s12ga_body('hp-attach')->>'parentId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'root-a')::text
+    and pg_temp.s12ga_body('hp-attach')->>'version' = '3',
+  'rename can attach a term below a live root again; every accepted action consumed one version (1, 2, 3) [P2-S12-AC-016]');
+select pg_temp.s12tt_act('hp-grandparent', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'grand-a', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'root-a')));
+select ok(pg_temp.s12tt_oc('hp-grandparent') = 'ok'
+    and (select parent_term_id from platform_private.cms_terms where id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'grand-a'))
+        = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'root-a'),
+  'a grandchild can be promoted to a child of the root: a valid move within the vocabulary [P2-S12-AC-016]');
+
+-- parentId on alias, deprecate and merge ------------------------------------------------------------------------------------------------------
+-- The frozen request carries parentId on every action (FE03 1792 sends the term form's parent whatever the action); BE03c 379 requires the
+-- hierarchical shape for any non-null parent and 381 says a parent cannot be self, cyclic or merged - it forbids the member on no action.
+-- So the same rules validate it on every action, and only create and rename apply it (alias, deprecate and merge keep the term where it is).
+select pg_temp.s12tt_act('pa-root', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'pa-root');
+select pg_temp.s12tt_act('pa-child', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'pa-child', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-root')));
+select pg_temp.s12tt_act('pa-other', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'pa-other');
+select pg_temp.s12tt_act('pa-mrg', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'pa-mrg');
+select pg_temp.s12tt_act('pa-surv', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'pa-surv');
+select pg_temp.s12tt_act('pa-flat', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'pa-flat');
+select ok(pg_temp.s12tt_oc('pa-root') = 'ok' and pg_temp.s12tt_oc('pa-child') = 'ok' and pg_temp.s12tt_oc('pa-other') = 'ok'
+    and pg_temp.s12tt_oc('pa-mrg') = 'ok' and pg_temp.s12tt_oc('pa-surv') = 'ok' and pg_temp.s12tt_oc('pa-flat') = 'ok',
+  'fixture: a root, its child, two more roots, a merge pair in vh and a term in the flat vf exist');
+select pg_temp.s12tt_mark('before-parent-on-other-actions');
+select pg_temp.s12tt_act('pa-alias-absent', 'owner', pg_temp.s12tt_lineage('vh'), 'alias', 'pa-child', jsonb_build_object(
+  'parentId', 'a9186000-0000-4000-8000-0000000000f3', 'aliases', '["x"]'::jsonb));
+select pg_temp.s12tt_act('pa-alias-self', 'owner', pg_temp.s12tt_lineage('vh'), 'alias', 'pa-child', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-child'), 'aliases', '["x"]'::jsonb));
+select pg_temp.s12tt_act('pa-alias-cycle', 'owner', pg_temp.s12tt_lineage('vh'), 'alias', 'pa-root', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-child'), 'aliases', '["x"]'::jsonb));
+select pg_temp.s12tt_act('pa-alias-flat', 'owner', pg_temp.s12tt_lineage('vf'), 'alias', 'pa-flat', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'alpha'), 'aliases', '["x"]'::jsonb));
+select pg_temp.s12tt_act('pa-deprecate-absent', 'owner', pg_temp.s12tt_lineage('vh'), 'deprecate', 'pa-child', jsonb_build_object(
+  'parentId', 'a9186000-0000-4000-8000-0000000000f3'));
+select pg_temp.s12tt_act('pa-merge-absent', 'owner', pg_temp.s12tt_lineage('vh'), 'merge', 'pa-mrg', jsonb_build_object(
+  'parentId', 'a9186000-0000-4000-8000-0000000000f3', 'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-surv')));
+select is(array[pg_temp.s12tt_oc('pa-alias-absent'), pg_temp.s12tt_oc('pa-alias-self'), pg_temp.s12tt_oc('pa-alias-cycle'), pg_temp.s12tt_oc('pa-alias-flat'),
+                pg_temp.s12tt_oc('pa-deprecate-absent'), pg_temp.s12tt_oc('pa-merge-absent')],
+  array_fill('P0001:VALIDATION_FAILED#["/parentId"]'::text, array[6]),
+  'an unknown, self or cyclic parent, and any parent in a flat vocabulary, is 422 at /parentId on alias, deprecate and merge too [P2-S12-AC-017]');
+select ok(pg_temp.s12tt_same('before-parent-on-other-actions'), 'those refusals changed nothing [P2-S12-AC-017]');
+
+select pg_temp.s12tt_act('pa-alias-ok', 'owner', pg_temp.s12tt_lineage('vh'), 'alias', 'pa-child', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-other'), 'aliases', '["pa-alias"]'::jsonb));
+select ok(pg_temp.s12tt_oc('pa-alias-ok') = 'ok'
+    and pg_temp.s12ga_body('pa-alias-ok')->>'parentId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-root')::text
+    and (select aliases = '["pa-alias"]'::jsonb and parent_term_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-root')
+           from platform_private.cms_terms where id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-child')),
+  'alias with a valid live parent is accepted and does NOT move the term: the alias lands, the hierarchy stays [P2-S12-AC-016]');
+select pg_temp.s12tt_act('pa-deprecate-ok', 'owner', pg_temp.s12tt_lineage('vh'), 'deprecate', 'pa-child', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-root')));
+select ok(pg_temp.s12tt_oc('pa-deprecate-ok') = 'ok' and pg_temp.s12ga_body('pa-deprecate-ok')->>'lifecycle' = 'deprecated'
+    and pg_temp.s12ga_body('pa-deprecate-ok')->>'parentId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-root')::text,
+  'the term form''s deprecate of a child, sending its current parent, is accepted and keeps the child below that parent [P2-S12-AC-016]');
+select pg_temp.s12tt_act('pa-merge-ok', 'owner', pg_temp.s12tt_lineage('vh'), 'merge', 'pa-mrg', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-root'), 'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-surv')));
+select ok(pg_temp.s12tt_oc('pa-merge-ok') = 'ok' and pg_temp.s12ga_body('pa-merge-ok')->>'lifecycle' = 'merged'
+    and pg_temp.s12ga_body('pa-merge-ok')->'parentId' = 'null'::jsonb
+    and pg_temp.s12ga_body('pa-merge-ok')->>'successorId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'pa-surv')::text,
+  'merge with a valid live parent is accepted; the parent is validated, never applied: the retired term stays a root [P2-S12-AC-016]');

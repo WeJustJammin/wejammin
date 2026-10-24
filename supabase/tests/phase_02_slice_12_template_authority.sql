@@ -423,8 +423,8 @@ select pg_temp.s10_rpc_exec(
       'blockRegistryDigest', repeat('f', 64)
     ))::text from s12_request)) || '::jsonb)'
 );
-select is(pg_temp.s10_last_error_message(), 'CONFLICT',
-  'CMS-03C-01 refuses caller digest that differs from current registry');
+select is(pg_temp.s10_last_error_message(), 'block_registry_digest_mismatch',
+  'CMS-03C-01 refuses caller digest that differs from current registry with the typed token [BE03c 323-327, 1273; DEC-186]');
 
 select pg_temp.s10_rpc_as(
   'a9100000-0000-4000-8000-000000000003'::uuid,
@@ -535,7 +535,7 @@ select
   repeat('2', 64), '{}'::jsonb, repeat('4', 64),
   '{}'::jsonb, 's12-test-key', repeat('5', 64), clock_timestamp(),
   'cms.profile.header', '[]'::jsonb, '{}'::jsonb, '[]'::jsonb,
-  '{}'::jsonb, '{}'::jsonb, repeat('3', 64),
+  '{}'::jsonb, '{"minSchemaCompiler":"1","maxSchemaCompiler":"1"}'::jsonb, repeat('3', 64),
   'a9120000-0000-4000-8000-000000000302', 's12-release-key',
   repeat('6', 64), repeat('7', 64), repeat('8', 64), clock_timestamp();
 
@@ -566,11 +566,10 @@ insert into platform_private.cms_schema_artifacts(
 )
 select 'a9120000-0000-4000-8000-000000000305',
        (select value::uuid from s10_ids where key = 'organization'),
-       'a9120000-0000-4000-8000-000000000304', 's12-test',
+       'a9120000-0000-4000-8000-000000000304', '1',
        'cms/s12-block-test', '{}'::jsonb,
-       jsonb_build_object('blocks', jsonb_build_array(jsonb_build_object(
-         'blockKey', 'profile.header', 'blockVersion', 1
-       ))), repeat('c', 64), clock_timestamp();
+       jsonb_build_object('relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb,
+         'capabilityBindings', '[]'::jsonb), repeat('c', 64), clock_timestamp();
 update platform_private.cms_content_type_versions
 set state = 'active', version = version + 1,
     activation_workflow_policy_key = 'cms.entry.author',
@@ -619,18 +618,47 @@ select is(
   'CMS-03C-01 persisted digest equals exact server-derived safe tuple hash'
 );
 
+-- BE03a 1098-1101, BE03c 209 and 1567: compatibility is the block's registered schema-compiler range covering the
+-- compiler_version of the type's active artifact (compiled artifacts never list blocks).  Block version 2 is
+-- registered for 1.9..1.9; the compatible type's artifact is compiled at 1.
+insert into platform_private.cms_block_definition_versions(
+  id, owner_id, block_key, block_version, props_schema_ref,
+  props_schema_hash, props_schema_snapshot, props_snapshot_hash,
+  props_snapshot_attestation, props_attestation_key_id,
+  props_attestation_signature_hash, props_attestation_verified_at,
+  renderer_ref, allowed_children, slot_rules, data_source_permissions,
+  accessibility_contract, compatibility_range, release_digest,
+  release_principal_id, release_key_id, release_raw_body_hash,
+  release_signature_hash, release_nonce_hash, release_verified_at
+)
+select
+  'a9120000-0000-4000-8000-000000000308', owner_id, block_key, 2,
+  props_schema_ref, props_schema_hash, props_schema_snapshot, props_snapshot_hash,
+  props_snapshot_attestation, props_attestation_key_id,
+  props_attestation_signature_hash, props_attestation_verified_at,
+  renderer_ref, allowed_children, slot_rules, data_source_permissions,
+  accessibility_contract,
+  '{"minSchemaCompiler":"1.9","maxSchemaCompiler":"1.9"}'::jsonb, release_digest,
+  release_principal_id, release_key_id, release_raw_body_hash,
+  release_signature_hash, repeat('9', 64), release_verified_at
+from platform_private.cms_block_definition_versions
+where id = 'a9120000-0000-4000-8000-000000000301';
 select pg_temp.s10_rpc_exec(
   'select platform_api.cms_define_template('
     || quote_literal((select (request || jsonb_build_object(
       'templateKey', 's12-incompatible-template',
-      'compatibleTypeIds', jsonb_build_array(
-        (select value from s10_ids where key = 'typeId')
-      ),
+      'slots', jsonb_build_array(jsonb_build_object(
+        'key', 'primary', 'required', true,
+        'allowedBlocks', jsonb_build_array(jsonb_build_object(
+          'blockKey', 'profile.header', 'blockVersion', 2
+        )),
+        'maxCount', 1
+      )),
       'idempotencyKey', 's12-block-incompatible-0010'
     ))::text from s12_block_request)) || '::jsonb)'
 );
 select is(pg_temp.s10_last_error_message(), 'VALIDATION_FAILED',
-  'CMS-03C-01 rejects a registered block absent from the active type renderer');
+  'CMS-03C-01 rejects a registered block whose compiler range excludes the active type compiler_version');
 
 insert into platform_private.cms_block_definition_lifecycle_events(
   id, owner_id, created_at, updated_at, block_definition_version_id,

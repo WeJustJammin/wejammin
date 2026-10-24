@@ -1,0 +1,101 @@
+-- DEC-198 ordinary append/resolve: preserve the unanswered newest pending head.
+-- Only scan output is a labelled guarded fixture; both revision commands and
+-- subsequent diff reads use the real public service-role boundary.
+select pg_temp.s12cb_world(tag) from (values('cb-pending-app'),('cb-pending-res')) tags(tag);
+-- DEC-209: the resolution world keeps its pending history on the current draft (theirs).
+select pg_temp.s12cc_theirs_first('cb-pending-res');
+select pg_temp.s12cb_pending_source(tag) from (values('cb-pending-app'),('cb-pending-res')) tags(tag);
+select ok((select count(*)=2 and count(*) filter(where state='active' and version=1)=1
+  and count(*) filter(where state='pending_diff' and version=2)=1
+  from platform_private.cms_composition_instances where revision_id=w.source_id and path='/keep'),
+  w.tag || ': guarded newest pending v2 really overlays older active v1')
+  from s12cc_world w where tag in ('cb-pending-app','cb-pending-res');
+select ok((select state='pending_diff' and version=2 and link_mode='linked'
+  and pattern_version=1 and pending_pattern_version=2 and position=23 and detached_tree is null
+  and props='{"/keep":{"title":"LOCAL-PENDING"}}'::jsonb
+  and bindings='{"caption":{"literal":"PENDING-CAPTION"}}'::jsonb
+  from platform_private.cms_composition_instances where id=r.id),
+  r.tag || ': pending fixture retains pin B, target T, override, binding, gap and SQL-NULL tree')
+  from s12cb_rows r where tag in ('cb-pending-app','cb-pending-res');
+select ok((select base.version=1 and target.version=2 and target.state='active'
+  and (select n->'props' from jsonb_array_elements(base.block_tree) n where n->>'key'='keep')
+    ='{"title":"KEPT-1"}'::jsonb
+  and (select n->'props' from jsonb_array_elements(target.block_tree) n where n->>'key'='keep')
+    ='{"title":"KEPT-2"}'::jsonb
+  from platform_private.cms_composition_instances i
+  join platform_private.cms_pattern_versions base on base.owner_id=i.owner_id
+    and base.pattern_id=i.pattern_id and base.version=i.pattern_version
+  join platform_private.cms_pattern_versions target on target.owner_id=i.owner_id
+    and target.pattern_id=i.pattern_id and target.version=i.pending_pattern_version
+  where i.id=r.id),r.tag || ': actual pinned content B differs from governed active target T')
+  from s12cb_rows r where tag in ('cb-pending-app','cb-pending-res');
+
+select pg_temp.s12cc_call('CB-APP-PENDING','append',
+  pg_temp.s12cc_request('cb-pending-app','append','s12cb-app-pending'));
+select * from pg_temp.s12cb_copied('CB-APP-PENDING','cb-pending-app');
+select ok((select current_id=source_id from s12cc_world where tag='cb-pending-res')
+  and exists(select 1 from platform_private.cms_composition_instances
+    where revision_id=pg_temp.s12pl_rev('cb-pending-res'))
+  and not exists(select 1 from platform_private.cms_composition_instances i
+    join platform_private.cms_entry_revisions r on r.id=i.revision_id
+    where r.entry_id=pg_temp.s12pl_entry_id('cb-pending-res') and r.revision_number=1),
+  'CB-RES-PENDING-SETUP: the conflict base is composition-empty; the current draft (theirs) holds the pending history, DEC-209');
+select pg_temp.s12cc_call('CB-RES-PENDING-CONFLICT','append',
+  pg_temp.s12cc_request('cb-pending-res','append','s12cb-res-pending-conflict','YOURS'));
+select is(pg_temp.s12cc_body('CB-RES-PENDING-CONFLICT')->>'kind','conflict',
+  'CB-RES-PENDING-SETUP: real stale same-field append creates the conflict');
+select ok((select count(*)=1 and bool_and(state='open' and yours_source='proposed')
+  from platform_private.cms_conflict_records where entry_id=pg_temp.s12pl_entry_id('cb-pending-res')),
+  'CB-RES-PENDING-SETUP: actual durable open conflict, not a fabricated resolution response');
+select pg_temp.s12cc_call('CB-RES-PENDING','resolve',
+  pg_temp.s12cc_request('cb-pending-res','resolve','s12cb-res-pending'));
+select * from pg_temp.s12cb_copied('CB-RES-PENDING','cb-pending-res');
+select ok((select state='resolved' and resolved_revision_id=(pg_temp.s12cc_body('CB-RES-PENDING')->>'id')::uuid
+  from platform_private.cms_conflict_records where entry_id=pg_temp.s12pl_entry_id('cb-pending-res')),
+  'CB-RES-PENDING: actual conflict is durably resolved to the exact newly returned revision');
+
+select ok((select count(*)=1 and bool_and(i.id<>r.id and i.version=1
+  and to_jsonb(i)->>'carried_from_id'=r.id::text and i.state='pending_diff'
+  and i.pattern_version=1 and i.pending_pattern_version=2 and i.link_mode='linked'
+  and i.position=23 and i.detached_tree is null
+  and i.props='{"/keep":{"title":"LOCAL-PENDING"}}'::jsonb
+  and i.bindings='{"caption":{"literal":"PENDING-CAPTION"}}'::jsonb)
+  from platform_private.cms_composition_instances i
+  where i.revision_id=(pg_temp.s12cc_body(v.label)->>'id')::uuid and i.path='/keep'),
+  v.label || ': exactly one fresh pending copy keeps immediate provenance and every pending discriminator')
+  from (values('CB-APP-PENDING','cb-pending-app'),('CB-RES-PENDING','cb-pending-res')) v(label,tag)
+  join s12cb_rows r on r.tag=v.tag and r.path='/keep';
+select is((select value from platform_private.cms_entry_field_values
+  where revision_id=(pg_temp.s12cc_body(v.label)->>'id')::uuid),to_jsonb(v.expected::text),
+  v.label || ': independent ordinary field semantics still apply')
+  from (values('CB-APP-PENDING','EDITED'),('CB-RES-PENDING','YOURS')) v(label,expected);
+
+-- Probe the actual new row; absence remains a captured public refusal/FAIL, never
+-- a forged destination row or a NULL setup INSERT. The read must not answer it.
+select pg_temp.s12pu_diff(v.label || '-DIFF',(select id
+  from platform_private.cms_composition_instances
+  where revision_id=(pg_temp.s12cc_body(v.label)->>'id')::uuid and path='/keep'))
+  from (values('CB-APP-PENDING'),('CB-RES-PENDING')) v(label);
+select is(pg_temp.s12pu_state(label),'00000',label || ': unanswered update is still publicly available')
+  from s12pu_out where label in ('CB-APP-PENDING-DIFF','CB-RES-PENDING-DIFF');
+select is(response->'instance',jsonb_build_object('id',i.id,'version','1','revisionId',i.revision_id,
+  'path','/keep','state','pending_diff','linkMode','linked','pinnedPatternVersion',1),
+  o.label || ': diff identifies the fresh pending pin B, not accepted target T')
+  from s12pu_out o left join platform_private.cms_composition_instances i
+    on i.id=(o.request->>'instanceId')::uuid
+  where o.label in ('CB-APP-PENDING-DIFF','CB-RES-PENDING-DIFF');
+select is(response->'paths','[{"path":"/keep","base":{"blockKey":"s12pd.block","blockVersion":1,
+  "props":{"title":"KEPT-1"},"children":[]},"theirs":{"blockKey":"s12pd.block","blockVersion":1,
+  "props":{"title":"KEPT-2"},"children":[]},"yours":{"title":"LOCAL-PENDING"},
+  "collision":true,"collisionKind":"props"}]'::jsonb,
+  label || ': literal B/T/local collision survives carry without accepting or clearing')
+  from s12pu_out where label in ('CB-APP-PENDING-DIFF','CB-RES-PENDING-DIFF');
+select ok(response->'targetPatternVersion'='2'::jsonb and response->'collisionCount'='1'::jsonb
+  and response->'bulkEligible'='false'::jsonb and response->'slotPath'='"/"'::jsonb
+  and response->'newRoots'='[]'::jsonb and before_rows=after_rows,
+  label || ': same target remains unanswered and the public GET changes no captured store')
+  from s12pu_out where label in ('CB-APP-PENDING-DIFF','CB-RES-PENDING-DIFF');
+select effect.* from (values('CB-APP-PENDING'),('CB-RES-PENDING')) v(label)
+  cross join lateral pg_temp.s12cc_effects(v.label) effect;
+select * from pg_temp.s12cc_replay('CB-APP-PENDING','cb-pending-app');
+select * from pg_temp.s12cc_replay('CB-RES-PENDING','cb-pending-res');
