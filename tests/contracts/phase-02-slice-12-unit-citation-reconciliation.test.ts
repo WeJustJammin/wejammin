@@ -34,7 +34,7 @@ const identityOf = (citation: EvidenceCitation): string =>
   [citation.tool, citation.file, citation.title].join(NUL);
 
 const FIXTURE_SHA256 =
-  'f636d08c649ae75dc883549e1f5a3cb8bb7e05e12bd8881dfa12c6140313ad11';
+  'ffd754bd41848fc162a3b65a36b9fc756ede38c842a7433a5f7450e96b45b716';
 
 const presentIdentities = new Set(
   S12_EVIDENCE_LEDGER.flatMap((entry) =>
@@ -128,7 +128,7 @@ describe('Slice 12 unit-citation reconciliation: fixture fidelity', () => {
         (total, record) => total + record.bindings.length,
         0,
       ),
-    ).toBe(39);
+    ).toBe(40);
     for (const record of S12_UNIT_CITATION_RECONCILIATION) {
       expect(record.old.tool).toBe('vitest');
       expect(record.bindings.length).toBeGreaterThan(0);
@@ -152,11 +152,14 @@ describe('Slice 12 unit-citation reconciliation: current ledger identity', () =>
           clause,
           binding.criterion + ' :: ' + binding.clauseText,
         ).toBeDefined();
-        expect(entry?.status).toBe('partial');
         expect(cites(clause, oldId)).toBe(false);
+        // The clause keeps every citation it had at the reconciliation (the retired identity dropped, never swapped);
+        // the 2026-10-24 refuted re-citation (recite/a-refutation.json, DEC-226) may only add reviewed tests to it.
         const retained = RETAINED_DEPENDENCY[record.old.file];
         expect(retained, record.old.file).toBeDefined();
-        expect(clause?.citations.map(identityOf)).toEqual(retained);
+        expect(clause?.citations.map(identityOf)).toEqual(
+          expect.arrayContaining([...(retained ?? [])]),
+        );
       }
       return;
     }

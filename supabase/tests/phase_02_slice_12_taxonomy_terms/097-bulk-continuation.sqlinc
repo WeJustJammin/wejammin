@@ -104,4 +104,4 @@ select matches((select pg_temp.s12tt_work_plan(pg_temp.s09d_id('ownerOrg'), null
   'the whole-party remaining-work lookup (the handler) reaches the assignments through the same index [P2-S12-AC-226]');
 select doesnt_match((select pg_temp.s12tt_work_plan(pg_temp.s09d_id('ownerOrg'), null)::text),
   '"Node Type": "Seq Scan"[^}]*"Relation Name": "cms_term_assignments"',
-  'and never by a Seq Scan of the assignment store [P2-S12-AC-226]');
+  'and the whole-party lookup is never a Seq Scan of the assignment store [P2-S12-AC-226]');

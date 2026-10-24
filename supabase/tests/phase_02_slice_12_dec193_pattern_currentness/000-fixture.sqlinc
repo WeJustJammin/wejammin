@@ -187,9 +187,9 @@ begin
   exception when others then get stacked diagnostics code=returned_sqlstate,message=message_text;
   end;
   perform set_config('role',prior_role,true);
-  return next extensions.is(code,'42501','PC-ACL: actual '||called||' private call refused before payload semantics');
-  return next extensions.is(pg_temp.s12pc_snapshot(),before_rows,'PC-ACL: refusal leaves all captured rows unchanged');
+  return next extensions.is(code,'42501','PC-ACL: actual '||called||' private call of '||p_identity||' refused before payload semantics');
+  return next extensions.is(pg_temp.s12pc_snapshot(),before_rows,'PC-ACL: refusal leaves all captured rows unchanged ('||p_role||' '||p_identity||')');
   return next extensions.ok(current_user=prior_user and current_setting('role')=prior_role
-    and coalesce(current_setting('app.cms_rpc',true),'')=coalesce(prior_rpc,''),'PC-ACL: caller role/context restored');
+    and coalesce(current_setting('app.cms_rpc',true),'')=coalesce(prior_rpc,''),'PC-ACL: caller role/context restored ('||p_role||' '||p_identity||')');
 end;
 $body$;

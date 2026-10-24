@@ -117,7 +117,7 @@ select ok(pg_temp.s12ls_unchanged('r4b'), 'and nothing changes');
 -- draft instance, so the only reason a scan of the superseded ls-s v2 or of the retired ls-r v2 can append nothing is the state of its target.
 select pg_temp.s12ls_call('r4c', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('ls2'));
 select is(pg_temp.s12ls_sum('r4c'), '0/0/end', 'a scan of a SUPERSEDED version appends nothing although a linked older-pinned compatible draft instance exists');
-select ok(pg_temp.s12ls_unchanged('r4c'), 'and changes no row');
+select ok(pg_temp.s12ls_unchanged('r4c'), 'and changes no row (scan r4c)');
 select is(pg_temp.s12ls_heads('sg1'), '/item=active:v1:p1:q-', 'the instance of the control stays on its pin');
 select pg_temp.s12ls_call('r4d', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('ls3'));
 select is(pg_temp.s12ls_sum('r4d'), '1/1/end', 'control: the scan of the ACTIVE ls-s v3 does find that instance');
@@ -133,7 +133,7 @@ select is(pg_temp.s12pd_state('lr2:retire'), '00000', 'setup: the owner retires 
 select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('lr2')->>'id')::uuid), 'retired', 'setup: ls-r v2 is retired');
 select pg_temp.s12ls_call('r4e', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('lr2'));
 select is(pg_temp.s12ls_sum('r4e'), '0/0/end', 'a scan of a RETIRED version (the retirement event shares cms.pattern.activated.v1) appends nothing although rt1 qualifies by every other predicate');
-select ok(pg_temp.s12ls_unchanged('r4e'), 'and changes no row');
+select ok(pg_temp.s12ls_unchanged('r4e'), 'and changes no row (scan r4e)');
 select is(pg_temp.s12ls_heads('rt1'), '/item=active:v1:p1:q-', 'the instance stays on its pin');
 
 -- a NEW live review of iv1 (older than both earlier reviews, so the revision stays effective draft) for the correlation witness below (review V6-04)
@@ -172,4 +172,4 @@ select isnt((select correlation_id::text from platform_private.outbox_events
   'while run 1, which supplied none, invalidated under a fresh correlation (the fallback branch)');
 select pg_temp.s12ls_call('r5', 'platform_api.cms_scan_linked_pattern_updates', pg_temp.s12ls_req('la3'));
 select is(pg_temp.s12ls_sum('r5'), '0/0/end', 'a re-delivery of the scan of v3 appends nothing [AC-213]');
-select ok(pg_temp.s12ls_unchanged('r5'), 'and changes nothing');
+select ok(pg_temp.s12ls_unchanged('r5'), 'and changes nothing (scan r5)');

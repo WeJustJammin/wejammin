@@ -81,8 +81,12 @@ const CLAUSE_NO_REQUEST_BODY = 'no request body';
 const CLAUSE_NO_IDEMPOTENCY_NO_IF_MATCH = 'no `Idempotency-Key`, no `If-Match`';
 const CLAUSE_READ_ONLY_CALL =
   'read-only call that accepts neither `Idempotency-Key` nor `If-Match`';
+// The 2026-10-24 refuted re-citation (recite/c-refutation.json, DEC-226) split AC-161 clause 0; the three
+// fail-closed session cases prove its first part.
 const CLAUSE_SERVES_ONLY_AUTHENTICATED =
-  'cmsTemplateContextRead serves only an authenticated human with confirmed acting-party membership and an active `cms.template_designer` grant';
+  'cmsTemplateContextRead serves only an authenticated human';
+const CLAUSE_SERVER_VERIFIES_SESSION =
+  'the server verifies the Supabase session, expiry and acting context';
 const CLAUSE_REJECTS_BODY_IDEMPOTENCY_IF_MATCH =
   'rejects a body, `Idempotency-Key` and `If-Match`';
 const CLAUSE_MALFORMED_PATH_400 =
@@ -273,7 +277,11 @@ const QUOTED: readonly CitationReconciliationRecord[] = [
     PREFIX_DETAIL_FAILS_CLOSED,
     'unauthenticated',
     SUFFIX_NONE,
-    toBindings([['P2-S12-AC-169', CLAUSE_MISSING_SESSION_401]]),
+    // AC-265 binding added by the 2026-10-24 refuted re-citation (recite/d-refutation.json).
+    toBindings([
+      ['P2-S12-AC-169', CLAUSE_MISSING_SESSION_401],
+      ['P2-S12-AC-265', CLAUSE_SERVER_VERIFIES_SESSION],
+    ]),
   ),
 ];
 

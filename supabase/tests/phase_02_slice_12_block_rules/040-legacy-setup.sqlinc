@@ -34,7 +34,7 @@ begin
   end if;
 end;
 $body$;
-create or replace function pg_temp.brt_restore(p_name text) returns setof text language plpgsql as $body$
+create or replace function pg_temp.brt_restore(p_name text, p_step text default '') returns setof text language plpgsql as $body$
 begin
   if not exists (select 1 from brt_defs where name = p_name) then
     return next extensions.fail('BR-L: ' || p_name || ' enforcement function was saved and can be restored');
@@ -44,7 +44,8 @@ begin
   return next extensions.ok(coalesce((select pg_catalog.to_jsonb(proc) from pg_catalog.pg_proc proc
       where proc.oid = pg_catalog.to_regprocedure((select identity from brt_defs where name = p_name)))
     = (select image from brt_defs where name = p_name), false),
-    'BR-L: ' || p_name || ' enforcement is restored with a pg_proc image identical to the installed function');
+    'BR-L: ' || p_name || ' enforcement is restored with a pg_proc image identical to the installed function'
+      || case when p_step = '' then '' else ' (' || p_step || ')' end);
 end;
 $body$;
 
@@ -118,7 +119,7 @@ select * from pg_temp.s12pl_pattern('brm-v2', 'brm', jsonb_build_array(
   pg_temp.brb('ok', 'br.leaf') || jsonb_build_object('props', jsonb_build_object('title', 'T2')),
   pg_temp.brb('bad', 'br.tight', jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))),
   null, true, '1');
-select * from pg_temp.brt_restore('save');
+select * from pg_temp.brt_restore('save', 'after brm-v2');
 
 -- a canonical detached tree that breaks its rules (CMS-03C-15 detach with the writer rule check off), then restored
 select pg_temp.brt_stub('detached');

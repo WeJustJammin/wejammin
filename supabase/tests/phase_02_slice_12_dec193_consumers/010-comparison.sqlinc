@@ -10,7 +10,7 @@ create or replace function pg_temp.s12cs_semantics(p_rows jsonb) returns jsonb l
  select coalesce(jsonb_agg(r-array['id','revision_id','created_at','updated_at']::text[] order by ord),'[]'::jsonb)
  from jsonb_array_elements(p_rows) with ordinality e(r,ord)
 $body$;
-create or replace function pg_temp.s12cs_seed_current(p_source uuid,p_target uuid) returns setof text language plpgsql as $body$
+create or replace function pg_temp.s12cs_seed_current(p_source uuid,p_target uuid,p_label text default '') returns setof text language plpgsql as $body$
 declare before_source jsonb:=pg_temp.s12cs_history(p_source); donor platform_private.cms_composition_instances;
  target_entry uuid; stamp timestamptz; old_rpc text:=coalesce(current_setting('app.cms_rpc',true),'');
 begin
@@ -33,14 +33,14 @@ begin
  end loop;
  perform set_config('app.cms_rpc',old_rpc,true);
  return next extensions.is(pg_temp.s12cs_semantics(pg_temp.s12cs_history(p_target)),pg_temp.s12cs_semantics(before_source),
-   'CS-D5-FIXTURE: every donor history semantic field is copied unchanged, including state/version/pin/tree/position');
- return next extensions.is(pg_temp.s12cs_history(p_source),before_source,'CS-D5-FIXTURE: complete donor history remains byte-identical');
+   'CS-D5-FIXTURE: every donor history semantic field is copied unchanged, including state/version/pin/tree/position'||' ('||p_label||')');
+ return next extensions.is(pg_temp.s12cs_history(p_source),before_source,'CS-D5-FIXTURE: complete donor history remains byte-identical'||' ('||p_label||')');
  return next extensions.ok(not exists(select 1 from platform_private.cms_composition_instances c
    join platform_private.cms_entry_revisions r on r.id=c.revision_id where c.revision_id=p_target
      and (c.created_at<r.created_at or c.updated_at<>c.created_at)),
-   'CS-D5-FIXTURE: fresh copy timestamps follow the real target revision timestamp');
+   'CS-D5-FIXTURE: fresh copy timestamps follow the real target revision timestamp'||' ('||p_label||')');
  return next extensions.ok(exists(select 1 from platform_private.cms_content_entries
-   where id=target_entry and current_draft_revision_id=p_target),'CS-D5-FIXTURE: insertion occurred only while target is current');
+   where id=target_entry and current_draft_revision_id=p_target),'CS-D5-FIXTURE: insertion occurred only while target is current'||' ('||p_label||')');
 exception when others then
  perform set_config('app.cms_rpc',old_rpc,true);
  return next extensions.fail('CS-D5-FIXTURE: guarded current-draft donor seeding succeeds');
@@ -57,7 +57,7 @@ begin
  perform set_config('app.cms_rpc','true',true);
  if left_source is null or right_source is null then raise exception 'D5 donor revision missing'; end if;
  v_left_id:=pg_temp.s12pl_entry(v_left_tag); v_entry_id:=pg_temp.s12pl_entry_id(v_left_tag);
- return query select * from pg_temp.s12cs_seed_current(left_source,v_left_id);
+ return query select * from pg_temp.s12cs_seed_current(left_source,v_left_id,v_left_tag);
  left_copy:=pg_temp.s12cs_history(v_left_id);
  select * into revision from platform_private.cms_entry_revisions where id=v_left_id;
  stamp:=clock_timestamp();
@@ -68,7 +68,7 @@ begin
    where e.id=v_entry_id and e.current_draft_revision_id=v_left_id;
  if not found then raise exception 'D5 fixture current pointer did not advance once'; end if;
  insert into s12pl_ids values(v_right_tag||':entry',v_entry_id::text),(v_right_tag||':revision',v_right_id::text);
- return query select * from pg_temp.s12cs_seed_current(right_source,v_right_id);
+ return query select * from pg_temp.s12cs_seed_current(right_source,v_right_id,v_right_tag);
  insert into s12cs_pairs values(p_tag,v_entry_id,v_left_tag,v_left_id,v_right_tag,v_right_id);
  perform set_config('app.cms_rpc',old_rpc,true);
  return next extensions.is(pg_temp.s12cs_history(v_left_id),left_copy,p_tag||': left fixture history stays byte-identical after forward advance');

@@ -150,7 +150,7 @@ select ok((select count(*) = 1 and bool_and(audit.actor_id = pg_temp.s12ga_auth(
 select ok(exists (select 1 from platform_private.idempotency_records record
                    where record.operation = 'CMS-03C-09' and record.key_hash = platform_private.cms_key_hash('s12ga-rt1')
                      and record.state = 'completed' and record.response_ref->>'status' = '200'),
-  'the completed idempotency record stores status 200 [P2-S12-AC-086]');
+  'the completed idempotency record stores status 200 for the retire [P2-S12-AC-086]');
 select ok(pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)') like '%cms_governed_apply_retirement%'
     and strpos(pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)'), 'cms_governed_apply_retirement')
         < strpos(pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)'), 'cms_governed_apply_activation'),
@@ -162,7 +162,7 @@ select pg_temp.s12gb_act('rt1', 'owner', pg_temp.s12ga_review('ga1'), 'retire',
   jsonb_build_object('reason', 'retired by the owner', 'expectedVersion', '3', 'ifMatch', '3'));
 select ok(pg_temp.s12ga_out('rt1') = 'ok' and pg_temp.s12ga_body('rt1') = pg_temp.s12ga_kept('rt1')
     and pg_temp.s12gb_same('ga1:retired', 'ga1') and pg_temp.s12gb_events('ga1') = 2,
-  'an exact same-key replay returns the original response and writes no second event, audit record or state change [P2-S12-AC-086]');
+  'an exact same-key replay of the retire returns the original response and writes no second event, audit record or state change [P2-S12-AC-086]');
 select pg_temp.s12gb_act('rt1', 'owner', pg_temp.s12ga_review('ga1'), 'retire',
   jsonb_build_object('reason', 'a different reason', 'expectedVersion', '3', 'ifMatch', '3'));
 select pg_temp.s12gb_act('rt1-stale', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('expectedVersion', '3', 'ifMatch', '3'));

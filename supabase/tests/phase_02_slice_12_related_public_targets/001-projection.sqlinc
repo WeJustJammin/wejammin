@@ -98,7 +98,7 @@ create temp table r12_s1 on commit drop as
 select pg_temp.r12_curate(pg_temp.r12_req('srcp', array[]::text[], array[]::text[], pg_temp.r12_rule('shared-terms', 128), 'r12-srcp-proj-0001')) as written;
 select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcp'))), 'c6,c5,c1,c3,c2,xo,x7,x6,srcm,c7,c4',
   'published-revision ranking: score 2 (c6 c5 c1 by head created_at desc), score 1 (c3 c2), score 0 (xo x7 x6 srcm c7 c4); a deprecated, superseded or revoked term counts for nothing; the draft''s term3 is ignored [P2-S12-AC-231]');
-select ok(pg_temp.r12_valid(pg_temp.r12_targets(pg_temp.r12_id('srcp'))), 'the projection satisfies the list contract [P2-S12-AC-231]');
+select ok(pg_temp.r12_valid(pg_temp.r12_targets(pg_temp.r12_id('srcp'))), 'the projection satisfies the list contract for the curated shared-terms source srcp [P2-S12-AC-231]');
 select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcp'))) ~ '(^|,)(x2|x3|x4)(,|$)', false,
   'an unpublished (tombstoned), other-locale and other-audience entry is never a candidate [P2-S12-AC-155]');
 

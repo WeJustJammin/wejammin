@@ -83,7 +83,7 @@ select * from pg_temp.s12pl_pattern('bm-br-lo', 'bm-br-lo', jsonb_build_array(pg
   jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))));
 select * from pg_temp.s12pl_pattern('bm-br-hi', 'bm-br-hi', jsonb_build_array(pg_temp.brb('p2', 'br.tight',
   jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))));
-select * from pg_temp.brt_restore('save');
+select * from pg_temp.brt_restore('save', 'after the provider fixtures');
 -- the placements: the two live pins of each case (the pre-rule tree is placed with the plan enforcement a no-op, then restored)
 -- case 1a: pattern_not_active at /p1, nested_pattern_not_active at /p2
 select * from pg_temp.s12pu_place('bmx-1a', 'bm-na-lo');
@@ -101,11 +101,11 @@ select * from pg_temp.brm_second('bmx-2b', 'bm-na-hi');
 select * from pg_temp.s12pu_place('bmx-3a', 'bm-na-lo');
 select pg_temp.brt_stub('plan');
 select * from pg_temp.brm_second('bmx-3a', 'bm-br-hi');
-select * from pg_temp.brt_restore('plan');
+select * from pg_temp.brt_restore('plan', 'case 3a');
 -- case 3b: pattern_block_rules_violated at /p1, pattern_not_active at /p2
 select pg_temp.brt_stub('plan');
 select * from pg_temp.s12pu_place('bmx-3b', 'bm-br-lo');
-select * from pg_temp.brt_restore('plan');
+select * from pg_temp.brt_restore('plan', 'case 3b');
 select * from pg_temp.brm_second('bmx-3b', 'bm-na-hi');
 -- case 4a: nested_pattern_not_active at /p1, pattern_digest_changed at /p2
 select * from pg_temp.s12pu_place('bmx-4a', 'bm-nn-lo');
@@ -117,21 +117,21 @@ select * from pg_temp.brm_second('bmx-4b', 'bm-nn-hi');
 select * from pg_temp.s12pu_place('bmx-5a', 'bm-nn-lo');
 select pg_temp.brt_stub('plan');
 select * from pg_temp.brm_second('bmx-5a', 'bm-br-hi');
-select * from pg_temp.brt_restore('plan');
+select * from pg_temp.brt_restore('plan', 'case 5a');
 -- case 5b: pattern_block_rules_violated at /p1, nested_pattern_not_active at /p2
 select pg_temp.brt_stub('plan');
 select * from pg_temp.s12pu_place('bmx-5b', 'bm-br-lo');
-select * from pg_temp.brt_restore('plan');
+select * from pg_temp.brt_restore('plan', 'case 5b');
 select * from pg_temp.brm_second('bmx-5b', 'bm-nn-hi');
 -- case 6a: pattern_digest_changed at /p1, pattern_block_rules_violated at /p2
 select * from pg_temp.s12pu_place('bmx-6a', 'bm-dc-lo');
 select pg_temp.brt_stub('plan');
 select * from pg_temp.brm_second('bmx-6a', 'bm-br-hi');
-select * from pg_temp.brt_restore('plan');
+select * from pg_temp.brt_restore('plan', 'case 6a');
 -- case 6b: pattern_block_rules_violated at /p1, pattern_digest_changed at /p2
 select pg_temp.brt_stub('plan');
 select * from pg_temp.s12pu_place('bmx-6b', 'bm-br-lo');
-select * from pg_temp.brt_restore('plan');
+select * from pg_temp.brt_restore('plan', 'case 6b');
 select * from pg_temp.brm_second('bmx-6b', 'bm-dc-hi');
 -- the successors (after every placement): a superseded pinned version and a superseded nested pattern
 select * from pg_temp.s12pl_pattern('bm-na-lo-2', 'bm-na-lo', jsonb_build_array(pg_temp.brb('p1', 'br.leaf'),
