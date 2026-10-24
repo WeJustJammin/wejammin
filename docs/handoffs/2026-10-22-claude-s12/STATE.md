@@ -116,6 +116,28 @@ Resume here after any interruption or compaction. Predecessor: Codex handoff
   `scratchpad/claude_root/coverage-gaps.txt`). Steps after it (test:evidence:s09, test:e2e, build, bundle, perf smoke)
   did not run in this validate (they ran green separately earlier). Root decision: commit the checkpoint now (8 local
   commits by layer, messages state the coverage gap), then coverage lanes, then validate again.
+- 2026-10-24 06:50Z: COMMITTED 8 local commits `be6ac447..fc62deef` (no push; HEAD `fc62deef`; docs commit message carries
+  the coverage status). Coverage lane 1 released; lane 2 pending a slot (cap 4: refutations a/c/d live). Then: validate
+  again → commit coverage → apply refuted re-citations (rename the 2 duplicated `governed_activation` descriptions first)
+  → S12 evidence → guard → gap lanes → Slice 12 close. Spec questions: `recite/spec-questions.md`.
+- 2026-10-24 ~07:40Z: all four refutations DONE (a 3.6% / b 1.1% / c 2.6% / d 1.9% DROP). DEC-226 (raw record): strict
+  evidence policy on review c's five calls. Spec questions all researched (`recite/spec-questions.md` Q1–Q9): 8 root
+  decisions/propagations to apply AFTER the apply lane (texts of AC-026, 062, 079, 086, 132, 134, 138, 141, 274 + BE03c
+  lines); OWNER question asked: Q2 AC-055 (unsupported locale on the CMS-03C-04 write: A 422 recommended / B 404).
+  Live: coverage 1, coverage 2, recite-apply. Next: root runs S12 evidence (export WEJAMMIN_CANONICAL_RACE=1 if race
+  citations need it) → guard → spec text changes → gap lanes (missing tests/impl per refutations, Q7 node pointers,
+  AC-110 restart, AC-105 nested picker, AC-271 skeleton, AC-239/242/244/246/248).
+- 2026-10-24 08:30Z: coverage lanes 1+2 GREEN (46 files 100%; 20 new test files; 10 reviewed dead-branch removals);
+  recite-apply GREEN; root refreshed the reconciliation fixture; S12 evidence (canonical race mode) PASS 3,461 receipts,
+  all 7 guard/contract files 70/70. DEC-227 texts applied by `recite/dec227-texts.mjs` (run AFTER apply.mjs; trackers +
+  ledger; AC-132 → verified); ledger now 155 verified / 122 partial / 19 unverified; one new citation needs a receipt →
+  S12 rerun RUNNING (`.lane-logs/canonical/s12-dec227-evidence-*`). Then `evidence/gate-validate.sh` → commit (coverage +
+  re-citation + DEC-226/227). Gap inventory: `gaps/inventory.json` (199 uncited clauses: pgtap 73, impl 27, hosted/p95
+  25 = local latency apispec + pgTAP bench per the S11 precedent, other 25, playwright 17, worker 13, race 12, web 7).
+  Gap waves after the commit (cap 4): W1 taxonomy assignment integrity (DEC-141: AC-239/241/242/244/246/221/224), pgTAP
+  gaps ×2, p95 benches; W2 web impl (AC-105 picker, AC-110 restart, AC-271 skeleton, Q7 node pointers), Playwright,
+  races, AC-248 relay narrowing, "other" triage. Boundary: CMS-03C-21 consumers are Shard 04 (AC-148/155/158).
+  OWNER question still open: Q2 AC-055.
 - Shell traps here: zsh does not word-split and `(N)` globs are disabled — put multi-file commands in a bash script
   (`scratchpad/claude_root/run-*.sh` are examples). Never `pnpm db:stop` at the end of a script before the evidence runner.
 

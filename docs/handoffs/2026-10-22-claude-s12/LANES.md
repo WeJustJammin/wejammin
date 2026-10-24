@@ -102,3 +102,35 @@ Rules: `docs/handoffs/2026-10-14-claude-s12/lane-rules.md`. All lanes Sonnet 5.5
   `095-retire.sqlinc:153,165`) block 31 citations of lanes b/c/d until one of each pair is renamed (test edit). Combined
   four-lane guard simulation: 72 problems in lanes a/c/d (status encoding). The reviewer's Write was refused by its
   harness; root extracted the report verbatim from its transcript → `review-refute-b-report.md` (SHA `75977fef…`).
+- `2026-10-24` CHECKPOINT COMMITTED (local, no push): 8 commits `be6ac447..fc62deef` (2,733 files; lists by layer; only
+  the in-progress `recite/{a,c,d}-refutation.json` left out). Validate passed all 30,023 tests, failed only the 100%
+  coverage threshold (47 Slice 12 Worker files). Coverage lane `claude_s12_coverage_1` (governed/pattern files)
+  released (brief `briefs/coverage.md`); lane 2 (taxonomy/locale/related/observability) waits for a free slot.
+- `2026-10-24` refute-d DONE, ACCEPT (conditional): 675 → 652 KEEP / 10 FIX / 13 DROP; AC-240/241/286 → partial; splits
+  REJECT AC-224/261/265/278 (+ new splits AC-240/241/286); guard breakers if applied raw: AC-281 duplicate citation in a
+  clause, 4 pgTAP citations naming the entrypoint instead of the owning `.sqlinc`, AC-224 partial with all clauses cited;
+  race citations need `WEJAMMIN_CANONICAL_RACE=1` + fresh reset. Open: AC-271 250 ms skeleton unbuilt; AC-274 wording
+  (Worker deadline is 504, proxies collapse to 502); AC-248 relay narrowing + AC-239/242/244/246 unbuilt. Report SHA
+  `bea09c3b…`. Coverage lane 2 released.
+- `2026-10-24` refute-a DONE, ACCEPT-WITH-DROPS: 700 → 662 KEEP / 13 FIX / 25 DROP (3.6%); statuses unchanged (49/28/2);
+  61 missed tests, 76 gap entries; false lane limitations AC-065/069/075; AC-079 cl 3 wording contradicted by its suite
+  (a revoke of a counted approval advances the review version). Apply hazards: 15 apispec citations lack receipts in
+  vitest-all.json (run by the PostgREST config), 6 duplicate-description siblings in cited pgTAP files,
+  locale_observability newest TAP is a mutation run. Report SHA `5213249b…`.
+- `2026-10-24` refute-c DONE, ACCEPT-WITH-DROPS: 1,193 → 1,095 KEEP / 31 DROP / 67 FIX (63 = computed pgTAP cited under
+  the `.sqlinc`); status 37 verified / 46 partial / 7 unverified after its splits; 11 lane over-claims → partial; AC-207 →
+  verified. Five policy calls → root DEC-226 (strict on all five). Report SHA `ebbb5837…`. All four refutations complete.
+- `2026-10-24` Apply lane `claude_s12_recite_apply` released (brief `briefs/recite-apply.md`; delegated: S12 ledgers +
+  description-only pgTAP renames of duplicated descriptions in cited files; deterministic `recite/apply.mjs`; identity
+  check vs pass-2 vitest-all.json and the 02:04Z full TAP; simulated guard must be 0 problems).
+- `2026-10-24` coverage-1 GREEN: 26 governed/pattern files 100/100/100/100 (1,244/1,140/185/1,084); apps/worker 737 files /
+  13,032 tests; 11 new test files; 6 provably dead fallbacks deleted with proof comments (root reviewed the diffs: casts
+  on a same-file invariant, no behaviour change); no v8 ignore; report SHA `1b98d089…`.
+- `2026-10-24` coverage-2 GREEN: 20 files 100/100/100/100 (908/842/131/805); 739 files / 13,032 Worker tests; 9 new test
+  files; 4 no-behaviour product edits with proofs (incl. a V8 negative-count artifact in `production-job-effect-dispatcher.ts`);
+  report SHA `38f66552…`.
+- `2026-10-24` recite-apply GREEN: ledger 9/127/160 → 154 verified / 123 partial / 19 unverified; 3,455 identities verified
+  (vitest 1,877, pgTAP 1,546; 32 external read from source); simulated guard 0 problems; 9 pgTAP files description-only
+  renames; deterministic `recite/apply*.mjs` (7 scripts). Root refreshed the reconciliation fixture (AC-161 split part,
+  AC-265 binding, retired clauses may gain reviewed citations; SHA pin `ffd754bd…`, 40 bindings). S12 evidence rerun
+  (canonical race mode) + all guards STARTED.

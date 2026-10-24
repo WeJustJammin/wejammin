@@ -7,6 +7,9 @@
 - `<x>-refutation.json`: the separate reviewer population's verdict on every proposed citation (KEEP, DROP or FIX), on
   each split, and the gaps and tests the lane missed.
 - `spec-questions.md`: spec-versus-code questions the lanes raised, with the root's research and recommendation.
+- `apply.mjs` with `apply-plan.mjs`, `apply-identity.mjs`, `apply-data.mjs`, `apply-limit.mjs`, `apply-lib.mjs` and
+  `apply-simulate.mjs`: the deterministic apply of KEEP/FIX citations, accepted splits and computed statuses to the
+  Slice 12 ledgers (`node docs/handoffs/2026-10-22-claude-s12/recite/apply.mjs`, `--dry` to check without writing).
 
 ## Ownership
 
