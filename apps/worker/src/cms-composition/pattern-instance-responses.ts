@@ -1,12 +1,13 @@
 import { ApiErrorSchema } from '@wejammin/contracts';
 
+import { noteRefusal } from './observability-facts';
 import {
   ERROR_CODES,
   statusOf,
   type CmsPatternInstanceDependencies,
   type CmsPatternInstanceError,
 } from './pattern-instance-contracts';
-import { safeDetails } from './taxonomy-responses';
+import { patternInstanceDetails } from './pattern-instance-details';
 
 export const commonHeaders = (
   request: Request,
@@ -45,13 +46,16 @@ export const errorResponse = (
     headers.set('retry-after', String(error.retryAfterSeconds));
   extra?.forEach((value, key) => headers.set(key, value));
   const code = ERROR_CODES[status];
+  const details = patternInstanceDetails(status, error.details);
+  // BE03c Observability: the published refusal, reduced to its catalog code and closed members.
+  noteRefusal(request, status, details, code);
   return new Response(
     JSON.stringify(
       ApiErrorSchema.parse({
         code,
         message: `${code}: composition operation rejected or unavailable.`,
         requestId,
-        details: safeDetails(status, error.details),
+        details,
       }),
     ),
     { status, headers },

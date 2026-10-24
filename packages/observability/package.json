@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "exports": {
+    "./cms-composition-alerts": "./src/cms-composition-alerts.ts",
     "./content-schema-registry-alerts": "./src/content-schema-registry-alerts.ts",
     "./logging": "./src/logging.ts"
   },

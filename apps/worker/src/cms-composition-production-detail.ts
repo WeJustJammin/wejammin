@@ -9,9 +9,9 @@ import {
 } from './cms-editorial-production-session';
 import {
   invalidResponse,
-  mapCmsEditorialRpcFailure,
   unavailable,
 } from './cms-editorial-production-errors';
+import { mapCmsCompositionRpcFailure } from './cms-composition-production-failure';
 import {
   createDeadline,
   fetchWithDeadline,
@@ -91,7 +91,7 @@ export const createTemplateDetailReader =
       );
       if (!response.ok) return response;
       if (!response.value.ok) {
-        const error = mapCmsEditorialRpcFailure(
+        const error = mapCmsCompositionRpcFailure(
           response.value.status,
           await readRpcError(response.value, maxResponseBytes, deadline.signal),
         );

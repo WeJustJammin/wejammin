@@ -94,6 +94,89 @@ describe('CMS-03C-01 production template adapter typed refusals', () => {
     });
   });
 
+  it('maps the exact P0001 block_registry_digest_mismatch pair to the 409 conflict with its reasonCode', async () => {
+    const result = await define(
+      rpcError(
+        'block_registry_digest_mismatch',
+        '["/blockRegistryDigest"]',
+        400,
+      ),
+    );
+    expect(result).toEqual({
+      ok: false,
+      status: 409,
+      code: 'VERSION_CONFLICT',
+      message: expect.any(String),
+      details: { reasonCode: 'block_registry_digest_mismatch' },
+    });
+  });
+
+  it('answers the digest token whatever the 4xx status PostgREST used', async () => {
+    for (const status of [400, 409, 422])
+      expect(
+        await define(rpcError('block_registry_digest_mismatch', null, status)),
+      ).toMatchObject({
+        ok: false,
+        status: 409,
+        details: { reasonCode: 'block_registry_digest_mismatch' },
+      });
+  });
+
+  it('does not let DETAIL prose or a foreign pointer change the digest answer', async () => {
+    const result = await define(
+      rpcError(
+        'block_registry_digest_mismatch',
+        'secret owner row /fields/abc',
+      ),
+    );
+    expect(result).toMatchObject({
+      ok: false,
+      status: 409,
+      details: { reasonCode: 'block_registry_digest_mismatch' },
+    });
+    expect(JSON.stringify(result)).not.toContain('secret');
+    expect(JSON.stringify(result)).not.toContain('/fields/abc');
+  });
+
+  it('never trusts the digest token from another SQLSTATE, a 5xx, a structured code or other casing', async () => {
+    for (const response of [
+      json(
+        {
+          code: '23514',
+          message: 'block_registry_digest_mismatch',
+          details: null,
+        },
+        400,
+      ),
+      json(
+        {
+          code: 'P0001',
+          message: 'block_registry_digest_mismatch',
+          details: null,
+        },
+        500,
+      ),
+      json(
+        { code: 'block_registry_digest_mismatch', message: 'x', details: null },
+        400,
+      ),
+      json({ code: 'P0001', message: 'BLOCK_REGISTRY_DIGEST_MISMATCH' }, 400),
+      json({ code: 'P0001', message: 'block_registry_digest_mismatch ' }, 400),
+    ]) {
+      const result = await define(response);
+      expect(result.ok ? null : result.details).not.toHaveProperty(
+        'reasonCode',
+        'block_registry_digest_mismatch',
+      );
+    }
+  });
+
+  it('keeps the generic CONFLICT free of any reasonCode', async () => {
+    const result = await define(rpcError('CONFLICT', null, 409));
+    expect(result).toMatchObject({ ok: false, status: 409 });
+    expect(result.ok ? null : result.details).not.toHaveProperty('reasonCode');
+  });
+
   it('keeps every other token on the shared editorial mapping', async () => {
     expect(await define(rpcError('NOT_FOUND', null))).toMatchObject({
       ok: false,

@@ -4,6 +4,10 @@ import {
 } from '@wejammin/config/environment';
 import { createLogger, type Logger } from '@wejammin/observability/logging';
 
+import {
+  createLocaleObservabilityProbe,
+  createRpcLocaleObservabilityPort,
+} from '../cms-composition/locale-observability';
 import { createSupabaseRpc } from '../async-runtime-rpc-transport';
 import { normalizeAuthProductionOptions } from '../authentication/production-configuration';
 import { createAuthStateReconciler } from './auth-state-reconciler';
@@ -55,6 +59,8 @@ const NO_WORKER_AUTHORIZATION_CACHE: AuthorizationRefreshSink = {
 export type ProductionEventConsumers = Readonly<{
   registry: ReturnType<typeof createEventConsumerRegistry>;
   reconcilingAge: ReturnType<typeof createReconcilingAgeProbe>;
+  /** BE03c (DEC-208): the scheduled database-side locale fan-out/stale sample. */
+  localeObservability: ReturnType<typeof createLocaleObservabilityProbe>;
 }>;
 
 /**
@@ -110,6 +116,10 @@ export const createProductionEventConsumers = (
     }),
     reconcilingAge: createReconcilingAgeProbe({
       age: createRpcReconcilingAgePort(rpc),
+      telemetry: logger,
+    }),
+    localeObservability: createLocaleObservabilityProbe({
+      port: createRpcLocaleObservabilityPort(rpc),
       telemetry: logger,
     }),
   };

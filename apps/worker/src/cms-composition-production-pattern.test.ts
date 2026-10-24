@@ -41,7 +41,7 @@ const input = (): CmsPatternInstancePortInput => ({
   idempotencyKey: 'pattern-command-0001',
   ifMatch: '1',
 });
-const resource = {
+const row = {
   id: instanceId,
   version: '1',
   contentHash: 'a'.repeat(64),
@@ -49,7 +49,8 @@ const resource = {
   updatedAt: '2026-09-28T14:00:00Z',
   state: 'draft',
   revisionId,
-  path: '/primary',
+  path: '/primary/header',
+  position: 0,
   blockKey: 'profile.header',
   blockVersion: 1,
   patternId,
@@ -58,6 +59,9 @@ const resource = {
   linkMode: 'linked',
   conflictState: 'none',
 };
+const placement = { items: [row] };
+const okResponse = (): Response =>
+  Response.json(placement, { headers: { etag: '"7"' } });
 const create = (fetchImpl: typeof fetch) =>
   createProductionCmsPatternInstanceDependencies({
     environment,
@@ -68,12 +72,12 @@ const create = (fetchImpl: typeof fetch) =>
 
 describe('CMS-03C-02 production pattern adapter', () => {
   it('calls only the named private RPC with server-bound context', async () => {
-    const fetchImpl = vi.fn(async () => Response.json(resource));
+    const fetchImpl = vi.fn(async () => okResponse());
     const result = await create(fetchImpl as typeof fetch).insertPattern(
       input(),
       new AbortController().signal,
     );
-    expect(result).toEqual({ ok: true, value: resource });
+    expect(result).toEqual({ ok: true, value: placement, etag: '"7"' });
     const [url, init] = fetchImpl.mock.calls[0] as unknown as [
       string,
       RequestInit,
@@ -96,7 +100,7 @@ describe('CMS-03C-02 production pattern adapter', () => {
   });
 
   it('rejects malformed request, authority and provider success before disclosure', async () => {
-    const fetchImpl = vi.fn(async () => Response.json(resource));
+    const fetchImpl = vi.fn(async () => okResponse());
     const dependencies = create(fetchImpl as typeof fetch);
     for (const [candidate, status] of [
       [{ ...input(), operationId: 'wrong' as never }, 400],
@@ -115,7 +119,10 @@ describe('CMS-03C-02 production pattern adapter', () => {
 
     const malformed = create(
       vi.fn(async () =>
-        Response.json({ ...resource, ownerId: PARTY_ID }),
+        Response.json(
+          { items: [{ ...row, ownerId: PARTY_ID }] },
+          { headers: { etag: '"7"' } },
+        ),
       ) as typeof fetch,
     );
     expect(
@@ -123,7 +130,7 @@ describe('CMS-03C-02 production pattern adapter', () => {
     ).toMatchObject({ ok: false, status: 502 });
   });
 
-  it('treats a missing private RPC as unavailable rather than a hidden composition', async () => {
+  it('answers a missing private RPC as the scrubbed 500, never a hidden composition or a 503 (BE03c 1298-1302)', async () => {
     const fetchImpl = vi.fn(async () =>
       Response.json(
         {
@@ -140,9 +147,9 @@ describe('CMS-03C-02 production pattern adapter', () => {
     );
     expect(result).toMatchObject({
       ok: false,
-      status: 503,
-      code: 'DEPENDENCY_UNAVAILABLE',
-      details: { dependencyClass: 'cms_composition', retryable: true },
+      status: 500,
+      code: 'INTERNAL_ERROR',
+      details: {},
     });
     expect(JSON.stringify(result)).not.toContain('Could not find');
   });
@@ -150,7 +157,7 @@ describe('CMS-03C-02 production pattern adapter', () => {
   it('validates production configuration and supports configured origins without an injected fetch', () => {
     const options = {
       environment,
-      fetchImpl: vi.fn(async () => Response.json(resource)) as typeof fetch,
+      fetchImpl: vi.fn(async () => okResponse()) as typeof fetch,
       humanOrigins: ['https://cms.example.test'],
     };
     expect(() =>
@@ -176,7 +183,7 @@ describe('CMS-03C-02 production pattern adapter', () => {
   });
 
   it('isolates the cached server context from a later caller session and permits editor role', async () => {
-    const fetchImpl = vi.fn(async () => Response.json(resource));
+    const fetchImpl = vi.fn(async () => okResponse());
     const dependencies = createProductionCmsPatternInstanceDependencies({
       environment,
       fetchImpl: fetchImpl as typeof fetch,
@@ -326,7 +333,7 @@ describe('CMS-03C-02 production pattern adapter', () => {
     const logger = { info: vi.fn() };
     const dependencies = createProductionCmsPatternInstanceDependencies({
       environment,
-      fetchImpl: vi.fn(async () => Response.json(resource)) as typeof fetch,
+      fetchImpl: vi.fn(async () => okResponse()) as typeof fetch,
       humanOrigins: ['https://cms.example.test'],
       resolveSession: async () => ({ ok: true, value: input().session }),
       logger: logger as never,

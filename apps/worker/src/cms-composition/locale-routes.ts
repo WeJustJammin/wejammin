@@ -21,7 +21,10 @@ import {
 } from '../cms-editorial/admission-headers';
 import { validHumanSession } from '../cms-editorial/admission-identity';
 import type { CmsEditorialSession } from '../cms-editorial/types';
+import { registerCmsLocaleReadRoute } from './locale-read-routes';
 import { commonHeaders, errorResponse } from './locale-routes-responses';
+import { instrumentComposition } from './observability-instrument';
+import { observeRequest } from './observability-observation';
 import {
   failure,
   statusOf,
@@ -40,6 +43,7 @@ export type {
   CmsLocaleDependencies,
   CmsLocaleError,
   CmsLocalePortInput,
+  CmsLocaleReadInput,
   CmsLocaleRateDecision,
   CmsLocaleRateInput,
   CmsLocaleResult,
@@ -52,8 +56,14 @@ const DEADLINE_MS = 15_000;
 
 export const registerCmsLocaleRoutes = <E extends Env>(
   app: Hono<E>,
-  dependencies: CmsLocaleDependencies,
+  registered: CmsLocaleDependencies,
 ): void => {
+  // BE03c Observability: the request event lists only the stages the request reached.
+  const dependencies = instrumentComposition(registered, {
+    writes: ['authorLocale'],
+    reads: ['readLocaleVariant'],
+  });
+  registerCmsLocaleReadRoute(app, dependencies);
   app.options(PATH, (context) => {
     const request = context.req.raw;
     const requestId = createRequestId(
@@ -132,6 +142,17 @@ export const registerCmsLocaleRoutes = <E extends Env>(
         body.locale !== parsedPath.data.locale
       )
         return respondError(failure(400));
+      // BE00 step 6 (line 386) and BE03c 408: the exact Idempotency-Key and quoted If-Match are
+      // validated before authorization, so a malformed header consumes no quota.
+      const parsedHeaders = LocaleVariantHeadersSchema.safeParse({
+        contentType: 'application/json',
+        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
+        ifMatch: request.headers.get('if-match') ?? undefined,
+      });
+      if (!parsedHeaders.success) return respondError(failure(400));
+      const ifMatch = parsedHeaders.data.ifMatch.slice(1, -1);
+      if (body.expectedVersion !== ifMatch) return respondError(failure(400));
+
       // BE00 step 7: capability, then quota.
       if (
         session.value.actingPartyId === null ||
@@ -139,9 +160,7 @@ export const registerCmsLocaleRoutes = <E extends Env>(
           (value) => value === 'cms.author' || value === 'cms.editor',
         )
       )
-        return respondError(
-          failure(403, { reasonCode: 'CAPABILITY_REQUIRED' }),
-        );
+        return respondError(failure(403, { reasonCode: 'capability_missing' }));
 
       for (const rateScope of ['user', 'party'] as const) {
         if (signal.aborted) return respondError(failure(504, {}, 15));
@@ -202,16 +221,6 @@ export const registerCmsLocaleRoutes = <E extends Env>(
           );
         }
       }
-
-      // BE00 step 8: exact Idempotency-Key and quoted If-Match.
-      const parsedHeaders = LocaleVariantHeadersSchema.safeParse({
-        contentType: 'application/json',
-        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
-        ifMatch: request.headers.get('if-match') ?? undefined,
-      });
-      if (!parsedHeaders.success) return respondError(failure(400));
-      const ifMatch = parsedHeaders.data.ifMatch.slice(1, -1);
-      if (body.expectedVersion !== ifMatch) return respondError(failure(400));
 
       let result: CmsLocaleResult<LocaleVariantResource>;
       try {
@@ -280,6 +289,12 @@ export const registerCmsLocaleRoutes = <E extends Env>(
                 : 'failure',
           actorClass: 'human',
           durationMs: Math.max(0, dependencies.now() - startedAt),
+          observation: observeRequest(
+            request,
+            requestId,
+            OPERATION_ID,
+            response.status,
+          ),
         }),
       ).catch(() => undefined);
     } catch {

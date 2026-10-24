@@ -27,7 +27,12 @@ const ID = (n: number): string =>
   `d1200000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 const REQUEST_ID = ID(900);
 const STATUSES = [502, 503, 504] as const;
-
+/**
+ * BE00 line 172 types the DEPENDENCY_UNAVAILABLE member `{ dependencyClass, retryable: true }` for
+ * 502, 503 and 504 alike; BE03c 1274 and the retry column of every 03c catalog row ("502/503/504:
+ * retry at most 3 times") agree. Every surface, locale and related-content included, publishes
+ * `retryable: true`.
+ */
 type Surface = Readonly<{
   name: string;
   token: string;
@@ -246,6 +251,9 @@ const SURFACES: readonly Surface[] = [
         resolveSession: async () => session('cms.author'),
         rateLimit: allowRate,
         authorLocale: async () => port() as never,
+        readLocaleVariant: async () => {
+          throw new Error('the write suite never reads');
+        },
         telemetry: () => undefined,
       });
       return {
@@ -307,7 +315,7 @@ describe('[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE
           requestId: response.headers.get('x-request-id'),
           details: {
             dependencyClass: 'cms_composition',
-            retryable: status !== 502,
+            retryable: true,
           },
         });
         expect(text).not.toContain('secret');
@@ -334,7 +342,10 @@ describe('[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE
       expect(response.status).toBe(502);
       expect(await response.json()).toMatchObject({
         code: 'DEPENDENCY_UNAVAILABLE',
-        details: { dependencyClass: 'cms_composition', retryable: false },
+        details: {
+          dependencyClass: 'cms_composition',
+          retryable: true,
+        },
       });
     });
 

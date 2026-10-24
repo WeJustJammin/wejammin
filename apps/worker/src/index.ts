@@ -21,7 +21,9 @@ import {
   createProductionAsyncEntrypoint,
   runProductionOperationalAlerts,
 } from './production-async-entrypoint';
+import { runProductionCmsGovernedActivationSweep } from './cms-governed-activation-sweep';
 import { runProductionCmsPublicationScheduleSweep } from './cms-publication-schedule-sweep';
+import { runProductionCmsTaxonomyMergeReconcileSweep } from './cms-taxonomy-merge-reconcile-sweep';
 import { runProductionCmsEditPresenceSweep } from './production-cms-edit-presence-sweep';
 import { runProductionCmsReviewAuthoritySweep } from './production-cms-review-authority-sweep';
 import { runProductionIdempotencyExpirySweep } from './production-idempotency-expiry-sweep';
@@ -211,6 +213,10 @@ const handler = {
     const editPresenceSweep = runProductionCmsEditPresenceSweep(env);
     const publicationScheduleSweep =
       runProductionCmsPublicationScheduleSweep(env);
+    const governedActivationSweep =
+      runProductionCmsGovernedActivationSweep(env);
+    const taxonomyMergeReconcileSweep =
+      runProductionCmsTaxonomyMergeReconcileSweep(env);
     const operationalAlerts = runProductionOperationalAlerts(controller, env);
     const [
       sweepResult,
@@ -218,6 +224,8 @@ const handler = {
       reviewAuthorityResult,
       editPresenceResult,
       publicationScheduleResult,
+      governedActivationResult,
+      taxonomyMergeReconcileResult,
       alertResult,
     ] = await Promise.allSettled([
       outboxSweep,
@@ -225,6 +233,8 @@ const handler = {
       reviewAuthoritySweep,
       editPresenceSweep,
       publicationScheduleSweep,
+      governedActivationSweep,
+      taxonomyMergeReconcileSweep,
       operationalAlerts,
     ]);
     const rejectedResults = [
@@ -233,6 +243,8 @@ const handler = {
       reviewAuthorityResult,
       editPresenceResult,
       publicationScheduleResult,
+      governedActivationResult,
+      taxonomyMergeReconcileResult,
       alertResult,
     ].filter(
       (result): result is PromiseRejectedResult => result.status === 'rejected',
@@ -256,6 +268,10 @@ const handler = {
       throw editPresenceResult.reason;
     if (publicationScheduleResult.status === 'rejected')
       throw publicationScheduleResult.reason;
+    if (governedActivationResult.status === 'rejected')
+      throw governedActivationResult.reason;
+    if (taxonomyMergeReconcileResult.status === 'rejected')
+      throw taxonomyMergeReconcileResult.reason;
     if (alertResult.status === 'rejected') throw alertResult.reason;
   },
 } satisfies ExportedHandler<AsyncWorkerBindings>;

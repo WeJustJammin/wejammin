@@ -1,3 +1,4 @@
+import { forbiddenDetails } from './capability-details';
 import { mediaTypeDetails } from './media-type-details';
 import type {
   LocaleVariantRequest,
@@ -14,6 +15,9 @@ import type {
   CmsLocaleResult,
   CmsLocaleStatus,
 } from './locale-routes-types';
+
+/** D12 machine reason of the 409 for a request that would create a 33rd locale variant. */
+export const LOCALE_LIMIT_REACHED = 'locale_limit_reached';
 
 export const ERROR_CODES: Readonly<Record<CmsLocaleStatus, string>> = {
   400: 'INVALID_REQUEST',
@@ -65,10 +69,7 @@ export const safeDetails = (
   if (typeof source !== 'object' || source === null || Array.isArray(source))
     return {};
   const details = source as Readonly<Record<string, unknown>>;
-  if (status === 403)
-    return details.reasonCode === 'CAPABILITY_REQUIRED'
-      ? { reasonCode: 'CAPABILITY_REQUIRED' }
-      : {};
+  if (status === 403) return forbiddenDetails('CMS-03C-04', details);
   if (status === 409) {
     const output: Record<string, unknown> = {};
     for (const key of ['expectedVersion', 'currentVersion'] as const)
@@ -77,6 +78,11 @@ export const safeDetails = (
         /^[1-9]\d{0,18}$/u.test(details[key])
       )
         output[key] = details[key];
+    // D12: the 33rd locale variant names only its machine reason.
+    if (details.reasonCode === LOCALE_LIMIT_REACHED) {
+      output.reasonCode = LOCALE_LIMIT_REACHED;
+      return output;
+    }
     // OD-4: only a well-formed, bounded active chain may accompany the reason.
     const mismatch = LocaleFallbackChainMismatchDetailsSchema.safeParse({
       reasonCode: details.reasonCode,
@@ -105,13 +111,13 @@ export const safeDetails = (
     return output;
   }
   if (status === 502 || status === 503 || status === 504)
-    return { dependencyClass: 'cms_composition', retryable: status !== 502 };
+    return { dependencyClass: 'cms_composition', retryable: true };
   return {};
 };
 
 export const validRate = (
   rate: unknown,
-  limit: 60 | 120,
+  limit: 60 | 120 | 300 | 600,
 ): rate is CmsLocaleRateDecision =>
   typeof rate === 'object' &&
   rate !== null &&

@@ -23,6 +23,7 @@ import {
   standardMutationSteps,
   type HttpState,
 } from '../be00-order.test-support';
+import { headersBeforeAuthorization } from '../be00-header-order.test-support';
 
 describe('CMS-03C-05 admission gate', () => {
   it('enforces origin, path binding, media, validators, and CSRF before the port', async () => {
@@ -253,19 +254,21 @@ describe('BE00 middleware order on the CMS related-content route', () => {
         'idempotency-key': 'related-content-0001',
         'if-match': '"1"',
       }),
-    steps: standardMutationSteps(
-      httpAdapter({
-        codes: {
-          forbidden: 'RELATED_CONTENT_FORBIDDEN',
-          badRequest: 'INVALID_REQUEST',
-          unauthenticated: 'UNAUTHENTICATED',
-          validation: 'RELATED_CONTENT_VALIDATION_FAILED',
-          rateLimited: 'RATE_LIMITED',
-        },
-        oversize: { status: 400, code: 'INVALID_REQUEST' },
-        badPath: PATH.replace(ENTRY_ID, 'not-a-uuid'),
-        badBody: {},
-      }),
+    steps: headersBeforeAuthorization(
+      standardMutationSteps(
+        httpAdapter({
+          codes: {
+            forbidden: 'RELATED_CONTENT_FORBIDDEN',
+            badRequest: 'INVALID_REQUEST',
+            unauthenticated: 'UNAUTHENTICATED',
+            validation: 'RELATED_CONTENT_VALIDATION_FAILED',
+            rateLimited: 'RATE_LIMITED',
+          },
+          oversize: { status: 400, code: 'INVALID_REQUEST' },
+          badPath: PATH.replace(ENTRY_ID, 'not-a-uuid'),
+          badBody: {},
+        }),
+      ),
     ),
     send: (state) =>
       Promise.resolve(

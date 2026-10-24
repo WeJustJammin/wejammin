@@ -7,6 +7,7 @@ import {
 } from '@wejammin/contracts';
 
 import { normalizeAuthProductionOptions } from './authentication/production-configuration';
+import { compositionRequestLog } from './cms-composition/observability-observation';
 import { defaultCmsEditorialLogger } from './cms-editorial-production-telemetry';
 import {
   cmsEditorialContextFor,
@@ -16,9 +17,10 @@ import {
   validateOriginList,
 } from './cms-editorial-production-session';
 import { createRateLimiter } from './cms-editorial-production-rate';
+import { mapCmsCompositionRpcFailure } from './cms-composition-production-failure';
+import { createLocaleVariantReader } from './cms-composition-production-locale-read';
 import {
   invalidResponse,
-  mapCmsEditorialRpcFailure,
   unavailable,
 } from './cms-editorial-production-errors';
 import {
@@ -34,6 +36,7 @@ import {
   type CmsEditorialProductionOptions,
   type CmsEditorialServerSessionContext,
 } from './cms-editorial-production-types';
+import { LOCALE_LIMIT_REACHED } from './cms-composition/locale-routes-support';
 import type {
   CmsLocaleDependencies,
   CmsLocalePortInput,
@@ -89,6 +92,9 @@ const mismatchDetails = (
     }
   }
   if (typeof source !== 'object' || source === null) return {};
+  // D12: the 33rd locale variant of an entry names only its machine reason.
+  if ((source as Record<string, unknown>).reasonCode === LOCALE_LIMIT_REACHED)
+    return { reasonCode: LOCALE_LIMIT_REACHED };
   const parsed = LocaleFallbackChainMismatchDetailsSchema.safeParse({
     reasonCode: (source as Record<string, unknown>).reasonCode,
     activeFallbackChain: (source as Record<string, unknown>)
@@ -102,9 +108,9 @@ const mismatchDetails = (
     : {};
 };
 const localeFailure = (
-  failure: ReturnType<typeof mapCmsEditorialRpcFailure>,
+  failure: ReturnType<typeof mapCmsCompositionRpcFailure>,
   payload: unknown,
-): ReturnType<typeof mapCmsEditorialRpcFailure> => {
+): ReturnType<typeof mapCmsCompositionRpcFailure> => {
   const code = LOCALE_CATALOG[failure.status];
   if (code === undefined) return failure;
   return failure.status === 409
@@ -231,7 +237,7 @@ export const createProductionCmsLocaleDependencies = (
           deadline.signal,
         );
         const error = localeFailure(
-          mapCmsEditorialRpcFailure(response.value.status, payload),
+          mapCmsCompositionRpcFailure(response.value.status, payload),
           payload,
         );
         return deadline.expired()
@@ -273,20 +279,21 @@ export const createProductionCmsLocaleDependencies = (
     resolveSession,
     rateLimit,
     authorLocale,
+    readLocaleVariant: createLocaleVariantReader(
+      configuration,
+      contexts,
+      deadlineMs,
+      maxResponseBytes,
+    ),
     telemetry: (event) => {
       logger.info(
-        {
+        compositionRequestLog(event, {
           eventName: 'cms.composition.locale.request',
-          operation: 'cms.composition.locale.author',
-          requestId: event.requestId,
-          outcome: event.outcome,
-          durationMs: event.durationMs,
-          attributes: {
-            actor_class: event.actorClass,
-            status: event.status,
-            runbook: 'cms-composition',
-          },
-        },
+          operation:
+            event.operationId === 'cmsLocaleVariantRead'
+              ? 'cms.composition.locale.read'
+              : 'cms.composition.locale.author',
+        }),
         { samplingClass: 'always', highRisk: event.outcome !== 'success' },
       );
     },

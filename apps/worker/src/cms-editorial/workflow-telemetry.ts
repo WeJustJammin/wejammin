@@ -1,4 +1,8 @@
 import { metricKey } from '../content-schema-registry/route-metric-key';
+import {
+  noFallbackBlockMetrics,
+  type PreflightEntry,
+} from '../cms-composition/observability-no-fallback';
 import type { CmsEditorialError } from './types';
 
 /**
@@ -43,6 +47,27 @@ const refusedPreflight = (
         category: entry.category,
         outcome: entry.outcome,
       }))
+    : [];
+};
+
+/** The preflight members a refusal published, with the reason token each carried. */
+const publishedPreflight = (
+  error: CmsEditorialError | undefined,
+): readonly PreflightEntry[] => {
+  const entries = error?.details?.preflight;
+  return Array.isArray(entries)
+    ? entries.map(
+        (entry: {
+          category: string;
+          outcome: string;
+          reasonCode?: unknown;
+        }) => ({
+          category: entry.category,
+          outcome: entry.outcome,
+          reason:
+            typeof entry.reasonCode === 'string' ? entry.reasonCode : null,
+        }),
+      )
     : [];
 };
 
@@ -99,6 +124,9 @@ export const workflowMetrics = (
   if (reason === 'publication_conflict')
     metrics.cms_publication_lineage_conflict_total = 1;
   const phase = PREFLIGHT_PHASE[operationId];
+  // P2-S12-AC-051: a failed `locale` category counts a blocking `cms.locale.no_fallback_gate` evaluation.
+  if (phase !== undefined)
+    Object.assign(metrics, noFallbackBlockMetrics(publishedPreflight(error)));
   if (phase !== undefined)
     for (const result of [
       ...refusedPreflight(error),

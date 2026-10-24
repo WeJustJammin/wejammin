@@ -38,6 +38,29 @@ and, on the last delivery, rolls an in-flight plan back
 (`claimed-schema-migration-preparation-exhaustion.ts`). A preparation completes inside
 the four deliveries for at most `256 x maxBatchesPerInvocation` source rows.
 
+`cms.taxonomy.merge_converge` (BE03c 1334) is the second family whose callback gets the delivery context
+(`async-runtime-job-delivery.ts` `CONTEXT_JOB_TYPES`), but no lease control. Its effect
+(`cms-taxonomy-merge-converge-effect.ts`, names in `cms-taxonomy-merge-converge-names.ts`, the one RPC door in
+`cms-taxonomy-merge-converge-rpc.ts`) fences on the claim receipt (`claimedLease.version`, the lease token), calls
+`platform_api.cms_run_taxonomy_merge_converge` without `batch`, and settles the job `succeeded` (the database refuses a
+succeeded outcome without a result reference, so it names the continuation job the SQL already requested, else the job
+itself) or `failed`. It never answers `queued` or manual review: the redelivered envelope carries the creation version,
+which the generic dispatch skips as stale once the claim advanced the job, so a re-queued job would be parked. A
+transient fault is retried inside the invocation (three attempts, 15 s then 60 s pauses of the BE00 retry schedule, each
+plus 0-10 % bounded jitter from an injectable random seam, worst case 127.5 s of the 240 s budget), a refusal that cannot
+change fails the job at once. The dispatcher (`convergeTaxonomyMerge`) settles any other answer as
+`MERGE_CONVERGE_OUTCOME_UNMAPPED`. Every delivery logs one event: the dispatcher guard (effect not wired, threw, or
+answered outside the closed set) logs the same failed event and metric as the effect's own failures.
+The registered error codes, the alert and the recovery of a failed job are in the runbook
+`docs/runbooks/platform/cms-taxonomy-merge-converge.md`.
+
+`cms-taxonomy-merge-reconcile-sweep.ts` is that recovery (owner decision DEC-194, BE03c "Merge convergence recovery"):
+one scheduled tick makes one `platform_api.cms_reconcile_taxonomy_merge_converge()` call (no argument, `service_role`
+only) and parses the answer `{ requested }` strictly (an integer count, no ids). The database owns every rule (a failed
+job, remaining work, no live job, a key derived from the failed job's id, 15 minutes, 3 consecutive failed
+generations); the Worker never retries inside the tick and logs the count only. It is registered in `index.ts` beside
+the other CMS sweeps and the import-graph test pins the entrypoint as its only importer.
+
 `cms-publication-schedule-sweep.ts` runs the CMS-03B-20 tick under one 15,000 ms
 job deadline shared by the claim and every execute; no schedule is started after
 it. `cms-publication-schedule-sweep-evidence.ts` computes each claim's
@@ -47,6 +70,15 @@ nothing), recomputes it and executes the same claim again under the same lease,
 at most twice more. The sweep learns of that refusal from the RPC transport's
 typed `AsyncRpcRefusalError` (a 4xx `P0001` identifier-shaped token; no other
 part of an error body ever crosses).
+
+`cms-governed-activation-sweep.ts` runs the CMS-03C-19 tick (BE00 job type
+`cms.governed_activation.execute`) the same way: one 15,000 ms job deadline, a claim
+of at most 25, then each execute with the schedule id, the immutable REVIEW version
+of the claim (not the advancing schedule version) and the lease. It computes no
+evidence; the database rechecks the review, dependencies and canonical sources and
+blocks a schedule it cannot activate with a closed reason. `cms-governed-activation-rpc.ts`
+is its only door to the two RPCs; `cms-schedule-sweep-support.ts` holds the log
+helpers (hashes, retry, manual review) a schedule sweep shares.
 
 ## Ownership
 
@@ -85,7 +117,8 @@ the shipped sources with the TypeScript parser (value and type-only `import`,
 edges) and `importersOfModule(root, module)` returns the runtime and type-only
 importers. `import-graph.test.ts` proves the helper on a throwaway tree;
 `cms-publication-schedule-import-graph.test.ts` pins CMS-03B-20 (the sweep port,
-the sweep and its RPC-name constants) and `cms-editorial-principals*.test.ts`
+the sweep and its RPC-name constants), `cms-governed-activation-import-graph.test.ts`
+pins CMS-03C-19 the same way and `cms-editorial-principals*.test.ts`
 pin the recheck and takedown seams from the allow-lists in
 `cms-editorial-principal-boundaries.test-support.ts`. To protect a new port, add
 its allow-list there and assert it with `importersOfModule`; do not grep for

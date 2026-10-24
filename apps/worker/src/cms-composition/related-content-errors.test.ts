@@ -89,7 +89,7 @@ describe('CMS-03C-05 port failure mapping', () => {
     expect(unauthorized.status).toBe(403);
     expect(await unauthorized.json()).toMatchObject({
       code: 'RELATED_CONTENT_FORBIDDEN',
-      details: { reasonCode: 'CAPABILITY_REQUIRED' },
+      details: { reasonCode: 'capability_missing' },
     });
     expect(actCalls).toBe(0);
   });
@@ -230,7 +230,7 @@ describe('CMS-03C-05 port failure mapping', () => {
     });
   });
 
-  it('treats 502 port failures as non-retryable dependency errors', async () => {
+  it('treats 502 port failures as retryable dependency errors (BE00 172)', async () => {
     const response = await createCmsRelatedContentApp(
       dependencies({
         actRelatedContent: async () => ({
@@ -244,7 +244,7 @@ describe('CMS-03C-05 port failure mapping', () => {
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({
       code: 'DEPENDENCY_UNAVAILABLE',
-      details: { dependencyClass: 'cms_composition', retryable: false },
+      details: { dependencyClass: 'cms_composition', retryable: true },
     });
   });
 

@@ -69,7 +69,9 @@ describe('[P2-S11-AC-113] the outbox relay claim of the review recheck source ev
 
   it.each([
     ['cms.schema.activated.v1', 'cms_schema'],
-    ['cms.localization.changed.v1', 'cms_locale_variant'],
+    // The former aggregate (Slice 11 content entry) is refused at the relay: a legacy row drains into
+    // the poison path, never into the consumer (root ruling 1, aggregate `cms_locale_variant`).
+    ['cms.localization.changed.v1', 'cms_content_entry'],
     ['cms.block.lifecycle.changed.v1', 'cms_block'],
   ] as const)(
     'refuses %s on an aggregate other than the producer uses (%s)',

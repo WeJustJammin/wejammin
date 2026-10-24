@@ -7,12 +7,20 @@ import { cmsSchemaMigrationWorkerId } from './cms-schema-migration-worker-id';
 import { createProductionCmsTemplateDependencies } from './cms-composition-production';
 import { createProductionCmsLocaleDependencies } from './cms-composition-production-locale';
 import { createProductionCmsPatternInstanceDependencies } from './cms-composition-production-pattern';
+import { createProductionCmsPatternDefinitionDependencies } from './cms-composition-production-pattern-definition';
+import { createProductionCmsPatternUpdateDependencies } from './cms-composition-production-pattern-update';
+import { createProductionCmsGovernedReviewDependencies } from './cms-composition-production-governed-review';
 import { createProductionCmsRelatedContentDependencies } from './cms-composition-production-related';
 import { createProductionCmsTaxonomyDependencies } from './cms-composition-production-taxonomy';
+import { createProductionCmsTaxonomyDefinitionDependencies } from './cms-composition-production-taxonomy-definition';
 import type { CmsLocaleDependencies } from './cms-composition/locale-routes';
 import type { CmsPatternInstanceDependencies } from './cms-composition/pattern-instance-routes';
+import type { CmsPatternDefinitionDependencies } from './cms-composition/pattern-definition-ports';
+import type { CmsPatternUpdateDependencies } from './cms-composition/pattern-update-ports';
+import type { CmsGovernedReviewDependencies } from './cms-composition/governed-review-ports';
 import type { CmsRelatedContentDependencies } from './cms-composition/related-content-routes';
 import type { CmsTaxonomyDependencies } from './cms-composition/taxonomy-routes';
+import type { CmsTaxonomyDefinitionDependencies } from './cms-composition/taxonomy-definition-shared';
 import type { CmsTemplateDependencies } from './cms-composition/template-routes';
 import { createProductionCmsEditorialDependencies } from './cms-editorial-production';
 import type { CmsEditorialProductionOptions } from './cms-editorial-production-types';
@@ -69,6 +77,10 @@ export type ProductionCmsCompositionDependencies = Readonly<{
   cmsPatternInstance: CmsPatternInstanceDependencies;
   cmsTaxonomy: CmsTaxonomyDependencies;
   cmsRelatedContent: CmsRelatedContentDependencies;
+  cmsPatternDefinition: CmsPatternDefinitionDependencies;
+  cmsPatternUpdate: CmsPatternUpdateDependencies;
+  cmsTaxonomyDefinition: CmsTaxonomyDefinitionDependencies;
+  cmsGovernedReview: CmsGovernedReviewDependencies;
 }>;
 
 export const migrationQueueOutcome = (
@@ -260,5 +272,13 @@ export const createProductionCmsCompositionDependencies = (
     cmsTaxonomy: createProductionCmsTaxonomyDependencies(cmsEditorialOptions),
     cmsRelatedContent:
       createProductionCmsRelatedContentDependencies(cmsEditorialOptions),
+    cmsPatternDefinition:
+      createProductionCmsPatternDefinitionDependencies(cmsEditorialOptions),
+    cmsPatternUpdate:
+      createProductionCmsPatternUpdateDependencies(cmsEditorialOptions),
+    cmsTaxonomyDefinition:
+      createProductionCmsTaxonomyDefinitionDependencies(cmsEditorialOptions),
+    cmsGovernedReview:
+      createProductionCmsGovernedReviewDependencies(cmsEditorialOptions),
   };
 };

@@ -243,6 +243,8 @@ describe('production async entrypoint event consumers', () => {
     const { entrypoint, calls } = harness((operation) => {
       if (operation === 'auth_mfa_reconciling_age')
         return { count: 1, oldestAgeSeconds: 90 };
+      if (operation === 'cms_locale_observability_read')
+        return { fanoutRows: 0, staleFieldsAppended: 0, staleLegalFields: 0 };
       if (operation === 'claim_outbox_batch') return [];
       throw new Error(`unexpected ${operation}`);
     });
@@ -251,9 +253,11 @@ describe('production async entrypoint event consumers', () => {
       bindings,
       executionContext,
     );
+    // The locale read is the BE03c DEC-208 database-side observability sample on the same tick.
     expect(calls.map(rpcName).sort()).toEqual([
       'auth_mfa_reconciling_age',
       'claim_outbox_batch',
+      'cms_locale_observability_read',
     ]);
   });
 });

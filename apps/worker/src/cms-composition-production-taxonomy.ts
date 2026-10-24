@@ -1,42 +1,34 @@
-import { normalizeAuthProductionOptions } from './authentication/production-configuration';
+import { TaxonomyTermActionApiRequestSchema } from '@wejammin/contracts';
+
+import { compositionRequestLog } from './cms-composition/observability-observation';
 import { defaultCmsEditorialLogger } from './cms-editorial-production-telemetry';
 import {
   configuredOriginList,
-  createCmsEditorialSessionResolver,
   validateOriginList,
 } from './cms-editorial-production-session';
 import { createRateLimiter } from './cms-editorial-production-rate';
-import { unavailable } from './cms-editorial-production-errors';
+import type { CmsEditorialProductionOptions } from './cms-editorial-production-types';
+import { createTaxonomyTransport } from './cms-composition-production-taxonomy-context';
+import { curatorError } from './cms-composition/taxonomy-definition-shared';
 import {
-  MAX_DEFAULT_RESPONSE_BYTES,
-  type CmsEditorialProductionConfiguration,
-  type CmsEditorialProductionOptions,
-  type CmsEditorialServerSessionContext,
-} from './cms-editorial-production-types';
-import type { CmsTaxonomyDependencies } from './cms-composition/taxonomy-routes';
+  failure,
+  validTerm,
+  type CmsTaxonomyDependencies,
+} from './cms-composition/taxonomy-contracts';
 
 /**
- * The HTTP boundary is mounted, but no curator mutation is authorized until
- * the canonical-overlap authority and named atomic RPC are specified and
- * deployed. A valid human request therefore fails closed after admission.
+ * CMS-03C-03 over `platform_api.cms_act_taxonomy_term` (BE03c 161, 1447, 1506). The route has already admitted the
+ * request in the BE00 order; this port re-derives the server authority for the RPC from a fresh session resolution of
+ * the same Request, repeats the strict transport contract (path, strict body, exact Idempotency-Key and quoted
+ * If-Match equal to `expectedVersion`) and sends one named call: no retry, since the atomic command is idempotent only
+ * through its reservation, and the bytes and key of a repeated request are the caller's. The answer must be the strict
+ * term the request addressed (`validTerm`); anything else is a retryable 502.
  */
 export const createProductionCmsTaxonomyDependencies = (
   options: CmsEditorialProductionOptions,
 ): CmsTaxonomyDependencies => {
-  const normalized = normalizeAuthProductionOptions({
-    environment: options.environment,
-    ...(options.fetchImpl === undefined
-      ? {}
-      : { fetchImpl: options.fetchImpl }),
-  });
-  const configuration: CmsEditorialProductionConfiguration = {
-    baseUrl: normalized.baseUrl,
-    secret: normalized.secret,
-    fetchImpl: normalized.fetchImpl,
-    maxResponseBytes: options.maxResponseBytes ?? MAX_DEFAULT_RESPONSE_BYTES,
-    now: options.now ?? Date.now,
-  };
-  const contexts = new WeakMap<Request, CmsEditorialServerSessionContext>();
+  const { configuration, resolveSession, rpc } =
+    createTaxonomyTransport(options);
   const logger =
     options.logger ?? defaultCmsEditorialLogger(options.environment);
   return {
@@ -46,27 +38,51 @@ export const createProductionCmsTaxonomyDependencies = (
       Error,
     ),
     now: configuration.now,
-    resolveSession: createCmsEditorialSessionResolver(
-      options,
-      configuration,
-      contexts,
-    ),
+    resolveSession,
     rateLimit: createRateLimiter(options),
-    actTerm: async () => unavailable('cms_composition'),
+    actTerm: async (input, signal) => {
+      const url = new URL(input.request.url);
+      const parsed = TaxonomyTermActionApiRequestSchema.safeParse({
+        taxonomyId: input.path.taxonomyId,
+        headers: {
+          contentType: 'application/json',
+          idempotencyKey: input.idempotencyKey,
+          ifMatch: `"${input.ifMatch}"`,
+        },
+        body: input.body,
+      });
+      if (
+        input.operationId !== 'CMS-03C-03' ||
+        input.request.method !== 'POST' ||
+        url.pathname !==
+          `/api/v1/cms/taxonomies/${input.path.taxonomyId}/terms/actions` ||
+        url.search !== '' ||
+        !parsed.success ||
+        parsed.data.body.taxonomyId !== input.path.taxonomyId ||
+        input.request.headers.get('idempotency-key') !== input.idempotencyKey ||
+        input.request.headers.get('if-match') !== `"${input.ifMatch}"`
+      )
+        return failure(400);
+      const authority = curatorError(input.session);
+      if (authority !== null) return authority;
+      return rpc(
+        input,
+        {
+          ...parsed.data.body,
+          idempotencyKey: input.idempotencyKey,
+          ifMatch: input.ifMatch,
+        },
+        (value): value is import('@wejammin/contracts').TaxonomyTermResource =>
+          validTerm(value, parsed.data.body),
+        signal,
+      );
+    },
     telemetry: (event) => {
       logger.info(
-        {
+        compositionRequestLog(event, {
           eventName: 'cms.composition.taxonomy.request',
           operation: 'cms.composition.taxonomy.act',
-          requestId: event.requestId,
-          outcome: event.outcome,
-          durationMs: event.durationMs,
-          attributes: {
-            actor_class: event.actorClass,
-            status: event.status,
-            runbook: 'cms-composition',
-          },
-        },
+        }),
         { samplingClass: 'always', highRisk: event.outcome !== 'success' },
       );
     },

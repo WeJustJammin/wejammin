@@ -22,6 +22,7 @@ import {
 import { validHumanSession } from '../cms-editorial/admission-identity';
 import type { CmsEditorialSession } from '../cms-editorial/types';
 
+import { observeRequest } from './observability-observation';
 import {
   DEADLINE_MS,
   dependencyUnavailable,
@@ -120,14 +121,27 @@ export const registerCmsTemplateVersionRoutes = <E extends Env>(
       );
       if (!parsedBody.ok) return respondError(parsedBody);
       const body = parsedBody.value;
+      // BE00 step 6 (line 386) and BE03c 408: the exact Idempotency-Key and optional quoted
+      // If-Match are validated before authorization, so a malformed header consumes no quota.
+      const parsedHeaders = TemplateVersionHeadersSchema.safeParse({
+        contentType: 'application/json',
+        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
+        ifMatch: request.headers.get('if-match') ?? undefined,
+      });
+      if (!parsedHeaders.success) return respondError(failure(400));
+      const quoted = parsedHeaders.data.ifMatch;
+      const ifMatch = quoted === undefined ? null : quoted.slice(1, -1);
+      if (
+        (body.expectedVersion === null) !== (ifMatch === null) ||
+        (ifMatch !== null && body.expectedVersion !== ifMatch)
+      )
+        return respondError(failure(400));
       // BE00 step 7: capability, then quota.
       if (
         session.value.actingPartyId === null ||
         !session.value.capabilities.includes('cms.template_designer')
       )
-        return respondError(
-          failure(403, { reasonCode: 'CAPABILITY_REQUIRED' }),
-        );
+        return respondError(failure(403, { reasonCode: 'capability_missing' }));
 
       for (const rateScope of ['user', 'party'] as const) {
         if (signal.aborted) return respondError(failure(504, {}, 15));
@@ -174,21 +188,6 @@ export const registerCmsTemplateVersionRoutes = <E extends Env>(
       }
 
       if (signal.aborted) return respondError(failure(504, {}, 15));
-      // BE00 step 8: exact Idempotency-Key and optional quoted If-Match.
-      const parsedHeaders = TemplateVersionHeadersSchema.safeParse({
-        contentType: 'application/json',
-        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
-        ifMatch: request.headers.get('if-match') ?? undefined,
-      });
-      if (!parsedHeaders.success) return respondError(failure(400));
-      const quoted = parsedHeaders.data.ifMatch;
-      const ifMatch = quoted === undefined ? null : quoted.slice(1, -1);
-      if (
-        (body.expectedVersion === null) !== (ifMatch === null) ||
-        (ifMatch !== null && body.expectedVersion !== ifMatch)
-      )
-        return respondError(failure(400));
-
       let result: CmsTemplateResult<TemplateVersionResource>;
       try {
         result = await dependencies.defineTemplate(
@@ -249,6 +248,12 @@ export const registerCmsTemplateVersionRoutes = <E extends Env>(
                 : 'failure',
           actorClass: 'human',
           durationMs: Math.max(0, dependencies.now() - startedAt),
+          observation: observeRequest(
+            request,
+            requestId,
+            OPERATION_ID,
+            response.status,
+          ),
         }),
       ).catch(() => undefined);
     } catch {

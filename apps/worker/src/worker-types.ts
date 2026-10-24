@@ -19,6 +19,10 @@ import type { CmsTemplateDependencies } from './cms-composition/template-routes'
 import type { CmsLocaleDependencies } from './cms-composition/locale-routes';
 import type { CmsTaxonomyDependencies } from './cms-composition/taxonomy-routes';
 import type { CmsPatternInstanceDependencies } from './cms-composition/pattern-instance-routes';
+import type { CmsPatternDefinitionDependencies } from './cms-composition/pattern-definition-ports';
+import type { CmsPatternUpdateDependencies } from './cms-composition/pattern-update-ports';
+import type { CmsGovernedReviewDependencies } from './cms-composition/governed-review-ports';
+import type { CmsTaxonomyDefinitionDependencies } from './cms-composition/taxonomy-definition-shared';
 import type { CmsRelatedContentDependencies } from './cms-composition/related-content-routes';
 import type { IdentityAuthorityDependencies } from './identity-authority/types';
 import type { ProfileOwnershipDependencies } from './profile-ownership/types';
@@ -81,6 +85,10 @@ export type WorkerDependencies = {
   cmsTaxonomy?: CmsTaxonomyDependencies;
   cmsPatternInstance?: CmsPatternInstanceDependencies;
   cmsRelatedContent?: CmsRelatedContentDependencies;
+  cmsPatternDefinition?: CmsPatternDefinitionDependencies;
+  cmsPatternUpdate?: CmsPatternUpdateDependencies;
+  cmsTaxonomyDefinition?: CmsTaxonomyDefinitionDependencies;
+  cmsGovernedReview?: CmsGovernedReviewDependencies;
   identityAuthority?: IdentityAuthorityDependencies;
   profileOwnership?: ProfileOwnershipDependencies;
   profilePortfolio?: ProfilePortfolioDependencies;

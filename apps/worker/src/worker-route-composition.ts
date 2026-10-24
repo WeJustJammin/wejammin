@@ -14,6 +14,11 @@ import { registerCmsTemplateRoutes } from './cms-composition/template-routes';
 import { registerCmsLocaleRoutes } from './cms-composition/locale-routes';
 import { registerCmsTaxonomyRoutes } from './cms-composition/taxonomy-routes';
 import { registerCmsPatternInstanceRoutes } from './cms-composition/pattern-instance-routes';
+import { registerCmsPatternDefinitionRoutes } from './cms-composition/pattern-definition-routes';
+import { registerCmsPatternLatestRoutes } from './cms-composition/pattern-definition-latest-routes';
+import { registerCmsPatternUpdateRoutes } from './cms-composition/pattern-update-routes';
+import { registerCmsGovernedReviewRoutes } from './cms-composition/governed-review-routes';
+import { registerCmsTaxonomyDefinitionRoutes } from './cms-composition/taxonomy-definition-routes';
 import { registerCmsRelatedContentRoutes } from './cms-composition/related-content-routes';
 import { registerCmsTemplateDetailRoutes } from './cms-composition/template-detail-routes';
 import { registerJobStatusRoute } from './jobs/job-status';
@@ -236,6 +241,23 @@ export const registerWorkerRoutes = (
   }
   if (dependencies.cmsRelatedContent !== undefined) {
     registerCmsRelatedContentRoutes(app, dependencies.cmsRelatedContent);
+  }
+  // The selector must precede `/api/v1/cms/patterns/:patternKey`: `selector` is a reserved pattern key.
+  if (dependencies.cmsPatternUpdate !== undefined) {
+    registerCmsPatternUpdateRoutes(app, dependencies.cmsPatternUpdate);
+  }
+  if (dependencies.cmsPatternDefinition !== undefined) {
+    registerCmsPatternDefinitionRoutes(app, dependencies.cmsPatternDefinition);
+    registerCmsPatternLatestRoutes(app, dependencies.cmsPatternDefinition);
+  }
+  if (dependencies.cmsTaxonomyDefinition !== undefined) {
+    registerCmsTaxonomyDefinitionRoutes(
+      app,
+      dependencies.cmsTaxonomyDefinition,
+    );
+  }
+  if (dependencies.cmsGovernedReview !== undefined) {
+    registerCmsGovernedReviewRoutes(app, dependencies.cmsGovernedReview);
   }
   registerIdentityAuthorityRoutes(app, dependencies);
   registerProfileOwnershipRoutes(app, dependencies);

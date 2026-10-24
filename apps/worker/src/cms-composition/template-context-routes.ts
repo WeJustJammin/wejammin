@@ -9,6 +9,7 @@ import { checkOrigin } from '../cms-editorial/admission-headers';
 import { validHumanSession } from '../cms-editorial/admission-identity';
 import type { CmsEditorialSession } from '../cms-editorial/types';
 
+import { observeRequest } from './observability-observation';
 import {
   DEADLINE_MS,
   dependencyUnavailable,
@@ -79,9 +80,7 @@ export const registerCmsTemplateContextRoutes = <E extends Env>(
         session.value.actingPartyId === null ||
         !session.value.capabilities.includes('cms.template_designer')
       )
-        return respondError(
-          failure(403, { reasonCode: 'CAPABILITY_REQUIRED' }),
-        );
+        return respondError(failure(403, { reasonCode: 'capability_missing' }));
 
       for (const rateScope of ['user', 'party'] as const) {
         const limit = 60;
@@ -187,6 +186,12 @@ export const registerCmsTemplateContextRoutes = <E extends Env>(
                 : 'failure',
           actorClass: 'human',
           durationMs: Math.max(0, dependencies.now() - startedAt),
+          observation: observeRequest(
+            request,
+            requestId,
+            CONTEXT_OPERATION_ID,
+            response.status,
+          ),
         }),
       ).catch(() => undefined);
     } catch {

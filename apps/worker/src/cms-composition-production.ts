@@ -6,6 +6,7 @@ import {
 } from '@wejammin/contracts';
 
 import { normalizeAuthProductionOptions } from './authentication/production-configuration';
+import { compositionRequestLog } from './cms-composition/observability-observation';
 import { defaultCmsEditorialLogger } from './cms-editorial-production-telemetry';
 import {
   cmsEditorialContextFor,
@@ -17,9 +18,9 @@ import {
 import { createRateLimiter } from './cms-editorial-production-rate';
 import {
   invalidResponse,
-  mapCmsEditorialRpcFailure,
   unavailable,
 } from './cms-editorial-production-errors';
+import { mapCmsCompositionRpcFailure } from './cms-composition-production-failure';
 import { mapTemplateRpcFailure } from './cms-composition-production-template-errors';
 import {
   createDeadline,
@@ -137,7 +138,7 @@ export const createProductionCmsTemplateDependencies = (
       );
       if (!response.ok) return response;
       if (!response.value.ok) {
-        const error = mapCmsEditorialRpcFailure(
+        const error = mapCmsCompositionRpcFailure(
           response.value.status,
           await readRpcError(response.value, maxResponseBytes, deadline.signal),
         );
@@ -291,22 +292,14 @@ export const createProductionCmsTemplateDependencies = (
     defineTemplate,
     telemetry: (event) => {
       logger.info(
-        {
+        compositionRequestLog(event, {
           eventName: 'cms.composition.template.request',
           operation: {
             'CMS-03C-01': 'cms.composition.template.define',
             cmsTemplateContextRead: 'cms.composition.template.context',
             cmsTemplateLatestRead: 'cms.composition.template.read_latest',
           }[event.operationId],
-          requestId: event.requestId,
-          outcome: event.outcome,
-          durationMs: event.durationMs,
-          attributes: {
-            actor_class: event.actorClass,
-            status: event.status,
-            runbook: 'cms-composition',
-          },
-        },
+        }),
         { samplingClass: 'always', highRisk: event.outcome !== 'success' },
       );
     },

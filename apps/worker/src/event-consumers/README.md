@@ -20,7 +20,8 @@ cannot be recorded the message is retried, never dropped. `registry.ts` routes b
 family (any version), so an unknown version still reaches its consumer.
 
 `reconciling-age.ts` is the BE01a reconciling-age gauge, sampled once per scheduled
-outbox-sweep tick; a failed sample is reported and never fails the sweep.
+outbox-sweep tick; a failed sample is reported and never fails the sweep. The DEC-208 locale
+observability sample (`../cms-composition/locale-observability.ts`) runs on the same tick under the same rule.
 
 ## Ownership
 
@@ -37,6 +38,7 @@ never treats an event as proof of permission.
 - `security-notifier*.ts`, `in-app-notification-provider.ts` – notifier, its RPC source, the provider seam, its breaker and the in-app store provider.
 - `capability-grant-consumer.ts` – grant consumer and its RPC source.
 - `reconciling-age.ts` – gauge probe and RPC port.
+- `../cms-composition/locale-observability.ts` – the DEC-208 scheduled locale fan-out/stale sample, composed in `production.ts` beside the reconciling-age probe.
 - `registry.ts`, `production.ts` – routing and production composition (called from `../production-async-entrypoint.ts`).
 
 ## Extension

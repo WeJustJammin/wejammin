@@ -1,9 +1,11 @@
 import type {
+  LocaleVariantRead,
   LocaleVariantRequest,
   LocaleVariantResource,
 } from '@wejammin/contracts';
 
 import type { CmsEditorialSession } from '../cms-editorial/types';
+import type { CompositionObservation } from './observability-observation';
 
 export type CmsLocaleStatus =
   400 | 401 | 403 | 404 | 409 | 415 | 422 | 429 | 500 | 502 | 503 | 504;
@@ -30,17 +32,40 @@ export type CmsLocalePortInput = Readonly<{
   ifMatch: string;
 }>;
 
-export type CmsLocaleRateInput = Readonly<{
-  operationId: 'CMS-03C-04';
+/**
+ * `cmsLocaleVariantRead` (DEC-205) carries the verified session and the two path members: no body, no
+ * precondition, no query. The database re-proves the entry visibility and edit assignment.
+ */
+export type CmsLocaleReadInput = Readonly<{
+  operationId: 'cmsLocaleVariantRead';
+  request: Request;
+  requestId: string;
+  session: CmsEditorialSession;
+  path: Readonly<{ entryId: string; locale: string }>;
+}>;
+
+type RateInputBase = Readonly<{
   request: Request;
   actorId: string;
   actingPartyId: string;
   principalClass: 'human';
-  rateClass: 'cms-locale-write';
   rateScope: 'user' | 'party';
-  limit: 60 | 120;
   windowSeconds: 60;
 }>;
+/** The write buckets are 60/120 per minute, the read buckets 300/600 (BE03c route registry). */
+export type CmsLocaleRateInput = RateInputBase &
+  (
+    | Readonly<{
+        operationId: 'CMS-03C-04';
+        rateClass: 'cms-locale-write';
+        limit: 60 | 120;
+      }>
+    | Readonly<{
+        operationId: 'cmsLocaleVariantRead';
+        rateClass: 'cms-locale-read';
+        limit: 300 | 600;
+      }>
+  );
 export type CmsLocaleRateDecision = Readonly<{
   allowed: boolean;
   limit: number;
@@ -48,12 +73,14 @@ export type CmsLocaleRateDecision = Readonly<{
   resetAt: number;
 }>;
 export type CmsLocaleTelemetry = Readonly<{
-  operationId: 'CMS-03C-04';
+  operationId: 'CMS-03C-04' | 'cmsLocaleVariantRead';
   requestId: string;
   status: number;
   outcome: 'success' | 'rejected' | 'failure';
   actorClass: 'human';
   durationMs: number;
+  /** BE03c Observability: the trace, counters and allowlisted log members of the request. */
+  observation?: CompositionObservation;
 }>;
 export type CmsLocaleDependencies = Readonly<{
   humanOrigins: readonly string[];
@@ -70,5 +97,9 @@ export type CmsLocaleDependencies = Readonly<{
     input: CmsLocalePortInput,
     signal: AbortSignal,
   ) => Promise<CmsLocaleResult<LocaleVariantResource>>;
+  readLocaleVariant: (
+    input: CmsLocaleReadInput,
+    signal: AbortSignal,
+  ) => Promise<CmsLocaleResult<LocaleVariantRead>>;
   telemetry: (event: CmsLocaleTelemetry) => void | Promise<void>;
 }>;

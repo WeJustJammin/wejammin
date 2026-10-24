@@ -38,6 +38,11 @@ original event identity and idempotency binding.
    at the default); a larger type ends `MIGRATION_RETRIES_EXHAUSTED` on delivery 4
    with its plan rolled back. Triage and the plan states are in the CMS publication
    runbook, "Preparation Job trigger".
+7. A `cms.taxonomy.merge_converge` job (a large CMS-03C-03 term merge) records `succeeded`
+   after each fenced batch (the database has already requested any continuation) or `failed`
+   with one registered code, never `queued`: a re-queued ordinary job is skipped as stale once
+   its claim advanced the version. Triage, the code table, the metric and the DEC-194 recovery
+   sweep (a bounded scheduled re-request of a failed job) are in [CMS taxonomy merge convergence job](./cms-taxonomy-merge-converge.md).
 
 ## Restore fence and recovery
 

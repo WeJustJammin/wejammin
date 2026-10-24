@@ -1,10 +1,12 @@
 import {
-  CompositionInstanceResourceSchema,
   PatternInstanceHeadersSchema,
   PatternInstanceRequestSchema,
+  PatternPlacementResourceSchema,
+  QuotedVersionSchema,
 } from '@wejammin/contracts';
 
 import { normalizeAuthProductionOptions } from './authentication/production-configuration';
+import { compositionRequestLog } from './cms-composition/observability-observation';
 import { defaultCmsEditorialLogger } from './cms-editorial-production-telemetry';
 import {
   cmsEditorialContextFor,
@@ -16,10 +18,9 @@ import {
 import { createRateLimiter } from './cms-editorial-production-rate';
 import {
   invalidResponse,
-  isRecord,
-  mapCmsEditorialRpcFailure,
   unavailable,
 } from './cms-editorial-production-errors';
+import { placementRpcError } from './cms-composition-production-pattern-errors';
 import {
   createDeadline,
   fetchWithDeadline,
@@ -34,15 +35,19 @@ import {
   type CmsEditorialServerSessionContext,
 } from './cms-editorial-production-types';
 import type {
+  CmsPatternInstancePlacementResult,
   CmsPatternInstanceDependencies,
   CmsPatternInstancePortInput,
-  CmsPatternInstanceResult,
 } from './cms-composition/pattern-instance-routes';
+import {
+  CMS_PLACEMENT_MAX_RESPONSE_BYTES,
+  validPlacement,
+} from './cms-composition/pattern-instance-contracts';
 import { supabaseRpcHeaders } from './supabase-rpc-headers';
 
 const rejected = (
   status: 400 | 401 | 403 | 422,
-): CmsPatternInstanceResult<never> => ({
+): CmsPatternInstancePlacementResult => ({
   ok: false,
   status,
   code:
@@ -74,14 +79,18 @@ export const createProductionCmsPatternInstanceDependencies = (
       : { fetchImpl: options.fetchImpl }),
   });
   const deadlineMs = options.deadlineMs ?? DEFAULT_DEADLINE_MS;
-  const maxResponseBytes =
-    options.maxResponseBytes ?? MAX_DEFAULT_RESPONSE_BYTES;
+  const configuredResponseBytes =
+    options.maxResponseBytes ?? CMS_PLACEMENT_MAX_RESPONSE_BYTES;
+  const maxResponseBytes = Math.min(
+    configuredResponseBytes,
+    CMS_PLACEMENT_MAX_RESPONSE_BYTES,
+  );
   if (
     !Number.isSafeInteger(deadlineMs) ||
     deadlineMs < 1 ||
     deadlineMs > DEFAULT_DEADLINE_MS ||
-    !Number.isSafeInteger(maxResponseBytes) ||
-    maxResponseBytes < 1
+    !Number.isSafeInteger(configuredResponseBytes) ||
+    configuredResponseBytes < 1
   )
     throw new Error('Invalid CMS composition production configuration.');
   const configuration: CmsEditorialProductionConfiguration = {
@@ -109,11 +118,7 @@ export const createProductionCmsPatternInstanceDependencies = (
   const insertPattern = async (
     input: CmsPatternInstancePortInput,
     signal: AbortSignal,
-  ): Promise<
-    CmsPatternInstanceResult<
-      import('@wejammin/contracts').CompositionInstanceResource
-    >
-  > => {
+  ): Promise<CmsPatternInstancePlacementResult> => {
     if (input.operationId !== 'CMS-03C-02') return rejected(400);
     const body = PatternInstanceRequestSchema.safeParse(input.body);
     const headers = PatternInstanceHeadersSchema.safeParse({
@@ -172,19 +177,10 @@ export const createProductionCmsPatternInstanceDependencies = (
       if (!response.value.ok) {
         const rpcError = await readRpcError(
           response.value,
-          maxResponseBytes,
+          Math.min(maxResponseBytes, MAX_DEFAULT_RESPONSE_BYTES),
           deadline.signal,
         );
-        if (
-          response.value.status === 404 &&
-          isRecord(rpcError) &&
-          rpcError.code === 'PGRST202'
-        )
-          return unavailable('cms_composition');
-        const failure = mapCmsEditorialRpcFailure(
-          response.value.status,
-          rpcError,
-        );
+        const failure = placementRpcError(response.value.status, rpcError);
         const code = COMPOSITION_CATALOG[failure.status];
         const error = code === undefined ? failure : { ...failure, code };
         return deadline.expired()
@@ -209,11 +205,14 @@ export const createProductionCmsPatternInstanceDependencies = (
           message: 'Deadline exceeded.',
         };
       if (!parsed.ok) return parsed;
-      const resource = CompositionInstanceResourceSchema.safeParse(
-        parsed.value,
+      const placement = PatternPlacementResourceSchema.safeParse(parsed.value);
+      if (!placement.success) return invalidResponse();
+      const etag = QuotedVersionSchema.safeParse(
+        response.value.headers.get('etag'),
       );
-      return resource.success
-        ? { ok: true, value: resource.data }
+      if (!etag.success) return invalidResponse();
+      return validPlacement(placement.data, body.data, etag.data)
+        ? { ok: true, value: placement.data, etag: etag.data }
         : invalidResponse();
     } catch {
       return unavailable('cms_composition');
@@ -230,18 +229,10 @@ export const createProductionCmsPatternInstanceDependencies = (
     insertPattern,
     telemetry: (event) => {
       logger.info(
-        {
+        compositionRequestLog(event, {
           eventName: 'cms.composition.pattern.request',
           operation: 'cms.composition.pattern.insert',
-          requestId: event.requestId,
-          outcome: event.outcome,
-          durationMs: event.durationMs,
-          attributes: {
-            actor_class: event.actorClass,
-            status: event.status,
-            runbook: 'cms-composition',
-          },
-        },
+        }),
         { samplingClass: 'always', highRisk: event.outcome !== 'success' },
       );
     },

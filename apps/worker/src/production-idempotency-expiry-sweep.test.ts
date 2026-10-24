@@ -35,6 +35,12 @@ const operationalResponse = (url: string): Response | undefined => {
   // (nothing is due here).
   if (url.includes('/rest/v1/rpc/cms_claim_due_publication_schedules'))
     return Response.json([]);
+  // The Slice 12 CMS-03C-19 governed activation claim shares every tick as well (nothing is due).
+  if (url.includes('/rest/v1/rpc/cms_claim_due_governed_activations'))
+    return Response.json([]);
+  // The DEC-194 merge convergence recovery sweep shares every tick too (nothing to re-request).
+  if (url.includes('/rest/v1/rpc/cms_reconcile_taxonomy_merge_converge'))
+    return Response.json({ requested: 0 });
   if (url.includes('/rest/v1/rpc/cms_get_operational_state_snapshot'))
     return Response.json({});
   if (url.endsWith('/graphql'))

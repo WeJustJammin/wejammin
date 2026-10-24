@@ -16,6 +16,7 @@ import {
   standardMutationSteps,
   type HttpState,
 } from '../be00-order.test-support';
+import { headersBeforeAuthorization } from '../be00-header-order.test-support';
 
 const path = '/api/v1/cms/templates/versions';
 const origin = 'https://cms-console.example.test';
@@ -178,6 +179,8 @@ describe('CMS-03C-01 protected template-version route', () => {
       outcome: 'success',
       actorClass: 'human',
       durationMs: 0,
+      // BE03c Observability (P2-S12-AC-263/264): the request event also carries its observation.
+      observation: expect.any(Object),
     });
   });
 
@@ -906,19 +909,21 @@ describe('BE00 middleware order on the CMS template version route', () => {
       }),
     // The template command route registers no query member and ignores a query
     // string today, so the strict-query step does not apply to it.
-    steps: standardMutationSteps(
-      httpAdapter({
-        codes: {
-          forbidden: 'TEMPLATE_FORBIDDEN',
-          badRequest: 'INVALID_REQUEST',
-          unauthenticated: 'UNAUTHENTICATED',
-          validation: 'TEMPLATE_VALIDATION_FAILED',
-          rateLimited: 'RATE_LIMITED',
-        },
-        oversize: { status: 400, code: 'INVALID_REQUEST' },
-        badPath: null,
-        badBody: {},
-      }),
+    steps: headersBeforeAuthorization(
+      standardMutationSteps(
+        httpAdapter({
+          codes: {
+            forbidden: 'TEMPLATE_FORBIDDEN',
+            badRequest: 'INVALID_REQUEST',
+            unauthenticated: 'UNAUTHENTICATED',
+            validation: 'TEMPLATE_VALIDATION_FAILED',
+            rateLimited: 'RATE_LIMITED',
+          },
+          oversize: { status: 400, code: 'INVALID_REQUEST' },
+          badPath: null,
+          badBody: {},
+        }),
+      ),
     ).filter((step) => step.name !== 'strict query validation'),
     send: (state) =>
       Promise.resolve(

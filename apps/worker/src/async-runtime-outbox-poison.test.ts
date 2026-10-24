@@ -11,6 +11,7 @@ import {
   type AsyncRpcOperation,
 } from './async-runtime';
 import { parsePoisonedOutboxRow } from './async-runtime-outbox-poison';
+import { AGGREGATE_FOR } from './cms-editorial/review-recheck/review-recheck.test-support';
 
 /*
  * BE00 relay: an outbox row the Worker cannot turn into its queue envelope is POISON. It must
@@ -70,7 +71,16 @@ const poisonLocalization = (
     ...patch,
   });
 
+/** A well-formed localization event under the aggregate the producer uses (`cms_locale_variant`). */
 const validLocalization = (n: number) =>
+  row(n, {
+    event_type: 'cms.localization.changed.v1',
+    aggregate_type: AGGREGATE_FOR['cms.localization.changed.v1'],
+    producer: 'cms.composition',
+  });
+
+/** A legacy Slice 11 row under the former `cms_content_entry` aggregate: the relay now refuses it as poison. */
+const legacyLocalization = (n: number) =>
   row(n, {
     event_type: 'cms.localization.changed.v1',
     aggregate_type: 'cms_content_entry',
@@ -161,6 +171,24 @@ describe('[P2-S11-AC-113] the outbox relay never lets one unparseable row block 
     expect(sent.map((body) => (body as { eventId: string }).eventId)).toEqual([
       id(3),
       id(4),
+    ]);
+  });
+
+  it('drains a legacy cms_content_entry localization row through the poison path, never to the queue', async () => {
+    const { result, calls, sent } = await sweep([
+      legacyLocalization(1),
+      validLocalization(2),
+    ]);
+    expect(result).toBe('completed');
+    expect(names(calls)).toEqual([
+      'claim',
+      `consumer_dead_letter_event:${id(1)}`,
+      `complete_outbox_event:${id(1)}`,
+      `send:${id(2)}`,
+      `complete_outbox_event:${id(2)}`,
+    ]);
+    expect(sent.map((body) => (body as { eventId: string }).eventId)).toEqual([
+      id(2),
     ]);
   });
 

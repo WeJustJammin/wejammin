@@ -4,6 +4,7 @@ import type {
   CmsRelatedContentDependencies,
   CmsRelatedContentError,
 } from './related-content-types';
+import { noteRefusal } from './observability-facts';
 import { safeDetails } from './related-content-details';
 import { ERROR_CODES, statusOf } from './related-content-response';
 
@@ -44,13 +45,16 @@ export const errorResponse = (
     headers.set('retry-after', String(error.retryAfterSeconds));
   extra?.forEach((value, key) => headers.set(key, value));
   const code = ERROR_CODES[status];
+  const details = safeDetails(status, error.details);
+  // BE03c Observability: the published refusal, reduced to its catalog code and closed members.
+  noteRefusal(request, status, details, code);
   return new Response(
     JSON.stringify(
       ApiErrorSchema.parse({
         code,
         message: `${code}: related-content operation rejected or unavailable.`,
         requestId,
-        details: safeDetails(status, error.details),
+        details,
       }),
     ),
     { status, headers },

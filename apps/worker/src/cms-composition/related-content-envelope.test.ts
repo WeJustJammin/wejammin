@@ -106,7 +106,7 @@ describe('CMS-03C-05 port envelope validation', () => {
     expect(nullParty.status).toBe(403);
     expect(await nullParty.json()).toMatchObject({
       code: 'RELATED_CONTENT_FORBIDDEN',
-      details: { reasonCode: 'CAPABILITY_REQUIRED' },
+      details: { reasonCode: 'capability_missing' },
     });
   });
 

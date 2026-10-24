@@ -3,6 +3,7 @@ import type {
   TaxonomyTermResource,
 } from '@wejammin/contracts';
 import { TaxonomyTermResourceSchema } from '@wejammin/contracts';
+import type { CompositionObservation } from './observability-observation';
 
 import type { CmsEditorialSession } from '../cms-editorial/types';
 
@@ -71,6 +72,8 @@ export type CmsTaxonomyTelemetry = Readonly<{
   outcome: 'success' | 'rejected' | 'failure';
   actorClass: 'human';
   durationMs: number;
+  /** BE03c Observability: the trace, counters and allowlisted log members of the request. */
+  observation?: CompositionObservation;
 }>;
 export type CmsTaxonomyDependencies = Readonly<{
   humanOrigins: readonly string[];
@@ -136,6 +139,13 @@ export const validRate = (
   Number.isSafeInteger(value.resetAt) &&
   value.resetAt >= 0;
 
+/**
+ * The CMS-03C-03 answer is the TERM row (`cms_term_resource`, 20261014120200), not the vocabulary: its `version` is the
+ * term's own row version (1 on create, a later one after every other action) and is unrelated to the active
+ * TaxonomyVersion `expectedVersion` the If-Match carries (BE03c 1380). `create` and `rename` apply the requested
+ * parent (D3); `alias`, `deprecate` and `merge` keep the stored one. A deprecated term can still be renamed or aliased
+ * (BE03c 1377), so those two accept `active` or `deprecated`; only `merge` names a successor, the requested survivor.
+ */
 export const validTerm = (
   value: unknown,
   body: TaxonomyTermActionRequest,
@@ -143,21 +153,24 @@ export const validTerm = (
   const parsed = TaxonomyTermResourceSchema.safeParse(value);
   if (!parsed.success) return false;
   const term = parsed.data;
+  const first = body.action === 'create';
+  const lifecycles: readonly string[] =
+    body.action === 'merge'
+      ? ['merged']
+      : body.action === 'deprecate'
+        ? ['deprecated']
+        : first
+          ? ['active']
+          : ['active', 'deprecated'];
   return (
     term.taxonomyId === body.taxonomyId &&
     term.id === term.termId &&
     term.termKey === body.termKey &&
-    term.parentId === body.parentId &&
-    term.successorId === body.survivorId &&
-    term.lifecycle ===
-      (body.action === 'merge'
-        ? 'merged'
-        : body.action === 'deprecate'
-          ? 'deprecated'
-          : 'active') &&
-    term.version ===
-      (body.action === 'create'
-        ? '1'
-        : String(BigInt(body.expectedVersion) + 1n))
+    (body.action === 'create' || body.action === 'rename'
+      ? term.parentId === body.parentId
+      : true) &&
+    term.successorId === (body.action === 'merge' ? body.survivorId : null) &&
+    lifecycles.includes(term.lifecycle) &&
+    (first ? term.version === '1' : BigInt(term.version) >= 2n)
   );
 };

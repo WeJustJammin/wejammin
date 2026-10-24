@@ -252,6 +252,7 @@ const evidence = {
 const type = (contentTypeVersionId: string): AuthoringContextType => ({
   contentTypeId: '70000000-0000-4000-8000-000000000007',
   contentTypeVersionId,
+  typeKey: 'article',
   label: 'Article',
   sourceLocale: 'en-US',
   defaultLocale: 'en-US',

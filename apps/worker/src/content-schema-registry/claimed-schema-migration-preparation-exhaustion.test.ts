@@ -3,6 +3,13 @@
  * failure, so a new CMS-03A-10 attempt is admitted (an earlier `running`, `verifying` or `failed_retryable`
  * plan otherwise answers 409). The rollback reads the plan again through the Job-fenced claimed read, uses
  * the plan lease it finds or claims a fresh one, and checkpoints every state-advancing RPC.
+ *
+ * Locked BE03a 2484-2491: the rollback uses the plan lease it finds or claims a fresh one, but "a
+ * `verifying` plan cannot be re-leased", and a plan that cannot be rolled back (no live lease and none
+ * claimable, or an unreadable plan) "is left as it was: the Job is `failed` all the same and the
+ * `migration retry >3` and DLQ alerts are the operator signal." This suite asserts that locked fallback
+ * (an expired `verifying` plan is reported unavailable and left unchanged); the optional expired-verifying
+ * recovery is preserved, unapproved, in docs/handoffs/2026-10-12-claude-s12/proposals/.
  */
 import type {
   CmsLeaseCheckpoint,
@@ -157,17 +164,6 @@ describe('[P2-S12-AC-050] exhaustion rollback on the last delivery (DEC-184)', (
     expect(await f.exhaust()).toBe('rolled_back');
     expect(f.sim.rpcNames()).toEqual([RPC.readPlan, RPC.rollback]);
     expect(f.sim.plan().state).toBe('failed_terminal');
-  });
-
-  it('reports a verifying plan whose plan lease lapsed as unavailable: no lease can be claimed in that state', async () => {
-    const f = await advance(
-      { rows: 5, state: 'verifying', cursor: 5, holdLease: true },
-      0,
-    );
-    f.clock.now += 90_000;
-    expect(await f.exhaust()).toBe('unavailable');
-    expect(f.sim.plan().state).toBe('verifying');
-    expect(f.sim.rpcNames()).not.toContain(RPC.claimLease);
   });
 
   it('claims a lease for a failed_retryable plan and fails it terminally', async () => {

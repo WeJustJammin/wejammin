@@ -29,6 +29,11 @@ and rate gates, and the strong no-store ETag. Their read-error envelope
 route text, conceals an absent or hidden target as an empty-detail 404, and
 keeps a visible-but-unassigned target a bounded 403.
 
+`authoring-context-route-harness.test-support.ts` owns the CMS-03B-14 route
+suite's projections, request builder and injected dependency harness. Keep the
+assertions in `authoring-context-routes.test.ts`; extend the harness only when
+the protected route contract requires another dependency outcome.
+
 The CMS-03B-14 authoring-context ETag is a strong representation validator:
 `"sha256:<lowercase hexadecimal SHA-256 of the exact UTF-8 JSON response
 bytes>"`. The response bytes are `JSON.stringify` of the strict parsed
