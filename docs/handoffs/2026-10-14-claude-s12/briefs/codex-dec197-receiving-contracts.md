@@ -1,0 +1,61 @@
+# DEC-197: bounded receiving foundation before Slice 11 closure
+
+Status: corrected governing specs independently CLEAR; exact contract/test authoring claims follow, executable migration still unreleased. Active worktree `/home/rob/.codex/worktrees/phase2-slice12/WeJammin`; protected primary read-only. All work uses native `gpt-6.1-sol` / `ultra` under the human's 2026-10-16 native-model resume authorization.
+
+## Authority and limits
+
+Owner answered **Complete contract and relationship now (Recommended)**; canonical DEC-197 records the answer. Retain AC045's strict no-boundary gate. Complete the missing manifest storage contract, its receiving table, the complete PublicationProjection receiving table and real consumer FK. Do not pull forward delivery endpoints, writers, pointer activation or consumer behavior. Do not tick S13 AC164 or S15 criteria merely for receiving storage.
+
+This plan chooses narrow implementation architecture under that authorization; the choices below are not falsely described as pre-existing locked facts or fresh owner decisions. They must enter governing specs and pass independent review before executable implementation.
+
+## Locked sources
+
+- IA04 deep dive, Canonical Field Contracts / Navigation and Routes: six manifest fields and immutable complete-manifest semantics.
+- BE04a compiler seam: `ready`, `blocked`, `failed_retryable` are compilation outcomes; whole-manifest activation preserves the prior active artifact on failure. Candidate review states belong to separately named candidate models.
+- BE04c PostgreSQL registry: complete PublicationProjection and ProjectionConsumerState definitions, required relationships, unique keys and indexes.
+- DEC-167: `publication_id` means `platform_private.cms_publication_versions(id)`, the version-row ID, not its publication lineage ID.
+- Existing publication-version definition: `20260927090000_cms_editorial_support_authority.sql` stores `publication_hash char(64)`; do not substitute a guessed content-hash column.
+- Applied consumer migration `20261010165000_cms_projection_consumer_state.sql` stays byte-identical, SHA-256 `e9bbd0f78fd8f6240fb4e3a543ad11e51081338abcf6cbba47679b5038bfc6ec`.
+
+## Root-selected storage contract
+
+1. Map logical `delivery.route_manifest_version` explicitly to physical `platform_private.route_manifest_version`; place `platform_private.publication_projection` beside its existing consumer table. Update every affected logical/physical FK spelling. No extra schema, schema exposure or compatibility view masquerading as an FK target.
+2. The manifest is one globally numbered complete artifact. Carry unchanged locations forward; a global storage artifact does not grant a publisher authority over other locations. Do not add owner/location partitions or new capabilities.
+3. Store sealed artifacts only: `ready → active → superseded`. INSERT admits only `ready` with null `activated_at`; later states require a permitted UPDATE. Creating and activating the artifact in one transaction is allowed. Root selected this receiving-integrity entry rule within DEC-197, explicitly mirrored in BE04a before GREEN; it is not additional publisher authority or delivery scope. Compilation failures remain operational attempt results, not partial/fabricated manifest rows. No candidate `draft/review/approved` or projection-building states are borrowed.
+4. Manifest fields: `id uuid PK`; `version_no bigint NOT NULL UNIQUE CHECK >0`; `publication_set_hash text NOT NULL` lowercase hex-64; closed `state`; `generated_at timestamptz NOT NULL`; nullable `activated_at timestamptz`. Ready requires null activation; active/superseded require activation at or after generation. Activation time is write-once. Identity, ordinal, hash and generation time never change; deletion is refused. Lifecycle does not renumber the artifact.
+5. Reserve positive global ordinals with a private identity sequence; monotonic allocation, not gapless. Allocation order alone never authorizes replacing a newer active artifact. At most one active row via a partial unique index. No fake initial active manifest: first real compilation/activation remains future writer work.
+6. Define `publication_set_hash` precisely as SHA-256 of RFC8785 canonical JSON `{"publicationVersions":[{"publicationVersionId":"...","publicationHash":"..."}]}` for the complete frozen set being compiled, sorted by canonical lowercase publication-version UUID, without duplicates. Values use those rows' immutable `publication_hash`; no live mutable content, actor data or invented IDs. Future compiler binds the actual complete set; no compiler or activation writer is built in this receiving change.
+7. Copy PublicationProjection's BE04c columns, seven states, checks, unique key and all three indexes exactly. Preserve required direct FKs to publication-version and manifest, with NO ACTION/RESTRICT semantics. Derive ownership through publication-version; do not add generic IA `owner_id`/extra timestamp columns that contradict the exact registry.
+8. Add the required direct consumer `projection_id → publication_projection.id` FK and same-publication consistency: parent unique `(publication_id,id)` plus consumer composite FK `(publication_id,projection_id)`. Preserve the existing consumer publication-version FK. A consumer for publication A cannot report through B's projection.
+9. New tables ENABLE/FORCE RLS, no policies and no runtime table/sequence grants yet; explicitly revoke PUBLIC/anon/authenticated/service_role. No new API RPC, principal or exposed schema. Internal immutability/lifecycle trigger functions are invoker functions with direct execution revoked; no bypass definer. A caller-settable CMS GUC alone conveys no authority. Future guarded writer migrations add only necessary grants/policies after capability, lease, CAS and denial proof exists.
+
+## Serial spec frontier
+
+After the DEC-193 author is frozen/released: IA04 model/typed rows and its deep dive; BE04a manifest PostgreSQL registry and mappings; BE04c mappings and same-publication relationship; bounded phase-plan sequencing note. Root alone integrates S11/S13/S15 tracker notes and reconciles stale #128 wording. Keep every acceptance denominator and unrelated locked clause intact. The new normative text must distinguish storage-ready from implemented delivery behavior.
+
+## Contract-first RED frontier
+
+Proposed private storage Zod contracts under `packages/contracts/src/cms-delivery/storage.ts` and bounded tests, with ordinary barrel/type-generation integration separately claimed. No public response or browser snapshot exposure is implied. Root settles exact claims before author dispatch.
+
+Required first proof: missing tables/FK and current orphan/cross-publication acceptance fail the new receiving contract. Then one transactional **new WIP** migration, proposed `supabase/migrations-wip/dec197/20261016030000_delivery_receiving_contracts.sql`; no applied migration edit.
+
+SQL tests cover exact catalog columns/types/checks/indexes, all validated FKs, missing/cross-publication references, referenced-parent deletion refusal, malformed hash/state/time/JSON, immutable fields/lifecycle, API and forged-GUC denial, and unchanged projection-state derivation. Existing S11 state/read fixtures must create complete legitimate receivers with publication-specific projection IDs; preserve every behavioral assertion. Replace the missing-FK sentinel only after actual catalog and orphan-write proof succeeds.
+
+## Upgrade and closeout safety
+
+Apply all DDL and FK validation in one transaction. If legacy consumer rows lack authoritative receivers, abort and roll back, preserving every row. No dummy backfill, deletion, disabled guard or committed NOT VALID FK. Exercise the actual forward migration over a labelled pre-migration orphan fixture and prove rollback of new tables/constraints plus unchanged original rows. Test cleanup uses isolated transaction rollback, not deletion of user data.
+
+The immutable historical BOUNDARY comment remains. Closeout classifies that exact historical boundary as resolved only when the named forward migration and replacement catalog/orphan-write evidence exist; do not add a generic ignore rule. Old closeout receipts are stale. Fresh validation, graph/tracking/ledger/runbook reconciliation and the reviewed same-change closeout commit are still required before S11 can be signed.
+
+All DB work is root-released, ALT-only and serialized by the existing runner/CI lock protocol. No promotion, primary DB reset, hosted proof or completion claim is released by this brief.
+
+## Native implementation plan — independent research, 2026-10-16
+
+- Private `cms-delivery/storage.ts` records use exact physical snake_case keys, six manifest/thirteen projection fields, distinct three/seven-state storage lifecycle enums, and lossless positive bigint decimal strings. Document JSON-safe records rather than pretending assignability to generated Supabase raw Row types. Preserve public aggregate `PublicationProjectionStateSchema` (`pending/converged/degraded`). Reuse the exact instant parser for activation ordering, not millisecond `Date` truncation. Match actual varchar maxima without invented BCP47 grammar/minima. Validate JSON object/array kinds and JSON values without error-details depth/key/byte constraints.
+- Contract-first authoring may lock these new private Zod shapes before SQL implementation RED; no new public DTO, route, browser/client validator, OpenAPI component or endpoint. Barrel export is additive; generated database types wait for approved migration integration and are regenerated, never hand-edited.
+- Proposed SQL tests: `phase_02_slice_11_delivery_receiving.sql`, `_security.sql`, `_upgrade.sql` with shared `phase_02_slice_11_delivery_receiving/` helpers/README; actual-migration parity test under `tests/contracts/phase-02-slice-11-delivery-receiving-witness-parity.test.ts`. Missing-table access must emit attributable TAP failures, not abort before the behavior is reached. Root settles exact helper names before authoring.
+- Catalog/reference proof covers exact fields/identity/checks/indexes, validated ordered FK columns/targets/actions, positive complete receiver chain, missing references, and publication A using valid projection B failing specifically at the composite FK. Assert intended SQLSTATE/constraint, not an earlier write guard.
+- Lifecycle/security proof covers ready→active→superseded, prohibited reverse/skip/reactivate/delete and immutable field/time writes, one-active and atomic failed replacement preservation. API/forged-GUC denials use actual roles; transaction-local diagnostic grants to a non-bypass role separately prove forced RLS (ACL denial alone is not RLS proof). New guard functions invoker-only/direct execution revoked, existing consumer policy/grant/write guard unchanged. Do not impose projection immutability/deletion restrictions that obstruct future revoke/tombstone/purge.
+- Upgrade proof replays the actual migration body over labelled pre-migration orphan consumers and proves transactional rollback of tables/sequence/functions/indexes/FKs plus unchanged old rows/policy/ACL/guard. A fresh empty reset alone is insufficient. No backfill, guard disabling, data deletion or committed NOT VALID constraint.
+- Existing `phase_02_slice_11_projection_state.sql` exact constraint-name assertion and missing-FK sentinel need real replacement proof. `q_row`, `s11_ps_probe` and `projection_state_reads.sql` need complete publication-specific receivers; same-publication p0/p1 use distinct legitimate manifest/unique-key dimensions, preserving all consumer versions/timestamps and convergence/read/lineage/audit/outbox assertions. Fixtures derive the specified hash from their actual frozen publication-version sets; row hex validation is not compiler completeness proof.
+- Strict closeout scanner currently covers old migration ranges and cms-editorial roots only. Add narrowly named new storage/forward-migration scope and classify only exact immutable historical #127 as resolved when actual FK witnesses exist; no generic ignore. Historical AC045 receipts remain stale. WIP excluded from ordinary reset/CI: diagnostics use explicit root-released ALT staged lane `dec197`.

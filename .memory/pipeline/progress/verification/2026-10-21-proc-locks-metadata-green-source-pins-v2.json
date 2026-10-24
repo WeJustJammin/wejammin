@@ -1,0 +1,79 @@
+{
+  "kind": "local-source-freeze-not-native-or-phase-acceptance",
+  "asOf": "2026-10-21",
+  "version": 2,
+  "supersedes": ".memory/pipeline/progress/verification/2026-10-21-proc-locks-metadata-green-source-pins.json",
+  "checkpoint": "Scoped restored session 66977 closed 0; 11 unit files / 586 pass, static and configured type-check and progress check pass. Canonical missing-CLOEXEC negative input 0400000 catches guard removal (session 39609: 569 pass / 17 intended fail). Node25 declarations supplementary only; runtime Node22.",
+  "paths": [
+    {
+      "path": "infra/database-upgrades/native-tracing/receiving-bootstrap-processes.mjs",
+      "sha256": "9d8f8821d9640eeb7d0065a34c091ad8fdcf0d2f294aad250b6de5f421eefb37",
+      "lines": 300
+    },
+    {
+      "path": "infra/database-upgrades/native-tracing/receiving-bootstrap-protocol.mjs",
+      "sha256": "b610347ca1a3ad3aad399d7631b572af5aa955293e398675783e62a44773ac90",
+      "lines": 243
+    },
+    {
+      "path": "infra/database-upgrades/native-tracing/receiving-bootstrap-diagnostic-values.mjs",
+      "sha256": "cf72b8662c03656d7693d0f99c6ed06cfc152129cc0e94461ef735ded4e1183b",
+      "lines": 247
+    },
+    {
+      "path": "tests/native/helpers/dec203-bootstrap-pre-ready-artifacts.mjs",
+      "sha256": "7eac9e340c2be1c018ceb5de66af0c939950a84e6b0c9d547126cb3721d27cbd",
+      "lines": 290
+    },
+    {
+      "path": "tests/native/helpers/dec203-bootstrap-pre-ready-observe.mjs",
+      "sha256": "c4704820333b024707eb2250b7a5d5b2dd5378585bbeb57696ec7a563eb753e9",
+      "lines": 300
+    },
+    {
+      "path": "tests/native/helpers/dec203-bootstrap-pre-ready-values.mjs",
+      "sha256": "52799d69fdb4ee59238903a122def13cb3f59ebfc7a79fdb0d48bec85a142dac",
+      "lines": 282
+    },
+    {
+      "path": "tests/native/helpers/dec203-bootstrap-pre-ready-assertions.mjs",
+      "sha256": "17b125016d304a80c8fe62bcd6ce0a80c6737db608707c50b9d95e04fc574ad6",
+      "lines": 296
+    },
+    {
+      "path": "tests/contracts/phase-02-slice-11-dec203-proc-locks-metadata.test.ts",
+      "sha256": "79a42d6d7a81ccb942b7ed8a3fc3dc88a7d3b0e12b0ac060da6bd1f46b3c22e8",
+      "lines": 385
+    },
+    {
+      "path": "tests/contracts/helpers/dec203-proc-locks-metadata-types.ts",
+      "sha256": "e0c76e70176abc47443bbe885d9c0db40566e367be1a293e2e823276bdd20410",
+      "lines": 50
+    },
+    {
+      "path": "tests/contracts/phase-02-slice-11-dec203-fd-snapshot.test.ts",
+      "sha256": "adf2af3276d32c941e88bbeb8cf4e49ae79342fc817e00823371d652619023c8",
+      "lines": 376
+    },
+    {
+      "path": "tests/contracts/phase-02-slice-11-dec203-test-observer-inventory.test.ts",
+      "sha256": "a8a97fe4ca9b9b22d4afa370f7b728a69fc284136807bd5fb9f6f39bab660012",
+      "lines": 395
+    },
+    {
+      "path": "tests/contracts/helpers/dec203-test-observer-proc.ts",
+      "sha256": "450383a50e097abb280b5f67c998632fd3c02993696550ba0d1fddef8895521a",
+      "lines": 300
+    },
+    {
+      "path": "tests/contracts/helpers/dec203-proc-locks-observation-fixture.ts",
+      "sha256": "d4d4affc75155891cb2cf942bed800b6b8e2d4f63d0d9a27e77d712423736506",
+      "lines": 111
+    },
+    {
+      "path": "tests/contracts/helpers/dec203-test-observer-fixture.ts",
+      "sha256": "7163b7184b11fa071f14e4b0f5e9e23977ba237c63221240db3e0ec86a6a6c65",
+      "lines": 168
+    }
+  ]
+}

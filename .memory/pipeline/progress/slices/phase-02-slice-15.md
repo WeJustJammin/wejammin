@@ -8,6 +8,10 @@
 **Acceptance criteria**: 72  
 **Plan source**: [Phase 2 plan](../../../wiki/specs/phases/phase-2.md)
 
+## Receiving-foundation sequencing — DEC-197, 2026-10-16
+
+Owner-approved Slice 11 work now supplies the receiving manifest/projection tables and actual consumer projection/same-publication relationships under the complete storage contract. Corrected governing specs are independently CLEAR; implementation is pending. Preserve the existing consumer forced-RLS policy and CMS-definer SELECT grant; new receivers remain default-deny until scoped writer migrations prove authority, leases, CAS and denial. Endpoints, projection writers, pointer activation, consumers and delivery recovery remain here. All 72 criteria remain unchecked and this slice stays not-started behind Slices 11–14.
+
 ## Tasks
 
 - [ ] Contract: lock Zod, data, registry, event, and route contracts

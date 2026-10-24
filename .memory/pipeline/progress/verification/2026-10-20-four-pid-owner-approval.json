@@ -1,0 +1,19 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-20-four-pid-readonly",
+  "authority": "Direct user reply to request_user_input_async call_20092f0d296b474f95c75ea33067f5b6 item 0",
+  "answer": "Approve this one read-only inspection",
+  "recordedAt": "2026-10-20T20:16:01.352Z",
+  "scope": "One inspection of the four fixed executable links using only /usr/bin/sudo -n -- /usr/bin/readlink --, with all six process identity fields fenced before and after; at most two reads per PID, eight total",
+  "forbidden": ["signals", "cleanup", "secret or environment reads", "services", "host-policy changes", "stack changes", "PID substitution", "automatic renewal", "native or hosted acceptance inference"],
+  "targets": [
+    {"pid": 729, "ppid": 1, "group": 729, "session": 729, "startTime": "677", "uid": 1000},
+    {"pid": 739, "ppid": 729, "group": 729, "session": 729, "startTime": "679", "uid": 1000},
+    {"pid": 2519, "ppid": 2480, "group": 2519, "session": 2519, "startTime": "1317", "uid": 1000},
+    {"pid": 2566, "ppid": 2542, "group": 2566, "session": 2566, "startTime": "1322", "uid": 1000}
+  ],
+  "binaries": [
+    {"path": "/usr/bin/sudo", "device": 37, "inode": 44037, "uid": 0, "mode": 35309, "size": 289976, "sha256": "fe945435e24e1c733fb559a05d6f607dd8203799e84dd885e724a81944041d14"},
+    {"path": "/usr/bin/readlink", "device": 37, "inode": 9129108, "uid": 0, "mode": 33261, "size": 76088, "sha256": "092f87a1632ad9102757d676c85150556b71cc377642f2d55f04c9df9af63aa1"}
+  ]
+}

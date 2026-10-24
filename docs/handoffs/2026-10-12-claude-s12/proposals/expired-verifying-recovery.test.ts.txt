@@ -1,0 +1,72 @@
+// UNAPPROVED PROPOSAL — DO NOT TREAT AS ACCEPTANCE EVIDENCE.
+//
+// This is the preserved "expired verifying plan can be re-leased then rolled back"
+// unit case, removed from claimed-schema-migration-preparation-exhaustion.test.ts
+// on 2026-10-13 so the active suite does not assert behaviour that the locked
+// authority prohibits.
+//
+// Locked authority (BE03a "Migration scan protocol", lines 2484-2491): on the fourth
+// delivery a would-be `queued` disposition rolls an in-flight plan back "through the
+// terminal rollback with reason MIGRATION_RETRIES_EXHAUSTED"; the rollback "uses the
+// plan lease it finds or claims a fresh one (a `verifying` plan cannot be re-leased)";
+// and "a plan that cannot be rolled back (no live lease and none claimable, or an
+// unreadable plan) is left as it was: the Job is `failed` all the same and the
+// `migration retry >3` and DLQ alerts are the operator signal." BE03a therefore
+// EXPLICITLY prohibits re-leasing a `verifying` plan and requires the unclaimable
+// plan to be left unchanged with a failed Job and operator alerts.
+//
+// The private fresh-CAS-lease extension that would admit an expired `verifying` plan
+// to a fresh lease (DEC-184:2659 outcome) is an OPTIONAL strengthening, pending owner
+// approval; it is NOT a required Phase 2 completion gate. This case is retained only
+// as a diagnostic witness and must not run as part of the acceptance suite.
+//
+// Verbatim case (previously at lines 162-208 of the exhaustion suite):
+
+  it('claims a fresh lease for a verifying plan whose plan lease lapsed, then rolls it back (DEC-184)', async () => {
+    const f = await advance(
+      { rows: 5, state: 'verifying', cursor: 5, holdLease: true },
+      0,
+    );
+    const held = f.sim.plan();
+    f.clock.now += 90_000;
+
+    expect(await f.exhaust()).toBe('rolled_back');
+
+    // The verifying plan is re-leased through the normal fenced claim path and then rolled back:
+    // read -> claim -> rollback, each state-advancing RPC preceded by a checkpoint.
+    expect(f.sim.rpcNames()).toEqual([
+      RPC.readPlan,
+      RPC.claimLease,
+      RPC.rollback,
+    ]);
+    expect(f.order.slice(-5)).toEqual([
+      RPC.readPlan,
+      'checkpoint',
+      RPC.claimLease,
+      'checkpoint',
+      RPC.rollback,
+    ]);
+    // The claim carried the verifying plan's own CAS position (state, cursor and counters preserved).
+    expect(
+      f.sim.calls.find(({ rpc }) => rpc === RPC.claimLease)?.request,
+    ).toMatchObject({
+      migrationPlanId: held.id,
+      expectedVersion: held.version,
+      cursor: held.cursor,
+    });
+    // The rollback used the fresh token and the post-claim CAS version, not the lapsed token.
+    expect(rollbackRequests(f.sim).at(-1)).toMatchObject({
+      migrationPlanId: held.id,
+      expectedVersion: String(BigInt(held.version) + 1n),
+      cursor: held.cursor,
+      reasonCode: REASON,
+      retryable: false,
+      preserveOldActive: true,
+      deleteRows: false,
+    });
+    expect(rollbackRequests(f.sim).at(-1)?.leaseToken).not.toBe(
+      held.leaseToken,
+    );
+    expect(f.sim.plan().state).toBe('failed_terminal');
+  });
+

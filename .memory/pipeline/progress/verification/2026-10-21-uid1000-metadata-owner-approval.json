@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-21-uid1000-metadata-refresh",
+  "authority": "direct human",
+  "answer": "Approved.",
+  "answerContext": "Direct human reply in the orchestrator chat to Main's request to approve an unprivileged UID-1000 process metadata and readable executable/working-directory link refresh, with no command lines, environment, secrets, signals, cleanup or system changes",
+  "observationTimestamp": "2026-10-21T08:04:00.814Z",
+  "timestampSource": "Observed approved-scan start time; not an exact user send time",
+  "newApproval": true,
+  "notPrivilegedGrant": true,
+  "privilegeRenewalOrSubstitute": false,
+  "consumptionClaimCreated": false,
+  "scope": "One unprivileged UID-1000 observational window: /proc numeric enumeration, six-field stat/UID identity, and readable executable and working-directory links only",
+  "exclusions": [
+    "privilege or authority expansion",
+    "sudo or pkexec renewal or substitute",
+    "command lines",
+    "environment",
+    "secrets",
+    "signals",
+    "cleanup",
+    "services",
+    "host-policy changes",
+    "stack changes",
+    "native acceptance inference",
+    "database acceptance inference"
+  ],
+  "diagnosticOnly": true
+}

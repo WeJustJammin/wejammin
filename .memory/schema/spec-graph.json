@@ -1,7 +1,7 @@
 {
-  "builtAt": "2026-10-13T04:40:39.749Z",
-  "nodeCount": 1657,
-  "edgeCount": 10177,
+  "builtAt": "2026-10-21T04:45:41.556Z",
+  "nodeCount": 1673,
+  "edgeCount": 10190,
   "nodes": [
     {
       "id": "plan:2026-08-02-architecture-design",
@@ -242,6 +242,13 @@
       "shardId": null
     },
     {
+      "id": "audit:audits/propagation-2026-10-19-dec203-lease-output-normalization",
+      "type": "audit",
+      "label": "DEC-203 lease output normalization propagation record — 2026-10-19",
+      "path": ".memory/wiki/specs/audits/propagation-2026-10-19-dec203-lease-output-normalization.md",
+      "shardId": null
+    },
+    {
       "id": "audit:audits/propagation-ac209-ac211-2026-09-25",
       "type": "audit",
       "label": "Approved AC209/AC211 prelaunch production-evidence propagation",
@@ -291,6 +298,13 @@
       "shardId": null
     },
     {
+      "id": "audit:audits/propagation-implementation-contract-2026-10-19-dec203-bootstrap-binding",
+      "type": "audit",
+      "label": "DEC203 private binding propagation result",
+      "path": ".memory/wiki/specs/audits/propagation-implementation-contract-2026-10-19-dec203-bootstrap-binding.md",
+      "shardId": null
+    },
+    {
       "id": "audit:audits/propagation-observability-cost-2026-08-30",
       "type": "audit",
       "label": "Sentry Removal and Free-Only Operations Propagation Record",
@@ -309,6 +323,13 @@
       "type": "audit",
       "label": "Initial-owner propagation",
       "path": ".memory/wiki/specs/audits/propagation-owner-bootstrap-2026-09-10.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-patterns-2026-10-17",
+      "type": "audit",
+      "label": "DEC-202 approved default-template propagation — 2026-10-17",
+      "path": ".memory/wiki/specs/audits/propagation-patterns-2026-10-17.md",
       "shardId": null
     },
     {
@@ -470,6 +491,55 @@
       "type": "audit",
       "label": "DEC-162/163 propagation scan —2026-10-09",
       "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-09.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-10-13-governed-lifecycle-placement-response",
+      "type": "audit",
+      "label": "Approved decision propagation scan — 2026-10-13",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-13-governed-lifecycle-placement-response.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-10-15-codex-dec193-choice",
+      "type": "audit",
+      "label": "DEC-193 choice clarification — propagation scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-15-codex-dec193-choice.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-10-17-codex-dec203-tracing",
+      "type": "audit",
+      "label": "DEC-203 propagation scan — isolated per-run native tracing",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-17-codex-dec203-tracing.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-10-17",
+      "type": "audit",
+      "label": "DEC-202 propagation scan — confirmation required",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-17.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-10-19-dec203-bootstrap-binding",
+      "type": "audit",
+      "label": "DEC203 private bootstrap binding propagation scan",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-19-dec203-bootstrap-binding.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-2026-10-19-dec203-lease-output-normalization",
+      "type": "audit",
+      "label": "DEC-203 lease output normalization propagation scan — 2026-10-19",
+      "path": ".memory/wiki/specs/audits/propagation-scan-2026-10-19-dec203-lease-output-normalization.md",
+      "shardId": null
+    },
+    {
+      "id": "audit:audits/propagation-scan-governed-lifecycle-2026-10-13",
+      "type": "audit",
+      "label": "Governed lifecycle and retirement propagation scan — 2026-10-13",
+      "path": ".memory/wiki/specs/audits/propagation-scan-governed-lifecycle-2026-10-13.md",
       "shardId": null
     },
     {
@@ -10910,6 +10980,27 @@
       "shardId": null
     },
     {
+      "id": "plan:propagation-scan-2026-10-16-codex-dec198",
+      "type": "plan",
+      "label": "DEC-198 ordinary pending-row carry propagation",
+      "path": ".memory/wiki/specs/propagation-scan-2026-10-16-codex-dec198.md",
+      "shardId": null
+    },
+    {
+      "id": "plan:propagation-scan-2026-10-16-codex-dec199",
+      "type": "plan",
+      "label": "DEC-199 propagation — live nested-pattern publication gate",
+      "path": ".memory/wiki/specs/propagation-scan-2026-10-16-codex-dec199.md",
+      "shardId": null
+    },
+    {
+      "id": "plan:propagation-scan-2026-10-16-codex-dec200",
+      "type": "plan",
+      "label": "DEC-200 propagation — historical parent remapping on ordinary carry",
+      "path": ".memory/wiki/specs/propagation-scan-2026-10-16-codex-dec200.md",
+      "shardId": null
+    },
+    {
       "id": "plan:vision",
       "type": "plan",
       "label": "WeJammin — Vision",
@@ -10984,6 +11075,27 @@
       "type": "decision",
       "label": "D-4",
       "path": ".memory/wiki/decisions.md#d-4",
+      "shardId": null
+    },
+    {
+      "id": "decision:d-value",
+      "type": "decision",
+      "label": "D-VALUE",
+      "path": ".memory/wiki/decisions.md#d-value",
+      "shardId": null
+    },
+    {
+      "id": "decision:d-retire",
+      "type": "decision",
+      "label": "D-RETIRE",
+      "path": ".memory/wiki/decisions.md#d-retire",
+      "shardId": null
+    },
+    {
+      "id": "decision:d-detach",
+      "type": "decision",
+      "label": "D-DETACH",
+      "path": ".memory/wiki/decisions.md#d-detach",
       "shardId": null
     },
     {
@@ -11917,6 +12029,18 @@
       "source": "wikilink"
     },
     {
+      "from": "audit:audits/propagation-patterns-2026-10-17",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-patterns-2026-10-17",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
       "from": "audit:audits/propagation-scan-2026-08-30",
       "to": "phase-plan:phases/phase-1",
       "type": "phases_into",
@@ -12074,6 +12198,54 @@
     },
     {
       "from": "audit:audits/propagation-scan-2026-09-30-cms-rich-text-ast",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-10-13-governed-lifecycle-placement-response",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-10-13-governed-lifecycle-placement-response",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-10-15-codex-dec193-choice",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-10-15-codex-dec193-choice",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-10-17",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-2026-10-17",
+      "to": "phase-plan:phases/phase-2",
+      "type": "references",
+      "source": "wikilink"
+    },
+    {
+      "from": "audit:audits/propagation-scan-governed-lifecycle-2026-10-13",
+      "to": "phase-plan:phases/phase-2",
+      "type": "phases_into",
+      "source": "phase-ref"
+    },
+    {
+      "from": "audit:audits/propagation-scan-governed-lifecycle-2026-10-13",
       "to": "phase-plan:phases/phase-2",
       "type": "references",
       "source": "wikilink"
@@ -12521,6 +12693,24 @@
       "to": "phase-plan:phases/phase-2",
       "type": "phases_into",
       "source": "phase-ref"
+    },
+    {
+      "from": "be-spec:be/03c-composition-taxonomy-localization",
+      "to": "decision:d-value",
+      "type": "constrained_by",
+      "source": "decision-ref"
+    },
+    {
+      "from": "be-spec:be/03c-composition-taxonomy-localization",
+      "to": "decision:d-retire",
+      "type": "constrained_by",
+      "source": "decision-ref"
+    },
+    {
+      "from": "be-spec:be/03c-composition-taxonomy-localization",
+      "to": "decision:d-detach",
+      "type": "constrained_by",
+      "source": "decision-ref"
     },
     {
       "from": "be-spec:be/03c-composition-taxonomy-localization",
@@ -72669,20 +72859,20 @@
   ],
   "stats": {
     "byNodeType": {
-      "plan": 12,
+      "plan": 15,
       "architecture": 18,
-      "audit": 53,
+      "audit": 63,
       "be-spec": 157,
       "fe-spec": 44,
       "ia-spec": 85,
       "ideation": 1186,
       "phase-plan": 4,
-      "decision": 98
+      "decision": 101
     },
     "byEdgeType": {
-      "phases_into": 116,
-      "constrained_by": 9047,
-      "references": 941,
+      "phases_into": 121,
+      "constrained_by": 9050,
+      "references": 946,
       "derives_from": 64,
       "implemented_by": 6,
       "split_from": 3

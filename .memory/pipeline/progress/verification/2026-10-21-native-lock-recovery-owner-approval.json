@@ -1,0 +1,145 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-21-native-lock-recovery",
+  "authority": "direct human",
+  "answer": "Approve this one bounded recovery",
+  "question": "Native PR01 opens existing coordination files without creating them; all four are now absent. May I perform one reviewed recovery: one identity/pin-bracketed pkexec/readlink batch of exe and cwd for PIDs 712, 723, 4377 and 4630; one unprivileged preflight and one postflight; and, only if admission checks pass, exclusively create /tmp/wejammin-supabase-ci.lock, /tmp/wejammin-quiet.lock, /tmp/wejammin-altdb.lock and /tmp/wejammin-reset.lock as UID/GID 1000, mode 0644? Stop on conflict/failure and preserve partial creation. No substitutions, retries, command-line/environment/secret reads, signals, cleanup, service, stack or database changes.",
+  "recordedAt": "not separately recorded",
+  "recordedAtNote": "The exact human send time was not separately recorded, so no timestamp is invented.",
+  "newApproval": true,
+  "notRenewalOfConsumedGrants": true,
+  "bounded": true,
+  "scope": "One reviewed recovery: one identity/pin-bracketed pkexec/readlink batch of the exe and cwd links for PIDs 712, 723, 4377 and 4630; one unprivileged global preflight and one postflight only; and, only if admission checks pass, exclusive creation of the four named coordination lock files as UID/GID 1000 mode 0644",
+  "targets": [
+    {
+      "pid": 712,
+      "ppid": 1,
+      "group": 712,
+      "session": 712,
+      "startTime": "567",
+      "uid": 1000
+    },
+    {
+      "pid": 723,
+      "ppid": 712,
+      "group": 712,
+      "session": 712,
+      "startTime": "569",
+      "uid": 1000
+    },
+    {
+      "pid": 4377,
+      "ppid": 4335,
+      "group": 4377,
+      "session": 4377,
+      "startTime": "2069",
+      "uid": 1000
+    },
+    {
+      "pid": 4630,
+      "ppid": 4579,
+      "group": 4630,
+      "session": 4630,
+      "startTime": "2087",
+      "uid": 1000
+    }
+  ],
+  "targetsNote": "Identical to the just-frozen postflight result; this is not PID substitution.",
+  "pkexecCommand": {
+    "program": "/usr/bin/pkexec",
+    "args": [
+      "/usr/bin/readlink",
+      "--",
+      "/proc/712/exe",
+      "/proc/712/cwd",
+      "/proc/723/exe",
+      "/proc/723/cwd",
+      "/proc/4377/exe",
+      "/proc/4377/cwd",
+      "/proc/4630/exe",
+      "/proc/4630/cwd"
+    ]
+  },
+  "maxPkexecInvocations": 1,
+  "maxReadlinkInvocations": 1,
+  "maxTargetLinkReads": 8,
+  "orderedTargets": [
+    { "pid": 712, "link": "exe", "path": "/proc/712/exe" },
+    { "pid": 712, "link": "cwd", "path": "/proc/712/cwd" },
+    { "pid": 723, "link": "exe", "path": "/proc/723/exe" },
+    { "pid": 723, "link": "cwd", "path": "/proc/723/cwd" },
+    { "pid": 4377, "link": "exe", "path": "/proc/4377/exe" },
+    { "pid": 4377, "link": "cwd", "path": "/proc/4377/cwd" },
+    { "pid": 4630, "link": "exe", "path": "/proc/4630/exe" },
+    { "pid": 4630, "link": "cwd", "path": "/proc/4630/cwd" }
+  ],
+  "orderedTargetsAreDataOnlyNotCommands": true,
+  "batchMayAttemptAllEightLinksBeforeError": true,
+  "stopWorkflowOnAnyNonzeroMismatchOrUncertainClosure": true,
+  "noFallbackOrRetry": true,
+  "literalPathsOnly": true,
+  "privilegedShell": false,
+  "wholeBatchIdentityAndBinaryPinBracketBeforeAfter": true,
+  "globalPreflightCount": 1,
+  "globalPostflightCount": 1,
+  "binaries": [
+    {
+      "path": "/usr/bin/pkexec",
+      "device": 37,
+      "inode": 139723,
+      "uid": 0,
+      "mode": 35309,
+      "size": 26720,
+      "sha256": "72cd770659617b11f0872bfac159cdd5e41b0e44bbc01f9d3cd88d18e89861cd"
+    },
+    {
+      "path": "/usr/bin/readlink",
+      "device": 37,
+      "inode": 9129108,
+      "uid": 0,
+      "mode": 33261,
+      "size": 76088,
+      "sha256": "092f87a1632ad9102757d676c85150556b71cc377642f2d55f04c9df9af63aa1"
+    },
+    {
+      "path": "/home/rob/.cache/chrome-gate-runtime/node-v22.23.1-linux-x64/bin/node",
+      "device": 52,
+      "inode": 77902051,
+      "uid": 1000,
+      "mode": 33261,
+      "size": 124835376,
+      "sha256": "93956de2e59480474a7b46571da1651180b1a050cdf32641ebec4ce6e478e068"
+    }
+  ],
+  "conditionalLockCreation": {
+    "onlyIfAdmissionChecksPass": true,
+    "exclusiveCreate": true,
+    "uid": 1000,
+    "gid": 1000,
+    "mode": "0644",
+    "regularFile": true,
+    "paths": [
+      "/tmp/wejammin-supabase-ci.lock",
+      "/tmp/wejammin-quiet.lock",
+      "/tmp/wejammin-altdb.lock",
+      "/tmp/wejammin-reset.lock"
+    ],
+    "stopOnConflictOrError": true,
+    "preservePartialCreation": true,
+    "neverDeleteOrOverwriteExisting": true
+  },
+  "exclusions": [
+    "substitutions",
+    "retries",
+    "command-line reads",
+    "environment reads",
+    "secret reads",
+    "signals",
+    "cleanup",
+    "service changes",
+    "stack changes",
+    "database changes"
+  ],
+  "diagnosticOnly": true,
+  "noRecoveryLaunchedClaim": true
+}

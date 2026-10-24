@@ -1,5 +1,12 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+## Latest — 2026-10-16 Codex: DEC-197 receiving foundation approved; strict closeout retained
+
+- Owner answered **"Complete contract and relationship now (Recommended)"**. DEC-197 pulls only the route-manifest storage contract, receiving manifest/projection tables and actual consumer projection/same-publication FKs into Slice 11. Corrected IA04/BE04a/BE04c governing clauses are independently CLEAR; implementation and database proof are still pending. No boundary waiver or acceptance tick.
+- AC-045 remains partial; 121/122 and unsigned. #127 remains open until the real receiving relationship is installed and proved. The older #128 architecture-decision note below is historical: DEC-183/184 supplied that implementation; fresh current closeout/receipt verification is still required. Old canonical receipts do not close the changed tree.
+- The two new receiving tables start default-deny; the existing consumer forced-RLS policy and CMS-definer SELECT grant are retained. Delivery endpoints, writers, pointer activation and consumers remain in Slices 13/15. Storage alone clears none of their behavioral criteria.
+- Required next gates: contract/test-first storage work, legitimate publication-specific fixture migration, isolated staged diagnostics, independent review, narrowly scoped closeout scanner/sentinel reconciliation, then canonical `pnpm db:verify` before `pnpm validate` and same-change tracking/commit proof. No migration promotion yet.
+
 ## Latest — 2026-10-12 Claude: Slice 11 implementation complete locally; 121/122 criteria receipt-verified; AC-045 open
 
 - Evidence ledger (`tests/contracts/phase-02-slice-11-evidence-ledger*.ts`): 121 verified, 1 partial (AC-045), backed by

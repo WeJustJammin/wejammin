@@ -1,0 +1,189 @@
+{
+  "kind": "single-approved-diagnostic-window-frozen-not-consumed",
+  "approval": "2026-10-22-native-finality-capability-audit-approval.md",
+  "sourcePins": [
+    {
+      "path": ".memory/pipeline/progress/verification/2026-10-22-native-finality-metadata.cjs",
+      "sha256": "ef654bab4fff8a2647dbf74b05d337f2f5bc2e6f1c19a755ba89966974dc4af6",
+      "lf": 300
+    },
+    {
+      "path": "tests/contracts/phase-02-slice-12-native-finality-metadata.test.ts",
+      "sha256": "7d231c4c804a80011e153183a37193d3e6006eba57516843b43fe79f1829467e",
+      "lf": 389
+    },
+    {
+      "path": "tests/contracts/helpers/dec203-finality-metadata-fixture.ts",
+      "sha256": "762d445d9f281abadd43c2a4e7dca31b9fd916e38dcd7e9b6bb6e3ed3474d272",
+      "lf": 198
+    },
+    {
+      "path": "tests/contracts/helpers/dec203-finality-metadata-vm.ts",
+      "sha256": "91bd3cd3874610bf1079d2fe7e0fd40660dade75b453373a9ac94cd4b27cedba",
+      "lf": 76
+    },
+    {
+      "path": ".memory/pipeline/progress/verification/2026-10-22-native-finality-audit-command-candidate.json",
+      "sha256": "d51fa3964785c4ca9b6686b8cdd7d2839e7ed766201ef31ca4c128c349861ea8",
+      "lf": 106
+    },
+    {
+      "path": "docs/handoffs/2026-10-14-claude-s12/briefs/codex-dec203-finality-audit-command-selection.md",
+      "sha256": "31e037b90864400c342ea824595529618a1eee32b07fb6575638ac8a54d856e3",
+      "lf": 171
+    },
+    {
+      "path": ".memory/pipeline/progress/verification/README.md",
+      "sha256": "c8bc1396828e6ef7dd40ea69af7e6276c4680f62f2f789e6ef40846fb7c0e82a",
+      "lf": 32
+    },
+    {
+      "path": ".memory/pipeline/progress/verification/2026-10-22-native-finality-capability-audit-approval.md",
+      "sha256": "be79817a597ea709a9c029b83fa19c5fa2114999a0b85c32769acdc44c812a51",
+      "lf": 22
+    },
+    {
+      "path": ".memory/pipeline/progress/verification/2026-10-21-native-finality-capability-audit-proposal.md",
+      "sha256": "89e158a1c7e2336da93b57b7fc41c274d016a5753fd4735af6d9eb80241c6528",
+      "lf": 75
+    },
+    {
+      "path": ".lane-logs/s12-finality-metadata-scoped-green-20261022.json",
+      "sha256": "f99db2a06e8f408a577db0732d408879acccdb3fa01f091f78f0e9c2137e7c7f",
+      "lf": 0
+    }
+  ],
+  "executables": {
+    "docker": {
+      "path": "/usr/bin/docker",
+      "sha256": "dea20a67e395f7bf1447601c3c9d4736a503a69252d07a3ec989e55f9b477e40",
+      "device": "37",
+      "inode": "12811765",
+      "uid": 0,
+      "gid": 0,
+      "mode": 33261,
+      "size": 30487344
+    },
+    "node": {
+      "path": "/home/rob/.cache/chrome-gate-runtime/node-v22.23.1-linux-x64/bin/node",
+      "sha256": "93956de2e59480474a7b46571da1651180b1a050cdf32641ebec4ce6e478e068",
+      "device": "52",
+      "inode": "77902051",
+      "uid": 1000,
+      "gid": 1000,
+      "mode": 33261,
+      "size": 124835376
+    }
+  },
+  "environment": {
+    "PATH": "/usr/bin:/bin",
+    "LANG": "C",
+    "LC_ALL": "C",
+    "TZ": "UTC"
+  },
+  "noConfig": "/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-capability-audit-no-config",
+  "staticEvidence": {
+    "session": 37753,
+    "state": "CLOSED",
+    "exitCode": 0,
+    "unitTests": 610,
+    "passed": 610,
+    "failed": 0,
+    "pending": 0,
+    "format": true,
+    "lint": true,
+    "nodeSyntax": true,
+    "supplementaryTyping": "Node25.9.5 declarations; not a Node22 compatibility proof",
+    "configuredTyping": true,
+    "progressConsistency": true
+  },
+  "steps": [
+    {
+      "stage": "inspect-before",
+      "arguments": [
+        "--config",
+        "/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-capability-audit-no-config",
+        "--host",
+        "unix:///run/docker.sock",
+        "inspect",
+        "--type",
+        "container",
+        "--format",
+        "{\"id\":{{json .Id}},\"name\":{{json .Name}},\"imageId\":{{json .Image}},\"running\":{{json .State.Running}},\"initPid\":{{json .State.Pid}},\"supabaseProject\":{{json (index .Config.Labels \"com.supabase.cli.project\")}},\"composeProject\":{{json (index .Config.Labels \"com.docker.compose.project\")}}}",
+        "supabase_db_wejammin_ev"
+      ],
+      "receipt": "/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.lane-logs/s12-finality-audit-inspect-before-20261022.json",
+      "source": "const fs = require('node:fs');\nconst { spawn } = require('node:child_process');\nconst run = {\"stage\":\"inspect-before\",\"arguments\":[\"--config\",\"/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-capability-audit-no-config\",\"--host\",\"unix:///run/docker.sock\",\"inspect\",\"--type\",\"container\",\"--format\",\"{\\\"id\\\":{{json .Id}},\\\"name\\\":{{json .Name}},\\\"imageId\\\":{{json .Image}},\\\"running\\\":{{json .State.Running}},\\\"initPid\\\":{{json .State.Pid}},\\\"supabaseProject\\\":{{json (index .Config.Labels \\\"com.supabase.cli.project\\\")}},\\\"composeProject\\\":{{json (index .Config.Labels \\\"com.docker.compose.project\\\")}}}\",\"supabase_db_wejammin_ev\"],\"receipt\":\"/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.lane-logs/s12-finality-audit-inspect-before-20261022.json\"};\nconst fd = fs.openSync(run.receipt, 'wx', 0o600);\nconst buffers = { stdout: [], stderr: [] };\nconst totals = { stdout: 0, stderr: 0 };\nconst limits = { stdout: 65536, stderr: 8192 };\nlet overflow = false, spawnErrorCode = null;\nconst child = spawn('/usr/bin/docker', run.arguments, {\n  env: { PATH: '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C', TZ: 'UTC' },\n  stdio: ['ignore', 'pipe', 'pipe'],\n});\nfor (const name of ['stdout', 'stderr']) child[name].on('data', chunk => {\n  totals[name] += chunk.length;\n  if (totals[name] <= limits[name]) buffers[name].push(chunk);\n  else overflow = true;\n});\nchild.on('error', error => { spawnErrorCode = typeof error.code === 'string' ? error.code : 'AUDIT_SPAWN_FAILED'; });\nchild.on('close', (exitCode, signal) => {\n  let decodeFailure = false;\n  const decoded = {};\n  for (const name of ['stdout', 'stderr']) {\n    try { decoded[name] = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(buffers[name])); }\n    catch { decoded[name] = null; decodeFailure = true; }\n  }\n  const captureOk = exitCode === 0 && signal === null && spawnErrorCode === null && !overflow && !decodeFailure && totals.stderr === 0;\n  const result = { kind: 'diagnostic-only-native-finality-command', stage: run.stage, closed: true, exitCode, signal, spawnErrorCode, totals, overflow, decodeFailure, captureOk, ...decoded };\n  fs.writeFileSync(fd, JSON.stringify(result, null, 2) + '\\n');\n  fs.closeSync(fd);\n  console.log(JSON.stringify({ stage: run.stage, closed: true, exitCode, signal, spawnErrorCode, totals, overflow, decodeFailure, captureOk, receipt: run.receipt }));\n  process.exitCode = captureOk ? 0 : 1;\n});\n"
+    },
+    {
+      "stage": "census",
+      "arguments": [
+        "--config",
+        "/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-capability-audit-no-config",
+        "--host",
+        "unix:///run/docker.sock",
+        "exec",
+        "-e",
+        "PGAPPNAME=wejammin-finality-feasibility-20261022",
+        "-e",
+        "PGHOSTADDR=",
+        "-e",
+        "PGPASSFILE=/dev/null",
+        "-e",
+        "PGSERVICEFILE=/dev/null",
+        "-e",
+        "PGSERVICE=",
+        "-e",
+        "PGPASSWORD=",
+        "-e",
+        "PGOPTIONS=",
+        "supabase_db_wejammin_ev",
+        "psql",
+        "-X",
+        "-w",
+        "-h",
+        "/var/run/postgresql",
+        "-p",
+        "5432",
+        "-U",
+        "postgres",
+        "-d",
+        "postgres",
+        "-v",
+        "ON_ERROR_STOP=1",
+        "-q",
+        "-A",
+        "-t",
+        "-c",
+        "BEGIN READ ONLY;\nSELECT pg_catalog.jsonb_build_object(\n  'witness', 'DEC203_FINALITY_CAPABILITY_AUDIT_V1',\n  'database', pg_catalog.current_database(),\n  'databaseOid', (SELECT d.oid::pg_catalog.text\n    FROM pg_catalog.pg_database AS d\n    WHERE d.datname = pg_catalog.current_database()),\n  'observerPid', pg_catalog.pg_backend_pid(),\n  'backends', COALESCE((\n    SELECT pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(\n      'pid', a.pid,\n      'databaseOid', a.datid::pg_catalog.text,\n      'databaseName', a.datname,\n      'backendStart', a.backend_start,\n      'backendType', a.backend_type\n    ) ORDER BY a.pid) FROM pg_catalog.pg_stat_activity AS a\n  ), '[]'::pg_catalog.jsonb)\n  );\nROLLBACK;"
+      ],
+      "receipt": "/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.lane-logs/s12-finality-audit-census-20261022.json",
+      "source": "const fs = require('node:fs');\nconst { spawn } = require('node:child_process');\nconst run = {\"stage\":\"census\",\"arguments\":[\"--config\",\"/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-capability-audit-no-config\",\"--host\",\"unix:///run/docker.sock\",\"exec\",\"-e\",\"PGAPPNAME=wejammin-finality-feasibility-20261022\",\"-e\",\"PGHOSTADDR=\",\"-e\",\"PGPASSFILE=/dev/null\",\"-e\",\"PGSERVICEFILE=/dev/null\",\"-e\",\"PGSERVICE=\",\"-e\",\"PGPASSWORD=\",\"-e\",\"PGOPTIONS=\",\"supabase_db_wejammin_ev\",\"psql\",\"-X\",\"-w\",\"-h\",\"/var/run/postgresql\",\"-p\",\"5432\",\"-U\",\"postgres\",\"-d\",\"postgres\",\"-v\",\"ON_ERROR_STOP=1\",\"-q\",\"-A\",\"-t\",\"-c\",\"BEGIN READ ONLY;\\nSELECT pg_catalog.jsonb_build_object(\\n  'witness', 'DEC203_FINALITY_CAPABILITY_AUDIT_V1',\\n  'database', pg_catalog.current_database(),\\n  'databaseOid', (SELECT d.oid::pg_catalog.text\\n    FROM pg_catalog.pg_database AS d\\n    WHERE d.datname = pg_catalog.current_database()),\\n  'observerPid', pg_catalog.pg_backend_pid(),\\n  'backends', COALESCE((\\n    SELECT pg_catalog.jsonb_agg(pg_catalog.jsonb_build_object(\\n      'pid', a.pid,\\n      'databaseOid', a.datid::pg_catalog.text,\\n      'databaseName', a.datname,\\n      'backendStart', a.backend_start,\\n      'backendType', a.backend_type\\n    ) ORDER BY a.pid) FROM pg_catalog.pg_stat_activity AS a\\n  ), '[]'::pg_catalog.jsonb)\\n  );\\nROLLBACK;\"],\"receipt\":\"/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.lane-logs/s12-finality-audit-census-20261022.json\"};\nconst fd = fs.openSync(run.receipt, 'wx', 0o600);\nconst buffers = { stdout: [], stderr: [] };\nconst totals = { stdout: 0, stderr: 0 };\nconst limits = { stdout: 65536, stderr: 8192 };\nlet overflow = false, spawnErrorCode = null;\nconst child = spawn('/usr/bin/docker', run.arguments, {\n  env: { PATH: '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C', TZ: 'UTC' },\n  stdio: ['ignore', 'pipe', 'pipe'],\n});\nfor (const name of ['stdout', 'stderr']) child[name].on('data', chunk => {\n  totals[name] += chunk.length;\n  if (totals[name] <= limits[name]) buffers[name].push(chunk);\n  else overflow = true;\n});\nchild.on('error', error => { spawnErrorCode = typeof error.code === 'string' ? error.code : 'AUDIT_SPAWN_FAILED'; });\nchild.on('close', (exitCode, signal) => {\n  let decodeFailure = false;\n  const decoded = {};\n  for (const name of ['stdout', 'stderr']) {\n    try { decoded[name] = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(buffers[name])); }\n    catch { decoded[name] = null; decodeFailure = true; }\n  }\n  const captureOk = exitCode === 0 && signal === null && spawnErrorCode === null && !overflow && !decodeFailure && totals.stderr === 0;\n  const result = { kind: 'diagnostic-only-native-finality-command', stage: run.stage, closed: true, exitCode, signal, spawnErrorCode, totals, overflow, decodeFailure, captureOk, ...decoded };\n  fs.writeFileSync(fd, JSON.stringify(result, null, 2) + '\\n');\n  fs.closeSync(fd);\n  console.log(JSON.stringify({ stage: run.stage, closed: true, exitCode, signal, spawnErrorCode, totals, overflow, decodeFailure, captureOk, receipt: run.receipt }));\n  process.exitCode = captureOk ? 0 : 1;\n});\n"
+    },
+    {
+      "stage": "inspect-after",
+      "arguments": [
+        "--config",
+        "/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-capability-audit-no-config",
+        "--host",
+        "unix:///run/docker.sock",
+        "inspect",
+        "--type",
+        "container",
+        "--format",
+        "{\"id\":{{json .Id}},\"name\":{{json .Name}},\"imageId\":{{json .Image}},\"running\":{{json .State.Running}},\"initPid\":{{json .State.Pid}},\"supabaseProject\":{{json (index .Config.Labels \"com.supabase.cli.project\")}},\"composeProject\":{{json (index .Config.Labels \"com.docker.compose.project\")}}}",
+        "supabase_db_wejammin_ev"
+      ],
+      "receipt": "/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.lane-logs/s12-finality-audit-inspect-after-20261022.json",
+      "source": "const fs = require('node:fs');\nconst { spawn } = require('node:child_process');\nconst run = {\"stage\":\"inspect-after\",\"arguments\":[\"--config\",\"/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-capability-audit-no-config\",\"--host\",\"unix:///run/docker.sock\",\"inspect\",\"--type\",\"container\",\"--format\",\"{\\\"id\\\":{{json .Id}},\\\"name\\\":{{json .Name}},\\\"imageId\\\":{{json .Image}},\\\"running\\\":{{json .State.Running}},\\\"initPid\\\":{{json .State.Pid}},\\\"supabaseProject\\\":{{json (index .Config.Labels \\\"com.supabase.cli.project\\\")}},\\\"composeProject\\\":{{json (index .Config.Labels \\\"com.docker.compose.project\\\")}}}\",\"supabase_db_wejammin_ev\"],\"receipt\":\"/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.lane-logs/s12-finality-audit-inspect-after-20261022.json\"};\nconst fd = fs.openSync(run.receipt, 'wx', 0o600);\nconst buffers = { stdout: [], stderr: [] };\nconst totals = { stdout: 0, stderr: 0 };\nconst limits = { stdout: 65536, stderr: 8192 };\nlet overflow = false, spawnErrorCode = null;\nconst child = spawn('/usr/bin/docker', run.arguments, {\n  env: { PATH: '/usr/bin:/bin', LANG: 'C', LC_ALL: 'C', TZ: 'UTC' },\n  stdio: ['ignore', 'pipe', 'pipe'],\n});\nfor (const name of ['stdout', 'stderr']) child[name].on('data', chunk => {\n  totals[name] += chunk.length;\n  if (totals[name] <= limits[name]) buffers[name].push(chunk);\n  else overflow = true;\n});\nchild.on('error', error => { spawnErrorCode = typeof error.code === 'string' ? error.code : 'AUDIT_SPAWN_FAILED'; });\nchild.on('close', (exitCode, signal) => {\n  let decodeFailure = false;\n  const decoded = {};\n  for (const name of ['stdout', 'stderr']) {\n    try { decoded[name] = new TextDecoder('utf-8', { fatal: true }).decode(Buffer.concat(buffers[name])); }\n    catch { decoded[name] = null; decodeFailure = true; }\n  }\n  const captureOk = exitCode === 0 && signal === null && spawnErrorCode === null && !overflow && !decodeFailure && totals.stderr === 0;\n  const result = { kind: 'diagnostic-only-native-finality-command', stage: run.stage, closed: true, exitCode, signal, spawnErrorCode, totals, overflow, decodeFailure, captureOk, ...decoded };\n  fs.writeFileSync(fd, JSON.stringify(result, null, 2) + '\\n');\n  fs.closeSync(fd);\n  console.log(JSON.stringify({ stage: run.stage, closed: true, exitCode, signal, spawnErrorCode, totals, overflow, decodeFailure, captureOk, receipt: run.receipt }));\n  process.exitCode = captureOk ? 0 : 1;\n});\n"
+    }
+  ],
+  "metadataSource": "const fs = require('node:fs');\nconst fd = fs.openSync(\"/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-metadata-result.json\", 'wx', 0o600);\nconst result = require(\"/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-metadata.cjs\").runMetadataAudit();\nfs.writeFileSync(fd, JSON.stringify(result, null, 2) + '\\n');\nfs.closeSync(fd);\nconsole.log(JSON.stringify({ kind: result.kind, state: result.state, members: result.members.length, frames: result.frames.length, failure: result.failure, receipt: \"/home/rob/.codex/worktrees/phase2-slice12/WeJammin/.memory/pipeline/progress/verification/2026-10-22-native-finality-metadata-result.json\" }));\nprocess.exitCode = result.state === 'complete' ? 0 : 1;\n",
+  "rules": [
+    "Reserve consumption record before first daemon/proc read.",
+    "Inspect-before, validate exact identity/project, one census, validate schema, fixed derived target, metadata once, inspect-after only after complete metadata.",
+    "At first refusal/error/conflict/unsupported stop; no retries or substitutions.",
+    "Every Docker child retained to actual close; output overflow drained without signals.",
+    "No acceptance, genuine authority, backend lifetime/finality or Phase2 credit."
+  ]
+}

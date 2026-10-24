@@ -36,6 +36,7 @@
     "db:types:check": "node infra/sync-database-types.mjs --check",
     "db:races": "node infra/run-database-race-runners.mjs",
     "db:api-test": "vitest run --config vitest.postgrest.config.ts",
+    "db:api-test:dec194-alt": "vitest run --config vitest.postgrest-alt.config.ts",
     "db:verify": "pnpm db:reset && pnpm db:lint && pnpm db:test && pnpm db:api-test && pnpm db:races && pnpm db:types:check",
     "db:ci": "bash infra/verify-database.sh",
     "lint": "eslint apps infra packages tests scripts/verify-bundle-budget.mjs --max-warnings=0",

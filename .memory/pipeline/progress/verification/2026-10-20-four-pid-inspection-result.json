@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-20-four-pid-readonly",
+  "result": "STOPPED_NONZERO_PRIVILEGED_INVOCATION",
+  "approvalConsumed": true,
+  "privilegedInvocations": 1,
+  "maximumAuthorizedInvocations": 8,
+  "retryOrAlternativeAttempted": false,
+  "firstInvocation": {
+    "pid": 729,
+    "read": 1,
+    "command": "/usr/bin/sudo -n -- /usr/bin/readlink -- /proc/729/exe",
+    "environment": {"PATH": "/usr/bin:/bin", "LANG": "C", "LC_ALL": "C", "TZ": "UTC"},
+    "tty": false,
+    "beforeAt": "2026-10-20T20:17:27.941Z",
+    "before": {"pid": 729, "ppid": 1, "group": 729, "session": 729, "startTime": "677", "uid": 1000},
+    "commandExitCode": 1,
+    "stdoutBytes": 0,
+    "stderrPolicy": "discarded without inspection",
+    "toolReportedTerminal": true,
+    "retainedLiveSession": null,
+    "afterAt": "2026-10-20T20:18:07.618Z",
+    "after": {"pid": 729, "ppid": 1, "group": 729, "session": 729, "startTime": "677", "uid": 1000},
+    "tupleAndPinnedBinaryMetadataUnchanged": true
+  },
+  "operatorConsumptionSha256": "497a4d40fb66206a4a45c0c44dcabde852c8e01a52ea110be806e9e8b9aa3390",
+  "remainingTargetsAttempted": [],
+  "causeEstablished": false,
+  "diagnosticOnly": true,
+  "nativeOrDatabaseAcceptance": false,
+  "signalsCleanupServicesSecretsPolicyOrStackChanges": false,
+  "nextAuthority": "Owner direction required before any new privileged invocation or alternative route; no automatic renewal"
+}

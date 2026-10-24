@@ -1,0 +1,11 @@
+import { createRequire } from 'node:module';
+import fs from 'node:fs';
+const R='/home/rob/.codex/worktrees/phase2-slice12/WeJammin';
+const require=createRequire(R+'/node_modules/.pnpm/esbuild@0.28.2/node_modules/esbuild/');
+const esbuild=require('esbuild');
+const common={bundle:true,jsx:'automatic',logLevel:'warning',nodePaths:[R+'/node_modules',R+'/apps/web/node_modules'],external:['@wejammin/contracts','@wejammin/contracts/cms-editorial/validators','@wejammin/contracts/content-schema-registry/validators','@wejammin/contracts/platform-configuration/validators'],alias:{'@wejammin/contracts/client':R+'/packages/contracts/src/client.ts','@wejammin/contracts/time-authority':R+'/packages/contracts/src/cms-editorial/time-authority/index.ts'},absWorkingDir:R+'/apps/web'};
+await esbuild.build({...common,entryPoints:[process.cwd()+'/client.tsx'],outdir:process.cwd()+'/out',splitting:true,format:'esm',platform:'browser',target:'es2022',define:{'import.meta.env':'{"SSR":false,"MODE":"production"}','process.env.NODE_ENV':'"production"'},chunkNames:'chunks/[name]-[hash]'});
+await esbuild.build({...common,entryPoints:[process.cwd()+'/server.tsx'],outfile:process.cwd()+'/out/server.cjs',format:'cjs',platform:'node',define:{'import.meta.env':'{"SSR":true,"MODE":"production"}','process.env.NODE_ENV':'"production"'}});
+const {html}=require(process.cwd()+'/out/server.cjs');
+fs.writeFileSync(process.cwd()+'/out/index.html',`<!doctype html><html><body><div id="root">${html()}</div><script type="module" src="/client.js"></script></body></html>`);
+console.log('built', fs.readdirSync(process.cwd()+'/out/chunks'));

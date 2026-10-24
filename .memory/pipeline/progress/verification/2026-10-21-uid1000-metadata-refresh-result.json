@@ -1,0 +1,142 @@
+{
+  "version": 1,
+  "approvalRef": ".memory/pipeline/progress/verification/2026-10-21-uid1000-metadata-owner-approval.json",
+  "approvalId": "2026-10-21-uid1000-metadata-refresh",
+  "result": "BLOCKED_OPAQUE_PROCESS_LINKS",
+  "snapshotStartedAt": "2026-10-21T08:04:00.814Z",
+  "snapshotEndedAt": "2026-10-21T08:04:00.822Z",
+  "numericProcEntries": 399,
+  "excludedByUidFilter": 249,
+  "uid1000IdentitiesRead": 150,
+  "identityBracketsStable": 150,
+  "filterErrors": 0,
+  "unstableIdentities": 0,
+  "captureReconciliation": "399 = 249 excluded + 150 read + 0 error",
+  "scope": "One observational window; not a globally atomic or continuous inventory and not global-absence proof",
+  "rawSnapshot": {
+    "localPath": ".lane-logs/s12-uid1000-metadata-20261021.json",
+    "gitIgnored": true,
+    "sha256": "91e2fb3fdd706bbc26598d135117fac99dcf3d0db7658acba6941716cd9eb75b",
+    "rowCount": 150
+  },
+  "opaqueTargets": [
+    {
+      "pid": 712,
+      "ppid": 1,
+      "group": 712,
+      "session": 712,
+      "startTime": "567",
+      "uid": 1000,
+      "exe": "EACCES",
+      "cwd": "EACCES",
+      "stable": true
+    },
+    {
+      "pid": 723,
+      "ppid": 712,
+      "group": 712,
+      "session": 712,
+      "startTime": "569",
+      "uid": 1000,
+      "exe": "EACCES",
+      "cwd": "EACCES",
+      "stable": true
+    },
+    {
+      "pid": 4377,
+      "ppid": 4335,
+      "group": 4377,
+      "session": 4377,
+      "startTime": "2069",
+      "uid": 1000,
+      "exe": "EACCES",
+      "cwd": "EACCES",
+      "stable": true
+    },
+    {
+      "pid": 4630,
+      "ppid": 4579,
+      "group": 4630,
+      "session": 4630,
+      "startTime": "2087",
+      "uid": 1000,
+      "exe": "EACCES",
+      "cwd": "EACCES",
+      "stable": true
+    }
+  ],
+  "opaqueTargetCount": 4,
+  "opaqueTargetsNotClassified": true,
+  "privilegedInvocations": 0,
+  "exeLinkReadAttempts": 150,
+  "cwdLinkReadAttempts": 150,
+  "readableExeLinks": 146,
+  "readableCwdLinks": 146,
+  "privilegedExeLinkReads": 0,
+  "privilegedCwdLinkReads": 0,
+  "diagnosticOnly": true,
+  "nativeOrDatabaseAcceptance": false,
+  "notObserved": [
+    "UID0 or other-UID process contents",
+    "command lines",
+    "environment",
+    "secrets",
+    "signals",
+    "cleanup",
+    "system changes"
+  ],
+  "binaryPinsObservedAt": "2026-10-21T08:08:03.715Z",
+  "binaries": [
+    {
+      "path": "/usr/bin/pkexec",
+      "device": 37,
+      "inode": 139723,
+      "uid": 0,
+      "mode": 35309,
+      "size": 26720,
+      "sha256": "72cd770659617b11f0872bfac159cdd5e41b0e44bbc01f9d3cd88d18e89861cd"
+    },
+    {
+      "path": "/usr/bin/readlink",
+      "device": 37,
+      "inode": 9129108,
+      "uid": 0,
+      "mode": 33261,
+      "size": 76088,
+      "sha256": "092f87a1632ad9102757d676c85150556b71cc377642f2d55f04c9df9af63aa1"
+    },
+    {
+      "path": "/home/rob/.cache/chrome-gate-runtime/node-v22.23.1-linux-x64/bin/node",
+      "device": 52,
+      "inode": 77902051,
+      "uid": 1000,
+      "mode": 33261,
+      "size": 124835376,
+      "sha256": "93956de2e59480474a7b46571da1651180b1a050cdf32641ebec4ce6e478e068"
+    }
+  ],
+  "unapprovedProposal": {
+    "status": "UNAPPROVED",
+    "requiresSeparateExplicitHumanApproval": true,
+    "substitutionOrAutomaticRenewal": false,
+    "targetPids": [712, 723, 4377, 4630],
+    "recommendedShape": "/usr/bin/pkexec /usr/bin/readlink -- /proc/PID/exe and /usr/bin/pkexec /usr/bin/readlink -- /proc/PID/cwd, once per link per PID",
+    "maximumInvocationsPerPid": 2,
+    "maximumTotalInvocations": 8,
+    "identityBracket": "six-field identity before and after each invocation; stop on nonzero, mismatch or uncertainty",
+    "broaderThanPriorScope": "executable and working-directory links, broader than the earlier exe-only scope",
+    "exclusions": [
+      "shell target",
+      "command lines",
+      "environment",
+      "secrets",
+      "signals",
+      "cleanup",
+      "services",
+      "host-policy changes",
+      "stack changes",
+      "database actions"
+    ]
+  },
+  "nextStep": "OWNER APPROVAL NEEDED for a NEW fixed-PID read-only privileged proposal for these four current tuples; the proposal above is UNAPPROVED and must not be executed"
+}

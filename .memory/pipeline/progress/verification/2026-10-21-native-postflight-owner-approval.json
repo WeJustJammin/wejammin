@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-21-native-postflight-window",
+  "authority": "direct human",
+  "answer": "Approve this one unprivileged preflight window",
+  "question": "May I run one fresh, unprivileged native-preflight window: UID-1000 process identities and readable executable/cwd links, plus metadata for the four fixed WeJammin lock files and /proc/locks? The prior one-window scan is complete; this requests a new window only. No command lines, environment, secrets, privilege, signals, cleanup, service, stack or database changes.",
+  "recordedAt": "not separately recorded",
+  "recordedAtNote": "The exact human send time was not separately recorded, so no timestamp is invented.",
+  "newApproval": true,
+  "oneWindowOnly": true,
+  "priorWindowComplete": true,
+  "privilegeRenewalOrFallback": false,
+  "consumptionStatus": "Not consumed here; ROOT owns the one actual native observation and any separate consumption record. The approval stays unconsumed until the real /proc observation.",
+  "scope": "One fresh unprivileged native-preflight window: UID-1000 process identities (six fields) with readable executable and working-directory links, plus metadata for the four fixed WeJammin lock files and /proc/locks",
+  "fixedLockPaths": [
+    "/tmp/wejammin-supabase-ci.lock",
+    "/tmp/wejammin-quiet.lock",
+    "/tmp/wejammin-altdb.lock",
+    "/tmp/wejammin-reset.lock"
+  ],
+  "exclusions": [
+    "command lines",
+    "environment",
+    "secrets",
+    "privilege",
+    "signals",
+    "cleanup",
+    "service changes",
+    "stack changes",
+    "database changes"
+  ],
+  "diagnosticOnly": true,
+  "nativeOrDatabaseAcceptance": false
+}

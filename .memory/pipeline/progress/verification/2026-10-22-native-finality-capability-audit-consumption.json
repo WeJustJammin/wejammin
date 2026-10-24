@@ -1,0 +1,9 @@
+{
+  "kind": "one-approved-diagnostic-window-consumed-before-first-daemon-read",
+  "approval": "2026-10-22-native-finality-capability-audit-approval.md",
+  "frozenPlan": "2026-10-22-native-finality-audit-frozen-plan.json",
+  "frozenPlanSha256": "021667eb556a3c62855dc900e87094cc1a04032c4ab40ef4990a12263868c156",
+  "firstStep": "inspect-before",
+  "state": "RESERVED; live execution follows once; no renewal or retry",
+  "acceptance": false
+}

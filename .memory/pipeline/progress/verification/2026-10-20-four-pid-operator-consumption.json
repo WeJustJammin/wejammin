@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-20-four-pid-readonly",
+  "status": "CONSUMED",
+  "claimedBeforeAnyPrivilegedCall": true,
+  "claimAt": "2026-10-20T20:16:01.352Z",
+  "maximumReadsPerPid": 2,
+  "maximumTotalReads": 8,
+  "pids": [729, 739, 2519, 2566],
+  "transport": "Direct fixed /usr/bin/env sanitized-environment command through exec_command, no TTY, /bin/sh login=false, no timeout/signal/stream destruction; stderr discarded; any nonzero status, truncated output, mismatch or uncertain closure stops the inspection",
+  "renewalAllowed": false,
+  "resultsRecordedSeparately": true
+}

@@ -48,6 +48,7 @@ coverage/
 .ctx-*-cov/
 .nyc_output/
 test-results/
+test-results-governed-evidence/
 playwright-report/
 
 # === OS ===

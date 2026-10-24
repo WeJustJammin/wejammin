@@ -1,0 +1,151 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-21-fixed-eight-link-pkexec",
+  "approvalRef": ".memory/pipeline/progress/verification/2026-10-21-fixed-eight-link-pkexec-owner-approval.json",
+  "approvalSha256": "27624789360cb0b58a18b2ac4011cd8b9945710569c650754e1d68bc1a5a1103",
+  "status": "CONSUMED",
+  "claimedBeforeAnyPrivilegedCall": true,
+  "maximumReadlinkInvocationsPerPid": 2,
+  "maximumTotalReadlinkInvocations": 8,
+  "oneExeOneCwdPerPid": true,
+  "targets": [
+    {
+      "pid": 712,
+      "ppid": 1,
+      "group": 712,
+      "session": 712,
+      "startTime": "567",
+      "uid": 1000
+    },
+    {
+      "pid": 723,
+      "ppid": 712,
+      "group": 712,
+      "session": 712,
+      "startTime": "569",
+      "uid": 1000
+    },
+    {
+      "pid": 4377,
+      "ppid": 4335,
+      "group": 4377,
+      "session": 4377,
+      "startTime": "2069",
+      "uid": 1000
+    },
+    {
+      "pid": 4630,
+      "ppid": 4579,
+      "group": 4630,
+      "session": 4630,
+      "startTime": "2087",
+      "uid": 1000
+    }
+  ],
+  "commandVectors": [
+    {
+      "pid": 712,
+      "link": "exe",
+      "program": "/usr/bin/pkexec",
+      "args": [
+        "/usr/bin/readlink",
+        "--",
+        "/proc/712/exe"
+      ]
+    },
+    {
+      "pid": 712,
+      "link": "cwd",
+      "program": "/usr/bin/pkexec",
+      "args": [
+        "/usr/bin/readlink",
+        "--",
+        "/proc/712/cwd"
+      ]
+    },
+    {
+      "pid": 723,
+      "link": "exe",
+      "program": "/usr/bin/pkexec",
+      "args": [
+        "/usr/bin/readlink",
+        "--",
+        "/proc/723/exe"
+      ]
+    },
+    {
+      "pid": 723,
+      "link": "cwd",
+      "program": "/usr/bin/pkexec",
+      "args": [
+        "/usr/bin/readlink",
+        "--",
+        "/proc/723/cwd"
+      ]
+    },
+    {
+      "pid": 4377,
+      "link": "exe",
+      "program": "/usr/bin/pkexec",
+      "args": [
+        "/usr/bin/readlink",
+        "--",
+        "/proc/4377/exe"
+      ]
+    },
+    {
+      "pid": 4377,
+      "link": "cwd",
+      "program": "/usr/bin/pkexec",
+      "args": [
+        "/usr/bin/readlink",
+        "--",
+        "/proc/4377/cwd"
+      ]
+    },
+    {
+      "pid": 4630,
+      "link": "exe",
+      "program": "/usr/bin/pkexec",
+      "args": [
+        "/usr/bin/readlink",
+        "--",
+        "/proc/4630/exe"
+      ]
+    },
+    {
+      "pid": 4630,
+      "link": "cwd",
+      "program": "/usr/bin/pkexec",
+      "args": [
+        "/usr/bin/readlink",
+        "--",
+        "/proc/4630/cwd"
+      ]
+    }
+  ],
+  "transport": {
+    "shell": "/bin/sh",
+    "login": false,
+    "tty": false,
+    "environment": {
+      "PATH": "/usr/bin:/bin",
+      "LANG": "C",
+      "LC_ALL": "C",
+      "TZ": "UTC"
+    },
+    "commandPrefix": "/usr/bin/env -i PATH=/usr/bin:/bin LANG=C LC_ALL=C TZ=UTC /usr/bin/pkexec /usr/bin/readlink -- ",
+    "stopOn": [
+      "nonzero",
+      "tuple mismatch",
+      "binary or transport pin mismatch",
+      "truncated or invalid output",
+      "uncertain closure"
+    ],
+    "noAutomaticRetryOrFallback": true
+  },
+  "beforeClaimFenceAt": "2026-10-21T16:22:05.087Z",
+  "renewalAllowed": false,
+  "resultsRecordedSeparately": true,
+  "claimAt": "2026-10-21T16:22:47.609Z"
+}

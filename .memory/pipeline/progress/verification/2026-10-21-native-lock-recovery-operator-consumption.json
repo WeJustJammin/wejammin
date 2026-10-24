@@ -1,0 +1,150 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-21-native-lock-recovery",
+  "approvalRef": ".memory/pipeline/progress/verification/2026-10-21-native-lock-recovery-owner-approval.json",
+  "approvalSha256": "bd691128db16c1e2835c9f3accd4f5b76bee8035f9af880033f6a4891aa435d7",
+  "status": "CONSUMED_FOR_ONE_RECOVERY_ATTEMPT",
+  "recordedBeforeAnyRecoveryAction": true,
+  "claimAt": "2026-10-21T18:09:57Z",
+  "precheckAt": "2026-10-21T18:09:43.706Z",
+  "claimPathAbsentAtPrecheck": true,
+  "claimCreation": "new-file apply_patch after an ENOENT precheck; not an O_EXCL runtime reservation",
+  "oneShotEnforcement": "fixed preflight, creator and postflight raw paths reserve O_CREAT|O_EXCL|O_NOFOLLOW; ROOT dispatches each at most once and never retries",
+  "targets": [
+    {
+      "pid": 712,
+      "ppid": 1,
+      "group": 712,
+      "session": 712,
+      "startTime": "567",
+      "uid": 1000
+    },
+    {
+      "pid": 723,
+      "ppid": 712,
+      "group": 712,
+      "session": 712,
+      "startTime": "569",
+      "uid": 1000
+    },
+    {
+      "pid": 4377,
+      "ppid": 4335,
+      "group": 4377,
+      "session": 4377,
+      "startTime": "2069",
+      "uid": 1000
+    },
+    {
+      "pid": 4630,
+      "ppid": 4579,
+      "group": 4630,
+      "session": 4630,
+      "startTime": "2087",
+      "uid": 1000
+    }
+  ],
+  "pkexecCommand": {
+    "program": "/usr/bin/pkexec",
+    "args": [
+      "/usr/bin/readlink",
+      "--",
+      "/proc/712/exe",
+      "/proc/712/cwd",
+      "/proc/723/exe",
+      "/proc/723/cwd",
+      "/proc/4377/exe",
+      "/proc/4377/cwd",
+      "/proc/4630/exe",
+      "/proc/4630/cwd"
+    ]
+  },
+  "maxPkexecInvocations": 1,
+  "maxReadlinkInvocations": 1,
+  "maxTargetLinkReads": 8,
+  "globalPreflightCount": 1,
+  "globalPostflightCount": 1,
+  "conditionalLockCreation": {
+    "onlyIfAdmissionChecksPass": true,
+    "exclusiveCreate": true,
+    "uid": 1000,
+    "gid": 1000,
+    "mode": "0644",
+    "regularFile": true,
+    "paths": [
+      "/tmp/wejammin-supabase-ci.lock",
+      "/tmp/wejammin-quiet.lock",
+      "/tmp/wejammin-altdb.lock",
+      "/tmp/wejammin-reset.lock"
+    ],
+    "stopOnConflictOrError": true,
+    "preservePartialCreation": true,
+    "neverDeleteOrOverwriteExisting": true
+  },
+  "wholeBatchIdentityAndBinaryPinBracketBeforeAfter": true,
+  "noFallbackOrRetry": true,
+  "renewalAllowed": false,
+  "stopWorkflowOnAnyNonzeroMismatchOrUncertainClosure": true,
+  "exclusions": [
+    "substitutions",
+    "retries",
+    "command-line reads",
+    "environment reads",
+    "secret reads",
+    "signals",
+    "cleanup",
+    "service changes",
+    "stack changes",
+    "database changes"
+  ],
+  "sourcePins": [
+    {
+      "file": "2026-10-21-native-lock-recovery-create.cjs",
+      "sha": "8fccb421dcff67830f7542f0d5e066df1d58e6fdc6d7fa78ae7fdfbdfa55d0fb",
+      "lines": 251
+    },
+    {
+      "file": "2026-10-21-native-lock-recovery-create-files.cjs",
+      "sha": "93614f3504b7f2c8a630353e83d311bf0ac06139784abec870faf7d056519f0d",
+      "lines": 198
+    },
+    {
+      "file": "2026-10-21-native-lock-recovery-output.cjs",
+      "sha": "ded7e7ccc2a496285de9f32ca1ae85c8dfd37ecc03bcfa31641607de728bade4",
+      "lines": 144
+    },
+    {
+      "file": "2026-10-21-native-lock-recovery-observe.cjs",
+      "sha": "c76fe88b678da7fdf3a4f05cdced174bfa975bfc6f2f9ece47fc086d9efa90ff",
+      "lines": 224
+    },
+    {
+      "file": "2026-10-21-native-lock-recovery-preflight.cjs",
+      "sha": "6832fb110457f19f1921ddf84d5c0964fa458a3e220f645b2f7e0bc757730376",
+      "lines": 13
+    },
+    {
+      "file": "2026-10-21-native-lock-recovery-postflight.cjs",
+      "sha": "f97e4d030946778e3015161991d3a42eab0036da05d43eb634c65a1ca42bee84",
+      "lines": 13
+    },
+    {
+      "file": "2026-10-21-native-postflight-readonly.cjs",
+      "sha": "d7b0df7ed7f1c35893c9253c679d02e03f29340e9ab09b5d66b85825640e4bff",
+      "lines": 294
+    },
+    {
+      "file": "2026-10-21-native-postflight-processes.cjs",
+      "sha": "d7e69a1bfa986cb55a12bf8efc336492b1db5ba465c04c733d6728ae2980c2c8",
+      "lines": 227
+    },
+    {
+      "file": "2026-10-21-native-postflight-locks.cjs",
+      "sha": "252248ea3a972d61e00aa7b671556a2c101d6c13056a4b9e226bead333e6dc8d",
+      "lines": 144
+    }
+  ],
+  "resultsRecordedSeparately": true,
+  "noRecoveryOutcomeClaim": true,
+  "nativeAcceptanceClaim": false
+}
