@@ -118,6 +118,7 @@ import {
   PatternVersionDetailSchema,
   PatternVersionResourceSchema,
 } from './cms-composition/pattern-version.ts';
+import { PatternNestableApiRequestSchema } from './cms-composition/pattern-nestable.ts';
 import {
   PatternSelectorApiRequestSchema,
   PatternSelectorPageSchema,
@@ -443,6 +444,7 @@ const schemaContracts = {
   PatternVersionDetailSchema,
   PatternSelectorApiRequestSchema,
   PatternSelectorPageSchema,
+  PatternNestableApiRequestSchema,
   CompositionUpdateDiffApiRequestSchema,
   CompositionUpdateDiffResourceSchema,
   CompositionUpdateApiRequestSchema,
@@ -559,6 +561,7 @@ const schemaIo = {
   PatternVersionApiRequestSchema: 'input',
   PatternLatestApiRequestSchema: 'input',
   PatternSelectorApiRequestSchema: 'input',
+  PatternNestableApiRequestSchema: 'input',
   CompositionUpdateDiffApiRequestSchema: 'input',
   CompositionUpdateApiRequestSchema: 'input',
   TaxonomyVersionApiRequestSchema: 'input',

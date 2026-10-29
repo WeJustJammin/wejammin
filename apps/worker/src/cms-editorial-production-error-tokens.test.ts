@@ -34,6 +34,7 @@ describe('typed 422 reason tokens (BE03b:1049-1054, :1211)', () => {
     'object_property_invalid',
     'relation_target_unavailable',
     'taxonomy_source_unavailable',
+    'term_unavailable',
     'media_source_unavailable',
   ])(
     '[P2-S10-AC-005] [P2-S10-AC-008] maps %s on a write to 422 VALIDATION_FAILED with reasonCode',

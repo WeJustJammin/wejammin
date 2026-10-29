@@ -35,6 +35,7 @@ import {
 } from './pattern-update-response';
 import { noteFacts } from './observability-facts';
 import { instrumentComposition } from './observability-instrument';
+import { registerCmsPatternNestableRoute } from './pattern-nestable-routes';
 import { registerCmsPatternSelectorRoute } from './pattern-selector-routes';
 
 const PATH = '/api/v1/cms/compositions/pattern-updates';
@@ -145,7 +146,10 @@ export const registerCmsPatternUpdateCommandRoute = <E extends Env>(
   });
 };
 
-/** The three linked-update routes and the composition-instance list read (DEC-206). The selector is registered first so `selector` never reaches `:patternKey`. */
+/**
+ * The three linked-update routes, the composition-instance list read (DEC-206) and the nestable-pattern list (DEC-196).
+ * The selector and nestable routes are registered first so `selector` and `nestable` never reach `:patternKey`.
+ */
 export const registerCmsPatternUpdateRoutes = <E extends Env>(
   app: Hono<E>,
   registered: CmsPatternUpdateDependencies,
@@ -153,9 +157,10 @@ export const registerCmsPatternUpdateRoutes = <E extends Env>(
   // BE03c Observability: the request event lists only the stages the request reached.
   const dependencies = instrumentComposition(registered, {
     writes: ['applyUpdate'],
-    reads: ['readSelector', 'readUpdateDiff', 'readInstances'],
+    reads: ['readSelector', 'readNestable', 'readUpdateDiff', 'readInstances'],
   });
   registerCmsPatternSelectorRoute(app, dependencies);
+  registerCmsPatternNestableRoute(app, dependencies);
   registerCmsPatternUpdateDiffRoute(app, dependencies);
   registerCmsCompositionInstancesRoute(app, dependencies);
   registerCmsPatternUpdateCommandRoute(app, dependencies);

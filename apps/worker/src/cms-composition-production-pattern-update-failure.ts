@@ -25,7 +25,7 @@ import {
 } from './cms-composition/block-rules-refusal';
 
 /**
- * CMS-03C-13/14/15 RPC failure to port refusal. Named tokens only: the whole `message` of a platform raise selects the
+ * CMS-03C-13/14/15, cmsCompositionInstancesRead and cmsPatternNestableRead RPC failure to port refusal. Named tokens only: the whole `message` of a platform raise selects the
  * refusal (PostgREST answers a `P0001` raise 4xx, so the HTTP status decides only the 5xx class); prose, hints and the
  * DETAIL never select one (BE03c 1298-1304).
  *  - a Slice 12 reason token this operation publishes (`CMS_SLICE_12_OPERATION_REASONS`) keeps its one catalog status
@@ -93,6 +93,11 @@ const BY_OPERATION: Readonly<
     VALIDATION_FAILED: pointers(SELECTOR_POINTER),
   },
   'CMS-03C-14': {},
+  // DEC-196: the same page and grammar as CMS-03C-13 (`/limit`, `/contentTypeId`); every cursor fault is the SQL's INVALID_REQUEST
+  // (DEC-232: the matrix 409 cell is "not applicable"), so a CONFLICT token is a contract failure, the scrubbed 500.
+  cmsPatternNestableRead: {
+    VALIDATION_FAILED: pointers(SELECTOR_POINTER),
+  },
   // DEC-206: a read with no conflict and no validation answer; only the COMMON tokens and capability_missing are its own.
   cmsCompositionInstancesRead: {},
   'CMS-03C-15': {

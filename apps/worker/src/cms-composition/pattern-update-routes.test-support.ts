@@ -50,6 +50,9 @@ export const createPatternUpdateHarness = (
   const readSelector = vi.fn<CmsPatternUpdateDependencies['readSelector']>(
     async () => ({ ok: true, value: selectorPage() }),
   );
+  const readNestable = vi.fn<CmsPatternUpdateDependencies['readNestable']>(
+    async () => ({ ok: true, value: selectorPage() }),
+  );
   const readUpdateDiff = vi.fn<CmsPatternUpdateDependencies['readUpdateDiff']>(
     async () => ({ ok: true, value: diffResource() }),
   );
@@ -66,6 +69,7 @@ export const createPatternUpdateHarness = (
     resolveSession,
     rateLimit,
     readSelector,
+    readNestable,
     readUpdateDiff,
     readInstances,
     applyUpdate,
@@ -79,6 +83,7 @@ export const createPatternUpdateHarness = (
     resolveSession,
     rateLimit,
     readSelector,
+    readNestable,
     readUpdateDiff,
     readInstances,
     applyUpdate,

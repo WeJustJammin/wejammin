@@ -46,6 +46,7 @@ const dependencies = (
   resolveSession: async () => ({ ok: true, value: puSession() }),
   rateLimit: allowRate,
   readSelector: vi.fn(),
+  readNestable: vi.fn(),
   readUpdateDiff: vi.fn(),
   readInstances: vi.fn(),
   applyUpdate: async () => ({

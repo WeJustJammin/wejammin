@@ -9,6 +9,7 @@ export * from './pattern-instance.ts';
 export * from './composition-instances-read.ts';
 export * from './pattern-node.ts';
 export * from './pattern-version.ts';
+export * from './pattern-nestable.ts';
 export * from './pattern-selector.ts';
 export * from './pattern-update.ts';
 export * from './taxonomy-term.ts';

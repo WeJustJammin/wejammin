@@ -2156,6 +2156,24 @@ export const platformRegistrySet = createRegistrySet({
         'author or editor lists only active compatible patterns of its owner scope; hidden content type is 404',
     },
     {
+      // DEC-196: the designer-only counterpart of CMS-03C-13 (Tier 1, 300/600, not the Tier 2 designer defaults).
+      ...slice12DefinitionReadRoute,
+      method: 'GET',
+      path: '/api/v1/cms/patterns/nestable',
+      operationId: 'cmsPatternNestableRead',
+      authClass: 'template_designer',
+      capability: 'cms.template_designer',
+      capabilities: ['cms.template_designer'],
+      rateClass: 'cms-pattern-nestable-read',
+      rateLimit: 300,
+      partyRateLimit: 600,
+      rateWindowSeconds: 60,
+      requestSchema: 'PatternNestableApiRequestSchema',
+      successSchema: 'PatternSelectorPageSchema',
+      bolaTest:
+        'designer lists only active patterns of its owner scope compatible with every requested type; hidden content type is 404',
+    },
+    {
       ...slice12AuthorReadRoute,
       method: 'GET',
       path: '/api/v1/cms/compositions/instances/{instanceId}/update-diff',

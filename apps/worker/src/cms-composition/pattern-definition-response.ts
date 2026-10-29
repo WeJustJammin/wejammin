@@ -12,6 +12,10 @@ import { noteRefusal } from './observability-facts';
 import { observeRequest } from './observability-observation';
 import { mediaTypeDetails } from './media-type-details';
 import {
+  isNodePointerReason,
+  nodePointerWireDetails,
+} from './node-pointer-refusal';
+import {
   failure,
   PATTERN_DEADLINE_MS,
   patternResponseLimit,
@@ -76,20 +80,22 @@ const projectedDetails = (
   )
     return reason.data === CMS_BLOCK_RULES_REASON
       ? cmsBlockRulesDetails(details, 'CMS-03C-12')
-      : {
-          reasonCode: reason.data,
-          ...(reason.data === 'key_reserved'
-            ? {
-                violations: [
-                  {
-                    path: '/patternKey',
-                    code: 'key_reserved',
-                    message: 'The value is invalid.',
-                  },
-                ],
-              }
-            : {}),
-        };
+      : operation === 'CMS-03C-12' && isNodePointerReason(reason.data)
+        ? nodePointerWireDetails(details, reason.data)
+        : {
+            reasonCode: reason.data,
+            ...(reason.data === 'key_reserved'
+              ? {
+                  violations: [
+                    {
+                      path: '/patternKey',
+                      code: 'key_reserved',
+                      message: 'The value is invalid.',
+                    },
+                  ],
+                }
+              : {}),
+          };
   const output: Record<string, unknown> = {};
   if (status === 409)
     for (const key of ['expectedVersion', 'currentVersion'] as const)

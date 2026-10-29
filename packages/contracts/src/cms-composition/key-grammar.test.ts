@@ -36,6 +36,7 @@ describe('BE03c key grammar (E13, E14, lineage ids)', () => {
       'context',
       'versions',
       'selector',
+      'nestable',
       'new',
     ]);
     expect(CMS_KEY_RESERVED_REASON).toBe('key_reserved');
@@ -46,6 +47,9 @@ describe('BE03c key grammar (E13, E14, lineage ids)', () => {
     // `selector` is reserved for patterns only; `new` and `context` for both.
     expect(isReservedTemplateKey('selector')).toBe(false);
     expect(isReservedPatternKey('selector')).toBe(true);
+    // `nestable` (cmsPatternNestableRead, DEC-232) is reserved for patterns only: a template may use it.
+    expect(isReservedTemplateKey('nestable')).toBe(false);
+    expect(isReservedPatternKey('nestable')).toBe(true);
   });
 
   it('[P2-S12-AC-189] refuses a reserved template key with the key_reserved reason and keeps near-misses valid', () => {
@@ -63,7 +67,7 @@ describe('BE03c key grammar (E13, E14, lineage ids)', () => {
   });
 
   it('[P2-S12-AC-189] refuses a reserved pattern key with the key_reserved reason', () => {
-    for (const key of ['context', 'versions', 'selector', 'new'])
+    for (const key of ['context', 'versions', 'selector', 'nestable', 'new'])
       expect(messages(CmsPatternKeySchema, key)).toEqual([
         CMS_KEY_RESERVED_REASON,
       ]);

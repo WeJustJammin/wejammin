@@ -25,6 +25,10 @@ import {
   blockRulesDetails,
 } from './cms-composition/block-rules-refusal';
 import {
+  isNodePointerReason,
+  nodePointerDetails,
+} from './cms-composition/node-pointer-refusal';
+import {
   failure,
   PATTERN_MAX_BYTES,
   serializedBytesWithin,
@@ -82,6 +86,15 @@ const patternRpcError = (
         blockRulesDetails(
           (payload as Readonly<Record<string, unknown>>).details,
           'CMS-03C-12',
+        ),
+      );
+    // DEC-228: cycle, depth and node count name the offending request node the same way (CMS-03C-12 only).
+    if (operation === 'CMS-03C-12' && isNodePointerReason(reason.data))
+      return failure(
+        cmsSlice12ReasonStatus(reason.data),
+        nodePointerDetails(
+          (payload as Readonly<Record<string, unknown>>).details,
+          reason.data,
         ),
       );
     return failure(cmsSlice12ReasonStatus(reason.data), {

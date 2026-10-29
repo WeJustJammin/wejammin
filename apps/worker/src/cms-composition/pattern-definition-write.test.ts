@@ -15,7 +15,7 @@ import {
 } from './pattern-definition.test-support';
 
 describe('CMS-03C-12 pattern definition write contract', () => {
-  it.each(['context', 'versions', 'selector', 'new'])(
+  it.each(['context', 'versions', 'selector', 'nestable', 'new'])(
     'gives reserved key %s its typed request pointer',
     async (patternKey) => {
       const harness = patternHarness();

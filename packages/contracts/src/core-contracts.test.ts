@@ -275,6 +275,7 @@ describe('foundation wire contracts', () => {
       'PatchAliasApiRequest',
       'PatternInstanceApiRequest',
       'PatternLatestApiRequest',
+      'PatternNestableApiRequest',
       'PatternPlacementResource',
       'PatternSelectorApiRequest',
       'PatternSelectorPage',

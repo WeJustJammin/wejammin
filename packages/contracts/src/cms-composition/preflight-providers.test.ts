@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 
 import { CMS_PREFLIGHT_CATEGORIES } from '../cms-editorial/preflight-categories';
+import { CMS_PREFLIGHT_REGISTRY } from '../cms-editorial/preflight';
 import {
   CMS_LOCALE_NO_FALLBACK_GATE,
   CMS_LOCALE_NO_FALLBACK_REASONS,
@@ -77,5 +78,22 @@ describe('Preflight providers registered by Slice 12 (BE03c)', () => {
     expect(locale?.providerVersion).toBe(
       CMS_LOCALE_NO_FALLBACK_GATE.providerVersion,
     );
+  });
+
+  it('[P2-S12-AC-239][P2-S12-AC-241] equals the 03b registry rows: each provider is the registry version 2 row of its category', () => {
+    for (const provider of CMS_SLICE_12_PREFLIGHT_PROVIDERS) {
+      const row = CMS_PREFLIGHT_REGISTRY.find(
+        (entry) => entry.category === provider.category,
+      );
+      expect(row).toMatchObject({
+        registryVersion: '2',
+        ownerSlice: provider.ownerSlice,
+        providerKey: provider.providerKey,
+        providerVersion: provider.providerVersion,
+        providerKind: provider.providerKind,
+        referenceKind: null,
+      });
+      expect([...(row?.reasonCodes ?? [])]).toEqual([...provider.reasonCodes]);
+    }
   });
 });

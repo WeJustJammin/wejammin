@@ -28,13 +28,15 @@ export const CMS_RESERVED_TEMPLATE_KEYS = [
 
 /**
  * Pattern keys that collide with the fixed segments of
- * `/api/v1/cms/patterns/{patternKey}` (`context`, `versions`, `selector`) and
- * of the page `/app/cms-content-modeling/patterns/new`.
+ * `/api/v1/cms/patterns/{patternKey}` (`context`, `versions`, `selector`,
+ * `nestable`; `nestable` is cmsPatternNestableRead, DEC-232) and of the page
+ * `/app/cms-content-modeling/patterns/new`.
  */
 export const CMS_RESERVED_PATTERN_KEYS = [
   'context',
   'versions',
   'selector',
+  'nestable',
   'new',
 ] as const;
 

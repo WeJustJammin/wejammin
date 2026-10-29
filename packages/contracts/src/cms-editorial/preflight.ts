@@ -145,7 +145,23 @@ export const CMS_PREFLIGHT_REGISTRY = [
       'pattern_block_rules_violated',
     ],
   },
-  referenceGateRow('taxonomy', '03c'),
+  // Slice 12 (BE03c "Preflight providers registered by Slice 12", DEC-141): `cms.taxonomy.assignment_integrity` v1 replaces the
+  // reference gate of the taxonomy category as registry version 2. Its three reasons are closed and listed in the order the
+  // provider reports them when several fail (BE03c lists them in this order).
+  {
+    category: 'taxonomy',
+    registryVersion: '2',
+    ownerSlice: '03c',
+    providerKey: 'cms.taxonomy.assignment_integrity',
+    providerVersion: '1',
+    providerKind: 'database',
+    referenceKind: null,
+    reasonCodes: [
+      'term_merged_unconverged',
+      'allowlist_changed',
+      'taxonomy_version_not_active',
+    ],
+  },
   databaseRow('settings', '05a', ['settings_changed']),
   databaseRow('relation', '03a/03b', [
     'relation_target_unavailable',

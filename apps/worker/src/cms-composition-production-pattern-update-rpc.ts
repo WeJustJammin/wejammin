@@ -50,7 +50,8 @@ const RETRY_SECONDS = 15;
 /**
  * Request-bound server authority of every linked-update RPC. The RPC context is rebuilt from a FRESH resolution of the
  * very Request the route admitted: the same session, user and acting party must come back (a different one is a 401),
- * the author or editor capability is proved again (a revoked grant is a 403 before any network), and the public body
+ * the capability of the operation (author or editor; the pattern designer for the nestable list, DEC-196) is proved
+ * again (a revoked grant is a 403 before any network), and the public body
  * never names the actor, party or capability. The database re-proves all of it under its own locks regardless; this is
  * the transport convenience, not the authority.
  */
@@ -65,11 +66,13 @@ export const createPatternUpdateContextVerifier = (
     configuration,
     failure,
     validEnvelope,
-    authorize: (session) =>
+    authorize: (session, input) =>
       session.actingPartyId === null ||
-      !session.capabilities.some(
-        (capability) =>
-          capability === 'cms.author' || capability === 'cms.editor',
+      !session.capabilities.some((capability) =>
+        (
+          PATTERN_UPDATE_OPERATIONS[input.operationId]
+            .capabilities as readonly string[]
+        ).includes(capability),
       )
         ? failure(403, { reasonCode: 'capability_missing' })
         : null,

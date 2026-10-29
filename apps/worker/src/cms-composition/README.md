@@ -152,7 +152,10 @@ family's dependency bundle (`readInstances`) and production adapter.
 
 `pattern-update-routes.ts` registers the three linked-update routes: the pattern
 selector CMS-03C-13 (`pattern-selector-routes.ts`; strict query admission in
-`pattern-selector-query.ts`), the three-way update diff CMS-03C-14
+`pattern-selector-query.ts`), its designer-only counterpart `cmsPatternNestableRead` (DEC-196;
+`pattern-nestable-routes.ts`, repeated-key query admission in `pattern-nestable-query.ts`; the operations
+table names its capability, `cms.template_designer`, which `patternUpdateAdmission` and the production
+context verifier both read), the three-way update diff CMS-03C-14
 (`pattern-update-diff-routes.ts`) and the accept/detach command CMS-03C-15 (its
 `registerCmsPatternUpdateCommandRoute`). `pattern-update-operations.ts` is the one
 table of RPC names, deadlines, rate rows and answer-size ceilings, pinned to the
@@ -165,8 +168,8 @@ route deadline `pattern-update-response.ts`, and the `details` allowlist
 `../cms-composition-production-pattern-update.ts` binds the three named
 `platform_api` RPCs through `../cms-composition-production-pattern-update-rpc.ts`
 (fresh request-bound context, one call, no retry) and maps refusals by token in
-`../cms-composition-production-pattern-update-failure.ts`. The selector route is
-registered before `/api/v1/cms/patterns/:patternKey` so `selector` never reaches the
+`../cms-composition-production-pattern-update-failure.ts`. The selector and nestable routes are
+registered before `/api/v1/cms/patterns/:patternKey` so `selector` and `nestable` never reach the
 latest-read route. To add a linked-update operation, add its row to the operations
 table, its validator to `pattern-update-answers.ts` and its refusal tests first.
 

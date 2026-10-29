@@ -3,6 +3,7 @@ import type {
   CompositionUpdateDiffResource,
   CompositionUpdateRequest,
   CompositionUpdateResource,
+  PatternNestableQuery,
   PatternSelectorPage,
   PatternSelectorQuery,
 } from '@wejammin/contracts';
@@ -41,6 +42,12 @@ export type PatternUpdateContext = Readonly<{
 }>;
 export type PatternSelectorInput = PatternUpdateContext &
   Readonly<{ operationId: 'CMS-03C-13'; query: PatternSelectorQuery }>;
+/** DEC-196: the content types (1-64, unique) the nested pattern must list, the opaque signed cursor and the page size. */
+export type PatternNestableInput = PatternUpdateContext &
+  Readonly<{
+    operationId: 'cmsPatternNestableRead';
+    query: PatternNestableQuery;
+  }>;
 export type PatternUpdateDiffInput = PatternUpdateContext &
   Readonly<{ operationId: 'CMS-03C-14'; instanceId: string }>;
 /**
@@ -110,6 +117,10 @@ export type CmsPatternUpdateDependencies = Readonly<{
     input: PatternSelectorInput,
     signal: AbortSignal,
   ) => Promise<PatternUpdateResult<PatternSelectorPage>>;
+  readNestable: (
+    input: PatternNestableInput,
+    signal: AbortSignal,
+  ) => Promise<PatternUpdateResult<PatternSelectorPage>>;
   readUpdateDiff: (
     input: PatternUpdateDiffInput,
     signal: AbortSignal,
@@ -153,8 +164,9 @@ export const patternUpdateSession = async (
 };
 
 /**
- * BE00 step 7 after strict input parsing: the route capability (an author or editor in an acting party; the designer
- * capability alone is not enough), then both quota buckets, user before party, each keyed by its own identity. A caller
+ * BE00 step 7 after strict input parsing: the route capability of the operation (an author or editor in an acting
+ * party for the author-facing routes, where the designer capability alone is not enough; the designer capability alone
+ * for the nestable list, DEC-196), then both quota buckets, user before party, each keyed by its own identity. A caller
  * without the capability consumes no quota.
  */
 export const patternUpdateAdmission = async (
@@ -164,15 +176,14 @@ export const patternUpdateAdmission = async (
   session: CmsEditorialSession,
   signal: AbortSignal,
 ): Promise<PatternUpdateError | null> => {
+  const spec = PATTERN_UPDATE_OPERATIONS[operationId];
   if (
     session.actingPartyId === null ||
-    !session.capabilities.some(
-      (capability) =>
-        capability === 'cms.author' || capability === 'cms.editor',
+    !session.capabilities.some((capability) =>
+      (spec.capabilities as readonly string[]).includes(capability),
     )
   )
     return failure(403, { reasonCode: 'capability_missing' });
-  const spec = PATTERN_UPDATE_OPERATIONS[operationId];
   for (const rateScope of ['user', 'party'] as const) {
     if (signal.aborted) return failure(504, {}, 15);
     const limit = rateScope === 'user' ? spec.user : spec.party;

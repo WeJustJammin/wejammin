@@ -132,6 +132,7 @@ describe('cmsPatternLatestRead immutable definition projection', () => {
   it.each([
     `${READ_PATH}?ownerPartyId=caller`,
     '/api/v1/cms/patterns/Invalid_Key',
+    '/api/v1/cms/patterns/nestable',
     '/api/v1/cms/patterns/profile%20header',
   ])('rejects malformed path or unexpected query %s', async (path) => {
     const harness = patternHarness();

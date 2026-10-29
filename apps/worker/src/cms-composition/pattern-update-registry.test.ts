@@ -45,9 +45,14 @@ describe.each(
     expect(row.csrf === 'required').toBe(spec.write);
   });
 
-  it('authors and editors only (any of), the human console audience', () => {
-    expect(row.capabilities).toEqual(['cms.author', 'cms.editor']);
-    expect(row.capabilityMode).toBe('any_of');
+  it('authors and editors only (any of), or the pattern designer alone for the nestable list (DEC-196), the human console audience', () => {
+    expect(spec.capabilities).toEqual(
+      operationId === 'cmsPatternNestableRead'
+        ? ['cms.template_designer']
+        : ['cms.author', 'cms.editor'],
+    );
+    expect(row.capabilities).toEqual([...spec.capabilities]);
+    if (spec.capabilities.length > 1) expect(row.capabilityMode).toBe('any_of');
     expect(row.audience).toBe('browser');
   });
 });
@@ -76,6 +81,24 @@ describe('the three registry rows', () => {
     });
     expect(PATTERN_UPDATE_OPERATIONS['CMS-03C-13'].rpc).toBe(
       'cms_list_pattern_selector',
+    );
+  });
+
+  it('cmsPatternNestableRead: GET nestable, designer only, 300/600 per minute, 8,000 ms, Tier 1 (BE03c 184)', () => {
+    expect(route('cmsPatternNestableRead')).toMatchObject({
+      method: 'GET',
+      path: '/api/v1/cms/patterns/nestable',
+      authClass: 'template_designer',
+      rateClass: 'cms-pattern-nestable-read',
+      rateLimit: 300,
+      partyRateLimit: 600,
+      timeoutMs: 8_000,
+      sloTier: 'tier_1',
+      requestSchema: 'PatternNestableApiRequestSchema',
+      successSchema: 'PatternSelectorPageSchema',
+    });
+    expect(PATTERN_UPDATE_OPERATIONS.cmsPatternNestableRead.rpc).toBe(
+      'cms_list_pattern_nestable',
     );
   });
 

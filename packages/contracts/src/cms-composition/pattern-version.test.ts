@@ -78,7 +78,13 @@ describe('CMS-03C-12 pattern version request', () => {
   });
 
   it('[P2-S12-AC-189] refuses a reserved patternKey at /patternKey with key_reserved', () => {
-    for (const patternKey of ['context', 'versions', 'selector', 'new']) {
+    for (const patternKey of [
+      'context',
+      'versions',
+      'selector',
+      'nestable',
+      'new',
+    ]) {
       const candidate = { ...request, patternKey };
       expect(issuePaths(PatternVersionRequestSchema, candidate)).toEqual([
         'patternKey',

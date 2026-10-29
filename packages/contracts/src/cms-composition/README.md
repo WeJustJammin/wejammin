@@ -58,7 +58,8 @@ Patterns, taxonomy and reads (CMS-03C-12 to CMS-03C-17 and the supporting reads)
 
 - `pattern-node.ts` (the bounded node forest), `pattern-version.ts` (CMS-03C-12
   and `cmsPatternLatestRead`), `pattern-selector.ts` (CMS-03C-13),
-  `pattern-update.ts` (CMS-03C-14 diff and CMS-03C-15 accept/detach).
+  `pattern-nestable.ts` (`cmsPatternNestableRead`, DEC-196: the repeated-`contentTypeId` query; it answers the
+  `PatternSelectorPage` of `pattern-selector.ts`), `pattern-update.ts` (CMS-03C-14 diff and CMS-03C-15 accept/detach).
 - `taxonomy-version.ts` (CMS-03C-16 and `cmsTaxonomyVersionsRead`),
   `taxonomy-selector.ts` (CMS-03C-17), `taxonomy-term-list.ts`
   (`cmsTaxonomyTermsRead`).

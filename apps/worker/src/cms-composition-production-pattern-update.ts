@@ -2,13 +2,19 @@ import {
   CompositionInstancesReadApiRequestSchema,
   CompositionUpdateApiRequestSchema,
   CompositionUpdateDiffApiRequestSchema,
+  PatternNestableQuerySchema,
   PatternSelectorQuerySchema,
+  type PatternSelectorPage,
 } from '@wejammin/contracts';
+
+import type { z } from 'zod';
 
 import { normalizeAuthProductionOptions } from './authentication/production-configuration';
 import {
   createPatternUpdateContextVerifier,
   createPatternUpdateRpc,
+  type PatternUpdateRpc,
+  type PatternUpdateRpcInput,
 } from './cms-composition-production-pattern-update-rpc';
 import { validInstancesPage } from './cms-composition/composition-instances-answers';
 import {
@@ -19,6 +25,8 @@ import {
 import {
   failure,
   type CmsPatternUpdateDependencies,
+  type PatternUpdateContext,
+  type PatternUpdateResult,
 } from './cms-composition/pattern-update-ports';
 import { createRateLimiter } from './cms-editorial-production-rate';
 import {
@@ -39,14 +47,56 @@ const MAX_RESPONSE_BYTES = 524_288;
 const MAX_DEADLINE_MS = 15_000;
 const OPERATION_NAMES = {
   'CMS-03C-13': 'cms.composition.pattern.select',
+  cmsPatternNestableRead: 'cms.composition.pattern.nestable',
   'CMS-03C-14': 'cms.composition.pattern.update_diff',
   cmsCompositionInstancesRead: 'cms.composition.instances.list',
   'CMS-03C-15': 'cms.composition.pattern.update',
 } as const;
 
+type PagedQuery = Readonly<{
+  contentTypeId: unknown;
+  cursor?: string | null | undefined;
+  limit: number;
+}>;
+
 /**
- * The production CMS-03C-13/14/15 and cmsCompositionInstancesRead dependencies over `platform_api.cms_list_pattern_selector`,
- * `cms_get_instance_update_diff`, `cms_apply_pattern_update` and `cms_list_composition_instances`. Private RPC transport: a caller cannot supply the actor,
+ * The shared body of the two pattern-version page reads (CMS-03C-13 and cmsPatternNestableRead answer the same
+ * `PatternSelectorPage` and differ only in operation and in `contentTypeId`, one UUID or an array): the strict query,
+ * ONE named RPC call carrying `contentTypeId`, `limit` and the cursor, and an answer that must honour the request.
+ */
+const pagedRead =
+  <
+    Input extends PatternUpdateContext & {
+      operationId: string;
+      query: unknown;
+    },
+  >(
+    operationId: Input['operationId'],
+    schema: z.ZodType<PagedQuery>,
+    rpc: PatternUpdateRpc,
+  ) =>
+  async (
+    input: Input,
+    signal: AbortSignal,
+  ): Promise<PatternUpdateResult<PatternSelectorPage>> => {
+    const query = schema.safeParse(input.query);
+    if (input.operationId !== operationId || !query.success)
+      return failure(400);
+    const { contentTypeId, cursor, limit } = query.data;
+    const answer = await rpc(
+      input as unknown as PatternUpdateRpcInput,
+      { contentTypeId, limit, ...(cursor == null ? {} : { cursor }) },
+      signal,
+    );
+    if (!answer.ok) return answer;
+    return validSelectorPage(answer.value.value, query.data)
+      ? { ok: true, value: answer.value.value }
+      : failure(502);
+  };
+
+/**
+ * The production CMS-03C-13/14/15, cmsCompositionInstancesRead and cmsPatternNestableRead dependencies over `platform_api.cms_list_pattern_selector`,
+ * `cms_get_instance_update_diff`, `cms_apply_pattern_update`, `cms_list_composition_instances` and `cms_list_pattern_nestable`. Private RPC transport: a caller cannot supply the actor,
  * the owner party, the capability or the RPC name, and nothing here retries (a command least of all; the same
  * Idempotency-Key is the caller's retry). Every answer must honour the request that asked for it.
  */
@@ -97,25 +147,12 @@ export const createProductionCmsPatternUpdateDependencies = (
     now: configuration.now,
     resolveSession,
     rateLimit: createRateLimiter(options),
-    readSelector: async (input, signal) => {
-      const query = PatternSelectorQuerySchema.safeParse(input.query);
-      if (input.operationId !== 'CMS-03C-13' || !query.success)
-        return failure(400);
-      const { contentTypeId, cursor, limit } = query.data;
-      const answer = await rpc(
-        input,
-        {
-          contentTypeId,
-          limit,
-          ...(cursor == null ? {} : { cursor }),
-        },
-        signal,
-      );
-      if (!answer.ok) return answer;
-      return validSelectorPage(answer.value.value, query.data)
-        ? { ok: true, value: answer.value.value }
-        : failure(502);
-    },
+    readSelector: pagedRead('CMS-03C-13', PatternSelectorQuerySchema, rpc),
+    readNestable: pagedRead(
+      'cmsPatternNestableRead',
+      PatternNestableQuerySchema,
+      rpc,
+    ),
     readUpdateDiff: async (input, signal) => {
       const path = CompositionUpdateDiffApiRequestSchema.safeParse({
         instanceId: input.instanceId,

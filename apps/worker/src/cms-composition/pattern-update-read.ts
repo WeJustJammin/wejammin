@@ -26,7 +26,11 @@ export type PatternUpdateAdmitted<Extra> =
 
 type ReadInput = PatternUpdateContext &
   Readonly<{
-    operationId: 'CMS-03C-13' | 'CMS-03C-14' | 'cmsCompositionInstancesRead';
+    operationId:
+      | 'CMS-03C-13'
+      | 'CMS-03C-14'
+      | 'cmsCompositionInstancesRead'
+      | 'cmsPatternNestableRead';
   }>;
 
 export type PatternUpdateReadSpec<Input extends ReadInput, Page> = Readonly<{

@@ -217,6 +217,7 @@ describe('closed platform registries', () => {
       'CMS-03C-12',
       'cmsPatternLatestRead',
       'CMS-03C-13',
+      'cmsPatternNestableRead',
       'CMS-03C-14',
       'cmsCompositionInstancesRead',
       'CMS-03C-15',

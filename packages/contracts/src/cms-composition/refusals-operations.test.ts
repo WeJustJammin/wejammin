@@ -14,6 +14,7 @@ describe('BE03c Slice 12 typed refusals per operation', () => {
     'CMS-03C-04': 'P2-S12-AC-057',
     cmsLocaleVariantRead: 'P2-S12-AC-057',
     cmsCompositionInstancesRead: 'P2-S12-AC-269',
+    cmsPatternNestableRead: 'P2-S12-AC-105',
     'CMS-03C-05': 'P2-S12-AC-062',
     cmsRelatedContentRead: 'P2-S12-AC-062',
     'CMS-03C-06': 'P2-S12-AC-068',
@@ -132,9 +133,11 @@ describe('BE03c Slice 12 typed refusals per operation', () => {
     cmsRelatedContentRead: ['capability_missing'],
     cmsLocaleVariantRead: ['capability_missing'],
     cmsCompositionInstancesRead: ['capability_missing'],
+    // DEC-196: a visible owner party without cms.template_designer is the one 403; no other typed token.
+    cmsPatternNestableRead: ['capability_missing'],
   } as const;
 
-  it('[P2-S12-AC-274] names an allowlist for exactly the 24 Slice 12 operations of the error catalog', () => {
+  it('[P2-S12-AC-274] names an allowlist for exactly the 25 Slice 12 operations of the error catalog', () => {
     expect(Object.keys(CMS_SLICE_12_OPERATION_REASONS).sort()).toEqual(
       Object.keys(EXPECTED_REASONS).sort(),
     );

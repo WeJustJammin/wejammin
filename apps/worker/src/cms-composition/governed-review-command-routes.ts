@@ -277,12 +277,8 @@ export const registerGovernedCommandRoutes = <E extends Env>(
         ? {
             resource,
             status: governedAssignmentSuccessStatus(body.action),
+            // BE03c row 176 defines no Location and AC-272 keeps every assignment id out of a URL (DEC-239).
             etag: resource.version,
-            ...(body.action === 'create'
-              ? {
-                  location: `/api/v1/cms/governed-reviews/${reviewId}/assignments/${resource.id}`,
-                }
-              : {}),
           }
         : null,
   });

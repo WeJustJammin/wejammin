@@ -6,7 +6,6 @@ import {
   type CompositionUpdateRequest,
   type CompositionUpdateResource,
   type PatternSelectorPage,
-  type PatternSelectorQuery,
 } from '@wejammin/contracts';
 
 /**
@@ -19,13 +18,13 @@ const bytewise = (left: string, right: string): number =>
   left < right ? -1 : left > right ? 1 : 0;
 
 /**
- * CMS-03C-13: at most `limit` rows, no version row twice, the keyset order the cursor is signed over
+ * CMS-03C-13 and cmsPatternNestableRead (the same PatternSelectorPage, DEC-196): at most `limit` rows, no version row twice, the keyset order the cursor is signed over
  * (`patternKey` ascending, `patternVersion` descending), and a continuation cursor only after a full page (the SQL
  * issues one only when more rows exist beyond the page).
  */
 export const validSelectorPage = (
   value: unknown,
-  query: PatternSelectorQuery,
+  query: Readonly<{ limit: number }>,
 ): value is PatternSelectorPage => {
   const parsed = PatternSelectorPageSchema.safeParse(value);
   if (!parsed.success) return false;

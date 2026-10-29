@@ -116,7 +116,7 @@ describe('[P2-S11-AC-093] publication preflight registry (D19)', () => {
 
   // BE03c "Preflight providers registered by Slice 12" (1397-1399): a later slice registers its provider by a
   // strictly newer registry row that replaces `preflight.reference_gate`.  Slice 12 lane `locale` registers the
-  // `locale` category; the pattern and taxonomy rows are registered by their own lanes.
+  // `locale` category; the pattern row is registered by its own lane and the taxonomy row below (lane taxonomy-integrity).
   it('[P2-S12-AC-240][P2-S12-AC-241] registers cms.locale.no_fallback_gate version 1 for the locale category as registry version 2 with its three closed reasons', () => {
     const newer = CMS_PREFLIGHT_REGISTRY.filter(
       (row) => row.registryVersion === '2',
@@ -192,12 +192,89 @@ describe('[P2-S11-AC-093] publication preflight registry (D19)', () => {
     ).toBe(true);
   });
 
+  // BE03c "Preflight providers registered by Slice 12": cms.taxonomy.assignment_integrity v1 replaces the taxonomy reference gate.
+  it('[P2-S12-AC-239][P2-S12-AC-241] registers cms.taxonomy.assignment_integrity version 1 for the taxonomy category as registry version 2 with its three closed reasons', () => {
+    expect(
+      CMS_PREFLIGHT_REGISTRY.find((row) => row.category === 'taxonomy'),
+    ).toEqual({
+      category: 'taxonomy',
+      registryVersion: '2',
+      ownerSlice: '03c',
+      providerKey: 'cms.taxonomy.assignment_integrity',
+      providerVersion: '1',
+      providerKind: 'database',
+      referenceKind: null,
+      reasonCodes: [
+        'term_merged_unconverged',
+        'allowlist_changed',
+        'taxonomy_version_not_active',
+      ],
+    });
+    expect(
+      CMS_PREFLIGHT_REGISTRY.filter((row) => row.registryVersion === '2').map(
+        (row) => row.category,
+      ),
+    ).toEqual(['pattern', 'taxonomy', 'locale']);
+    expect(cmsPreflightFailedReasons('taxonomy')).toEqual([
+      'term_merged_unconverged',
+      'allowlist_changed',
+      'taxonomy_version_not_active',
+    ]);
+    expect(cmsPreflightUnavailableReasons('taxonomy')).toEqual([
+      'provider_unavailable',
+    ]);
+  });
+
+  it("[P2-S12-AC-241] knows the taxonomy refusal tokens and rejects the retired reference-gate reason and other categories' tokens", () => {
+    for (const reasonCode of cmsPreflightFailedReasons('taxonomy')) {
+      expect(
+        PreflightRefusalEntrySchema.safeParse({
+          category: 'taxonomy',
+          outcome: 'failed',
+          reasonCode,
+        }).success,
+        reasonCode,
+      ).toBe(true);
+      expect(
+        PreflightResultSchema.safeParse({
+          category: 'taxonomy',
+          outcome: 'failed',
+          providerKey: 'cms.taxonomy.assignment_integrity',
+          providerVersion: '1',
+          reasonCode,
+          blockingCount: 1,
+        }).success,
+        reasonCode,
+      ).toBe(true);
+    }
+    for (const reasonCode of [
+      'provider_unbuilt_reference',
+      'pattern_not_active',
+      'no_fallback_missing',
+      'term_unavailable',
+    ])
+      expect(
+        refused(PreflightRefusalEntrySchema, {
+          category: 'taxonomy',
+          outcome: 'failed',
+          reasonCode,
+        }),
+        reasonCode,
+      ).toBe(true);
+    expect(
+      PreflightRefusalEntrySchema.safeParse({
+        category: 'taxonomy',
+        outcome: 'unavailable',
+        reasonCode: 'provider_unavailable',
+      }).success,
+    ).toBe(true);
+  });
+
   it('serves the domains whose providers are not registered yet with the generic reference gate and its reference kind', () => {
     const gates = CMS_PREFLIGHT_REGISTRY.filter(
       (row) => row.providerKind === 'reference_gate',
     );
     expect(gates.map((row) => [row.category, row.referenceKind])).toEqual([
-      ['taxonomy', 'taxonomy'],
       ['privacy', 'privacy'],
       ['media', 'media'],
       ['route', 'route'],
@@ -247,6 +324,11 @@ describe('[P2-S11-AC-093] publication preflight registry (D19)', () => {
         'nested_pattern_not_active',
         'pattern_block_rules_violated',
       ],
+      taxonomy: [
+        'term_merged_unconverged',
+        'allowlist_changed',
+        'taxonomy_version_not_active',
+      ],
       settings: ['settings_changed'],
       relation: ['relation_target_unavailable', 'relation_version_changed'],
       security: ['unsafe_content'],
@@ -272,6 +354,7 @@ describe('[P2-S11-AC-093] publication preflight registry (D19)', () => {
         'template',
         'block',
         'pattern',
+        'taxonomy',
         'settings',
         'relation',
         'security',
@@ -284,7 +367,9 @@ describe('[P2-S11-AC-093] publication preflight registry (D19)', () => {
           ? CMS_LOCALE_NO_FALLBACK_GATE.providerKey
           : c === 'pattern'
             ? 'cms.pattern.active_digest'
-            : `preflight.${c}`,
+            : c === 'taxonomy'
+              ? 'cms.taxonomy.assignment_integrity'
+              : `preflight.${c}`,
       ),
     );
   });

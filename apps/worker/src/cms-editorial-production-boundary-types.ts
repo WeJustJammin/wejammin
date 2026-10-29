@@ -49,6 +49,7 @@ export type CmsEditorialRateLimitInput = Readonly<{
     | 'cmsTemplateLatestRead'
     | 'CMS-03C-12'
     | 'CMS-03C-13'
+    | 'cmsPatternNestableRead'
     | 'CMS-03C-14'
     | 'CMS-03C-15'
     | 'cmsCompositionInstancesRead'

@@ -107,6 +107,8 @@ export const CMS_03C_OPERATION_CATALOG = {
   cmsPatternLatestRead: 'composition',
   // DEC-206: the instance-list read shares the composition catalog with CMS-03C-02.
   cmsCompositionInstancesRead: 'composition',
+  // DEC-196: the designer-only nested-pattern list shares the composition catalog with CMS-03C-13.
+  cmsPatternNestableRead: 'composition',
   'CMS-03C-03': 'taxonomy',
   'CMS-03C-16': 'taxonomy',
   'CMS-03C-17': 'taxonomy',

@@ -164,6 +164,7 @@ describe('route precedence with the pattern definition routes', () => {
         resolveSession: async () => ({ ok: true, value: puSession() }),
         rateLimit: allowRate,
         readSelector,
+        readNestable: vi.fn(),
         readUpdateDiff: vi.fn(),
         readInstances: vi.fn(),
         applyUpdate: vi.fn(),
@@ -186,6 +187,43 @@ describe('route precedence with the pattern definition routes', () => {
     expect(preflight.status).toBe(204);
   });
 
+  it('GET /patterns/nestable reaches the nestable read, never the latest-read route (DEC-232: nestable is a reserved key)', async () => {
+    const { dependencies, readLatest } = definition();
+    const readNestable = vi.fn(async () => ({
+      ok: true as const,
+      value: selectorPage(),
+    }));
+    const app = createWorkerApp({
+      captureException: () => undefined,
+      createLogger: logger,
+      now: () => 1_000,
+      cmsPatternDefinition: dependencies,
+      cmsPatternUpdate: {
+        humanOrigins: [PU_ORIGIN],
+        now: () => 1_000,
+        resolveSession: async () => ({
+          ok: true,
+          value: puSession(['cms.template_designer']),
+        }),
+        rateLimit: allowRate,
+        readSelector: vi.fn(),
+        readNestable,
+        readUpdateDiff: vi.fn(),
+        readInstances: vi.fn(),
+        applyUpdate: vi.fn(),
+        telemetry: () => undefined,
+      },
+    });
+    const response = await app.request(
+      `/api/v1/cms/patterns/nestable?contentTypeId=${PU_TYPE_ID}`,
+      { headers: { origin: PU_ORIGIN } },
+      environment,
+    );
+    expect(response.status).toBe(200);
+    expect(readNestable).toHaveBeenCalledTimes(1);
+    expect(readLatest).not.toHaveBeenCalled();
+  });
+
   it('GET /patterns/{patternKey} still reaches the latest-read route', async () => {
     const { dependencies, readLatest } = definition();
     const app = createWorkerApp({
@@ -199,6 +237,7 @@ describe('route precedence with the pattern definition routes', () => {
         resolveSession: async () => ({ ok: true, value: puSession() }),
         rateLimit: allowRate,
         readSelector: vi.fn(),
+        readNestable: vi.fn(),
         readUpdateDiff: vi.fn(),
         readInstances: vi.fn(),
         applyUpdate: vi.fn(),

@@ -28,16 +28,14 @@ const wireOf = (
   ).p_request;
 
 describe('CMS-03C-08 contract (BE03c row 170, field matrix 391)', () => {
-  it('answers 201 with Location and the assignment version ETag for a create', async () => {
+  it('answers 201 with the assignment version ETag and no Location for a create', async () => {
     const body = createBody();
     assertAssignmentContract(body);
     const harness = ownerHarness();
     const response = await harness.send(assignmentRequest(body));
     expect(response.status).toBe(201);
     expect(response.headers.get('etag')).toBe('"1"');
-    expect(response.headers.get('location')).toBe(
-      `/api/v1/cms/governed-reviews/${REVIEW_ID}/assignments/${ASSIGNMENT_ID}`,
-    );
+    expect(response.headers.get('location')).toBeNull();
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(await response.json()).toEqual(assignmentResource());
     expect(Object.keys(wireOf(harness)).sort()).toEqual([

@@ -218,6 +218,8 @@ export const CMS_SLICE_12_OPERATION_REASONS = {
   cmsLocaleVariantRead: ['capability_missing'],
   // DEC-206: a visible entry without edit is the one 403; no other typed token.
   cmsCompositionInstancesRead: ['capability_missing'],
+  // DEC-196: an owner-party member without cms.template_designer is the one 403; no other typed token.
+  cmsPatternNestableRead: ['capability_missing'],
 } as const satisfies Readonly<Record<string, readonly CmsSlice12ReasonCode[]>>;
 
 const ViolationsSchema = z.array(CmsViolationSchema).max(50).readonly();

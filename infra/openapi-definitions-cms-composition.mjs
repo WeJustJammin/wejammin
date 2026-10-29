@@ -44,6 +44,9 @@ const COMMAND_STATUSES = [
 const LIST_STATUSES = [
   400, 401, 403, 404, 409, 415, 422, 429, 500, 502, 503, 504,
 ];
+const NESTABLE_STATUSES = [
+  400, 401, 403, 404, 415, 422, 429, 500, 502, 503, 504,
+];
 const BOUNDED_READ_STATUSES = [
   400, 401, 403, 404, 415, 429, 500, 502, 503, 504,
 ];
@@ -94,7 +97,7 @@ export const cmsCompositionRouteDefinitions = (responses) => ({
           },
           { stepUp: true },
         ),
-        'mutation',
+        'entity',
       ),
       {
         status: '200',
@@ -212,6 +215,20 @@ export const cmsCompositionRouteDefinitions = (responses) => ({
       'Active compatible pattern versions page',
       errors('Pattern selector', LIST_STATUSES, {
         409: 'Cursor is expired, tampered or bound to another context',
+      }),
+      'entity',
+    ),
+  },
+  cmsPatternNestableRead: {
+    responses: responses(
+      [200],
+      'Active pattern versions of the owner scope compatible with every requested content type, for the nested-pattern picker',
+      // DEC-232: every cursor fault is 400 (the matrix 409 cell is "not applicable"); 422 is the bounds.
+      errors('Nestable pattern list', NESTABLE_STATUSES, {
+        400: 'Content type ids, limit or cursor are malformed, or the signed cursor is tampered, expired or not issued to this caller for this type set',
+        403: 'Caller does not hold the pattern designer capability',
+        404: 'A requested content type is absent or concealed',
+        422: 'The type count or the limit is outside its bounds',
       }),
       'entity',
     ),
