@@ -1,0 +1,54 @@
+-- P2-S12-AC-201 (BE03c "Governed review machinery", submit taxonomy_version): the draft-only gate and the frozen content_type
+-- dependencies.  tb1 (above) is a review-state taxonomy naming typeA and protectedType.
+select ok((select count(*) = 2 and bool_and(true)
+      from platform_private.cms_governed_review_dependencies d
+     where d.review_id = pg_temp.s12ga_review('tb1') and d.kind = 'content_type'
+       and d.ref_id in ((select value::uuid from s12gov_ids where key = 'typeVersionA'),
+                        (select value::uuid from s12gov_ids where key = 'protectedVersion')))
+    and (select count(*) = 2 from platform_private.cms_governed_review_dependencies d where d.review_id = pg_temp.s12ga_review('tb1')),
+  'a taxonomy review freezes one content_type dependency per named owner type (ref_id = the type''s active version id) and nothing else [P2-S12-AC-201]');
+select ok(not exists (select 1 from platform_private.cms_governed_review_dependencies d
+    where d.review_id = pg_temp.s12ga_review('tb2')),
+  'a taxonomy naming no owner type freezes no content_type dependency [P2-S12-AC-201]');
+-- a non-draft taxonomy_version is refused subject_not_submittable and nothing is written
+create temp table g2_tb1_before on commit drop as
+select (select count(*) from platform_private.cms_governed_reviews) as reviews,
+       (select count(*) from platform_private.cms_governed_review_dependencies) as deps,
+       (select count(*) from audit_private.audit_events) as audits,
+       (select count(*) from platform_private.outbox_events) as events,
+       (select lifecycle_version from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tb1')) as lifecycle;
+select pg_temp.s12ga_rpc('tb1-again', 'platform_api.cms_submit_governed_review', 'owner', jsonb_build_object(
+  'subjectKind', 'taxonomy_version', 'subjectId', pg_temp.s12ga_subject('tb1'),
+  'subjectHash', (select content_hash::text from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tb1')),
+  'idempotencyKey', 's12ga-txs-tb1-again'));
+select is(pg_temp.s12ga_out('tb1-again'), 'P0001:subject_not_submittable',
+  'a taxonomy version already in review is refused subject_not_submittable [P2-S12-AC-201]');
+select ok((select b.reviews = (select count(*) from platform_private.cms_governed_reviews)
+       and b.deps = (select count(*) from platform_private.cms_governed_review_dependencies)
+       and b.audits = (select count(*) from audit_private.audit_events)
+       and b.events = (select count(*) from platform_private.outbox_events)
+       and b.lifecycle = (select lifecycle_version from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tb1'))
+     from g2_tb1_before b),
+  'the refused resubmission writes no review, dependency, audit record or event and leaves the lifecycle counter alone [P2-S12-AC-201]');
+-- an approved and then ACTIVE taxonomy_version is refused too
+select pg_temp.g2_tax('tb3', jsonb_build_array('s12govordinary'));
+select pg_temp.g2_tax_approve('tb3');
+select pg_temp.s12gb_act('tb3-act', 'owner', pg_temp.s12ga_review('tb3'), 'activate');
+select ok(pg_temp.s12ga_out('tb3-act') = 'ok' and (select state = 'active' from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tb3')),
+  'control: the ordinary taxonomy tb3 is approved and activated through the real producers [P2-S12-AC-201]');
+select pg_temp.s12ga_rpc('tb3-again', 'platform_api.cms_submit_governed_review', 'owner', jsonb_build_object(
+  'subjectKind', 'taxonomy_version', 'subjectId', pg_temp.s12ga_subject('tb3'),
+  'subjectHash', (select content_hash::text from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tb3')),
+  'idempotencyKey', 's12ga-txs-tb3-again'));
+select is(pg_temp.s12ga_out('tb3-again'), 'P0001:subject_not_submittable',
+  'an active taxonomy version is refused subject_not_submittable [P2-S12-AC-201]');
+-- control: a rejected review returns the taxonomy to draft and the same version is submittable again
+select pg_temp.s12ga_assign('as-tb1-rev1', 'owner', pg_temp.s12ga_review('tb1'), 'rev1', interval '20 hours');
+select pg_temp.s12ga_decide('rej-tb1', 'rev1', pg_temp.s12ga_review('tb1'), 'reject');
+select ok(pg_temp.s12ga_out('rej-tb1') = 'ok'
+    and (select state = 'draft' from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tb1')),
+  'control: rev1 rejects tb1 and the taxonomy version is back to draft [P2-S12-AC-201]');
+create temp table g2_resub on commit drop as select pg_temp.g2_tax_submit('tb1', 's12ga-txs-tb1-resubmit') as review_id;
+select ok((select review_id is not null from g2_resub)
+    and (select state = 'review' from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tb1')),
+  'the draft-only gate admits the same taxonomy version again once it is draft [P2-S12-AC-201]');

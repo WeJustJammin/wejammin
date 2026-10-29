@@ -1,0 +1,51 @@
+-- P2-S12-AC-195 (BE03c Registry invariants): activation makes the definition immutable, and the lifecycle columns state, version
+-- (lifecycle_version), activated_at, retired_at and updated_at advance only through the governed RPCs CMS-03C-06 to -09.  Direct
+-- UPDATEs run as the test administrator INSIDE the CMS RPC context but WITHOUT the governed-lifecycle flag the RPCs set.
+select pg_temp.s12ga_mint('lc1', 'owner', array['typeA']);
+select pg_temp.g2_tax('lc3', jsonb_build_array('s12govordinary'));
+select pg_temp.g2_tax_approve('lc3');
+select pg_temp.s12gb_approved('lc2');
+select pg_temp.s12gb_act('lc2-act', 'owner', pg_temp.s12ga_review('lc2'), 'activate');
+select ok((select state = 'draft' from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('lc1'))
+    and (select state = 'approved' from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('lc3'))
+    and pg_temp.s12ga_out('lc2-act') = 'ok'
+    and (select state = 'active' from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('lc2')),
+  'fixture: a draft template, an approved taxonomy and an active template exist through the real producers [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_template_versions set state = %L, lifecycle_version = lifecycle_version + 1, updated_at = clock_timestamp() where id = %L',
+    'approved', pg_temp.s12ga_subject('lc1'))), 'P0001:CONFLICT',
+  'a direct UPDATE cannot advance the state and lifecycle_version of a draft template version outside the governed RPCs [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_template_versions set state = %L where id = %L', 'active', pg_temp.s12ga_subject('lc1'))),
+  'P0001:CONFLICT', 'a direct UPDATE of state alone cannot activate a draft template version [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_taxonomy_versions set state = %L where id = %L', 'active', pg_temp.s12ga_subject('lc3'))),
+  'P0001:CONFLICT', 'a direct UPDATE of state alone cannot activate an approved taxonomy version [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_template_versions set activated_at = clock_timestamp() where id = %L', pg_temp.s12ga_subject('lc1'))),
+  'P0001:CONFLICT', 'a direct UPDATE cannot stamp activated_at on a template version [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_taxonomy_versions set state = %L, lifecycle_version = lifecycle_version + 1, updated_at = clock_timestamp() where id = %L',
+    'approved', pg_temp.s12ga_subject('lc3'))), 'P0001:CONFLICT',
+  'a direct UPDATE cannot advance the state and lifecycle_version of a taxonomy version outside the governed RPCs [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_taxonomy_versions set retired_at = clock_timestamp() where id = %L', pg_temp.s12ga_subject('lc3'))),
+  'P0001:CONFLICT', 'a direct UPDATE cannot stamp retired_at on a taxonomy version [P2-S12-AC-195]');
+-- V13-01: updated_at is the fifth lifecycle column (BE03c lines 357-358, 1610, 1727); a direct write of it, in particular one into the
+-- future, must be refused, and a refused write must not wedge the governed transition that follows (cms_governed_lifecycle_update
+-- requires new.updated_at >= old.updated_at).
+select is(pg_temp.g2_try(format('update platform_private.cms_template_versions set updated_at = clock_timestamp() where id = %L', pg_temp.s12ga_subject('lc1'))),
+  'P0001:CONFLICT', 'a direct UPDATE of updated_at alone is refused on a draft template version [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_template_versions set updated_at = clock_timestamp() + interval %L where id = %L', '1 hour', pg_temp.s12ga_subject('lc1'))),
+  'P0001:CONFLICT', 'a direct UPDATE cannot move updated_at of a draft template version one hour into the future [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_taxonomy_versions set updated_at = clock_timestamp() + interval %L where id = %L', '1 hour', pg_temp.s12ga_subject('lc3'))),
+  'P0001:CONFLICT', 'a direct UPDATE cannot move updated_at of an approved taxonomy version into the future [P2-S12-AC-195]');
+select pg_temp.g2_tax('lc5', jsonb_build_array('s12govordinary'));
+select is(pg_temp.g2_persist(format('update platform_private.cms_taxonomy_versions set updated_at = clock_timestamp() + interval %L where id = %L', '1 hour', pg_temp.s12ga_subject('lc5'))),
+  'P0001:CONFLICT', 'a persisted attempt to poison updated_at of a taxonomy version in review is refused [P2-S12-AC-195]');
+select pg_temp.g2_tax_approve('lc5');
+select is((select state from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('lc5')), 'approved',
+  'after the refused poisoning attempt the governed approval of the same taxonomy version still moves it review -> approved [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_template_versions set audience = %L where id = %L', 'partners', pg_temp.s12ga_subject('lc2'))),
+  'P0001:CONFLICT', 'a definition field of an ACTIVE template version is immutable [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_template_versions set lifecycle_version = lifecycle_version + 1 where id = %L', pg_temp.s12ga_subject('lc2'))),
+  'P0001:CONFLICT', 'the lifecycle counter of an ACTIVE template version cannot be advanced directly [P2-S12-AC-195]');
+select is(pg_temp.g2_try(format('update platform_private.cms_taxonomy_versions set shape = %L where id = %L', 'hierarchical', pg_temp.s12ga_subject('tb3'))),
+  'P0001:CONFLICT', 'a definition field of an ACTIVE taxonomy version is immutable [P2-S12-AC-195]');
+select is(pg_temp.g2_writers_of_versions(), array['platform_private.cms_governed_activate_subject', 'platform_private.cms_governed_move_subject',
+    'platform_private.cms_governed_retire_subject', 'platform_private.cms_governed_supersede_lineage', 'platform_private.cms_submit_governed_review']::text[],
+  'only the submit, move, activate, supersede and retire governed functions UPDATE the template, pattern and taxonomy version tables [P2-S12-AC-195]');

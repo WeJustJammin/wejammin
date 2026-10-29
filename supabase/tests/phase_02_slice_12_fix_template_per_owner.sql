@@ -248,11 +248,36 @@ select is(
   'the owner of a stored row can never change, so the per-owner key cannot be transplanted [P2-S12-AC-190]');
 
 -- Two active versions in one lineage are impossible.
-select set_config('app.cms_rpc', 'true', true);
-update platform_private.cms_template_versions set state = 'active'
- where id = (select id from s12fix_rows where owner_id = (select value::uuid from s12fix_ids where key = 'orgA') and version = 1);
+-- TEST CORRECTION (lane claude_s12_gaps_db2, root-authorized): the definition guard now refuses a state move outside the governed
+-- RPCs (P2-S12-AC-195), so the two direct `update ... set state = 'active'` statements below can no longer reach the partial unique
+-- index.  They run through the privileged fixture technique of pg_temp.s09d_timewarp / h11_raw_exec (the table's user triggers disabled
+-- for ONE statement inside a sub-transaction, then re-enabled; foreign keys, CHECKs and the unique index still apply).  The assertion
+-- is unchanged: the second active version of one lineage is a 23505.
+create or replace function pg_temp.s12fix_priv(p_sql text) returns jsonb
+language plpgsql as $body$
+declare result jsonb; msg text; det text; cons text;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  set constraints all immediate;
+  begin
+    alter table platform_private.cms_template_versions disable trigger user;
+    execute p_sql into result;
+    alter table platform_private.cms_template_versions enable trigger user;
+    return jsonb_build_object('state', '00000', 'response', result);
+  exception when others then
+    get stacked diagnostics msg = message_text, det = pg_exception_detail, cons = constraint_name;
+    return jsonb_build_object('state', sqlstate, 'message', msg, 'detail', coalesce(det, ''), 'constraint', coalesce(cons, ''));
+  end;
+end;
+$body$;
 select is(
-  (select pg_temp.s12fix_try(format(
+  (select pg_temp.s12fix_priv(format(
+     $u$update platform_private.cms_template_versions set state = 'active' where id = %L::uuid returning jsonb_build_object('id', id)$u$,
+     (select id from s12fix_rows where owner_id = (select value::uuid from s12fix_ids where key = 'orgA') and version = 1)))->>'state'),
+  '00000',
+  'control: the first version of the lineage is activated by the privileged fixture [P2-S12-AC-191]');
+select is(
+  (select pg_temp.s12fix_priv(format(
      $u$update platform_private.cms_template_versions set state = 'active' where id = %L::uuid returning jsonb_build_object('id', id)$u$,
      (select id from s12fix_rows where owner_id = (select value::uuid from s12fix_ids where key = 'orgA') and version = 2)))->>'state'),
   '23505',

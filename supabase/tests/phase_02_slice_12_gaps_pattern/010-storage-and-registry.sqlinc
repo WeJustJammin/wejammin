@@ -1,0 +1,64 @@
+-- AC-189 clause 1: the table CHECK refuses all four reserved pattern keys (pattern_definition/070 raw-inserts only `selector`).
+select ok((select bool_and(pg_temp.g2p_try(pg_temp.s12pd_raw_row(extensions.gen_random_uuid(), pg_temp.s09d_id('ownerOrg'), key, 1,
+        pg_temp.s12pd_forest(1), jsonb_build_array((select id from s12pd_types where ordinal = 1)), 1)) like '23514:%pattern_key_not_reserved%')
+      from unnest(array['context', 'versions', 'new']) key),
+  'the table CHECK cms_pattern_versions_pattern_key_not_reserved refuses the raw keys context, versions and new [P2-S12-AC-189]');
+select is(pg_temp.g2p_try(pg_temp.s12pd_raw_row(extensions.gen_random_uuid(), pg_temp.s09d_id('ownerOrg'), 'selector', 1,
+    pg_temp.s12pd_forest(1), jsonb_build_array((select id from s12pd_types where ordinal = 1)), 1)) like '23514:%pattern_key_not_reserved%', true,
+  'control: the fourth reserved key selector is refused by the same CHECK [P2-S12-AC-189]');
+select is(pg_temp.g2p_try(pg_temp.s12pd_raw_row(extensions.gen_random_uuid(), pg_temp.s09d_id('ownerOrg'), 'gapp-ok', 1,
+    pg_temp.s12pd_forest(1), jsonb_build_array((select id from s12pd_types where ordinal = 1)), 1)), '00000:',
+  'control: a non-reserved raw key inserts, so the CHECK discriminates by key [P2-S12-AC-189]');
+
+-- AC-194: a SUCCESSFUL pattern create leaves the block registry byte-identical, and the digest readers touch only the safe tuple.
+select pg_temp.s12pd_run('g194', pg_temp.s12pd_request('gapp-g194', pg_temp.s12pd_forest(2), null, 'g2p-key-g194'));
+select is(pg_temp.s12pd_state('g194'), '00000', 'fixture: a pattern over the registered block is created [P2-S12-AC-194]');
+select ok((select before_rows->'platform_private.cms_block_definition_versions' = after_rows->'platform_private.cms_block_definition_versions'
+        and before_rows->'platform_private.cms_block_definition_lifecycle_events' = after_rows->'platform_private.cms_block_definition_lifecycle_events'
+        and before_rows->'platform_private.cms_release_nonce_receipts' = after_rows->'platform_private.cms_release_nonce_receipts'
+        and jsonb_array_length(after_rows->'platform_private.cms_block_definition_versions') > 0
+        and before_rows->'platform_private.cms_pattern_versions' is distinct from after_rows->'platform_private.cms_pattern_versions'
+      from s12pd_out where label = 'g194'),
+  'a successful pattern create changes the pattern table and leaves the block registry, its lifecycle events and the release nonce receipts byte-identical [P2-S12-AC-194]');
+select is((select array_agg(n.nspname || '.' || p.proname order by n.nspname, p.proname)
+    from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname in ('platform_private', 'platform_api') and p.prokind = 'f'
+     and p.prosrc ~* '(insert\s+into|update|delete\s+from)\s+platform_private\.cms_(block_definition_versions|block_definition_lifecycle_events|release_nonce_receipts)\M'
+     and p.proname !~ '^cms_(register_block|advance_block_lifecycle|release_nonce_claim)'),
+  null::text[],
+  'no function outside the 03a register and lifecycle commands writes the block registry tables: 03c never registers, updates or deletes a block [P2-S12-AC-194]');
+select is((select array_agg(p.proname order by p.proname) from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+   where n.nspname = 'platform_private' and p.proname in ('cms_pattern_registry_digest', 'cms_template_block_digest', 'cms_governed_current_digest')
+     and p.prosrc ~* '(release_principal_id|release_key_id|release_raw_body_hash|release_signature_hash|release_nonce_hash|props_snapshot_attestation|props_attestation|props_schema_snapshot|props_snapshot_hash|accessibility_contract|data_source_permissions|allowed_children|slot_rules)'),
+  null::name[], 'the three digest readers name no release principal, key, signature, nonce, attestation, snapshot or manifest column: only the safe tuple [P2-S12-AC-194]');
+select ok((select p.prosrc ~ 'block_row\.release_digest' and p.prosrc ~ 'block_row\.props_schema_hash' and p.prosrc ~ 'block_row\.renderer_ref'
+        and p.prosrc ~ 'block_row\.block_key' and p.prosrc ~ 'block_row\.block_version'
+      from pg_proc p where p.oid = 'platform_private.cms_pattern_registry_digest(uuid,jsonb)'::regprocedure),
+  'the pattern digest reader folds blockKey, blockVersion, releaseDigest, propsSchemaHash and rendererRef of the registered row [P2-S12-AC-194]');
+
+-- AC-195: lifecycle columns of a pattern version move only through the governed RPCs.
+select pg_temp.s12pd_run('lc-draft', pg_temp.s12pd_request('gapp-lc', pg_temp.s12pd_forest(1), null, 'g2p-key-lc'));
+select pg_temp.s12pd_run('lc-act', pg_temp.s12pd_request('gapp-lc-act', pg_temp.s12pd_forest(1), null, 'g2p-key-lc-act'));
+select pg_temp.g2p_step('lc-act', 'activate');
+select ok(pg_temp.g2p_pattern_state('lc-draft') = 'draft' and pg_temp.g2p_pattern_state('lc-act') = 'active',
+  'fixture: a draft and a really activated pattern version exist [P2-S12-AC-195]');
+select is(pg_temp.g2p_try(format('update platform_private.cms_pattern_versions set state = %L, lifecycle_version = lifecycle_version + 1, updated_at = clock_timestamp() where id = %L',
+    'approved', pg_temp.s12pd_body('lc-draft')->>'id')), 'P0001:CONFLICT',
+  'a direct UPDATE cannot advance the state and lifecycle_version of a draft pattern version outside the governed RPCs [P2-S12-AC-195]');
+select is(pg_temp.g2p_try(format('update platform_private.cms_pattern_versions set state = %L where id = %L', 'active', pg_temp.s12pd_body('lc-draft')->>'id')),
+  'P0001:CONFLICT', 'a direct UPDATE of state alone cannot activate a draft pattern version [P2-S12-AC-195]');
+select is(pg_temp.g2p_try(format('update platform_private.cms_pattern_versions set activated_at = clock_timestamp() where id = %L', pg_temp.s12pd_body('lc-draft')->>'id')),
+  'P0001:CONFLICT', 'a direct UPDATE cannot stamp activated_at on a pattern version [P2-S12-AC-195]');
+-- V13-01: updated_at is the fifth lifecycle column; a direct write is refused and a refused write does not wedge the governed steps.
+select is(pg_temp.g2p_try(format('update platform_private.cms_pattern_versions set updated_at = clock_timestamp() where id = %L', pg_temp.s12pd_body('lc-draft')->>'id')),
+  'P0001:CONFLICT', 'a direct UPDATE of updated_at alone is refused on a draft pattern version [P2-S12-AC-195]');
+select pg_temp.s12pd_run('lc-poison', pg_temp.s12pd_request('gapp-lc-poison', pg_temp.s12pd_forest(1), null, 'g2p-key-lc-poison'));
+select is(pg_temp.g2p_persist(format('update platform_private.cms_pattern_versions set updated_at = clock_timestamp() + interval %L where id = %L', '1 hour', pg_temp.s12pd_body('lc-poison')->>'id')),
+  'P0001:CONFLICT', 'a persisted attempt to move updated_at of a draft pattern version one hour into the future is refused [P2-S12-AC-195]');
+select pg_temp.g2p_step('lc-poison', 'activate');
+select is(pg_temp.g2p_pattern_state('lc-poison'), 'active',
+  'after the refused poisoning attempt the governed submit, assign, decide and activate still carry the same pattern version to active [P2-S12-AC-195]');
+select is(pg_temp.g2p_try(format('update platform_private.cms_pattern_versions set node_count = 2 where id = %L', pg_temp.s12pd_body('lc-act')->>'id')),
+  'P0001:CONFLICT', 'a definition field of an ACTIVE pattern version is immutable [P2-S12-AC-195]');
+select is(pg_temp.g2p_try(format('update platform_private.cms_pattern_versions set lifecycle_version = lifecycle_version + 1 where id = %L', pg_temp.s12pd_body('lc-act')->>'id')),
+  'P0001:CONFLICT', 'the lifecycle counter of an ACTIVE pattern version cannot be advanced directly [P2-S12-AC-195]');

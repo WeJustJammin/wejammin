@@ -1,0 +1,84 @@
+-- CMS-03C-02 placement (512 rows and 32 rows), then CMS-03C-15 (32 instances accepted, 32 detached per request).  Every
+-- entry is a fresh draft entry (a placement occupies its row paths, so a sample needs its own), written the way the functional
+-- suites write it (pg_temp.s12pl_entry: the guarded direct insert of an entry and its current draft revision, with the owner's
+-- cms.author assignment); every composition row is written by the real CMS-03C-02 producer.
+create or replace function pg_temp.g12pp_place_req(p_tag text, p_pattern_label text, p_idem text,
+  p_overrides jsonb default '{}'::jsonb) returns jsonb language sql stable as $body$
+  select jsonb_build_object('revisionId', pg_temp.s12pl_rev(p_tag), 'patternId', pg_temp.g12p_body(p_pattern_label)->'patternId',
+    'patternVersion', pg_temp.g12p_body(p_pattern_label)->'patternVersion', 'linkMode', 'linked', 'slotPath', '/',
+    'overrides', p_overrides, 'expectedVersion', pg_temp.s12pl_version(p_tag), 'ifMatch', pg_temp.s12pl_version(p_tag),
+    'idempotencyKey', p_idem, 'correlationId', 'a9120000-0000-4000-8000-00000000c0c0') $body$;
+
+-- The head (greatest version) of every path of a tag's revision, as the instances/expectedVersion pairs of a CMS-03C-15 request.
+create or replace function pg_temp.g12pp_update_req(p_tag text, p_action text) returns jsonb language plpgsql volatile as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  return jsonb_build_object('action', p_action,
+    'instances', (select jsonb_agg(jsonb_build_object('instanceId', h.id, 'expectedVersion', h.version::text) order by h.path)
+                    from (select distinct on (path) id, path, version from platform_private.cms_composition_instances
+                           where revision_id = pg_temp.s12pl_rev(p_tag) order by path, version desc) h),
+    'expectedVersion', pg_temp.s12pl_version(p_tag), 'ifMatch', pg_temp.s12pl_version(p_tag),
+    'idempotencyKey', 's12gp-upd-' || p_action || '-' || p_tag, 'correlationId', 'a9120000-0000-4000-8000-00000000c0d2')
+    || case when p_action = 'accept' then jsonb_build_object('targetPatternVersion', 2) else '{}'::jsonb end;
+end;
+$body$;
+
+do $bench$
+declare v_i integer; v_tag text; v_label text; v_overrides jsonb;
+begin
+  -- 512 rows: 32 references x 16 roots; 32 rows: a 32-root forest
+  for v_i in 1..24 loop
+    v_tag := 'pl512-' || v_i;
+    perform pg_temp.s12pl_entry(v_tag);
+    perform pg_temp.g12p_call('place512', 'platform_api.cms_insert_pattern_instance', 'owner',
+      pg_temp.g12pp_place_req(v_tag, (select value from s12pl_ids where key = 'nest1'), 's12gp-place512-' || v_i), pg_temp.g12pp_ctx('owner'));
+  end loop;
+  perform pg_temp.g12pp_require('place512', 24);
+  for v_i in 1..24 loop
+    v_tag := 'pl32-' || v_i;
+    perform pg_temp.s12pl_entry(v_tag);
+    perform pg_temp.g12p_call('place32', 'platform_api.cms_insert_pattern_instance', 'owner',
+      pg_temp.g12pp_place_req(v_tag, (select value from s12pl_ids where key = 'p32'), 's12gp-place32-' || v_i), pg_temp.g12pp_ctx('owner'));
+  end loop;
+  perform pg_temp.g12pp_require('place32', 24);
+  -- the entries the CMS-03C-15 measurements update (v1 is still the active version of gp-u1 here)
+  for v_i in 1..24 loop
+    foreach v_tag in array array['ua-' || v_i, 'ud-' || v_i] loop
+      perform pg_temp.s12pl_entry(v_tag);
+      perform pg_temp.g12p_call('setup_place_u', 'platform_api.cms_insert_pattern_instance', 'owner',
+        pg_temp.g12pp_place_req(v_tag, (select value from s12pl_ids where key = 'u1'), 's12gp-placeu-' || v_tag), pg_temp.g12pp_ctx('owner'));
+    end loop;
+  end loop;
+  perform pg_temp.g12pp_require('setup_place_u', 48);
+  -- the CMS-03C-14 entry: the 128-node pattern with ten local overrides
+  perform pg_temp.s12pl_entry('dw');
+  v_overrides := (select jsonb_object_agg('/wide/c' || (((g - 1) % 5) + 1) || '/g' || g, jsonb_build_object('title', 'MINE-' || g)) from generate_series(1, 10) g);
+  perform pg_temp.g12p_call('setup_place_w', 'platform_api.cms_insert_pattern_instance', 'owner',
+    pg_temp.g12pp_place_req('dw', (select value from s12pl_ids where key = 'w1'), 's12gp-placew-dw', v_overrides), pg_temp.g12pp_ctx('owner'));
+  perform pg_temp.g12pp_require('setup_place_w', 1);
+  -- version 2 of the update and diff patterns, activated after every v1 placement (a placement pins the active version)
+  perform pg_temp.g12pp_define_active('gp-u1', (
+    select jsonb_agg(pg_temp.s12pd_block('root' || n, '[]'::jsonb, jsonb_build_object('title', 'U2-' || n)) order by n)
+      from generate_series(1, 32) n), '1');
+  perform pg_temp.g12pp_define_active('gp-w1', pg_temp.g12pp_wide('n2', 'b'), '1');
+  -- CMS-03C-15: accept 32 and detach 32 instances per request
+  for v_i in 1..24 loop
+    perform pg_temp.g12p_call('update32_accept', 'platform_api.cms_apply_pattern_update', 'owner',
+      pg_temp.g12pp_update_req('ua-' || v_i, 'accept'), pg_temp.g12pp_ctx('owner'));
+    perform pg_temp.g12p_call('update32_detach', 'platform_api.cms_apply_pattern_update', 'owner',
+      pg_temp.g12pp_update_req('ud-' || v_i, 'detach'), pg_temp.g12pp_ctx('owner'));
+  end loop;
+  perform pg_temp.g12pp_require('update32_accept', 24);
+  perform pg_temp.g12pp_require('update32_detach', 24);
+end;
+$bench$;
+select ok((select count(*) = 24 and bool_and(jsonb_array_length(body->'items') = 512) from g12p_rcpt where label like 'place512#%'),
+  'every measured CMS-03C-02 placement returned the maximum 512 rows (32 references x 16 block roots) [P2-S12-AC-279]');
+select ok((select count(*) = 24 and bool_and(jsonb_array_length(body->'items') = 32) from g12p_rcpt where label like 'place32#%'),
+  'every 32-root placement returned 32 rows [P2-S12-AC-279]');
+select ok((select max(octet_length(convert_to(body::text, 'UTF8'))) <= 1048576 from g12p_rcpt where label like 'place512#%'),
+  'the 512-row response, as raw jsonb text, stays within the 1 MiB decoded-response ceiling in every sample (DEC-189) [P2-S12-AC-279]');
+select ok((select count(*) = 24 and bool_and(jsonb_array_length(body->'items') = 32) from g12p_rcpt where label like 'update32_accept#%'),
+  'every measured CMS-03C-15 accept answered 32 adopted instances [P2-S12-AC-121]');
+select ok((select count(*) = 24 and bool_and(jsonb_array_length(body->'items') = 32) from g12p_rcpt where label like 'update32_detach#%'),
+  'every measured CMS-03C-15 detach answered 32 detached instances [P2-S12-AC-121]');

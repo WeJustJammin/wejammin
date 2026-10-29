@@ -1,0 +1,168 @@
+-- The 03b `taxonomy` value encoder with the taxonomy authority registered (BE03b Value encodings by field kind, taxonomy;
+-- BE03c Receiving obligations from Slice 10 (DEC-141) item 5; P2-S12-AC-246, AC-221 (assigning a term to a field),
+-- AC-224 (a deprecated term is not newly assignable)): each termId must be an `active` term of a vocabulary whose active
+-- version lists the entry content type's key in allowedTypeKeys and the field's key in allowedFieldKeys; a merged,
+-- deprecated, unknown or other-vocabulary term is the uniform 422 VALIDATION_FAILED reason `term_unavailable`; the revision
+-- records the vocabularies' active version ids and persists one TermAssignment per distinct term.  Driven through the real
+-- write commands cms_create_entry, cms_create_revision and cms_resolve_conflict.
+
+create or replace function pg_temp.ti_counts() returns text language sql stable as $body$
+  select pg_temp.s10g_counts() || '/' || (select count(*) from platform_private.cms_term_assignments)::text $body$;
+create or replace function pg_temp.ti_tags_pointer() returns text language sql stable as $body$
+  select pg_catalog.jsonb_build_array('/fields/' || pg_temp.s10g_fid('tags'))::text $body$;
+create or replace function pg_temp.ti_entry(p_label text) returns text language sql stable as $body$
+  select response->'entry'->>'id' from ti_calls where label = p_label $body$;
+create or replace function pg_temp.ti_rev(p_label text) returns uuid language sql stable as $body$
+  select coalesce((response->'revision'->>'id'), (response->>'id'))::uuid from ti_calls where label = p_label $body$;
+
+-- ---- create ------------------------------------------------------------------------------------------------------------
+select pg_temp.ti_create('c1', jsonb_build_object('title', 'One', 'tags', pg_temp.ti_terms(array['alpha', 'beta'])));
+select is(pg_temp.ti_out('c1'), '00000:',
+  'cms_create_entry stores a tags value naming two active terms of a vocabulary that lists the type and the field [P2-S12-AC-246]');
+select is((select value from platform_private.cms_entry_field_values
+            where revision_id = pg_temp.ti_rev('c1') and field_id = pg_temp.s10g_fid('tags')::uuid),
+  pg_temp.ti_terms(array['alpha', 'beta']),
+  'the value is stored exactly as authored { termIds } [P2-S12-AC-246]');
+select is(pg_temp.ti_assignments(pg_temp.ti_rev('c1')), 'alpha:active:1:0|beta:active:1:1',
+  'one active TermAssignment (version 1) per term at its list position is persisted for the revision [P2-S12-AC-246]');
+select is(pg_temp.ti_revision_ids(pg_temp.ti_rev('c1')), jsonb_build_array(pg_temp.ti_uuid('vg1')),
+  'the revision records the active version id of the vocabulary of its terms [P2-S12-AC-246]');
+select is(
+  (select count(*)::integer from platform_private.cms_term_assignments assignment
+    where assignment.revision_id = pg_temp.ti_rev('c1')
+      and assignment.taxonomy_version_id = pg_temp.ti_uuid('vg1')
+      and assignment.provenance = 'authored'
+      and assignment.field_definition_id = (select id from platform_private.cms_field_definition_versions field
+        where field.stable_field_id = pg_temp.s10g_fid('tags')::uuid
+          and field.content_type_version_id = (select value::uuid from s10g_ids where key = 'versionId'))
+      and assignment.owner_id = pg_temp.ti_org()),
+  2, 'each assignment is bound to the active taxonomy version, the pinned field definition and the owner, with provenance authored [P2-S12-AC-246]');
+
+
+-- An empty list names no term: stored, no assignment, no version id.
+select pg_temp.ti_create('c_empty', jsonb_build_object('title', 'Empty', 'tags', '{"termIds":[]}'::jsonb));
+select is(pg_temp.ti_out('c_empty'), '00000:', 'an EMPTY taxonomy value is still stored [P2-S12-AC-246]');
+select is(pg_temp.ti_assignments(pg_temp.ti_rev('c_empty')) || '/' || pg_temp.ti_revision_ids(pg_temp.ti_rev('c_empty'))::text, '/[]',
+  'and persists no assignment and records no taxonomy version [P2-S12-AC-246]');
+
+-- A value naming the same term twice is refused 422 VALIDATION_FAILED at the field pointer (DEC-233, BE03c DEC-141 item 5): the stored value stays canonical.
+create temp table ti_before_dup on commit drop as select pg_temp.ti_counts() as counts;
+select pg_temp.ti_create('c_dup', jsonb_build_object('title', 'Dup', 'tags',
+  jsonb_build_object('termIds', jsonb_build_array(pg_temp.ti_uuid('alpha'), pg_temp.ti_uuid('alpha'), pg_temp.ti_uuid('beta')))));
+select is(pg_temp.ti_out('c_dup'), 'P0001:VALIDATION_FAILED',
+  'cms_create_entry: a value naming the same termId twice is the bare VALIDATION_FAILED reason (DEC-233) [P2-S12-AC-246]');
+select is((select detail from ti_calls where label = 'c_dup'), pg_temp.ti_tags_pointer(),
+  'at the field pointer and nothing else [P2-S12-AC-246]');
+select is(pg_temp.ti_counts(), (select counts from ti_before_dup), 'and commits nothing [P2-S12-AC-246]');
+
+-- Refusal matrix: every unavailable term is the identical term_unavailable and commits nothing.
+select pg_temp.ti_term_to('delta', 'deprecated');
+select pg_temp.ti_term_to('omega', 'merged', 'alpha');
+select pg_temp.ti_version('vq1', pg_temp.ti_org(), 'ti-quark', 1, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('quark', pg_temp.ti_org(), 'vq1', 'vq1', 'quark');
+select pg_temp.ti_version_to('vq1', 'superseded');
+select pg_temp.ti_version('vq2', pg_temp.ti_org(), 'ti-quark', 2, 'active', '["s10gallery"]'::jsonb, '["title"]'::jsonb, 'vq1', 'vq1');
+select pg_temp.ti_version('vr1', pg_temp.ti_org(), 'ti-ghost', 1, 'retired', '["s10gallery"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('ghost', pg_temp.ti_org(), 'vr1', 'vr1', 'ghost');
+
+create temp table ti_before_refusals on commit drop as select pg_temp.ti_counts() as counts;
+select pg_temp.ti_create('r_' || c.label, jsonb_build_object('title', 'R', 'tags', c.value))
+from (values
+  ('deprecated', pg_temp.ti_terms(array['delta'])),
+  ('merged', pg_temp.ti_terms(array['omega'])),
+  ('unknown', pg_temp.ti_terms(array['nobody'])),
+  ('wrongfield', pg_temp.ti_terms(array['wrongfield'])),
+  ('wrongtype', pg_temp.ti_terms(array['wrongtype'])),
+  ('foreign', pg_temp.ti_terms(array['foreign'])),
+  ('allowlist_dropped', pg_temp.ti_terms(array['quark'])),
+  ('no_active_version', pg_temp.ti_terms(array['ghost'])),
+  ('one_bad', pg_temp.ti_terms(array['alpha', 'delta', 'beta']))
+) c(label, value);
+select is(pg_temp.ti_out('r_' || label), 'P0001:term_unavailable',
+  'cms_create_entry: a ' || label || ' term is the uniform term_unavailable reason [P2-S12-AC-246]')
+from unnest(array['deprecated', 'merged', 'unknown', 'wrongfield', 'wrongtype', 'foreign', 'allowlist_dropped',
+  'no_active_version', 'one_bad']) label;
+select is((select detail from ti_calls where label = 'r_deprecated'), pg_temp.ti_tags_pointer(),
+  'the refusal names the refused field by its normative pointer and nothing else [P2-S12-AC-246]');
+select is((select count(distinct state || message || coalesce(detail, '')) from ti_calls where label like 'r\_%'), 1::bigint,
+  'every refusal is byte-identical: a deprecated, merged, unknown, other-vocabulary, other-owner, dropped-allowlist or retired-vocabulary term cannot be told apart [P2-S12-AC-246]');
+select is(pg_temp.ti_counts(), (select counts from ti_before_refusals),
+  'every refused create committed no entry, revision, value, assignment, conflict, reservation, outbox or audit row [P2-S12-AC-246]');
+select is((select count(*)::integer from ti_calls where message = 'taxonomy_source_unavailable'), 0,
+  'the fail-closed taxonomy_source_unavailable token is no longer raised once the authority exists [P2-S12-AC-246]');
+
+-- Malformed encodings and the other producers are unchanged.
+select pg_temp.ti_create('m_string', jsonb_build_object('tags', '"alpha"'::jsonb));
+select pg_temp.ti_create('m_baduuid', jsonb_build_object('tags', '{"termIds":["nope"]}'::jsonb));
+select pg_temp.ti_create('m_media', jsonb_build_object('hero', '{"assetId":"a9100000-0000-4000-8000-0000000000a1","assetVersion":"3"}'::jsonb));
+select is(pg_temp.ti_out('m_string') || '|' || pg_temp.ti_out('m_baduuid'), 'P0001:VALIDATION_FAILED|P0001:VALIDATION_FAILED',
+  'a malformed taxonomy encoding is still the bare VALIDATION_FAILED, decided before any term is looked up [P2-S12-AC-246]');
+select is(pg_temp.ti_out('m_media'), 'P0001:media_source_unavailable',
+  'a non-empty media value is still media_source_unavailable (Slice 14 owns media) [P2-S12-AC-246]');
+
+-- ---- append ------------------------------------------------------------------------------------------------------------
+select pg_temp.ti_append('a_title', pg_temp.ti_entry('c1'), jsonb_build_object('title', 'One b'), '1', '1');
+select is(pg_temp.ti_out('a_title'), '00000:', 'fixture: a title-only append of the first entry succeeds');
+select is(pg_temp.ti_assignments(pg_temp.ti_rev('a_title')), 'alpha:active:1:0|beta:active:1:1',
+  'an append that leaves the tags value alone carries the active assignments forward unchanged [P2-S12-AC-246]');
+select is(pg_temp.ti_revision_ids(pg_temp.ti_rev('a_title')), jsonb_build_array(pg_temp.ti_uuid('vg1')),
+  'and records the same vocabulary version [P2-S12-AC-246]');
+select is((select count(*)::integer from platform_private.cms_term_assignments where revision_id = pg_temp.ti_rev('c1')), 2,
+  'the earlier revision keeps exactly its own two assignments (append-only) [P2-S12-AC-246]');
+
+select pg_temp.ti_append('a_tags', pg_temp.ti_entry('c1'), jsonb_build_object('tags', pg_temp.ti_terms(array['gamma'])), '2', '2');
+select is(pg_temp.ti_out('a_tags') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('a_tags')) || '/' || pg_temp.ti_revision_ids(pg_temp.ti_rev('a_tags'))::text,
+  '00000:/gamma:active:1:0/["' || pg_temp.ti_uuid('vg1') || '"]',
+  'an append that replaces the tags value persists exactly the new assignment and the vocabulary version [P2-S12-AC-246]');
+select is(response->'taxonomyVersionIds', jsonb_build_array(pg_temp.ti_uuid('vg1')),
+  'the append response reports the revision taxonomyVersionIds [P2-S12-AC-246]') from ti_calls where label = 'a_tags';
+select pg_temp.ti_append('a_clear', pg_temp.ti_entry('c1'), jsonb_build_object('tags', '{"termIds":[]}'::jsonb), '3', '3');
+select is(pg_temp.ti_out('a_clear') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('a_clear')) || '/' || pg_temp.ti_revision_ids(pg_temp.ti_rev('a_clear'))::text,
+  '00000://[]', 'clearing the tags value carries no assignment and records no taxonomy version [P2-S12-AC-246]');
+
+create temp table ti_before_append_refusals on commit drop as select pg_temp.ti_counts() as counts;
+select pg_temp.ti_append('ar_' || c.label, pg_temp.ti_entry('c1'), jsonb_build_object('tags', c.value), '4', '4')
+from (values
+  ('deprecated', pg_temp.ti_terms(array['delta'])), ('merged', pg_temp.ti_terms(array['omega'])),
+  ('unknown', pg_temp.ti_terms(array['nobody'])), ('wrongfield', pg_temp.ti_terms(array['wrongfield'])),
+  ('wrongtype', pg_temp.ti_terms(array['wrongtype'])), ('foreign', pg_temp.ti_terms(array['foreign']))) c(label, value);
+select is(pg_temp.ti_out('ar_' || label), 'P0001:term_unavailable',
+  'cms_create_revision: a ' || label || ' term is the uniform term_unavailable reason [P2-S12-AC-246]')
+from unnest(array['deprecated', 'merged', 'unknown', 'wrongfield', 'wrongtype', 'foreign']) label;
+select is(pg_temp.ti_counts(), (select counts from ti_before_append_refusals),
+  'every refused append committed nothing [P2-S12-AC-246]');
+
+-- A deprecated term is tolerated where it is already assigned (AC-224, AC-239) but never newly assignable.
+select pg_temp.ti_term_to('beta', 'deprecated');
+select pg_temp.ti_append('a_depr_keep', pg_temp.ti_entry('c1'), jsonb_build_object('title', 'One c'), '4', '4');
+select is(pg_temp.ti_out('a_depr_keep'), '00000:', 'fixture: an append that does not touch the tags value succeeds');
+select pg_temp.ti_append('a_depr_set', pg_temp.ti_entry('c1'), jsonb_build_object('tags', pg_temp.ti_terms(array['beta'])), '5', '5');
+select is(pg_temp.ti_out('a_depr_set'), 'P0001:term_unavailable',
+  'a term that became deprecated is not newly assignable to the field [P2-S12-AC-224]');
+select pg_temp.ti_create('c_before_depr', jsonb_build_object('title', 'Keeps', 'tags', pg_temp.ti_terms(array['gamma'])));
+select pg_temp.ti_term_to('gamma', 'deprecated');
+select pg_temp.ti_append('a_keeps', pg_temp.ti_entry('c_before_depr'), jsonb_build_object('title', 'Keeps b'), '1', '1');
+select is(pg_temp.ti_out('a_keeps') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('a_keeps')) || '/' || pg_temp.ti_revision_ids(pg_temp.ti_rev('a_keeps'))::text,
+  '00000:/gamma:active:1:0/["' || pg_temp.ti_uuid('vg1') || '"]',
+  'an existing assignment to a deprecated term is carried by an unrelated append (still resolvable) [P2-S12-AC-224]');
+select pg_temp.ti_append('a_keeps_resend', pg_temp.ti_entry('c_before_depr'), jsonb_build_object('tags', pg_temp.ti_terms(array['gamma'])), '2', '2');
+select is(pg_temp.ti_out('a_keeps_resend') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('a_keeps_resend')),
+  '00000:/gamma:active:1:0',
+  'a deprecated term the source revision already assigns in the same field stays accepted when the value is re-sent (DEC-233) [P2-S12-AC-224]');
+select pg_temp.ti_append('a_keeps_add', pg_temp.ti_entry('c_before_depr'), jsonb_build_object('tags', pg_temp.ti_terms(array['gamma', 'alpha'])), '3', '3');
+select is(pg_temp.ti_out('a_keeps_add') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('a_keeps_add')),
+  '00000:/gamma:active:1:0|alpha:active:1:1',
+  'and may be re-sent beside a newly assigned active term, the existing deprecated assignment keeping its place [P2-S12-AC-224]');
+select pg_temp.ti_append('a_keeps_new_depr', pg_temp.ti_entry('c_before_depr'), jsonb_build_object('tags', pg_temp.ti_terms(array['gamma', 'delta'])), '4', '4');
+select is(pg_temp.ti_out('a_keeps_new_depr'), 'P0001:term_unavailable',
+  'but a different deprecated term the source does not assign is still refused: not newly assignable [P2-S12-AC-224]');
+select pg_temp.ti_append('a_keeps_other_field', pg_temp.ti_entry('c1'), jsonb_build_object('tags', pg_temp.ti_terms(array['gamma'])), '5', '5');
+select is(pg_temp.ti_out('a_keeps_other_field'), 'P0001:term_unavailable',
+  'an existing assignment of ANOTHER revision''s lineage does not count: only the source revision of the write is read [P2-S12-AC-224]');
+select pg_temp.ti_append('a_dup', pg_temp.ti_entry('c1'), jsonb_build_object('tags',
+  jsonb_build_object('termIds', jsonb_build_array(pg_temp.ti_uuid('alpha'), pg_temp.ti_uuid('alpha')))), '5', '5');
+select is(pg_temp.ti_out('a_dup') || '/' || coalesce((select detail from ti_calls where label = 'a_dup'), ''),
+  'P0001:VALIDATION_FAILED/' || pg_temp.ti_tags_pointer(),
+  'cms_create_revision: a value naming the same termId twice is VALIDATION_FAILED at the field pointer (DEC-233) [P2-S12-AC-246]');
+select pg_temp.ti_term_to('gamma', 'active');
+select pg_temp.ti_term_to('beta', 'active');

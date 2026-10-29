@@ -1,0 +1,50 @@
+-- Gallery vocabularies and the real write-command callers (include after 000-world.sqlinc and the gallery fixture).
+
+-- The vocabularies.  vg: the gallery vocabulary (lists the s10gallery type and its `tags` field).  vw: lists the type but not the
+-- field.  vx: lists the field but not the type.  vf: owned by the second organization (lists both).
+select pg_temp.ti_version('vg1', pg_temp.ti_org(), 'ti-gallery', 1, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_version('vw1', pg_temp.ti_org(), 'ti-wrongfield', 1, 'active', '["s10gallery"]'::jsonb, '["title"]'::jsonb);
+select pg_temp.ti_version('vx1', pg_temp.ti_org(), 'ti-wrongtype', 1, 'active', '["other"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_version('vf1', pg_temp.ti_org2(), 'ti-foreign', 1, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb);
+
+select pg_temp.ti_term('alpha', pg_temp.ti_org(), 'vg1', 'vg1', 'alpha');
+select pg_temp.ti_term('beta', pg_temp.ti_org(), 'vg1', 'vg1', 'beta');
+select pg_temp.ti_term('gamma', pg_temp.ti_org(), 'vg1', 'vg1', 'gamma');
+select pg_temp.ti_term('delta', pg_temp.ti_org(), 'vg1', 'vg1', 'delta');
+select pg_temp.ti_term('omega', pg_temp.ti_org(), 'vg1', 'vg1', 'omega');
+select pg_temp.ti_term('wrongfield', pg_temp.ti_org(), 'vw1', 'vw1', 'wrongfield');
+select pg_temp.ti_term('wrongtype', pg_temp.ti_org(), 'vx1', 'vx1', 'wrongtype');
+select pg_temp.ti_term('foreign', pg_temp.ti_org2(), 'vf1', 'vf1', 'foreign');
+
+select ok(
+  (select count(*) = 4 from platform_private.cms_taxonomy_versions where id in (
+     pg_temp.ti_uuid('vg1'), pg_temp.ti_uuid('vw1'), pg_temp.ti_uuid('vx1'), pg_temp.ti_uuid('vf1')) and state = 'active')
+  and (select count(*) = 8 from platform_private.cms_terms where owner_id in (pg_temp.ti_org(), pg_temp.ti_org2()) and lifecycle = 'active'),
+  'world: four active vocabularies (gallery, wrong field, wrong type, second organization) and eight active terms');
+
+
+-- Real write commands of the gallery type.
+create temp table ti_calls(label text primary key, state text, message text, detail text, response jsonb) on commit drop;
+create or replace function pg_temp.ti_call(p_label text, p_sql text) returns void language plpgsql as $body$
+declare result jsonb; d text;
+begin
+  begin
+    execute p_sql into result;
+    insert into ti_calls values (p_label, '00000', null, null, result)
+    on conflict (label) do update set state = '00000', message = null, detail = null, response = excluded.response;
+  exception when others then
+    get stacked diagnostics d = pg_exception_detail;
+    insert into ti_calls values (p_label, sqlstate, sqlerrm, d, null)
+    on conflict (label) do update set state = excluded.state, message = excluded.message, detail = excluded.detail, response = null;
+  end;
+end;
+$body$;
+create or replace function pg_temp.ti_out(p_label text) returns text language sql stable as $body$
+  select coalesce((select state || ':' || coalesce(message, '') from ti_calls where label = p_label), 'MISSING') $body$;
+create or replace function pg_temp.ti_create(p_label text, p_by_key jsonb) returns void language sql as $body$
+  select pg_temp.ti_call(p_label, 'select platform_api.cms_create_entry('
+    || quote_literal(pg_temp.s10g_create_request(p_by_key, 's12ti-create-' || p_label)::text) || '::jsonb)') $body$;
+create or replace function pg_temp.ti_append(p_label text, p_entry text, p_by_key jsonb, p_base text, p_expected text) returns void language sql as $body$
+  select pg_temp.ti_call(p_label, 'select platform_api.cms_create_revision('
+    || quote_literal(pg_temp.s10g_revision_request(p_entry, p_by_key, p_base, p_expected, 's12ti-append-' || p_label)::text) || '::jsonb)') $body$;
+

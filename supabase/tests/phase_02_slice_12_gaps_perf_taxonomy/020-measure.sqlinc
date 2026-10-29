@@ -1,0 +1,66 @@
+-- CMS-03C-16 at its bounds: 24 new lineages with 64 allowed type keys, 64 allowed field keys and 6 canonical domains (the first type key
+-- is the real active type; the rest are valid keys of no type, which the allowlist admits: it names keys, not rows).
+do $bench$
+declare v_i integer; v_type_key text; v_expected text; v_lineage uuid;
+begin
+  select type_key into v_type_key from platform_private.cms_content_types where id = (select value::uuid from s12gov_ids where key = 'typeA');
+  for v_i in 1..24 loop
+    perform pg_temp.g12p_call('tax_create_bound', 'platform_api.cms_create_taxonomy_version', 'owner', jsonb_build_object(
+      'taxonomyKey', 'gp-tax-' || lpad(v_i::text, 2, '0'), 'shape', 'flat',
+      'allowedTypeKeys', jsonb_build_array(v_type_key) || (select jsonb_agg('bench_type_' || lpad(n::text, 2, '0') order by n) from generate_series(1, 63) n),
+      'allowedFieldKeys', (select jsonb_agg('bench_field_' || lpad(n::text, 2, '0') order by n) from generate_series(1, 64) n),
+      'canonicalOverlapDomains', '["role","instrument","gear","place","rights","jurisdiction"]'::jsonb,
+      'expectedVersion', null, 'idempotencyKey', 's12gp-tax-create-' || v_i), pg_temp.g12px_w());
+  end loop;
+  perform pg_temp.g12px_require('tax_create_bound', 24);
+  -- a lineage of 50 versions: 49 successors, each naming its parent's version
+  v_lineage := (pg_temp.g12p_body('tax_create_bound#1')->>'taxonomyId')::uuid;
+  for v_i in 1..49 loop
+    perform pg_temp.g12p_call('setup_tax_successor', 'platform_api.cms_create_taxonomy_version', 'owner', jsonb_build_object(
+      'taxonomyKey', 'gp-tax-01', 'shape', 'flat',
+      'allowedTypeKeys', jsonb_build_array(v_type_key) || (select jsonb_agg('bench_type_' || lpad(n::text, 2, '0') order by n) from generate_series(1, 63) n),
+      'allowedFieldKeys', (select jsonb_agg('bench_field_' || lpad(n::text, 2, '0') order by n) from generate_series(1, 64) n),
+      'canonicalOverlapDomains', '["role","instrument","gear","place","rights","jurisdiction"]'::jsonb,
+      'expectedVersion', v_i::text, 'ifMatch', v_i::text, 'idempotencyKey', 's12gp-tax-succ-' || v_i), pg_temp.g12px_w());
+  end loop;
+  perform pg_temp.g12px_require('setup_tax_successor', 49);
+  insert into s12gov_ids(key, value) values ('gp-tax-lineage', v_lineage::text);
+end;
+$bench$;
+select is((select count(*)::integer from platform_private.cms_taxonomy_versions where taxonomy_id = (select value::uuid from s12gov_ids where key = 'gp-tax-lineage')), 50,
+  'fixture: the lineage has 50 versions, the bound of the versions page [P2-S12-AC-180]');
+
+-- Shape controls, then 30 samples of each read.
+select pg_temp.g12p_call('shape_versions', 'platform_api.cms_list_taxonomy_versions', 'owner',
+  jsonb_build_object('taxonomyId', (select value from s12gov_ids where key = 'gp-tax-lineage')), pg_temp.g12px_r('owner'));
+select pg_temp.g12p_call('shape_terms', 'platform_api.cms_list_taxonomy_terms', 'owner',
+  jsonb_build_object('taxonomyId', pg_temp.s12tt_lineage('vb'), 'limit', 50), pg_temp.g12px_r('owner'));
+-- the selector is the author-facing read: rev2 holds cms.author in the owner party (the owner is only the curator)
+select pg_temp.g12p_call('shape_selector', 'platform_api.cms_list_taxonomy_selector', 'rev2',
+  jsonb_build_object('typeKey', 's12govordinary', 'fieldKey', 'title', 'locale', 'en-US', 'limit', 100), pg_temp.g12px_r('rev2'));
+select ok(pg_temp.g12p_out('shape_versions#1') = 'ok', 'the versions read answers [P2-S12-AC-180]');
+select ok(pg_temp.g12p_out('shape_terms#1') = 'ok' and jsonb_array_length(pg_temp.g12p_body('shape_terms#1')->'page'->'items') = 50
+    and pg_temp.g12p_body('shape_terms#1')->'page'->>'nextCursor' is not null,
+  'the terms read returns a page of 50 terms and a cursor from 120 terms [P2-S12-AC-186]');
+select ok(pg_temp.g12p_out('shape_selector#1') = 'ok' and jsonb_array_length(pg_temp.g12p_body('shape_selector#1')->'items') = 100
+    and pg_temp.g12p_body('shape_selector#1')->>'nextCursor' is not null,
+  'the selector returns the maximum page of 100 terms and a cursor from 120 terms [P2-S12-AC-133]');
+
+do $bench$
+declare v_run integer; v_tc text := pg_temp.g12p_body('shape_terms#1')->'page'->>'nextCursor';
+  v_sc text := pg_temp.g12p_body('shape_selector#1')->>'nextCursor'; v_tax uuid := pg_temp.s12tt_lineage('vb');
+begin
+  for v_run in 1..30 loop
+    perform pg_temp.g12p_call('versions_read', 'platform_api.cms_list_taxonomy_versions', 'owner',
+      jsonb_build_object('taxonomyId', (select value from s12gov_ids where key = 'gp-tax-lineage')), pg_temp.g12px_r('owner'));
+    perform pg_temp.g12p_call('terms_page1', 'platform_api.cms_list_taxonomy_terms', 'owner',
+      jsonb_build_object('taxonomyId', v_tax, 'limit', 50), pg_temp.g12px_r('owner'));
+    perform pg_temp.g12p_call('terms_cursor_page', 'platform_api.cms_list_taxonomy_terms', 'owner',
+      jsonb_build_object('taxonomyId', v_tax, 'limit', 50, 'cursor', v_tc), pg_temp.g12px_r('owner'));
+    perform pg_temp.g12p_call('selector_page1', 'platform_api.cms_list_taxonomy_selector', 'rev2',
+      jsonb_build_object('typeKey', 's12govordinary', 'fieldKey', 'title', 'locale', 'en-US', 'limit', 100), pg_temp.g12px_r('rev2'));
+    perform pg_temp.g12p_call('selector_cursor_page', 'platform_api.cms_list_taxonomy_selector', 'rev2',
+      jsonb_build_object('typeKey', 's12govordinary', 'fieldKey', 'title', 'locale', 'en-US', 'limit', 100, 'cursor', v_sc), pg_temp.g12px_r('rev2'));
+  end loop;
+end;
+$bench$;

@@ -1,0 +1,28 @@
+-- P2-S12-AC-186 clause 1 "a signed cursor bound to the query and acting context".  The query hash is built from actorId, actingPartyId,
+-- taxonomyId, lifecycle and limit (migration 20261014120600).  A page-1 cursor of the owner is replayed unchanged:
+--   * as a DIFFERENT ACTOR of the same party and vocabulary (rev2, a second real curator): 409 CONFLICT, the client restarts;
+--   * as a DIFFERENT ACTING PARTY (`other`, a curator of the other organization): the vocabulary is the owner's, so the reader answers the
+--     concealment NOT_FOUND before it ever compares the hash.  The acting-party member of the hash is defence in depth behind the
+--     owner-scope lookup, not an independently reachable refusal; this test pins the order (BOUNDARY note in the report).
+-- Controls: the owner's own replay is accepted, and a replay with another limit is CONFLICT.
+select pg_temp.s12tr_read('cc-owner', 'owner', pg_temp.s12tt_lineage('vb'), jsonb_build_object('limit', 50));
+select pg_temp.s12tr_read('cc-owner-2', 'owner', pg_temp.s12tt_lineage('vb'),
+  jsonb_build_object('limit', 50, 'cursor', pg_temp.s12ga_body('cc-owner')->'page'->>'nextCursor'));
+select pg_temp.s12tr_read('cc-actor', 'rev2', pg_temp.s12tt_lineage('vb'),
+  jsonb_build_object('limit', 50, 'cursor', pg_temp.s12ga_body('cc-owner')->'page'->>'nextCursor'));
+select pg_temp.s12tr_read('cc-party', 'other', pg_temp.s12tt_lineage('vb'),
+  jsonb_build_object('limit', 50, 'cursor', pg_temp.s12ga_body('cc-owner')->'page'->>'nextCursor'));
+select pg_temp.s12tr_read('cc-limit', 'owner', pg_temp.s12tt_lineage('vb'),
+  jsonb_build_object('limit', 49, 'cursor', pg_temp.s12ga_body('cc-owner')->'page'->>'nextCursor'));
+select pg_temp.s12tr_read('cc-rev2-first', 'rev2', pg_temp.s12tt_lineage('vb'), jsonb_build_object('limit', 50));
+select is(pg_temp.s12ga_out('cc-owner'), 'ok', 'control: the owner reads page 1 of the 120-term vocabulary [P2-S12-AC-186]');
+select ok(pg_temp.s12ga_out('cc-owner-2') = 'ok' and jsonb_array_length(pg_temp.s12ga_body('cc-owner-2')->'page'->'items') = 50,
+  'control: the owner replays its own cursor and receives the next 50 terms [P2-S12-AC-186]');
+select ok(pg_temp.s12ga_out('cc-rev2-first') = 'ok',
+  'control: rev2 is a real reader of the vocabulary, so its refusal below is the cursor binding and not an authority refusal [P2-S12-AC-186]');
+select is(pg_temp.s12ga_out('cc-actor'), 'P0001:CONFLICT',
+  'the page-1 cursor replayed by a different actor (same party, vocabulary, limit and filter) is CONFLICT [P2-S12-AC-186]');
+select is(pg_temp.s12ga_out('cc-party'), 'P0001:NOT_FOUND',
+  'the page-1 cursor replayed under a different acting party meets the owner-scope concealment (NOT_FOUND) before the hash comparison [P2-S12-AC-186]');
+select is(pg_temp.s12ga_out('cc-limit'), 'P0001:CONFLICT',
+  'control: the cursor replayed with another limit is CONFLICT [P2-S12-AC-186]');

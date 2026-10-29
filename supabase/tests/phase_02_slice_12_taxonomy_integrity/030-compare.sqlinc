@@ -1,0 +1,50 @@
+-- CMS-03B-03 comparison and the lineage guard with the taxonomy-version resolver registered (BE03c Receiving obligations from
+-- Slice 10 (DEC-141) item 1; BE03b Recorded taxonomy and composition references in comparison and restore (1); P2-S12-AC-242):
+-- recorded taxonomy versions are compared by identity, in any state of the caller's owner scope, and a recorded id that is
+-- absent or out of scope is the non-disclosing 422 comparison_unavailable.  Before the resolver any non-empty list failed closed.
+
+create or replace function pg_temp.ti_compare_sql(p_entry uuid, p_compare uuid) returns text language sql as $body$
+  select 'select platform_api.cms_list_revisions(' || quote_literal(jsonb_build_object(
+    'entryId', p_entry, 'compareRevisionId', p_compare, 'context', jsonb_build_object(
+      'actingPartyId', (select value from s10_ids where key = 'organization'),
+      'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+      'correlationId', 'a9100000-0000-4000-8000-000000000095'))::text) || '::jsonb)' $body$;
+
+-- the comparison read signs its relation token with the Vault-held history key (transaction-only test key, as the Slice 10 suites)
+select vault.create_secret(repeat('a1', 32), 'cms_editorial_history_cursor_active', 'pgTAP transaction-only CMS-03B-03 test key');
+select pg_temp.s10_rpc_as((select value::uuid from s10_ids where key = 'creatorAuth'), pg_temp.ti_org());
+select pg_temp.ti_session(pg_temp.ti_org());
+select is(platform_private.cms_compare_revision_resolvable(pg_temp.ti_entry('c1')::uuid, pg_temp.ti_rev('c1')), true,
+  'the lineage guard accepts a revision whose recorded taxonomy version resolves (it failed closed for any non-empty list before) [P2-S12-AC-242]');
+select pg_temp.ti_call('cmp_ok', pg_temp.ti_compare_sql(pg_temp.ti_entry('c1')::uuid, pg_temp.ti_rev('c1')));
+select is(pg_temp.ti_out('cmp_ok'), '00000:',
+  'CMS-03B-03 compares a revision that records a taxonomy version against the newest revision [P2-S12-AC-242]');
+
+-- A recorded id that resolves in ANY state of the owner scope compares (a retired vocabulary version is still an identity).
+select pg_temp.ti_create('f_c', jsonb_build_object('title', 'Forge'));
+select pg_temp.ti_append('f_a', pg_temp.ti_entry('f_c'), jsonb_build_object('title', 'Forge b'), '1', '1');
+select pg_temp.h11_raw_exec('platform_private.cms_entry_revisions',
+  format('update platform_private.cms_entry_revisions set taxonomy_version_ids = %L::jsonb where id = %L::uuid',
+    jsonb_build_array(pg_temp.ti_uuid('rs7'), pg_temp.ti_uuid('rs1')), pg_temp.ti_rev('f_c')));
+select is(platform_private.cms_compare_revision_resolvable(pg_temp.ti_entry('f_c')::uuid, pg_temp.ti_rev('f_c')), true,
+  'a recorded retired and a recorded draft version of the owner both resolve [P2-S12-AC-242]');
+select pg_temp.ti_call('cmp_states', pg_temp.ti_compare_sql(pg_temp.ti_entry('f_c')::uuid, pg_temp.ti_rev('f_c')));
+select is(pg_temp.ti_out('cmp_states'), '00000:', 'and the comparison itself succeeds [P2-S12-AC-242]');
+
+-- Absent and out-of-scope recorded ids: the identical comparison_unavailable, on either side.
+select pg_temp.h11_raw_exec('platform_private.cms_entry_revisions',
+  format('update platform_private.cms_entry_revisions set taxonomy_version_ids = %L::jsonb where id = %L::uuid',
+    jsonb_build_array(pg_temp.ti_uuid('nobody')), pg_temp.ti_rev('f_c')));
+select pg_temp.ti_call('cmp_absent', pg_temp.ti_compare_sql(pg_temp.ti_entry('f_c')::uuid, pg_temp.ti_rev('f_c')));
+select pg_temp.h11_raw_exec('platform_private.cms_entry_revisions',
+  format('update platform_private.cms_entry_revisions set taxonomy_version_ids = %L::jsonb where id = %L::uuid',
+    jsonb_build_array(pg_temp.ti_uuid('vf1')), pg_temp.ti_rev('f_c')));
+select pg_temp.ti_call('cmp_foreign', pg_temp.ti_compare_sql(pg_temp.ti_entry('f_c')::uuid, pg_temp.ti_rev('f_c')));
+select is(pg_temp.ti_out('cmp_absent'), 'P0001:comparison_unavailable',
+  'a recorded taxonomy version that does not exist is comparison_unavailable [P2-S12-AC-242]');
+select is(pg_temp.ti_out('cmp_foreign'), pg_temp.ti_out('cmp_absent'),
+  'a recorded taxonomy version of another owner is the identical comparison_unavailable (non-disclosing) [P2-S12-AC-242]');
+select is(platform_private.cms_compare_revision_resolvable(pg_temp.ti_entry('f_c')::uuid, pg_temp.ti_rev('f_c')), false,
+  'the lineage guard answers false for an out-of-scope recorded version [P2-S12-AC-242]');
+select is(platform_private.cms_compare_revision_resolvable(pg_temp.ti_entry('f_c')::uuid, pg_temp.ti_rev('f_a')), true,
+  'and true for a revision that records none [P2-S12-AC-242]');

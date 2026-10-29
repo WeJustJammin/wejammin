@@ -168,6 +168,8 @@ insert into r8a_supporting values
   ('cms_get_locale_variant'),
   -- Slice 12: cmsCompositionInstancesRead (DEC-206, 20261022050010)
   ('cms_list_composition_instances'),
+  -- Slice 12: cmsPatternNestableRead (DEC-196, DEC-232, 20261027100010)
+  ('cms_list_pattern_nestable'),
   -- Slice 12 (integration pins): the eight further service-role-only, Worker-called wrappers of the promoted lanes, one per line,
   -- each with the migration that grants it to service_role only.
   -- pattern-updates lane, CMS-03C-14 safe read of an instance's update diff (20261014140410)

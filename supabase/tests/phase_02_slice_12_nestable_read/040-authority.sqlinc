@@ -1,0 +1,90 @@
+-- cmsPatternNestableRead authority (BE03c 184, 1665): a verified human holding cms.template_designer in the owner party; the capability is
+-- re-proved on every call; author/editor/reviewer capabilities alone are NOT enough (403 capability_missing); a caller who cannot read the owner
+-- party is NOT_FOUND-concealed first.  The transport is service_role only.  [P2-S12-AC-105, AC-261]
+
+select pg_temp.s12nr_read('a-owner', array[1, 2]);
+select is(pg_temp.s12pu_oc('a-owner'), 'ok', 'the owner, who holds cms.template_designer, reads the list');
+
+-- not a designer: reviewer, then author, then editor, then schema designer -----------------------------------------------------------
+select pg_temp.s12nr_read('a-rev1-none', array[1], '{}'::jsonb, array[]::text[], 'rev1');
+select is(pg_temp.s12pu_oc('a-rev1-none'), 'P0001:capability_missing', 'a human with cms.reviewer only is 403 capability_missing');
+select is(pg_temp.s09d_grant_via_rpc('rev1', 'cms.author'), 'OK', 'setup: rev1 receives a real cms.author grant');
+select pg_temp.s12nr_read('a-rev1-author', array[1], '{}'::jsonb, array[]::text[], 'rev1');
+select is(pg_temp.s12pu_oc('a-rev1-author'), 'P0001:capability_missing',
+  'cms.author is the CMS-03C-13 selector authority and is NOT the designer''s: the nestable list refuses an author');
+select is(pg_temp.s09d_grant_via_rpc('rev1', 'cms.editor'), 'OK', 'setup: rev1 receives a real cms.editor grant');
+select pg_temp.s12nr_read('a-rev1-editor', array[1], '{}'::jsonb, array[]::text[], 'rev1');
+select is(pg_temp.s12pu_oc('a-rev1-editor'), 'P0001:capability_missing', 'author AND editor together still do not make a designer');
+select pg_temp.s12nr_read('a-designer2', array[1], '{}'::jsonb, array[]::text[], 'designer2');
+select is(pg_temp.s12pu_oc('a-designer2'), 'P0001:capability_missing', 'cms.schema_designer is a different capability: the pattern designer capability is required');
+select ok(pg_temp.s12pu_unchanged('a-rev1-none') and pg_temp.s12pu_unchanged('a-rev1-author') and pg_temp.s12pu_unchanged('a-designer2'),
+  'a capability refusal changed no store and disclosed no list');
+-- the same people DO read the author-facing selector (the two reads are distinct authorities)
+select pg_temp.s12nr_call('a-rev1-selector', 'platform_api.cms_list_pattern_selector', jsonb_build_object('contentTypeId', pg_temp.s12nr_type(1),
+  'context', pg_temp.s09d_context('rev1', true), 'correlationId', 'a9120000-0000-4000-8000-00000000c0d3'), 'rev1');
+select is(pg_temp.s12pu_oc('a-rev1-selector'), 'ok', 'control: the same rev1 (author + editor) reads the CMS-03C-13 selector, so the refusal above is the designer rule');
+
+-- a real designer grant makes the same actor succeed; the lists are identical ---------------------------------------------------------
+select is(pg_temp.s09d_grant_via_rpc('rev1', 'cms.template_designer'), 'OK', 'setup: rev1 receives a real cms.template_designer grant');
+select pg_temp.s12nr_read('a-rev1-designer', array[1, 2], '{}'::jsonb, array[]::text[], 'rev1');
+select ok(pg_temp.s12pu_oc('a-rev1-designer') = 'ok' and pg_temp.s12pu_body('a-rev1-designer') = pg_temp.s12pu_body('a-owner'),
+  'a second designer of the same party reads the same page (the list is party data, not per-user)');
+-- a cursor is bound to the actor: rev1's cursor does not open for the owner
+select pg_temp.s12nr_read('ca-rev1', array[2], '{"limit":2}'::jsonb, array[]::text[], 'rev1');
+select pg_temp.s12nr_read('ca-owner', array[2], jsonb_build_object('limit', 2, 'cursor', pg_temp.s12pu_body('ca-rev1')->>'nextCursor'));
+select pg_temp.s12nr_read('ca-rev1-2', array[2], jsonb_build_object('limit', 2, 'cursor', pg_temp.s12pu_body('ca-rev1')->>'nextCursor'), array[]::text[], 'rev1');
+select is(pg_temp.s12pu_oc('ca-owner') || '/' || pg_temp.s12pu_oc('ca-rev1-2'), 'P0001:INVALID_REQUEST/ok',
+  'a cursor is bound to the caller: replayed by another user it is 400 INVALID_REQUEST, by its own user it continues the listing');
+
+-- concealment ---------------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12nr_read('a-other', array[1], '{}'::jsonb, array[]::text[], 'other');
+select is(pg_temp.s12pu_oc('a-other'), 'P0001:capability_missing',
+  'a member of ANOTHER organization holds no designer capability in its own party: the owner''s list is never reachable (BE00 order: capability, then type); '
+  || 'the converse, the owner asking about that organization''s type, is the NOT_FOUND of 030-grammar');
+select pg_temp.s12nr_call('a-anon', 'platform_api.cms_list_pattern_nestable', pg_temp.s12nr_request(array[1]) || jsonb_build_object('context', '{}'::jsonb), 'anonymous');
+select is(pg_temp.s12pu_oc('a-anon'), 'P0001:UNAUTHENTICATED', 'a request without a verified human context is 401 UNAUTHENTICATED');
+
+-- privileges: the real database roles ------------------------------------------------------------------------------------------------------
+select pg_temp.s12nr_read('acl-anon', array[1], '{}'::jsonb, array[]::text[], 'owner', 'anon');
+select pg_temp.s12nr_read('acl-authenticated', array[1], '{}'::jsonb, array[]::text[], 'owner', 'authenticated');
+select is(pg_temp.s12pu_state('acl-anon') || '/' || pg_temp.s12pu_state('acl-authenticated'), '42501/42501',
+  'the real anon and authenticated database roles cannot execute the transport [AC-261]');
+select ok((select bool_and(before_rows = after_rows and call_role = requested_role) from s12pu_out where label like 'acl-%'),
+  'the ACL probes really ran as those roles and wrote nothing');
+
+-- PAT-031: a context-cleared real-role call, with a negative control -------------------------------------------------------------------------
+-- The harness starts every call with app.cms_rpc cleared, as a PostgREST request does.  The read succeeded under the real service_role, so
+-- the definer path sets the flag itself; the wrapper then restores the caller's value (cleared stays cleared, a sentinel stays the sentinel).
+select pg_temp.s12nr_read('ctx-clear', array[1, 2]);
+select pg_temp.s12nr_call('ctx-sentinel', 'platform_api.cms_list_pattern_nestable', pg_temp.s12nr_request(array[1, 2]), 'owner', 'service_role', 'caller-sentinel');
+select ok(pg_temp.s12pu_oc('ctx-clear') = 'ok' and (select call_role = 'service_role' and role_restored and rpc_before = '' and rpc_after = ''
+                                                       from s12pu_out where label = 'ctx-clear'),
+  'with the RPC-context flag cleared and the real service_role, the read succeeds and the flag is back to cleared afterwards [PAT-031]');
+select ok(pg_temp.s12pu_oc('ctx-sentinel') = 'ok' and (select rpc_before = 'caller-sentinel' and rpc_after = 'caller-sentinel' from s12pu_out where label = 'ctx-sentinel')
+    and pg_temp.s12pu_body('ctx-sentinel') = pg_temp.s12pu_body('ctx-clear'),
+  'a caller''s own flag value survives the call (the wrapper restores, never clears) and the answer is the same [PAT-031]');
+-- negative control: outside the definer path the same real role, flag cleared, cannot see the table the read answered from
+create temp table s12nr_control(outcome text) on commit drop;
+do $control$
+declare seen bigint; code text := 'none'; prior_role text := current_setting('role');
+begin
+  perform set_config('app.cms_rpc', '', true);
+  perform set_config('role', 'service_role', true);
+  begin
+    select count(*) into seen from platform_private.cms_pattern_versions;
+  exception when others then
+    get stacked diagnostics code = returned_sqlstate;
+  end;
+  perform set_config('role', prior_role, true);
+  insert into s12nr_control values (case when code = '42501' then 'denied' when seen = 0 then 'hidden' else 'visible:' || coalesce(seen::text, 'null') end);
+end;
+$control$;
+select ok((select outcome from s12nr_control) in ('denied', 'hidden'),
+  'negative control: the same service_role with the flag cleared cannot read the pattern table directly, so the successful read above proves the definer path');
+
+-- authority is re-proved on every call: a revoked designer is refused ------------------------------------------------------------------------
+select is(pg_temp.s09d_revoke_via_rpc('rev1', 'cms.template_designer'), 'OK', 'setup: the real revoke command ends rev1''s designer grant');
+select pg_temp.s12nr_read('a-revoked', array[1], '{}'::jsonb, array[]::text[], 'rev1');
+select is(pg_temp.s12pu_oc('a-revoked'), 'P0001:capability_missing', 'a revoked designer is refused on the next call');
+select ok((select bool_and(call_role = 'service_role' and role_restored) from s12pu_out where requested_role = 'service_role'),
+  'every call ran under the real service_role and restored the prior role setting');

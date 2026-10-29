@@ -235,8 +235,11 @@ select pg_temp.s10_rpc_exec(
     ))::text from s12_request)) || '::jsonb)'
 );
 set local lock_timeout = '0';
-select is(pg_temp.s10_last_error_state(), '55P03',
-  'CMS-03C-01 waits for the same-key transaction lock before first-create read');
+-- TEST CORRECTION (lane claude_s12_gaps_db2, root-authorized, P2-S12-AC-276): a lock-acquisition failure is the retryable 409 CONFLICT
+-- (BE03c lock order rule 4), never a raw SQLSTATE.  The wait is still observed - the 1 s lock_timeout expires on the held key lock
+-- instead of the call racing to a 23505 - and it now surfaces as P0001:CONFLICT.
+select is(pg_temp.s10_last_error_state() || ':' || pg_temp.s10_last_error_message(), 'P0001:CONFLICT',
+  'CMS-03C-01 waits for the same-key transaction lock before first-create read, and the lock timeout is the retryable CONFLICT');
 select extensions.dblink_exec('s12_template_key_gate', 'rollback');
 select extensions.dblink_disconnect('s12_template_key_gate');
 select pg_temp.s10_rpc_exec(

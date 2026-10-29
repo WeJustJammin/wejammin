@@ -1,0 +1,90 @@
+-- Lean, timed runners of the pattern bench.  Contexts are the S09 verified-actor envelopes the functional suites use.
+create or replace function pg_temp.g12pp_ctx(p_actor text) returns jsonb language sql volatile as $body$
+  select pg_temp.s09d_context(p_actor, true) $body$;
+create or replace function pg_temp.g12pp_require(p_op text, p_min integer) returns void language plpgsql as $body$
+begin
+  if not pg_temp.g12p_all_ok(p_op, p_min) then
+    raise exception 'perf bench: % needs at least % successful samples (has %, failures: %)',
+      p_op, p_min, pg_temp.g12p_n(p_op), pg_temp.g12p_failures(p_op);
+  end if;
+end;
+$body$;
+create or replace function pg_temp.g12pp_type(p_ordinal integer default 1) returns uuid language sql stable as $body$
+  select id from s12pd_types where ordinal = p_ordinal $body$;
+
+-- CMS-03C-12 through the real command; the receipt label is returned (g12p_body reads the PatternVersionResource).
+create or replace function pg_temp.g12pp_create(p_op text, p_key text, p_tree jsonb, p_expected text default null,
+  p_types jsonb default null) returns text language sql volatile as $body$
+  select pg_temp.g12p_call(p_op, 'platform_api.cms_create_pattern_version', 'owner', jsonb_build_object(
+    'patternKey', p_key, 'compatibleTypeIds', coalesce(p_types, jsonb_build_array(pg_temp.g12pp_type(1))),
+    'blockTree', p_tree, 'expectedVersion', p_expected,
+    'idempotencyKey', 's12gp-' || p_key || '-v' || coalesce(p_expected, '0'))
+    || case when p_expected is null then '{}'::jsonb else jsonb_build_object('ifMatch', p_expected) end,
+    pg_temp.g12pp_ctx('owner')) $body$;
+
+-- The governed activation of a created draft (submit, assign rev1, approve, activate), each step through the real command; any
+-- refusal aborts the file (the activation is a fixture of the measurements, never a measured claim).
+create or replace function pg_temp.g12pp_activate(p_create_label text) returns void language plpgsql as $body$
+declare v_body jsonb := pg_temp.g12p_body(p_create_label); v_key text := v_body->>'patternKey' || '-' || (v_body->>'patternVersion');
+  v_review jsonb; v_label text;
+begin
+  v_label := pg_temp.g12p_call('setup_submit', 'platform_api.cms_submit_governed_review', 'owner', jsonb_build_object(
+    'subjectKind', 'pattern_version', 'subjectId', v_body->'id', 'subjectHash', v_body->'contentHash',
+    'idempotencyKey', 's12gp-' || v_key || '-submit'), pg_temp.g12pp_ctx('owner'));
+  v_review := pg_temp.g12p_body(v_label);
+  v_label := pg_temp.g12p_call('setup_assign', 'platform_api.cms_assign_governed_reviewer', 'owner', jsonb_build_object(
+    'reviewId', v_review->'id', 'action', 'create', 'expectedVersion', v_review->'version', 'ifMatch', v_review->'version',
+    'reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person'),
+    'expiresAt', to_char((clock_timestamp() + interval '1 day') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'reason', 'Perf fixture', 'idempotencyKey', 's12gp-' || v_key || '-assign'), pg_temp.g12pp_ctx('owner'));
+  v_label := pg_temp.g12p_call('setup_decide', 'platform_api.cms_record_governed_decision', 'rev1', jsonb_build_object(
+    'reviewId', v_review->'id', 'decision', 'approve', 'reason', 'Perf fixture approved',
+    'expectedVersion', v_review->'version', 'ifMatch', v_review->'version',
+    'idempotencyKey', 's12gp-' || v_key || '-decide'), pg_temp.g12pp_ctx('rev1'));
+  v_review := pg_temp.g12p_body(v_label);
+  v_label := pg_temp.g12p_call('setup_activate', 'platform_api.cms_activate_governed_subject', 'owner', jsonb_build_object(
+    'reviewId', v_review->'id', 'action', 'activate', 'expectedVersion', v_review->'version', 'ifMatch', v_review->'version',
+    'idempotencyKey', 's12gp-' || v_key || '-activate'), pg_temp.g12pp_ctx('owner'));
+  if not pg_temp.g12p_all_ok('setup_submit', 1) or not pg_temp.g12p_all_ok('setup_assign', 1)
+     or not pg_temp.g12p_all_ok('setup_decide', 1) or not pg_temp.g12p_all_ok('setup_activate', 1) then
+    raise exception 'perf bench: governed activation of % failed (%, %, %, %)', v_key, pg_temp.g12p_failures('setup_submit'),
+      pg_temp.g12p_failures('setup_assign'), pg_temp.g12p_failures('setup_decide'), pg_temp.g12p_failures('setup_activate');
+  end if;
+end;
+$body$;
+
+-- Create and activate in one step, returning the create receipt label.
+create or replace function pg_temp.g12pp_define_active(p_key text, p_tree jsonb, p_expected text default null,
+  p_types jsonb default null) returns text language plpgsql as $body$
+declare v_label text := pg_temp.g12pp_create('setup_create', p_key, p_tree, p_expected, p_types);
+begin
+  if pg_temp.g12p_out(v_label) <> 'ok' then
+    raise exception 'perf bench: creating % failed: %', p_key, pg_temp.g12p_out(v_label);
+  end if;
+  perform pg_temp.g12pp_activate(v_label);
+  return v_label;
+end;
+$body$;
+
+-- Forest builders (the node grammar of the functional suites: pg_temp.s12pd_block(key, children, props)).
+-- 512 nodes: 32 roots, each with 3 children of 4 grandchildren (1 + 3 + 12 = 16 nodes), depth 3.
+create or replace function pg_temp.g12pp_forest512() returns jsonb language sql immutable as $body$
+  select jsonb_agg(pg_temp.s12pd_block('root' || r, (
+    select jsonb_agg(pg_temp.s12pd_block('c' || c, (
+      select jsonb_agg(pg_temp.s12pd_block('g' || g, '[]'::jsonb, jsonb_build_object('title', 'leaf ' || r || '/' || c || '/' || g)) order by g)
+        from generate_series(1, 4) g), jsonb_build_object('title', 'child ' || r || '/' || c)) order by c)
+      from generate_series(1, 3) c), jsonb_build_object('title', 'root ' || r)) order by r)
+    from generate_series(1, 32) r $body$;
+-- A reference node to an active lineage (by its create receipt).
+create or replace function pg_temp.g12pp_refs(p_label text, p_count integer) returns jsonb language sql stable as $body$
+  select jsonb_agg(jsonb_build_object('kind', 'pattern', 'key', 'nested' || n, 'patternId', pg_temp.g12p_body(p_label)->'patternId',
+    'patternVersion', pg_temp.g12p_body(p_label)->'patternVersion') order by n) from generate_series(1, p_count) n $body$;
+
+-- One root `wide` with 5 children c1..c5 and 122 grandchildren g1..g122 (g sits under child ((g-1) mod 5)+1): 128 nodes.
+create or replace function pg_temp.g12pp_wide(p_tag text, p_fill text) returns jsonb language sql immutable as $body$
+  select jsonb_build_array(pg_temp.s12pd_block('wide', (
+    select jsonb_agg(pg_temp.s12pd_block('c' || c, (
+      select coalesce(jsonb_agg(pg_temp.s12pd_block('g' || g, '[]'::jsonb,
+          jsonb_build_object('title', p_tag || '-' || g || repeat(p_fill, 200))) order by g), '[]'::jsonb)
+        from generate_series(1, 122) g where ((g - 1) % 5) + 1 = c), jsonb_build_object('title', p_tag || '-c' || c)) order by c)
+      from generate_series(1, 5) c), jsonb_build_object('title', 'wide-' || p_tag))) $body$;

@@ -1,0 +1,15 @@
+-- P2-S12-AC-197 clause 0 (BE03c "Subject state machine"): a rejection returns the subject from review to draft through an AUDITED
+-- transition while the review stays rejected.  The approving decision's audit count is asserted in governed_decision/030-happy; the
+-- rejecting decision's was not.  pr: ordinary, rev1 rejects.
+select pg_temp.s12ga_open('pr', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_assign('as-pr-rev1', 'owner', pg_temp.s12ga_review('pr'), 'rev1', interval '20 hours');
+select pg_temp.s12ga_decide('rej-pr', 'rev1', pg_temp.s12ga_review('pr'), 'reject', 'The frozen basis is not satisfied.');
+select ok(pg_temp.s12ga_out('rej-pr') = 'ok' and pg_temp.s12ga_body('rej-pr')->>'state' = 'rejected'
+    and (select s.state = 'draft' from platform_private.cms_template_versions s where s.id = pg_temp.s12ga_subject('pr')),
+  'control: the rejection moves the review to rejected and the subject from review back to draft [P2-S12-AC-197]');
+select is(pg_temp.s12ga_audit('cms.governed.review.decide', (pg_temp.s12ga_drow(pg_temp.s12ga_review('pr'), 'rev1')).id), 1::bigint,
+  'the rejecting decision writes exactly one cms.governed.review.decide audit record, the audited transition of the subject back to draft [P2-S12-AC-197]');
+select ok((select e.actor_id = pg_temp.s12ga_auth('rev1') and e.acting_party_id = pg_temp.s12ga_org()
+      from audit_private.audit_events e
+     where e.action = 'cms.governed.review.decide' and e.target_id = (pg_temp.s12ga_drow(pg_temp.s12ga_review('pr'), 'rev1')).id),
+  'the rejection audit record names the rejecting reviewer and the owner acting party [P2-S12-AC-197]');

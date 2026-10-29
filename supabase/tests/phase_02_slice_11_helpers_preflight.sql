@@ -170,7 +170,7 @@ select is(
 select is(
   (select string_agg(category || '=' || provider_key || '@' || provider_version || '/' || provider_kind || '/' || coalesce(reference_kind, '-'), ',')
      from platform_private.cms_preflight_registry_current()),
-  'contract=preflight.contract@1/database/-,schema=preflight.schema@1/database/-,template=preflight.template@1/database/-,block=preflight.block@1/database/-,pattern=cms.pattern.active_digest@1/database/-,taxonomy=preflight.reference_gate@1/reference_gate/taxonomy,settings=preflight.settings@1/database/-,relation=preflight.relation@1/database/-,privacy=preflight.reference_gate@1/reference_gate/privacy,security=preflight.security@1/database/-,accessibility=cms.a11y.structural@1/worker/-,media=preflight.reference_gate@1/reference_gate/media,route=preflight.reference_gate@1/reference_gate/route,locale=cms.locale.no_fallback_gate@1/database/-,migration=preflight.migration@1/database/-,domain_binding=preflight.domain_binding@1/database/-,revocation=preflight.revocation@1/database/-',
+  'contract=preflight.contract@1/database/-,schema=preflight.schema@1/database/-,template=preflight.template@1/database/-,block=preflight.block@1/database/-,pattern=cms.pattern.active_digest@1/database/-,taxonomy=cms.taxonomy.assignment_integrity@1/database/-,settings=preflight.settings@1/database/-,relation=preflight.relation@1/database/-,privacy=preflight.reference_gate@1/reference_gate/privacy,security=preflight.security@1/database/-,accessibility=cms.a11y.structural@1/worker/-,media=preflight.reference_gate@1/reference_gate/media,route=preflight.reference_gate@1/reference_gate/route,locale=cms.locale.no_fallback_gate@1/database/-,migration=preflight.migration@1/database/-,domain_binding=preflight.domain_binding@1/database/-,revocation=preflight.revocation@1/database/-',
   'the registry rows equal the TypeScript CMS_PREFLIGHT_REGISTRY row for row (key, version, kind, reference kind) [P2-S11-AC-093]');
 
 -- Privileged reader-fixture substitutions use the existing raw helper, never caller authority.
@@ -477,10 +477,10 @@ select is((select r->>'blockingCount' from jsonb_array_elements(pg_temp.h11p_eva
 
 select pg_temp.h11w_revision('gate-tax', 'creatorPerson', 'en-US', jsonb_build_array(pg_temp.h11w_uuid('taxv')));
 select pg_temp.h11p_assignment('gate-tax', 'creatorPerson');
-select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-tax'))), 'taxonomy:failed/provider_unbuilt_reference',
-  'a recorded taxonomy version fails the taxonomy gate [P2-S11-AC-094]');
+select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-tax'))), 'taxonomy:failed/taxonomy_version_not_active',
+  'a recorded taxonomy version that is not an active version fails the taxonomy provider with taxonomy_version_not_active (BE03c Preflight providers registered by Slice 12; P2-S12-AC-239) [P2-S11-AC-094]');
 select is((select r->>'blockingCount' from jsonb_array_elements(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-tax'))->'results') r where r->>'category' = 'taxonomy'),
-  '1', 'the remaining generic taxonomy reference gate carries the exact reference count [P2-S11-AC-094]');
+  '1', 'the taxonomy provider result carries one offending version id [P2-S12-AC-239]');
 
 select pg_temp.h11w_revision('gate-priv');
 select pg_temp.h11p_assignment('gate-priv', 'creatorPerson');

@@ -1,0 +1,66 @@
+-- V12-14 and V12-15: the changed-plan branch of cms_restore_lock_term_plan, and the negative scope of cms_term_existing_deprecated
+-- (DEC-233): only a DEPRECATED term, only in the SAME field, only when the SOURCE revision assigns it.  Include after 028-active-ids.sqlinc.
+
+-- ---- V12-14: the restore plan re-run under the lock; a merge forged between the plan and the lock changes it -> CONFLICT ------------------
+select pg_temp.ti_term('cfa', pg_temp.ti_org(), 'vg1', 'vg1', 'cfa');
+select pg_temp.ti_term('cfs', pg_temp.ti_org(), 'vg1', 'vg1', 'cfs');
+select pg_temp.ti_create('cf_c', jsonb_build_object('title', 'Stale plan', 'tags', pg_temp.ti_terms(array['cfa'])));
+select pg_temp.ti_append('cf_a', pg_temp.ti_entry('cf_c'), jsonb_build_object('title', 'Stale plan b'), '1', '1');
+select pg_temp.s10_rpc_as((select value::uuid from s10_ids where key = 'creatorAuth'), pg_temp.ti_org());
+select set_config('app.cms_rpc', 'true', true);
+create temp table ti_stale_plan on commit drop as
+select platform_private.cms_restore_term_plan(
+  pg_temp.ti_org(), pg_temp.ti_rev('cf_c'), (select value::uuid from s10g_ids where key = 'versionId'), '{}'::jsonb) as plan;
+create or replace function pg_temp.ti_restore_lock(p_plan jsonb) returns text language sql as $body$
+  select pg_temp.h11_text(format($q$select platform_private.cms_restore_lock_term_plan(%L::uuid, %L::uuid, %L::uuid, %L::jsonb, %L::jsonb)::text$q$,
+    pg_temp.ti_org(), pg_temp.ti_rev('cf_c'), (select value from s10g_ids where key = 'versionId'),
+    (select plan->'values' from ti_stale_plan), p_plan)) $body$;
+select is(pg_temp.ti_restore_lock((select plan from ti_stale_plan)), '',
+  'cms_restore_lock_term_plan locks the carried terms and returns when the plan is unchanged under the lock (void) [P2-S12-AC-276]');
+select pg_temp.ti_term_to('cfa', 'merged', 'cfs');
+select is(pg_temp.ti_restore_lock((select plan from ti_stale_plan)), 'ERR:P0001:CONFLICT',
+  'a merge that committed between the plan and the lock changes the plan: the restore is the retryable 409 CONFLICT [P2-S12-AC-276]');
+select is(pg_temp.ti_restore_lock(platform_private.cms_restore_term_plan(
+    pg_temp.ti_org(), pg_temp.ti_rev('cf_c'), (select value::uuid from s10g_ids where key = 'versionId'), (select plan->'values' from ti_stale_plan))),
+  '', 'and the retry, planned after the merge, re-points to the survivor and passes [P2-S12-AC-276]');
+
+-- ---- V12-15 (a): a MERGED term the source assigns is not an existing deprecated assignment ---------------------------------------------
+select pg_temp.ti_term('msa', pg_temp.ti_org(), 'vg1', 'vg1', 'msa');
+select pg_temp.ti_term('msb', pg_temp.ti_org(), 'vg1', 'vg1', 'msb');
+select pg_temp.ti_create('ms_c', jsonb_build_object('title', 'Merged resend', 'tags', pg_temp.ti_terms(array['msa'])));
+select pg_temp.ti_term_to('msa', 'merged', 'msb');
+select pg_temp.ti_append('ms_resend', pg_temp.ti_entry('ms_c'), jsonb_build_object('tags', pg_temp.ti_terms(array['msa'])), '1', '1');
+select is(pg_temp.ti_out('ms_resend'), 'P0001:term_unavailable',
+  'a re-sent term that is MERGED is refused although the source revision still assigns it: only deprecated is existing (DEC-233) [P2-S12-AC-224]');
+select is(pg_temp.h11_text(format($q$select platform_private.cms_term_existing_deprecated(%L::uuid, %L::uuid, %L::uuid, %L::uuid)::text$q$,
+    pg_temp.ti_org(), pg_temp.ti_rev('ms_c'), pg_temp.s10g_fid('tags'), pg_temp.ti_uuid('msa'))),
+  'false', 'the predicate itself is false for a merged term the source assigns [P2-S12-AC-224]');
+
+-- ---- V12-15 (b): a deprecated term the source assigns in ANOTHER field is not existing in this one -----------------------------------------
+-- A second taxonomy field `topics` on the gallery version (labelled forgery: no producer adds a field to an active version).
+create or replace function pg_temp.s10g_fid(p_key text) returns text language sql immutable as $body$
+  select case p_key
+    when 'title' then 'a9100000-0000-4000-8000-000000000c21'
+    when 'tags' then 'a9100000-0000-4000-8000-000000000c22'
+    when 'hero' then 'a9100000-0000-4000-8000-000000000c23'
+    when 'body' then 'a9100000-0000-4000-8000-000000000c24'
+    when 'meta' then 'a9100000-0000-4000-8000-000000000c25'
+    when 'keywords' then 'a9100000-0000-4000-8000-000000000c26'
+    when 'topics' then 'a9100000-0000-4000-8000-000000000c27'
+  end $body$;
+select pg_temp.h11_raw_exec('platform_private.cms_field_definition_versions', format(
+  'insert into platform_private.cms_field_definition_versions(owner_id, content_type_version_id, stable_field_id, field_key, kind, created_by)
+   values (%L::uuid, %L::uuid, %L::uuid, ''topics'', ''taxonomy'', %L::uuid)',
+  pg_temp.ti_org(), (select value from s10g_ids where key = 'versionId'), pg_temp.s10g_fid('topics'), pg_temp.ti_creator()));
+select pg_temp.ti_version('vd2', pg_temp.ti_org(), 'ti-topics', 1, 'active', '["s10gallery"]'::jsonb, '["topics"]'::jsonb);
+select pg_temp.ti_term('dd', pg_temp.ti_org(), 'vd2', 'vd2', 'dd');
+select pg_temp.ti_create('tp_c', jsonb_build_object('title', 'Two fields', 'topics', pg_temp.ti_terms(array['dd'])));
+select is(pg_temp.ti_out('tp_c') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('tp_c')), '00000:/dd:active:1:0',
+  'fixture: a term assigned in the second taxonomy field `topics` (a vocabulary that lists only that field)');
+select pg_temp.ti_term_to('dd', 'deprecated');
+select pg_temp.ti_append('tp_other', pg_temp.ti_entry('tp_c'), jsonb_build_object('tags', pg_temp.ti_terms(array['dd'])), '1', '1');
+select is(pg_temp.ti_out('tp_other'), 'P0001:term_unavailable',
+  'a deprecated term the source assigns in `topics` is not existing in `tags`: refused (DEC-233: in the same field) [P2-S12-AC-224]');
+select pg_temp.ti_append('tp_same', pg_temp.ti_entry('tp_c'), jsonb_build_object('topics', pg_temp.ti_terms(array['dd'])), '1', '1');
+select is(pg_temp.ti_out('tp_same') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('tp_same')), '00000:/dd:active:1:0',
+  'control: the same deprecated term re-sent in `topics` is accepted [P2-S12-AC-224]');

@@ -1,0 +1,125 @@
+-- Copied VERBATIM from phase_02_slice_12_entry_default_template.sql (lines 106-228): the s12edt_* entry-create driver and check, so this suite
+-- drives the same real public cms_create_entry transport and asserts the same invariants without editing that suite.
+create temp table s12edt_out(label text primary key, request jsonb, response jsonb,
+  state text, message text, call_role text, before_entries bigint, before_revisions bigint,
+  metadata_before jsonb, metadata_after jsonb) on commit drop;
+create function pg_temp.s12edt_metadata() returns jsonb language sql stable as $body$
+  select jsonb_build_object(
+    'types', (select jsonb_agg(to_jsonb(t) order by id) from platform_private.cms_content_types t),
+    'versions', (select jsonb_agg(to_jsonb(v) order by id) from platform_private.cms_content_type_versions v),
+    'artifacts', (select jsonb_agg(to_jsonb(a) order by id) from platform_private.cms_schema_artifacts a),
+    'templates', (select jsonb_agg(to_jsonb(t) order by id) from platform_private.cms_template_versions t))
+$body$;
+create function pg_temp.s12edt_request(p_tag text, p_title text, p_actor text default 'owner')
+returns jsonb language plpgsql as $body$
+declare version_row platform_private.cms_content_type_versions; artifact platform_private.cms_schema_artifacts;
+  field_id uuid; answer jsonb; actor uuid; context_request jsonb;
+  prior_rpc text := coalesce(current_setting('app.cms_rpc', true), '');
+begin
+  perform pg_temp.s09d_session(p_actor, 'service_role');
+  context_request := jsonb_build_object('context', pg_temp.s09d_context(p_actor, true));
+  perform set_config('app.cms_rpc', 'true', true);
+  actor := platform_private.cms_actor(context_request);
+  perform platform_private.cms_acting_party(context_request, actor);
+  select * into version_row from platform_private.cms_content_type_versions where id = pg_temp.s09d_id(p_tag || ':version');
+  select * into artifact from platform_private.cms_schema_artifacts where id = version_row.schema_artifact_id;
+  select stable_field_id into field_id from platform_private.cms_field_definition_versions
+    where content_type_version_id = version_row.id and field_key = 'title';
+  answer := jsonb_build_object('contentTypeId', version_row.content_type_id, 'contentTypeVersionId', version_row.id,
+    'locale', 'en-US', 'changedPaths', jsonb_build_array('/fields/' || field_id::text),
+    'values', jsonb_build_object(field_id::text, p_title), 'validatorRefs', '[]'::jsonb,
+    'schemaArtifact', jsonb_build_object('id', artifact.id, 'contentTypeVersionId', version_row.id,
+      'artifactHash', btrim(artifact.artifact_hash::text), 'compilerVersion', artifact.compiler_version,
+      'zodContractRef', artifact.zod_contract_ref),
+    'activationEvidence', platform_private.cms_type_version_resource(version_row.id)->'activationEvidence',
+    'workflowPolicy', platform_private.cms_editorial_workflow_policy_evidence(version_row.id),
+    'idempotencyKey', 's12edt-' || p_tag || case when p_actor = 'owner' then '' else '-' || p_actor end || '-create');
+  perform set_config('app.cms_rpc', prior_rpc, true);
+  return answer;
+exception when others then
+  perform set_config('app.cms_rpc', prior_rpc, true);
+  raise;
+end;
+$body$;
+create function pg_temp.s12edt_run(p_tag text, p_title text, p_actor text default 'owner')
+returns void language plpgsql security invoker as $body$
+declare request jsonb := pg_temp.s12edt_request(p_tag, p_title, p_actor); answer jsonb; code text := '00000'; msg text;
+  prior_role text := current_setting('role'); invoked text; before_entries bigint; before_revisions bigint;
+  before_metadata jsonb;
+begin
+  perform pg_temp.s09d_session(p_actor, 'service_role');
+  request := request || jsonb_build_object('context', pg_temp.s09d_context(p_actor, true));
+  select count(*) into before_entries from platform_private.cms_content_entries;
+  select count(*) into before_revisions from platform_private.cms_entry_revisions;
+  before_metadata := pg_temp.s12edt_metadata();
+  begin
+    set local role service_role;
+    invoked := current_user;
+    begin
+      answer := platform_api.cms_create_entry(request);
+    exception when others then get stacked diagnostics code = returned_sqlstate, msg = message_text;
+    end;
+    perform set_config('role', prior_role, true);
+  exception when others then perform set_config('role', prior_role, true); raise;
+  end;
+  insert into s12edt_out values (p_tag || case when p_actor = 'owner' then '' else ':' || p_actor end,
+    request, answer, code, msg, invoked, before_entries,
+    before_revisions, before_metadata, pg_temp.s12edt_metadata());
+end;
+$body$;
+
+create function pg_temp.s12edt_check(p_tag text, p_title text, p_template uuid, p_slots jsonb,
+  p_actor text default 'owner', p_assignment text default 'cms.author')
+returns setof text language plpgsql as $body$
+declare result s12edt_out; entry_row platform_private.cms_content_entries;
+  revision_row platform_private.cms_entry_revisions; field_id uuid; expected_hash text;
+  case_label text := p_tag || case when p_actor = 'owner' then '' else ':' || p_actor end;
+begin
+  perform pg_temp.s12edt_run(p_tag, p_title, p_actor);
+  select * into result from s12edt_out where label = case_label;
+  select * into entry_row from platform_private.cms_content_entries where id = (result.response->'entry'->>'id')::uuid;
+  select * into revision_row from platform_private.cms_entry_revisions where id = (result.response->'revision'->>'id')::uuid;
+  select stable_field_id into field_id from platform_private.cms_field_definition_versions
+    where content_type_version_id = pg_temp.s09d_id(p_tag || ':version') and field_key = 'title';
+  expected_hash := platform_private.cms_jcs_sha256(jsonb_build_object(field_id::text, p_title));
+  return next ok(not result.request ?| array['templateVersionId', 'defaultTemplateVersionId', 'templateBindings'],
+    case_label || ': strict create request has no client template operand');
+  return next is(result.call_role, 'service_role', case_label || ': actual public SQL service-role transport');
+  return next is(result.state, '00000', case_label || ': real public bootstrap succeeds with all evidence');
+  if result.state is distinct from '00000' then return next diag(coalesce(result.message, 'missing call outcome')); end if;
+  return next is((select array_agg(k order by k) from jsonb_object_keys(
+    case when jsonb_typeof(result.response) = 'object' then result.response else '{}'::jsonb end) k),
+    array['contentHash', 'entry', 'lifecycle', 'locale', 'revision', 'revisionNumber', 'state', 'validationState'],
+    case_label || ': unchanged strict EntryCreateResource, no added public template field');
+  return next ok((select count(*) from platform_private.cms_content_entries) = result.before_entries + 1
+    and (select count(*) from platform_private.cms_entry_revisions) = result.before_revisions + 1,
+    case_label || ': exactly one entry and its one first revision appear together');
+  return next ok(entry_row.owner_id = pg_temp.s09d_id('ownerOrg') and entry_row.owner_party_id = entry_row.owner_id
+    and entry_row.content_type_id = pg_temp.s09d_id(p_tag || ':type') and entry_row.lifecycle = 'active'
+    and entry_row.version = 1 and entry_row.current_draft_revision_id = revision_row.id
+    and entry_row.created_by = pg_temp.s09d_actor_id(p_actor, 'auth')::uuid
+    and (select count(*) = 1 from platform_private.cms_entry_assignments a where a.entry_id = entry_row.id
+      and a.owner_id = entry_row.owner_id and a.assignee_person_id = pg_temp.s09d_actor_id(p_actor, 'person')::uuid
+      and a.capability_key = p_assignment and a.state = 'active' and a.version = 1),
+    case_label || ': persisted first head/owner/creator assignment are server-derived');
+  return next ok(revision_row.owner_id = entry_row.owner_id and revision_row.entry_id = entry_row.id
+    and revision_row.revision_number = 1 and revision_row.version = 1
+    and revision_row.schema_version_id = pg_temp.s09d_id(p_tag || ':version') and revision_row.locale = 'en-US'
+    and revision_row.parent_revision_ids = '[]'::jsonb and revision_row.state = 'draft'
+    and revision_row.author_person_id = pg_temp.s09d_actor_id(p_actor, 'person')::uuid
+    and revision_row.acting_party_id = entry_row.owner_id,
+    case_label || ': actual immutable first revision binds the exact active schema and creator context');
+  return next is(revision_row.template_version_id::text, p_template::text,
+    case_label || ': FIRST revision server-derives the exact expected default template, preserving SQL NULL when absent');
+  return next is((select slots from platform_private.cms_template_versions where id = revision_row.template_version_id), p_slots,
+    case_label || ': literal slot readback follows the FIRST revision pin, never a direct default-template lookup');
+  return next is((select jsonb_object_agg(v.field_id::text, v.value) from platform_private.cms_entry_field_values v
+    where v.revision_id = revision_row.id), jsonb_build_object(field_id::text, p_title),
+    case_label || ': literal initial field map is preserved exactly');
+  return next ok(result.response->>'contentHash' = expected_hash and revision_row.payload_hash::text = expected_hash,
+    case_label || ': response and persisted hash match independent literal field preimage');
+  return next is(result.metadata_after, result.metadata_before,
+    case_label || ': bootstrap never mutates existing type/version/artifact/template full rows');
+end;
+$body$;
+

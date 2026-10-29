@@ -1,0 +1,48 @@
+-- P2-S12-AC-202 clause 1: the governed recheck of kind canonical_domain.  A taxonomy review that declares the built role domain freezes
+-- the registry row id of the role provider as a canonical_domain dependency; when the owning shard registers a NEWER registry row
+-- (what a forward migration does, BE03c "CanonicalDomainRegistry"), a recheck run over the frozen row id selects the review through
+-- that dependency and invalidates it dependency_changed.  tc1 declares role, tc2 (control) declares none.
+select pg_temp.g2_tax('tc1', jsonb_build_array('s12govordinary'), jsonb_build_array('role'));
+select pg_temp.g2_tax_approve('tc1');
+select pg_temp.g2_tax('tc2', jsonb_build_array('s12govordinary'));
+select pg_temp.g2_tax_approve('tc2');
+-- the registry is forced-RLS: its reader answers only inside the CMS RPC context the producers set first
+create or replace function pg_temp.g2_role_current() returns uuid language plpgsql as $body$
+declare prior text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), ''); v uuid;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  select registry_id into v from platform_private.cms_canonical_domain_current('role');
+  perform pg_catalog.set_config('app.cms_rpc', prior, true);
+  return v;
+end;
+$body$;
+create temp table g2_role_row on commit drop as select pg_temp.g2_role_current() as id;
+select ok((select count(*) = 1 from platform_private.cms_governed_review_dependencies d
+      where d.review_id = pg_temp.s12ga_review('tc1') and d.kind = 'canonical_domain' and d.ref_id = (select id from g2_role_row))
+    and not exists (select 1 from platform_private.cms_governed_review_dependencies d
+      where d.review_id = pg_temp.s12ga_review('tc2') and d.kind = 'canonical_domain')
+    and (select state = 'approved' from platform_private.cms_governed_reviews where id = pg_temp.s12ga_review('tc1')),
+  'fixture: tc1 is approved with a frozen canonical_domain dependency on the current role registry row, tc2 has none [P2-S12-AC-202]');
+select pg_temp.s12gr_run('rc-unchanged', 'canonical_domain', (select id from g2_role_row));
+select ok(pg_temp.s12gb_sbody('rc-unchanged') = pg_temp.s12gr_result(1, 0, 0, 0, null)
+    and (select state = 'approved' and version = 2 from platform_private.cms_governed_reviews where id = pg_temp.s12ga_review('tc1')),
+  'while the role registry row is current the canonical_domain recheck examines the one review through its dependency and leaves it approved [P2-S12-AC-202]');
+-- the owning shard registers a newer provider row: simulated by the forward-migration insert the registry comment describes
+select set_config('app.cms_rpc', 'true', true);
+insert into platform_private.cms_canonical_domain_registry(owner_id, version, domain, provider_state, provider_key, provider_version)
+select owner_id, version + 1, domain, 'built', provider_key, provider_version + 1
+  from platform_private.cms_canonical_domain_registry where id = (select id from g2_role_row);
+select set_config('app.cms_rpc', '', true);
+select isnt(pg_temp.g2_role_current(), (select id from g2_role_row),
+  'control: the newer role registry row is now the current one [P2-S12-AC-202]');
+select pg_temp.s12gr_run('rc-changed', 'canonical_domain', (select id from g2_role_row));
+select ok(pg_temp.s12gb_sbody('rc-changed') = pg_temp.s12gr_result(1, 1, 0, 0, null),
+  'after the provider registry row changes the canonical_domain recheck invalidates exactly the one review dependency_changed [P2-S12-AC-202]');
+select ok((select r.state = 'invalidated' and r.invalidated_reason = 'dependency_changed' and r.version = 3 and r.decided_at is null
+      from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('tc1'))
+    and (select t.state = 'draft' from platform_private.cms_taxonomy_versions t where t.id = pg_temp.s12ga_subject('tc1'))
+    and (select r.state = 'approved' from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('tc2')),
+  'the invalidated review is at version 3 with its subject back to draft and the review that declared no domain is untouched [P2-S12-AC-202]');
+select pg_temp.s12gr_run('rc-repeat', 'canonical_domain', (select id from g2_role_row));
+select ok(pg_temp.s12gb_sbody('rc-repeat') = pg_temp.s12gr_result(0, 0, 0, 0, null),
+  'a repeated run finds no live review: the invalidated review is skipped [P2-S12-AC-202]');

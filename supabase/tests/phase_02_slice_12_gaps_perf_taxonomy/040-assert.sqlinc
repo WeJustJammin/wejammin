@@ -1,0 +1,19 @@
+select diag(op || ' n=' || count(*) || ' p50=' || round((percentile_cont(0.5) within group (order by ms))::numeric, 1) || 'ms p95='
+            || round((percentile_cont(0.95) within group (order by ms))::numeric, 1) || 'ms max=' || round(max(ms), 1) || 'ms')
+  from g12p_timing where op !~ '^(shape|setup)' group by op order by op;
+select ok(pg_temp.g12p_all_ok('tax_create_bound', 24) and pg_temp.g12p_p95('tax_create_bound') < 1200,
+  'CMS-03C-16 save with 64 type keys, 64 field keys and 6 domains over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-127]');
+select ok(pg_temp.g12p_all_ok('versions_read', 30) and pg_temp.g12p_p95('versions_read') < 750,
+  'cmsTaxonomyVersionsRead of a 50-version lineage: p95 under the Tier 1 target of 750 ms [P2-S12-AC-180]');
+select ok(pg_temp.g12p_all_ok('terms_page1', 30) and pg_temp.g12p_p95('terms_page1') < 750,
+  'cmsTaxonomyTermsRead first page of 50 terms: p95 under the Tier 1 target of 750 ms [P2-S12-AC-186]');
+select ok(pg_temp.g12p_all_ok('terms_cursor_page', 30) and pg_temp.g12p_p95('terms_cursor_page') < 750,
+  'cmsTaxonomyTermsRead cursor page of 50 terms: p95 under the Tier 1 target of 750 ms [P2-S12-AC-186]');
+select ok(pg_temp.g12p_p95('terms_page1') < 300 and pg_temp.g12p_p95('terms_cursor_page') < 300,
+  'a 50-term page meets the RPC < 300 ms target on both pages (p95 of 30) [P2-S12-AC-279]');
+select ok(pg_temp.g12p_all_ok('selector_page1', 30) and pg_temp.g12p_p95('selector_page1') < 750,
+  'CMS-03C-17 first selector page at the maximum limit of 100: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]');
+select ok(pg_temp.g12p_all_ok('selector_cursor_page', 30) and pg_temp.g12p_p95('selector_cursor_page') < 750,
+  'CMS-03C-17 selector cursor page: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]');
+select diag('failures: ' || op || ' = ' || pg_temp.g12p_failures(op)) from (select distinct op from g12p_timing where op !~ '^(shape|setup)' and outcome <> 'ok') failing;
+select ok(pg_temp.g12p_all_service_role(), 'every measured taxonomy call ran under the real service_role transport role [P2-S12-AC-127]');

@@ -50,8 +50,8 @@ from (values
   (10, 'list_wrong_item', '{"keywords":[1]}'::jsonb)
 ) c(n, label, by_key);
 
-select is(pg_temp.s10_probe_message('create_' || label), 'taxonomy_source_unavailable',
-  'cms_create_entry: ' || label || ' fails closed with the typed taxonomy_source_unavailable reason [BE03b]')
+select is(pg_temp.s10_probe_message('create_' || label), 'term_unavailable',
+  'cms_create_entry: ' || label || ' names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]')
 from unnest(array['tax_nonempty']) label;
 select is(pg_temp.s10_probe_message('create_' || label), 'media_source_unavailable',
   'cms_create_entry: ' || label || ' fails closed with the typed media_source_unavailable reason [BE03b]')
@@ -131,8 +131,8 @@ from (values
   (9, 'list_wrong_item', '{"keywords":[1]}'::jsonb)
 ) c(n, label, by_key);
 
-select is(pg_temp.s10_probe_message('append_' || label), 'taxonomy_source_unavailable',
-  'cms_create_revision: ' || label || ' fails closed with the typed taxonomy_source_unavailable reason [BE03b]')
+select is(pg_temp.s10_probe_message('append_' || label), 'term_unavailable',
+  'cms_create_revision: ' || label || ' names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]')
 from unnest(array['tax_nonempty']) label;
 select is(pg_temp.s10_probe_message('append_' || label), 'media_source_unavailable',
   'cms_create_revision: ' || label || ' fails closed with the typed media_source_unavailable reason [BE03b]')

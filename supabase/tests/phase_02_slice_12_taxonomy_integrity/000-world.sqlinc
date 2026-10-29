@@ -1,0 +1,110 @@
+-- Taxonomy integrity world (lane claude_s12_taxonomy_integrity; BE03c "Receiving obligations from Slice 10 (DEC-141)" and
+-- "Preflight providers registered by Slice 12").  Include AFTER phase_02_slice_10_rpc/000-helpers.sqlinc,
+-- phase_02_slice_10_rpc/001-fixtures.sqlinc, phase_02_slice_10_value_source/000-gallery-fixture.sqlinc (the real `s10gallery` type
+-- with a taxonomy field `tags`, written through the real cms_create_entry / cms_create_revision / cms_resolve_conflict) and
+-- phase_02_slice_11_helpers/000-helpers.sqlinc (h11_raw_exec).
+--
+-- Labelled fixture forgeries (no Slice 12 producer writes these rows from a test without the governed review machinery that
+-- phase_02_slice_12_taxonomy_terms already proves): vocabulary version rows are inserted as drafts and moved to their state with
+-- the user triggers of the table paused; terms are inserted active and moved to deprecated / merged the same way.  Every
+-- TermAssignment row used by an assertion is written by the real write commands under test, except where a test says otherwise.
+
+create or replace function pg_temp.ti_uuid(p_tag text) returns uuid language sql immutable as $body$
+  select ('a9300000-0000-4000-8000-' || substr(md5('ti:' || p_tag), 1, 12))::uuid $body$;
+create or replace function pg_temp.ti_org() returns uuid language sql stable as $body$
+  select value::uuid from s10_ids where key = 'organization' $body$;
+create or replace function pg_temp.ti_org2() returns uuid language sql stable as $body$
+  select value::uuid from s10_ids where key = 'organization2' $body$;
+create or replace function pg_temp.ti_creator() returns uuid language sql stable as $body$
+  select value::uuid from s10_ids where key = 'creatorAuth' $body$;
+
+-- A second organization (the cross-owner negative control), created exactly as the fixture creates the first.
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000004'::uuid, null);
+select set_config('app.correlation_id', 'a9100000-0000-4000-8000-000000000391', true);
+select set_config('app.idempotency_key_hash', 's12ti-org2-create-0001', true);
+select set_config('app.request_hash', 's12ti-org2-create-request-0001', true);
+create temp table ti_org2 on commit drop as
+select (result->>'organizationId')::uuid as organization_id
+from lateral (select platform_api.rpc_create_organization('self_member', '{}'::text[]) as result) created;
+insert into s10_ids(key, value) select 'organization2', organization_id::text from ti_org2;
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid, pg_temp.ti_org());
+
+-- One vocabulary version row (draft, then the state with the table's user triggers paused).  The lineage root is the version-1 row.
+create or replace function pg_temp.ti_version(
+  p_tag text, p_owner uuid, p_key text, p_version bigint, p_state text, p_types jsonb, p_fields jsonb,
+  p_lineage text default null, p_supersedes text default null
+) returns uuid language plpgsql as $body$
+declare
+  v_id uuid := pg_temp.ti_uuid(p_tag);
+  v_lineage uuid := pg_temp.ti_uuid(coalesce(p_lineage, p_tag));
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_taxonomy_versions(
+    id, owner_id, version, taxonomy_key, owner_capability, shape, allowlisted_type_keys, allowlisted_field_keys,
+    content_hash, created_by, taxonomy_id, supersedes_id)
+  values (v_id, p_owner, p_version, p_key, 'cms.taxonomy_curator', 'flat', p_types, p_fields,
+    encode(extensions.digest(convert_to('ti:' || p_tag, 'utf8'), 'sha256'), 'hex'), pg_temp.ti_creator(), v_lineage,
+    case when p_supersedes is null then null else pg_temp.ti_uuid(p_supersedes) end);
+  if p_state <> 'draft' then
+    perform pg_temp.h11_raw_exec('platform_private.cms_taxonomy_versions',
+      format('update platform_private.cms_taxonomy_versions set state = %L where id = %L::uuid', p_state, v_id));
+  end if;
+  return v_id;
+end;
+$body$;
+
+-- One term of a vocabulary lineage (inserted active; moved to its lifecycle with the user triggers paused).
+create or replace function pg_temp.ti_term(
+  p_tag text, p_owner uuid, p_version_tag text, p_lineage_tag text, p_key text,
+  p_lifecycle text default 'active', p_successor text default null
+) returns uuid language plpgsql as $body$
+declare v_id uuid := pg_temp.ti_uuid(p_tag);
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_terms(id, owner_id, lifecycle, version, taxonomy_version_id, term_key, created_by, taxonomy_id)
+  values (v_id, p_owner, 'active', 1, pg_temp.ti_uuid(p_version_tag), p_key, pg_temp.ti_creator(), pg_temp.ti_uuid(p_lineage_tag));
+  if p_lifecycle <> 'active' then
+    perform pg_temp.h11_raw_exec('platform_private.cms_terms',
+      format('update platform_private.cms_terms set lifecycle = %L, successor_id = %L where id = %L::uuid',
+        p_lifecycle, case when p_successor is null then null else pg_temp.ti_uuid(p_successor)::text end, v_id));
+  end if;
+  return v_id;
+end;
+$body$;
+
+-- Move an existing term / version row (paused triggers).
+create or replace function pg_temp.ti_term_to(p_tag text, p_lifecycle text, p_successor text default null) returns void language plpgsql as $body$
+begin
+  perform pg_temp.h11_raw_exec('platform_private.cms_terms',
+    format('update platform_private.cms_terms set lifecycle = %L, successor_id = %L where id = %L::uuid',
+      p_lifecycle, case when p_successor is null then null else pg_temp.ti_uuid(p_successor)::text end, pg_temp.ti_uuid(p_tag)));
+end;
+$body$;
+create or replace function pg_temp.ti_version_to(p_tag text, p_state text) returns void language plpgsql as $body$
+begin
+  perform pg_temp.h11_raw_exec('platform_private.cms_taxonomy_versions',
+    format('update platform_private.cms_taxonomy_versions set state = %L where id = %L::uuid', p_state, pg_temp.ti_uuid(p_tag)));
+end;
+$body$;
+
+-- The assignment rows of a revision, as 'termKey:state:version:position' ordered text (the current rows are the highest version).
+create or replace function pg_temp.ti_assignments(p_revision uuid) returns text language sql stable as $body$
+  select coalesce(string_agg(term.term_key || ':' || assignment.state || ':' || assignment.version || ':' || assignment.position,
+                             '|' order by assignment.position, term.term_key collate "C", assignment.version), '')
+    from platform_private.cms_term_assignments assignment join platform_private.cms_terms term on term.id = assignment.term_id
+   where assignment.revision_id = p_revision $body$;
+create or replace function pg_temp.ti_revision_ids(p_revision uuid) returns jsonb language sql stable as $body$
+  select taxonomy_version_ids from platform_private.cms_entry_revisions where id = p_revision $body$;
+
+
+create or replace function pg_temp.ti_terms(p_tags text[]) returns jsonb language sql stable as $body$
+  select jsonb_build_object('termIds', coalesce(jsonb_agg(pg_temp.ti_uuid(t) order by o), '[]'::jsonb))
+    from unnest(p_tags) with ordinality as x(t, o) $body$;
+
+-- The merge convergence batch under the RPC context a command holds.
+create or replace function pg_temp.ti_converge(p_tag text) returns jsonb language plpgsql as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  return platform_private.cms_converge_taxonomy_merge(pg_temp.ti_uuid(p_tag), 100);
+end;
+$body$;

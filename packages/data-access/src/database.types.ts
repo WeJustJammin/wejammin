@@ -836,6 +836,7 @@ export type Database = {
       cms_list_editorial_reviews: { Args: { p_request: Json }; Returns: Json }
       cms_list_entries: { Args: { p_request: Json }; Returns: Json }
       cms_list_governed_reviews: { Args: { p_request: Json }; Returns: Json }
+      cms_list_pattern_nestable: { Args: { p_request: Json }; Returns: Json }
       cms_list_pattern_selector: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
       cms_list_taxonomy_selector: { Args: { p_request: Json }; Returns: Json }
@@ -11029,6 +11030,13 @@ export type Database = {
         }
         Returns: Json
       }
+      cms_composition_instance_resource_hashed: {
+        Args: {
+          p_content_hash: string
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+        }
+        Returns: Json
+      }
       cms_converge_taxonomy_merge: {
         Args: { p_batch: number; p_retired_term_id: string }
         Returns: Json
@@ -11649,6 +11657,11 @@ export type Database = {
         Args: { p_constraints: Json; p_item: Json; p_item_kind: string }
         Returns: boolean
       }
+      cms_list_pattern_nestable: { Args: { p_request: Json }; Returns: Json }
+      cms_list_pattern_nestable_signed: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_list_pattern_selector: { Args: { p_request: Json }; Returns: Json }
       cms_list_pattern_selector_signed: {
         Args: { p_request: Json }
@@ -11819,6 +11832,16 @@ export type Database = {
       }
       cms_lock_schema_version_shared: {
         Args: { p_version_id: string }
+        Returns: undefined
+      }
+      cms_lock_term_plan: {
+        Args: {
+          p_changed: string[]
+          p_owner_id: string
+          p_schema_version_id: string
+          p_source_revision_id: string
+          p_values: Json
+        }
         Returns: undefined
       }
       cms_manifest_hashed_entries_valid: {
@@ -11995,6 +12018,19 @@ export type Database = {
         Args: { p_owner_id: string; p_tree: Json; p_type_ids: Json }
         Returns: boolean
       }
+      cms_pattern_chain_offender: {
+        Args: { p_owner_id: string; p_tree: Json }
+        Returns: string
+      }
+      cms_pattern_count_offender: {
+        Args: { p_owner_id: string; p_tree: Json }
+        Returns: string
+      }
+      cms_pattern_cycle_offender: {
+        Args: { p_lineage_id: string; p_owner_id: string; p_tree: Json }
+        Returns: string
+      }
+      cms_pattern_depth_offender: { Args: { p_tree: Json }; Returns: string }
       cms_pattern_diff_delta: {
         Args: {
           p_base_nodes: Json
@@ -12047,6 +12083,7 @@ export type Database = {
           nested_version: number
         }[]
       }
+      cms_pattern_node_pointer: { Args: { p_path: number[] }; Returns: string }
       cms_pattern_node_shape_valid: { Args: { p_node: Json }; Returns: boolean }
       cms_pattern_placement_check: {
         Args: { p_request: Json }
@@ -12500,6 +12537,18 @@ export type Database = {
       }
       cms_record_governed_decision: { Args: { p_request: Json }; Returns: Json }
       cms_record_review_decision: { Args: { p_request: Json }; Returns: Json }
+      cms_record_term_assignments: {
+        Args: {
+          p_actor_id: string
+          p_changed: string[]
+          p_owner_id: string
+          p_revision_id: string
+          p_schema_version_id: string
+          p_source_revision_id: string
+          p_values: Json
+        }
+        Returns: number
+      }
       cms_register_block: { Args: { p_request: Json }; Returns: Json }
       cms_register_block_at: {
         Args: { p_now_at: string; p_request: Json }
@@ -12664,10 +12713,24 @@ export type Database = {
         Args: { p_acting_party_id: string; p_actor_id: string }
         Returns: undefined
       }
-      cms_require_value_source_available: {
-        Args: { p_field_id: string; p_schema_version_id: string; p_value: Json }
-        Returns: undefined
-      }
+      cms_require_value_source_available:
+        | {
+            Args: {
+              p_field_id: string
+              p_schema_version_id: string
+              p_value: Json
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_field_id: string
+              p_schema_version_id: string
+              p_source_revision_id: string
+              p_value: Json
+            }
+            Returns: undefined
+          }
       cms_required_protected_validators: {
         Args: { p_definition: Json }
         Returns: Json
@@ -12743,6 +12806,10 @@ export type Database = {
       }
       cms_resolve_review_policy: {
         Args: { p_version_id: string }
+        Returns: Json
+      }
+      cms_resolve_taxonomy_version: {
+        Args: { p_taxonomy_version_id: string }
         Returns: Json
       }
       cms_resolve_template_compatibility: {
@@ -12840,6 +12907,25 @@ export type Database = {
         }
         Returns: string
       }
+      cms_restore_lock_term_plan: {
+        Args: {
+          p_owner_id: string
+          p_plan: Json
+          p_source_revision_id: string
+          p_target_version_id: string
+          p_values: Json
+        }
+        Returns: undefined
+      }
+      cms_restore_record_term_assignments: {
+        Args: {
+          p_actor_id: string
+          p_owner_id: string
+          p_plan: Json
+          p_revision_id: string
+        }
+        Returns: number
+      }
       cms_restore_relations_resolvable: {
         Args: {
           p_entry_id: string
@@ -12857,6 +12943,15 @@ export type Database = {
           p_value: Json
         }
         Returns: boolean
+      }
+      cms_restore_term_plan: {
+        Args: {
+          p_owner_id: string
+          p_source_revision_id: string
+          p_target_version_id: string
+          p_values: Json
+        }
+        Returns: Json
       }
       cms_restore_translate_values: {
         Args: {
@@ -13385,6 +13480,14 @@ export type Database = {
         Args: { p_batch: number }
         Returns: Json
       }
+      cms_taxonomy_assignment_integrity: {
+        Args: { p_revision_id: string }
+        Returns: {
+          blocking_count: number
+          outcome: string
+          reason_code: string
+        }[]
+      }
       cms_taxonomy_merge_enqueue_lock: {
         Args: { p_acting_party_id: string }
         Returns: undefined
@@ -13412,6 +13515,38 @@ export type Database = {
           isOneToOne: false
           isSetofReturn: true
         }
+      }
+      cms_taxonomy_plan_version_ids: {
+        Args: {
+          p_changed: string[]
+          p_owner_id: string
+          p_schema_version_id: string
+          p_source_revision_id: string
+          p_values: Json
+        }
+        Returns: Json
+      }
+      cms_taxonomy_value_plan: {
+        Args: {
+          p_changed: string[]
+          p_owner_id: string
+          p_schema_version_id: string
+          p_source_revision_id: string
+          p_values: Json
+        }
+        Returns: {
+          active_version_id: string
+          field_definition_id: string
+          is_changed: boolean
+          provenance: string
+          taxonomy_version_id: string
+          term_id: string
+          term_position: number
+        }[]
+      }
+      cms_taxonomy_version_resolves: {
+        Args: { p_taxonomy_version_id: string }
+        Returns: boolean
       }
       cms_template_binding_compatible: {
         Args: {
@@ -13459,6 +13594,24 @@ export type Database = {
           p_request: Json
         }
         Returns: string
+      }
+      cms_term_assignable: {
+        Args: {
+          p_field_key: string
+          p_owner_id: string
+          p_term_id: string
+          p_type_key: string
+        }
+        Returns: boolean
+      }
+      cms_term_existing_deprecated: {
+        Args: {
+          p_field_id: string
+          p_owner_id: string
+          p_source_revision_id: string
+          p_term_id: string
+        }
+        Returns: boolean
       }
       cms_term_locale_canonical: { Args: { p_locale: string }; Returns: string }
       cms_term_overlap_check: {

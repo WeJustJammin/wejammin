@@ -1,0 +1,77 @@
+-- cmsPatternNestableRead paging: the signed keyset cursor bound to the route, the requested type SET, the sort, the page size and the
+-- caller's user/acting context; at most 512 characters; every cursor fault is 400 INVALID_REQUEST (BE03c 184 "tamper, expiry or
+-- cross-context reuse 400", validation row 413, BE00 00-infrastructure 491), never a 409.  limit 1-50, default 25.  [P2-S12-AC-105]
+
+-- A genuinely signed cursor whose expiry is in the past: opened and re-sealed with the shared Vault helpers.
+create or replace function pg_temp.s12nr_expired_cursor(p_cursor text) returns text language plpgsql as $body$
+declare
+  v_keys constant text[] := array['queryHash', 'lastPatternKey', 'lastPatternVersion', 'expiresAt'];
+  v_payload jsonb;
+begin
+  if p_cursor is null then return null; end if;
+  v_payload := convert_from(decode(platform_private.cms_signed_cursor_open('cms-03c-nestable', to_jsonb(p_cursor), v_keys), 'base64'), 'utf8')::jsonb
+    || jsonb_build_object('expiresAt', (floor(extract(epoch from clock_timestamp()))::bigint - 10)::text);
+  return platform_private.cms_signed_cursor_seal_page('cms-03c-nestable', jsonb_build_object('nextCursor',
+    replace(encode(convert_to(platform_private.cms_jcs(v_payload), 'utf8'), 'base64'), E'\n', '')), v_keys)->>'nextCursor';
+end;
+$body$;
+create or replace function pg_temp.s12nr_tampered_cursor(p_cursor text) returns text language plpgsql as $body$
+begin
+  if p_cursor is null then return null; end if;
+  return replace(encode(convert_to(platform_private.cms_jcs(jsonb_set(convert_from(decode(p_cursor, 'base64'), 'utf8')::jsonb,
+    '{signature}', to_jsonb(repeat('0', 64)))), 'utf8'), 'base64'), E'\n', '');
+end;
+$body$;
+
+-- T2 lists six versions: nx-12, nx-2, nx-23, nx-all, nx-ret, nx-sup@2
+select pg_temp.s12nr_read('g1', array[2], '{"limit":2}'::jsonb);
+select pg_temp.s12nr_read('g2', array[2], jsonb_build_object('limit', 2, 'cursor', pg_temp.s12pu_body('g1')->>'nextCursor'));
+select pg_temp.s12nr_read('g3', array[2], jsonb_build_object('limit', 2, 'cursor', pg_temp.s12pu_body('g2')->>'nextCursor'));
+select ok(pg_temp.s12pu_oc('g1') = 'ok' and cardinality(pg_temp.s12nr_keys(pg_temp.s12pu_body('g1'))) = 2
+    and jsonb_typeof(pg_temp.s12pu_body('g1')->'nextCursor') = 'string' and octet_length(pg_temp.s12pu_body('g1')->>'nextCursor') <= 512,
+  'limit 2 returns two items and a signed cursor of at most 512 characters');
+select is(pg_temp.s12nr_keys(pg_temp.s12pu_body('g1')) || pg_temp.s12nr_keys(pg_temp.s12pu_body('g2')) || pg_temp.s12nr_keys(pg_temp.s12pu_body('g3')),
+  pg_temp.s12nr_keys(pg_temp.s12pu_body('t2')), 'three pages (2, 2, 2) are exactly the unpaged list in (patternKey, patternVersion) order');
+select ok(pg_temp.s12pu_body('g3')->'nextCursor' = 'null'::jsonb and jsonb_typeof(pg_temp.s12pu_body('g2')->'nextCursor') = 'string'
+    and pg_temp.s12pu_body('g3')->>'pageVersion' = pg_temp.s12pu_body('g1')->>'pageVersion',
+  'the page that exactly exhausts the list has no cursor; a middle page has one; the pageVersion is the same on every page');
+select pg_temp.s12nr_read('g-all', array[2], '{"limit":6}'::jsonb);
+select ok(jsonb_array_length(pg_temp.s12pu_body('g-all')->'items') = 6 and pg_temp.s12pu_body('g-all')->'nextCursor' = 'null'::jsonb,
+  'a page of exactly the list size has no cursor');
+select pg_temp.s12nr_read('g-50', array[2], '{"limit":50}'::jsonb);
+select ok(pg_temp.s12pu_oc('g-50') = 'ok' and jsonb_array_length(pg_temp.s12pu_body('g-50')->'items') = 6, 'limit 50, the maximum, is accepted');
+select pg_temp.s12nr_read('g-1', array[2], '{"limit":1}'::jsonb);
+select ok(pg_temp.s12pu_oc('g-1') = 'ok' and jsonb_array_length(pg_temp.s12pu_body('g-1')->'items') = 1
+    and pg_temp.s12nr_keys(pg_temp.s12pu_body('g-1')) = array['nx-12@1'], 'limit 1, the minimum, is accepted');
+select ok(pg_temp.s12pu_unchanged('g3') and pg_temp.s12pu_unchanged('g1'), 'paging changed no store');
+
+-- the cursor binds the type SET, not its order ---------------------------------------------------------------------------------------
+select pg_temp.s12nr_read('o1', array[1, 2], '{"limit":1}'::jsonb);
+select pg_temp.s12nr_read('o2', array[2, 1], jsonb_build_object('limit', 1, 'cursor', pg_temp.s12pu_body('o1')->>'nextCursor'));
+select ok(pg_temp.s12pu_oc('o2') = 'ok' and pg_temp.s12nr_keys(pg_temp.s12pu_body('o1')) || pg_temp.s12nr_keys(pg_temp.s12pu_body('o2')) = array['nx-12@1', 'nx-all@1'],
+  'a cursor issued for T1,T2 continues the same listing requested as T2,T1: the binding is the SET of types');
+
+-- cursor binding: every fault is 400 INVALID_REQUEST --------------------------------------------------------------------------------
+select pg_temp.s12nr_read('c-other-limit', array[2], jsonb_build_object('limit', 3, 'cursor', pg_temp.s12pu_body('g1')->>'nextCursor'));
+select pg_temp.s12nr_read('c-other-set', array[2, 3], jsonb_build_object('limit', 2, 'cursor', pg_temp.s12pu_body('g1')->>'nextCursor'));
+select pg_temp.s12nr_read('c-subset', array[2], jsonb_build_object('limit', 1, 'cursor', pg_temp.s12pu_body('o1')->>'nextCursor'));
+select pg_temp.s12nr_read('c-tampered', array[2], jsonb_build_object('limit', 2, 'cursor', pg_temp.s12nr_tampered_cursor(pg_temp.s12pu_body('g1')->>'nextCursor')));
+select pg_temp.s12nr_read('c-expired', array[2], jsonb_build_object('limit', 2, 'cursor', pg_temp.s12nr_expired_cursor(pg_temp.s12pu_body('g1')->>'nextCursor')));
+-- a CMS-03C-13 selector cursor is signed under another domain: it must not open here
+select pg_temp.s12nr_call('sel-1', 'platform_api.cms_list_pattern_selector', jsonb_build_object('contentTypeId', pg_temp.s12nr_type(2), 'limit', 2,
+  'context', pg_temp.s09d_context('owner', true), 'correlationId', 'a9120000-0000-4000-8000-00000000c0d3'));
+select pg_temp.s12nr_read('c-domain', array[2], jsonb_build_object('limit', 2, 'cursor', pg_temp.s12pu_body('sel-1')->>'nextCursor'));
+select pg_temp.s12nr_read('c-malformed', array[1], '{"cursor":"!!not a cursor!!"}'::jsonb);
+select pg_temp.s12nr_read('c-json', array[1], jsonb_build_object('cursor', encode(convert_to('hello', 'utf8'), 'base64')));
+select pg_temp.s12nr_read('c-keys', array[1], jsonb_build_object('cursor', encode(convert_to('{"a":1}', 'utf8'), 'base64')));
+select pg_temp.s12nr_read('c-long', array[1], jsonb_build_object('cursor', repeat('A', 513)));
+select pg_temp.s12nr_read('c-number', array[1], '{"cursor":7}'::jsonb);
+select ok(jsonb_typeof(pg_temp.s12pu_body('sel-1')->'nextCursor') = 'string', 'setup: the selector issued a real signed cursor of its own domain');
+select is((select string_agg(l || '=' || pg_temp.s12pu_oc(l), ';' order by l collate "C")
+             from unnest(array['c-other-limit', 'c-other-set', 'c-subset', 'c-tampered', 'c-expired', 'c-domain', 'c-malformed', 'c-json', 'c-keys', 'c-long', 'c-number']) l),
+  'c-domain=P0001:INVALID_REQUEST;c-expired=P0001:INVALID_REQUEST;c-json=P0001:INVALID_REQUEST;c-keys=P0001:INVALID_REQUEST;c-long=P0001:INVALID_REQUEST;'
+  || 'c-malformed=P0001:INVALID_REQUEST;c-number=P0001:INVALID_REQUEST;c-other-limit=P0001:INVALID_REQUEST;c-other-set=P0001:INVALID_REQUEST;'
+  || 'c-subset=P0001:INVALID_REQUEST;c-tampered=P0001:INVALID_REQUEST',
+  'a cursor replayed against another limit or type set (also a subset), a tampered signature, an expired cursor, another operation''s cursor and every '
+  || 'structurally malformed cursor is 400 INVALID_REQUEST (BE00 491: no cursor internals disclosed)');
+select ok((select bool_and(before_rows = after_rows) from s12pu_out where label like 'c-%'), 'every cursor refusal leaves every captured store identical');

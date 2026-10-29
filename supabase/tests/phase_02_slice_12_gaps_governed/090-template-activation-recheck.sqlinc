@@ -1,0 +1,32 @@
+-- P2-S12-AC-208 (BE03c activation, template_version): activate and schedule recompute the block digest and the frozen status before
+-- the switch.  Two templates over two registered blocks are approved; the block gapg.blk2 is then deprecated through the signed
+-- CMS-03A-08 command (its folded lifecycle changes: the digest of a template over a non-supported block raises, which the frozen
+-- status reads as a change); activation of the one and scheduling of the other each answer the committed refusal dependency_changed.
+-- gapg.blk3 stays supported: a third approved template over it activates normally (control).
+select pg_temp.g2_block_approved('ga', 'gapg.blk2');
+select pg_temp.g2_block_approved('gs', 'gapg.blk2');
+select pg_temp.g2_block_approved('gc', 'gapg.blk3');
+select ok((select count(*) = 3 and bool_and(r.state = 'approved')
+      from platform_private.cms_governed_reviews r where r.id in (pg_temp.s12ga_review('ga'), pg_temp.s12ga_review('gs'), pg_temp.s12ga_review('gc')))
+    and (select count(*) = 3 from platform_private.cms_governed_review_dependencies d
+          where d.kind = 'block' and d.review_id in (pg_temp.s12ga_review('ga'), pg_temp.s12ga_review('gs'), pg_temp.s12ga_review('gc'))),
+  'fixture: three block-bearing templates are approved and each froze its block dependency [P2-S12-AC-208]');
+select pg_temp.p_advance('gapg:blk2-deprecate', pg_temp.p_lifecycle_request((pg_temp.s09d_resp('gapg:blk2')->>'id')::uuid, 'supported', 'deprecated'));
+select is(pg_temp.s09d_outcome('gapg:blk2-deprecate'), 'OK', 'control: the signed CMS-03A-08 command deprecates gapg.blk2 [P2-S12-AC-208]');
+select pg_temp.s12gr_mark('ga', 'ga');
+select pg_temp.s12gb_act('ga-act', 'owner', pg_temp.s12ga_review('ga'), 'activate');
+select ok(pg_temp.s12ga_out('ga-act') = 'ok'
+    and pg_temp.s12ga_body('ga-act') = '{"kind": "refusal", "details": {}, "reasonCode": "dependency_changed"}'::jsonb,
+  'activation after the reachable block changed answers the committed refusal dependency_changed [P2-S12-AC-208] [P2-S12-AC-193]');
+select ok(pg_temp.s12gr_invalidated('ga', 'ga', 'dependency_changed') and pg_temp.s12gb_events('ga') = 0,
+  'the activation refusal invalidated the review (dependency_changed, version + 1), returned the subject to draft and emitted no event [P2-S12-AC-208]');
+select pg_temp.s12gr_mark('gs', 'gs');
+select pg_temp.s12gb_act('gs-sched', 'owner', pg_temp.s12ga_review('gs'), 'schedule');
+select ok(pg_temp.s12ga_out('gs-sched') = 'ok'
+    and pg_temp.s12ga_body('gs-sched') = '{"kind": "refusal", "details": {}, "reasonCode": "dependency_changed"}'::jsonb,
+  'scheduling after the reachable block changed answers the committed refusal dependency_changed [P2-S12-AC-208] [P2-S12-AC-193]');
+select ok(pg_temp.s12gr_invalidated('gs', 'gs', 'dependency_changed') and pg_temp.s12gb_sched('gs') is null,
+  'the schedule refusal invalidated the review, returned the subject to draft and inserted no schedule row [P2-S12-AC-208]');
+select pg_temp.s12gb_act('gc-act', 'owner', pg_temp.s12ga_review('gc'), 'activate');
+select ok(pg_temp.s12ga_out('gc-act') = 'ok' and pg_temp.s12ga_body('gc-act')->>'subjectState' = 'active',
+  'control: the template over the still-supported block activates, so the refusals above are the changed block [P2-S12-AC-208]');

@@ -1,0 +1,59 @@
+-- AC-209 and AC-193 clause 7: activate and schedule of an APPROVED pattern_version recheck the frozen status (nested pattern states,
+-- block digest) under the locks.  No recheck job runs: only CMS-03C-09 acts.  Refusal body is the committed
+-- { kind: refusal, reasonCode: dependency_changed }; the review is invalidated and the pattern returns to draft.
+create or replace function pg_temp.g2p_refused(p_label text) returns boolean language sql stable as $body$
+  select (select state = '00000' and response = '{"kind": "refusal", "details": {}, "reasonCode": "dependency_changed"}'::jsonb
+            from s12pd_out where label = p_label) $body$;
+create or replace function pg_temp.g2p_invalidated(p_label text) returns boolean language sql stable as $body$
+  select (pg_temp.g2p_rv(p_label)).state = 'invalidated' and (pg_temp.g2p_rv(p_label)).invalidated_reason = 'dependency_changed'
+     and pg_temp.g2p_pattern_state(p_label) = 'draft' $body$;
+
+-- nested children and nesting patterns approved BEFORE the child is superseded
+select pg_temp.s12pd_run('rca', pg_temp.s12pd_request('gapp-rca', pg_temp.s12pd_forest(1), null, 'g2p-key-rca'));
+select pg_temp.g2p_step('rca', 'activate');
+select pg_temp.s12pd_run('rna', pg_temp.s12pd_request('gapp-rna', pg_temp.g2p_refs('rca'), null, 'g2p-key-rna'));
+select pg_temp.g2p_step('rna', 'approve');
+select pg_temp.s12pd_run('rcb', pg_temp.s12pd_request('gapp-rcb', pg_temp.s12pd_forest(1), null, 'g2p-key-rcb'));
+select pg_temp.g2p_step('rcb', 'activate');
+select pg_temp.s12pd_run('rnb', pg_temp.s12pd_request('gapp-rnb', pg_temp.g2p_refs('rcb'), null, 'g2p-key-rnb'));
+select pg_temp.g2p_step('rnb', 'approve');
+-- two plain block patterns approved before the block changes
+select pg_temp.s12pd_run('rpe', pg_temp.s12pd_request('gapp-rpe', pg_temp.s12pd_forest(1), null, 'g2p-key-rpe'));
+select pg_temp.g2p_step('rpe', 'approve');
+select pg_temp.s12pd_run('rpf', pg_temp.s12pd_request('gapp-rpf', pg_temp.s12pd_forest(1), null, 'g2p-key-rpf'));
+select pg_temp.g2p_step('rpf', 'approve');
+select ok((select count(*) = 4 and bool_and(r.state = 'approved' and r.activated_at is null)
+      from platform_private.cms_governed_reviews r
+     where r.id in (pg_temp.g2p_review('rna'), pg_temp.g2p_review('rnb'), pg_temp.g2p_review('rpe'), pg_temp.g2p_review('rpf'))),
+  'fixture: four pattern reviews (two nesting an active child, two over the block) are approved and unactivated [P2-S12-AC-209]');
+
+-- (a) the nested child is superseded; no recheck job runs
+select pg_temp.s12pd_run('rca2', pg_temp.s12pd_request('gapp-rca', pg_temp.s12pd_forest(2), '1', 'g2p-key-rca2', null, '1'));
+select pg_temp.g2p_step('rca2', 'activate');
+select pg_temp.s12pd_run('rcb2', pg_temp.s12pd_request('gapp-rcb', pg_temp.s12pd_forest(2), '1', 'g2p-key-rcb2', null, '1'));
+select pg_temp.g2p_step('rcb2', 'activate');
+select ok(pg_temp.g2p_pattern_state('rca') = 'superseded' and pg_temp.g2p_pattern_state('rcb') = 'superseded'
+    and (pg_temp.g2p_rv('rna')).state = 'approved' and (pg_temp.g2p_rv('rnb')).state = 'approved',
+  'control: both pinned nested versions are superseded and the stored reviews still read approved (nothing invalidated them) [P2-S12-AC-209]');
+select pg_temp.g2p_cmd('rna', 'activate');
+select ok(pg_temp.g2p_refused('rna:activate') and pg_temp.g2p_invalidated('rna'),
+  'activating a pattern whose pinned nested pattern is no longer active answers the committed refusal dependency_changed, invalidates the review and returns the pattern to draft [P2-S12-AC-209]');
+select pg_temp.g2p_cmd('rnb', 'schedule');
+select ok(pg_temp.g2p_refused('rnb:schedule') and pg_temp.g2p_invalidated('rnb')
+    and not exists (select 1 from platform_private.cms_governed_activation_schedules s where s.review_id = pg_temp.g2p_review('rnb')),
+  'scheduling a pattern whose pinned nested pattern is no longer active answers dependency_changed, invalidates the review and inserts no schedule [P2-S12-AC-209]');
+select ok(not exists (select 1 from platform_private.outbox_events e where e.aggregate_id in
+      ((pg_temp.s12pd_body('rna')->>'id')::uuid, (pg_temp.s12pd_body('rnb')->>'id')::uuid)),
+  'the refused pattern activations emitted no event [P2-S12-AC-209]');
+
+-- (b) the reachable block is deprecated through the signed lifecycle command
+select pg_temp.p_advance('s12pd:block-dep-gap', pg_temp.p_lifecycle_request((pg_temp.s09d_resp('s12pd:block')->>'id')::uuid, 'supported', 'deprecated'));
+select is(pg_temp.s09d_outcome('s12pd:block-dep-gap'), 'OK', 'control: the signed CMS-03A-08 command deprecates the block [P2-S12-AC-193]');
+select pg_temp.g2p_cmd('rpe', 'activate');
+select ok(pg_temp.g2p_refused('rpe:activate') and pg_temp.g2p_invalidated('rpe'),
+  'after a reachable block is deprecated, activating an approved pattern_version answers dependency_changed and invalidates the review [P2-S12-AC-193]');
+select pg_temp.g2p_cmd('rpf', 'schedule');
+select ok(pg_temp.g2p_refused('rpf:schedule') and pg_temp.g2p_invalidated('rpf'),
+  'after a reachable block is deprecated, scheduling an approved pattern_version answers dependency_changed and invalidates the review [P2-S12-AC-193]');
+select ok(pg_temp.g2p_refused('rpe:activate') and pg_temp.g2p_refused('rpf:schedule') and pg_temp.g2p_refused('rna:activate') and pg_temp.g2p_refused('rnb:schedule'),
+  'all four refusals are the identical committed refusal body (activate and schedule, nested state and block digest) [P2-S12-AC-209]');

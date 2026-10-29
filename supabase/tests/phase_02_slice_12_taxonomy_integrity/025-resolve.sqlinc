@@ -1,0 +1,85 @@
+-- The same encoder through cms_resolve_conflict (CMS-03B-02): the resolved snapshot may not carry a term that is not
+-- assignable (term_unavailable, the conflict stays open, nothing is committed); a field whose resolved value equals the
+-- current draft's keeps its assignments without a new availability check (a deprecated term already assigned is tolerated); the
+-- resolved revision persists the assignments of the resolved tags value and records the vocabulary version (P2-S12-AC-246,
+-- AC-224).
+
+select pg_temp.ti_create('x_c', jsonb_build_object('title', 'Conflict', 'tags', pg_temp.ti_terms(array['alpha'])));
+select pg_temp.ti_append('x_theirs', pg_temp.ti_entry('x_c'), jsonb_build_object('tags', pg_temp.ti_terms(array['beta'])), '1', '1');
+select pg_temp.ti_append('x_yours', pg_temp.ti_entry('x_c'), jsonb_build_object('tags', pg_temp.ti_terms(array['gamma'])), '1', '2');
+select is(pg_temp.ti_out('x_theirs') || '/' || (select response->>'kind' from ti_calls where label = 'x_yours'), '00000:/conflict',
+  'fixture: a stale edit of the tags field records one durable conflict');
+
+create or replace function pg_temp.ti_resolve_request(p_choices jsonb, p_key text) returns jsonb language sql stable as $body$
+  select jsonb_build_object('entryId', conflict.entry_id, 'conflictId', conflict.id, 'baseRevision', '1',
+    'choices', p_choices, 'expectedVersion', '2', 'ifMatch', '2', 'idempotencyKey', p_key,
+    'context', jsonb_build_object('actingPartyId', (select value from s10_ids where key = 'organization'),
+      'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+      'correlationId', 'a9100000-0000-4000-8000-000000000095'))
+  from platform_private.cms_conflict_records conflict
+  where conflict.entry_id = pg_temp.ti_entry('x_c')::uuid and conflict.state = 'open' $body$;
+create or replace function pg_temp.ti_resolve_call(p_label text, p_choice jsonb) returns void language sql as $body$
+  select pg_temp.ti_call(p_label, 'select platform_api.cms_resolve_conflict('
+    || quote_literal(pg_temp.ti_resolve_request(jsonb_build_array(
+         jsonb_build_object('path', '/fields/' || pg_temp.s10g_fid('tags')) || p_choice), 's12ti-resolve-' || p_label)::text) || '::jsonb)') $body$;
+
+create temp table ti_before_resolve on commit drop as select pg_temp.ti_counts() as counts;
+select pg_temp.ti_resolve_call('x_deprecated', jsonb_build_object('choice', 'explicit', 'value', pg_temp.ti_terms(array['delta'])));
+select pg_temp.ti_resolve_call('x_merged', jsonb_build_object('choice', 'explicit', 'value', pg_temp.ti_terms(array['omega'])));
+select pg_temp.ti_resolve_call('x_unknown', jsonb_build_object('choice', 'explicit', 'value', pg_temp.ti_terms(array['nobody'])));
+select pg_temp.ti_resolve_call('x_wrongfield', jsonb_build_object('choice', 'explicit', 'value', pg_temp.ti_terms(array['wrongfield'])));
+select is(pg_temp.ti_out('x_' || label), 'P0001:term_unavailable',
+  'cms_resolve_conflict: an explicit ' || label || ' term is the uniform term_unavailable reason [P2-S12-AC-246]')
+from unnest(array['deprecated', 'merged', 'unknown', 'wrongfield']) label;
+select is((select detail from ti_calls where label = 'x_deprecated'), pg_temp.ti_tags_pointer(),
+  'the refusal names the refused field by its normative pointer [P2-S12-AC-246]');
+select is(pg_temp.ti_counts(), (select counts from ti_before_resolve),
+  'every refused resolution committed nothing [P2-S12-AC-246]');
+select is((select count(*)::integer from platform_private.cms_conflict_records
+            where entry_id = pg_temp.ti_entry('x_c')::uuid and state = 'open'), 1,
+  'and left the conflict open [P2-S12-AC-246]');
+
+-- Choosing the current draft's own value ('theirs') is not a new assignment, even when its term has since been deprecated.
+select pg_temp.ti_term_to('beta', 'deprecated');
+select pg_temp.ti_resolve_call('x_theirs_deprecated', jsonb_build_object('choice', 'theirs'));
+select is(pg_temp.ti_out('x_theirs_deprecated') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('x_theirs_deprecated')),
+  '00000:/beta:active:1:0',
+  'choosing theirs keeps the current assignment of a term deprecated since, without re-checking assignability [P2-S12-AC-224]');
+select pg_temp.ti_term_to('beta', 'active');
+
+-- A resolution that sets the field to an assignable value persists exactly that value's assignments.
+select pg_temp.ti_append('x_theirs2', pg_temp.ti_entry('x_c'), jsonb_build_object('tags', pg_temp.ti_terms(array['alpha', 'beta'])), '3', '3');
+select pg_temp.ti_append('x_yours2', pg_temp.ti_entry('x_c'), jsonb_build_object('tags', pg_temp.ti_terms(array['gamma'])), '3', '4');
+select is((select response->>'kind' from ti_calls where label = 'x_yours2'), 'conflict', 'fixture: a second durable conflict');
+create or replace function pg_temp.ti_resolve_request2(p_choices jsonb, p_key text) returns jsonb language sql stable as $body$
+  select jsonb_build_object('entryId', conflict.entry_id, 'conflictId', conflict.id, 'baseRevision', '3',
+    'choices', p_choices, 'expectedVersion', '4', 'ifMatch', '4', 'idempotencyKey', p_key,
+    'context', jsonb_build_object('actingPartyId', (select value from s10_ids where key = 'organization'),
+      'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+      'correlationId', 'a9100000-0000-4000-8000-000000000095'))
+  from platform_private.cms_conflict_records conflict
+  where conflict.entry_id = pg_temp.ti_entry('x_c')::uuid and conflict.state = 'open' $body$;
+-- DEC-233: a deprecated term that the current draft (theirs) already assigns is existing, also in an explicit resolution; a new deprecated
+-- term and a repeated termId are refused.
+select pg_temp.ti_term_to('beta', 'deprecated');
+create temp table ti_before_resolve2 on commit drop as select pg_temp.ti_counts() as counts;
+create or replace function pg_temp.ti_resolve_explicit(p_label text, p_value jsonb) returns void language sql as $body$
+  select pg_temp.ti_call(p_label, 'select platform_api.cms_resolve_conflict('
+    || quote_literal(pg_temp.ti_resolve_request2(jsonb_build_array(
+         jsonb_build_object('path', '/fields/' || pg_temp.s10g_fid('tags'), 'choice', 'explicit', 'value', p_value)),
+         's12ti-resolve-' || p_label)::text) || '::jsonb)') $body$;
+select pg_temp.ti_resolve_explicit('x_new_depr', pg_temp.ti_terms(array['beta', 'delta']));
+select pg_temp.ti_resolve_explicit('x_dup', jsonb_build_object('termIds', jsonb_build_array(pg_temp.ti_uuid('gamma'), pg_temp.ti_uuid('gamma'))));
+select is(pg_temp.ti_out('x_new_depr'), 'P0001:term_unavailable',
+  'cms_resolve_conflict: a deprecated term theirs does not assign is refused in an explicit value [P2-S12-AC-224]');
+select is(pg_temp.ti_out('x_dup') || '/' || coalesce((select detail from ti_calls where label = 'x_dup'), ''),
+  'P0001:VALIDATION_FAILED/' || pg_temp.ti_tags_pointer(),
+  'cms_resolve_conflict: a value naming the same termId twice is VALIDATION_FAILED at the field pointer (DEC-233) [P2-S12-AC-246]');
+select is(pg_temp.ti_counts(), (select counts from ti_before_resolve2), 'both committed nothing [P2-S12-AC-246]');
+select pg_temp.ti_resolve_explicit('x_yours_ok', pg_temp.ti_terms(array['beta', 'gamma']));
+select is(pg_temp.ti_out('x_yours_ok') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('x_yours_ok')) || '/' || pg_temp.ti_revision_ids(pg_temp.ti_rev('x_yours_ok'))::text,
+  '00000:/beta:active:1:0|gamma:active:1:1/["' || pg_temp.ti_uuid('vg1') || '"]',
+  'an explicit resolution re-sending the deprecated term theirs assigns (beta) beside a newly assigned one persists both in list order and records the vocabulary version (DEC-233) [P2-S12-AC-224]');
+select is(response->'taxonomyVersionIds', jsonb_build_array(pg_temp.ti_uuid('vg1')),
+  'the resolution response reports the revision taxonomyVersionIds [P2-S12-AC-246]') from ti_calls where label = 'x_yours_ok';
+select pg_temp.ti_term_to('beta', 'active');

@@ -1,0 +1,40 @@
+-- PAT-031 for the resolver and the write path (gallery world): context-cleared calls, a real non-zero answer, the caller's flag value
+-- restored.  Include last.
+
+create or replace function pg_temp.ti_rls_rows() returns bigint language plpgsql as $body$
+declare n bigint;
+begin
+  execute 'set local role wejammin_cms_definer';
+  select pg_catalog.count(*) into n from platform_private.cms_taxonomy_versions;
+  execute 'reset role';
+  return n;
+exception when others then
+  execute 'reset role';
+  return -1;
+end;
+$body$;
+
+select pg_temp.ti_session(pg_temp.ti_org());
+select set_config('app.cms_rpc', '', true);
+select is(pg_temp.ti_rls_rows(), 0::bigint,
+  'negative control: with the RPC flag cleared the CMS definer reads zero taxonomy version rows (the policy is enforced here) [P2-S12-AC-242]');
+select is(pg_temp.ti_resolve(pg_temp.ti_uuid('vg1')) like '%"taxonomyKey": "ti-gallery"%', true,
+  'with the RPC flag cleared the resolver still reads the caller''s own version [P2-S12-AC-242]');
+select is(current_setting('app.cms_rpc', true), '', 'and restores the empty flag [P2-S12-AC-242]');
+select is(pg_temp.ti_resolve(pg_temp.ti_uuid('vf1')), 'ERR:P0001:comparison_unavailable',
+  'with the flag cleared another owner''s version is still the identical comparison_unavailable [P2-S12-AC-242]');
+select is(platform_private.cms_taxonomy_version_resolves(pg_temp.ti_uuid('vg1')::text), true,
+  'the boolean form resolves with the flag cleared [P2-S12-AC-242]');
+select is(platform_private.cms_taxonomy_version_resolves('not-a-uuid'), false, 'and answers false for an unparseable id [P2-S12-AC-242]');
+select is(current_setting('app.cms_rpc', true), '', 'and leaves the flag empty [P2-S12-AC-242]');
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.ti_resolve(pg_temp.ti_uuid('vg1')) like '%"taxonomyKey": "ti-gallery"%', true, 'with the flag set the resolver answers the same [P2-S12-AC-242]');
+select is(current_setting('app.cms_rpc', true), 'true', 'and leaves a set flag set [P2-S12-AC-242]');
+
+-- The write path with the flag cleared: persisted assignments are real.
+select set_config('app.cms_rpc', '', true);
+select pg_temp.ti_create('ctx_c', jsonb_build_object('title', 'Context', 'tags', pg_temp.ti_terms(array['alpha'])));
+select is(pg_temp.ti_out('ctx_c') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('ctx_c')), '00000:/alpha:active:1:0',
+  'cms_create_entry called with the RPC flag cleared persists the real assignment [P2-S12-AC-246]');
+select is(current_setting('app.cms_rpc', true), '', 'and leaves the flag empty [P2-S12-AC-246]');
+select set_config('app.cms_rpc', 'true', true);

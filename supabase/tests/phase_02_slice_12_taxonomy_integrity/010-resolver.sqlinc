@@ -1,0 +1,68 @@
+-- platform_private.cms_resolve_taxonomy_version(p_taxonomy_version_id uuid) (BE03c Receiving obligations from Slice 10
+-- (DEC-141) item 1; P2-S12-AC-242): resolves any taxonomy version id of the caller's owner scope, in any state, to
+-- { taxonomyId, taxonomyKey, taxonomyVersion, state, contentHash }; an absent or out-of-scope id is the non-disclosing
+-- comparison_unavailable.  The caller's owner scope is the acting party the CMS command published (cms_acting_party).
+
+create or replace function pg_temp.ti_session(p_party uuid) returns void language sql as $body$
+  select platform_private.cms_publish_session(pg_temp.ti_creator(), p_party) $body$;
+create or replace function pg_temp.ti_resolve(p_id uuid) returns text language sql as $body$
+  select pg_temp.h11_text(format('select platform_private.cms_resolve_taxonomy_version(%L::uuid)::text', p_id)) $body$;
+
+select pg_temp.ti_session(pg_temp.ti_org());
+
+select ok(pg_temp.h11_private_definer('cms_resolve_taxonomy_version(uuid)'),
+  'the resolver is a private SECURITY DEFINER function of the CMS definer with an empty search_path and no API-role or PUBLIC execute [P2-S12-AC-242]');
+select is(pg_temp.h11_rettype('cms_resolve_taxonomy_version(uuid)'), 'jsonb',
+  'the resolver answers one jsonb identity [P2-S12-AC-242]');
+
+-- Every state from draft through retired (and blocked) resolves to its own identity.
+select pg_temp.ti_version('rs1', pg_temp.ti_org(), 'ti-states', 1, 'draft', '["a"]'::jsonb, '["b"]'::jsonb);
+select pg_temp.ti_version('rs2', pg_temp.ti_org(), 'ti-states', 2, 'review', '["a"]'::jsonb, '["b"]'::jsonb, 'rs1', 'rs1');
+select pg_temp.ti_version('rs3', pg_temp.ti_org(), 'ti-states', 3, 'approved', '["a"]'::jsonb, '["b"]'::jsonb, 'rs1', 'rs2');
+select pg_temp.ti_version('rs4', pg_temp.ti_org(), 'ti-states', 4, 'scheduled', '["a"]'::jsonb, '["b"]'::jsonb, 'rs1', 'rs3');
+select pg_temp.ti_version('rs5', pg_temp.ti_org(), 'ti-states', 5, 'active', '["a"]'::jsonb, '["b"]'::jsonb, 'rs1', 'rs4');
+select pg_temp.ti_version('rs6', pg_temp.ti_org(), 'ti-states', 6, 'superseded', '["a"]'::jsonb, '["b"]'::jsonb, 'rs1', 'rs5');
+select pg_temp.ti_version('rs7', pg_temp.ti_org(), 'ti-states', 7, 'retired', '["a"]'::jsonb, '["b"]'::jsonb, 'rs1', 'rs6');
+select pg_temp.ti_version('rs8', pg_temp.ti_org(), 'ti-states', 8, 'blocked', '["a"]'::jsonb, '["b"]'::jsonb, 'rs1', 'rs7');
+
+select is(
+  (select string_agg(pg_temp.h11_text(format('select (platform_private.cms_resolve_taxonomy_version(%L::uuid))->>''state''',
+     pg_temp.ti_uuid('rs' || n))), ',' order by n) from generate_series(1, 8) n),
+  'draft,review,approved,scheduled,active,superseded,retired,blocked',
+  'a draft, review, approved, scheduled, active, superseded, retired and blocked version each resolve to their own state [P2-S12-AC-242]');
+
+select is(pg_temp.ti_resolve(pg_temp.ti_uuid('rs7')),
+  jsonb_build_object(
+    'taxonomyId', pg_temp.ti_uuid('rs1'), 'taxonomyKey', 'ti-states', 'taxonomyVersion', '7', 'state', 'retired',
+    'contentHash', encode(extensions.digest(convert_to('ti:rs7', 'utf8'), 'sha256'), 'hex'))::text,
+  'a retired version resolves to exactly { taxonomyId (the lineage root), taxonomyKey, taxonomyVersion (decimal string), state, contentHash } [P2-S12-AC-242]');
+select is(
+  (select array_agg(key order by key) from jsonb_object_keys(
+     platform_private.cms_resolve_taxonomy_version(pg_temp.ti_uuid('vg1'))) key),
+  array['contentHash', 'state', 'taxonomyId', 'taxonomyKey', 'taxonomyVersion'],
+  'the identity carries exactly the five members and no owner, allowlist or other member [P2-S12-AC-242]');
+select is(
+  (select platform_private.cms_resolve_taxonomy_version(pg_temp.ti_uuid('vg1'))->>'taxonomyId'),
+  pg_temp.ti_uuid('vg1')::text,
+  'taxonomyId is the lineage id: the version-1 row of the vocabulary [P2-S12-AC-242]');
+
+-- Non-disclosing refusal: an absent id, another owner's id and a null id are the identical comparison_unavailable.
+select is(pg_temp.ti_resolve(pg_temp.ti_uuid('nobody')), 'ERR:P0001:comparison_unavailable',
+  'an absent id is comparison_unavailable [P2-S12-AC-242]');
+select is(pg_temp.ti_resolve(pg_temp.ti_uuid('vf1')), pg_temp.ti_resolve(pg_temp.ti_uuid('nobody')),
+  'another owner''s id answers the identical comparison_unavailable as an absent id [P2-S12-AC-242]');
+select is(pg_temp.h11_text('select platform_private.cms_resolve_taxonomy_version(null::uuid)::text'),
+  'ERR:P0001:comparison_unavailable', 'a null id is comparison_unavailable [P2-S12-AC-242]');
+
+-- The scope is the published acting party: the second organization resolves its own version and not the first one's.
+select pg_temp.ti_session(pg_temp.ti_org2());
+select is(pg_temp.ti_resolve(pg_temp.ti_uuid('vf1')) like '%"taxonomyKey": "ti-foreign"%', true,
+  'the second organization resolves its own vocabulary [P2-S12-AC-242]');
+select is(pg_temp.ti_resolve(pg_temp.ti_uuid('vg1')), 'ERR:P0001:comparison_unavailable',
+  'and not the first organization''s, with the same refusal [P2-S12-AC-242]');
+
+-- No published party: fail closed, identically.
+select set_config('app.cms_session_party', '', true);
+select is(pg_temp.ti_resolve(pg_temp.ti_uuid('vg1')), 'ERR:P0001:comparison_unavailable',
+  'with no acting party published the resolver fails closed with the same comparison_unavailable [P2-S12-AC-242]');
+select pg_temp.ti_session(pg_temp.ti_org());

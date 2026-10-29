@@ -1,0 +1,46 @@
+-- DEC-232 (root amendment 2026-10-27, "DEC-232 read consistency"): `nestable` is a RESERVED pattern key, as `context`, `versions`, `selector` and
+-- `new` are (BE03c field matrix CMS-03C-12 patternKey row; E13; AC-172): the static route `GET /api/v1/cms/patterns/nestable` is the nestable read,
+-- so a pattern of that key could never be read back.  Three SQL enforcement points: the CMS-03C-12 save (`key_reserved` at /patternKey), the
+-- cmsPatternLatestRead path-key check (INVALID_REQUEST) and the storage check constraint.  [P2-S12-AC-172, AC-189]
+
+create or replace function pg_temp.s12nr_latest(p_key text) returns jsonb language sql stable as $body$
+  select jsonb_build_object('patternKey', p_key, 'context', pg_temp.s09d_context('owner', true)) $body$;
+
+create temp table s12nr_reserved(label text primary key, key text not null) on commit drop;
+insert into s12nr_reserved values ('rk-nestable', 'nestable'), ('rk-selector', 'selector'), ('rk-context', 'context'),
+  ('rk-versions', 'versions'), ('rk-new', 'new');
+
+-- the save refuses every reserved key typed, at /patternKey, and writes nothing
+select pg_temp.s12pd_run(label, pg_temp.s12pd_request(key, pg_temp.s12nr_tree('kr'), null, 's12nr-reserved-' || key || '-0001'), 'owner')
+  from s12nr_reserved order by label;
+select is(pg_temp.s12pd_state(r.label) || ':' || (select message from s12pd_out where label = r.label)
+          || '#' || (select detail from s12pd_out where label = r.label),
+  'P0001:key_reserved#["/patternKey"]', 'the save refuses the reserved key ' || r.key || ' as key_reserved at /patternKey')
+  from s12nr_reserved r order by r.label;
+select ok((select bool_and(before_rows = after_rows) from s12pd_out where label like 'rk-%' and operation = 'create'),
+  'a reserved-key refusal changed no captured store');
+
+-- cmsPatternLatestRead refuses every reserved key as a malformed path key
+select pg_temp.s12pd_run('l' || label, pg_temp.s12nr_latest(key), 'owner', 'service_role', 'latest') from s12nr_reserved order by label;
+select is(pg_temp.s12pd_state('l' || r.label) || ':' || (select message from s12pd_out where label = 'l' || r.label),
+  'P0001:INVALID_REQUEST', 'cmsPatternLatestRead refuses the reserved path key ' || r.key)
+  from s12nr_reserved r order by r.label;
+
+-- the storage check constraint names the same five keys, so no path can store one
+select ok((select pg_get_constraintdef(c.oid) from pg_constraint c
+            where c.conrelid = 'platform_private.cms_pattern_versions'::regclass and c.conname = 'cms_pattern_versions_pattern_key_not_reserved')
+          ~ '''context''.*''versions''.*''selector''.*''nestable''.*''new''',
+  'cms_pattern_versions_pattern_key_not_reserved lists context, versions, selector, nestable and new');
+select ok((select convalidated from pg_constraint where conname = 'cms_pattern_versions_pattern_key_not_reserved'
+             and conrelid = 'platform_private.cms_pattern_versions'::regclass), 'the constraint is validated');
+select ok(not exists (select 1 from platform_private.cms_pattern_versions where pattern_key = 'nestable'), 'no stored pattern holds the reserved key');
+
+-- the amended functions differ from the old ones in the reserved list only
+select ok((select prosrc like '%''context'', ''versions'', ''selector'', ''nestable'', ''new''%' from pg_proc where oid = to_regprocedure('platform_private.cms_create_pattern_version(jsonb)'))
+      and (select prosrc like '%''context'', ''versions'', ''selector'', ''nestable'', ''new''%' from pg_proc where oid = to_regprocedure('platform_private.cms_pattern_latest(jsonb)')),
+  'both installed functions carry the five-key list');
+select ok((select p.proowner::regrole::text = 'wejammin_cms_definer' and p.prosecdef and p.proconfig @> array['search_path=""'] from pg_proc p
+            where p.oid = to_regprocedure('platform_private.cms_create_pattern_version(jsonb)'))
+      and (select p.proowner::regrole::text = 'wejammin_cms_definer' and p.prosecdef and p.proconfig @> array['search_path=""'] from pg_proc p
+            where p.oid = to_regprocedure('platform_private.cms_pattern_latest(jsonb)')),
+  'owner, SECURITY DEFINER and search_path of both functions are unchanged');

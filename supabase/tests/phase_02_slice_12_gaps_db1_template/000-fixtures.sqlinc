@@ -1,0 +1,100 @@
+-- Shared fixtures of the claude_s12_gaps_db1 template entrypoints: the Slice 10 rolled-back world, the designer grant, the
+-- request builders and four owned/foreign content types (see ../phase_02_slice_12_gaps_db1_template.sql).
+
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active
+)
+select (select value::uuid from s10_ids where key = 'organization'),
+       (select value::uuid from s10_ids where key = 'creatorPerson'),
+       'cms.template_designer', current_date, current_date + 1, true;
+
+create or replace function pg_temp.gt_creator() returns void language sql as $body$
+  select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+    (select value::uuid from s10_ids where key = 'organization'))
+$body$;
+
+create or replace function pg_temp.gt_context_sql(p_party text default null) returns text language sql as $body$
+  select 'select platform_api.cms_template_context(' ||
+    quote_literal(jsonb_build_object('context', jsonb_build_object(
+      'actingPartyId', coalesce(p_party, (select value from s10_ids where key = 'organization')),
+      'actingContextId', 'a9120000-0000-4000-8000-000000000001',
+      'correlationId', 'a9120000-0000-4000-8000-000000000002'))::text) || '::jsonb)'
+$body$;
+
+-- One content type with one version. p_type_state is the type state, p_version_state one of
+-- 'draft' | 'active' | 'superseded'.  The activation updates are exactly those of the Slice 12 block fixture.
+create or replace function pg_temp.gt_type(
+  p_n integer, p_owner uuid, p_key text, p_type_state text, p_version_state text
+) returns void language plpgsql as $body$
+declare
+  type_id uuid := ('a9121000-0000-4000-8000-0000000001' || lpad(p_n::text, 2, '0'))::uuid;
+  version_id uuid := ('a9121000-0000-4000-8000-0000000002' || lpad(p_n::text, 2, '0'))::uuid;
+  artifact_id uuid := ('a9121000-0000-4000-8000-0000000003' || lpad(p_n::text, 2, '0'))::uuid;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_types(id, owner_id, state, type_key, owner_capability, created_by)
+  values (type_id, p_owner, 'retired', p_key, 'cms.schema_designer', 'a9100000-0000-4000-8000-000000000001');
+  insert into platform_private.cms_content_type_versions(
+    id, owner_id, state, content_type_id, version_no, labels, workflow_key, workflow_version,
+    source_locale, default_locale, supported_locales, fallback_chains, locale_config_hash,
+    schema_artifact_id, definition_hash, compatibility, created_by)
+  values (version_id, p_owner, 'draft', type_id, 1, '{}'::jsonb, 'editorial', 1,
+    'en-US', 'en-US', '["en-US"]'::jsonb, '{}'::jsonb,
+    '604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860',
+    artifact_id, encode(extensions.digest('gap-def-' || p_n, 'sha256'), 'hex'), 'additive', 'a9100000-0000-4000-8000-000000000001');
+  insert into platform_private.cms_schema_artifacts(
+    id, owner_id, content_type_version_id, compiler_version, zod_contract_ref, editor_manifest,
+    renderer_manifest, artifact_hash, compiled_at)
+  values (artifact_id, p_owner, version_id, '1', 'cms/s12-gap-' || p_n, '{}'::jsonb,
+    jsonb_build_object('relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb),
+    encode(extensions.digest('gap-art-' || p_n, 'sha256'), 'hex'), clock_timestamp());
+  if p_version_state in ('active', 'superseded') then
+    update platform_private.cms_content_type_versions
+       set state = 'active', version = version + 1,
+           activation_workflow_policy_key = 'cms.entry.author', activation_workflow_policy_version = 1,
+           activation_workflow_policy_hash = repeat('a', 64), activation_required_decision_count = 1,
+           activation_required_capabilities = jsonb_build_array('cms.author'),
+           activation_approval_evidence_hash = repeat('b', 64), updated_at = clock_timestamp()
+     where id = version_id;
+  end if;
+  if p_type_state = 'active' then
+    update platform_private.cms_content_types
+       set state = 'active', version = version + 1, updated_at = clock_timestamp() where id = type_id;
+  end if;
+  if p_version_state = 'superseded' then
+    update platform_private.cms_content_type_versions
+       set state = 'superseded', version = version + 1, updated_at = clock_timestamp() where id = version_id;
+  end if;
+end;
+$body$;
+
+create or replace function pg_temp.gt_template_sql(p_key text, p_types jsonb, p_idem text) returns text language sql as $body$
+  select 'select platform_api.cms_define_template(' || quote_literal(jsonb_build_object(
+    'templateKey', p_key, 'compatibleTypeIds', p_types, 'slots', '[]'::jsonb,
+    'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+    'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+    'idempotencyKey', p_idem,
+    'context', jsonb_build_object(
+      'actingPartyId', (select value from s10_ids where key = 'organization'),
+      'actingContextId', 'a9120000-0000-4000-8000-000000000001',
+      'correlationId', 'a9120000-0000-4000-8000-000000000002'))::text) || '::jsonb)'
+$body$;
+
+-- Owned fixtures.  n=1 retired type with an ACTIVE version; n=2 active type whose only version is superseded;
+-- n=3 active type with an active version (the control); n=4 the same shape owned by ANOTHER party.
+select pg_temp.gt_type(1, (select value::uuid from s10_ids where key = 'organization'), 'gap_type_retired', 'retired', 'active');
+select pg_temp.gt_type(2, (select value::uuid from s10_ids where key = 'organization'), 'gap_type_no_active_version', 'active', 'superseded');
+select pg_temp.gt_type(3, (select value::uuid from s10_ids where key = 'organization'), 'gap_type_good', 'active', 'active');
+select pg_temp.gt_type(4, 'a9121000-0000-4000-8000-0000000009ff'::uuid, 'gap_type_foreign', 'active', 'active');
+
+select ok(
+  (select state = 'retired' from platform_private.cms_content_types where id = 'a9121000-0000-4000-8000-000000000101')
+  and exists (select 1 from platform_private.cms_content_type_versions
+               where content_type_id = 'a9121000-0000-4000-8000-000000000101' and state = 'active')
+  and (select state = 'active' from platform_private.cms_content_types where id = 'a9121000-0000-4000-8000-000000000102')
+  and not exists (select 1 from platform_private.cms_content_type_versions
+                   where content_type_id = 'a9121000-0000-4000-8000-000000000102' and state = 'active')
+  and exists (select 1 from platform_private.cms_content_type_versions
+               where content_type_id = 'a9121000-0000-4000-8000-000000000102' and state = 'superseded'),
+  'control: fixture types are owned by the caller, one with a retired state and an active version, one active with no active version [P2-S12-AC-023]');
+

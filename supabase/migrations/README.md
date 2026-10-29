@@ -1056,6 +1056,52 @@ Promoted on 2026-10-23 after the first canonical run of `supabase/tests/phase_02
 
 pgTAP: `supabase/tests/phase_02_slice_12_race_fixes_pattern_locks.sql`; the wait itself is proven by the DEC-199 race module.
 
+### Slice 12 gap wave promotion of 2026-10-29 (`20261024100000`-`20261027100020`)
+
+Five reviewed WIP directories promoted together in timestamp order (manifest
+`docs/handoffs/2026-10-22-claude-s12/evidence/promotion-manifest-wave3.json`, script `…/evidence/promote-wave3.sh`); a local
+database that already applied a later file needs `supabase migration up --include-all`.
+
+- `20261024100000`-`100800` taxonomy assignment integrity (DEC-141 receiving obligations, DEC-229, DEC-233; review V12,
+  verified): `cms_resolve_taxonomy_version`, the `cms.taxonomy.assignment_integrity` preflight provider (registry row 2),
+  the taxonomy value encoder (`term_unavailable`, duplicates refused), restore carry with merged-term re-pointing, and the
+  position-6 `FOR SHARE` term locks in every assigning writer. Tests: `../tests/phase_02_slice_12_taxonomy_integrity*.sql`
+  (incl. `_acl`, `_lock_order` and the dblink `_concurrency` file, which commits and removes its own fixture).
+- `20261024130000`-`130400` gap-test defects (review V13, verified): the governed lifecycle columns move only through the
+  governed writers (AC-195, incl. `updated_at`), the relay claims the exact Slice 12 aggregate types (AC-248), CMS-03C-01
+  lock positions 1 and 4 and CMS-03C-16 position 4 (AC-276), and every writer wrapper answers a deadlock or lock timeout as
+  the retryable `CONFLICT`. Tests: `../tests/phase_02_slice_12_gaps_*.sql` (the `_lock_position4_race` dblink file runs alone).
+- `20261024140000`-`140100` CMS-03C-12 node pointers (DEC-228; review V13): cycle, depth and node-count refusals name the
+  offending request node. Tests: `../tests/phase_02_slice_12_gaps_node_pointers.sql`.
+- `20261024150000`-`150400` placement performance (defect D1, BE03c "512-node pattern bounds … RPC <300ms"; review V14):
+  set-based path allocation, a linear block-rules scan, a single-query effective state and hashed resource images; behaviour
+  identical (equivalence suite against verbatim copies of the old bodies). Tests:
+  `../tests/phase_02_slice_12_placement_perf_*.sql`, bench `../tests/phase_02_slice_12_gaps_perf_patterns.sql`.
+- `20261027100000`-`100020` `cmsPatternNestableRead` (owner DEC-196, root DEC-232/DEC-234; review V14, verified): the
+  designer-only read of nestable patterns and the reserved pattern key `nestable` (the CHECK re-add first refuses with a
+  named 55000 if a stored key is `nestable`; before deploying, confirm none exists on the target database). Tests:
+  `../tests/phase_02_slice_12_nestable_read*.sql`.
+
+### Canonical registry provider pair of 2026-10-29 (`20261029110000`)
+
+`20261029110000` adds `CHECK ((provider_key IS NULL) = (provider_version IS NULL))` to `cms_canonical_domain_registry`, so each
+provider member is non-null exactly when the row is `built` (ratified P2-S12-AC-256; BE03c Canonical records as amended by
+DEC-238). It refuses with SQLSTATE 55000 and changes nothing when a stored row holds only one member, and asserts the installed
+constraints before and after. Lane gaps-db4, refutation 3 verification round PROMOTE; manifest
+`docs/handoffs/2026-10-22-claude-s12/evidence/promotion-manifest-db4.json`, script `…/evidence/promote-db4.sh`. Tests:
+`../tests/phase_02_slice_12_gaps_db4_registry.sql`.
+
+### Restore records only carried vocabularies of 2026-10-29 (`20261029130000`)
+
+`20261029130000` patches `platform_private.cms_restore_term_plan` (anchored, with a byte-for-byte inverse check, statement
+timeout and typed 55000 refusals): a restore records exactly one current active version id per vocabulary with a carried
+assignment, ascending bytewise, as every revision writer does; a source-recorded version whose vocabulary has no carried
+assignment is no longer carried (BE03c Receiving obligations item 3, root DEC-240). It supersedes the comment marker in
+`20261024100700`. The pin check that refuses an unresolvable recorded version is unchanged. Lane gaps-db5 (review V16
+conditions met); manifest `docs/handoffs/2026-10-22-claude-s12/evidence/promotion-manifest-db5.json`, script
+`…/evidence/promote-db5.sh`. Tests: `../tests/phase_02_slice_12_gaps_db5_restore_versions.sql`; corrected oracles
+`../tests/phase_02_slice_10_ev_ea_lineage.sql` (test 9) and `../tests/phase_02_slice_12_taxonomy_integrity/050-restore.sqlinc`.
+
 ## Related links
 
 - `../tests/README.md`

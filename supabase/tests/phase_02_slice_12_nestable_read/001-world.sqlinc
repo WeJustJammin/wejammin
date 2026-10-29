@@ -1,0 +1,34 @@
+-- The world: real patterns over three content types (T1, T2, T3), all in the owner party, all created by CMS-03C-12 and activated through
+-- the governed chain (nothing forges an active row).  Lineage -> versions -> compatibleTypeIds -> state:
+--   nx-1     v1 {T1}                                active
+--   nx-12    v1 {T1,T2}                             active
+--   nx-23    v1 {T2,T3}                             active
+--   nx-2     v1 {T2}                                active
+--   nx-all   v1 {T1,T2,T3}                          active
+--   nx-sup   v1 {T1,T2} superseded by v2 {T1,T2}    active v2 only
+--   nx-dra   v1 {T1,T2}                             draft, never listed
+--   nx-ret   v1 {T1,T2}                             active now, retired in 050-follows-data
+create or replace function pg_temp.s12nr_tree(p_title text) returns jsonb language sql stable as $body$
+  select jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, jsonb_build_object('title', p_title))) $body$;
+
+select * from pg_temp.s12pl_pattern('p1', 'nx-1', pg_temp.s12nr_tree('k1'), pg_temp.s12nr_types(1));
+select * from pg_temp.s12pl_pattern('p12', 'nx-12', pg_temp.s12nr_tree('k1'), pg_temp.s12nr_types(1, 2));
+select * from pg_temp.s12pl_pattern('p23', 'nx-23', pg_temp.s12nr_tree('k1'), pg_temp.s12nr_types(2, 3));
+select * from pg_temp.s12pl_pattern('p2', 'nx-2', pg_temp.s12nr_tree('k1'), pg_temp.s12nr_types(2));
+select * from pg_temp.s12pl_pattern('pall', 'nx-all', pg_temp.s12nr_tree('k1'), pg_temp.s12nr_types(1, 2, 3));
+select * from pg_temp.s12pl_pattern('psup1', 'nx-sup', pg_temp.s12nr_tree('k1'), pg_temp.s12nr_types(1, 2));
+select * from pg_temp.s12pl_pattern('psup2', 'nx-sup', pg_temp.s12nr_tree('k2'), pg_temp.s12nr_types(1, 2), true, '1');
+select * from pg_temp.s12pl_pattern('pdra', 'nx-dra', pg_temp.s12nr_tree('k1'), pg_temp.s12nr_types(1, 2), false);
+select * from pg_temp.s12pl_pattern('pret', 'nx-ret', pg_temp.s12nr_tree('k1'), pg_temp.s12nr_types(1, 2));
+-- a hidden content type: a real draft type of ANOTHER organization (the owner party cannot see it)
+select pg_temp.s09d_create_type('nr-hidden', 's12nrhidden', 'editorial', 'other');
+
+select is((select count(*)::integer from platform_private.cms_pattern_versions v
+            where v.owner_id = pg_temp.s09d_id('ownerOrg') and v.state = 'active'), 7,
+  'setup: seven active versions (nx-1, nx-12, nx-23, nx-2, nx-all, nx-sup v2, nx-ret)');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('psup1')->>'id')::uuid), 'superseded',
+  'setup: nx-sup v1 is a real superseded version');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('pdra')->>'id')::uuid), 'draft',
+  'setup: nx-dra is a real draft');
+select is((select count(*)::integer from platform_private.cms_content_types where id = pg_temp.s09d_id('nr-hidden:type')
+            and owner_id = pg_temp.s09d_id('otherOrg')), 1, 'setup: the hidden type belongs to another organization');

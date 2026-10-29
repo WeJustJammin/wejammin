@@ -1,0 +1,81 @@
+-- AC-198 clause 0 (pattern basis) and AC-200 (BE03c "Governed review machinery", submit pattern_version).
+-- ---- AC-198: the basis of a pattern version is its compatibleTypeIds
+select pg_temp.s12pd_run('basis', pg_temp.s12pd_request('gapp-basis', pg_temp.s12pd_forest(1), null, 'g2p-key-basis')
+  || jsonb_build_object('compatibleTypeIds', (select jsonb_agg(id order by ordinal) from s12pd_types where ordinal in (1, 2))));
+select pg_temp.g2p_cmd('basis', 'submit');
+select ok(pg_temp.s12pd_state('basis') = '00000' and pg_temp.s12pd_state('basis:submit') = '00000',
+  'fixture: a pattern naming both content types is defined and submitted through the real producers [P2-S12-AC-198]');
+select is((pg_temp.g2p_rv('basis')).policy_basis,
+  (select jsonb_agg(jsonb_build_object('contentTypeId', t.id, 'policyKey', 'editorial', 'policyVersion', 1::bigint,
+      'policyHash', platform_private.cms_workflow_policy_hash('editorial', 1, 'ordinary', 1, '["cms.reviewer"]'))
+      order by t.id::text collate "C") from s12pd_types t where t.ordinal in (1, 2)),
+  'a pattern_version basis holds one editorial member per compatibleTypeIds member, ordered by contentTypeId [P2-S12-AC-198]');
+select ok((pg_temp.g2p_rv('basis')).risk_class = 'ordinary' and (pg_temp.g2p_rv('basis')).required_decision_count = 1
+    and (pg_temp.g2p_rv('basis')).required_capabilities = '["cms.reviewer"]'::jsonb
+    and (pg_temp.g2p_rv('basis')).policy_basis_hash::text = platform_private.cms_jcs_sha256((pg_temp.g2p_rv('basis')).policy_basis),
+  'the pattern basis hash is the JCS SHA-256 of its array and the effective policy is the ordinary one-decision policy [P2-S12-AC-198]');
+
+-- ---- AC-200 (1): draft only
+select pg_temp.s12pd_run('g1', pg_temp.s12pd_request('gapp-g1', pg_temp.s12pd_forest(1), null, 'g2p-key-g1'));
+select pg_temp.g2p_cmd('g1', 'submit');
+create temp table g2p_e1 on commit drop as select pg_temp.g2p_effects() as e;
+select pg_temp.s12pd_run('g1:again', jsonb_build_object('subjectKind', 'pattern_version', 'subjectId', pg_temp.s12pd_body('g1')->'id',
+  'subjectHash', pg_temp.s12pd_body('g1')->'contentHash', 'idempotencyKey', 'g2p-key-g1-again', 'context', pg_temp.s09d_context('owner', true)),
+  'owner', 'service_role', 'submit');
+select ok((select state = 'P0001' and message = 'subject_not_submittable' from s12pd_out where label = 'g1:again')
+    and pg_temp.g2p_effects() = (select e from g2p_e1),
+  'a pattern version that is no longer draft is refused subject_not_submittable and nothing is written [P2-S12-AC-200]');
+
+-- ---- AC-200 (2): a nested pattern that stopped being active after the nesting pattern was defined
+select pg_temp.s12pd_run('gc', pg_temp.s12pd_request('gapp-gc', pg_temp.s12pd_forest(1), null, 'g2p-key-gc'));
+select pg_temp.g2p_step('gc', 'activate');
+select pg_temp.s12pd_run('gn', pg_temp.s12pd_request('gapp-gn', pg_temp.g2p_refs('gc'), null, 'g2p-key-gn'));
+select pg_temp.s12pd_run('gc2', pg_temp.s12pd_request('gapp-gc', pg_temp.s12pd_forest(2), '1', 'g2p-key-gc2', null, '1'));
+select pg_temp.g2p_step('gc2', 'activate');
+select ok(pg_temp.s12pd_state('gn') = '00000' and pg_temp.g2p_pattern_state('gc') = 'superseded' and pg_temp.g2p_pattern_state('gc2') = 'active'
+    and pg_temp.g2p_pattern_state('gn') = 'draft',
+  'fixture: the nested pattern gc was superseded by gc2 after the nesting draft gn pinned it [P2-S12-AC-200]');
+create temp table g2p_e2 on commit drop as select pg_temp.g2p_effects() as e;
+select pg_temp.g2p_cmd('gn', 'submit');
+select ok((select state = 'P0001' and message = 'subject_not_submittable' from s12pd_out where label = 'gn:submit')
+    and pg_temp.g2p_effects() = (select e from g2p_e2),
+  'submitting a pattern whose pinned nested version is no longer active is refused 409 subject_not_submittable (a stored dependency, DEC-180 R5) with no effects [P2-S12-AC-200]');
+
+-- ---- AC-200 (2b): a compatible type that is no longer an active compatible type
+select pg_temp.s12pd_run('gp', pg_temp.s12pd_request('gapp-gp', pg_temp.s12pd_forest(1), null, 'g2p-key-gp'));
+select pg_temp.g2p_raw_copy('gp', 'gapp-raw-type', jsonb_build_object('compatible_type_ids',
+  jsonb_build_array((select id from s12pd_types where ordinal = 1), pg_temp.s09d_id('gapp-draft-type:type'))));
+insert into s12pd_out(label, response) values ('raw-type', jsonb_build_object('id', (select id from platform_private.cms_pattern_versions where pattern_key = 'gapp-raw-type'),
+  'contentHash', (select content_hash::text from platform_private.cms_pattern_versions where pattern_key = 'gapp-raw-type')));
+create temp table g2p_e3 on commit drop as select pg_temp.g2p_effects() as e;
+select pg_temp.g2p_cmd('raw-type', 'submit');
+select ok((select state = 'P0001' and message = 'VALIDATION_FAILED' and detail = '["/blockTree"]' from s12pd_out where label = 'raw-type:submit')
+    and pg_temp.g2p_effects() = (select e from g2p_e3),
+  'a pattern naming a content type with no active version is refused VALIDATION_FAILED at /blockTree (the block-compatibility recompute) with no effects [P2-S12-AC-200]');
+
+-- ---- AC-200 (3): a stored digest that differs from the recomputed one
+select pg_temp.g2p_raw_copy('gp', 'gapp-raw-digest', jsonb_build_object('block_registry_digest', repeat('f', 64)));
+insert into s12pd_out(label, response) select 'raw-digest', jsonb_build_object('id', id, 'contentHash', content_hash::text)
+  from platform_private.cms_pattern_versions where pattern_key = 'gapp-raw-digest';
+create temp table g2p_e4 on commit drop as select pg_temp.g2p_effects() as e;
+select pg_temp.g2p_cmd('raw-digest', 'submit');
+select ok((select state = 'P0001' and message = 'subject_not_submittable' from s12pd_out where label = 'raw-digest:submit')
+    and pg_temp.g2p_effects() = (select e from g2p_e4),
+  'a stored block_registry_digest that differs from the recomputed one refuses the pattern submit with no effects [P2-S12-AC-200]');
+select pg_temp.g2p_raw_copy('gp', 'gapp-raw-ctl', '{}'::jsonb);
+insert into s12pd_out(label, response) select 'raw-ctl', jsonb_build_object('id', id, 'contentHash', content_hash::text)
+  from platform_private.cms_pattern_versions where pattern_key = 'gapp-raw-ctl';
+select pg_temp.g2p_cmd('raw-ctl', 'submit');
+select is(pg_temp.s12pd_state('raw-ctl:submit'), '00000',
+  'control: the same copied draft with the true digest and active types submits, so the refusals above are the digest and the type [P2-S12-AC-200]');
+
+-- ---- AC-200 (4): the frozen dependency kinds block, pattern and content_type
+select pg_temp.s12pd_run('gd', pg_temp.s12pd_request('gapp-gd', pg_temp.g2p_refs('gc2'), null, 'g2p-key-gd'));
+select pg_temp.g2p_cmd('gd', 'submit');
+select is((select jsonb_agg(jsonb_build_array(d.kind, d.ref_id) order by d.kind) from platform_private.cms_governed_review_dependencies d
+      where d.review_id = pg_temp.g2p_review('gd')),
+  jsonb_build_array(
+    jsonb_build_array('block', (pg_temp.s09d_resp('s12pd:block')->>'id')::uuid),
+    jsonb_build_array('content_type', (select version_id from s12pd_types where ordinal = 1)),
+    jsonb_build_array('pattern', (pg_temp.s12pd_body('gc2')->>'id')::uuid)),
+  'a pattern nesting an active pattern that uses a registered block freezes exactly one block (registry id), one content_type (active version id) and one pattern (nested version row id) dependency [P2-S12-AC-200]');
