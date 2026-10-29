@@ -15,7 +15,7 @@ import {
   type CmsFieldDescriptor,
 } from './cms-field-descriptor';
 import type { CmsFieldIssue } from './cms-field-issue';
-import { CMS_EMPTY_RICH_TEXT } from './cms-field-value';
+import { CMS_EMPTY_RICH_TEXT } from './cms-field-basics';
 import type { TaxonomyContextInput } from './cms-taxonomy-field-connection';
 
 export interface CmsFieldEditorProps {

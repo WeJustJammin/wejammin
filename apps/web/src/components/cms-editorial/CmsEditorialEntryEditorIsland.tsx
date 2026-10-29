@@ -4,7 +4,7 @@ import type { CmsFieldEditorProps } from '../cms-editorial-fields/CmsFieldEditor
 import CmsFieldErrorSummary, {
   type CmsFieldErrorSummaryItem,
 } from '../cms-editorial-fields/CmsFieldErrorSummary';
-import { validateCmsFieldValue } from '../cms-editorial-fields/cms-field-value';
+import { validateLoadedCmsFieldValue } from '../cms-editorial-fields/cms-field-validation';
 import CmsEditorialDraftFacts from './CmsEditorialDraftFacts';
 import CmsEditorialEntryFields from './CmsEditorialEntryFields';
 import CmsEditorialEditorBanners from './CmsEditorialEditorBanners';
@@ -75,9 +75,13 @@ export default function CmsEditorialEntryEditorIsland(
     );
     const raw = state.inputErrors[fieldId];
     const refused = state.refusedFieldIds.includes(fieldId);
+    // A refusal comes from a save, and the save loads the validators; before that the server's own message stands.
     const local =
       refused && descriptor !== undefined
-        ? validateCmsFieldValue(descriptor, state.values[fieldId] ?? null)
+        ? (validateLoadedCmsFieldValue(
+            descriptor,
+            state.values[fieldId] ?? null,
+          ) ?? [])
         : [];
     return [
       ...(refused && local.length === 0

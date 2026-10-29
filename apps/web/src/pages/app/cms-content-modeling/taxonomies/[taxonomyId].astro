@@ -14,6 +14,7 @@ import {
   taxonomyReviewHref,
 } from '../../../../components/cms-taxonomy-pages/load-taxonomy-page';
 import CmsTaxonomyTermForm from '../../../../components/cms-taxonomy-terms/CmsTaxonomyTermForm';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -37,7 +38,7 @@ const outcome = await loadTaxonomyPage({
   taxonomyId: Astro.params.taxonomyId ?? '',
   reads: createTaxonomyPageReads(env.PLATFORM_API),
 });
-if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
 Astro.response.status =
   outcome.kind === 'view' ? outcome.status : outcome.notice.status;
 // FE03 :877, :1066: the panel shows the version's review summary and links to the review itself.

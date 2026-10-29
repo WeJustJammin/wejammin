@@ -7,8 +7,8 @@ export const prerender = false;
 
 /**
  * Same-origin projection of `cmsPatternLatestRead`. The static `versions` route wins
- * over this one; `selector` (CMS-03C-13, not built) and the other reserved keys are
- * refused by the proxy as invalid keys, so they never reach the Worker.
+ * over this one; `selector` (CMS-03C-13), `nestable` (cmsPatternNestableRead, DEC-232) and the
+ * other reserved keys are refused by the proxy as invalid keys, so they never reach the Worker.
  */
 export const GET: APIRoute = ({ request, params }) =>
   readCmsPatternLatest(request, env.PLATFORM_API, params.patternKey);

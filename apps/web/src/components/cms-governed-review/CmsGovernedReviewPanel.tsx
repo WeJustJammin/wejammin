@@ -4,7 +4,9 @@ import type {
 } from '@wejammin/contracts';
 import * as React from 'react';
 
+import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
 import type { WorkflowCommandEnvironment } from '../cms-editorial-workflow/use-cms-workflow-command';
+import CmsGovernedLifecycleIcon from './CmsGovernedLifecycleIcon';
 import CmsGovernedPanelReviewSummary from './CmsGovernedPanelReviewSummary';
 import type { GovernedReviewCommitted } from './governed-review-command-specs';
 import {
@@ -59,6 +61,8 @@ export default function CmsGovernedReviewPanel({
 }: CmsGovernedReviewPanelProps): React.ReactElement {
   const [subject, setSubject] = React.useState(initial);
   const [degraded, setDegraded] = React.useState(false);
+  // The subject re-read is a read of known layout: a status line over a skeleton once it has run 250 ms (P2-S12-AC-271).
+  const [refreshing, setRefreshing] = React.useState(false);
   // The review belongs to one subject version: a successor draft starts without one.
   const [known, setKnown] = React.useState<{
     readonly subjectId: string;
@@ -69,7 +73,13 @@ export default function CmsGovernedReviewPanel({
   const submittedNow = known.subjectId === subject.id && known.submittedNow;
 
   const refetch = async (): Promise<boolean> => {
-    const next = await readSubject();
+    setRefreshing(true);
+    let next: GovernedPanelSubject | null;
+    try {
+      next = await readSubject();
+    } finally {
+      setRefreshing(false);
+    }
     if (next === null) {
       setDegraded(true);
       return false;
@@ -102,10 +112,15 @@ export default function CmsGovernedReviewPanel({
       <h2 id="governed-panel-title" tabIndex={-1}>
         Definition review
       </h2>
-      <p>
-        Lifecycle: {GOVERNED_SUBJECT_STATE_LABEL[subject.state]}
+      <p data-governed-lifecycle>
+        <CmsGovernedLifecycleIcon state={subject.state} /> Lifecycle:{' '}
+        {GOVERNED_SUBJECT_STATE_LABEL[subject.state]}
         {note === undefined ? null : ` · ${note}`}
       </p>
+      <CmsLoadingRegion
+        active={refreshing}
+        label="Checking the current state…"
+      />
       {submittedNow ? (
         <h3 id={GOVERNED_PANEL_RESULT_ID} tabIndex={-1}>
           Submitted for review
@@ -132,6 +147,7 @@ export default function CmsGovernedReviewPanel({
           disabledReason={reason}
           refetch={refetch}
           onCommitted={onCommitted}
+          busy={refreshing}
           {...(environment === undefined ? {} : { environment })}
         />
       </WhenOffered>

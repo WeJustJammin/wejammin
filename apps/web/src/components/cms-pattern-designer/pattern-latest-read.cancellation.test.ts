@@ -71,6 +71,8 @@ describe('mounted pattern default-reader retry cancellation (FE03 :1175)', () =>
           latest: latestDetail(),
           csrfToken: CSRF_TOKEN,
           submit,
+          // The picker's own read (DEC-196) must not share the stubbed global fetch this test counts.
+          readNestable: async () => ({ kind: 'unavailable' as const }),
         }),
       );
       await click(buttonNamed(view.container, 'Save successor draft'));

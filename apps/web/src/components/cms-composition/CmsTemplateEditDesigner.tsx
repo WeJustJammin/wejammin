@@ -9,17 +9,25 @@ import CmsTemplateBindings from './CmsTemplateBindings';
 import CmsTemplateFields from './CmsTemplateFields';
 import CmsTemplateLatestCheck from './CmsTemplateLatestCheck';
 import CmsTemplateLatestVersionPanel from './CmsTemplateLatestVersionPanel';
+import CmsTemplateLeaveGuard from './CmsTemplateLeaveGuard';
 import CmsTemplateSlots from './CmsTemplateSlots';
 import CmsTemplateStatus from './CmsTemplateStatus';
 import { useCmsTemplateEditState } from './cms-template-edit-reconcile-state';
-import { cmsTemplateUnavailableTypeIds } from './cms-template-designer-request';
+import {
+  cmsTemplateUnavailableTypeIds,
+  templateDetailToDraftFields,
+} from './cms-template-designer-request';
+import { cmsTemplateDraftDirty } from './cms-template-draft-dirty';
 import { useCmsTemplateRateWait } from './cms-template-rate-wait';
+import { useCmsTemplateSentFields } from './use-cms-template-sent-fields';
 import { useCmsTemplateValidators } from './use-cms-template-validators';
 
 interface Props {
   readonly context: TemplateDesignerContext;
   readonly detail: TemplateVersionDetail;
   readonly csrfToken: string;
+  /** Leaves this page for a destination the person confirmed (default: assign the location). */
+  readonly navigate?: (href: string) => void;
 }
 
 /** Successor-draft island: edit state lives in the reconcile-state hook. */
@@ -27,10 +35,12 @@ export default function CmsTemplateEditDesigner({
   context,
   detail,
   csrfToken,
+  navigate,
 }: Props): React.ReactElement {
   const state = useCmsTemplateEditState(detail);
   const rateWait = useCmsTemplateRateWait();
   const gate = useCmsTemplateValidators();
+  const sent = useCmsTemplateSentFields();
   const fields = {
     templateKey: detail.templateKey,
     compatibleTypeIds: state.compatibleTypeIds,
@@ -51,6 +61,7 @@ export default function CmsTemplateEditDesigner({
   ): Promise<void> => {
     event.preventDefault();
     if (cannotSubmit) return;
+    sent.remember(fields);
     await state.submit({
       fields,
       context,
@@ -61,10 +72,20 @@ export default function CmsTemplateEditDesigner({
     });
   };
 
+  const unsent = sent.unsent(
+    fields,
+    state.status.kind === 'created',
+    cmsTemplateDraftDirty(
+      fields,
+      templateDetailToDraftFields(state.baseDetail),
+    ),
+  );
+
   return (
-    <section
-      className="cms-template-designer"
-      aria-labelledby="cms-template-designer-title"
+    <CmsTemplateLeaveGuard
+      dirty={unsent.dirty}
+      lateEdits={unsent.late}
+      navigate={navigate}
     >
       <h2 id="cms-template-designer-title">Edit template draft</h2>
       <p>
@@ -153,6 +174,6 @@ export default function CmsTemplateEditDesigner({
           </button>
         </fieldset>
       </form>
-    </section>
+    </CmsTemplateLeaveGuard>
   );
 }

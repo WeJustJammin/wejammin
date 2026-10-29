@@ -105,7 +105,7 @@ export const CASES: readonly CommandCase[] = [
     resource: governedAssignmentFixture(),
     mismatched: governedAssignmentFixture({ reviewId: SUBJECT_ID }),
     etag: '"1"',
-    location: `/api/v1/cms/governed-reviews/${REVIEW_ID}/assignments/${ASSIGNMENT_ID}`,
+    location: null,
   },
   {
     name: 'CMS-03C-08 assignment revoke',

@@ -7,7 +7,8 @@ import { PATTERN_LIMITS } from './pattern-tree-rules';
  * only in the form (React keys, error links), is never sent and never persisted.
  * The operations are pure: each returns a new tree and leaves the old one intact.
  * A nested pattern node (`kind: 'pattern'`) can be moved and removed but not
- * authored here: its picker (CMS-03C-13) has no route yet.
+ * authored by hand here: it is chosen in `CmsPatternNestedPicker` (`cmsPatternNestableRead`, DEC-196) and added with
+ * `newPatternNode` (`pattern-tree-nested.ts`).
  */
 export interface EditableNode {
   readonly uiId: string;

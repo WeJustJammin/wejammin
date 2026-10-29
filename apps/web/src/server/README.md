@@ -171,6 +171,9 @@ fails closed (`docs/runbooks/platform/cms-editorial.md`).
   draft revision; an optional opaque signed `cursor` (1-512 characters) and `limit` (1-50, default 25) are the only queries.
 - `cms-composition-instances-selector.ts` — CMS-03C-13 read (query allowlist: one UUID, an optional bounded cursor, a
   1-50 limit; keyset order and cursor verification before a 200 is relayed).
+- `cms-pattern-nestable.ts` — `cmsPatternNestableRead` (DEC-196) read: `contentTypeId` repeated 1-64 times (unique UUIDs), an
+  optional bounded cursor, a 1-50 limit; a count or limit out of bounds is the 422 naming the member; the same page
+  verification as the selector (`honoursQuery`), the strong ETag is the page version, and a 409 (not in the matrix, DEC-232) is a local 502.
 - `cms-composition-instances-diff.ts` — CMS-03C-14 read: path-only (any query, body or header the operation does not
   name never reaches the Worker), strict 128-path / 256 KiB resource, the entity tag is the instance version.
 - `cms-composition-instances-update.ts` with `cms-composition-instances-update-answer.ts` — CMS-03C-15: the request

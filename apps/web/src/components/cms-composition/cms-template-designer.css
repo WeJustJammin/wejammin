@@ -19,7 +19,8 @@
 }
 
 .cms-template-page :is(a, button, input, select):focus-visible,
-.cms-template-designer-status:focus {
+.cms-template-designer-status:focus,
+.cms-template-designer-status h3:focus {
   outline: 3px solid var(--cms-focus);
   outline-offset: 3px;
 }
@@ -86,6 +87,11 @@
 .cms-template-designer-status {
   margin-block: 1rem;
   min-block-size: 1.5rem;
+}
+
+.cms-template-designer-status h3 {
+  font-size: inherit;
+  margin-block: 0 0.25rem;
 }
 
 .cms-template-designer-status:not(:empty) {

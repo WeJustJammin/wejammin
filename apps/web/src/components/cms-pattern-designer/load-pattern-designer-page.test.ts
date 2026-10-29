@@ -157,20 +157,25 @@ describe('loadPatternDesignerPage: a saved pattern', () => {
     );
   });
 
-  it.each(['selector', 'new', 'context', 'versions', 'Bad_Key', ''])(
-    'answers the key %j with a 400 before any read',
-    async (key) => {
-      const stub = reads(okContext());
-      const outcome = await loadPatternDesignerPage({
-        request: request('/app/cms-content-modeling/patterns/x'),
-        patternKey: key,
-        reads: stub,
-      });
-      expect(outcome.kind === 'notice' && outcome.notice.status).toBe(400);
-      expect(stub.context).not.toHaveBeenCalled();
-      expect(stub.latest).not.toHaveBeenCalled();
-    },
-  );
+  it.each([
+    'selector',
+    'nestable',
+    'new',
+    'context',
+    'versions',
+    'Bad_Key',
+    '',
+  ])('answers the key %j with a 400 before any read', async (key) => {
+    const stub = reads(okContext());
+    const outcome = await loadPatternDesignerPage({
+      request: request('/app/cms-content-modeling/patterns/x'),
+      patternKey: key,
+      reads: stub,
+    });
+    expect(outcome.kind === 'notice' && outcome.notice.status).toBe(400);
+    expect(stub.context).not.toHaveBeenCalled();
+    expect(stub.latest).not.toHaveBeenCalled();
+  });
 
   it('redirects when either read says the session ended', async () => {
     const expired = jsonResponse(

@@ -110,7 +110,7 @@ describe('reviews/[reviewId].astro response invariants', () => {
 
   it('hydrates exactly one island and maps a sign-in outcome to the allowlisted 303 only', () => {
     expect(source.match(/client:load/gu)).toHaveLength(1);
-    expect(source).toContain('Astro.redirect(outcome.location, 303)');
-    expect(source).not.toContain('Astro.redirect(`');
+    expect(source).toContain('cmsRedirectResponse(outcome.location)');
+    expect(source).not.toContain('cmsRedirectResponse(`');
   });
 });

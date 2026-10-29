@@ -45,6 +45,7 @@ import {
   readVersionsStub,
   termsLoaded,
 } from './cms-taxonomy-terms/term-form.test-support';
+import { termActionImporters } from './cms-taxonomy-terms/term-action-view';
 import { termSubmitImporters } from './cms-taxonomy-terms/use-term-form';
 
 /*
@@ -74,6 +75,7 @@ vi.mock('./cms-locale/locale-source-refresh', async (importOriginal) => {
 const real = {
   taxonomy: { ...taxonomySubmitImporters },
   term: { ...termSubmitImporters },
+  termAction: { ...termActionImporters },
   locale: { ...localeSubmitImporters },
 };
 const asked: string[] = [];
@@ -96,6 +98,7 @@ beforeEach(() => {
   delete spy.calls.refresh;
   wrap('taxonomy', taxonomySubmitImporters, real.taxonomy);
   wrap('term', termSubmitImporters, real.term);
+  wrap('termAction', termActionImporters, real.termAction);
   wrap('locale', localeSubmitImporters, real.locale);
   vi.stubGlobal(
     'fetch',
@@ -105,6 +108,7 @@ beforeEach(() => {
 afterEach(() => {
   Object.assign(taxonomySubmitImporters, real.taxonomy);
   Object.assign(termSubmitImporters, real.term);
+  Object.assign(termActionImporters, real.termAction);
   Object.assign(localeSubmitImporters, real.locale);
   vi.unstubAllGlobals();
 });
@@ -160,6 +164,30 @@ describe('the vocabulary designer', () => {
 });
 
 describe('the term form', () => {
+  // This test opens the first term form of the file: the lazy view resolves once and renders at once after that.
+  it('CmsTaxonomyTermAction: not requested by the mount, a scroll or the passing of time; requested when the person opens a term action', async () => {
+    const { container } = mountElement(
+      <CmsTaxonomyTermForm
+        {...termProps({
+          readTerms: readTermsStub(termsLoaded()),
+          readVersions: readVersionsStub(),
+        })}
+      />,
+    );
+    await idle();
+    expect(asked).toEqual([]);
+    expect(container.querySelector('.cms-term-action')).toBeNull();
+    await click(buttonNamed(container, 'Rename term guitar'));
+    await vi.waitFor(() => expect(asked).toContain('termAction.view'), {
+      timeout: 15_000,
+    });
+    await vi.waitFor(
+      () => expect(container.querySelector('.cms-term-action')).not.toBeNull(),
+      { timeout: 15_000 },
+    );
+    expect(document.activeElement?.id).toBe('cms-term-form-heading');
+  });
+
   it('term-action-submit: not requested by the mount or by editing a label; requested when the person acts on a term', async () => {
     const { container } = mountElement(
       <CmsTaxonomyTermForm

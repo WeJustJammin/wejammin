@@ -44,9 +44,8 @@ describe('[DEC-108] protected review route page', () => {
 
   it('[P2-S09-AC-1018] redirects an unauthenticated visitor with a safe relative returnTo', () => {
     const source = requireSource(REVIEW_PAGE);
-    expect(source).toContain('Astro.redirect');
+    expect(source).toContain('cmsRedirectResponse(');
     expect(source).toContain('/auth/sign-in?returnTo=');
-    expect(source).toContain('303');
     expect(source).toContain('safeContentSchemaRegistryReturnPath');
   });
 

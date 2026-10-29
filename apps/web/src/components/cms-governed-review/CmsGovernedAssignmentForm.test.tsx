@@ -65,10 +65,7 @@ const options = [
 ];
 
 const created = () =>
-  jsonResponse(201, governedAssignmentFixture(), {
-    etag: '"1"',
-    location: `/api/v1/cms/governed-reviews/${REVIEW_ID}/assignments/${ASSIGNMENT_ID}`,
-  });
+  jsonResponse(201, governedAssignmentFixture(), { etag: '"1"' });
 const revoked = () =>
   jsonResponse(200, governedAssignmentFixture({ state: 'revoked' }), {
     etag: '"1"',

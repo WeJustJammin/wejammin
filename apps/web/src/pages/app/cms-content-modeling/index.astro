@@ -24,6 +24,7 @@ import {
   jsonContinuation,
   wantsJsonResponse,
 } from '../../../server/content-schema-registry-mutation-outcome';
+import { cmsRedirectResponse } from '../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -58,7 +59,7 @@ if (Astro.request.method === 'POST') {
     );
     return wantsJsonResponse(Astro.request)
       ? jsonContinuation(mutation, location)
-      : Astro.redirect(location, 303);
+      : cmsRedirectResponse(location);
   } catch {
     return new Response('Bad gateway', {
       status: 502,
@@ -73,9 +74,8 @@ const result = await resolveContentSchemaRegistryPage({
   requestId,
 });
 if (result.kind === 'unauthenticated') {
-  return Astro.redirect(
+  return cmsRedirectResponse(
     `/auth/sign-in?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
-    303,
   );
 }
 if (result.kind === 'invalid_query') {

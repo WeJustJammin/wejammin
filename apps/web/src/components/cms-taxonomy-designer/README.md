@@ -54,6 +54,8 @@ version sits read-only beside the unsent draft before Keep or Discard is offered
 reused only while an outcome is unknown. Nothing the person typed is lost on a refusal. A 403 is
 the `capability_missing` copy only.
 
+While a save is pending only the commit control is disabled (FE03 1048): every field stays editable and keeps focus, and an edit made meanwhile does not change the pending state. The fields lock only after a verified success (`CmsTaxonomyVersionDesigner.pending.test.tsx`).
+
 ## Related links
 
 - `../cms-taxonomy-terms/README.md`

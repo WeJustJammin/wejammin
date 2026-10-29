@@ -235,10 +235,8 @@ const ASSIGN: GovernedCommandSpec<
         ? assignment
         : null;
   },
-  location: (ids, body, resource) =>
-    body.action === 'create'
-      ? `${GOVERNED_ROUTE_BASE}/${ids.reviewId}/assignments/${resource.id}`
-      : null,
+  // BE03c row 176 defines no Location; no assignment id enters a URL (AC-272, DEC-239).
+  location: () => null,
 };
 
 /** The spec of every governed command, by operation id. */

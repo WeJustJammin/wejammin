@@ -85,6 +85,8 @@ describe('retryableLazy', () => {
     expect(alert?.textContent).toContain(LAZY_VIEW_UNAVAILABLE_COPY);
     expect(container.querySelector('[data-page]')).not.toBeNull();
     expect(container.querySelector('[data-form]')).toBeNull();
+    // A first failure is nobody's retry: focus stays where it was.
+    expect(document.activeElement).not.toBe(alert);
 
     chunk.heal();
     await click(buttonNamed(container, /Try loading/u));
@@ -125,6 +127,83 @@ describe('retryableLazy', () => {
   });
 });
 
+describe('retryableLazy focus', () => {
+  it('keeps focus on the alert after a retry that fails again (WCAG 2.4.3)', async () => {
+    let attempts = 0;
+    const load = vi.fn(async () => {
+      attempts += 1;
+      if (attempts < 3) throw new TypeError('offline');
+      return { default: Form };
+    });
+    const View = retryableLazy(load);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const { container } = mountElement(
+      <React.Suspense fallback={null}>
+        <View label="ready" />
+      </React.Suspense>,
+    );
+    await flush();
+    await flush();
+    const retry = buttonNamed(container, /Try loading/u);
+    retry.focus();
+    await click(retry);
+    await flush();
+    await flush();
+    // The retry failed again: the person is told where they are, not dropped on the page.
+    const alert = container.querySelector<HTMLElement>('[role="alert"]');
+    expect(alert).not.toBeNull();
+    expect(document.activeElement).toBe(alert);
+    await click(buttonNamed(container, /Try loading/u));
+    await flush();
+    await flush();
+    expect(container.querySelector('[data-form]')).not.toBeNull();
+    error.mockRestore();
+  });
+});
+
+describe('retryableLazy after a successful retry', () => {
+  it('does not move focus for a later render error of the loaded view', async () => {
+    const Bomb = ({ explode }: { explode: boolean }): React.ReactElement => {
+      if (explode) throw new Error('render failed');
+      return <p data-form="">fine</p>;
+    };
+    let attempts = 0;
+    const load = vi.fn(async () => {
+      attempts += 1;
+      if (attempts < 2) throw new TypeError('offline');
+      return { default: Bomb };
+    });
+    const View = retryableLazy(load);
+    const error = vi
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const tree = (explode: boolean) => (
+      <React.Suspense fallback={null}>
+        <View explode={explode} />
+      </React.Suspense>
+    );
+    const { container, rerender } = mountElement(tree(false));
+    await flush();
+    await flush();
+    await click(buttonNamed(container, /Try loading/u));
+    await flush();
+    await flush();
+    expect(container.querySelector('[data-form]')).not.toBeNull();
+    const outside = document.createElement('button');
+    document.body.appendChild(outside);
+    outside.focus();
+    rerender(tree(true));
+    await flush();
+    const alert = container.querySelector<HTMLElement>('[role="alert"]');
+    expect(alert).not.toBeNull();
+    expect(document.activeElement).toBe(outside);
+    outside.remove();
+    error.mockRestore();
+  });
+});
+
 describe('retryableLazy over server markup', () => {
   const roots: Root[] = [];
   afterEach(() => {
@@ -157,6 +236,9 @@ describe('retryableLazy over server markup', () => {
     await new Promise((resolve) => setTimeout(resolve, 60));
     expect(host.querySelector('[role="alert"]')?.textContent).toContain(
       LAZY_VIEW_UNAVAILABLE_COPY,
+    );
+    expect(document.activeElement).not.toBe(
+      host.querySelector('[role="alert"]'),
     );
     chunk.heal();
     host.querySelector('button')!.click();

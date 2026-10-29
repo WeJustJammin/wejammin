@@ -103,6 +103,7 @@ export const useLocaleVariantForm = ({
   );
   const attemptRef = useRef<{ body: string; key: string } | null>(null);
   const inFlightRef = useRef(false);
+  const sentValuesRef = useRef<Readonly<Record<string, JsonValue | null>>>({});
   const mountedRef = useRef(true);
   const sequenceRef = useRef(0);
   const rateWait = useCmsTemplateRateWait();
@@ -135,10 +136,12 @@ export const useLocaleVariantForm = ({
 
   const edited = useCallback((): void => {
     // The conflict notice stays until the source is adopted: editing does not lift the review gate.
+    // A save in flight stays pending: its fields are editable meanwhile (FE03 1048) but its state is not theirs to clear.
     setStatus((current) =>
-      current.kind === 'result' &&
-      (current.result.kind === 'conflict' ||
-        current.result.kind === 'limit_reached')
+      current.kind === 'pending' ||
+      (current.kind === 'result' &&
+        (current.result.kind === 'conflict' ||
+          current.result.kind === 'limit_reached'))
         ? current
         : { kind: 'idle' },
     );
@@ -209,6 +212,8 @@ export const useLocaleVariantForm = ({
     if (result.kind !== 'uncertain') attemptRef.current = null;
     if (result.kind === 'saved') {
       setSource((current) => ({ ...current, version: result.saved.version }));
+      // The confirmed save carried these values; a later attempt that is pending or failed has not.
+      sentValuesRef.current = values;
       setSavedIds(result.saved.savedFieldIds);
       setStaleIds(result.saved.staleFieldIds);
       // A save writes a new draft, whatever the state was before (BE03c 1532).
@@ -255,6 +260,12 @@ export const useLocaleVariantForm = ({
   }, [review]);
 
   const fieldIssues = status.kind === 'invalid' ? status.issues : [];
+  // A field changed since the send is unsent, so it is not shown as saved.
+  const sent = JSON.stringify(sentValuesRef.current);
+  const sentSaved = savedIds.filter(
+    (id) =>
+      JSON.stringify(values[id]) === JSON.stringify(sentValuesRef.current[id]),
+  );
   const anyStale =
     staleIds.length > 0 || resolutions.some((resolution) => resolution.stale);
   return {
@@ -262,11 +273,12 @@ export const useLocaleVariantForm = ({
     variantState,
     chain,
     version: source.version,
-    // Until adopted, the refetched text is shown beside the old one's fields so the change is visible.
+    // Until adopted, the refetched text sits beside the old fields so the change is visible.
     texts:
       review.snapshot === null ? texts : { ...texts, ...review.snapshot.texts },
     status,
-    savedIds,
+    savedIds: sentSaved,
+    lateEdits: status.kind === 'saved' && JSON.stringify(values) !== sent,
     staleIds,
     anyStale,
     pending: status.kind === 'pending',

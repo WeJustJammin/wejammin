@@ -80,6 +80,7 @@ export const useTaxonomyDesigner = ({
   const summaryRef = useRef<HTMLDivElement>(null);
   const attemptRef = useRef<{ body: string; key: string } | null>(null);
   const inFlightRef = useRef(false);
+  const sentRef = useRef('');
   const rateWait = useCmsTemplateRateWait();
   const taxonomyId = base?.taxonomyId ?? null;
   const conflict = useTaxonomyConflict(
@@ -121,6 +122,14 @@ export const useTaxonomyDesigner = ({
       });
       return;
     }
+    // The fields this attempt sends; remembered once a save is CONFIRMED, so a value typed after it is flagged (FE03 1048).
+    const snapshot = JSON.stringify([
+      taxonomyKey,
+      shape,
+      typeKeys,
+      fieldKeys,
+      domains,
+    ]);
     // The same unchanged body reuses its key only while the outcome is unknown.
     const key =
       attemptRef.current?.body === prepared.body
@@ -152,6 +161,7 @@ export const useTaxonomyDesigner = ({
     )
       rateWait.start(result.retryAfterSeconds);
     if (result.kind === 'created') {
+      sentRef.current = snapshot;
       setStatus({ kind: 'created', resource: result.resource });
       return;
     }
@@ -175,6 +185,7 @@ export const useTaxonomyDesigner = ({
     if (verdict.kind === 'created') {
       attemptRef.current = null;
       clearConflict();
+      sentRef.current = snapshot;
       setStatus({ kind: 'created', resource: verdict.resource });
     } else if (verdict.kind === 'not-saved') {
       clearConflict();
@@ -236,6 +247,11 @@ export const useTaxonomyDesigner = ({
     blocked,
     pending: status.kind === 'pending',
     done,
+    /** True once a save is confirmed and the form now differs from what that save carried. */
+    lateEdits:
+      done &&
+      JSON.stringify([taxonomyKey, shape, typeKeys, fieldKeys, domains]) !==
+        sentRef.current,
     onSubmit,
     conflict: { ...conflict, rebase, discard },
     showConflict:

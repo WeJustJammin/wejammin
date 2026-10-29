@@ -3,6 +3,7 @@ import type { TemplateVersionResource } from '@wejammin/contracts';
 
 import { PATTERN_REFUSAL_COPY } from '../cms-pattern-designer/pattern-designer-reasons';
 import type { CmsTemplateSubmitResult } from './cms-template-designer-submit';
+import { CMS_TEMPLATE_RESULT_HEADING_ID } from './cms-template-result-focus';
 
 export type CmsTemplateFormStatus =
   | { readonly kind: 'idle' }
@@ -84,9 +85,9 @@ export default function CmsTemplateStatus({
       {status.kind === 'result' ? statusCopy(status.result, mode) : null}
       {status.kind === 'created' ? (
         <>
-          <strong>
+          <h3 id={CMS_TEMPLATE_RESULT_HEADING_ID} tabIndex={-1}>
             {mode === 'successor' ? 'Draft version saved.' : 'Draft created.'}
-          </strong>{' '}
+          </h3>
           Template ID {status.resource.id}, version {status.resource.version}.
           This is not a published template.{' '}
           <a

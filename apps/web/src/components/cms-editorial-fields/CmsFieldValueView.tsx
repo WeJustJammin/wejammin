@@ -6,7 +6,7 @@ import {
   isCmsUnavailableDescriptor,
   type CmsFieldDescriptor,
 } from './cms-field-descriptor';
-import { isJsonRecord } from './cms-field-value-structured';
+import { isJsonRecord } from './cms-field-basics';
 import { validateCmsTaxonomyValue } from './cms-field-taxonomy-value';
 
 export interface CmsFieldValueViewProps {

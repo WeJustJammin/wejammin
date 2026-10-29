@@ -39,6 +39,12 @@
     font-weight: 650;
   }
 
+  #cms-editorial-main .cms-composition-leave {
+    padding: var(--space-2);
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius-panel);
+  }
+
   #cms-editorial-main .cms-composition-summary {
     padding: var(--space-2);
     border: 2px solid var(--cms-danger);

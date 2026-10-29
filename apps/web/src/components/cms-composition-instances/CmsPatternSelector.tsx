@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
+
 import { rateLimitMessage } from '../../lib/rate-limit-message';
 import { refusalMessage } from './composition-copy';
 import type {
@@ -29,6 +31,9 @@ const nodes = (count: number): string =>
 
 export const patternLabel = (item: SelectorItem): string =>
   `${item.patternKey} version ${item.patternVersion} (${nodes(item.nodeCount)})`;
+
+const RESTART_NOTE =
+  'The list of patterns changed while you were loading it, so it restarted from the first page.';
 
 const stateMessage = (state: ReadState<unknown>): string | null =>
   state.kind === 'failed'
@@ -94,6 +99,16 @@ export default function CmsPatternSelector({
           {message}
         </p>
       )}
+      <CmsLoadingRegion
+        active={state.kind === 'loading'}
+        label="Loading more patterns…"
+      />
+      {state.kind === 'restarted' ? (
+        <p role="status">
+          {RESTART_NOTE}
+          {state.choiceCleared ? ' Choose the pattern again.' : ''}
+        </p>
+      ) : null}
       {page.nextCursor === null ? null : (
         <button
           type="button"

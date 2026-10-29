@@ -3,6 +3,10 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { PatternNodeOps } from './CmsPatternNode';
 import { nodeDomId, nodeNumber, PATTERN_TREE_ID } from './pattern-designer-ids';
 import {
+  newPatternNode,
+  type NestedPatternChoice,
+} from './pattern-tree-nested';
+import {
   addNode,
   canAddChild,
   canAddRoot,
@@ -51,6 +55,21 @@ export const usePatternTreeEditor = (initial: EditableTree) => {
     setAnnouncement(`Added node ${label(next, node.uiId)}.`);
     requestFocus(nodeDomId(node.uiId, 'key'));
   }, [label, requestFocus, tree]);
+
+  /** DEC-196: append a nested pattern chosen in the picker as a top-level node (a reference, never an edit). */
+  const addNestedPattern = useCallback(
+    (choice: NestedPatternChoice): void => {
+      if (!canAddRoot(tree)) return;
+      const node = newPatternNode(tree, makeId, choice);
+      const next = addNode(tree, null, node);
+      setTree(next);
+      setAnnouncement(
+        `Added nested pattern ${choice.patternKey} version ${choice.patternVersion} as node ${label(next, node.uiId)}.`,
+      );
+      requestFocus(nodeDomId(node.uiId, 'key'));
+    },
+    [label, requestFocus, tree],
+  );
 
   const addChild = useCallback(
     (parentUiId: string): void => {
@@ -129,6 +148,7 @@ export const usePatternTreeEditor = (initial: EditableTree) => {
     setTree,
     ops,
     addRoot,
+    addNestedPattern,
     canAddRoot: canAddRoot(tree),
     announcement,
     requestFocus,

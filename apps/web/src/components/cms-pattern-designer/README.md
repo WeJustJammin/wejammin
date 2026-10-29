@@ -59,9 +59,11 @@ Components stay at most 200 lines and hold no business rule.
 Every control has a persistent label and a 44 by 44 pixel target; every tree edit has an
 explicit add, remove, move earlier or move later button (never drag-only). The tree is an
 `<ol>` with level text ("Level 2 of 8") and node numbers ("Node 1.2") that the error
-summary uses to link to the node. A refusal the Worker answers without a node pointer
-(cycle, expansion bounds, nested-pattern state) is shown at the tree, plus one "may be the
-cause" link per nested pattern node; the form never invents a pointer. After a conflict or
+summary uses to link to the node. A cycle, depth or node-count refusal names the offending
+request node (DEC-228, `/blockTree/{i}(/children/{j})*`, read by `pattern-designer-node-pointer.ts`)
+and is shown inline at that node with a summary link. A refusal the Worker answers without a
+node pointer (the nested-pattern state, a pointer the tree on screen no longer has) is shown at
+the tree, plus one "may be the cause" link per nested pattern node; the form never invents a pointer. After a conflict or
 an unknown outcome the newer version sits read-only beside the unsent draft ("Review changes")
 before Keep or Discard is offered; an unknown outcome is checked against the server by itself
 and a committed write is shown as saved, never as newer. A content type the read version names
@@ -74,12 +76,18 @@ region), and a duplicate activation is ignored. A latest-version read answered 4
 stated wait, keeps the unsent tree, and keeps the check button off until the wait has elapsed; a
 declared-retryable 502/503/504 of that read is retried twice (250 ms, 750 ms) first.
 
-## BOUNDARY
+## Nested-pattern picker
 
-The nested-pattern picker (`CmsPatternSelector`) reads CMS-03C-13
-(`GET /api/v1/cms/patterns/selector`), whose Worker route and proxy are not built. The
-control is disabled and names that reason. A nested pattern already saved in a version is
-kept (movable, removable, not editable); none can be authored here.
+`CmsPatternNestedPicker` lists the active owner-scope patterns compatible with EVERY content type the version lists
+(`cmsPatternNestableRead`, DEC-196), through `pattern-nestable-read.ts` (the zod-free browser read: strict page,
+request binding, ETag binding, 250/750 ms safe retry, 429 wait) and `use-nestable-patterns.ts` (first page whenever the
+type set changes, a stale answer ignored, a cursor that no longer opens restarts the listing). It is a native select,
+never preselected, disabled with a stated reason until the version lists a content type, with loading (after 250 ms),
+empty, failed and retry states. Choosing a version and pressing "Add nested pattern" appends a top-level `pattern` node
+(`newPatternNode` in `pattern-tree-nested.ts`: a reference by lineage id and version, keyed by the pattern key). The picker
+is an input to the tree, never authority: the save re-proves the version is active and compatible and refuses a cycle
+(409 `pattern_cycle`; the read does not exclude the lineage being edited). A nested pattern already saved in a version
+stays movable and removable, not editable. The `readNestable` prop of the designer is the test seam.
 
 ## Related links
 

@@ -19,11 +19,11 @@ version reach the panel island.
 
 ## Extension rules
 
-`context`, `versions`, `selector` and `new` are reserved keys: `[patternKey].astro` answers
+`context`, `versions`, `selector`, `nestable` and `new` are reserved keys: `[patternKey].astro` answers
 them 400 before any read. A malformed key is a 400, a concealed or absent key is the
 disclosure-safe 404, a visible key without `cms.template_designer` is a 403, an expired
-session is a 303 to sign-in. When the pattern selector (CMS-03C-13) is built, the picker
-lands in `components/cms-pattern-designer/CmsPatternNestedPicker.tsx`, not in a page.
+session is a 303 to sign-in. The nested-pattern picker (`cmsPatternNestableRead`, DEC-196) lives in
+`components/cms-pattern-designer/CmsPatternNestedPicker.tsx`, not in a page.
 
 ## Conventions
 

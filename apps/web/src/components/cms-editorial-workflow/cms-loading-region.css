@@ -1,0 +1,28 @@
+/*
+ * The loading state of a known layout (FE03 46, 912): a status line with a skeleton bar that appears after 250 ms. The bar
+ * keeps a stable height so the page does not shift when the read answers, and holds still under reduced motion.
+ */
+.cms-loading-region {
+  margin-block: var(--space-2, 0.5rem);
+}
+
+.cms-loading-region::after {
+  content: '';
+  display: block;
+  block-size: 1.25rem;
+  inline-size: min(100%, 28rem);
+  margin-block-start: 0.25rem;
+  background: var(--color-border, #c9ced6);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .cms-loading-region::after {
+    animation: cms-loading-pulse 1.2s ease-in-out infinite;
+  }
+}
+
+@keyframes cms-loading-pulse {
+  50% {
+    opacity: 0.55;
+  }
+}

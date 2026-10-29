@@ -285,6 +285,8 @@ describe('insert: refusals', () => {
         }),
         placed(1),
       ],
+      // FE03 1048: the unknown outcome reconciles with the entry read before any retry.
+      [ENTRY]: [entryDetail('9')],
     });
     await fill(page.container);
     await click(buttonNamed(page.container, 'Place pattern'));
@@ -294,7 +296,9 @@ describe('insert: refusals', () => {
     await settle();
     await click(buttonNamed(page.container, 'Place pattern'));
     await settle();
-    const keys = page.calls.map((call) => call.headers['idempotency-key']);
+    const keys = page.calls
+      .filter((call) => call.method === 'POST')
+      .map((call) => call.headers['idempotency-key']);
     expect(keys[1]).toBe(keys[0]);
     expect(keys[2]).not.toBe(keys[1]);
   });

@@ -55,6 +55,13 @@ describe('cmsPatternLatestRead proxy: admission (nothing reaches the Worker)', (
     ],
     ['no key', latestRequest(), undefined, 400, 'INVALID_REQUEST'],
     [
+      'the reserved key nestable',
+      latestRequest('nestable'),
+      'nestable',
+      400,
+      'INVALID_REQUEST',
+    ],
+    [
       'the reserved key selector',
       latestRequest('selector'),
       'selector',

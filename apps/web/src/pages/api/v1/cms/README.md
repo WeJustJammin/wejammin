@@ -37,7 +37,8 @@ each, at the path the generated registry declares: `entries/[entryId]/reviews.ts
 call into `server/cms-workflow-platform-command.ts` or `-reads.ts`;
 `slice-11-workflow-routes.test.ts` proves each module sits at its registry path.
 CMS-03B-19 and CMS-03B-20 are internal RPCs with no browser route.
-`compositions/` owns CMS-03C-02, -14 and -15 and `patterns/selector.ts` CMS-03C-13 (see
+`compositions/` owns CMS-03C-02, -14 and -15, `patterns/selector.ts` CMS-03C-13 and `patterns/nestable.ts`
+`cmsPatternNestableRead` (see
 `compositions/README.md`, `patterns/README.md`); `entries/[entryId]/compositions.ts` is the
 `cmsCompositionInstancesRead` list and `entries/[entryId]/locales/[locale].ts` the `cmsLocaleVariantRead` read.
 `governed-reviews/[reviewId]/activation.ts` is the CMS-03C-09 activate, schedule and retire proxy (see `governed-reviews/README.md`).

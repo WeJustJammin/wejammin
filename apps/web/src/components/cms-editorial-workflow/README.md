@@ -40,6 +40,14 @@ refusal come from the Worker through the first-party proxies in
   `rateLimit` and reads once more when the stated wait has elapsed, five seconds when none was
   stated; `CmsWorkflowRateLimitNotice` announces it politely), `use-reviewer-options.ts`
   (the same wait-then-read for the assignment form), `use-cms-workflow-draft-fields.ts`.
+- Loading (FE03 46, 912; P2-S12-AC-271): `CmsLoadingRegion.tsx` is the one place of the 250 ms rule (`useLoadingDelay`, true
+  once an activity has lasted 250 ms, and `CmsLoadingRegion`, a polite status line over a stable-height skeleton bar drawn by
+  `cms-loading-region.css`); `use-cms-workflow-canonical.ts` exposes the same flag as `loading` for a canonical refetch. A read
+  that answers sooner never flashes a skeleton. The vocabulary panels use it too: the governed review panel's subject re-read,
+  the taxonomy conflict panel's latest-version check and the term choice's page read.
+  `cms-on-demand-view.tsx` (`createOnDemandView`) is the one place of a client-state view whose chunk loads on the person's
+  own action: one lazy component per island, the loading state above for a slow load, `retryableLazy` for a chunk that cannot
+  be fetched. Use it only for a view with no served markup; a view in the served page keeps `cms-lazy-view.tsx`.
 - Copy: `cms-workflow-labels.ts` (every closed vocabulary), `cms-workflow-refusal.ts`
   (a refusal to a kind, a sentence and the fields it names).
 - Reads (server-rendered): `CmsEditorialWorkflowPanel`, `CmsEditorialPreflightSummary`,

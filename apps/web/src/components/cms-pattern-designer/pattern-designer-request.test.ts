@@ -121,6 +121,7 @@ describe('buildPatternVersionRequest', () => {
     ).toBe(true);
     for (const [patternKey, message] of [
       ['new', 'reserved'],
+      ['nestable', 'reserved'],
       ['Bad Key', 'Use 2 to 64'],
     ] as const) {
       const result = buildPatternVersionRequest(

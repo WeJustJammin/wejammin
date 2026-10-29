@@ -8,6 +8,7 @@ import CmsRelatedContentForm from '../../../../../components/cms-related-content
 import '../../../../../components/cms-related-content/cms-related-content.css';
 import { loadRelatedContentPage } from '../../../../../components/cms-related-content/load-related-content-page';
 import { createRelatedContentPageReads } from '../../../../../components/cms-related-content/related-content-page-reads';
+import { cmsRedirectResponse } from '../../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -31,7 +32,7 @@ const outcome = await loadRelatedContentPage({
   entryId,
   reads: createRelatedContentPageReads(env.PLATFORM_API),
 });
-if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
 Astro.response.status =
   outcome.kind === 'view' ? outcome.status : outcome.notice.status;
 const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;

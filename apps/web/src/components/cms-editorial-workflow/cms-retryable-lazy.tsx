@@ -27,15 +27,38 @@ export const retryableLazy = <P extends object>(
       return { failed: true };
     }
 
+    private retried = false;
+
+    // The retry button left with the old alert, taking focus with it: a retry that fails again puts focus on the new
+    // alert, so the person is told where they are instead of being dropped on the page (WCAG 2.4.3).
+    private readonly focusAlert = (
+      alert: HTMLParagraphElement | null,
+    ): void => {
+      if (alert === null || !this.retried) return;
+      this.retried = false;
+      alert.focus();
+    };
+
     private readonly retry = (): void => {
-      current = React.lazy(load);
+      this.retried = true;
+      // A retry that loads is over: a later render error of the loaded view is not a retry and must not take focus.
+      current = React.lazy(async () => {
+        const loaded = await load();
+        this.retried = false;
+        return loaded;
+      });
       this.setState({ failed: false });
     };
 
     override render(): React.ReactNode {
       if (this.state.failed)
         return (
-          <p role="alert" data-cms-lazy-view-failed="">
+          <p
+            role="alert"
+            tabIndex={-1}
+            ref={this.focusAlert}
+            data-cms-lazy-view-failed=""
+          >
             {LAZY_VIEW_UNAVAILABLE_COPY}{' '}
             <button type="button" onClick={this.retry}>
               Try loading this form again

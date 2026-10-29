@@ -73,7 +73,7 @@ describe('first-party cmsPatternLatestRead endpoint', () => {
     );
   });
 
-  it.each(['selector', 'context', 'versions', 'new', 'Bad_Key'])(
+  it.each(['selector', 'nestable', 'context', 'versions', 'new', 'Bad_Key'])(
     'answers the key %s with a 400 and never reaches the binding',
     async (key) => {
       fetchMock.mockClear();

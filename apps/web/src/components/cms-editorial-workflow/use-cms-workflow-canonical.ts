@@ -1,6 +1,7 @@
 import * as React from 'react';
 
 import type { CanonicalReadResult } from './cms-workflow-canonical-read';
+import { useLoadingDelay } from './CmsLoadingRegion';
 
 /**
  * The island's one canonical copy of a workflow or review. It starts as the
@@ -24,6 +25,8 @@ export interface CanonicalResource<T> {
    * stated none. The surface announces it, keeps its input, and reads once more after it.
    */
   readonly rateLimit: { readonly retryAfterSeconds: number | null } | null;
+  /** FE03 912: a refetch still running after 250 ms. The prior `data` stays while it is true. */
+  readonly loading: boolean;
   /** Resolves true when the read verified; never rejects. */
   readonly refetch: () => Promise<boolean>;
 }
@@ -110,5 +113,14 @@ export const useCanonicalResource = <T>(
     refetchRef.current = refetch;
   }, [refetch]);
 
-  return { data, status, lastVerifiedAt, requestId, rateLimit, refetch };
+  const loading = useLoadingDelay(status === 'refreshing');
+  return {
+    data,
+    status,
+    lastVerifiedAt,
+    requestId,
+    rateLimit,
+    loading,
+    refetch,
+  };
 };

@@ -34,8 +34,13 @@ the value, the draft state and every mutation — a read never writes a value.
   state). Labels and help come from `editorConfig`; the object structure declares
   no per-property label, so the label is derived from the stable key and the
   description from the declared constraints.
+- `cms-field-basics.ts` — what every field editor needs when it first renders: `isJsonRecord`, the empty rich text
+  document and the datetime control conversion. Editors import these, never the validators.
+- `cms-field-validation.ts` — the registry the entry editor reads a refused field's local issues from. The validators are
+  not in its cold load: the save chunk imports `cms-field-value.ts`, which registers itself, and until then the server's
+  message stands (`cms-field-validators-cold-load.test.ts` guards the boundary).
 - `cms-field-value*.ts` — validation (`validateCmsFieldValue`), emptiness,
-  initial values and the datetime control conversion. Lengths count Unicode
+  initial values and the datetime control conversion (re-exported from `cms-field-basics.ts`). Lengths count Unicode
   characters; dates must be real; an invalid rich text document is not "empty".
 - `cms-field-taxonomy-value.ts` — the `taxonomy` value mirror of the database's
   `cms_field_kind_value_shape`: exactly `{ termIds: UUID[] }` bounded at 128,

@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
 import { LIFECYCLE_LABEL } from './CmsTaxonomyVersionFacts';
 import { reviewRows, type DraftRules } from './taxonomy-review-outline';
 import type { TaxonomyConflictState } from './use-taxonomy-conflict';
@@ -43,6 +44,10 @@ export default function CmsTaxonomyConflictPanel({
           ? 'Checking latest version…'
           : 'Check latest version'}
       </button>
+      <CmsLoadingRegion
+        active={state.kind === 'checking'}
+        label="Checking the latest version…"
+      />
       {state.kind === 'failed' ? <p role="alert">{state.message}</p> : null}
       {latest === null ? null : (
         <>

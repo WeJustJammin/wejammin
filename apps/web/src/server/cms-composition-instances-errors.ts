@@ -20,13 +20,17 @@ import { cmsEditorialBoundedResponseJson } from './cms-editorial-platform-bounde
 import { relayedResetAt } from './rate-limit-reset-at';
 
 /*
- * The shared error edge of the CMS-03C-13, -14, -15 and cmsCompositionInstancesRead first-party proxies (BE03c composition catalog, FE03 1599-1616).
+ * The shared error edge of the CMS-03C-13, -14, -15, cmsCompositionInstancesRead and cmsPatternNestableRead first-party proxies (BE03c composition catalog, FE03 1599-1616).
  * An upstream refusal is relayed only when its code is the catalog code of its status; its details are rebuilt from an
  * allowlist (one typed reason of the operation's own list on the status that list gives it, bounded violations, the
  * version pair of a plain 409, quota members) and everything else is dropped, never repaired.
  */
 export type CompositionInstancesOperation =
-  'CMS-03C-13' | 'CMS-03C-14' | 'CMS-03C-15' | 'cmsCompositionInstancesRead';
+  | 'CMS-03C-13'
+  | 'CMS-03C-14'
+  | 'CMS-03C-15'
+  | 'cmsCompositionInstancesRead'
+  | 'cmsPatternNestableRead';
 
 const CODES = {
   400: 'INVALID_REQUEST',

@@ -1,5 +1,7 @@
 import { ApiErrorSchema } from '@wejammin/contracts';
 
+import { authPageRedirect } from '../../server/auth-page-redirect';
+
 /**
  * What a protected CMS editorial page does with a non-200 answer from its
  * first-party read. Every status becomes one fixed, non-disclosing state: the
@@ -42,6 +44,15 @@ export const cmsEditorialSignInRedirect = (
   kind: 'redirect',
   location: `/auth/sign-in?returnTo=${encodeURIComponent(returnTo)}`,
 });
+
+/**
+ * The 303 every protected CMS page answers. It IS `authPageRedirect` (one 303 + `no-store`
+ * builder for every protected page): `Astro.redirect()` builds its own Response, so the
+ * `Cache-Control` a page sets on `Astro.response` never reaches it (FE03 protected-route policy;
+ * Slice 09 precedent P2-S09-AC-1067).
+ */
+export const cmsRedirectResponse: (location: string) => Response =
+  authPageRedirect;
 
 const NOT_FOUND_COPY: Readonly<Record<CmsEditorialPageSubject, string>> = {
   entry: 'This entry is not available.',

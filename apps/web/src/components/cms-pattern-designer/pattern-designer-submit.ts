@@ -6,6 +6,10 @@ import {
 } from '@wejammin/contracts/client';
 
 import {
+  isNodePointerReason,
+  nodePathOf,
+} from './pattern-designer-node-pointer';
+import {
   PATTERN_CATALOG_CODES,
   patternWriteReason,
   type PatternWriteReason,
@@ -44,6 +48,8 @@ export type PatternSubmitResult =
       readonly kind: 'refused';
       readonly status: 403 | 409 | 422;
       readonly reason: PatternWriteReason;
+      /** DEC-228: child indices of the offending node of a cycle, depth or node-count refusal. */
+      readonly nodePath?: readonly number[];
     }
   | {
       readonly kind: 'rejected';
@@ -189,8 +195,15 @@ export const submitPatternVersion = async (
   if (details === null) return { kind: 'uncertain' };
   if (status === 429) return rateWait(response, details);
   const reason = patternWriteReason(details.reasonCode, status);
-  if (reason !== null && (status === 403 || status === 409 || status === 422))
-    return { kind: 'refused', status, reason };
+  if (reason !== null && (status === 403 || status === 409 || status === 422)) {
+    const nodePath = isNodePointerReason(reason) ? nodePathOf(details) : null;
+    return {
+      kind: 'refused',
+      status,
+      reason,
+      ...(nodePath === null ? {} : { nodePath }),
+    };
+  }
   if (status === 409) {
     const current = details.currentVersion;
     return {

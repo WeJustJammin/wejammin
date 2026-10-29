@@ -44,12 +44,31 @@ already has a limited result. Other latest-read failures remain alerts.
 The island is split by concern: `CmsTemplateFields.tsx` renders keys, scoped
 content-type choices, locale, audience, and reserved regions;
 `CmsTemplateSlots.tsx` and `CmsTemplateBindings.tsx` render bounded repeatable
-manifests; `CmsTemplateStatus.tsx` renders focusable outcome feedback.
+manifests; `CmsTemplateStatus.tsx` renders focusable outcome feedback: a verified success is the named result heading `h3#cms-template-result-heading` (focused through `cms-template-result-focus.ts`, shared with the successor designer; a refusal or notice focuses the summary region instead).
 `cms-template-designer-form-types.ts` holds only the editable row shapes.
 A content type the edited version names but the protected selector no longer
 offers (`cmsTemplateUnavailableTypeIds`) stays listed in `CmsTemplateFields.tsx`
 as a checked, labelled "no longer available" box, so a successor can clear it
 and be saved instead of dead-ending on a reload that cannot help.
+
+## Unsaved changes (FE03 "Unsaved changes")
+
+Both designers render inside `CmsTemplateLeaveGuard.tsx`, which wraps the shared
+`useCmsEditorialLeaveGuard` hook: while the form holds values that differ from
+the preimage the server last confirmed (`cms-template-draft-dirty.ts`: an empty
+form for a new key, the parent version the successor was rebased onto) `beforeunload` is armed
+and a click on any link of the page, including the header navigation outside the
+island (the capture listens on the document), opens the inline
+`CmsTemplateLeaveConfirm` instead of leaving ("Keep editing" takes focus and
+returns it to the link, "Leave without saving" is the only exit). A verified
+`201` (or "Start another draft") makes the form clean again and disarms the
+guard, except for a value typed while the save was pending: FE03 1048 keeps the
+fields editable then, that value was not sent, so the guard stays armed, the
+value stays in the form and `CmsTemplateLateEditNotice` says it is not part of
+the saved draft (`use-cms-template-sent-fields.ts` holds what the last submit
+sent). The create designer's field state lives in
+`use-cms-template-draft-fields.ts`. There is no autosave and no browser storage:
+the scoped draft is the island's own state.
 
 ## Lazy validators
 

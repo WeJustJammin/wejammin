@@ -12,8 +12,7 @@ import {
 } from './cms-field-descriptor';
 import { cmsFieldIds } from './cms-field-ids';
 import type { CmsFieldIssue } from './cms-field-issue';
-import { CMS_EMPTY_RICH_TEXT } from './cms-field-value';
-import { isJsonRecord } from './cms-field-value-structured';
+import { CMS_EMPTY_RICH_TEXT, isJsonRecord } from './cms-field-basics';
 import { useInputErrors } from './use-input-errors';
 
 export interface CmsObjectEditorProps {

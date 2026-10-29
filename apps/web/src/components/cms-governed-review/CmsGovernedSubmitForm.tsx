@@ -27,6 +27,8 @@ export interface CmsGovernedSubmitFormProps {
   readonly refetch: () => Promise<boolean>;
   /** The review the server committed; the panel shows it and re-reads the subject. */
   readonly onCommitted: (committed: GovernedReviewCommitted) => void;
+  /** The panel is re-reading the subject: only the commit control is withheld (P2-S12-AC-271 `loading`). */
+  readonly busy?: boolean;
   readonly environment?: WorkflowCommandEnvironment;
 }
 
@@ -43,6 +45,7 @@ export default function CmsGovernedSubmitForm({
   disabledReason,
   refetch,
   onCommitted,
+  busy = false,
   environment,
 }: CmsGovernedSubmitFormProps): React.ReactElement {
   const confirmation = useIslandConfirmation();
@@ -58,7 +61,7 @@ export default function CmsGovernedSubmitForm({
     controller.startOver();
   }, [controller, subject.id]);
 
-  const blocked = isCommitBlocked(state, disabledReason);
+  const blocked = isCommitBlocked(state, disabledReason) || busy;
   return (
     <WorkflowAnnouncerContext.Provider value={confirmation.announcer}>
       <CmsWorkflowStatusRegion text={confirmation.text} />

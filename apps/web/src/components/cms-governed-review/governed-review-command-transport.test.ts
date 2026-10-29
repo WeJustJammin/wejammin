@@ -141,10 +141,7 @@ describe('sendGovernedCommand commit verification', () => {
       'assignment create',
       'CMS-03C-08',
       createInput,
-      jsonResponse(201, governedAssignmentFixture(), {
-        etag: '"1"',
-        location: `/api/v1/cms/governed-reviews/${REVIEW_ID}/assignments/${ASSIGNMENT_ID}`,
-      }),
+      jsonResponse(201, governedAssignmentFixture(), { etag: '"1"' }),
       201,
     ],
     [
@@ -250,14 +247,16 @@ describe('sendGovernedCommand commit verification', () => {
       createInput,
       jsonResponse(201, governedAssignmentFixture({ reviewId: SUBJECT_ID }), {
         etag: '"1"',
-        location: `/api/v1/cms/governed-reviews/${REVIEW_ID}/assignments/${ASSIGNMENT_ID}`,
       }),
     ],
     [
-      'a create without its Location',
+      'a create that still names the assignment in a Location (DEC-239: none is defined)',
       'CMS-03C-08',
       createInput,
-      jsonResponse(201, governedAssignmentFixture(), { etag: '"1"' }),
+      jsonResponse(201, governedAssignmentFixture(), {
+        etag: '"1"',
+        location: `/api/v1/cms/governed-reviews/${REVIEW_ID}/assignments/${ASSIGNMENT_ID}`,
+      }),
     ],
     [
       'a revoke of another assignment',

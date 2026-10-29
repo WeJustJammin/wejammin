@@ -155,6 +155,8 @@ describe('an explicit adoption binds the original key to its canonical parent', 
           latest={null}
           csrfToken={CSRF_TOKEN}
           submit={submit}
+          // The picker's own read (DEC-196) must not share the stubbed global fetch this test counts.
+          readNestable={async () => ({ kind: 'unavailable' })}
         />,
       );
       await fillFirstVersion(container);

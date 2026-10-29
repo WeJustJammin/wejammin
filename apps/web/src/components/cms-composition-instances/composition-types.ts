@@ -38,6 +38,8 @@ export type ReadState<T> =
   | { readonly kind: 'loading' }
   | { readonly kind: 'ready'; readonly value: T }
   | { readonly kind: 'empty' }
+  /** A 409 cursor conflict restarted the read from the first page (FE03 1048); `choiceCleared` when a pin was dropped. */
+  | { readonly kind: 'restarted'; readonly choiceCleared: boolean }
   | {
       readonly kind: 'failed';
       readonly status: number | null;

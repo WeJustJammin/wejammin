@@ -27,6 +27,8 @@ interface Props {
   readonly onChange: (change: Partial<TermFormState>) => void;
   readonly onSubmit: () => void;
   readonly onCancel: () => void;
+  /** Asked when the form mounts: is focus still where the opening press left it? Default: yes. */
+  readonly shouldTakeFocus?: (() => boolean) | undefined;
 }
 
 const SUBMIT_LABEL = {
@@ -60,6 +62,7 @@ export default function CmsTaxonomyTermAction({
   onChange,
   onSubmit,
   onCancel,
+  shouldTakeFocus,
 }: Props): React.ReactElement {
   const { action, target } = form;
   const { hasParent, loader, choices, survivor, heldParent, undoParent } =
@@ -83,11 +86,24 @@ export default function CmsTaxonomyTermAction({
   const onBack = () => onChange({ step: 'edit' });
   const review = termReview({ form, survivor, pending, disabled, onBack });
   const confirming = review !== null;
+  const heading = React.useRef<HTMLHeadingElement>(null);
+  // This form loads on demand: the hook's focus effect ran before the chunk arrived and found no heading, so the form
+  // takes focus itself when it mounts (and again when its confirmation step appears, with the hook's effect).
+  const takeFocus = React.useRef(shouldTakeFocus);
+  // A form that arrives while the person is elsewhere does not take their place; it says that it is there instead.
+  const [arrivedElsewhere, setArrivedElsewhere] = React.useState(false);
+  React.useEffect(() => {
+    // On mount only: the arrival of the chunk, not a later render.
+    if (takeFocus.current === undefined || takeFocus.current())
+      heading.current?.focus();
+    else setArrivedElsewhere(true);
+  }, []);
   return (
     <section className="cms-term-action" aria-labelledby={TERM_FORM_HEADING_ID}>
-      <h3 id={TERM_FORM_HEADING_ID} tabIndex={-1}>
+      <h3 id={TERM_FORM_HEADING_ID} tabIndex={-1} ref={heading}>
         {confirming ? `Review: ${title}` : title}
       </h3>
+      {arrivedElsewhere ? <p role="status">The term form is ready.</p> : null}
       <p>{ACTION_CONSEQUENCE[action]}</p>
       <form
         noValidate
@@ -102,7 +118,7 @@ export default function CmsTaxonomyTermAction({
           }
         }}
       >
-        <fieldset disabled={pending}>
+        <fieldset>
           <legend>{title}</legend>
           {review ?? (
             <>

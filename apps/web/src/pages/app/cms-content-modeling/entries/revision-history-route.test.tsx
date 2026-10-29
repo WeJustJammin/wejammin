@@ -151,6 +151,6 @@ describe('revisions.astro response invariants', () => {
   });
 
   it('maps a sign-in outcome to the allowlisted 303 only', () => {
-    expect(source).toContain('Astro.redirect(outcome.location, 303)');
+    expect(source).toContain('cmsRedirectResponse(outcome.location)');
   });
 });

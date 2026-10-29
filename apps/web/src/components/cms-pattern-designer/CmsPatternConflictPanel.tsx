@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
+
 import CmsPatternReview from './CmsPatternReview';
 import type { PatternDesignerContext } from './pattern-designer-request';
 import type { EditableTree } from './pattern-tree-state';
@@ -51,6 +53,10 @@ export default function CmsPatternConflictPanel({
           ? 'Checking latest version…'
           : 'Check latest version'}
       </button>
+      <CmsLoadingRegion
+        active={state.kind === 'checking'}
+        label="Checking the latest version…"
+      />
       {/* Mounted empty with the panel so a 429 is announced when its text arrives (FE03 :1172). */}
       <p
         role="status"

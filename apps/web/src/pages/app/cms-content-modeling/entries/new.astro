@@ -6,6 +6,7 @@ import CmsEditorialEntryCreateForm from '../../../../components/cms-editorial/Cm
 import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
 import { createCmsEditorialPageReads } from '../../../../components/cms-editorial-pages/cms-editorial-page-reads';
 import { loadEntryCreatePage } from '../../../../components/cms-editorial-pages/load-entry-create-page';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -22,7 +23,7 @@ const outcome = await loadEntryCreatePage({
   request: Astro.request,
   reads: createCmsEditorialPageReads(env.PLATFORM_API),
 });
-if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
 Astro.response.status =
   outcome.kind === 'view' ? outcome.status : outcome.notice.status;
 const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;

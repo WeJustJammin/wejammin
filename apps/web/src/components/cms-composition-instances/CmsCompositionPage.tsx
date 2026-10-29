@@ -1,7 +1,10 @@
 import * as React from 'react';
 
+import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
+
 import CmsBulkUpdatePanel from './CmsBulkUpdatePanel';
 import CmsCompositionInstanceList from './CmsCompositionInstanceList';
+import CmsCompositionLeaveConfirm from './CmsCompositionLeaveConfirm';
 import CmsCompositionStatus from './CmsCompositionStatus';
 import CmsPatternInsertForm from './CmsPatternInsertForm';
 import CmsPatternUpdateDiff from './CmsPatternUpdateDiff';
@@ -29,6 +32,12 @@ export default function CmsCompositionPage(
       {options.csrfToken.length > 0 ? null : (
         <p className="cms-composition-note">{COMPOSITION_COPY.noSession}</p>
       )}
+      {page.guard.pendingHref === null ? null : (
+        <CmsCompositionLeaveConfirm
+          onStay={page.guard.stay}
+          onLeave={page.guard.leaveWithoutSaving}
+        />
+      )}
       <CmsPatternInsertForm
         page={insert.page}
         selectorState={insert.selectorState}
@@ -53,9 +62,10 @@ export default function CmsCompositionPage(
         onBulkReview={() => void bulk.review()}
         onBulkDetach={() => void bulk.detach()}
       />
-      {panel.kind === 'loading' ? (
-        <p role="status">Reading the update…</p>
-      ) : null}
+      <CmsLoadingRegion
+        active={panel.kind === 'loading'}
+        label="Reading the update…"
+      />
       {panel.kind === 'failed' ? (
         <p role="alert" className="cms-composition-error">
           {panel.message}

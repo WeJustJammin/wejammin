@@ -2,7 +2,7 @@ import type { JsonValue } from '@wejammin/contracts';
 import { isCmsUuid } from '@wejammin/contracts/client';
 
 import { cmsIssue, type CmsFieldIssue } from './cms-field-issue';
-import { isJsonRecord } from './cms-field-value-structured';
+import { isJsonRecord } from './cms-field-basics';
 
 /**
  * The taxonomy value, mirroring the database shape predicate for the `taxonomy`

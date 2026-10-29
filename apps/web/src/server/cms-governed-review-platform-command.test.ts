@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 
-import { CSRF, KEY, LATER } from './cms-governed-review-fixtures.test-support';
+import {
+  ASSIGNMENT_ID,
+  CSRF,
+  KEY,
+  LATER,
+  REVIEW_ID,
+} from './cms-governed-review-fixtures.test-support';
 import {
   CASES,
   catalogError,
@@ -141,6 +147,13 @@ describe.each(CASES)('$name proxy', (testCase) => {
             success(testCase, { location: null }),
             success(testCase, { location: '/api/v1/cms/governed-reviews/x' }),
           ]),
+      ...(testCase.operationId === 'CMS-03C-08'
+        ? [
+            success(testCase, {
+              location: `/api/v1/cms/governed-reviews/${REVIEW_ID}/assignments/${ASSIGNMENT_ID}`,
+            }),
+          ]
+        : []),
       new Response('nope', { status: testCase.status }),
     ]) {
       const response = await run(

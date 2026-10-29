@@ -1,10 +1,12 @@
 import * as React from 'react';
 
+import { useCmsEditorialLeaveGuard } from '../cms-editorial/use-cms-editorial-leave-guard';
 import type { TaxonomyShape } from '../cms-taxonomy-designer/taxonomy-vocabulary';
-import CmsTaxonomyTermAction from './CmsTaxonomyTermAction';
 import CmsTaxonomyTermFilter, { FILTER_LABEL } from './CmsTaxonomyTermFilter';
+import CmsTaxonomyTermLeaveConfirm from './CmsTaxonomyTermLeaveConfirm';
 import CmsTaxonomyTermStatus from './CmsTaxonomyTermStatus';
 import CmsTaxonomyTermTable from './CmsTaxonomyTermTable';
+import LazyTermAction from './term-action-view';
 import type { TermLifecycle, TermsPageFacts } from './taxonomy-terms-read';
 import { useTermForm, type TermFormOptions } from './use-term-form';
 import {
@@ -40,7 +42,13 @@ export interface CmsTaxonomyTermFormProps {
   readonly readTerms?: TermListOptions['readTerms'];
   readonly readVersions?: TermListOptions['readVersions'];
   readonly replaceUrl?: TermListOptions['replaceUrl'];
+  /** Leaves this page for a destination the person confirmed. */
+  readonly navigate?: (href: string) => void;
 }
+
+const defaultNavigate = (href: string): void => {
+  if (typeof window !== 'undefined') window.location.assign(href);
+};
 
 const defaultReplaceUrl =
   (basePath: string) =>
@@ -83,6 +91,15 @@ export default function CmsTaxonomyTermForm(
     refresh: list.refresh,
     submit: props.submit,
   });
+  // FE03 "Unsaved changes": the draft stays while the person decides, an inline confirmation guards in-app links and
+  // `beforeunload` is armed only while the open form holds unsent input. There is no autosave, so the only exits are
+  // keeping the draft or the explicit discard.
+  const guard = useCmsEditorialLeaveGuard({
+    active: term.dirty,
+    save: async () => undefined,
+    stillUnsent: () => true,
+    navigate: props.navigate ?? defaultNavigate,
+  });
   const canAct = list.active !== null && !failed;
   const issues = term.status.kind === 'invalid' ? term.status.issues : [];
   const pageLink = (cursor: string | null): string => {
@@ -92,8 +109,18 @@ export default function CmsTaxonomyTermForm(
     return search.size === 0 ? basePath : `${basePath}?${search}`;
   };
   return (
-    <section className="cms-taxonomy-terms" aria-labelledby="cms-terms-title">
+    <section
+      className="cms-taxonomy-terms"
+      aria-labelledby="cms-terms-title"
+      onClickCapture={guard.onClickCapture}
+    >
       <h2 id="cms-terms-title">Terms</h2>
+      {guard.pendingHref === null ? null : (
+        <CmsTaxonomyTermLeaveConfirm
+          onStay={guard.stay}
+          onLeave={guard.leaveWithoutSaving}
+        />
+      )}
       {list.active === null ? (
         <p role="status">
           {list.bounded
@@ -139,7 +166,7 @@ export default function CmsTaxonomyTermForm(
         </button>
       ) : null}
       {term.form === null ? null : (
-        <CmsTaxonomyTermAction
+        <LazyTermAction
           form={term.form}
           shape={vocabulary.shape}
           taxonomyId={vocabulary.taxonomyId}
@@ -156,6 +183,7 @@ export default function CmsTaxonomyTermForm(
           onChange={term.edit}
           onSubmit={() => void term.onSubmit()}
           onCancel={term.close}
+          shouldTakeFocus={term.focusIsAtTrigger}
         />
       )}
       <p aria-live="polite">

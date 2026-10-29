@@ -36,7 +36,8 @@ export const GOVERNED_SUBJECT_STATE_LABEL: Readonly<
 export const GOVERNED_PANEL_NOTE: Readonly<
   Partial<Record<CmsDefinitionVersionState, string>>
 > = {
-  review: 'An independent reviewer must approve it before it can be activated.',
+  // FE03 879: the exact sentence for a version the caller cannot yet activate.
+  review: "Needs an independent reviewer's approval",
   approved: 'Open its review to activate or schedule it.',
   blocked:
     'Its activation failed. Open its review to activate it again while the review is still approved.',

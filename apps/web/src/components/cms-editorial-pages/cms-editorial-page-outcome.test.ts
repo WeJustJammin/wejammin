@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
+import { authPageRedirect } from '../../server/auth-page-redirect';
 import {
   cmsEditorialNoticeFor,
   cmsEditorialSignInRedirect,
+  cmsRedirectResponse,
 } from './cms-editorial-page-outcome';
 
 const REQUEST_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132e9';
@@ -39,6 +41,30 @@ describe('cmsEditorialSignInRedirect', () => {
       location:
         '/auth/sign-in?returnTo=%2Fapp%2Fcms-content-modeling%2Fentries%3Fstate%3Ddraft',
     });
+  });
+});
+
+describe('cmsRedirectResponse', () => {
+  it('is the one 303 + no-store builder, authPageRedirect, not a second copy', () => {
+    expect(cmsRedirectResponse).toBe(authPageRedirect);
+  });
+
+  it('answers 303 with the Location and a no-store policy (FE03 protected routes)', () => {
+    const response = cmsRedirectResponse(
+      '/auth/sign-in?returnTo=%2Fapp%2Fcms-content-modeling%2Fpatterns%2Fnew',
+    );
+    expect(response.status).toBe(303);
+    expect(response.headers.get('location')).toBe(
+      '/auth/sign-in?returnTo=%2Fapp%2Fcms-content-modeling%2Fpatterns%2Fnew',
+    );
+    expect(response.headers.get('cache-control')).toBe('no-store');
+    expect(response.body).toBeNull();
+  });
+
+  it('carries the redirect outcome of cmsEditorialSignInRedirect unchanged', () => {
+    const outcome = cmsEditorialSignInRedirect('/app/cms-content-modeling');
+    const response = cmsRedirectResponse(outcome.location);
+    expect(response.headers.get('location')).toBe(outcome.location);
   });
 });
 

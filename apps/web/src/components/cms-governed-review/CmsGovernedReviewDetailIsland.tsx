@@ -1,6 +1,7 @@
 import type { GovernedReviewDetailResource } from '@wejammin/contracts';
 import * as React from 'react';
 
+import '../cms-editorial-workflow/cms-loading-region.css';
 import CmsWorkflowClosedState from '../cms-editorial-workflow/CmsWorkflowClosedState';
 import CmsWorkflowRateLimitNotice from '../cms-editorial-workflow/CmsWorkflowRateLimitNotice';
 import CmsWorkflowStatusRegion from '../cms-editorial-workflow/CmsWorkflowStatusRegion';
@@ -41,6 +42,7 @@ export interface CmsGovernedReviewDetailIslandProps {
 
 const UNVERIFIED =
   'The last read could not be verified. Commands are off until it is.';
+const READING = 'Reading the review…';
 
 const focusHeading = (headingId: string): void => {
   document.getElementById(headingId)?.focus();
@@ -79,7 +81,12 @@ export default function CmsGovernedReviewDetailIsland({
     );
 
   const degraded = status === 'degraded';
-  const disabledReason = degraded ? UNVERIFIED : null;
+  // FE03 1042: while a read runs past 250 ms the skeleton shows and every form is off.
+  const disabledReason = degraded
+    ? UNVERIFIED
+    : canonical.loading
+      ? READING
+      : null;
   const permitted = new Set(review.permittedNextActions);
   // An approved version waiting to be activated, for a reader who may not act on it.
   const awaitingOwner =
@@ -109,6 +116,11 @@ export default function CmsGovernedReviewDetailIsland({
           <h2 id="governed-actions-title" tabIndex={-1}>
             Actions
           </h2>
+          {canonical.loading ? (
+            <p role="status" className="cms-loading-region">
+              Loading the current review
+            </p>
+          ) : null}
           <CmsWorkflowStatusRegion text={confirmation.text} />
           <CmsWorkflowRateLimitNotice rateLimit={canonical.rateLimit} />
           {review.state === 'open' && !permitted.has('record_decision') ? (

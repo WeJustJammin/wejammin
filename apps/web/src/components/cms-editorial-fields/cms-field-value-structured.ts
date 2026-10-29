@@ -17,23 +17,12 @@ import type {
   CmsScalarConstraints,
 } from './cms-field-descriptor';
 import { RICH_TEXT_NOT_CANONICAL_COPY } from '../cms-editorial/cms-rich-text-refusal-copy';
+import { isJsonRecord } from './cms-field-basics';
 import { cmsIssue, type CmsFieldIssue } from './cms-field-issue';
 import {
   cmsCharacterCount,
   validateCmsScalarValue,
 } from './cms-field-value-scalar';
-
-/** A JSON object (not an array, not null), as a narrowing guard. */
-export const isJsonRecord = (
-  value: unknown,
-): value is Readonly<Record<string, JsonValue>> =>
-  typeof value === 'object' && value !== null && !Array.isArray(value);
-
-/** The document the rich text editor starts from when a field has no value. */
-export const CMS_EMPTY_RICH_TEXT: JsonValue = {
-  format: 'rich_text.v1',
-  blocks: [{ type: 'paragraph', spans: [] }],
-};
 
 const LIST_ITEMS_MAX = 128;
 const RELATION_TARGETS_MAX = 512;
@@ -228,3 +217,5 @@ export const cmsRichTextIsEmpty = (value: JsonValue): boolean =>
 
 export const cmsTextIsEmpty = (value: JsonValue): boolean =>
   typeof value === 'string' && cmsCharacterCount(value) === 0;
+
+export { CMS_EMPTY_RICH_TEXT, isJsonRecord } from './cms-field-basics';

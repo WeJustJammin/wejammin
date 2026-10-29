@@ -142,10 +142,8 @@ const ASSIGN: GovernedCommandSpec<
   bound: (value, reviewId, body) =>
     boundGovernedAssignment(value, reviewId as string, body),
   etagVersion: (resource) => resource.version,
-  location: (reviewId, body, resource) =>
-    body.action === 'create'
-      ? `/api/v1/cms/governed-reviews/${reviewId}/assignments/${resource.id}`
-      : null,
+  // BE03c row 176 defines no Location; no assignment id enters a URL (AC-272, DEC-239).
+  location: () => null,
 };
 
 const ACTIVATE: GovernedCommandSpec<

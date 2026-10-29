@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsTemplateLateEditNotice from '../cms-composition/CmsTemplateLateEditNotice';
 import CmsTaxonomyBasics from './CmsTaxonomyBasics';
 import CmsTaxonomyConflictPanel from './CmsTaxonomyConflictPanel';
 import CmsTaxonomyDomains from './CmsTaxonomyDomains';
@@ -80,6 +81,7 @@ export default function CmsTaxonomyVersionDesigner(
         summaryRef={designer.summaryRef}
         returnTo={returnTo}
       />
+      {designer.lateEdits ? <CmsTemplateLateEditNotice /> : null}
       {designer.showConflict ? (
         <CmsTaxonomyConflictPanel
           state={designer.conflict.state}
@@ -105,7 +107,7 @@ export default function CmsTaxonomyVersionDesigner(
           void designer.onSubmit();
         }}
       >
-        <fieldset disabled={designer.pending || designer.done}>
+        <fieldset disabled={designer.done}>
           <legend>Vocabulary rules</legend>
           <CmsTaxonomyBasics
             taxonomyKey={designer.taxonomyKey}
@@ -149,7 +151,7 @@ export default function CmsTaxonomyVersionDesigner(
           <p>
             A saved version is a private draft, not publication or activation.
           </p>
-          <button type="submit" disabled={designer.blocked}>
+          <button type="submit" disabled={designer.blocked || designer.pending}>
             {designer.pending
               ? 'Saving…'
               : editing

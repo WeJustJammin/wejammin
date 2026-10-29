@@ -14,7 +14,8 @@ export type FormIssueCode =
   | 'block_unavailable'
   | 'version_invalid'
   | 'request_too_large'
-  | 'nested_pattern_suspect';
+  | 'nested_pattern_suspect'
+  | 'pattern_cycle';
 
 export type DesignerIssueCode =
   PatternTreeIssueCode | WireIssueCode | FormIssueCode;
@@ -57,6 +58,8 @@ export const PATTERN_ISSUE_COPY: Readonly<Record<DesignerIssueCode, string>> = {
   version_invalid: 'The parent version could not be read. Reload the page.',
   nested_pattern_suspect:
     'This nested pattern may be the cause; the server did not say which nested pattern it is. Remove it, or check its state.',
+  pattern_cycle:
+    'This nested pattern leads back to this pattern, so the tree would contain itself. Remove it.',
   request_too_large:
     'The pattern is too large to send (256 KiB at most). Shorten props or remove nodes.',
 };

@@ -10,6 +10,7 @@ import type {
 import { readLatestCmsTemplateVersion } from './cms-template-edit-reconcile';
 import { templateDetailToDraftFields } from './cms-template-designer-request';
 import { useCmsTemplateRateWait } from './cms-template-rate-wait';
+import { focusCmsTemplateResult } from './cms-template-result-focus';
 import { useTemplateUnknownAttempt } from './use-template-unknown-attempt';
 
 /** A same-number parent is canonical only when its immutable identity matches. */
@@ -94,7 +95,7 @@ export const useCmsTemplateEditState = (detail: TemplateVersionDetail) => {
 
   useEffect(() => {
     if (status.kind !== 'idle' && status.kind !== 'pending')
-      summaryRef.current?.focus();
+      focusCmsTemplateResult(summaryRef.current);
   }, [status]);
 
   const checkLatest = useCallback(async (): Promise<void> => {

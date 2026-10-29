@@ -37,7 +37,7 @@ describe.each([
 
   it('redirects an expired session with a 303 and takes its status from the loader', () => {
     expect(source).toContain(
-      "if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303)",
+      "if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location)",
     );
     expect(source).toContain(
       "outcome.kind === 'view' ? outcome.status : outcome.notice.status",

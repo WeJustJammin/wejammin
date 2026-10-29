@@ -10,6 +10,7 @@ import '../../../../components/cms-composition/cms-template-designer.css';
 import '../../../../styles/cms-danger-action.css';
 import { readCmsTemplateContext } from '../../../../server/cms-composition-platform-context';
 import { cmsEditorialCsrfCookie } from '../../../../server/cms-editorial-platform-shared';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -23,9 +24,8 @@ if (Astro.request.method !== 'GET') {
 
 const selector = await readCmsTemplateContext(Astro.request, env.PLATFORM_API);
 if (selector.status === 401) {
-  return Astro.redirect(
+  return cmsRedirectResponse(
     '/auth/sign-in?returnTo=%2Fapp%2Fcms-content-modeling%2Ftemplates%2Fnew',
-    303,
   );
 }
 

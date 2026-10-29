@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
 import { TermSelect } from './CmsTaxonomyTermFields';
 import type { TermFacts } from './taxonomy-terms-read';
 import type { TermIssue } from './term-action-request';
@@ -49,7 +50,7 @@ export default function CmsTaxonomyTermChoice({
   return (
     <div className="cms-term-choices">
       <TermSelect {...field} choices={choices} />
-      {status === 'loading' ? <p role="status">Loading terms…</p> : null}
+      <CmsLoadingRegion active={loading} label="Loading terms…" />
       {status === 'restarted' ? (
         <p role="status">
           The list of terms changed while loading, so it restarted from the

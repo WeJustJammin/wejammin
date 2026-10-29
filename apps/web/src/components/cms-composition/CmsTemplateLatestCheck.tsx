@@ -1,5 +1,7 @@
 import * as React from 'react';
 
+import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
+
 export interface CmsTemplateLatestCheckProps {
   /** The control is offered after a conflict or an unknown outcome only. */
   readonly offered: boolean;
@@ -41,6 +43,10 @@ export default function CmsTemplateLatestCheck({
           {checking ? 'Checking latest version…' : 'Check latest version'}
         </button>
       ) : null}
+      <CmsLoadingRegion
+        active={checking}
+        label="Checking the latest version…"
+      />
       <p
         ref={announcementRef}
         role="status"

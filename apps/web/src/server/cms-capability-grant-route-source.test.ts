@@ -40,9 +40,8 @@ describe('[DEC-119] capability grant console page', () => {
   });
 
   it('[P2-S09-AC-1022] redirects an unauthenticated visitor with a safe relative returnTo', () => {
-    expect(source).toContain('Astro.redirect');
+    expect(source).toContain('cmsRedirectResponse(');
     expect(source).toContain('/auth/sign-in?returnTo=');
-    expect(source).toContain('303');
   });
 
   it('[P2-S09-AC-991] the page returns the shared refusal response before rendering anything', () => {

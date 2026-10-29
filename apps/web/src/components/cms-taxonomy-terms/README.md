@@ -42,10 +42,17 @@ The canonical record a refused overlap points to is shown as copyable text, neve
   yet)", `HeldChoice`), so the select exposes the value that is sent and "No parent" is a real
   change; the named option replaces it once a page lists the parent. Nothing is read when
   the page already holds every term.
+- On demand: the action form (`CmsTaxonomyTermAction` and everything only it renders) is client state that exists after
+  the person opens an action, so `term-action-view.tsx` loads it then (chunk `CmsTaxonomyTermAction`, listed in
+  `CMS_ON_DEMAND_CHUNKS`; `term-action-preload.test-support.ts` makes it available to the form tests at once, the proof
+  test and `term-action-view.test.tsx` never import it). The form takes focus itself when it mounts.
 - Views: `CmsTaxonomyTermForm` over `CmsTaxonomyTermFilter`, `CmsTaxonomyTermTable`, `CmsTaxonomyTermAction`,
   `CmsTaxonomyTermFields`, `CmsTaxonomyLabelRows`, `CmsTaxonomyAliasList`, `CmsTaxonomyTermConfirm`
   (a merge review requires its survivor by type; `term-review.tsx` picks the review to show),
   `CmsTaxonomyCanonicalId` and `CmsTaxonomyTermStatus` (the one focusable result region).
+  `CmsTaxonomyTermLeaveConfirm` is the inline leave confirmation of FE03 "Unsaved changes": the form arms
+  `beforeunload` and intercepts in-app links only while it holds unsent input (`isTermFormDirty`), through the shared
+  `useCmsEditorialLeaveGuard`; the only exits are keeping the draft or the explicit discard.
 
 ## Extension rules
 
@@ -62,6 +69,8 @@ a merged term shows its survivor. A vocabulary whose full 50-version read holds 
 says so (BE03c 406) rather than claiming there is none. The list and the active version are re-read after every
 committed or unknown outcome before anything else is offered. List state in the URL is `lifecycle`
 and the signed `cursor` only.
+
+While a term command is pending only the commit control is disabled (FE03 1048): the fields stay editable and keep focus. Cancel and Back keep their pending lock because FE03 is silent on them and closing a form with a command in flight is new behaviour (`CmsTaxonomyTermForm.pending.test.tsx`).
 
 ## Related links
 

@@ -6,6 +6,7 @@ import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/C
 import CmsGovernedReviewDetailIsland from '../../../../components/cms-governed-review/CmsGovernedReviewDetailIsland';
 import { createCmsGovernedPageReads } from '../../../../components/cms-governed-review/governed-review-page-reads';
 import { loadGovernedDetailPage } from '../../../../components/cms-governed-review/load-governed-detail-page';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -26,7 +27,7 @@ const outcome = await loadGovernedDetailPage({
   reviewId: Astro.params.reviewId ?? '',
   reads: createCmsGovernedPageReads(env.PLATFORM_API),
 });
-if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
 Astro.response.status =
   outcome.kind === 'view' ? outcome.status : outcome.notice.status;
 const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;

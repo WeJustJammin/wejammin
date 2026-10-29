@@ -1084,6 +1084,18 @@ export const CMS_ON_DEMAND_CHUNKS = Object.freeze([
     },
   },
   {
+    stem: 'CmsTaxonomyTermAction',
+    trigger: 'open a term action',
+    reason:
+      'The term action form (fields, review step, parent choices) is client state: it exists only after the person pressed Create a term or a table action, and loads then. A load slower than 250 ms shows the loading state (P2-S12-AC-271).',
+    importedBy: [
+      'apps/web/src/components/cms-taxonomy-terms/term-action-view.tsx',
+    ],
+    proof: {
+      file: 'apps/web/src/components/cms-on-demand-taxonomy-locale.proof.test.tsx',
+    },
+  },
+  {
     stem: 'taxonomy-outcome-reconcile',
     trigger: 'lost write outcome',
     reason:

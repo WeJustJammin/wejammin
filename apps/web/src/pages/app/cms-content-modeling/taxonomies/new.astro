@@ -7,6 +7,7 @@ import CmsTaxonomyVersionDesigner from '../../../../components/cms-taxonomy-desi
 import '../../../../components/cms-taxonomy-designer/cms-taxonomy.css';
 import { createTaxonomyPageReads } from '../../../../components/cms-taxonomy-pages/taxonomy-page-reads';
 import { loadTaxonomyPage } from '../../../../components/cms-taxonomy-pages/load-taxonomy-page';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -29,7 +30,7 @@ const outcome = await loadTaxonomyPage({
   taxonomyId: null,
   reads: createTaxonomyPageReads(env.PLATFORM_API),
 });
-if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
 Astro.response.status =
   outcome.kind === 'view' ? outcome.status : outcome.notice.status;
 const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;

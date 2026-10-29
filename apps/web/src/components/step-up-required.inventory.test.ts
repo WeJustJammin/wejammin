@@ -34,12 +34,15 @@ const stepUpAware: readonly string[] = [
 ];
 
 const exempt: Readonly<Record<string, string>> = {
+  // cmsPatternNestableRead (DEC-196): a GET read whose only 401 is UNAUTHENTICATED (BE03c 184, stepUp none).
+  'components/cms-pattern-designer/CmsPatternNestedPicker.tsx': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/CmsPatternStatus.tsx': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/load-pattern-designer-page.ts':
     NO_STEP_UP_ROW,
   'components/cms-pattern-designer/pattern-designer-reasons.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/pattern-designer-submit.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/pattern-latest-read.ts': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/pattern-nestable-read.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/use-pattern-conflict.ts': NO_STEP_UP_ROW,
   'components/cms-related-content/CmsRelatedStatus.tsx': NO_STEP_UP_ROW,
   'components/cms-related-content/related-candidates.ts': NO_STEP_UP_ROW,

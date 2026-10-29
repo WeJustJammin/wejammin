@@ -28,6 +28,8 @@ const VALUE_REASONS: ReadonlySet<string> = new Set([
   'object_property_invalid',
   'relation_target_unavailable',
   'taxonomy_source_unavailable',
+  // BE03c DEC-141 item 5: replaces taxonomy_source_unavailable once Slice 12 registers the taxonomy authority.
+  'term_unavailable',
   'media_source_unavailable',
 ]);
 

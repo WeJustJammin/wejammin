@@ -107,6 +107,24 @@ const initialFields = (
   step: 'edit',
 });
 
+/**
+ * True while the open form holds input the server has not confirmed (FE03 "Unsaved changes"): anything typed, chosen or
+ * added beyond what the form opened with. The row ids are React keys and never count.
+ */
+export const isTermFormDirty = (form: TermFormState | null): boolean => {
+  if (form === null) return false;
+  const initial = initialFields(form.action, form.target);
+  const rows = (state: TermFormState): string =>
+    JSON.stringify(state.labels.map((row) => [row.locale, row.label]));
+  return (
+    form.termKey !== initial.termKey ||
+    form.parentId !== initial.parentId ||
+    form.survivorId !== initial.survivorId ||
+    JSON.stringify(form.aliases) !== JSON.stringify(initial.aliases) ||
+    rows(form) !== rows(initial)
+  );
+};
+
 /** All state and commands of the term action form; the components only render. */
 export const useTermForm = ({
   taxonomyId,
@@ -156,6 +174,19 @@ export const useTermForm = ({
     },
     [],
   );
+  /**
+   * True while focus is still where the press that opened the form left it (the page, or the control that opened it).
+   * The form arrives after its chunk loads; it takes focus only then, so a person who moved on keeps their place
+   * (WCAG 2.4.3; FE03 1452 "Refresh never steals focus").
+   */
+  const focusIsAtTrigger = useCallback((): boolean => {
+    const focused = document.activeElement;
+    return (
+      focused === null ||
+      focused === document.body ||
+      focused === triggerRef.current
+    );
+  }, []);
   const close = useCallback(() => {
     setForm(null);
     setStatus({ kind: 'idle' });
@@ -291,9 +322,11 @@ export const useTermForm = ({
 
   return {
     form,
+    dirty: isTermFormDirty(form),
     status,
     open,
     close,
+    focusIsAtTrigger,
     edit,
     onSubmit,
     blocked,

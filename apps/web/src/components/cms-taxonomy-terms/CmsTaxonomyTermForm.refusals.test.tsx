@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import './term-action-preload.test-support';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { SURVIVOR_ID } from '../../server/cms-taxonomy-platform.test-support';

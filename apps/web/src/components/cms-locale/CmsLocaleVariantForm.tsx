@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsTemplateLateEditNotice from '../cms-composition/CmsTemplateLateEditNotice';
 import { cmsFieldIds } from '../cms-editorial-fields/cms-field-ids';
 import CmsLocaleFallbackOrder from './CmsLocaleFallbackOrder';
 import CmsLocaleFieldRow from './CmsLocaleFieldRow';
@@ -105,6 +106,7 @@ export default function CmsLocaleVariantForm(
         returnTo={returnTo}
         controlIdFor={controlIdFor}
       />
+      {form.lateEdits ? <CmsTemplateLateEditNotice /> : null}
       {form.review.required ? (
         <CmsLocaleSourceReview
           state={form.review.state}
@@ -125,7 +127,7 @@ export default function CmsLocaleVariantForm(
           page.
         </p>
       ) : (
-        <fieldset disabled={form.pending} className="cms-locale-fields">
+        <fieldset className="cms-locale-fields">
           <legend>Localizable fields</legend>
           {fields.map((field) => {
             const fieldId = field.descriptor.fieldId;

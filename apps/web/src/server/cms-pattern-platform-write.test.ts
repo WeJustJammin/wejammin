@@ -236,7 +236,13 @@ describe('CMS-03C-12 pattern version write proxy: admission (nothing reaches the
   );
 
   it('answers a reserved key as the typed key_reserved refusal at /patternKey', async () => {
-    for (const patternKey of ['context', 'versions', 'selector', 'new']) {
+    for (const patternKey of [
+      'context',
+      'versions',
+      'selector',
+      'nestable',
+      'new',
+    ]) {
       const { binding, done } = run(
         writeRequest({}, patternRequestBody({ patternKey })),
       );

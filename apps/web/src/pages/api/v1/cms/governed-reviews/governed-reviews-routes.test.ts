@@ -6,7 +6,6 @@ vi.mock('cloudflare:workers', () => ({
 }));
 
 import {
-  ASSIGNMENT_ID,
   CSRF,
   HASH_A,
   KEY,
@@ -171,10 +170,7 @@ describe('governed-review first-party endpoints', () => {
   it('CMS-03C-08 binds the review id from the route', async () => {
     fetchMock.mockReset();
     fetchMock.mockResolvedValueOnce(
-      jsonResponse(201, governedAssignmentFixture(), {
-        etag: '"1"',
-        location: `/api/v1/cms/governed-reviews/${REVIEW_ID}/assignments/${ASSIGNMENT_ID}`,
-      }),
+      jsonResponse(201, governedAssignmentFixture(), { etag: '"1"' }),
     );
     const path = `/api/v1/cms/governed-reviews/${REVIEW_ID}/assignments`;
     const response = await (

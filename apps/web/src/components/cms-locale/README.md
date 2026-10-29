@@ -77,6 +77,8 @@ write or read proxies (`apps/web/src/server/cms-composition-platform-locale*.ts`
 A new field kind is writable only after CMS-03C-04 accepts it (`WRITABLE_KINDS` in the loader). A new refusal
 goes in `locale-variant-submit.ts` with its fixed copy in `locale-variant-copy.ts`; add the failing test first.
 
+While a save is pending only the commit control (and Revalidate) is disabled (FE03 1048): the fields stay editable and keep focus, and `edited()` leaves a `pending` status alone so an edit never lifts it. The source-review buttons keep their pending lock (adopting a new source would change the stamp of a save in flight; `CmsLocaleVariantForm.pending.test.tsx`).
+
 ## Related links
 
 - `../cms-related-content/README.md` (the precedent page, transport and result region)

@@ -18,6 +18,7 @@ import '../../../../styles/cms-danger-action.css';
 import { readCmsTemplateContext } from '../../../../server/cms-composition-platform-context';
 import { readCmsTemplateDetail } from '../../../../server/cms-composition-platform-detail';
 import { cmsEditorialCsrfCookie } from '../../../../server/cms-editorial-platform-shared';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -44,7 +45,7 @@ if (selector.status === 401 || latest.status === 401) {
   const returnTo = encodeURIComponent(
     `/app/cms-content-modeling/templates/${templateKey}`,
   );
-  return Astro.redirect(`/auth/sign-in?returnTo=${returnTo}`, 303);
+  return cmsRedirectResponse(`/auth/sign-in?returnTo=${returnTo}`);
 }
 
 let context: TemplateDesignerContext | null = null;

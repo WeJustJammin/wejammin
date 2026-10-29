@@ -72,8 +72,14 @@ const parseQuery = (search: URLSearchParams): Parsed => {
 const bytewise = (left: string, right: string): number =>
   left < right ? -1 : left > right ? 1 : 0;
 
-/** At most `limit` rows, no version row twice, the signed keyset order, and a cursor only after a full page. */
-const honoursQuery = (page: PatternSelectorPage, query: Query): boolean => {
+/**
+ * At most `limit` rows, no version row twice, the signed keyset order, and a cursor only after a full page. Shared with the
+ * nestable-pattern proxy (cmsPatternNestableRead answers the same page).
+ */
+export const honoursQuery = (
+  page: PatternSelectorPage,
+  query: Readonly<{ limit: number }>,
+): boolean => {
   const { items, nextCursor } = page;
   if (items.length > query.limit) return false;
   if (new Set(items.map((item) => item.patternVersionId)).size !== items.length)

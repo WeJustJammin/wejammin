@@ -8,6 +8,7 @@ import CmsLocaleVariantForm from '../../../../../../components/cms-locale/CmsLoc
 import '../../../../../../components/cms-locale/cms-locale.css';
 import { loadLocaleVariantPage } from '../../../../../../components/cms-locale/load-locale-variant-page';
 import { createLocalePageReads } from '../../../../../../components/cms-locale/locale-variant-page-reads';
+import { cmsRedirectResponse } from '../../../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -33,7 +34,7 @@ const outcome = await loadLocaleVariantPage({
   locale: Astro.params.locale ?? '',
   reads: createLocalePageReads(env.PLATFORM_API),
 });
-if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
 Astro.response.status =
   outcome.kind === 'view' ? outcome.status : outcome.notice.status;
 const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;

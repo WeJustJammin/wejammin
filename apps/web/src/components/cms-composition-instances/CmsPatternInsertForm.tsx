@@ -179,7 +179,10 @@ export default function CmsPatternInsertForm(
             message={overridesMessage}
           />
         </div>
-        <button type="submit" disabled={disabled || pending}>
+        <button
+          type="submit"
+          disabled={disabled || pending || selectorState.kind === 'loading'}
+        >
           Place pattern
         </button>
       </form>

@@ -92,7 +92,12 @@ describe('CmsGovernedReviewPanel lifecycle (CMS-03C-06)', () => {
   });
 
   it.each([
-    ['review', 'In review', 'An independent reviewer must approve it'],
+    [
+      'review',
+      'In review',
+      // FE03 879 quotes this exact sentence for a version the caller cannot yet activate.
+      "Needs an independent reviewer's approval",
+    ],
     ['approved', 'Approved', 'Open its review to activate or schedule it.'],
     [
       'blocked',

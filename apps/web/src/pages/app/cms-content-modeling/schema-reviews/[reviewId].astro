@@ -25,6 +25,7 @@ import {
   isStepUpRequiredCode,
   stepUpTargetForLocation,
 } from '../../../../components/step-up-required';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -54,13 +55,13 @@ if (Astro.request.method === 'POST') {
     // A fetch client reads the 401 `STEP_UP_REQUIRED` body and navigates
     // itself; only a native form post is redirected from the server.
     if (!json && isStepUpRequiredCode(await mutationFailureCode(mutation)))
-      return Astro.redirect(stepUpTargetForLocation(Astro.url), 303);
+      return cmsRedirectResponse(stepUpTargetForLocation(Astro.url));
     return mutation;
   }
   const continueTo = `/app/cms-content-modeling/schema-reviews/${encodeURIComponent(reviewId)}`;
   return json
     ? jsonContinuation(mutation, continueTo)
-    : Astro.redirect(continueTo, 303);
+    : cmsRedirectResponse(continueTo);
 }
 let ports: ContentSchemaReviewPorts | null;
 try {
@@ -75,9 +76,8 @@ const result = await resolveContentSchemaReviewPage({
   requestId,
 });
 if (result.kind === 'unauthenticated') {
-  return Astro.redirect(
+  return cmsRedirectResponse(
     `/auth/sign-in?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
-    303,
   );
 }
 if (result.kind === 'invalid_record' || result.kind === 'invalid_query') {

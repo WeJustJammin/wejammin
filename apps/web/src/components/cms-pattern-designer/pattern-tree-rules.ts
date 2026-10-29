@@ -25,6 +25,7 @@ export const PATTERN_RESERVED_KEYS = [
   'context',
   'versions',
   'selector',
+  'nestable',
   'new',
 ] as const;
 

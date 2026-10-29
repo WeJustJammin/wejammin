@@ -21,6 +21,7 @@ import {
   usePatternDesigner,
   type PatternDesignerOptions,
 } from './use-pattern-designer';
+import type { ReadNestable } from './use-nestable-patterns';
 
 export interface CmsPatternVersionDesignerProps {
   readonly context: PatternDesignerContext;
@@ -30,6 +31,7 @@ export interface CmsPatternVersionDesignerProps {
   /** Seam for a test. */
   readonly submit?: PatternDesignerOptions['submit'] | undefined;
   readonly readLatest?: PatternDesignerOptions['readLatest'] | undefined;
+  readonly readNestable?: ReadNestable | undefined;
 }
 
 /**
@@ -164,7 +166,12 @@ export default function CmsPatternVersionDesigner(
             >
               Add a top-level block
             </button>
-            <CmsPatternNestedPicker />
+            <CmsPatternNestedPicker
+              typeIds={designer.compatibleTypeIds}
+              canAdd={editor.canAddRoot}
+              onAdd={editor.addNestedPattern}
+              read={props.readNestable}
+            />
             <div className="visually-hidden" role="status" aria-live="polite">
               {editor.announcement}
             </div>

@@ -61,6 +61,14 @@ path by position then path. The first-party proxy is `../../server/cms-compositi
 - The strong `If-Match` is the entry `version`; each instance carries its own `version`. After a success the next
   version is the committed one (placement: the response ETag; update: the entry version plus one). A selection above
   32 instances is sent as successive requests of at most 32 and the entry version is read again between them.
+- A selector read answered 409 (cursor conflict, BE03c 1414) drops the cursor and restarts from the first page once
+  (`use-composition-insert.ts`); a pin the first page no longer lists is cleared and the author is told.
+- Unsaved changes (FE03 927): the insert form is dirty when its pattern, link mode, slot path or overrides differ from
+  the last sent (or first shown) values; while dirty `beforeunload` is armed and a click on any link of the page (the
+  island holds none, so the listener is on the document) shows `CmsCompositionLeaveConfirm`. No draft is stored anywhere.
+- An unknown placement outcome reads the entry (`readEntryFacts`) before the retry is offered; the read is only shown, so
+  the retry is the identical request with the same key. A read in flight (an update diff, a further selector page) shows
+  a skeleton only after 250 ms (`../cms-editorial-workflow/CmsLoadingRegion.tsx`) and keeps the listed content.
 - A key is reused only for the identical request while its outcome is unknown; a 429 blocks commands for its stated
   wait; a 409 `diff_has_collisions`/`revision_not_editable` refetches the entry facts and the diff and keeps the
   choices for every path whose base, theirs and yours did not change.

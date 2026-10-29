@@ -75,7 +75,9 @@ describe('CmsPatternVersionDesigner: a new pattern', () => {
     expect(picker.disabled).toBe(true);
     expect(buttonNamed(container, 'Add nested pattern').disabled).toBe(true);
     const reason = container.querySelector('#cms-pattern-nested-reason');
-    expect(reason?.textContent).toContain('not available yet');
+    expect(reason?.textContent).toContain(
+      'Choose at least one compatible content type',
+    );
     expect(picker.getAttribute('aria-describedby')).toBe(
       'cms-pattern-nested-reason',
     );

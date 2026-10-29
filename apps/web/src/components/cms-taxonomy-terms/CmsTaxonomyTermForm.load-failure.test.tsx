@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import './term-action-preload.test-support';
 import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 

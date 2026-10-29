@@ -11,6 +11,10 @@ import {
   compositionDependencyDetails,
   isCompositionDependencyStatus,
 } from './cms-composition-platform-dependency';
+import {
+  NODE_POINTER_REASONS,
+  nodePointerDetails,
+} from './cms-pattern-node-pointer';
 import { relayedResetAt } from './rate-limit-reset-at';
 
 /**
@@ -155,6 +159,13 @@ export const projectPatternErrorDetails = (
   if (status === 429) return rateHints(upstream);
   const reason = typedReason(operation, status, upstream);
   if (status === 403) return reason === null ? {} : { reasonCode: reason };
+  // DEC-228: a cycle (409) names the offending request node, CMS-03C-12 only.
+  if (
+    reason !== null &&
+    operation === 'CMS-03C-12' &&
+    NODE_POINTER_REASONS.has(reason)
+  )
+    return nodePointerDetails(upstream, reason);
   if (status === 409)
     return reason === null ? versionHints(upstream) : { reasonCode: reason };
   if (status === 400 || status === 422) {
