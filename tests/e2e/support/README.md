@@ -119,6 +119,25 @@ layers these on the same world:
 - `s11-dst-gap.ts` (with `s11-dst-gap.test.ts`) — the next real spring-forward
   gap inside the schedule horizon, read from the host's tz data, so the schedule
   spec never types a fixed calendar date that goes stale.
+- `s12-real-governed.ts` (with `s12-real-governed.test.ts`) — the Slice 12 CMS
+  composition boundaries of the real-route API Worker (governed review, taxonomy
+  definition and term actions, pattern placement, definition and update, related
+  content), each the PRODUCTION composition over the local stack. A boundary left
+  out is an unregistered route that the web relays as a 502, so the test pins that
+  every boundary the production Worker composes is served (the launcher serves
+  `cmsEditorial`, and `cmsTemplate` / `cmsLocale` through the routing below). This
+  directory is not type-checked by `pnpm type-check`; guard behaviour with Vitest,
+  not types.
+- `s12-real-template-locale.ts` (with `s12-real-template-locale.test.ts`) — the
+  template (CMS-03C-01 and its context / latest reads) and locale (CMS-03C-04)
+  boundaries. A request whose signed session carries the Slice 11/12 claims
+  (party, person, capabilities) is answered by the PRODUCTION composition; every
+  other request (lane and legacy fixture sessions) keeps its test-owned fixture
+  port (`cms-template-fixture.ts`, `cms-locale-fixture.ts`), so the older
+  real-route specs are untouched. The home is chosen once in `resolveSession` and
+  remembered by Request identity, so rate limit, read and write of one request
+  never mix homes. Without it a signed-in Slice 11/12 session was a fixture 401
+  and the pattern/locale pages redirected to sign-in with no API request.
 
 The Slice 11 bundle-budget spec (`phase-02-slice-11-bundle-budget-real-route.spec.ts`)
 reads every JavaScript response Chrome loads from the production-built workflow

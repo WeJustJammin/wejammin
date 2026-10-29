@@ -25,6 +25,8 @@ import {
   GOVERNED_REVIEWS_API,
   REVIEW_PAGE,
   TAXONOMY_PAGE,
+  activateGovernedViaApi,
+  approveGovernedViaApi,
   assignGovernedViaApi,
   defineTaxonomyViaApi,
   grantReviewerViaApi,
@@ -566,3 +568,307 @@ test('[T6] two people: the owner assigns, the reviewer decides across a lost ans
   });
   expect(owner.browserErrors).toEqual([]);
 });
+
+/*
+ * The term action form (P2-S11-AC-106, P2-S12-AC-271): client state that exists after the person opens an action, so
+ * its chunk (`CmsTaxonomyTermAction`, listed in `CMS_ON_DEMAND_CHUNKS`) is fetched then and never with the page. jsdom
+ * cannot show any of this: it has no module map, no network and no real fetch order (PAT-031). Terms exist only against
+ * an ACTIVE version (FE03:1071), so the vocabulary below is taken through the first-party routes to `active`.
+ */
+const TERM_ACTION_CHUNK = /\/CmsTaxonomyTermAction\.[\w-]+\.m?js$/u;
+const TERM_ACTION_CHUNK_URL =
+  /\/_astro\/CmsTaxonomyTermAction[^/]*\.js(?:\?.*)?$/u;
+const TERM_ACTION_HEADING = '#cms-term-form-heading';
+
+/** A vocabulary whose version is `active`: defined, submitted, assigned, approved and activated through the routes. */
+const activeVocabulary = async (): Promise<DefinedTaxonomyForTerms> => {
+  const subject = await defineTaxonomyViaApi(curator.client, cast.world);
+  const review = await submitGovernedViaApi(curator.client, subject);
+  await completeStepUp(owner.context, cast.world, cast.owner);
+  const assigned = await assignGovernedViaApi(
+    owner.client,
+    review,
+    cast.reviewer.principal.personId,
+  );
+  expect(assigned.status, assigned.text).toBe(201);
+  await completeStepUp(reviewer.context, cast.world, cast.reviewer);
+  const approved = await approveGovernedViaApi(
+    reviewer.client,
+    review.reviewId,
+    'Approved so that term actions exist.',
+  );
+  expect(approved.status, approved.text).toBe(200);
+  await completeStepUp(owner.context, cast.world, cast.owner);
+  const activated = await activateGovernedViaApi(owner.client, review.reviewId);
+  expect(activated.status, activated.text).toBe(200);
+  return subject;
+};
+type DefinedTaxonomyForTerms = Awaited<ReturnType<typeof defineTaxonomyViaApi>>;
+
+const termChunkResponses = (page: Page): string[] => {
+  const seen: string[] = [];
+  page.on('response', (response) => {
+    const { pathname } = new URL(response.url());
+    if (TERM_ACTION_CHUNK.test(pathname)) seen.push(response.url());
+  });
+  return seen;
+};
+
+test('[T7] the term action form: not part of the cold load, fetched once when an action opens, loading state, focus, and a failed chunk that can be tried again', async () => {
+  test.setTimeout(240_000);
+  const subject = await activeVocabulary();
+  const { page } = curator;
+  const path = TAXONOMY_PAGE(subject.taxonomyId);
+  const createButton = page.getByRole('button', { name: 'Create a term' });
+  const heading = page.locator(TERM_ACTION_HEADING);
+
+  await test.step('a. cold load: no form chunk, no contract schema, within the initial-route budget', async () => {
+    for (const viewport of [
+      { width: 1280, height: 720 },
+      { width: 1280, height: 1000 },
+    ]) {
+      await page.setViewportSize(viewport);
+      const scripts = await coldLoad(page, path);
+      const where = `taxonomy edit at ${String(viewport.height)} px`;
+      expect(
+        scripts.filter((script) => TERM_ACTION_CHUNK.test(script.path)),
+        `${where}: the term action form loaded with no interaction`,
+      ).toEqual([]);
+      expect(
+        scripts.filter((script) => ZOD_OR_VALIDATORS.test(script.path)),
+        `${where}: the contract schemas loaded with no interaction`,
+      ).toEqual([]);
+      expect(
+        scripts.reduce((sum, script) => sum + script.gzipBytes, 0),
+        where,
+      ).toBeLessThanOrEqual(BUNDLE_BUDGETS.initialRouteGzipBytes);
+    }
+  });
+
+  await test.step('b. the first open fetches the chunk once, within the lazy budget, and the heading takes focus', async () => {
+    await completeStepUp(curator.context, cast.world, cast.curator);
+    await page.goto(path, { waitUntil: 'networkidle' });
+    await waitForIslands(page);
+    const chunks = termChunkResponses(page);
+    const sizes: number[] = [];
+    page.on('response', (response) => {
+      if (TERM_ACTION_CHUNK.test(new URL(response.url()).pathname))
+        void response.body().then((body) => sizes.push(gzipSync(body).length));
+    });
+    await createButton.click();
+    await expect(heading).toBeFocused();
+    expect(chunks, 'exactly one response for the chunk').toHaveLength(1);
+    await expect.poll(() => sizes.length).toBe(1);
+    expect(sizes[0]).toBeLessThanOrEqual(BUNDLE_BUDGETS.lazyChunkGzipBytes);
+    // Create one term (the form is the thing under test), then open a row action: nothing more is fetched.
+    await page.getByLabel('Term key').fill('tuba');
+    await page.getByLabel('Label 1', { exact: true }).fill('Tuba');
+    await page.getByRole('button', { name: 'Create term' }).click();
+    await expect(
+      page.getByRole('button', { name: 'Rename term tuba' }),
+    ).toBeVisible({ timeout: 30_000 });
+    const scripts = await recordedScripts(page, async () => {
+      await page.getByRole('button', { name: 'Rename term tuba' }).click();
+      await expect(heading).toBeFocused();
+    });
+    expect(scripts, 'a second open fetches no script').toEqual([]);
+  });
+
+  await test.step('c. a slow chunk shows the loading state after 250 ms; focus the person moved stays where it is', async () => {
+    await page.goto(path, { waitUntil: 'networkidle' });
+    await waitForIslands(page);
+    const chunk = await hold(page, '**/_astro/CmsTaxonomyTermAction*.js');
+    await createButton.click();
+    await page.waitForTimeout(400);
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Loading the term form…' }),
+    ).toBeVisible();
+    const renameRow = page.getByRole('button', { name: 'Rename term tuba' });
+    await renameRow.focus();
+    chunk.release();
+    await expect(heading).toBeVisible();
+    await expect(renameRow).toBeFocused();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'The term form is ready.' }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole('status').filter({ hasText: 'Loading the term form…' }),
+    ).toHaveCount(0);
+  });
+
+  await test.step('c2. when the person has not moved, the arrived form takes focus', async () => {
+    await page.goto(path, { waitUntil: 'networkidle' });
+    await waitForIslands(page);
+    const chunk = await hold(page, '**/_astro/CmsTaxonomyTermAction*.js');
+    await createButton.click();
+    await page.waitForTimeout(300);
+    chunk.release();
+    await expect(heading).toBeFocused();
+  });
+
+  await test.step('d. a chunk that cannot be fetched: alert, a retry under the retry marker, focus kept through failed retries', async () => {
+    await page.goto(path, { waitUntil: 'networkidle' });
+    await waitForIslands(page);
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await page.route(TERM_ACTION_CHUNK_URL, (route) => route.abort());
+    const retried: string[] = [];
+    page.on('request', (request) => {
+      if (
+        /wj_retry=\d+/u.test(request.url()) &&
+        request.url().includes('CmsTaxonomyTermAction')
+      )
+        retried.push(request.url());
+    });
+    await createButton.click();
+    const alert = page.getByRole('alert').filter({
+      hasText: 'This form could not be loaded.',
+    });
+    await expect(alert).toBeVisible();
+    await expectNoSeriousAxeFindings(page, 'term action load failure');
+    const tryAgain = page.getByRole('button', {
+      name: 'Try loading this form again',
+    });
+    for (let attempt = 1; attempt <= 2; attempt += 1) {
+      await tryAgain.click();
+      // Still unreachable under every marker: the alert returns and focus is on it, not on the page body.
+      await expect(alert).toBeVisible();
+      await expect(alert).toBeFocused();
+    }
+    expect(
+      retried.length,
+      'each retry asked for the chunk',
+    ).toBeGreaterThanOrEqual(2);
+    await page.unroute(TERM_ACTION_CHUNK_URL);
+    await tryAgain.click();
+    await expect(heading).toBeVisible();
+    await expect(heading).toBeFocused();
+    expect(
+      retried.some((url) => url.includes('wj_retry=')),
+      'a retry carries the marker',
+    ).toBe(true);
+    await expectNoSeriousAxeFindings(page, 'term action form open');
+  });
+
+  await test.step('e. keyboard: Tab to Create a term, Enter; beforeunload is armed only once something is typed', async () => {
+    await page.goto(path, { waitUntil: 'networkidle' });
+    await waitForIslands(page);
+    await tabTo(page, /Create a term/u, 150);
+    await page.keyboard.press('Enter');
+    await expect(heading).toBeFocused();
+    const armed = (): Promise<boolean> =>
+      page.evaluate(() => {
+        const event = new Event('beforeunload', { cancelable: true });
+        window.dispatchEvent(event);
+        return event.defaultPrevented;
+      });
+    expect(await armed(), 'nothing typed: not armed').toBe(false);
+    await page.getByLabel('Term key').fill('horn');
+    expect(await armed(), 'input typed: armed').toBe(true);
+    await page.getByRole('button', { name: 'Cancel' }).click();
+    await expect(page.locator('.cms-term-action')).toHaveCount(0);
+  });
+  // Step d blocked the chunk on purpose: React logs each caught chunk failure with console.error, so those lines are
+  // expected. Nothing else may have been logged, and the shared array is cleared for the next test.
+  expectOnlyInducedChunkErrors(curator.browserErrors, 'CmsTaxonomyTermAction');
+  curator.browserErrors.length = 0;
+});
+
+test('[T8] the panel re-read after a refusal shows the loading state and withholds only the submit control until it answers', async () => {
+  test.setTimeout(240_000);
+  curator.browserErrors.length = 0;
+  const subject = await defineTaxonomyViaApi(curator.client, cast.world);
+  const { page } = curator;
+  await page.unrouteAll({ behavior: 'ignoreErrors' });
+  await page.goto(TAXONOMY_PAGE(subject.taxonomyId), {
+    waitUntil: 'networkidle',
+  });
+  await waitForIslands(page);
+  const panel = page.locator('[data-cms-lazy-region="governed-submit"]');
+  await panel.first().hover();
+  const submit = page.getByRole('button', { name: 'Submit for review' });
+  await expect(submit).toBeVisible();
+  // Make the page stale: another session submits this very version, so the browser's submit is refused (409) and the
+  // panel re-reads the subject.
+  await submitGovernedViaApi(curator.client, subject);
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (
+      request.method() === 'POST' &&
+      request.url().endsWith(GOVERNED_REVIEWS_API)
+    )
+      posts.push(request.url());
+  });
+  let release: () => void = () => undefined;
+  const gate = new Promise<void>((resolve) => {
+    release = resolve;
+  });
+  await page.route(
+    `**/api/v1/cms/taxonomies/${subject.taxonomyId}/versions**`,
+    async (route) => {
+      if (route.request().method() !== 'GET') return route.continue();
+      await gate;
+      return route.continue();
+    },
+  );
+  await submit.click();
+  await expect(page.getByRole('alert').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.waitForTimeout(400);
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Checking the current state…' }),
+  ).toBeVisible();
+  await expect(submit).toHaveAttribute('aria-disabled', 'true');
+  const before = posts.length;
+  // aria-disabled, not natively disabled: a pointer or Enter press still reaches the handler, which must send nothing.
+  await submit.click({ force: true });
+  await page.waitForTimeout(300);
+  expect(
+    posts.length,
+    'a press while the subject is re-read sends nothing',
+  ).toBe(before);
+  release();
+  await expect(
+    page.getByRole('status').filter({ hasText: 'Checking the current state…' }),
+  ).toHaveCount(0);
+  await expect(page.getByText(/Lifecycle:/u)).not.toContainText('Draft');
+  expect(curator.browserErrors).toEqual([]);
+});
+
+/**
+ * Browser errors of a test that blocked a chunk on purpose: at least one line, every line the failed dynamic import of
+ * that chunk (Chrome names the URL), and nothing else.
+ */
+const expectOnlyInducedChunkErrors = (
+  errors: readonly string[],
+  chunk: string,
+): void => {
+  expect(errors.length, 'the blocked chunk was reported').toBeGreaterThan(0);
+  expect(
+    errors.filter(
+      (line) =>
+        !(
+          line.includes('Failed to fetch dynamically imported module') &&
+          line.includes(chunk)
+        ),
+    ),
+    'only the induced chunk failures were logged',
+  ).toEqual([]);
+};
+
+/** The JavaScript responses made while `act` runs. */
+const recordedScripts = async (
+  page: Page,
+  act: () => Promise<void>,
+): Promise<string[]> => {
+  const seen: string[] = [];
+  const onResponse = (response: Response): void => {
+    const { pathname } = new URL(response.url());
+    if (/\.m?js$/u.test(pathname)) seen.push(pathname);
+  };
+  page.on('response', onResponse);
+  await act();
+  await page.waitForLoadState('networkidle');
+  page.off('response', onResponse);
+  return seen;
+};

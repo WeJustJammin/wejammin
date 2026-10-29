@@ -118,6 +118,7 @@ export const CLAIM_GATED_API_FUNCTIONS: Readonly<Record<string, ClaimGate>> = {
   cms_insert_pattern_instance: 'service-role', // CMS-03C-02 pattern placement (DEC-175, DEC-193)
   cms_list_composition_instances: 'service-role', // cmsCompositionInstancesRead (DEC-206)
   cms_list_governed_reviews: 'service-role', // CMS-03C-11 governed review queue (DEC-140)
+  cms_list_pattern_nestable: 'service-role', // cmsPatternNestableRead (DEC-196, DEC-232)
   cms_list_pattern_selector: 'service-role', // CMS-03C-13 pattern selector
   cms_list_taxonomy_selector: 'service-role', // CMS-03C-17 taxonomy selector
   cms_list_taxonomy_terms: 'service-role', // cmsTaxonomyTermsRead (DEC-140)
@@ -269,6 +270,7 @@ const FAMILY_MEMBERS: Readonly<Record<ActorFamily, readonly string[]>> = {
     'cms_insert_pattern_instance',
     'cms_list_composition_instances',
     'cms_list_governed_reviews',
+    'cms_list_pattern_nestable',
     'cms_list_pattern_selector',
     'cms_list_taxonomy_selector',
     'cms_list_taxonomy_terms',

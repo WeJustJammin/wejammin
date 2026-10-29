@@ -18,6 +18,7 @@ import {
   prepareApprovedEntryCast,
   type ApprovedEntryCast,
 } from './support/s11-approved-entry';
+import { seedEntry } from './support/s10-real-api';
 import { signInS11 } from './support/s11-real-browser';
 
 /*
@@ -201,4 +202,93 @@ test('[P2-S11-AC-106] opening the schedule form fetches the Time authority chunk
   scripts.stop();
   expect(publisher.browserErrors).toEqual([]);
   await publisher.context.close();
+});
+
+/*
+ * The entry editor (P2-S11-AC-106, P2-S10 CMS-05): the value validators (`cms-field-value*`) and the save flow are not part of
+ * the cold load of `/entries/:id`; the first save that needs them fetches both, once. `bundle:check` measures this route from
+ * the build (the `CMS entry editor` row); this is the browser's measurement of the same route, the first one.
+ */
+const EDITOR_PAGE = (entryId: string): string =>
+  `/app/cms-content-modeling/entries/${entryId}`;
+const FIELD_VALIDATORS = /\/cms-field-value\.[\w-]+\.m?js$/u;
+const EDITOR_SAVE = /\/cms-editorial-entry-editor-save\.[\w-]+\.m?js$/u;
+
+test('[P2-S11-AC-106] a cold load of the production entry editor fetches no validators and no save flow, and stays within the initial-route threshold', async ({
+  browser,
+}) => {
+  const editor = await seedEntry(
+    cast.authorSession.client,
+    cast.world,
+    'Editor budget entry',
+  );
+  const author = await signInS11(browser, cast.world, cast.author, null);
+  const scripts = recordScripts(author.page);
+  await gotoHydrated(author.page, EDITOR_PAGE(editor.entryId));
+  await author.page.waitForLoadState('networkidle');
+  const initial = await scripts.drain();
+  scripts.stop();
+  expect(
+    initial.some((script) =>
+      /CmsEditorialEntryEditorIsland/u.test(script.path),
+    ),
+    'the editor island is part of the cold load',
+  ).toBe(true);
+  expect(
+    initial.filter(
+      (script) =>
+        FIELD_VALIDATORS.test(script.path) ||
+        EDITOR_SAVE.test(script.path) ||
+        CONTRACT_SCHEMAS.test(script.path),
+    ),
+    'no validator, save-flow or contract-schema chunk is fetched before a save needs it',
+  ).toEqual([]);
+  expect(
+    gzipTotal(initial),
+    `the initial JavaScript of the editor route (${JSON.stringify(initial)})`,
+  ).toBeLessThanOrEqual(BUNDLE_BUDGETS.initialRouteGzipBytes);
+  expect(author.browserErrors).toEqual([]);
+  await author.context.close();
+});
+
+test('[P2-S11-AC-106] the first save of an invalid value fetches the validators and the save flow once, within the lazy threshold, and sends nothing', async ({
+  browser,
+}) => {
+  const editor = await seedEntry(
+    cast.authorSession.client,
+    cast.world,
+    'Editor refusal entry',
+  );
+  const author = await signInS11(browser, cast.world, cast.author, null);
+  const { page } = author;
+  await gotoHydrated(page, EDITOR_PAGE(editor.entryId));
+  const posts: string[] = [];
+  page.on('request', (request) => {
+    if (request.method() === 'POST' && request.url().endsWith('/revisions'))
+      posts.push(request.url());
+  });
+  const scripts = recordScripts(page);
+  await scripts.drain();
+  // Title is required: clearing it is refused by the validators before anything is sent.
+  await page.getByRole('textbox', { name: /^Title/u }).fill('');
+  await page.getByRole('button', { name: 'Save draft' }).click();
+  await expect(page.getByText('This field is required.').first()).toBeVisible({
+    timeout: 30_000,
+  });
+  await page.waitForLoadState('networkidle');
+  const opened = await scripts.drain();
+  scripts.stop();
+  expect(
+    opened.filter((script) => FIELD_VALIDATORS.test(script.path)),
+    `the validators are fetched exactly once: ${JSON.stringify(opened)}`,
+  ).toHaveLength(1);
+  expect(opened.filter((script) => EDITOR_SAVE.test(script.path))).toHaveLength(
+    1,
+  );
+  expect(gzipTotal(opened)).toBeLessThanOrEqual(
+    BUNDLE_BUDGETS.lazyChunkGzipBytes,
+  );
+  expect(posts, 'a locally refused value sends nothing').toEqual([]);
+  expect(author.browserErrors).toEqual([]);
+  await author.context.close();
 });

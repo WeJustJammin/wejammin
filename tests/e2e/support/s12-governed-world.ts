@@ -246,3 +246,37 @@ export const governedEffects = (
     .map(Number);
   return { decisions: decisions ?? 0, assignments: assignments ?? 0 };
 };
+
+/** CMS-03C-07 as the assigned reviewer (fresh step-up): an approval against the review's current version. */
+export const approveGovernedViaApi = async (
+  reviewer: S10Client,
+  reviewId: string,
+  reason: string,
+): Promise<{ status: number; text: string }> => {
+  const current = await readGovernedReview(reviewer, reviewId);
+  const decided = await reviewer.post(
+    `${GOVERNED_REVIEWS_API}/${reviewId}/decision`,
+    {
+      reviewId,
+      decision: 'approve',
+      reason,
+      expectedVersion: current.version,
+    },
+    { ifMatch: current.version },
+  );
+  return { status: decided.status, text: decided.text };
+};
+
+/** CMS-03C-09 as the receipt owner (fresh step-up): activate an approved review's version now. */
+export const activateGovernedViaApi = async (
+  owner: S10Client,
+  reviewId: string,
+): Promise<{ status: number; text: string }> => {
+  const current = await readGovernedReview(owner, reviewId);
+  const activated = await owner.post(
+    `${GOVERNED_REVIEWS_API}/${reviewId}/activation`,
+    { action: 'activate', expectedVersion: current.version },
+    { ifMatch: current.version },
+  );
+  return { status: activated.status, text: activated.text };
+};

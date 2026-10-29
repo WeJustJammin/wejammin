@@ -9,11 +9,11 @@
  * `cms_list_taxonomy_terms` and `cms_list_taxonomy_selector`, which validate it before the actor), so the
  * identity gate is the first thing that can refuse the request. The post-gate outcome for a real
  * caller (a real auth user with no person, named by service_role or not) is the function's own
- * next domain step, read from the live private body. For all fifteen it is NOT_FOUND:
+ * next domain step, read from the live private body. For all sixteen it is NOT_FOUND:
  *   - the taxonomy and pattern commands and reads (`cms_act_taxonomy_term`,
  *     `cms_create_taxonomy_version`, `cms_list_taxonomy_versions`, `cms_list_taxonomy_terms`,
  *     `cms_list_taxonomy_selector`, `cms_create_pattern_version`, `cms_pattern_latest`,
- *     `cms_list_pattern_selector`) resolve the caller's person and owner-party visibility before
+ *     `cms_list_pattern_selector`, `cms_list_pattern_nestable`) resolve the caller's person and owner-party visibility before
  *     any capability check, and a caller with no person cannot read the owner party: concealed
  *     NOT_FOUND;
  *   - the entry and instance operations (`cms_curate_related_content`, `cms_get_related_content`,
@@ -117,6 +117,11 @@ export const CMS_COMPOSITION_FIXTURES: FixtureTable = {
       ifMatch: '1',
       idempotencyKey: IDEMPOTENCY_KEY,
     },
+    real: NOT_FOUND,
+  },
+  // cmsPatternNestableRead (DEC-196, DEC-232): as CMS-03C-13, the actor is resolved first; contentTypeId is the array of 1-64 unique UUIDs.
+  cms_list_pattern_nestable: {
+    request: { contentTypeId: [id(1)] },
     real: NOT_FOUND,
   },
   // CMS-03C-13: the envelope and contentTypeId are checked after the actor, before concealment.

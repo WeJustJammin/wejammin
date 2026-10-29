@@ -240,6 +240,7 @@ describe('on-demand chunks', () => {
         'CmsGovernedAssignmentForm',
         'CmsGovernedDecisionForm',
         'CmsGovernedSubmitForm',
+        'CmsTaxonomyTermAction',
         'cms-editorial-conflict-detail-transport',
         'cms-editorial-conflict-resolve',
         'cms-editorial-entry-create-submit',
