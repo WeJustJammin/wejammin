@@ -78,7 +78,14 @@ export const S12_EVIDENCE_LEDGER_286_296: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'first binding',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_entry_default.sql',
+            title:
+              'the first revision pins the stored default T1b and never the first binding T2 [P2-S12-AC-286]',
+          },
+        ],
       },
       {
         text: 'a client-supplied template operand.',
@@ -92,9 +99,8 @@ export const S12_EVIDENCE_LEDGER_286_296: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "first binding": the first-binding exclusion has no test: every fixture is built with an empty bindings list, so a server that picked the first binding would pass identically',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-287',
@@ -118,13 +124,36 @@ export const S12_EVIDENCE_LEDGER_286_296: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'a nonempty bindings list, another compatible template, or a newer template version must not supply a fallback.',
+        text: 'a nonempty bindings list,',
         citations: [],
+      },
+      {
+        text: 'another compatible template, or a newer template version must not supply a fallback.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_entry_default.sql',
+            title:
+              'a no-default type with another compatible active template (T2) and a newer template version (T1b) of a compatible lineage pins a NULL template on the first revision: neither is a fallback [P2-S12-AC-287]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_entry_default.sql',
+            title:
+              'setup: T2 is active, T1 is superseded by its newer active version T1b of the same lineage [P2-S12-AC-287]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_entry_default.sql',
+            title:
+              'fixture: gx-base is a real active type with NO default and no binding, beside the compatible active templates T2 and T1b [P2-S12-AC-287]',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "a nonempty bindings list, another compatible template, or a newer template version must not suppl...": missing test: pgTAP in supabase/tests/phase_02_slice_12_entry_default_template/ (new 040-null-fallback.sqlinc): a real active no-default type that ALSO has (a) a nonempty template bindings list, (b) another compatible active template and (c) a newer template version of a compatible lineage; create an entry and assert revision template_version_id IS NULL in each case (DEC-202). The edt-null type has none of the three (its only compatible template is absent), so the existing null case does not exclude a fallback.',
+      'Unproven (uncited clause): "a nonempty bindings list,": BOUNDARY (lane gaps-db2): a no-default type with a NONEMPTY template bindings list cannot be created -- the successor request pairs defaultTemplateVersionId with templateBindings (migration 20261002216000) and no template exists at type creation (DEC-123) -- so "a nonempty bindings list must not supply a fallback" has no constructible case.',
   },
   {
     criterion: 'P2-S12-AC-288',
@@ -182,6 +211,12 @@ export const S12_EVIDENCE_LEDGER_286_296: readonly EvidenceLedgerEntry[] = [
             title:
               'EDG-05: a missing or concealed default is 404 NOT_FOUND with empty detail and no template identity',
           },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_entry_default.sql',
+            title:
+              'a real template of another owner is the same 404 NOT_FOUND with no detail [P2-S12-AC-289]',
+          },
         ],
       },
       {
@@ -191,7 +226,7 @@ export const S12_EVIDENCE_LEDGER_286_296: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "the public response is uniform across both cases and leaves no partial create effects.": missing test: pgTAP (new 040-null-default-public.sqlinc, or apispec) that drives the PUBLIC platform_api.cms_create_entry to the 404 branch for (a) an absent and (b) an other-owner default (the gate pointed at a real other-owner template via a guarded read fixture), asserting byte-identical public error bodies for both and before_rows = after_rows (no entry, revision, value, assignment, event, evidence, refcount or idempotency effect). Existing refusal-effects assertions (EDP-R05, EDP-B09) cover the 409 branches only.',
+      'Unproven (uncited clause): "the public response is uniform across both cases and leaves no partial create effects.": BOUNDARY: the public platform_api.cms_create_entry cannot reach the missing or concealed default branch, because no producer stores an absent or other-owner default (the schema compatibility guard and the template registry forbid the state), so neither the public body nor the absence of create effects can be driven. Sound gate-level evidence that does not prove the public clause: phase_02_slice_12_gaps_entry_default.sql calls the DEC-202 gate directly and shows an absent and an other-owner default give the same 404 NOT_FOUND with no detail (equal SQLSTATE, message and DETAIL); its store-count assertion there is blind (taken around an EXCEPTION block that rolls the gate back).',
   },
   {
     criterion: 'P2-S12-AC-290',
@@ -339,12 +374,42 @@ export const S12_EVIDENCE_LEDGER_286_296: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'or scope does not gain replay authority.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql',
+            title:
+              "the same actor reusing a completed key under a second party never receives the first party's response [P2-S12-AC-292]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql',
+            title:
+              "the second party meets the request-fingerprint mismatch (409 IDEMPOTENCY_MISMATCH): the server-resolved acting party is part of the key's binding [P2-S12-AC-292]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_entry_default.sql',
+            title:
+              'the same completed key under another actor never returns the original response body [P2-S12-AC-292]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_entry_default.sql',
+            title:
+              'the key is scoped to the actor: the other actor creates its own distinct entry (a scoped miss, one new entry) and never replays the original [P2-S12-AC-292]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_entry_default.sql',
+            title:
+              'the original owner receipt is byte-identical after the other actor reused its key: no change to the stored response or state [P2-S12-AC-292]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "or scope does not gain replay authority.": missing test: pgTAP in supabase/tests/phase_02_slice_12_entry_default_template/010-policy-lifecycle.sqlinc: reuse the completed key under another acting party / actor (scope) and assert IDEMPOTENCY_MISMATCH (or the existing scoped miss) with no replay body and no change to the original receipt. Only a changed business payload is asserted.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-293',
@@ -502,7 +567,7 @@ export const S12_EVIDENCE_LEDGER_286_296: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "CMS-03B-10 default changes affect only later entry creation.": missing test: pgTAP in supabase/tests/phase_02_slice_12_entry_default_template/ (new 040-default-change.sqlinc): create entry E1 under a type version whose default is D1, activate a successor type version whose default is D2, create E2, and assert E1\'s first revision still pins D1 (or NULL) while E2 pins D2. Existing cases supersede the TEMPLATE but the type default stays S1 (EDP-S03), so no case changes a default. "append, conflict resolution, restore, and locale carry do not initialize or silently rebind histo...": missing tests: pgTAP asserting that conflict resolution (cms_resolve_conflict) and locale-variant carry do not initialize or rebind a revision pin from the current type default after the default changed (append and restore are asserted only in the DEC-201 restore gate: phase_02_slice_12_dec201_restore_template_gate.sql `actual appended draft retains T1 binding` and `real destination retains SOURCE T1`, which guard a different rule and are not cited).',
+      'Unproven (uncited clauses): "CMS-03B-10 default changes affect only later entry creation.": BOUNDARY: no case changes a type default under an entry that already holds revisions (a default change needs a successor schema version with its per-row evidence flow, unbuilt here); the existing cases supersede the template while the type default stays S1 (EDP-S03). "append, conflict resolution, restore, and locale carry do not initialize or silently rebind historical pins from the current default.": BOUNDARY, same cause: the behavioural form needs a default change under an existing entry. Only a source-text proxy exists (phase_02_slice_12_gaps_entry_default.sql scans seven carry writers for default_template_version_id and finds none), which a source scan cannot turn into behaviour; the DEC-201 restore gate assertions guard a different rule.',
   },
   {
     criterion: 'P2-S12-AC-296',

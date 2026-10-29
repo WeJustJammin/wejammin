@@ -69,7 +69,8 @@ const profiles = [
     path: gcc,
     uid: 0,
     mode: 0o100755,
-    sha256: '4063c2a4919a7531523a61397052b6582386df1cbe0e558c3ffb045c0717d3bc',
+    // The host's system compiler: re-pinned 2026-10-29 after the 2026-10-27 pacman upgrade gcc 16.2.1-1 -> 16.2.1-3.
+    sha256: 'b0b49531b313e70aee0254fb5e69b050a781506184e16ebee6ebe68eee94a145',
   },
 ];
 

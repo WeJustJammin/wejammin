@@ -199,11 +199,12 @@ describe('Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-
       });
   });
 
-  it('[P2-S12-AC-076] answers 201 with a Location for a created assignment and 200 for a revoked one', () => {
+  it('[P2-S12-AC-076] answers 201 with an ETag and no Location for a created assignment and 200 for a revoked one (DEC-239)', () => {
     const operation = openApiOperation('CMS-03C-08');
-    expect(Object.keys(operation.responses['201']?.headers ?? {})).toEqual(
-      expect.arrayContaining(['ETag', 'Location']),
+    expect(Object.keys(operation.responses['201']?.headers ?? {})).toContain(
+      'ETag',
     );
+    expect(operation.responses['201']?.headers).not.toHaveProperty('Location');
     expect(Object.keys(operation.responses['200']?.headers ?? {})).toContain(
       'ETag',
     );

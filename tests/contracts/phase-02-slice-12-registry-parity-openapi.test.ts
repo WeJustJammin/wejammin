@@ -150,7 +150,7 @@ describe('[P2-S12-AC-275] OpenAPI inventory', () => {
       })),
   );
 
-  it('[P2-S12-AC-275] documents exactly the 25 browser operations, CMS-03C-01 to CMS-03C-17 and the eight supporting reads', () => {
+  it('[P2-S12-AC-275] documents exactly the 26 browser operations, CMS-03C-01 to CMS-03C-17 and the nine supporting reads', () => {
     const s12 = documented
       .filter(
         ({ id }) => /^CMS-03C-/u.test(id) || SUPPORTING_READ_IDS.includes(id),

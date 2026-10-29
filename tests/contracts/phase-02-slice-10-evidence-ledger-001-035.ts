@@ -180,7 +180,13 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_compare_lineage.sql',
             title:
-              'a non-empty recorded taxonomy list fails closed even when the version exists: no Slice 10 authority resolves it (DEC-141)',
+              "a recorded taxonomy version that exists in the caller's owner scope is resolved by identity and the comparison succeeds (BE03c Receiving obligations from Slice 10 (DEC-141) item 1; P2-S12-AC-242)",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_10_compare_lineage.sql',
+            title:
+              'and the comparison is computed, not a partial answer (BE03c Receiving obligations from Slice 10 (DEC-141) item 1; P2-S12-AC-242)',
           },
           {
             tool: 'pgtap',
@@ -216,7 +222,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_ea_lineage.sql',
             title:
-              'the restored draft records exactly the taxonomy version ids of its source revision',
+              'the restored draft records no taxonomy version id of a vocabulary its source holds no assignment for: the pin resolves, the restore proceeds and DEC-240 does not carry it',
           },
         ],
       },
@@ -716,7 +722,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-10-ev-ea-typed-reasons.apispec.ts',
             title:
-              "CMS-03B-01 typed value reasons through the real stack 'a non-empty taxonomy value' is the typed 422 'taxonomy_source_unavailable' at its field pointer and nothing is written",
+              "CMS-03B-01 typed value reasons through the real stack 'a non-empty taxonomy value naming an …' is the typed 422 'term_unavailable' at its field pointer and nothing is written",
           },
           {
             tool: 'vitest',
@@ -1500,7 +1506,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-10-ev-ea-typed-reasons.apispec.ts',
             title:
-              "CMS-03B-01 typed value reasons through the real stack 'a non-empty taxonomy value' is the typed 422 'taxonomy_source_unavailable' at its field pointer and nothing is written",
+              "CMS-03B-01 typed value reasons through the real stack 'a non-empty taxonomy value naming an …' is the typed 422 'term_unavailable' at its field pointer and nothing is written",
           },
           {
             tool: 'vitest',
@@ -1554,7 +1560,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_value_source_refusal.sql',
             title:
-              'cms_create_revision: tax_nonempty fails closed with the typed taxonomy_source_unavailable reason [BE03b]',
+              'cms_create_revision: tax_nonempty names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]',
           },
           {
             tool: 'pgtap',
@@ -2800,7 +2806,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_value_source_resolve.sql',
             title:
-              'cms_resolve_conflict: tax_nonempty fails closed with the typed taxonomy_source_unavailable reason [BE03b]',
+              'cms_resolve_conflict: tax_nonempty names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]',
           },
           {
             tool: 'pgtap',

@@ -108,14 +108,7 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a separation-of-duties violation (the submitter',
-        citations: [
-          {
-            tool: 'pgtap',
-            file: 'supabase/tests/phase_02_slice_12_governed_decision.sql',
-            title:
-              'an absent, cross-owner, non-member or scope-less caller meets one concealed NOT_FOUND; the readable submitter without an assignment is 403 capability_missing [P2-S12-AC-072]',
-          },
-        ],
+        citations: [],
       },
       {
         text: 'the subject creator) is 403',
@@ -170,7 +163,7 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "the subject creator) is 403": missing test: pgTAP in supabase/tests/phase_02_slice_12_governed_decision/ where the subject creator is a DIFFERENT person from the submitter, holds an effective assignment and the standing cms.reviewer grant, and is refused the decision (separation of duties, BE03c CMS-03C-07). In the decision suite the owner is creator AND submitter of every review (010-setup.sqlinc:3), so the creator case is not separable from the submitter case; the creator case is only asserted for assignment eligibility (governed_assignment/030-refusals.sqlinc el-creator). Further limits of cited clauses: The separation_of_duties branch of the decision RPC is raised by no pgTAP (defense in depth with no public path); the submitter case is asserted by outcome only (the assignment gate refuses with capability_missing).',
+      'Unproven (uncited clauses): "a separation-of-duties violation (the submitter": BOUNDARY: the decision RPC\'s separation_of_duties branch cannot be reached by a submitter: the assignment guard and cms_assign_governed_reviewer refuse the submitter (20261013300600:166-168, 20261014010100:188-192) and the decision RPC answers capability_missing to anyone without an assignment (20261014010200:97-107) before its separation_of_duties check (:165); the reachable refusals are covered by governed_assignment/030-refusals.sqlinc (el-submitter). "the subject creator) is 403": missing test: pgTAP in supabase/tests/phase_02_slice_12_governed_decision/ where the subject creator is a DIFFERENT person from the submitter, holds an effective assignment and the standing cms.reviewer grant, and is refused the decision (separation of duties, BE03c CMS-03C-07). In the decision suite the owner is creator AND submitter of every review (010-setup.sqlinc:3), so the creator case is not separable from the submitter case; the creator case is only asserted for assignment eligibility (governed_assignment/030-refusals.sqlinc el-creator). Further limits of cited clauses: The separation_of_duties branch of the decision RPC is raised by no pgTAP (defense in depth with no public path); the submitter case is asserted by outcome only (the assignment gate refuses with capability_missing).',
   },
   {
     criterion: 'P2-S12-AC-073',
@@ -207,7 +200,20 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'runs in one transaction that takes its locks in the Slice 12 lock order (the subject, dependency and content-type positions before the review row, DEC-157)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_lock_order.sql',
+            title:
+              'CMS-03C-07 takes position 1 (reviewer authority rows), then the subject row (position 3), then its dependency graph and bound content-type versions (positions 3 and 4), then the review row (position 5) [BE03c lock order, DEC-157] [P2-S12-AC-073]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_lock_order.sql',
+            title:
+              'the first FOR UPDATE in the CMS-03C-07 source is the review-row lock itself [P2-S12-AC-073]',
+          },
+        ],
       },
       {
         text: 'and evaluates the ten ordered CMS-03B-06 checks (step-up proof, concealment, `open` state and `If-Match`, dependency and policy-basis check with a committed invalidation, separation of duties, standing capability, slot derivation, append-only decision, review CAS, audit)',
@@ -343,7 +349,20 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and Tier 2',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-07 decision over 50 real approvals including the protected two-slot review: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-073]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts',
+            title:
+              'Slice 12 governed-review latency through the real stack [CMS-03C-07] approval by the assigned reviewer: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-073]',
+          },
+        ],
       },
       {
         text: 'and emits no event.',
@@ -357,9 +376,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "runs in one transaction that takes its locks in the Slice 12 lock order (the subject, dependency ...": missing test: a lock-order oracle (static, as pattern_updates/080-lock-order.sqlinc does for CMS-03C-15) and a race module (tool race) for platform_api.cms_record_governed_decision asserting it takes the subject, dependency and content-type locks before the review row (BE03c "Slice 12 lock order", DEC-157) and that two simultaneous decisions on one review serialize. phase_02_slice_12_governed_authority.race.mjs covers CMS-03C-06 only; the decision pgTAP suite is single-session and has no lock assertion. "and Tier 2": missing test: staging/hosted performance evidence for POST /api/v1/cms/governed-reviews/{reviewId}/decision p95 < 1,200 ms (Tier 2 end-to-end budget); no local assertion can attest an end-to-end p95 (hosted/native evidence, root-owned). Further limits of cited clauses: Only step-up before concealment pins an order among the ten checks; separation_of_duties is unreachable (see AC-072), and the review CAS and the unique reviewer are proven sequentially, with no race.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-074',
@@ -783,7 +801,15 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'protected decision paths',
-        citations: [],
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-protected-decision-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-075] a protected review stays open after the base-slot approval, names the next required slot, and completes with the specialist approval',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: 'and the focused result heading.',
@@ -803,9 +829,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "protected decision paths": missing test: apps/web/src/components/cms-governed-review/CmsGovernedDecisionForm.test.tsx (or the detail island suite) driving the protected (two-decision, specialist-slot) path: a base-slot approval leaves the review open and shows the next required capability, then the specialist approval completes it. Today the protected path is database-only (governed_decision/040-flows.sqlinc "the first protected approval stays open") and the UI tests cover only the specialist_slot_unsatisfiable copy and the risk-class label (CmsGovernedReviewDetail.test.tsx). Further limits of cited clauses: The real-route Playwright spec (T1, T3, T6) drives the ordinary decision path against the real stack and is not cited here.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-076',
@@ -865,7 +890,7 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/worker/src/cms-composition/governed-review-assignment.test.ts',
             title:
-              'CMS-03C-08 contract (BE03c row 170, field matrix 391) answers 201 with Location and the assignment version ETag for a create',
+              'CMS-03C-08 contract (BE03c row 170, field matrix 391) answers 201 with the assignment version ETag and no Location for a create',
           },
           {
             tool: 'vitest',
@@ -894,7 +919,7 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts',
             title:
-              'Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-076] answers 201 with a Location for a created assignment and 200 for a revoked one',
+              'Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-076] answers 201 with an ETag and no Location for a created assignment and 200 for a revoked one (DEC-239)',
           },
           {
             tool: 'vitest',
@@ -1152,7 +1177,20 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'locks the review row',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_lock_order.sql',
+            title:
+              'CMS-03C-08 locks the review row FOR UPDATE (position 5) after the authority rows (position 1) and the revoke-path subject row (position 3) and before it inserts an assignment or locks the assignment row that carries the 16-active limit check [P2-S12-AC-079]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_lock_order.sql',
+            title:
+              'the limit of 16 active assignments is checked under the review-row lock, never before it [P2-S12-AC-079]',
+          },
+        ],
       },
       {
         text: 'leaves the review `version` unchanged on create',
@@ -1245,13 +1283,38 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/worker/src/cms-composition/governed-review-assignment.test.ts',
             title:
-              'CMS-03C-08 contract (BE03c row 170, field matrix 391) answers 201 with Location and the assignment version ETag for a create',
+              'CMS-03C-08 contract (BE03c row 170, field matrix 391) answers 201 with the assignment version ETag and no Location for a create',
           },
         ],
       },
       {
         text: 'and Tier 2',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-08 assignment create over 146 real creations (up to the limit of 16 active): every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-079]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-08 assignment revoke over 20 real revocations on a 16-active review: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-079]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts',
+            title:
+              'Slice 12 governed-review latency through the real stack [CMS-03C-08] assignment of the reviewer: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-079]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed-revoke.apispec.ts',
+            title:
+              'Slice 12 governed-review revoke latency through the real stack [CMS-03C-08] revocation of an assignment on a review carrying up to the limit of 16 active assignments: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-079]',
+          },
+        ],
       },
       {
         text: 'commits the assignment change and its audit record atomically',
@@ -1293,9 +1356,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "locks the review row": missing test: a lock-position source oracle (as pattern_updates/080-lock-order.sqlinc does for CMS-03C-15) or a race module (tool race) for platform_api.cms_assign_governed_reviewer asserting it locks the review row FOR UPDATE at the BE03c Slice 12 lock-order position, and that two simultaneous assignments on one review serialize (the 16-active limit cannot be exceeded). phase_02_slice_12_governed_authority.race.mjs covers CMS-03C-06 only. "and Tier 2": missing test: staging/hosted performance evidence for POST /api/v1/cms/governed-reviews/{reviewId}/assignments p95 < 1,200 ms (Tier 2 end-to-end budget); no local assertion can attest an end-to-end p95 (hosted/native evidence, root-owned). Further limits of cited clauses: Atomically and emits no event are asserted on the create path only.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-080',
@@ -1923,7 +1985,32 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a recheck of the subject hash, the policy basis',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql',
+            title:
+              'activate with a subject hash that differs from the frozen one commits the invalidation: dependency_changed, review version 3, subject back to draft, no event, stored 409 [P2-S12-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql',
+            title:
+              'schedule with a subject hash that differs from the frozen one commits the same invalidation and creates no schedule [P2-S12-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql',
+            title:
+              'activate with a workflow-policy basis that differs from the frozen one commits the same invalidation [P2-S12-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql',
+            title:
+              'schedule with a workflow-policy basis that differs from the frozen one commits the same invalidation and creates no schedule [P2-S12-AC-083]',
+          },
+        ],
       },
       {
         text: 'and every dependency in which a difference commits the invalidation (subject back to `draft`)',
@@ -2030,9 +2117,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "a recheck of the subject hash, the policy basis": missing test: pgTAP in supabase/tests/phase_02_slice_12_governed_activation/060-invalidation.sqlinc (or a sibling fragment): an approved review whose frozen subject content hash differs, and one whose frozen workflow-policy basis differs, are each activated and scheduled and must commit reviews invalidated dependency_changed (version+1), subjects back to draft, no event, stored 409 (BE03c 1479 step 4, 1262; cms_governed_frozen_status 20261013300400 compares hash, policy basis and identities). Today only a superseded content-type DEPENDENCY (060:87-100) and a digest fault in the recheck JOB (governed_recheck/075:69) are exercised.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-084',
@@ -2098,7 +2184,26 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: "the subject kind's owner capability as for CMS-03C-06",
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_governed.sql',
+            title:
+              "a curator is refused on a template review (hidden 404 when unassigned, 403 when assigned) and a designer is refused on a taxonomy review the same way: the capability is the subject kind's own [P2-S12-AC-084]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_governed.sql',
+            title:
+              'controls: the designer activates the template review and the curator activates the taxonomy review [P2-S12-AC-084]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_governed.sql',
+            title:
+              'the owner capability of a subject kind is cms.template_designer for a template or pattern version and cms.taxonomy_curator for a taxonomy version [P2-S12-AC-066]',
+          },
+        ],
       },
       {
         text: 'a hidden or absent review is 404',
@@ -2145,9 +2250,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the subject kind\'s owner capability as for CMS-03C-06": that the owner capability is the SUBJECT KIND\'s own (BE03c 173 and 1644: cms.template_designer for a template or pattern version, cms.taxonomy_curator for a taxonomy version): no pgTAP shows a template designer refused on a taxonomy review or a taxonomy curator refused on a template or pattern review',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-085',
@@ -2246,7 +2350,44 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'Tier 2',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-09 activate over 24 real activations: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-09 schedule over 24 real scheduled acceptances: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-09 retire over 24 real retirements: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-085]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts',
+            title:
+              'Slice 12 governed-review latency through the real stack [CMS-03C-09] activation of an approved review: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-085]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts',
+            title:
+              'Slice 12 governed-review latency through the real stack [CMS-03C-09] scheduling of an approved review: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-085]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts',
+            title:
+              'Slice 12 governed-review latency through the real stack [CMS-03C-09] retirement of an active version: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-085]',
+          },
+        ],
       },
       {
         text: 'commits the switch and the audit record atomically.',
@@ -2268,7 +2409,7 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "runs in one transaction that takes its locks in the Slice 12 lock order": missing test: pgTAP or race module for CMS-03C-09 (supabase/tests/phase_02_slice_12_governed_activation/, or a supabase/tests/**/races module like phase_02_slice_12_governed_authority.race.mjs) that observes the lock positions of BE03c 1501 in order (1 owner-capability grant rows FOR SHARE, 3 subject row + dependency graph + lineage active row FOR UPDATE, 4 content-type version rows FOR SHARE, 5 review row FOR UPDATE, last the lineage advisory lock) during activate and schedule. Today only the LAST position is source-oracled (governed_activation/090-lineage-lock.sqlinc: no row-locking lineage read after the advisory lock) and the advisory lock is shown held after a commit. "Tier 2": DEC-226(1): a declared Tier class never proves a p95 target (BE00:655 defines Tier 2 as an API p95 < 1,200 ms); the end-to-end p95 needs a measurement and AC-279 (the benchmark) is unverified',
+      'Unproven (uncited clause): "runs in one transaction that takes its locks in the Slice 12 lock order": missing test: lock-order proof for CMS-03C-09 activate/schedule at BE03c 1501 positions 1, 3 (subject + graph + lineage active row), 4 (content-type version rows), 5 (review row FOR UPDATE), advisory last. Re-checked 2026-10-29: gaps_lock_sources.sql "CMS-03C-09 locks authority (1), the subject row (3), the graph and bound versions, then the lineage advisory lock last [P2-S12-AC-276]" anchors only authority, subject, graph and the advisory lock - no review-row anchor, no position-4 anchor - and the other literal (governed_activation/090-lineage-lock) checks only the last position; no race module drives activation. Not cited: it does not prove the review row position of the clause.',
   },
   {
     criterion: 'P2-S12-AC-086',
@@ -2438,7 +2579,50 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'or `canonical_source_unavailable` with `details.domain` (422; a template or pattern preflight difference is the `dependency_changed` invalidation)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql',
+            title:
+              'scheduling an approved taxonomy version whose declared role domain has lost its provider is refused canonical_source_unavailable with details.domain = role [P2-S12-AC-210]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql',
+            title:
+              'activating a vocabulary that declares role and instrument is refused canonical_source_unavailable naming instrument, the unbuilt one, although role is built [P2-S12-AC-210]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql',
+            title:
+              'scheduling a vocabulary that declares role and instrument is refused canonical_source_unavailable naming instrument, the unbuilt one, although role is built [P2-S12-AC-210]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql',
+            title:
+              'activating an approved taxonomy version whose declared role domain has lost its provider is refused canonical_source_unavailable with details.domain = role [P2-S12-AC-223]',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-ops-refusals.test.ts',
+            title:
+              "'CMS-03C-09' SQL refusal transport maps canonical_source_unavailable {domain}",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-activation-refusals.test.ts',
+            title:
+              'CMS-03C-09 SQL refusals are mapped by token, whatever the action schedule maps canonical_source_unavailable {domain}',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_activation/060-invalidation.sqlinc',
+            title:
+              'a changed frozen dependency commits the invalidation and answers the dependency_changed refusal envelope for activate and for schedule [P2-S12-AC-084]',
+          },
+        ],
       },
       {
         text: 'a missing or stale MFA (401 `STEP_UP_REQUIRED`, no state change)',
@@ -2594,7 +2778,7 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "`activation_conflict`": missing test: a two-session race (supabase/tests/phase_02_slice_12_governed_activation.race.mjs style, like phase_02_slice_12_governed_authority.race.mjs) in which two activators of one lineage race, the loser answers P0001 activation_conflict with no partial switch and the lineage keeps exactly one active version (BE03c 1326, 1348; cms_activate_governed_subject step 9). governed_activation/090-lineage-lock.sqlinc states the lost-race branch is unreachable in single-session pgTAP. Only the Worker token mapping (activation_conflict -> 409 GOVERNED_REVIEW_VERSION_CONFLICT, ACTIVATION_TABLE) exists. "or `canonical_source_unavailable` with `details.domain` (422; a template or pattern preflight difference is the `dependency_changed` invalidation)": missing test: pgTAP in governed_activation/080-taxonomy.sqlinc: activating a taxonomy version whose declared canonical domain has no built provider answers P0001 canonical_source_unavailable with DETAIL {"domain": ...} (cms_governed_first_unbuilt_domain; 20261014070400 step 8) and changes nothing. The suite only activates a taxonomy that declares the BUILT role domain. Only the Worker mapping row (canonical_source_unavailable {domain} -> 422 with details.domain) exists.',
+      'Unproven (uncited clause): "`activation_conflict`": missing test: a two-session race (supabase/tests/phase_02_slice_12_governed_activation.race.mjs style, like phase_02_slice_12_governed_authority.race.mjs) in which two activators of one lineage race, the loser answers P0001 activation_conflict with no partial switch and the lineage keeps exactly one active version (BE03c 1326, 1348; cms_activate_governed_subject step 9). governed_activation/090-lineage-lock.sqlinc states the lost-race branch is unreachable in single-session pgTAP. Only the Worker token mapping (activation_conflict -> 409 GOVERNED_REVIEW_VERSION_CONFLICT, ACTIVATION_TABLE) exists.',
   },
   {
     criterion: 'P2-S12-AC-087',
@@ -2910,7 +3094,14 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'sorted by label then policy key',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_governed.sql',
+            title:
+              'the served policyBasis is ordered by contentTypeLabel then policyKey (C collation), not by creation order or policy key alone [P2-S12-AC-088]',
+          },
+        ],
       },
       {
         text: '`distinctApprovalCount` 0-8, at most 8 `decisions` (`id`, `decision`, `capability`, `decidedAt`, `mine`, `reason`), at most 32 `assignments`, a nullable `myAssignment`, `subjectState` and at most 6 `permittedNextActions`',
@@ -2989,9 +3180,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "sorted by label then policy key": missing test: a vitest (governed-review-reads.test.ts or contract) or pgTAP (supabase/tests/phase_02_slice_12_governed_reads/020-detail.sqlinc) asserting the ORDER of the served policyBasis array: sorted by contentTypeLabel then policyKey (BE03c GovernedReviewDetailResource, governed-review-read.ts:106). The contract schema does not enforce the order and the pgTAP re-aggregates policyKey order itself (array_agg order by) instead of checking the served order.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-089',
@@ -3250,7 +3440,26 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and the Tier 1 p95 < 750 ms target',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-10 detail of the owner at 36 assignment rows (32 summarized), 2 decisions and a 2-type policy basis: p95 under the Tier 1 target of 750 ms [P2-S12-AC-091]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-10 detail of an assigned reviewer (no assignment summaries): p95 under the Tier 1 target of 750 ms [P2-S12-AC-091]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts',
+            title:
+              'Slice 12 governed-review read latency through the real stack [CMS-03C-10] the detail of a review with 16 active and 20 revoked assignments: p95 under the Tier 1 target of 750 ms [P2-S12-AC-091]',
+          },
+        ],
       },
       {
         text: 'writing no audit or outbox row and emitting no event.',
@@ -3264,9 +3473,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and the Tier 1 p95 < 750 ms target": missing test: a hosted or load measurement (not a unit test) that CMS-03C-10 meets p95 < 750 ms at Tier 1 (BE03c SLO tier 1). Locally only the sloTier tier_1 classification of the registry row is asserted (governed-review-openapi.test.ts registerAgreementTests); no latency is measured. Same treatment as the Tier 2 targets of AC-056.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-092',
@@ -3402,7 +3610,15 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'CMS-03C-10 is consumed by the protected `CmsGovernedReviewDetail` at `/app/cms-content-modeling/definition-reviews/:reviewId`',
-        citations: [],
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-093] opens /definition-reviews/:reviewId and mounts the CmsGovernedReviewDetail evidence for the owner',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: "which renders the subject identity and hash, the policy basis by content type label and policy key, the required, recorded and qualifying counts, the decisions as a semantic list without the decider's label, the caller's own reason, `myAssignment` and, for the owner only, assignment summaries by `reviewerLabel`",
@@ -3586,9 +3802,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "CMS-03C-10 is consumed by the protected `CmsGovernedReviewDetail` at `/app/cms-content-modeling/d...": DEC-226(3): "consumed by <island> at /app/..." needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-094',
@@ -3755,7 +3970,38 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a body and any mutation header',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts',
+            title:
+              'CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a request carrying a media type is 415 with the empty allowlist before any quota',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts',
+            title:
+              'CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a non-zero content-length is 400 INVALID_REQUEST before any quota',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts',
+            title:
+              'CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a transfer-encoding is 400 INVALID_REQUEST before any quota',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts',
+            title:
+              'CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 an Idempotency-Key is 400 INVALID_REQUEST before any quota',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts',
+            title:
+              'CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 an If-Match is 400 INVALID_REQUEST before any quota',
+          },
+        ],
       },
       {
         text: 'refuses an unknown scope, state or kind, a limit outside 1-50 or a structurally malformed cursor with the 400, 409 or 422 the validation matrix declares (DEC-140 cursor fault classes).',
@@ -3835,9 +4081,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "a body and any mutation header": missing test: apps/worker/src/cms-composition/governed-review-reads.test.ts, describe CMS-03C-11 review queue: a queue request that carries a body (415 with the empty allowlist like the CMS-03C-10 case at governed-review-reads.test.ts:90) and one that carries Idempotency-Key or If-Match (400 before any quota, like the detail cases at lines 79-82) must be refused. Only the CMS-03C-10 detail route has these cases today.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-096',
@@ -4035,12 +4280,36 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the Tier 1 p95 < 750 ms target',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-11 first page at the maximum limit of 50 from 111 assigned reviews: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-11 cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts',
+            title:
+              'Slice 12 governed-review read latency through the real stack [CMS-03C-11] first page at the maximum limit of 50 from the reviewer queue: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts',
+            title:
+              'Slice 12 governed-review read latency through the real stack [CMS-03C-11] cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the Tier 1 p95 < 750 ms target": missing test: a hosted or load measurement that CMS-03C-11 meets p95 < 750 ms at Tier 1; locally only the registry sloTier tier_1 classification is asserted. Same treatment as AC-091.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-098',
@@ -4628,7 +4897,26 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: "of the caller's owner scope",
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              "another owner's ACTIVE content type is refused at the /compatibleTypeIds pointer [P2-S12-AC-101]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'one foreign member among owned active types refuses the whole list at /compatibleTypeIds [P2-S12-AC-101]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              "control: the same definition over the caller's own active types is accepted [P2-S12-AC-101]",
+          },
+        ],
       },
       {
         text: '1-32 root nodes whose node `key`s match `^[a-z][a-z0-9_-]{0,63}$`',
@@ -4809,9 +5097,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "of the caller\'s owner scope": missing test: supabase/tests/phase_02_slice_12_pattern_definition/040-graph.sqlinc (after the type-inactive case): a compatibleTypeIds member that is the id of an ACTIVE content type of ANOTHER owner organization must be refused VALIDATION_FAILED at /compatibleTypeIds with no effect (BE03c CMS-03C-12 row 405: "each the id of an active content type of the caller\'s owner scope"; cms_create_pattern_version filters content_type.owner_id = v_party_id, 20261014020400:168-183). Only an inactive same-owner type is refused today.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-102',
@@ -5138,7 +5425,26 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '(target < 2 s)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc',
+            title:
+              'CMS-03C-12 save of a new lineage with a 512-node forest over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc',
+            title:
+              'CMS-03C-12 save of 32 references expanding to 512 nodes over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts',
+            title:
+              'Slice 12 pattern definition latency through the real stack [CMS-03C-12] saving a new lineage with a 512-node forest: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-103] [P2-S12-AC-279]',
+          },
+        ],
       },
       {
         text: 'no-store',
@@ -5153,7 +5459,32 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and the Tier 2 p95 < 1,200 ms target',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc',
+            title:
+              'CMS-03C-12 save of a new lineage with a 512-node forest over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc',
+            title:
+              'CMS-03C-12 successor save (expectedVersion = the parent) of a 512-node forest over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts',
+            title:
+              'Slice 12 pattern definition latency through the real stack [CMS-03C-12] saving 32 references that expand to 512 nodes: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-103] [P2-S12-AC-279]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts',
+            title:
+              'Slice 12 pattern definition latency through the real stack [CMS-03C-12] saving a successor of a 512-node lineage (expectedVersion = the parent): p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-103]',
+          },
+        ],
       },
       {
         text: 'emits no event (activation is CMS-03C-09).',
@@ -5172,9 +5503,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "(target < 2 s)": missing test: a hosted or load measurement that a CMS-03C-12 write completes under the 2 s target (BE03c row 179); no pattern-write benchmark exists locally. "and the Tier 2 p95 < 1,200 ms target": missing test: a hosted or load measurement that CMS-03C-12 meets p95 < 1,200 ms at Tier 2; locally only sloTier tier_2 of the registry row is asserted (phase-02-slice-12-pattern-openapi.test.ts registerAgreementTests).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-104',
@@ -5487,7 +5817,7 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-105',
-    text: "CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`, which builds `PatternVersionRequest` over a native nested ordered list of `PatternNode`s (block nodes chosen from the context's registered block selectors, nested pattern nodes from `CmsPatternSelector`, `compatibleTypeIds` from the context's content type selectors), edits node keys, props and children with explicit add, remove and move-up/move-down controls (no drag-only path), renders the server digest, `nodeCount` and a cycle, depth or node-count refusal inline with the node path, and sends the read version as `expectedVersion` for a successor; verification covers keyboard operation, the inline refusals, the error summary linking to the node and the focused result heading.",
+    text: "CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`, which builds `PatternVersionRequest` over a native nested ordered list of `PatternNode`s (block nodes chosen from the context's registered block selectors, nested pattern nodes from `CmsPatternNestedPicker` over the designer-only `cmsPatternNestableRead` (DEC-196), `compatibleTypeIds` from the context's content type selectors), edits node keys, props and children with explicit add, remove and move-up/move-down controls (no drag-only path), renders the server digest, `nodeCount` and a cycle, depth or node-count refusal inline with the node path, and sends the read version as `expectedVersion` for a successor; verification covers keyboard operation, the inline refusals, the error summary linking to the node and the focused result heading.",
     clauses: [
       {
         text: 'CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`',
@@ -5523,8 +5853,27 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'nested pattern nodes from `CmsPatternSelector`,',
-        citations: [],
+        text: 'nested pattern nodes from `CmsPatternNestedPicker` over the designer-only `cmsPatternNestableRead` (DEC-196),',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.nested-picker.test.tsx',
+            title:
+              'CmsPatternVersionDesigner: the nested-pattern picker reads with the version content types, in step with the checkboxes, and adds a nested node that saves as a lineage reference',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-pattern-designer/CmsPatternNestedPicker.test.tsx',
+            title:
+              'CmsPatternNestedPicker: choosing adds the chosen version through onAdd and resets the choice',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-pattern-designer/CmsPatternNestedPicker.test.tsx',
+            title:
+              'CmsPatternNestedPicker: before and while loading reads the first page of the pattern types and lists each pattern version, never preselected',
+          },
+        ],
       },
       {
         text: "`compatibleTypeIds` from the context's content type selectors)",
@@ -5585,7 +5934,50 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and a cycle, depth or node-count refusal inline with the node path',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.node-pointer.test.tsx',
+            title:
+              'CmsPatternVersionDesigner: a refusal that names its node (DEC-228) links pattern_depth_exceeded to Node 1.1 and renders it inline at that node',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.node-pointer.test.tsx',
+            title:
+              'CmsPatternVersionDesigner: a refusal that names its node (DEC-228) links pattern_nodes_exceeded to Node 1.1 and renders it inline at that node',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.node-pointer.test.tsx',
+            title:
+              'CmsPatternVersionDesigner: a refusal that names its node (DEC-228) links pattern_cycle to Node 1.1 and renders it inline at that node',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_node_pointers.sql',
+            title:
+              'a depth-10 chain is refused at its level 9 node, not at the root [P2-S12-AC-105, DEC-228]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_node_pointers.sql',
+            title:
+              'the 513th literal node in preorder is the offending node [P2-S12-AC-105, DEC-228]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_node_pointers.sql',
+            title:
+              'a successor of child that nests child is refused at the nested reference [P2-S12-AC-105, DEC-228]',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/node-pointer-refusal.test.ts',
+            title:
+              'nodePointerWireDetails (DEC-228) [P2-S12-AC-105] relays the first held pointer of the request blockTree grammar with the fixed code and message',
+          },
+        ],
       },
       {
         text: 'sends the read version as `expectedVersion` for a successor',
@@ -5648,7 +6040,7 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling...": DEC-226(3): "consumed by <island> at /app/..." needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island "nested pattern nodes from `CmsPatternSelector`,": missing implementation and test: the designer cannot add a nested pattern node from CmsPatternSelector (FE03 885, 1110). CmsPatternNestedPicker.tsx is a permanently disabled placeholder (its BOUNDARY comment says the CMS-03C-13 Worker route is not built, which is stale: governed Worker route apps/worker/src/cms-composition/pattern-selector-routes.ts and the web selector exist). Needed: wire CmsPatternSelector into CmsPatternVersionDesigner and a jsdom test in CmsPatternVersionDesigner.test.tsx that choosing a listed pattern adds a nested PatternNode {kind: pattern, patternId, patternVersion} to the built request. Today the test only asserts the disabled nested picker (CmsPatternVersionDesigner.test.tsx "starts with labelled controls, an empty-tree sentence and a disabled nested picker"). "and a cycle, depth or node-count refusal inline with the node path": missing test (and behavior): no test renders a server cycle, depth or node-count refusal WITH A NODE PATH. pattern-designer-refusal-items.ts links the tree and, for a cycle or an inactive/incompatible nested pattern, every nested pattern as a possible cause, and "puts an expansion bound and a block composition rule violation at the tree and names no node" (pattern-designer-refusal-items.test.ts), because CMS-03C-12 names no node. Only the client-side checks name a node (buildPatternVersionRequest "names the duplicate sibling, the deep node and the empty tree"). Either FE03 885 needs an owner reading (server names no node) or the SQL refusal needs a node pointer.',
+      'Unproven (uncited clause): "CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`": missing test (DEC-226 rule 3): page-level behaviour that the protected CmsPatternVersionDesigner is mounted at /app/cms-content-modeling/patterns/new and /app/cms-content-modeling/patterns/:patternKey (Astro render test or real-route Playwright spec). Re-checked 2026-10-29: the gap-wave tests of this criterion (nested picker, node pointers) mount the React island, not the Astro page.',
   },
   {
     criterion: 'P2-S12-AC-106',
@@ -5819,7 +6211,26 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: "of a content type in the caller's owner scope",
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              "another owner's ACTIVE content type answers the concealed NOT_FOUND [P2-S12-AC-107]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'it is exactly the outcome of an absent content type: message, DETAIL and all [P2-S12-AC-107]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'control: an author lists the selector for its own content type [P2-S12-AC-107]',
+          },
+        ],
       },
       {
         text: ', a signed `cursor` of at most 512 characters and a `limit` of 1-50 (default 25)',
@@ -5920,7 +6331,20 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'answers a hidden',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'it is exactly the outcome of an absent content type: message, DETAIL and all [P2-S12-AC-107]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              "another owner's ACTIVE content type answers the concealed NOT_FOUND [P2-S12-AC-107]",
+          },
+        ],
       },
       {
         text: 'or absent content type with the same 404',
@@ -5944,9 +6368,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "of a content type in the caller\'s owner scope": missing test: supabase/tests/phase_02_slice_12_pattern_selector/020-authority.sqlinc (concealment block, next to "an absent content type is 404"): a caller holding cms.author in the owner party who names the id of an ACTIVE content type of ANOTHER owner organization must receive the same P0001:NOT_FOUND as an absent id and no list. Only a non-existent id (unknown-type, a-absent-type) is tested. "answers a hidden": missing test: the same cross-owner case as clause 0 (pattern_selector/020-authority.sqlinc): an ACTIVE content type of another owner organization named by an author of the owner party answers P0001:NOT_FOUND exactly like an absent id, with the same Worker 404; today only an absent id is tested.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-108',
@@ -6230,12 +6653,36 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and the Tier 1 p95 < 750 ms target',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc',
+            title:
+              'CMS-03C-13 first selector page at the maximum limit of 50 from 65 active versions: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc',
+            title:
+              'CMS-03C-13 cursor page of the selector: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts',
+            title:
+              'Slice 12 pattern read latency through the real stack [CMS-03C-13] the selector first page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts',
+            title:
+              'Slice 12 pattern read latency through the real stack [CMS-03C-13] the selector cursor page: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and the Tier 1 p95 < 750 ms target": missing test: a hosted or load measurement that CMS-03C-13 meets p95 < 750 ms at Tier 1; locally only the tier classification of the registry row is asserted.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-110',
@@ -6387,12 +6834,18 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a client restarts from the first page after a cursor conflict.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.selector-restart.test.tsx',
+            title:
+              'the pattern selector after a cursor conflict drops the cursor, reads the first page again, replaces the list and says so',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "a client restarts from the first page after a cursor conflict.": missing implementation and test: no client restarts from the first page after a cursor 409. CmsPatternSelector (apps/web/src/components/cms-composition-instances/CmsPatternSelector.tsx) names a failed or rate-limited Load-more read and keeps the listed patterns (CmsPatternSelector.test.tsx "names a failed or rate-limited page read and keeps the patterns already listed"), but has no cursor-conflict branch that drops the cursor, reloads page one and says so (compare loadGovernedQueuePage "answers a refused cursor by dropping only the cursor and marking the restart"). Needed: a jsdom test in CmsPatternSelector.test.tsx or CmsCompositionPage.insert.test.tsx where the next-page read answers 409 COMPOSITION_VERSION_CONFLICT and the list restarts from the first page.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-111',
@@ -7222,12 +7675,24 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and the Tier 1 p95 < 750 ms target',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc',
+            title:
+              'CMS-03C-14 update diff at the bound of 128 changed paths: p95 under the Tier 1 target of 750 ms [P2-S12-AC-115]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-compose.apispec.ts',
+            title:
+              'Slice 12 linked-update latency through the real stack [CMS-03C-14] the update diff at the bound of 128 changed paths: p95 under the Tier 1 target of 750 ms [P2-S12-AC-115]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and the Tier 1 p95 < 750 ms target": missing test: a hosted or load measurement that CMS-03C-14 meets p95 < 750 ms at Tier 1; locally only the tier classification of the registry row is asserted.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-116',
@@ -7450,7 +7915,20 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'never keeps a diff when degraded',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.degraded-diff.test.tsx',
+            title:
+              'a diff whose later read is degraded drops the held diff when the re-read after a conflict is unavailable, and reads it again on the next open',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.degraded-diff.test.tsx',
+            title:
+              'a diff whose later read is degraded drops the held diff when the re-read after a conflict is unverifiable, and reads it again on the next open',
+          },
+        ],
       },
       {
         text: 'but requires it again',
@@ -7626,9 +8104,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "never keeps a diff when degraded": missing test: apps/web/src/components/cms-composition-instances/CmsCompositionPage.update.test.tsx (or CmsPatternUpdateDiff.test.tsx): when a later read of the page is degraded (unverified/unavailable), a previously held diff is dropped and not shown, and opening the update again re-reads the diff (FE03 Slice 12 states for CmsPatternUpdateDiff). Only "reads the diff again on every open: it is never cached" exists; no case degrades a held diff.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-118',
@@ -8350,7 +8827,32 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and Tier 2',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc',
+            title:
+              'CMS-03C-15 accept of 32 instances in one request over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-121]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc',
+            title:
+              'CMS-03C-15 detach of 32 instances in one request over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-121]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-compose.apispec.ts',
+            title:
+              'Slice 12 linked-update latency through the real stack [CMS-03C-15] accepting 32 instances in one request: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-121]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-compose.apispec.ts',
+            title:
+              'Slice 12 linked-update latency through the real stack [CMS-03C-15] detaching 32 instances in one request: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-121]',
+          },
+        ],
       },
       {
         text: 'appends a row for every adopted or detached instance.',
@@ -8395,9 +8897,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and Tier 2": DEC-226(1): a declared Tier class never proves a p95 target (BE00:655 defines Tier 2 as an API p95 < 1,200 ms); the end-to-end p95 needs a measurement and AC-279 (the benchmark) is unverified',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-122',
@@ -9370,7 +9871,20 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'is 404',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts',
+            title:
+              'CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a hidden or absent taxonomy scope (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts',
+            title:
+              'CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a successor over an absent lineage (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND',
+          },
+        ],
       },
       {
         text: 'a readable taxonomy without the capability is 403',
@@ -9446,9 +9960,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "is 404": missing test: Worker vitest (apps/worker/src/cms-composition/taxonomy-definition-production.test.ts) that feeds the refusal exactly as the SQL raises it and PostgREST relays it, 400 {code:P0001,message:NOT_FOUND}, through the CMS-03C-16 createVersion route and asserts 404 TAXONOMY_NOT_FOUND (BE03c 184, 1418). Existing Worker tests feed the catalog code TAXONOMY_NOT_FOUND (raised by no migration) or the structured {code:NOT_FOUND} HTTP 404 form.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-127',
@@ -9611,7 +10124,20 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'Tier 2',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_taxonomy/040-assert.sqlinc',
+            title:
+              'CMS-03C-16 save with 64 type keys, 64 field keys and 6 domains over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-127]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts',
+            title:
+              'Slice 12 taxonomy latency through the real stack [CMS-03C-16] saving a version with 64 type keys, 64 field keys and 6 domains: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-127]',
+          },
+        ],
       },
       {
         text: 'emits no event (activation is CMS-03C-09).',
@@ -9625,9 +10151,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "Tier 2": DEC-226(1): a declared Tier class never proves a p95 target (BE00:655 defines Tier 2 as an API p95 < 1,200 ms); the end-to-end p95 needs a measurement and AC-279 (the benchmark) is unverified',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-128',
@@ -9682,11 +10207,68 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a hidden or absent taxonomy scope (404)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts',
+            title:
+              'CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a hidden or absent taxonomy scope (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts',
+            title:
+              'CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a successor over an absent lineage (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'hidden-unused: exact refusal message',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'absent-parent: exact refusal message',
+          },
+        ],
       },
       {
         text: 'a stale parent, key or version or an idempotency conflict (409 `TAXONOMY_VERSION_CONFLICT`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts',
+            title:
+              'CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-128] CMS-03C-16 a stale parent version or key (P0001 CONFLICT) is 409 TAXONOMY_VERSION_CONFLICT',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts',
+            title:
+              'CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-128] CMS-03C-16 an idempotency conflict (P0001 IDEMPOTENCY_MISMATCH) is 409 TAXONOMY_VERSION_CONFLICT',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts',
+            title:
+              'CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-128] CMS-03C-16 a create over an existing lineage (P0001 CONFLICT) is 409 TAXONOMY_VERSION_CONFLICT',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'stale-parent: exact refusal message',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'same-owner-duplicate: exact refusal message',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'changed-body: exact refusal message',
+          },
+        ],
       },
       {
         text: 'a non-JSON body (415)',
@@ -9826,9 +10408,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "a hidden or absent taxonomy scope (404)": missing test: Worker vitest (taxonomy-definition-production.test.ts) feeding the real SQL refusal as PostgREST raises it, 400 {code:P0001,message:NOT_FOUND}, through the CMS-03C-16 createVersion route and asserting 404 TAXONOMY_NOT_FOUND (BE03c 1418, 1447). Existing tests feed the Worker catalog code TAXONOMY_NOT_FOUND (never raised by SQL) or the structured form {code:NOT_FOUND} with HTTP 404; the P0001/message form is exercised for CMS-03C-16 by no test. "a stale parent, key or version or an idempotency conflict (409 `TAXONOMY_VERSION_CONFLICT`)": missing test: Worker vitest (apps/worker/src/cms-composition/taxonomy-definition-production.test.ts or taxonomy-definition-provider-fault.test.ts) that feeds the tokens the database REALLY raises for CMS-03C-16 -- PostgREST 400 {code:P0001,message:CONFLICT} and {message:IDEMPOTENCY_MISMATCH} -- through createVersion and asserts status 409 and code TAXONOMY_VERSION_CONFLICT (BE03c lines 1418, 1447). The existing production test only feeds the Worker\'s own output code TAXONOMY_VERSION_CONFLICT, which the SQL never raises; the real-token path for this operation is exercised only for CMS-03C-03 (cms-composition-production-taxonomy-act-tokens.test.ts) and for the reads.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-129',
@@ -9836,7 +10417,15 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'CMS-03C-16 is consumed by the protected `CmsTaxonomyVersionDesigner` at `/app/cms-content-modeling/taxonomies/new` and `/app/cms-content-modeling/taxonomies/:taxonomyId`',
-        citations: [],
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-definition-journeys-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-273] J1 a vocabulary is defined, submitted, assigned, decided and scheduled in the browser by three people, and a second one is activated and retired',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: 'which builds `TaxonomyVersionRequest` from the key, the shape, type-key and field-key allowlists as validated tag lists (grammar `^[a-z][a-z0-9_]{1,63}$`, 1-64 unique) and a checkbox group of the six canonical domains that shows which have a provider ("Checks available" or "Not available yet; this vocabulary cannot activate while declared")',
@@ -9960,9 +10549,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "CMS-03C-16 is consumed by the protected `CmsTaxonomyVersionDesigner` at `/app/cms-content-modelin...": missing test: Playwright real-route spec (new file tests/e2e/phase-02-slice-12-taxonomy-real-route.spec.ts, project chromium-real-route per playwright.s09-real.config.ts) that signs in as a curator, opens /app/cms-content-modeling/taxonomies/new and /app/cms-content-modeling/taxonomies/:taxonomyId and asserts the CmsTaxonomyVersionDesigner form renders (FE03 Page and Route Definitions). The existing evidence reads the Astro files as text; no test renders either route.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-130',
@@ -10460,12 +11048,36 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the Tier 1 p95 < 750 ms target.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_taxonomy/040-assert.sqlinc',
+            title:
+              'CMS-03C-17 first selector page at the maximum limit of 100: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_taxonomy/040-assert.sqlinc',
+            title:
+              'CMS-03C-17 selector cursor page: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts',
+            title:
+              'Slice 12 taxonomy latency through the real stack [CMS-03C-17] the selector at the maximum limit of 100: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts',
+            title:
+              'Slice 12 taxonomy latency through the real stack [CMS-03C-17] the selector cursor page: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the Tier 1 p95 < 750 ms target.": missing test: performance evidence for the "Tier 1 p95 < 750 ms" target of CMS-03C-17 -- a seeded-volume pgTAP bench like supabase/tests/phase_02_slice_12_related_perf/ (or a hosted measurement) that times cms_list_taxonomy_selector on a representative vocabulary set and asserts p95 < 750 ms (BE03c line 185). No performance test of the selector exists; the registry parity test only proves the tier label, buckets and deadline.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-134',
@@ -10597,11 +11209,55 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the read limit (429)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts',
+            title:
+              'CMS-03C-17 selector read limit (429) [P2-S12-AC-134] CMS-03C-17 a denied user bucket is 429 RATE_LIMITED with Retry-After and the bucket ceiling, and the port is never called',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts',
+            title:
+              'CMS-03C-17 selector read limit (429) [P2-S12-AC-134] CMS-03C-17 a denied party bucket is 429 RATE_LIMITED with Retry-After and the bucket ceiling, and the port is never called',
+          },
+        ],
       },
       {
         text: 'a read dependency or deadline (502/503/504)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts',
+            title:
+              'CMS-03C-17 selector production port: read dependency and deadline [P2-S12-AC-134] CMS-03C-17 a provider 5xx is a retryable 503 DEPENDENCY_UNAVAILABLE',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts',
+            title:
+              'CMS-03C-17 selector production port: read dependency and deadline [P2-S12-AC-134] CMS-03C-17 a nonsettling transport is a 504 DEPENDENCY_UNAVAILABLE at the 8,000 ms read ceiling and not before',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-taxonomy-reads.test.ts',
+            title:
+              'CMS-03C-17 production port: platform_api.cms_list_taxonomy_selector (BE03c 179, 1478) answers a witness-wrapped page as a retryable 502',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-taxonomy-reads.test.ts',
+            title:
+              'CMS-03C-17 production port: platform_api.cms_list_taxonomy_selector (BE03c 179, 1478) answers more items than the limit as a retryable 502',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-taxonomy-reads.test.ts',
+            title:
+              'CMS-03C-17 production port: platform_api.cms_list_taxonomy_selector (BE03c 179, 1478) answers an unknown member as a retryable 502',
+          },
+        ],
       },
       {
         text: 'an internal failure (500) to typed ApiError of catalog `cms.03c.taxonomy.v1` with no audit or outbox effect.',
@@ -10621,9 +11277,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the read limit (429)" and "a read dependency or deadline (502/503/504)": missing test: Worker vitest in apps/worker/src/cms-composition/taxonomy-selector-read.test.ts that drives rateLimit to deny and asserts 429 with Retry-After and the typed RATE_LIMITED ApiError of catalog cms.03c.taxonomy.v1 for CMS-03C-17 (the 429 test exists for the write route only), plus a selector production-port case (cms-composition-production-taxonomy-reads.test.ts) for a nonsettling transport at the 8,000 ms ceiling answering 504 DEPENDENCY_UNAVAILABLE and a provider 5xx answering 503 (those two exist only for cmsTaxonomyTermsRead); BE03c lines 1419, 1447.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-135',
@@ -11019,7 +11674,38 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'CMS-03C-18 is executable only by its database-internal caller `cms_act_taxonomy_term` through `cms_term_overlap_check` (',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'cms_canonical_taxonomy_match is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-138]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the only function that references cms_canonical_taxonomy_match is cms_term_overlap_check [P2-S12-AC-138]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the only caller of cms_term_overlap_check is the term write step cms_term_apply_write [P2-S12-AC-138]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the only caller of the term write step is cms_act_taxonomy_term, so the match function is reached only through the CMS-03C-03 command [P2-S12-AC-138]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the overlap check itself is owner-only, so the match function is reachable only inside the term action [P2-S12-AC-138]',
+          },
+        ],
       },
       {
         text: 'PUBLIC, anon, authenticated',
@@ -11034,7 +11720,14 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and every other role have EXECUTE revoked)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'cms_canonical_taxonomy_match is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-138]',
+          },
+        ],
       },
       {
         text: "reads only the domain's named read-only projection and never another shard's store directly (DEC-100)",
@@ -11089,9 +11782,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "CMS-03C-18 is executable only by its database-internal caller `cms_act_taxonomy_term` through `cms_term_overlap_check` (" and "and every other role have EXECUTE revoked)": missing test: pgTAP in supabase/tests/phase_02_slice_12_taxonomy_terms_canonical.sql asserting (a) that the proacl of platform_private.cms_canonical_taxonomy_match(text,jsonb) grants EXECUTE to no role but its owner wejammin_cms_definer (so "every other role" is covered, not only the four named roles; DEC-226 rule 2), and (b) a callers inventory over pg_proc.prosrc: the only function referencing cms_canonical_taxonomy_match is the definer-owned cms_term_overlap_check (called by cms_act_taxonomy_term, 20261014120200:184), while the activation preflight cms_governed_first_unbuilt_domain reads the registry provider_state (BE03c 193, DEC-227).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-139',
@@ -11263,7 +11955,38 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'CMS-03C-18 is consumed only by `cms_act_taxonomy_term` (create, rename and alias) through `cms_term_overlap_check`, never by the taxonomy-version activation preflight, which reads the domain registry',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the only function that references cms_canonical_taxonomy_match is cms_term_overlap_check [P2-S12-AC-138]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the only caller of the term write step is cms_act_taxonomy_term, so the match function is reached only through the CMS-03C-03 command [P2-S12-AC-138]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the activation preflight reads the registry provider_state through the domain registry and never the match function [P2-S12-AC-138]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_terms/090-overlap.sqlinc',
+            title:
+              'with the role provider failing, create, rename and alias are 503 DEPENDENCY_UNAVAILABLE: never a success-shaped body [P2-S12-AC-140]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_terms/090-overlap.sqlinc',
+            title:
+              'a failing provider does not touch an undeclared vocabulary, a deprecate or a merge: they introduce no new string and run no overlap check [P2-S12-AC-141]',
+          },
+        ],
       },
       {
         text: 'verification covers `match`, `no_match` and `source_unavailable` per domain',
@@ -11379,9 +12102,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "CMS-03C-18 is consumed only by `cms_act_taxonomy_term` (create, rename and alias) through `cms_term_overlap_check`, never by the taxonomy-version activation preflight, which reads the domain registry": missing test: a callers inventory (pgTAP in supabase/tests/phase_02_slice_12_taxonomy_terms_canonical.sql) over pg_proc.prosrc asserting that the only function referencing cms_canonical_taxonomy_match is the definer-owned cms_term_overlap_check (reached from cms_act_taxonomy_term create, rename and alias) and that cms_governed_first_unbuilt_domain (20261014070200) reads the domain registry without calling it (BE03c 193, 1533; DEC-227).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-142',

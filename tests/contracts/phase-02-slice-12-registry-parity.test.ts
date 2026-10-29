@@ -30,7 +30,7 @@ const exported = contracts as unknown as Readonly<
 >;
 
 describe('[P2-S12-AC-275] the BE03c Route Registry is the browser inventory', () => {
-  it('[P2-S12-AC-275] lists exactly CMS-03C-01 to CMS-03C-17 and the eight named supporting reads', () => {
+  it('[P2-S12-AC-275] lists exactly CMS-03C-01 to CMS-03C-17 and the nine named supporting reads', () => {
     const ids = specRows.map((row) => row.id);
     expect([...ids].sort()).toEqual(
       [...NUMBERED_IDS, ...SUPPORTING_READ_IDS].sort(),
@@ -215,7 +215,7 @@ describe('[P2-S12-AC-275] the platform route registry holds no other Slice 12 br
       expect(haystack, name).not.toContain(name);
   });
 
-  it('[P2-S12-AC-275] keeps every method and path of the 25 operations unique in the registry', () => {
+  it('[P2-S12-AC-275] keeps every method and path of the 26 operations unique in the registry', () => {
     const keys = platformRegistrySet.routes.map(
       (row) => `${row.method} ${row.path}`,
     );

@@ -309,6 +309,7 @@ describe('Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CM
       path.startsWith('/api/v1/cms/patterns/'),
     );
     expect(paths.sort()).toEqual([
+      '/api/v1/cms/patterns/nestable',
       '/api/v1/cms/patterns/selector',
       '/api/v1/cms/patterns/versions',
       '/api/v1/cms/patterns/{patternKey}',

@@ -4,7 +4,7 @@ import { WRITE_OPERATIONS } from './phase-02-slice-12-registry-parity-writes';
 
 export * from './phase-02-slice-12-registry-parity-types';
 
-/** The 25 BE03c browser operations: CMS-03C-01 to CMS-03C-17 and the eight named supporting reads. */
+/** The 26 BE03c browser operations: CMS-03C-01 to CMS-03C-17 and the nine named supporting reads. */
 export const BROWSER_OPERATIONS: readonly SpecOperation[] = [
   ...WRITE_OPERATIONS,
   ...READ_OPERATIONS,
@@ -26,6 +26,7 @@ export const SUPPORTING_READ_IDS: readonly string[] = [
   'cmsTaxonomyVersionsRead',
   'cmsTaxonomyTermsRead',
   'cmsCompositionInstancesRead',
+  'cmsPatternNestableRead',
 ];
 
 /**

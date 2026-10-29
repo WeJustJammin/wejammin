@@ -5192,8 +5192,6 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             title:
               'control: a newer registry row that still names provider version 1 is the implemented provider and passes [P2-S11-AC-093]',
           },
-          // Slice 12 registered two providers this way (DEC-199 pattern, P2-S12-AC-240 locale): the legacy pin reaches the
-          // newer pattern row, and the contracts registry replaces the seeded reference gate for exactly those categories.
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
@@ -5231,9 +5229,6 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
       {
         text: 'Publication preflight registry (D19): the generic `preflight.reference_gate` serves the categories `pattern`, `taxonomy`, `privacy`, `media`, `route` and `locale`',
         citations: [
-          // The Slice 11 seed rows still serve all six categories with the generic gate (the registry_schema assertions find
-          // all six seeded reference-gate rows). Slice 12 registered newer rows for pattern (DEC-199) and locale
-          // (P2-S12-AC-240), as P2-S11-AC-093 provides, so the current contracts registry serves the other four.
           {
             tool: 'vitest',
             file: 'packages/contracts/src/cms-editorial/preflight.test.ts',
@@ -5267,12 +5262,6 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
             title:
-              'a recorded taxonomy version fails the taxonomy gate [P2-S11-AC-094]',
-          },
-          {
-            tool: 'pgtap',
-            file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
-            title:
               'a held entry fails the privacy gate and the revocation lifecycle check, each with its own registered reason [P2-S11-AC-094]',
           },
           {
@@ -5286,12 +5275,6 @@ export const S11_EVIDENCE_LEDGER_067_100: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
             title:
               'a rich-text internal link fails the route gate [P2-S11-AC-094]',
-          },
-          {
-            tool: 'pgtap',
-            file: 'supabase/tests/phase_02_slice_11_helpers_preflight.sql',
-            title:
-              'the remaining generic taxonomy reference gate carries the exact reference count [P2-S11-AC-094]',
           },
           {
             tool: 'pgtap',

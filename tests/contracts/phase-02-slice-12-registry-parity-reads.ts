@@ -5,7 +5,7 @@ import {
 } from './phase-02-slice-12-registry-parity-types';
 
 /*
- * The thirteen BE03c browser reads (GET): CMS-03C-10, -11, -13, -14, -17 and the eight named
+ * The fourteen BE03c browser reads (GET): CMS-03C-10, -11, -13, -14, -17 and the nine named
  * supporting reads. Each entry cites its Route Registry row. A read has no CSRF, no idempotency
  * key and no If-Match; `request` is null because no request body exists.
  */
@@ -197,6 +197,21 @@ export const READ_OPERATIONS: readonly SpecOperation[] = [
     rateClass: 'cms-pattern-selector-read',
     etag: 'page',
     errors: ALL_ERRORS,
+    params: ['query:contentTypeId*', ...PAGE_QUERY],
+  }),
+  // DEC-196: the designer-only counterpart of CMS-03C-13; Tier 1, 300/600 (not the Tier 2 designer defaults).
+  read({
+    id: 'cmsPatternNestableRead',
+    cite: 'BE03c L184',
+    path: '/api/v1/cms/patterns/nestable',
+    apiRequest: 'PatternNestableApiRequestSchema',
+    success: 'PatternSelectorPageSchema',
+    authClass: 'template_designer',
+    capabilities: DESIGNER,
+    rateClass: 'cms-pattern-nestable-read',
+    etag: 'page',
+    // DEC-232: the matrix 409 cell is "not applicable" (every cursor fault is 400); 422 is the bounds (types, limit).
+    errors: [400, 401, 403, 404, 415, 422, 429, 500, 502, 503, 504],
     params: ['query:contentTypeId*', ...PAGE_QUERY],
   }),
   authorRead({

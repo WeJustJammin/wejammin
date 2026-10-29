@@ -81,7 +81,49 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the subject (`scheduled` with an equal hash)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql',
+            title:
+              'control: every claimed schedule has its review approved at exactly the version the schedule relied on, so only the subject disjuncts can differ [P2-S12-AC-143]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql',
+            title:
+              'a subject that is not `scheduled` at fire, with its review approved at its version, blocks the schedule approval_invalidated: review untouched, subject blocked, no event, one audit record [P2-S12-AC-143]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql',
+            title:
+              'a subject whose content hash differs from the frozen one at fire, with its review approved at its version, blocks the schedule approval_invalidated: review untouched, subject blocked, no event, one audit record [P2-S12-AC-143]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql',
+            title:
+              'control: with the transparent wrapper installed and no fault named the claimed schedule completes, the subject is active, one event [P2-S12-AC-143]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql',
+            title:
+              'control: the pinned reader is restored byte for byte (source, owner, ACL) [P2-S12-AC-143]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql',
+            title:
+              'control: the stored subject hash really equals the frozen hash, so the difference came only from the substituted read [P2-S12-AC-143]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql',
+            title: 'control: no renamed-aside reader remains [P2-S12-AC-143]',
+          },
+        ],
       },
       {
         text: 'the policy basis',
@@ -100,7 +142,14 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the canonical providers',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a declared canonical domain with an unbuilt provider at fire time blocks the schedule canonical_source_unavailable: subject blocked, no event, one audit record [P2-S12-AC-143]',
+          },
+        ],
       },
       {
         text: "rechecking that the schedule creator's designer or curator grant is unrevoked",
@@ -115,12 +164,25 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'has not ended before the fire instant.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a creator grant that ENDED (term passed, not revoked) before the fire instant blocks the schedule activation_authority_ended: subject blocked, review untouched, no event, one audit record [P2-S12-AC-144]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a creator grant that ends after the fire instant still executes the schedule: completed, subject active, one event [P2-S12-AC-144]',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "the subject (`scheduled` with an equal hash)" and "the policy basis" and "the canonical providers" and "has not ended before the fire instant.": missing tests (pgTAP, supabase/tests/phase_02_slice_12_governed_schedule/, new fragment 056-fire-rereads.sqlinc included by phase_02_slice_12_governed_schedule.sql), each driving cms_execute_governed_activation on a real schedule and asserting blocked + subject blocked + no event: (1) the subject is no longer `scheduled` or its content hash differs from the review\'s subject_hash at fire time -> blocked approval_invalidated (execute migration step 3, 20261014070600); (2) the policy basis changes after acceptance -> the documented outcome; (3) a declared canonical domain with an unbuilt provider at fire time (taxonomy_version subject) -> blocked canonical_source_unavailable; (4) the creator\'s designer/curator grant ENDS by valid_through before the fire instant (not revoked) -> blocked activation_authority_ended, and the curator capability for a taxonomy_version subject; BE03c "Scheduled activation" and line 188.',
+      'Unproven (uncited clause): "the policy basis": BOUNDARY (db1): a policy basis that changes between acceptance and fire is unreachable by any lawful state (the frozen basis and the current basis are both immutable); the AC-083 seam (rename-aside wrapper) exists only for the activate and schedule commands, not for cms_execute_governed_activation. No test drives the policy-basis recheck at fire.',
   },
   {
     criterion: 'P2-S12-AC-144',
@@ -151,7 +213,30 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and every other role revoked)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the claim wrapper grants EXECUTE to service_role (the registered sweep principal) and its owner only [P2-S12-AC-144]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the execute wrapper grants EXECUTE to service_role and its owner only [P2-S12-AC-144]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title: 'the private claim function is owner-only [P2-S12-AC-144]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title: 'the private execute function is owner-only [P2-S12-AC-144]',
+          },
+        ],
       },
       {
         text: "re-derives the schedule creator's designer or curator authority at the fire instant by checking revocation",
@@ -166,11 +251,31 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a grant end before the fire instant only',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a creator grant that ENDED (term passed, not revoked) before the fire instant blocks the schedule activation_authority_ended: subject blocked, review untouched, no event, one audit record [P2-S12-AC-144]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a creator grant that ends after the fire instant still executes the schedule: completed, subject active, one event [P2-S12-AC-144]',
+          },
+        ],
       },
       {
         text: 'never rechecking MFA (DEC-120)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a schedule whose creator step-up is older than the 600 s window at fire still completes: MFA is never rechecked [P2-S12-AC-144]',
+          },
+        ],
       },
       {
         text: 'carries only identifiers, versions and correlation data in claims.',
@@ -184,9 +289,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and every other role revoked)" and "a grant end before the fire instant only" and "never rechecking MFA (DEC-120)": missing tests (pgTAP, governed_schedule suite): (1) the creator\'s grant ends by valid_through BEFORE the fire instant (not revoked) -> blocked activation_authority_ended, and a grant that ends AFTER the fire instant still executes (the "only" in "revocation and grant end before the fire instant only"); (2) MFA is never rechecked at fire (DEC-120): a creator whose MFA is stale at fire time still completes; (3) the grant is to the registered scheduled-sweep principal and "every other role": assert `proacl` of both wrappers lists only service_role (plus the owner), not just four named roles. BE03c line 188, DEC-120.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-145',
@@ -327,7 +431,14 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '`canonical_source_unavailable`',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a declared canonical domain with an unbuilt provider at fire time blocks the schedule canonical_source_unavailable: subject blocked, no event, one audit record [P2-S12-AC-143]',
+          },
+        ],
       },
       {
         text: '`retries_exhausted`) making the subject `blocked`',
@@ -381,7 +492,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "`canonical_source_unavailable`" and "with the prior active version intact": missing tests (pgTAP, governed_schedule suite): (1) reasonCode canonical_source_unavailable -- a taxonomy_version schedule whose declared domain has an unbuilt provider at fire time -> blocked canonical_source_unavailable, subject blocked, no event (the closed set has five reasons; four are asserted); (2) "with the prior active version intact": every blocked case asserts the schedule/subject/review but none asserts that the lineage\'s PRIOR active version stays `active` and unchanged -- schedule a v2 over an active v1 and block it, then assert v1 active, hash and activated_at unchanged and no supersession. BE03c "Governed activation" and 03b Schedule execution.',
+      'Unproven (uncited clause): "with the prior active version intact": missing test: a terminal block (any closed reasonCode) leaves the PRIOR active version of the lineage intact (still active, activated_at unchanged, no supersession). Re-checked 2026-10-29: schedule_fire.sql asserts the blocked subject (state blocked, activated_at null) and no event but its fixtures activate no prior version of the lineage, and no other test asserts the prior active version after a fire-time block.',
   },
   {
     criterion: 'P2-S12-AC-147',
@@ -434,11 +545,37 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'atomically as CMS-03B-20 does',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a failure of the final schedule CAS leaves no event, no audit record and no state change: the switch, event, audit and CAS are one atomic unit [P2-S12-AC-147]',
+          },
+        ],
       },
       {
         text: 'verification covers execution with only a revocation and grant-end recheck',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a creator grant that ENDED (term passed, not revoked) before the fire instant blocks the schedule activation_authority_ended: subject blocked, review untouched, no event, one audit record [P2-S12-AC-144]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a schedule whose creator step-up is older than the 600 s window at fire still completes: MFA is never rechecked [P2-S12-AC-144]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_schedule/030-execute.sqlinc',
+            title:
+              'a creator whose designer grant was revoked blocks the schedule activation_authority_ended: schedule blocked, subject blocked (lifecycle 5), review still approved, no event, one audit record [P2-S12-AC-146]',
+          },
+        ],
       },
       {
         text: 'worker lease expiry',
@@ -476,7 +613,38 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'every `reasonCode`',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a creator grant that ENDED (term passed, not revoked) before the fire instant blocks the schedule activation_authority_ended: subject blocked, review untouched, no event, one audit record [P2-S12-AC-144]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a declared canonical domain with an unbuilt provider at fire time blocks the schedule canonical_source_unavailable: subject blocked, no event, one audit record [P2-S12-AC-143]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql',
+            title:
+              'a subject that is no longer scheduled / an approval that is no longer approved at fire blocks the schedule approval_invalidated with no event [P2-S12-AC-143]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_schedule/050-blocked.sqlinc',
+            title:
+              'a changed frozen dependency at fire time blocks the schedule dependency_changed: schedule blocked, subject blocked (lifecycle 5), the review untouched, no event, one audit record [P2-S12-AC-146]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_schedule_ladder/010-ladder.sqlinc',
+            title:
+              'the fourth failure blocks the schedule retries_exhausted (three attempts spent) and the subject blocked, with no event and one audit record [P2-S12-AC-152]',
+          },
+        ],
       },
       {
         text: 'a late run',
@@ -518,9 +686,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "atomically as CMS-03B-20 does" and "verification covers execution with only a revocation and grant-end recheck" and "every `reasonCode`": missing tests: (1) every reasonCode -- canonical_source_unavailable is not driven at fire time (see AC-146); (2) "execution with only a revocation and grant-end recheck" -- a grant that ENDS (valid_through) before the fire instant is not driven, nor is the absence of an MFA recheck (see AC-144); (3) atomicity of the event, the audit record and the schedule CAS: a pgTAP fault injected after the activation switch (inside a rolled-back subtransaction, as 040-retry does for policy evidence) asserting that a failure of the final schedule CAS leaves no event, no audit record and no state change. BE03c "Governed activation" line 188.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-148',
@@ -562,7 +729,37 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'it is the one resolver used by the 03b `locale` preflight provider',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql',
+            title:
+              'the CMS-03C-20 resolver answers the same reason code as the gate for the missing no_fallback field [P2-S12-AC-148]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql',
+            title:
+              'the resolver reports no blocking reason for the same value: gate verdict and resolver agree [P2-S12-AC-148]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql',
+            title:
+              'the resolver answers no_fallback_stale for the same field: one resolver behind the gate and the delivery-side call [P2-S12-AC-148]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the 03b locale preflight gate runs the shared resolver core cms_locale_resolutions, the resolver cms_resolve_locale_field also uses [P2-S12-AC-148]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title: 'the field resolver is the same core [P2-S12-AC-148]',
+          },
+        ],
       },
       {
         text: 'the Shard 04 delivery projection',
@@ -605,7 +802,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "it is the one resolver used by the 03b `locale` preflight provider" and "the Shard 04 delivery projection": missing tests: (1) "the one resolver used by the 03b locale preflight provider": no test ties cms_locale_no_fallback_gate to the resolver core (the editorial read has the function-source assertion at 001-shape-and-grants.sqlinc:37; add the same `pg_get_functiondef(platform_private.cms_locale_no_fallback_gate(...)) ~ cms_locale_resolutions` assertion plus a gate-verdict-equals-resolver case to supabase/tests/phase_02_slice_12_locale_gate/001-gate.sqlinc); (2) "the Shard 04 delivery projection" is a consumer owned by a later shard -- its boundary (typed interface plus sentinel test per the boundary-not-placeholder rule) does not exist, so that sub-clause cannot be proven here and should be split off to the Shard 04 slice. BE03c line 189, 1387-1389.',
+      'Unproven (uncited clause): "the Shard 04 delivery projection": BOUNDARY (db1): the Shard 04 delivery projection is a later shard with no boundary stub, no migration, Worker or SQL function calling the resolver except the gate and the editorial read (gaps_db1_acl.sql "no function calls cms_resolve_locale_field yet ..." only records that absence). Nothing to test until Shard 04 is built.',
   },
   {
     criterion: 'P2-S12-AC-149',
@@ -685,8 +882,36 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     text: 'CMS-03C-20 is executable only by the registered non-browser callers (the publication preflight `locale` provider, the Shard 04 delivery projection and the editorial reads; PUBLIC, anon, authenticated and every other role have EXECUTE revoked), returns identifiers, enums and booleans only and never locale text, and is absent from the browser route inventory and generated OpenAPI.',
     clauses: [
       {
-        text: 'CMS-03C-20 is executable only by the registered non-browser callers (the publication preflight `locale` provider, the Shard 04 delivery projection and the editorial reads',
+        text: 'CMS-03C-20 is executable only by the registered non-browser callers (the publication preflight `locale` provider,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the registered callers of the resolver core are exactly the publication preflight gate, the CMS-03C-04 editorial reader and the field resolver [P2-S12-AC-150]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'CMS-03C-20 cms_resolve_locale_field is executable by its owner only: PUBLIC, anon, authenticated, service_role and every other role are revoked [P2-S12-AC-150]',
+          },
+        ],
+      },
+      {
+        text: 'the Shard 04 delivery projection',
         citations: [],
+      },
+      {
+        text: 'and the editorial reads',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the registered callers of the resolver core are exactly the publication preflight gate, the CMS-03C-04 editorial reader and the field resolver [P2-S12-AC-150]',
+          },
+        ],
       },
       {
         text: 'PUBLIC, anon, authenticated',
@@ -707,7 +932,19 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and every other role have EXECUTE revoked)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'CMS-03C-20 cms_resolve_locale_field is executable by its owner only: PUBLIC, anon, authenticated, service_role and every other role are revoked [P2-S12-AC-150]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title: 'the resolver core is owner-only as well [P2-S12-AC-150]',
+          },
+        ],
       },
       {
         text: 'returns identifiers, enums and booleans only and never locale text',
@@ -752,7 +989,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "CMS-03C-20 is executable only by the registered non-browser callers (the publication preflight `l...": the registered-callers inventory is unproven: no callers inventory over pg_proc.prosrc exists, and the Shard 04 delivery projection, one of the named callers, is not built "and every other role have EXECUTE revoked)": DEC-226(2): PUBLIC, anon and authenticated are checked by name, which does not prove that every other role has EXECUTE revoked; an owner-only ACL assertion (proacl / aclexplode) is missing',
+      'Unproven (uncited clause): "the Shard 04 delivery projection": BOUNDARY (db1): the Shard 04 delivery projection is not built, so it cannot be a registered caller to assert (gaps_db1_acl.sql "no function calls cms_resolve_locale_field yet" records only that no caller exists).',
   },
   {
     criterion: 'P2-S12-AC-151',
@@ -791,7 +1028,38 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'CMS-03C-20 is consumed by the 03b `locale` preflight provider',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql',
+            title:
+              'the CMS-03C-20 resolver answers the same reason code as the gate for the missing no_fallback field [P2-S12-AC-148]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql',
+            title:
+              'the resolver reports no blocking reason for the same value: gate verdict and resolver agree [P2-S12-AC-148]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql',
+            title:
+              'the resolver answers no_fallback_stale for the same field: one resolver behind the gate and the delivery-side call [P2-S12-AC-148]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the 03b locale preflight gate runs the shared resolver core cms_locale_resolutions, the resolver cms_resolve_locale_field also uses [P2-S12-AC-148]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_acl.sql',
+            title:
+              'the registered callers of the resolver core are exactly the publication preflight gate, the CMS-03C-04 editorial reader and the field resolver [P2-S12-AC-150]',
+          },
+        ],
       },
       {
         text: 'by the Shard 04 delivery projection (which adds no resolution rule of its own)',
@@ -889,7 +1157,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "CMS-03C-20 is consumed by the 03b `locale` preflight provider" and "by the Shard 04 delivery projection (which adds no resolution rule of its own)" and "so a field blocked at publication is never resolved differently at delivery": missing test: the Shard 04 delivery projection is not built (no migration, Worker or SQL function calls cms_resolve_locale_field or the shared core cms_locale_resolutions except the 03b gate and cmsLocaleVariantRead), so "consumed by the Shard 04 delivery projection, which adds no resolution rule of its own" and "never resolved differently at delivery" has no test. Layer: pgTAP in the Shard 04 delivery projection suite (a new supabase/tests/phase_04_*delivery* file) asserting the projection output for each localizationMode equals cms_resolve_locale_field for the same entry/locale/field and that the projection function body contains no localization rule of its own (spec BE03c Locale field resolution, DEC-121/138).',
+      'Unproven (uncited clauses): "by the Shard 04 delivery projection (which adds no resolution rule of its own)": BOUNDARY (lane gaps-db1): the Shard 04 delivery projection is not built; acl.sql proves cms_resolve_locale_field has no caller yet (gd_referrers = empty), so there is no consumer to test. Needs the Shard 04 delivery slice: pgTAP asserting the projection output equals cms_resolve_locale_field per localizationMode and that its body holds no localization rule. "so a field blocked at publication is never resolved differently at delivery": BOUNDARY: "never resolved differently at delivery" needs the unbuilt Shard 04 delivery projection (see clause 1). The gate-versus-resolver agreement is cited under clause 0 but proves only the publication side.',
   },
   {
     criterion: 'P2-S12-AC-153',
@@ -1109,7 +1377,36 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     text: 'CMS-03C-21 is executable only by the registered non-browser callers (the Shard 04 delivery projection and the Slice 11 related-content recheck; PUBLIC, anon, authenticated and every other role have EXECUTE revoked), never returns a draft, hidden, unpublished or other-owner target, and never lets a recommendation grant access.',
     clauses: [
       {
-        text: 'CMS-03C-21 is executable only by the registered non-browser callers (the Shard 04 delivery projection and the Slice 11 related-content recheck',
+        text: 'CMS-03C-21 is executable only by the registered non-browser callers',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              'no platform_api wrapper exposes CMS-03C-21: the operation has no browser route [P2-S12-AC-155]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              'CMS-03C-21 cms_related_content_public_targets is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-155]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              "no non-superuser role outside the definer's membership can execute CMS-03C-21: anon, authenticated, service_role, authenticator and every other role are revoked [P2-S12-AC-155]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              'service_role (the sweep principal of other operations) calling CMS-03C-21 is denied 42501 [P2-S12-AC-155]',
+          },
+        ],
+      },
+      {
+        text: '(the Shard 04 delivery projection and the Slice 11 related-content recheck',
         citations: [],
       },
       {
@@ -1131,7 +1428,50 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and every other role have EXECUTE revoked)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              'CMS-03C-21 cms_related_content_public_targets is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-155]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              'the public-eligibility head predicate CMS-03C-21 calls is owner-only as well [P2-S12-AC-155]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              'the derived-candidate reader CMS-03C-21 calls is owner-only as well [P2-S12-AC-155]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              "no non-superuser role outside the definer's membership can execute CMS-03C-21: anon, authenticated, service_role, authenticator and every other role are revoked [P2-S12-AC-155]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              'anon, with schema USAGE, calling CMS-03C-21 is denied 42501 by the function ACL [P2-S12-AC-155]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              'authenticated, with schema USAGE, calling CMS-03C-21 is denied 42501 by the function ACL [P2-S12-AC-155]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql',
+            title:
+              'service_role (the sweep principal of other operations) calling CMS-03C-21 is denied 42501 [P2-S12-AC-155]',
+          },
+        ],
       },
       {
         text: 'never returns a draft, hidden, unpublished or other-owner target',
@@ -1194,7 +1534,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "CMS-03C-21 is executable only by the registered non-browser callers (the Shard 04 delivery projec..." and "and every other role have EXECUTE revoked)": missing test: the two registered callers do not exist yet (no migration, Worker module or SQL function other than tests calls platform_private.cms_related_content_public_targets: the Shard 04 delivery projection is unbuilt and the Slice 11 related-content recheck has no call site). Layer: pgTAP in the delivery-projection suite and in the Slice 11 related-content recheck suite, each calling the RPC as wejammin_cms_definer under the CMS RPC context and asserting a non-error answer, completing the "executable only by the registered non-browser callers" half (spec BE03c Internal service operations, CMS-03C-21).',
+      'Unproven (uncited clause): "(the Shard 04 delivery projection and the Slice 11 related-content recheck": BOUNDARY: neither registered caller exists yet (the Shard 04 delivery projection is a later shard; the Slice 11 related-content recheck does not call CMS-03C-21); the owner-only EXECUTE and the empty caller inventory are cited on the first part, and the callers are proven when their shards land (the AC-150 shape).',
   },
   {
     criterion: 'P2-S12-AC-156',
@@ -1505,7 +1845,38 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'active compiled',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'an active type with an active version and a compiled artifact lists typeKey, activeVersionId and activeVersion equal to the stored rows [P2-S12-AC-159]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'a retired type and an active type with no active version are excluded [P2-S12-AC-159]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'an active compiled type of ANOTHER owner is excluded [P2-S12-AC-159]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'among the gap fixture types only the active, owned, active-version type is listed [P2-S12-AC-159]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'a stored schema artifact can only be compiled, so every listed active version has a compiled artifact [P2-S12-AC-159]',
+          },
+        ],
       },
       {
         text: 'content-type selectors (`id`, `typeKey`, `activeVersionId`, `activeVersion`, `sourceLocale`)',
@@ -1526,7 +1897,44 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'at most 128 owned registered, currently supported block selectors (`blockKey`, `blockVersion`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              '129 owned supported candidates are cut at exactly 128 selectors [P2-S12-AC-159]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'the first selector is the lowest owned supported key: the deprecated, foreign and withdrawn blocks sort before it and are absent [P2-S12-AC-159]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'the cut keeps the first 128 keys in C-collation order, dropping gap.b128 [P2-S12-AC-159]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              "a deprecated block, a withdrawn block and another owner's block are not selectors [P2-S12-AC-159]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'every block selector is exactly {blockKey, blockVersion} [P2-S12-AC-159]',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template.context-bounds.test.ts',
+            title:
+              'TemplateDesignerContext bounds accepts exactly 128 registered block selectors and refuses 129',
+          },
+        ],
       },
       {
         text: 'excluding owner IDs, grant records, renderer refs, manifests and policy internals',
@@ -1586,9 +1994,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "active compiled": missing test: negative selection of the content-type selectors. No pgTAP, apispec or Worker test shows that a draft/retired content type, an active type whose active version has no compiled schema artifact, or a type of another owner with an active compiled version is excluded (the apispec and fix suite only prove the positive row of the caller owner and the absence of the second owner type). Layer: pgTAP in supabase/tests/phase_02_slice_12_template_context.sql (cms_template_context, supabase/migrations/20261013100500_cms_template_context_rpc_flag.sql) asserting contentTypes lists only content_type.state active + version state active + artifact state compiled for the acting party, with typeKey and activeVersion equal to the stored row (spec BE03c cmsTemplateContextRead). "at most 128 owned registered, currently supported block selectors (`blockKey`, `blockVersion`)": missing test: no test of the block selectors at all. The context pgTAP and apispec only parse registeredBlocks as an array; none registers a block version for the owner and checks that exactly the owner registered, currently supported (lifecycle supported, not deprecated/withdrawn) block keys/versions are returned, that another owner block or a non-registered one is absent, or that 129 candidates are cut at 128 (the schema max(128) is also untested at the contract layer: template.test.ts only refuses 65 content types). Layer: pgTAP in supabase/tests/phase_02_slice_12_template_context.sql (block rows via the Slice 12 block fixtures of phase_02_slice_12_template_authority.sql) plus a contract case in packages/contracts/src/cms-composition/template.test.ts refusing 129 registeredBlocks (spec BE03c cmsTemplateContextRead).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-160',
@@ -1782,7 +2189,32 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'with confirmed acting-party membership',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'an invited (unconfirmed) tenure is refused FORBIDDEN [P2-S12-AC-161]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'a tenure in state ended is refused FORBIDDEN [P2-S12-AC-161]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'a confirmed tenure whose end date has passed is refused FORBIDDEN [P2-S12-AC-161]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'control: restoring the confirmed unended tenure restores the read [P2-S12-AC-161]',
+          },
+        ],
       },
       {
         text: 'an active `cms.template_designer` grant',
@@ -1814,7 +2246,38 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'rechecks the actor, acting party, confirmed membership',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'an invited (unconfirmed) tenure is refused FORBIDDEN [P2-S12-AC-161]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'a confirmed tenure whose end date has passed is refused FORBIDDEN [P2-S12-AC-161]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'an acting party the actor is not a member of is refused FORBIDDEN [P2-S12-AC-161]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'an authenticated user with no person binding is refused FORBIDDEN [P2-S12-AC-161]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'an unknown actor is refused UNAUTHENTICATED [P2-S12-AC-161]',
+          },
+        ],
       },
       {
         text: 'current designer grant on every read',
@@ -1896,12 +2359,29 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'never reserves permission for a later write.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'a context read writes no audit, outbox, idempotency or template row [P2-S12-AC-161]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title:
+              'after a successful context read and a grant end, CMS-03C-01 is refused FORBIDDEN: the read reserved no permission [P2-S12-AC-161]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template_context.sql',
+            title: 'the refused POST created no template row [P2-S12-AC-161]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "with confirmed acting-party membership" and "rechecks the actor, acting party, confirmed membership": missing test: DB-level denial for an actor whose confirmed acting-party membership is absent. cms_template_designer_authorized (supabase/migrations/20260927200000_cms_template_authority.sql:228) requires membership_tenure.state = confirmed, an unended tenure, and an active in-window designer grant for the person resolved from the actor, but no pgTAP calls cms_template_context (or the predicate) with a pending/ended tenure, with an acting party the actor is not a member of, or with an unknown actor (only a not-yet-started tenure, phase_02_slice_09_dec119_future_membership.sql, and a revoked grant are exercised). Layer: pgTAP in supabase/tests/phase_02_slice_12_template_context.sql asserting FORBIDDEN for each, with a confirmed-member control (spec BE03c cmsTemplateContextRead). "never reserves permission for a later write.": missing test: no test shows that a context read leaves no permission behind and that a later POST is decided independently. Layer: pgTAP/apispec: (a) cms_template_context writes no row (before/after counts of audit, outbox, idempotency, template tables) and (b) a successful context read, then the designer grant set inactive, then CMS-03C-01 answers 403 TEMPLATE_FORBIDDEN (supabase/tests/phase_02_slice_12_template_authority.sql or tests/postgrest/phase-02-slice-12-template-reads.apispec.ts; spec BE03c cmsTemplateContextRead).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-162',
@@ -1995,12 +2475,18 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the Tier 2 target.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-templates.apispec.ts',
+            title:
+              'Slice 12 template latency through the real stack [cmsTemplateContextRead] the designer context: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-162]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the Tier 2 target.": DEC-226(1): a declared Tier class never proves a p95 target (BE00:655 defines Tier 2 as an API p95 < 1,200 ms); the end-to-end p95 needs a measurement and AC-279 (the benchmark) is unverified',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-163',
@@ -2204,7 +2690,62 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'neither extend the general auth-session resource nor',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource is exactly the six authentication members and names no CMS, designer or capability member',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a capabilities member instead of extending itself',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a cmsCapabilities member instead of extending itself',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a templateDesigner member instead of extending itself',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a cmsTemplateContext member instead of extending itself',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a contentTypes member instead of extending itself',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] authSessionRead and authSessionRefresh answer SessionResource and carry no designer capability, while the context read is the one protected route that does',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context is exactly its two selector members and shares no member with the session resource',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-context-session-isolation.test.ts',
+            title:
+              'GET /api/v1/auth/session beside the CMS-11 picker context [P2-S12-AC-164] never serves a session reader that widens the resource with designer authority',
+          },
+        ],
       },
       {
         text: 'grant designer authority in the browser',
@@ -2220,6 +2761,42 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
             file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.test.tsx',
             title:
               'CMS-11 template designer shell renders a native form with protected selectors and no privileged evidence fields',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member capabilities so it can grant no designer authority in the browser',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member canDefine so it can grant no designer authority in the browser',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member designer so it can grant no designer authority in the browser',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member authenticated so it can grant no designer authority in the browser',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member actingPartyId so it can grant no designer authority in the browser',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts',
+            title:
+              'Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member ownerId so it can grant no designer authority in the browser',
           },
         ],
       },
@@ -2247,7 +2824,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "disable submission with the corresponding sign-in, capability, rate-wait or retry state when the ..." and "verification covers each denied or degraded state": missing test: behavioural test of the two template pages, apps/web/src/pages/app/cms-content-modeling/templates/new.astro and [templateKey].astro. Their sign-in redirect, 403/429/5xx notice, Retry-After handling and the "no form when the context is missing, denied or degraded" rule are inline Astro code covered only by source-text assertions (template-designer-route.test.ts expect(source).toContain(...)) and, for degradation, one Playwright case; new.astro is also not exercised for 403 or 429 at all. Layer: extract the page logic into a loader (as load-pattern-designer-page.ts does for patterns) and add vitest cases for 401 redirect, 403, 429 with Retry-After, 503/504 and a non-strict context, asserting no form view (spec FE03 CmsTemplateDesigner, Slice 12 governed definition surfaces). "neither extend the general auth-session resource nor": missing test: nothing asserts that the general auth-session resource is not extended with designer fields: no contract or OpenAPI case compares AuthSession (apps/web/src/server/auth-platform-api.ts, packages/contracts auth session schema) to forbid a cms.template_designer / designer member (spec FE03 line 1129). Layer: contract test in packages/contracts asserting the session resource keys exclude any CMS designer capability field.',
+      'Unproven (uncited clauses): "disable submission with the corresponding sign-in, capability, rate-wait or retry state when the context is missing, denied or degraded" and "verification covers each denied or degraded state": the template pages read cmsTemplateContextRead on the server (templates/new.astro, templates/[templateKey].astro) and answer a missing session with the 303 sign-in redirect (proved under AC-265) and a 403, 429 (with Retry-After) or 5xx with a notice and no form; no test induces those three answers (the real-route template port is a fixture without a fault seam and the inline Astro logic has only source-text tests).',
   },
   {
     criterion: 'P2-S12-AC-165',
@@ -2750,12 +3327,18 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the Tier 2 target.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-templates.apispec.ts',
+            title:
+              'Slice 12 template latency through the real stack [cmsTemplateLatestRead] the latest version of a 64-slot template: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-168]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the Tier 2 target.": DEC-226(1): a declared Tier class never proves a p95 target (BE00:655 defines Tier 2 as an API p95 < 1,200 ms); the end-to-end p95 needs a measurement and AC-279 (the benchmark) is unverified',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-169',
@@ -2956,7 +3539,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "while server, queue and job callers retry it at most three times at 15 s, 60 s and 300 s with jit...": missing test: the server, queue and job retry policy for this safe read (at most three retries at 15 s, 60 s and 300 s with jitter, DEC-211). No server, queue or job caller of cmsTemplateLatestRead exists and no shared retry-policy constant or helper for the CMS-03C template read exists in apps/worker or packages/contracts (the only 15/60/300 s jitter schedule, apps/worker/src/cms-composition/linked-scan/retry.ts, belongs to the linked-scan job). Layer: vitest in the module that owns the server-side caller (or a contract constant test) asserting 3 retries at 15 s, 60 s, 300 s with jitter for a retryable 502/503/504 of cmsTemplateLatestRead (spec BE03c Operation error coverage, DEC-211).',
+      'Unproven (uncited clause): "while server, queue and job callers retry it at most three times at 15 s, 60 s and 300 s with jitter (DEC-211).": BOUNDARY: no queue or job caller of cmsTemplateLatestRead exists; its two server-side callers (the SSR page templates/[templateKey].astro and the same-origin forwarder pages/api/v1/cms/templates/[templateKey].ts, both through readCmsTemplateDetail) each make one pass-through fetch with no retry, a 15 s / 60 s / 300 s schedule cannot run inside the 15,000 ms request deadline of BE03c 170, and the 15/60/300 s ladder (CONSUMER_RETRY_DELAYS_SECONDS in event-consumers/retry-schedule.ts, BE00 550) is used by queue and job consumers only, none of which reads cmsTemplateLatestRead. Missing spec: a line naming the server, queue or job caller of cmsTemplateLatestRead and the retry-versus-request-deadline rule.',
   },
   {
     criterion: 'P2-S12-AC-170',
@@ -3273,10 +3856,10 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-172',
-    text: "cmsPatternLatestRead accepts only a path `patternKey` that matches the pattern grammar and is not a reserved key (`context`, `versions`, `selector`, `new`), resolves it only within the caller's owner scope, rejects a body, `Idempotency-Key` and `If-Match`, and answers a hidden or absent key with the same 404.",
+    text: "cmsPatternLatestRead accepts only a path `patternKey` that matches the pattern grammar and is not a reserved key (`context`, `versions`, `selector`, `nestable`, `new`), resolves it only within the caller's owner scope, rejects a body, `Idempotency-Key` and `If-Match`, and answers a hidden or absent key with the same 404.",
     clauses: [
       {
-        text: "cmsPatternLatestRead accepts only a path `patternKey` that matches the pattern grammar and is not a reserved key (`context`, `versions`, `selector`, `new`), resolves it only within the caller's owner scope, rejects a body, `Idempotency-Key` and `If-Match`, and answers a hidden or absent key with the same 404.",
+        text: "cmsPatternLatestRead accepts only a path `patternKey` that matches the pattern grammar and is not a reserved key (`context`, `versions`, `selector`, `nestable`, `new`), resolves it only within the caller's owner scope, rejects a body, `Idempotency-Key` and `If-Match`, and answers a hidden or absent key with the same 404.",
         citations: [
           {
             tool: 'vitest',
@@ -3447,7 +4030,26 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: "resolves the key only within that scope so that another owner's identical key is the same 404 as an unused key",
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'a key another owner holds is exactly the outcome of an unused key [P2-S12-AC-173]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'with a shared key each organization reads its OWN lineage: the owner its active pattern, the other organization its own row [P2-S12-AC-173]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'control: the key held only by the other organization is readable by that organization and hidden from the owner [P2-S12-AC-173]',
+          },
+        ],
       },
       {
         text: 'serializes no owner or authority field.',
@@ -3515,9 +4117,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "resolves the key only within that scope so that another owner\'s identical key is the same 404 as ...": no pgTAP or apispec case has a member of owner B, acting for B, read a pattern key held only by owner A (equal to an unused key), and no shared-key case lets each owner read its own lineage; only the hidden-owner non-member case exists',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-174',
@@ -3656,12 +4257,18 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the Tier 2 target.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts',
+            title:
+              'Slice 12 pattern read latency through the real stack [cmsPatternLatestRead] the latest version of a 512-node lineage: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-174]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the Tier 2 target.": DEC-226(1): a declared Tier class never proves a p95 target (BE00:655 defines Tier 2 as an API p95 < 1,200 ms); the end-to-end p95 needs a measurement and AC-279 (the benchmark) is unverified',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-175',
@@ -3904,7 +4511,15 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'cmsPatternLatestRead is consumed by the protected `CmsPatternVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/patterns/:patternKey`',
-        citations: [],
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-105] [P2-S12-AC-176] opens /patterns/:patternKey and mounts the designer and the review panel from the latest read',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: "which address the owner's latest version by key, prefill the node list from it, send the read version as `expectedVersion` for a successor and show the version's lifecycle",
@@ -4069,12 +4684,18 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
             title:
               'readLatestPatternVersion never reads a malformed or reserved key',
           },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-176] a saved pattern is a 403 notice, not a form, for a session without the template designer capability',
+            project: 'real-route-chrome',
+          },
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "cmsPatternLatestRead is consumed by the protected `CmsPatternVersionDesigner` and `CmsGovernedRev...": DEC-226(3): "consumed by <island> at /app/..." needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island; no route-level (real-route Playwright or Astro render) test of /app/cms-content-modeling/patterns/:patternKey exists, and the saved-pattern 403 notice has no case of its own',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-177',
@@ -4411,7 +5032,19 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a caller without the capability is 403',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-definition-versions.refusals.test.ts',
+            title:
+              'cmsTaxonomyVersionsRead capability refusal at the production boundary answers the private capability_missing refusal as 403 TAXONOMY_FORBIDDEN with reasonCode capability_missing',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'read-not-curator: exact refusal message',
+          },
+        ],
       },
       {
         text: 'a hidden or absent vocabulary is 404',
@@ -4508,9 +5141,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "a caller without the capability is 403": no Worker test answers 403 for cmsTaxonomyVersionsRead: a session without cms.taxonomy_curator and the raised capability_missing token on the versions-read path are untested at the Worker (the same gap as AC-181)',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-180',
@@ -4613,12 +5245,18 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the Tier 1 p95 < 750 ms target.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts',
+            title:
+              'Slice 12 taxonomy latency through the real stack [cmsTaxonomyVersionsRead] a lineage of 50 versions: p95 under the Tier 1 target of 750 ms [P2-S12-AC-180]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the Tier 1 p95 < 750 ms target.": DEC-226(1): a declared Tier class never proves a p95 target (BE00:655 defines Tier 1 as an API p95 < 750 ms); the end-to-end p95 needs a measurement and AC-279 (the benchmark) is unverified',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-181',
@@ -4655,7 +5293,19 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a missing curator capability (403 `TAXONOMY_FORBIDDEN`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/taxonomy-definition-versions.refusals.test.ts',
+            title:
+              'cmsTaxonomyVersionsRead capability refusal at the production boundary answers the private capability_missing refusal as 403 TAXONOMY_FORBIDDEN with reasonCode capability_missing',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'read-not-curator: exact refusal message',
+          },
+        ],
       },
       {
         text: 'a hidden or absent vocabulary (404 `TAXONOMY_NOT_FOUND`), an unsupported body if sent (415)',
@@ -4746,7 +5396,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "a missing curator capability (403 `TAXONOMY_FORBIDDEN`)" and "a query-bound failure (422)": missing tests for two parts of the clause: (a) 403 TAXONOMY_FORBIDDEN on the Worker versions-read path from the private RPC refusal capability_missing -- apps/worker/src/cms-composition/taxonomy-definition-versions.test.ts must drive createTaxonomyProductionHarness with fetchImpl answering { code: P0001, message: capability_missing } at taxonomyDefinitionVersionsPath() and assert status 403, code TAXONOMY_FORBIDDEN, details.reasonCode capability_missing (the existing capability tests are CMS-03C-16 write only; the RPC refusal itself is pgTAP-proven in supabase/tests/phase_02_slice_12_taxonomy_definition/070-versions-read.sqlinc); (b) the 422 member: a versions read has no query or body bound that can produce 422 and no test drives one, it is only declared in the generated matrix (BE03c 1447, 1423 "query bounds")',
+      'Unproven (uncited clause): "a query-bound failure (422)": BOUNDARY (lane gaps-db2): the versions read takes only a path id (TaxonomyVersionsApiRequestSchema is {taxonomyId}, BE03c 171); it has no query or body bound that can produce 422, so no test can drive a real 422 for this operation. The 422 member is declared in the shared route matrix only. Needs a spec decision (drop 422 from the operation) or a bound.',
   },
   {
     criterion: 'P2-S12-AC-182',
@@ -4754,7 +5404,15 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'cmsTaxonomyVersionsRead is consumed by the protected `CmsTaxonomyVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/taxonomies/:taxonomyId`',
-        citations: [],
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-129] [P2-S12-AC-182] opens /taxonomies/:taxonomyId and mounts the designer and the review panel from the versions read',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: "which read the vocabulary's versions (newest first, at most 50) to show each version's lifecycle, review summary and permitted actions",
@@ -4876,9 +5534,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "cmsTaxonomyVersionsRead is consumed by the protected `CmsTaxonomyVersionDesigner` and `CmsGoverne...": DEC-226(3): "consumed by <island> at /app/..." needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island; no real-route or render test of the taxonomy pages exists (the source-text page test was refuted)',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-183',
@@ -5326,12 +5983,25 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the Tier 1 p95 < 750 ms target.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts',
+            title:
+              'Slice 12 taxonomy latency through the real stack [cmsTaxonomyTermsRead] first page of 50 terms: p95 under the Tier 1 target of 750 ms [P2-S12-AC-186]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts',
+            title:
+              'Slice 12 taxonomy latency through the real stack [cmsTaxonomyTermsRead] cursor page of 50 terms: p95 under the Tier 1 target of 750 ms [P2-S12-AC-186]',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "acting context" and "the Tier 1 p95 < 750 ms target.": missing test: pgTAP, supabase/tests/phase_02_slice_12_taxonomy_terms_reads/030-terms-read-pages.sqlinc, must replay the page-1 signed cursor as a different actor and as a different acting party (same vocabulary, limit and filter) and assert P0001:CONFLICT, because the query hash is built from actorId and actingPartyId (migration 20261014120600 line 95-96) but every existing binding case (limit, filter, vocabulary, forged key, forged expiry) varies a query member only; spec BE03c 167 "bound to the query and acting context"',
+      'Unproven (uncited clause): "acting context": BOUNDARY: the actor member of the cursor binding is shown (a page-1 cursor replayed by another actor of the same party is CONFLICT), but the acting-party member is unreachable: the owner-scope concealment answers NOT_FOUND before the cursor hash is compared (migration 20261014120600:95-96; lane BOUNDARY B1).',
   },
   {
     criterion: 'P2-S12-AC-187',
@@ -5368,7 +6038,20 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'expired',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_terms_cursor.sql',
+            title:
+              'a correctly signed cursor whose expiresAt has elapsed is refused 409 CONFLICT [P2-S12-AC-187]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_terms_cursor.sql',
+            title:
+              'a cursor expiring at the current second is already expired (the boundary is exclusive) [P2-S12-AC-187]',
+          },
+        ],
       },
       {
         text: 'tampered or foreign-bound cursor with 409 (the client restarts from the first page), and maps session, capability, concealment, read-limit, read-dependency and internal failures to typed ApiError of catalog `cms.03c.taxonomy.v1` with no audit or outbox effect.',
@@ -5501,9 +6184,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "expired": missing test: pgTAP, supabase/tests/phase_02_slice_12_taxonomy_terms_reads/030-terms-read-pages.sqlinc, must replay a correctly signed cursor whose expiresAt has elapsed (re-seal an envelope with a past expiresAt, as supabase/tests/phase_02_slice_10_cursor_signature.sql section 5 does for CMS-03B-13) and assert P0001:CONFLICT; the existing 409 case forges expiresAt to a far-future value (signature failure), so a naturally expired cursor is not proven for this operation; spec BE03c 167/DEC-140 "expired, tampered or foreign-bound cursor with 409"',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-188',
@@ -5673,7 +6355,32 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '`cms_pattern_versions.pattern_key`',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/010-storage-and-registry.sqlinc',
+            title:
+              'the table CHECK cms_pattern_versions_pattern_key_not_reserved refuses the raw keys context, versions and new [P2-S12-AC-189]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/010-storage-and-registry.sqlinc',
+            title:
+              'control: the fourth reserved key selector is refused by the same CHECK [P2-S12-AC-189]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/010-storage-and-registry.sqlinc',
+            title:
+              'control: a non-reserved raw key inserts, so the CHECK discriminates by key [P2-S12-AC-189]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the table CHECK names the reserved pattern route keys context, versions, selector and new, and no other key but the DEC-232 nestable [P2-S12-AC-189]',
+          },
+        ],
       },
       {
         text: 'so that a reserved key is 422 `TEMPLATE_VALIDATION_FAILED` (or `COMPOSITION_VALIDATION_FAILED`) at `/templateKey` or `/patternKey` with `details.reasonCode` `key_reserved` and can never resolve as the `{templateKey}` or `{patternKey}` of a latest read.',
@@ -5809,9 +6516,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "`cms_pattern_versions.pattern_key`": missing test: pgTAP, supabase/tests/phase_02_slice_12_pattern_definition/070-storage.sqlinc (beside line 71-74), must prove the SQL CHECK cms_pattern_versions_pattern_key_not_reserved refuses ALL four reserved pattern keys: either assert pg_get_constraintdef equals CHECK ((pattern_key <> ALL (ARRAY[context, versions, selector, new]))) or raw-insert context, versions and new as the existing case does for selector (the existing case, "the table rejects a reserved route key [P2-S12-AC-100]", inserts only selector; the RPC path covers all four but is not the CHECK); also no template-latest test drives the reserved key context through the Worker route (the real-stack case loops versions and new only), spec BE03c E13',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-190',
@@ -5874,17 +6580,150 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: "every lookup by key (the latest reads, parents and selectors) is scoped to the caller's owner party",
+        text: 'every lookup by key (the latest reads, parents',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/020-cross-owner.sqlinc',
+            title:
+              "B's successor of a key only A holds is the complete NOT_FOUND [P2-S12-AC-190]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/020-cross-owner.sqlinc',
+            title:
+              'both latest reads are the complete NOT_FOUND [P2-S12-AC-190]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/020-cross-owner.sqlinc',
+            title:
+              "control: B's latest read of the shared key returns B's own lineage, never A's [P2-S12-AC-190]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'with a shared key each organization reads its OWN lineage: the owner its active pattern, the other organization its own row [P2-S12-AC-173]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_fix_template_per_owner.sql',
+            title:
+              'a key held by another owner is indistinguishable from an unused key on a successor [P2-S12-AC-006] [P2-S12-AC-190]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'other-owner-parent: exact refusal message',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-template-reads.apispec.ts',
+            title:
+              'cmsTemplateLatestRead through the real stack [P2-S12-AC-166] [P2-S12-AC-167] a key only another owner holds is the same 404 as an unused key, and each owner reads its own definition of a shared key',
+          },
+        ],
+      },
+      {
+        text: 'selectors)',
         citations: [],
       },
       {
+        text: "is scoped to the caller's owner party",
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/020-cross-owner.sqlinc',
+            title:
+              "B's successor of a key only A holds is the complete NOT_FOUND [P2-S12-AC-190]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/020-cross-owner.sqlinc',
+            title:
+              'both latest reads are the complete NOT_FOUND [P2-S12-AC-190]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/020-cross-owner.sqlinc',
+            title:
+              "control: B's latest read of the shared key returns B's own lineage, never A's [P2-S12-AC-190]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'with a shared key each organization reads its OWN lineage: the owner its active pattern, the other organization its own row [P2-S12-AC-173]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_fix_template_per_owner.sql',
+            title:
+              'a key held by another owner is indistinguishable from an unused key on a successor [P2-S12-AC-006] [P2-S12-AC-190]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'other-owner-parent: exact refusal message',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-template-reads.apispec.ts',
+            title:
+              'cmsTemplateLatestRead through the real stack [P2-S12-AC-166] [P2-S12-AC-167] a key only another owner holds is the same 404 as an unused key, and each owner reads its own definition of a shared key',
+          },
+        ],
+      },
+      {
         text: 'a key held by another owner is indistinguishable from an unused key, so that no cross-owner existence signal such as a 409 is possible.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/020-cross-owner.sqlinc',
+            title:
+              'a successor of a key held by another owner answers byte-identically to a successor of an unused key (SQLSTATE, message, DETAIL) [P2-S12-AC-190]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/020-cross-owner.sqlinc',
+            title:
+              "B's latest read of a key only A holds is byte-identical to a latest read of an unused key [P2-S12-AC-190]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/020-cross-owner.sqlinc',
+            title:
+              "B's first version of a key A holds succeeds with its own patternId, owner and version 1: a key is unique per owner, never a 409 [P2-S12-AC-190]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql',
+            title:
+              'a key another owner holds is exactly the outcome of an unused key [P2-S12-AC-173]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_fix_template_per_owner.sql',
+            title:
+              "owner B first-creating a key owner A holds succeeds, so no 409 leaks A's key [P2-S12-AC-190]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition/030-create.sqlinc',
+            title: 'per-owner key yields distinct lineages',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition.sql',
+            title: 'other-owner-same-key: ordinary authorized create succeeds',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "every lookup by key (the latest reads, parents and selectors) is scoped to the caller\'s owner party" and "a key held by another owner is indistinguishable from an unused key, so that no cross-owner exist...": missing tests for the PATTERN half of "every lookup by key is scoped to the caller\'s owner party ... no cross-owner existence signal": pgTAP in supabase/tests/phase_02_slice_12_pattern_definition/020-create-successor.sqlinc must (a) have a second real owner (not a non-member of the first owner: the existing hidden-owner and latest-hidden-owner cases only act in the first owner\'s scope) create the first version of a pattern key the first owner holds and assert success with its own patternId, and (b) request that second owner\'s successor of, and cmsPatternLatestRead of, a key only the first owner holds and assert the same complete NOT_FOUND as for an unused key; spec BE03c E14 "indistinguishable from an unused key"',
+      'Unproven (uncited clause): "selectors)": BOUNDARY: the owner predicate of cms_list_pattern_selector (and the taxonomy selector) is not isolated by any test; an ACTIVE foreign row is not producible in the fixtures, and the AC-108 control uses a draft clone that the active filter excludes anyway.',
   },
   {
     criterion: 'P2-S12-AC-191',
@@ -6004,12 +6843,35 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: "a partial unique index on each lineage id `WHERE state = 'active'` allows one active version per lineage.",
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_fix_template_per_owner.sql',
+            title:
+              'at most one active version per lineage: partial UNIQUE (template_id) WHERE state = active [P2-S12-AC-191]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_fix_template_per_owner.sql',
+            title:
+              'a second active version in the same lineage violates the partial unique index [P2-S12-AC-191]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_taxonomy_definition/080-schema-guards.sqlinc',
+            title: 'lineage: at most one active version per vocabulary',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the pattern lineage index is UNIQUE on (pattern_id) and PARTIAL WHERE state = active: one active version per lineage [P2-S12-AC-191]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "a partial unique index on each lineage id `WHERE state = \'active\'` allows one active version per ...": missing test: pgTAP, supabase/tests/phase_02_slice_12_pattern_definition/070-storage.sqlinc (beside line 154-157), must prove the PATTERN partial unique index is partial on state = active: either assert pg_indexes.indexdef for cms_pattern_versions_active_lineage_idx matches unique (pattern_id) where state = active (as the template and taxonomy suites do) or raw-insert a second active row in one lineage and assert 23505; the existing assertion only checks that the index and the lineage-version key exist, and the populated-lineage.sql replay copies the DDL rather than asserting the shipped index; spec BE03c lineage ids "a partial unique index on each lineage id WHERE state = active"',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-192',
@@ -6195,7 +7057,32 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'then numeric `blockVersion`',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_digest.sql',
+            title:
+              'the pattern digest folds one key at versions 1, 2 and 10 in numeric order, not text order [P2-S12-AC-193]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_digest.sql',
+            title:
+              'the pattern digest is not the text-order fold [.. @1, .. @10, .. @2] [P2-S12-AC-193]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_digest.sql',
+            title:
+              'the template digest folds one key at versions 1, 2 and 10 in numeric order, not text order [P2-S12-AC-193]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_digest.sql',
+            title:
+              'the template digest is not the text-order fold [.. @10, .. @2] [P2-S12-AC-193]',
+          },
+        ],
       },
       {
         text: 'a client-supplied digest is only an equality expectation, compared with the server result and never stored in place of it, so the recomputed server digest is authoritative',
@@ -6266,7 +7153,20 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'pattern activate',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/040-activation-recheck.sqlinc',
+            title:
+              'after a reachable block is deprecated, activating an approved pattern_version answers dependency_changed and invalidates the review [P2-S12-AC-193]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/040-activation-recheck.sqlinc',
+            title:
+              'after a reachable block is deprecated, scheduling an approved pattern_version answers dependency_changed and invalidates the review [P2-S12-AC-193]',
+          },
+        ],
       },
       {
         text: '03b publication preflight.',
@@ -6292,22 +7192,48 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "then numeric `blockVersion`": missing test: pgTAP, supabase/tests/phase_02_slice_12_governed_fix/010-digest.sqlinc (beside the "ordered by key (byte order) then version" case), must register one block key at versions 2 and 10 (and ideally keys differing only in case, e.g. B and a) and assert cms_governed_current_digest and cms_template_block_digest fold [.. @2, .. @10] numerically; the SQL cases use versions 1 and 2 only (indistinguishable from a text sort) and the only 2-vs-10 case is the TypeScript reference, which no production path calls; spec BE03c digest invariants "numeric blockVersion" "pattern activate": missing test: pgTAP, supabase/tests/phase_02_slice_12_governed_activation/060-invalidation.sqlinc, must change the REGISTRY after a template_version review and after a pattern_version review are approved (deprecate a reachable block so its folded lifecycle changes, or withdraw it) and assert CMS-03C-09 activate (and schedule) answers the committed refusal dependency_changed with the review invalidated; the existing "changed frozen dependency" case supersedes the bound content type, and the 075 case injects a fault into the digest function; spec BE03c digest invariants "recomputes the digest at template activate ... pattern activate"',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-194',
     text: 'Block registry consumption: 03c consumes only the safe `BlockDefinitionRegistryRecord` projection (`id`, `version`, `blockKey`, `blockVersion`, `propsSchemaRef`, `propsSchemaHash`, `rendererRef`, `releaseDigest`, `lifecycle`, with the literal `resourceKind` `block_definition_registry_record` and no release principal, signature or raw manifest), never registers, updates or deletes a block, and before every template or pattern validation refetches the record or consumes the latest `cms.block.lifecycle.changed.v1`, so that a missing, withdrawn, incompatible, duplicate or unreachable block fails closed before mutation and a deprecated block follows the fixed compatibility policy.',
     clauses: [
       {
-        text: 'Block registry consumption: 03c consumes only the safe `BlockDefinitionRegistryRecord` projection (`id`, `version`, `blockKey`, `blockVersion`, `propsSchemaRef`, `propsSchemaHash`, `rendererRef`, `releaseDigest`, `lifecycle`, with the literal `resourceKind` `block_definition_registry_record` and no release principal, signature or raw manifest), never registers, updates or deletes a block, and before every template or pattern validation refetches the record or consumes the latest `cms.block.lifecycle.changed.v1`, so that a missing, withdrawn, incompatible, duplicate or unreachable block fails closed before mutation and a deprecated block follows the fixed compatibility policy.',
+        text: 'Block registry consumption: 03c consumes only the safe `BlockDefinitionRegistryRecord` projection (`id`, `version`, `blockKey`, `blockVersion`, `propsSchemaRef`, `propsSchemaHash`, `rendererRef`, `releaseDigest`, `lifecycle`, with the literal `resourceKind` `block_definition_registry_record` and no release principal, signature or raw manifest)',
+        citations: [],
+      },
+      {
+        text: 'never registers, updates or deletes a block,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/080-template-gates.sqlinc',
+            title:
+              'a successful CMS-03C-01 create over a registered block leaves the block registry, its lifecycle events and the release nonce receipts byte-identical [P2-S12-AC-194]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/010-storage-and-registry.sqlinc',
+            title:
+              'a successful pattern create changes the pattern table and leaves the block registry, its lifecycle events and the release nonce receipts byte-identical [P2-S12-AC-194]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/010-storage-and-registry.sqlinc',
+            title:
+              'no function outside the 03a register and lifecycle commands writes the block registry tables: 03c never registers, updates or deletes a block [P2-S12-AC-194]',
+          },
+        ],
+      },
+      {
+        text: 'and before every template or pattern validation refetches the record or consumes the latest `cms.block.lifecycle.changed.v1`, so that a missing, withdrawn, incompatible, duplicate or unreachable block fails closed before mutation and a deprecated block follows the fixed compatibility policy.',
         citations: [],
       },
     ],
-    status: 'unverified',
+    status: 'partial',
     limitation:
-      'No test is cited. Unproven: "Block registry consumption: 03c consumes only the safe `BlockDefinitionRegistryRecord` projection...": missing tests: (1) pgTAP asserting, on a SUCCESSFUL template create and pattern create, that the block registry tables (cms_block_definition_versions, cms_block_definition_lifecycle_events) are byte-identical afterwards (supabase/tests/phase_02_slice_12_pattern_definition/020-create-successor.sqlinc and phase_02_slice_12_template_authority.sql; only refusals are snapshot-compared today) for "never registers, updates or deletes a block"; (2) the safe BlockDefinitionRegistryRecord projection (nine members, literal resourceKind, no release principal/signature/raw manifest) is proven only for the TypeScript reference adapter, which has no production caller, so no test shows the production SQL readers (cms_template_block_digest, cms_pattern_registry_digest) read only safe columns -- add a source/column-list oracle in 025-agreement.sqlinc or a Worker adapter test once the adapter is wired; (3) no test drives a duplicate or unreachable block through the production path, and none consumes the latest cms.block.lifecycle.changed.v1 before validation (the production path refetches the rows, which is the alternative the spec allows); spec BE03c Registry invariants',
+      'Unproven (uncited clauses): "Block registry consumption: 03c consumes only the safe `BlockDefinitionRegistryRecord` projection (`id`, `version`, `blockKey`, `blockVersion`, `propsSchemaRef`, `propsSchemaHash`, `rendererRef`, `releaseDigest`, `lifecycle`, with the literal `resourceKind` `block_definition_registry_record` and no release principal, signature or raw manifest)": missing test or spec ruling: no test shows that every 03c reader of the block registry reads only the nine-member projection; CMS-03C-12 reads props_schema_snapshot and the production SQL carries no resourceKind. "and before every template or pattern validation refetches the record or consumes the latest `cms.block.lifecycle.changed.v1`, so that a missing, withdrawn, incompatible, duplicate or unreachable block fails closed before mutation and a deprecated block follows the fixed compatibility policy.": missing test: refetch-or-consume before every template and pattern validation, and the duplicate and unreachable block outcomes, through the production path.',
   },
   {
     criterion: 'P2-S12-AC-195',
@@ -6465,16 +7391,95 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'activation makes the definition immutable',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/040-lifecycle.sqlinc',
+            title:
+              'a definition field of an ACTIVE template version is immutable [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/040-lifecycle.sqlinc',
+            title:
+              'a definition field of an ACTIVE taxonomy version is immutable [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/010-storage-and-registry.sqlinc',
+            title:
+              'a definition field of an ACTIVE pattern version is immutable [P2-S12-AC-195]',
+          },
+        ],
       },
       {
         text: 'the lifecycle columns `state` (`draft`, `review`, `approved`, `scheduled`, `active`, `superseded`, `retired`, `blocked`), `version`, `activated_at`, `retired_at` and `updated_at` advance only through the governed RPCs CMS-03C-06 to -09.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/040-lifecycle.sqlinc',
+            title:
+              'a direct UPDATE cannot advance the state and lifecycle_version of a draft template version outside the governed RPCs [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/040-lifecycle.sqlinc',
+            title:
+              'a direct UPDATE cannot stamp activated_at on a template version [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/040-lifecycle.sqlinc',
+            title:
+              'a direct UPDATE cannot stamp retired_at on a taxonomy version [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/040-lifecycle.sqlinc',
+            title:
+              'a direct UPDATE of updated_at alone is refused on a draft template version [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/040-lifecycle.sqlinc',
+            title:
+              'a persisted attempt to poison updated_at of a taxonomy version in review is refused [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/040-lifecycle.sqlinc',
+            title:
+              'only the submit, move, activate, supersede and retire governed functions UPDATE the template, pattern and taxonomy version tables [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/040-lifecycle.sqlinc',
+            title:
+              'a direct UPDATE of state alone cannot activate an approved taxonomy version [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/010-storage-and-registry.sqlinc',
+            title:
+              'a direct UPDATE cannot advance the state and lifecycle_version of a draft pattern version outside the governed RPCs [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/010-storage-and-registry.sqlinc',
+            title:
+              'a direct UPDATE cannot stamp activated_at on a pattern version [P2-S12-AC-195]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/010-storage-and-registry.sqlinc',
+            title:
+              'a direct UPDATE of updated_at alone is refused on a draft pattern version [P2-S12-AC-195]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "activation makes the definition immutable" and "the lifecycle columns `state` (`draft`, `review`, `approved`, `scheduled`, `active`, `superseded`...": missing tests: pgTAP asserting the lifecycle columns `state`, `version`, `activated_at`, `retired_at` and `updated_at` of cms_template_versions, cms_pattern_versions and cms_taxonomy_versions cannot be advanced by a direct UPDATE outside the governed RPC context (P0001 CONFLICT, row unchanged), and that CMS-03C-06 to -09 are the only writers; put it in supabase/tests/phase_02_slice_12_governed_activation/070-privileges.sqlinc (the existing definition-guard cases run with app.cms_rpc = true and only exercise content columns, and the governed suites exercise the RPCs themselves). Also no test mutates a definition field of an ACTIVE (post-activation) row of each of the three kinds; spec BE03c Registry invariants "activation makes the definition immutable"',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-196',
@@ -6482,12 +7487,90 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'Governed review tables: CMS-03C-06 to CMS-03C-11 serve the closed, code-owned `subject_kind` set (`template_version`, `pattern_version`, `taxonomy_version`) through one set of private tables keyed by `(subject_kind, subject_id)` (`cms_governed_reviews`, `cms_governed_review_decisions`, `cms_governed_review_assignments`, `cms_governed_review_dependencies` and, for scheduled activation, `cms_governed_activation_schedules`) so that slot semantics, MFA, assignment, strictest-policy counting and invalidation have one implementation; a later subject kind is added only by forward migration; and the 03a `cms_schema_reviews` set and the 03b editorial review tables keep their own tables and operations.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the governed review table exists in platform_private [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the governed decision table exists in platform_private [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the governed assignment table exists in platform_private [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the governed dependency table exists in platform_private [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the governed activation schedule table exists in platform_private [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the review set is keyed by (subject_kind, subject_id): the live-subject unique index is on exactly that pair [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'cms_governed_reviews carries NOT NULL subject_kind and subject_id [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'cms_governed_activation_schedules carries NOT NULL subject_kind and subject_id [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'a CHECK closes cms_governed_reviews.subject_kind to exactly template_version, pattern_version and taxonomy_version [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'a CHECK closes cms_governed_activation_schedules.subject_kind to the same three kinds [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the decision, assignment, dependency and schedule tables each hang off the one review row by (review_id, owner_id) [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'no foreign key joins the governed review set to the 03a cms_schema_reviews set or the 03b editorial review tables, in either direction [P2-S12-AC-196]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_persistence.sql',
+            title:
+              'the 03a and 03b review tables carry no subject_kind or subject_id: they keep their own keys [P2-S12-AC-196]',
+          },
+        ],
       },
     ],
-    status: 'unverified',
-    limitation:
-      'No test is cited. Unproven: "Governed review tables: CMS-03C-06 to CMS-03C-11 serve the closed, code-owned `subject_kind` set ...": missing test: pgTAP schema test, new fragment supabase/tests/phase_02_slice_12_governed_submit/040-tables.sqlinc (included by phase_02_slice_12_governed_submit.sql), asserting (a) the five private tables cms_governed_reviews, cms_governed_review_decisions, cms_governed_review_assignments, cms_governed_review_dependencies and cms_governed_activation_schedules exist in platform_private, (b) each is keyed by or carries (subject_kind, subject_id) and a CHECK (pg_get_constraintdef) closes subject_kind to exactly template_version, pattern_version, taxonomy_version, and (c) cms_schema_reviews and the 03b editorial review tables are untouched and do not reference them. Existing governed suites only exercise the tables behaviorally (a taxonomy review at governed_activation/080-taxonomy.sqlinc, a template review at governed_submit.sql:147, pattern retire/recheck suites) and none asserts the table set, the key or the closed set; spec BE03c Governed review machinery (DEC-137)',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-197',
@@ -6495,12 +7578,161 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'Subject state machine: `draft` becomes `review` at submission and `review` becomes `approved` when the last required approval lands; a rejection or invalidation returns the subject from `review` (or from `approved`, `scheduled` or `blocked`) to `draft` through an audited transition while the review stays `rejected` or `invalidated`; `approved` becomes `active` or `scheduled`; `scheduled` becomes `active` at execution or `blocked` when execution fails terminally; `blocked` becomes `active` or `scheduled` through a new activation command while its review is still `approved` and current; `active` becomes `superseded` in the transaction that activates a newer version of the lineage, or `retired`; `superseded` and `retired` are terminal; and the review states are `open` to `approved`, `rejected` or `invalidated` and `approved` to `invalidated`, with assignment create and revoke never changing the review state.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/030-reject-audit.sqlinc',
+            title:
+              'control: the rejection moves the review to rejected and the subject from review back to draft [P2-S12-AC-197]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/030-reject-audit.sqlinc',
+            title:
+              'the rejecting decision writes exactly one cms.governed.review.decide audit record, the audited transition of the subject back to draft [P2-S12-AC-197]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/030-reject-audit.sqlinc',
+            title:
+              'the rejection audit record names the rejecting reviewer and the owner acting party [P2-S12-AC-197]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_submit.sql',
+            title: 'submit moves the draft subject to review [P2-S12-AC-205]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_decision/030-happy.sqlinc',
+            title:
+              'the last required approval moves the review to approved at version 2 with the decision counted and decidedAt set [P2-S12-AC-070]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_decision/040-flows.sqlinc',
+            title:
+              'the second distinct approval fills the base slot, approves the review at version 3 and moves the subject to approved [P2-S12-AC-073]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_decision/040-flows.sqlinc',
+            title:
+              'a rejection sets the review rejected at version 2 with decidedAt, terminally [P2-S12-AC-073]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_decision/040-flows.sqlinc',
+            title:
+              'the reject decision satisfies the base slot and returns the subject to draft (lifecycle 3, definition version 1) [P2-S12-AC-073]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_decision.sql',
+            title:
+              'the invalidation is committed: review invalidated dependency_changed at version 2, no decision, the subject back to draft, one audit record and status 409 [P2-S12-AC-074]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_activation/060-invalidation.sqlinc',
+            title:
+              'the review is invalidated reviewer_authority_changed at version 3, the subject returns to draft (lifecycle 4), no event is emitted and the refusal is stored as 409 [P2-S12-AC-084]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_activation/060-invalidation.sqlinc',
+            title:
+              'the review is invalidated, the subject returns scheduled -> draft (lifecycle 5), one invalidation and one cancellation audit record are written and no event is emitted [P2-S12-AC-145]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_schedule/050-blocked.sqlinc',
+            title:
+              'a blocked subject whose dependency is still changed returns to draft through the committed invalidation of its review (blocked -> draft, lifecycle 6) [P2-S12-AC-146]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_activation/030-activate.sqlinc',
+            title:
+              'activation moves the subject approved -> active (lifecycle 3 -> 4, definition version 1) and records activated_at on the review whose version advances to 3 [P2-S12-AC-082]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_activation/050-schedule-accept.sqlinc',
+            title:
+              'scheduling moves the subject approved -> scheduled (lifecycle 3 -> 4), emits NO event, writes one audit record and stores status 202 [P2-S12-AC-142]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_schedule/030-execute.sqlinc',
+            title:
+              'the schedule completes at version 3, the subject goes scheduled -> active (lifecycle 4 -> 5, definition version 2) and the review records the activation instant at version 3 [P2-S12-AC-150]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_schedule/030-execute.sqlinc',
+            title:
+              'a creator whose designer grant was revoked blocks the schedule activation_authority_ended: schedule blocked, subject blocked (lifecycle 5), review still approved, no event, one audit record [P2-S12-AC-146]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_schedule/030-execute.sqlinc',
+            title:
+              'a blocked subject whose review is still approved and current activates through a new CMS-03C-09 command (lifecycle 6, one event); the blocked schedule row is evidence and stays [P2-S12-AC-146]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_schedule_ladder/010-ladder.sqlinc',
+            title:
+              'a subject blocked by retries_exhausted whose review is still approved is scheduled again (blocked -> scheduled, lifecycle 6): a new pending row beside the blocked evidence row, no event [P2-S12-AC-146]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_activation/040-supersession.sqlinc',
+            title:
+              'the previous active version becomes superseded (lifecycle +1, activated_at kept, never retired) in the same transaction and exactly one version of the lineage is active [P2-S12-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_activation/095-retire.sqlinc',
+            title:
+              'retirement moves the subject active -> retired (lifecycle 4 -> 5, retired_at stamped) with definition version, activated_at and every definition column untouched; the review row differs only in version 3 -> 4 and updated_at [P2-S12-AC-087]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_activation/040-supersession.sqlinc',
+            title:
+              'a superseded version cannot be activated again, with its stale or its current review version [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_activation/095-retire.sqlinc',
+            title:
+              'a retired version can be neither activated nor scheduled again: retired is terminal [P2-S12-AC-083]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_assignment/020-create.sqlinc',
+            title:
+              'creating an assignment leaves the review version, state and the subject untouched [P2-S12-AC-079]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_assignment.sql',
+            title:
+              'revoking an assignment that authorized no counted approval leaves the review open at version 1, writes one audit record and stores status 200 [P2-S12-AC-079]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_governed_decision/030-happy.sqlinc',
+            title:
+              'a further decision on an approved review is refused review_not_open [P2-S12-AC-074]',
+          },
+        ],
       },
     ],
-    status: 'unverified',
-    limitation:
-      'No test is cited. Unproven: "Subject state machine: `draft` becomes `review` at submission and `review` becomes `approved` whe...": missing test: the rejection transition (review -> draft by a reject decision) is not shown to write an audit record: supabase/tests/phase_02_slice_12_governed_decision/040-flows.sqlinc (R2 case) must assert s12ga_audit(\'cms.governed.review.decide\', <rejecting decision id>) = 1 beside the subject-to-draft assertion (the audit count is asserted only for the approving decision in 030-happy.sqlinc and for invalidations); the other transitions, terminal states and the review states are cited',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-198',
@@ -6508,7 +7740,38 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: "Governed policy basis: the review count and slots are the strictest DEC-110 workflow policy among the content types the subject is bound to (a template or pattern version's `compatibleTypeIds`; for a taxonomy version the content types of the caller's owner scope whose keys appear in `allowedTypeKeys`)",
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'the three-member ordinary basis hashes as the JCS SHA-256 of the array and stays ordinary, one decision, the base slot only [P2-S12-AC-198]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'the effective risk is protected and the count is the largest member count (2) [P2-S12-AC-198]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'a taxonomy basis holds the resolved policy of each owner-scope type named by allowedTypeKeys and no member for a key naming no owner type, and no default member beside them [P2-S12-AC-198]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'the mixed taxonomy basis resolves protected, two decisions and the policy specialist slot [P2-S12-AC-198]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/030-submit-gates.sqlinc',
+            title:
+              'a pattern_version basis holds one editorial member per compatibleTypeIds member, ordered by contentTypeId [P2-S12-AC-198]',
+          },
+        ],
       },
       {
         text: 'each resolved through the fail-closed `cms_editorial_workflow_policy_evidence` seam',
@@ -6534,8 +7797,42 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'the basis is the array of `{ contentTypeId, policyKey, policyVersion, policyHash }` sorted by `(policyKey, policyVersion, contentTypeId)`',
+        text: 'the basis is the array of `{ contentTypeId, policyKey, policyVersion, policyHash }` sorted by `(policyKey,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'three types sharing the policy key editorial form three basis members ordered by contentTypeId (byte order) [P2-S12-AC-198]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'a four-member basis is sorted by (policyKey, policyVersion, contentTypeId): legal, policy, security, editorial [P2-S12-AC-198]',
+          },
+        ],
+      },
+      {
+        text: 'policyVersion,',
         citations: [],
+      },
+      {
+        text: 'contentTypeId)`',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'three types sharing the policy key editorial form three basis members ordered by contentTypeId (byte order) [P2-S12-AC-198]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'a four-member basis is sorted by (policyKey, policyVersion, contentTypeId): legal, policy, security, editorial [P2-S12-AC-198]',
+          },
+        ],
       },
       {
         text: '`risk_class` is `protected` if any member is protected, `required_decision_count` is the largest member count',
@@ -6555,7 +7852,24 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: '`required_capabilities` is the base slot `cms.reviewer` followed by each specialist capability in order of first appearance (at most 16)',
+        text: '`required_capabilities` is the base slot `cms.reviewer` followed by each specialist capability in order of first appearance',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'required_capabilities is the base slot then each specialist in order of first appearance across the sorted basis, not the order the types were listed [P2-S12-AC-198]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/050-policy-basis.sqlinc',
+            title:
+              'the mixed taxonomy basis resolves protected, two decisions and the policy specialist slot [P2-S12-AC-198]',
+          },
+        ],
+      },
+      {
+        text: '(at most 16)',
         citations: [],
       },
       {
@@ -6589,7 +7903,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "Governed policy basis: the review count and slots are the strictest DEC-110 workflow policy among..." and "the basis is the array of `{ contentTypeId, policyKey, policyVersion, policyHash }` sorted by `(p..." and "`required_capabilities` is the base slot `cms.reviewer` followed by each specialist capability in...": missing tests: pgTAP in supabase/tests/phase_02_slice_12_governed_submit/ (new fragment 040-basis.sqlinc) must cover (1) a taxonomy_version whose allowedTypeKeys name content types of the caller\'s owner scope: basis members are those types\' resolved policies, a key naming no owner-scope type is not a member; (2) a pattern_version basis from its compatibleTypeIds; (3) the sort tie-breaks of the basis (policyKey, then policyVersion, then contentTypeId) with two types sharing one policy key and with different policy versions; (4) requiredCapabilities in order of first appearance across three or more members with two different specialists, and the 16-entry bound; (5) a mixed set where a default-policy fallback applies only when NO bound type resolves (editorial.default v1 is used by taxonomy no-bound-type only today); spec BE03c Governed policy basis',
+      'Unproven (uncited clauses): "policyVersion,": BOUNDARY: the policy registry holds only version 1 members (CMS_GOVERNED_DEFAULT_POLICY and the DEC-110 seeds), so the middle sort key cannot be exercised through any producer. "(at most 16)": BOUNDARY (lane gaps-db2): the 16-capability bound cannot be exercised -- the code-owned registry holds four specialist capabilities and only version 1 members, so no honest producer exceeds five slots. The CHECK of 1 to 16 capabilities is cited under AC-251.',
   },
   {
     criterion: 'P2-S12-AC-199',
@@ -6614,11 +7928,37 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a compatibility-resolver success for the active version of every `compatibleTypeIds` member',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/080-template-gates.sqlinc',
+            title:
+              'a template naming a content type with no active version is refused VALIDATION_FAILED at submit [P2-S12-AC-199]',
+          },
+        ],
       },
       {
         text: 'a recomputed `blockRegistryDigest` equal to the stored one',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/080-template-gates.sqlinc',
+            title:
+              'a stored block_registry_digest that differs from the recomputed one refuses the submit subject_not_submittable [P2-S12-AC-199]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/080-template-gates.sqlinc',
+            title:
+              'control: the same copied draft with the true digest submits, so the refusal above is the digest and nothing in the copy [P2-S12-AC-199]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/080-template-gates.sqlinc',
+            title:
+              'the review stores the block registry digest recomputed independently from the registered tuple [P2-S12-AC-199]',
+          },
+        ],
       },
       {
         text: "freezes the dependency kinds `block` (each reachable block record) and `content_type` (each compatible content type's active version id) into `cms_governed_review_dependencies`.",
@@ -6638,22 +7978,55 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "a compatibility-resolver success for the active version of every `compatibleTypeIds` member" and "a recomputed `blockRegistryDigest` equal to the stored one": missing tests in supabase/tests/phase_02_slice_12_governed_submit/ (new fragment 040-template-gates.sqlinc): (1) a template whose slots reach at least one registered block: the review freezes one dependency of kind block per reachable block record (ref_id = the registry record id) beside the content_type rows; (2) a compatibleTypeIds member whose active version fails the compatibility resolver (e.g. a block range excluding the type compiler_version, or a type with no active version) refuses the submit and commits no review or dependency; (3) a stored block_registry_digest that differs from the recomputed one (change the registry after the draft) refuses the submit; the existing cases use an empty reachable-block set (digest of []) and one bound type; spec BE03c Governed review machinery, submit template_version',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-200',
     text: 'Submitting a `pattern_version` requires the state `draft`, every nested pattern `active`, compatible and acyclic, and a recomputed digest equal to the stored one, and freezes the dependency kinds `block`, `pattern` (each nested pattern version) and `content_type`.',
     clauses: [
       {
-        text: 'Submitting a `pattern_version` requires the state `draft`, every nested pattern `active`, compatible and acyclic, and a recomputed digest equal to the stored one, and freezes the dependency kinds `block`, `pattern` (each nested pattern version) and `content_type`.',
+        text: 'Submitting a `pattern_version` requires the state `draft`, every nested pattern `active`,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/030-submit-gates.sqlinc',
+            title:
+              'a pattern version that is no longer draft is refused subject_not_submittable and nothing is written [P2-S12-AC-200]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/030-submit-gates.sqlinc',
+            title:
+              'submitting a pattern whose pinned nested version is no longer active is refused 409 subject_not_submittable (a stored dependency, DEC-180 R5) with no effects [P2-S12-AC-200]',
+          },
+        ],
+      },
+      {
+        text: 'compatible and acyclic,',
         citations: [],
       },
+      {
+        text: 'and a recomputed digest equal to the stored one, and freezes the dependency kinds `block`, `pattern` (each nested pattern version) and `content_type`.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/030-submit-gates.sqlinc',
+            title:
+              'a stored block_registry_digest that differs from the recomputed one refuses the pattern submit with no effects [P2-S12-AC-200]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/030-submit-gates.sqlinc',
+            title:
+              'a pattern nesting an active pattern that uses a registered block freezes exactly one block (registry id), one content_type (active version id) and one pattern (nested version row id) dependency [P2-S12-AC-200]',
+          },
+        ],
+      },
     ],
-    status: 'unverified',
+    status: 'partial',
     limitation:
-      'No test is cited. Unproven: "Submitting a `pattern_version` requires the state `draft`, every nested pattern `active`, compati...": missing tests in supabase/tests/phase_02_slice_12_governed_submit/ (new fragment 050-pattern-gates.sqlinc): a pattern_version submit that (1) is refused subject_not_submittable when the version is not draft; (2) is refused when a nested pattern version is not active, is incompatible with the pattern\'s compatibleTypeIds, or forms a cycle (an nested-pattern change made after creation); (3) is refused when the stored block_registry_digest differs from the recomputed one; (4) freezes dependencies of kind block (reachable block records) and content_type (each compatible type\'s active version id) beside the pattern dependency; only the pattern-kind dependency of a nested review is asserted today (recheck_pattern fixture); spec BE03c Governed review machinery, submit pattern_version',
+      'Unproven (uncited clause): "compatible and acyclic,": BOUNDARY (lane gaps-db2): a nested cycle after creation cannot be produced (the lineage is immutable and the cycle guard runs at create time only). Nested compatibility is driven only through the block-compatibility recompute at submit (the gap wave\'s "a pattern naming a content type with no active version is refused VALIDATION_FAILED at /blockTree" and wave 1\'s compat-flow.sql candidate), not through a nested pattern whose compatible type set stopped matching.',
   },
   {
     criterion: 'P2-S12-AC-201',
@@ -6661,7 +8034,26 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'Submitting a `taxonomy_version` requires the state `draft`',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/060-taxonomy-gates.sqlinc',
+            title:
+              'a taxonomy version already in review is refused subject_not_submittable [P2-S12-AC-201]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/060-taxonomy-gates.sqlinc',
+            title:
+              'the refused resubmission writes no review, dependency, audit record or event and leaves the lifecycle counter alone [P2-S12-AC-201]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/060-taxonomy-gates.sqlinc',
+            title:
+              'the draft-only gate admits the same taxonomy version again once it is draft [P2-S12-AC-201]',
+          },
+        ],
       },
       {
         text: 'a registered provider for every declared canonical domain (else 422 `canonical_source_unavailable` with `details.domain`)',
@@ -6716,7 +8108,20 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'freezes the dependency kinds `content_type` (each content type named by `allowedTypeKeys`)',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/060-taxonomy-gates.sqlinc',
+            title:
+              "a taxonomy review freezes one content_type dependency per named owner type (ref_id = the type's active version id) and nothing else [P2-S12-AC-201]",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/060-taxonomy-gates.sqlinc',
+            title:
+              'a taxonomy naming no owner type freezes no content_type dependency [P2-S12-AC-201]',
+          },
+        ],
       },
       {
         text: '`canonical_domain` (the provider registry row of each declared domain).',
@@ -6730,9 +8135,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "Submitting a `taxonomy_version` requires the state `draft`" and "freezes the dependency kinds `content_type` (each content type named by `allowedTypeKeys`)": missing tests: pgTAP in supabase/tests/phase_02_slice_12_taxonomy_definition/060-review-successor.sqlinc (or governed_submit) must (1) submit a taxonomy_version whose allowedTypeKeys name content types of the caller\'s owner scope and assert one frozen content_type dependency per named type (ref_id = that type\'s active version id) beside the canonical_domain rows - the only dependency assertion today is a role-only vocabulary with no allowed types; (2) refuse a non-draft taxonomy_version with subject_not_submittable (the draft-only gate is cited for templates only); spec BE03c Governed review machinery, submit taxonomy_version; the refused domains cited are instrument and rights of the five unbuilt ones the suite loops over',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-202',
@@ -6871,12 +8275,42 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '`canonical_domain`.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/070-canonical-recheck.sqlinc',
+            title:
+              'fixture: tc1 is approved with a frozen canonical_domain dependency on the current role registry row, tc2 has none [P2-S12-AC-202]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/070-canonical-recheck.sqlinc',
+            title:
+              'while the role registry row is current the canonical_domain recheck examines the one review through its dependency and leaves it approved [P2-S12-AC-202]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/070-canonical-recheck.sqlinc',
+            title:
+              'after the provider registry row changes the canonical_domain recheck invalidates exactly the one review dependency_changed [P2-S12-AC-202]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/070-canonical-recheck.sqlinc',
+            title:
+              'the invalidated review is at version 3 with its subject back to draft and the review that declared no domain is untouched [P2-S12-AC-202]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/070-canonical-recheck.sqlinc',
+            title:
+              'a repeated run finds no live review: the invalidated review is skipped [P2-S12-AC-202]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "`canonical_domain`.": missing test: pgTAP in supabase/tests/phase_02_slice_12_governed_recheck/ (new fragment 055-canonical-domain.sqlinc) must run cms_recheck_governed_reviews with kind canonical_domain over the registry row id frozen by an approved taxonomy review (governed_activation/080-taxonomy.sqlinc builds one), after the provider registry row changes, and assert the review is selected through its canonical_domain dependency and invalidated dependency_changed; today canonical_domain is only accepted as a valid kind (batch-bound case) and no producer event or run selects a canonical_domain review; spec BE03c Governed review machinery, invalidation producers',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-203',
@@ -7396,13 +8830,48 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     text: 'Activating or scheduling a `template_version` runs the compatibility resolver for every `compatibleTypeIds` member and recomputes the block digest before the switch.',
     clauses: [
       {
-        text: 'Activating or scheduling a `template_version` runs the compatibility resolver for every `compatibleTypeIds` member and recomputes the block digest before the switch.',
+        text: 'Activating or scheduling a `template_version` runs the compatibility resolver for every `compatibleTypeIds` member',
         citations: [],
       },
+      {
+        text: 'and recomputes the block digest before the switch.',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/090-template-activation-recheck.sqlinc',
+            title:
+              'activation after the reachable block changed answers the committed refusal dependency_changed [P2-S12-AC-208] [P2-S12-AC-193]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/090-template-activation-recheck.sqlinc',
+            title:
+              'scheduling after the reachable block changed answers the committed refusal dependency_changed [P2-S12-AC-208] [P2-S12-AC-193]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/090-template-activation-recheck.sqlinc',
+            title:
+              'the activation refusal invalidated the review (dependency_changed, version + 1), returned the subject to draft and emitted no event [P2-S12-AC-208]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/090-template-activation-recheck.sqlinc',
+            title:
+              'the schedule refusal invalidated the review, returned the subject to draft and inserted no schedule row [P2-S12-AC-208]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_governed/090-template-activation-recheck.sqlinc',
+            title:
+              'control: the template over the still-supported block activates, so the refusals above are the changed block [P2-S12-AC-208]',
+          },
+        ],
+      },
     ],
-    status: 'unverified',
+    status: 'partial',
     limitation:
-      'No test is cited. Unproven: "Activating or scheduling a `template_version` runs the compatibility resolver for every `compatib...": missing tests: pgTAP (new fragment supabase/tests/phase_02_slice_12_governed_activation/065-template-recheck.sqlinc) over an approved template_version whose reachable block or bound content type is changed after approval so that (a) the compatibility resolver now fails for one compatibleTypeIds member (e.g. the type gets a successor whose compiler_version lies outside the block range) and (b) the recomputed block registry digest differs (a reachable block is deprecated, which folds a different lifecycle into the tuple, or withdrawn): both activate and schedule must answer the committed refusal dependency_changed with the review invalidated and the subject back to draft; the existing cases supersede the bound content type (identity change) or inject a lock fault into the digest function, so neither the resolver nor a real digest change is exercised at activation/schedule; spec BE03c activation, template_version',
+      'Unproven (uncited clause): "Activating or scheduling a `template_version` runs the compatibility resolver for every `compatibleTypeIds` member": BOUNDARY (lane gaps-db2): the compatibility-resolver conjunct -- a bound type whose compiler falls outside the block range after approval -- is not constructible at activation by honest producers (registry rows and type compiler versions are immutable); a wave-1 candidate (governed_fix3 compat-flow.sql) exercises the pattern recompute at submit, not template activation or scheduling.',
   },
   {
     criterion: 'P2-S12-AC-209',
@@ -7410,12 +8879,48 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'Activating or scheduling a `pattern_version` checks the state of every nested pattern and recomputes the block digest before the switch.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/040-activation-recheck.sqlinc',
+            title:
+              'activating a pattern whose pinned nested pattern is no longer active answers the committed refusal dependency_changed, invalidates the review and returns the pattern to draft [P2-S12-AC-209]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/040-activation-recheck.sqlinc',
+            title:
+              'scheduling a pattern whose pinned nested pattern is no longer active answers dependency_changed, invalidates the review and inserts no schedule [P2-S12-AC-209]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/040-activation-recheck.sqlinc',
+            title:
+              'the refused pattern activations emitted no event [P2-S12-AC-209]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/040-activation-recheck.sqlinc',
+            title:
+              'after a reachable block is deprecated, activating an approved pattern_version answers dependency_changed and invalidates the review [P2-S12-AC-193]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/040-activation-recheck.sqlinc',
+            title:
+              'after a reachable block is deprecated, scheduling an approved pattern_version answers dependency_changed and invalidates the review [P2-S12-AC-193]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_pattern/040-activation-recheck.sqlinc',
+            title:
+              'all four refusals are the identical committed refusal body (activate and schedule, nested state and block digest) [P2-S12-AC-209]',
+          },
+        ],
       },
     ],
-    status: 'unverified',
-    limitation:
-      'No test is cited. Unproven: "Activating or scheduling a `pattern_version` checks the state of every nested pattern and recompu...": missing tests: pgTAP (new fragment supabase/tests/phase_02_slice_12_governed_activation/067-pattern-recheck.sqlinc, using the nested fixture of governed_recheck_pattern/010-pattern.sqlinc) that approves a pattern_version pinning a nested pattern, then (a) supersedes or retires the nested child and (b) deprecates/withdraws a reachable block, WITHOUT running the recheck job, and asserts CMS-03C-09 activate and schedule each answer the committed refusal dependency_changed, invalidate the review and return the pattern to draft; no test activates or schedules a pattern_version over a changed nested pattern state or a changed block digest; both cited tests are adjacent (a template-subject lock fault and the recheck job); spec BE03c activation, pattern_version',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-210',
@@ -7423,12 +8928,54 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'Activating or scheduling a `taxonomy_version` requires a registered provider for every declared canonical domain, else 422 `canonical_source_unavailable` with `details.domain`.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql',
+            title:
+              'scheduling an approved taxonomy version whose declared role domain has lost its provider is refused canonical_source_unavailable with details.domain = role [P2-S12-AC-210]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql',
+            title:
+              'a vocabulary that declares no canonical domain activates while role is unbuilt: only the declared domains are checked [P2-S12-AC-210]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql',
+            title:
+              'activating a vocabulary that declares role and instrument is refused canonical_source_unavailable naming instrument, the unbuilt one, although role is built [P2-S12-AC-210]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql',
+            title:
+              'scheduling a vocabulary that declares role and instrument is refused canonical_source_unavailable naming instrument, the unbuilt one, although role is built [P2-S12-AC-210]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql',
+            title:
+              'activating an approved taxonomy version whose declared role domain has lost its provider is refused canonical_source_unavailable with details.domain = role [P2-S12-AC-223]',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-ops-refusals.test.ts',
+            title:
+              "'CMS-03C-09' SQL refusal transport maps canonical_source_unavailable {domain}",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-activation-refusals.test.ts',
+            title:
+              'CMS-03C-09 SQL refusals are mapped by token, whatever the action schedule maps canonical_source_unavailable {domain}',
+          },
+        ],
       },
     ],
-    status: 'unverified',
-    limitation:
-      'No test is cited. Unproven: "Activating or scheduling a `taxonomy_version` requires a registered provider for every declared c...": missing test: pgTAP in supabase/tests/phase_02_slice_12_governed_activation/080-taxonomy.sqlinc: approve a taxonomy_version declaring the built role domain, then make that provider unbuilt (flip the platform_private.cms_canonical_domain_registry row to unbuilt, as phase_02_slice_12_taxonomy_terms/099-registry-drift.sqlinc does for term actions) and assert activate AND schedule are refused P0001:canonical_source_unavailable with DETAIL {"domain":"role"}, the review/subject unchanged and no event; today the SQL activation of a taxonomy is shown only with a built provider, the SQL refusal exists only at submit (060-review-successor.sqlinc) and in term actions, and the 422 mapping is proven at the Worker for CMS-03C-09 with a stubbed token; spec BE03c governed activation, taxonomy_version',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-211',
@@ -7598,6 +9145,18 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
             file: 'supabase/tests/phase_02_slice_12_dec193_pattern_currentness.sql',
             title:
               'PC-N06-mixed-same-pin: exact actual pattern provider outcome/reason/single-offender count',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql',
+            title:
+              'A238-direct-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql',
+            title:
+              'A238-recursive-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count',
           },
         ],
       },

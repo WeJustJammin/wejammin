@@ -101,12 +101,125 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and accessibility contracts in templates.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-accessibility-member.test.ts',
+            title:
+              'CMS-03C-01 refuses an accessibility member in a template definition [P2-S12-AC-001] the definition: 422 TEMPLATE_VALIDATION_FAILED at its pointer, before the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-accessibility-member.test.ts',
+            title:
+              'CMS-03C-01 refuses an accessibility member in a template definition [P2-S12-AC-001] a slot: 422 TEMPLATE_VALIDATION_FAILED at its pointer, before the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-accessibility-member.test.ts',
+            title:
+              'CMS-03C-01 refuses an accessibility member in a template definition [P2-S12-AC-001] an allowed block reference: 422 TEMPLATE_VALIDATION_FAILED at its pointer, before the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/template-accessibility-member.test.ts',
+            title:
+              'CMS-03C-01 refuses an accessibility member in a template definition [P2-S12-AC-001] a binding: 422 TEMPLATE_VALIDATION_FAILED at its pointer, before the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member accessibility [P2-S12-AC-001] is refused as an unrecognized key in 'the definition'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member accessibility [P2-S12-AC-001] is refused as an unrecognized key in 'a slot'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member accessibility [P2-S12-AC-001] is refused as an unrecognized key in 'an allowed block reference'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member accessibility [P2-S12-AC-001] is refused as an unrecognized key in 'a binding'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member accessibilityManifest [P2-S12-AC-001] is refused as an unrecognized key in 'the definition'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member accessibilityManifest [P2-S12-AC-001] is refused as an unrecognized key in 'a slot'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member accessibilityManifest [P2-S12-AC-001] is refused as an unrecognized key in 'an allowed block reference'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member accessibilityManifest [P2-S12-AC-001] is refused as an unrecognized key in 'a binding'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member ariaLabel [P2-S12-AC-001] is refused as an unrecognized key in 'the definition'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member ariaLabel [P2-S12-AC-001] is refused as an unrecognized key in 'a slot'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member ariaLabel [P2-S12-AC-001] is refused as an unrecognized key in 'an allowed block reference'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              "CMS-03C-01 definition carries no accessibility member the member ariaLabel [P2-S12-AC-001] is refused as an unrecognized key in 'a binding'",
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              'CMS-03C-01 definition carries no accessibility member [P2-S12-AC-001] a block reference names only the immutable pair, so the contract it points at is the registered one',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-composition/template-accessibility-contract.test.ts',
+            title:
+              'CMS-03C-01 definition carries no accessibility member [P2-S12-AC-001] the stored version and the editable detail are closed too, so no accessibility member is ever read back',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_09_p240_block_release.sql',
+            title: 'a registered version cannot be mutated [P2-S09-AC-012]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and accessibility contracts in templates.": missing test (and a spec decision): BE03c "Accessibility handoff tests" (lines 1816-1818) reduces template accessibility to stable JSON Pointer paths for template/slot validation errors and reserved profile/provenance regions that content cannot hide or reorder; nothing defines or compares the block registry accessibility_contract inside a template (cms_define_template never reads block_registry.accessibility_contract). Needed: a spec line stating what a template must preserve of a placed block\'s accessibility contract, then (a) pgTAP in supabase/tests/phase_02_slice_12_template_authority.sql where a template over a block whose accessibility_contract is dropped or changed is refused or changes the block digest, and (b) a contract case in packages/contracts/src/cms-composition/template.test.ts. The stable-pointer half is asserted today (template.test.ts rejectedAt paths) and the reserved-region half (movement refused) is cited under clause 1.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-002',
@@ -820,7 +933,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_12_template_authority.sql',
             title:
-              'CMS-03C-01 waits for the same-key transaction lock before first-create read',
+              'CMS-03C-01 waits for the same-key transaction lock before first-create read, and the lock timeout is the retryable CONFLICT',
           },
           {
             tool: 'pgtap',
@@ -1123,7 +1236,20 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and complete the declared happy path',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts',
+            title:
+              'CMS-03C-02 pattern placement happy path through the real stack [P2-S12-AC-010] an assigned author placing an active compatible pattern on the current draft revision is a 201 { items } of CompositionInstanceResource rows, a strong entry ETag, the committed rows and one audit record',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts',
+            title:
+              'CMS-03C-02 pattern placement happy path through the real stack [P2-S12-AC-010] a nested pattern reference expands into its block roots: the 201 carries one row per expanded root at consecutive positions under the reference key chain',
+          },
+        ],
       },
       {
         text: 'CMS-03C-02 — CMS-12 — POST /api/v1/cms/compositions/pattern-instances — PatternInstanceRequest → 201 PatternPlacementResource.',
@@ -1143,9 +1269,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and complete the declared happy path": missing test: composed Worker->Kong/PostgREST->database case in a new tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts (model: phase-02-slice-12-template-version.apispec.ts) asserting POST /api/v1/cms/compositions/pattern-instances answers 201 with { items } of CompositionInstanceResource rows, a strong entry ETag, the committed composition rows and one audit event (BE03c CMS-03C-02, lines ~1365 and 1519). Today the RPC half is pgTAP (p1: placement succeeds / body exactly {items} / entry version +1 / strong ETag in phase_02_slice_12_pattern_placement/040-positive.sqlinc) and the HTTP half runs against a stubbed port (pattern-placement-http.test.ts); no test joins them.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-011',
@@ -1822,7 +1947,14 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and complete the declared happy path',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-taxonomy-term-action.apispec.ts',
+            title:
+              'CMS-03C-03 term action happy path through the real stack [P2-S12-AC-016] a taxonomy curator creating a term in the active flat vocabulary is a 200 with the closed TaxonomyTermResource, the quoted term version as ETag, the committed term and labels, one audit record and one taxonomy event',
+          },
+        ],
       },
       {
         text: 'CMS-03C-03 — CMS-14 — POST /api/v1/cms/taxonomies/{taxonomyId}/terms/actions — TaxonomyTermActionRequest → 200 TaxonomyTermResource.',
@@ -1842,9 +1974,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and complete the declared happy path": missing test: composed Worker->Kong/PostgREST->database case, new tests/postgrest/phase-02-slice-12-taxonomy-term-action.apispec.ts (model: phase-02-slice-12-template-version.apispec.ts), asserting POST /api/v1/cms/taxonomies/{taxonomyId}/terms/actions answers 200 with the closed TaxonomyTermResource and a quoted ETag of the term version, committed term row, one audit event (BE03c CMS-03C-03, line ~1506). LAYERED CANDIDATES root may accept instead (each read, none joins the layers): pgTAP phase_02_slice_12_taxonomy_terms/030-create.sqlinc:7/:10/:21 (creates a term; body exactly TaxonomyTermResource, 11 members; stable id, key, lifecycle active, version "1") and vitest cms-composition-production-taxonomy-act.test.ts "the named RPC ... answers 200 with the strict term and a quoted ETag" (mocked fetch).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-017',
@@ -2638,8 +2769,61 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'each active/allowlisted ContentTypeVersion family',
-        citations: [],
+        text: 'each active',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'a caller-owned content type whose state is retired (with an active version) is refused VALIDATION_FAILED [P2-S12-AC-023]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'an active caller-owned content type with no active version is refused VALIDATION_FAILED [P2-S12-AC-023]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'one inactive member among valid members refuses the whole list [P2-S12-AC-023]',
+          },
+        ],
+      },
+      {
+        text: '/allowlisted',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql',
+            title:
+              'an ACTIVE content type with an ACTIVE version that belongs to another owner is refused VALIDATION_FAILED [P2-S12-AC-023]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql',
+            title:
+              'one other-owner member among valid owned members refuses the whole list [P2-S12-AC-023]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql',
+            title:
+              'the other-owner member refuses the list wherever it stands in it [P2-S12-AC-023]',
+          },
+        ],
+      },
+      {
+        text: 'ContentTypeVersion family',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              'an active caller-owned content type with no active version is refused VALIDATION_FAILED [P2-S12-AC-023]',
+          },
+        ],
       },
       {
         text: '422.',
@@ -2665,9 +2849,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "each active/allowlisted ContentTypeVersion family": missing tests: (1) pgTAP in supabase/tests/phase_02_slice_12_template_authority.sql: cms_define_template with a compatibleTypeIds member that exists and is owned by the caller but whose cms_content_types.state is not active, and one whose content type is active but has no active cms_content_type_versions row, each refused VALIDATION_FAILED with no template row (supabase/migrations/20260927200000_cms_template_authority.sql lines 425-437 check exists + owner + state + active version); (2) the "allowlisted" half has no distinct rule in BE03c or the migration - needs a spec decision, then a test. Today only a nonexistent UUID (template_authority.sql, "refuses nonexistent or inactive compatible types") and, through the real stack, a type of another owner (template-version.apispec.ts "a value the contract accepts and the database refuses") are asserted.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-024',
@@ -2912,16 +3095,74 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: "`patternId` a lineage id of the caller's owner scope",
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql',
+            title: 'foreign-lineage: exact SQL message token NOT_FOUND',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql',
+            title:
+              'a foreign lineage is indistinguishable from an absent one [P2-S12-AC-043]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql',
+            title:
+              "control: the caller's own active pattern places on the same revision [P2-S12-AC-043]",
+          },
+        ],
       },
       {
         text: '422/404.',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-instance-routes.malformed-ids.test.ts',
+            title:
+              '[P2-S12-AC-026] CMS-03C-02 malformed body ids a malformed revisionId (not-a-uuid) is 422 COMPOSITION_VALIDATION_FAILED at that member and never reaches the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-instance-routes.malformed-ids.test.ts',
+            title:
+              '[P2-S12-AC-026] CMS-03C-02 malformed body ids a malformed revisionId (a number) is 422 COMPOSITION_VALIDATION_FAILED at that member and never reaches the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-instance-routes.malformed-ids.test.ts',
+            title:
+              '[P2-S12-AC-026] CMS-03C-02 malformed body ids a malformed patternId (not-a-uuid) is 422 COMPOSITION_VALIDATION_FAILED at that member and never reaches the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-instance-routes.malformed-ids.test.ts',
+            title:
+              '[P2-S12-AC-026] CMS-03C-02 malformed body ids a malformed patternId (a 37-character uuid) is 422 COMPOSITION_VALIDATION_FAILED at that member and never reaches the port',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql',
+            title: 'foreign-lineage: exact SQL message token NOT_FOUND',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql',
+            title: 'absent-lineage: exact SQL message token NOT_FOUND',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-pattern.test.ts',
+            title:
+              'CMS-03C-02 production pattern adapter maps private domain failures and transport failures without exposing provider content',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "`patternId` a lineage id of the caller\'s owner scope": missing test: pgTAP in supabase/tests/phase_02_slice_12_pattern_placement/050-refusals.sqlinc: the owner party places on its own readable current draft revision with a patternId (lineage) owned by a DIFFERENT organization, expecting the concealed NOT_FOUND (BE03c lines 382 and 1401/1638 "hidden/absent revision/pattern") and unchanged stores. Today unknown-pattern proves an absent lineage and hidden-owner hides revision and pattern together (a foreign caller), so the pattern-owner axis is never isolated; composition_owner_integrity.sql only covers the table-level guard. "422/404.": missing test: a Worker route test in apps/worker/src/cms-composition/pattern-instance-routes.test.ts that sends a non-UUID revisionId and a non-UUID patternId and asserts 422 COMPOSITION_VALIDATION_FAILED at the member pointer (BE03c line 382, DEC-227); the route answers every body schema failure 422 through apps/worker/src/cms-editorial/admission-body.ts decodeJson, but no CMS-03C-02 test sends a malformed id. The 404 half (pgTAP unknown-revision NOT_FOUND; the production adapter maps private NOT_FOUND to 404 COMPOSITION_NOT_FOUND) is proven elsewhere but the clause is cited only when both halves are.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-027',
@@ -3635,7 +3876,20 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'be readable',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql',
+            title:
+              'a source revision that EXISTS but belongs to an entry the caller cannot read is the concealed NOT_FOUND [P2-S12-AC-033]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql',
+            title:
+              "control: the same request over the entry's own readable source revision authors the draft [P2-S12-AC-033]",
+          },
+        ],
       },
       {
         text: '400/404.',
@@ -3660,9 +3914,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "be readable": missing test: pgTAP in supabase/tests/phase_02_slice_12_locale_variant/003-contract-and-idempotency.sqlinc (and the real-stack apispec) where sourceRevisionId names a revision that EXISTS but the caller cannot read (a revision of an entry another owner holds, sent with the caller\'s own entryId), expecting the concealed NOT_FOUND / 404 LOCALE_SOURCE_NOT_FOUND and unchanged stores (BE03c CMS-03C-04 field rule: source revision must exist and be readable). Today only a random (absent) sourceRevisionId and a foreign entryId with the caller\'s own revision are exercised.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-034',
@@ -4390,7 +4643,374 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'Idempotency-Key 8–128 printable ASCII',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts',
+            title:
+              'CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-06 a key of 129 characters is 400 INVALID_REQUEST before any quota or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts',
+            title:
+              'CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-06 a key of a control character is 400 INVALID_REQUEST before any quota or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts',
+            title:
+              'CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-07 a key of 129 characters is 400 INVALID_REQUEST before the capability check, any quota or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts',
+            title:
+              'CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-07 a key of a control character is 400 INVALID_REQUEST before the capability check, any quota or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts',
+            title:
+              'CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-09 a key of 129 characters is 400 INVALID_REQUEST before the capability check, MFA, any quota or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts',
+            title:
+              'CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-09 a key of a control character is 400 INVALID_REQUEST before the capability check, MFA, any quota or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts',
+            title:
+              'CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-12 a key of 129 characters is 400 INVALID_REQUEST before any quota or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts',
+            title:
+              'CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-12 a key of a control character is 400 INVALID_REQUEST before any quota or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts',
+            title:
+              'CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-07 a 128 character printable key is inside the bound and reaches the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 missing Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 7 characters Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 129 characters Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a control character Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a DEL character Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a non-ASCII character Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a malformed Idempotency-Key from a caller without the capability is the 400, not the 403',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a 8 character printable key is inside the bound and reaches the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a 128 character printable key is inside the bound and reaches the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 missing Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 7 characters Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 129 characters Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a control character Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a DEL character Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a non-ASCII character Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a malformed Idempotency-Key from a caller without the capability is the 400, not the 403',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a 8 character printable key is inside the bound and reaches the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/idempotency-key-boundary.test.ts',
+            title:
+              'CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a 128 character printable key is inside the bound and reaches the port',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-01 template version': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-01 template version': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-01 template version': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-01 template version': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-02 pattern instance': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-02 pattern instance': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-02 pattern instance': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-02 pattern instance': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-03 taxonomy term action': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-03 taxonomy term action': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-03 taxonomy term action': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order.test.ts',
+            title:
+              "'CMS-03C-03 taxonomy term action': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order-locale-related.test.ts',
+            title:
+              "'CMS-03C-04 locale variant': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order-locale-related.test.ts',
+            title:
+              "'CMS-03C-04 locale variant': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order-locale-related.test.ts',
+            title:
+              "'CMS-03C-04 locale variant': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order-locale-related.test.ts',
+            title:
+              "'CMS-03C-04 locale variant': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order-locale-related.test.ts',
+            title:
+              "'CMS-03C-05 related content': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order-locale-related.test.ts',
+            title:
+              "'CMS-03C-05 related content': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order-locale-related.test.ts',
+            title:
+              "'CMS-03C-05 related content': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/write-header-order-locale-related.test.ts',
+            title:
+              "'CMS-03C-05 related content': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-update-order.test.ts',
+            title:
+              "'CMS-03C-15 pattern update': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-update-order.test.ts',
+            title:
+              "'CMS-03C-15 pattern update': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-update-order.test.ts',
+            title:
+              "'CMS-03C-15 pattern update': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-update-order.test.ts',
+            title:
+              "'CMS-03C-15 pattern update': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-decision-input.test.ts',
+            title:
+              'CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses Idempotency-Key "café-key-0001" with 400 before capability and quota',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-decision-input.test.ts',
+            title:
+              'CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses Idempotency-Key "short" with 400 before capability and quota',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-decision-input.test.ts',
+            title:
+              'CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses Idempotency-Key null with 400 before capability and quota',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-activation-admission.test.ts',
+            title:
+              'CMS-03C-09 transport admission (BE00 order: parse before authority) answers a short Idempotency-Key with 400 before capability, MFA and quota',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-activation-admission.test.ts',
+            title:
+              'CMS-03C-09 transport admission (BE00 order: parse before authority) answers no Idempotency-Key with 400 before capability, MFA and quota',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-definition-write.test.ts',
+            title:
+              'CMS-03C-12 pattern definition write contract rejects a missing or invalid idempotency key: bad key',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/pattern-definition-write.test.ts',
+            title:
+              'CMS-03C-12 pattern definition write contract rejects a missing or invalid idempotency key: undefined',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-headers.test.ts',
+            title:
+              'CMS-03C-06 capability, header and preflight admission (BE03c row 168) rejects a missing or invalid idempotency key: undefined',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-headers.test.ts',
+            title:
+              'CMS-03C-06 capability, header and preflight admission (BE03c row 168) rejects a missing or invalid idempotency key: bad key',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-headers.test.ts',
+            title:
+              'CMS-03C-06 capability, header and preflight admission (BE03c row 168) rejects a missing or invalid idempotency key: x',
+          },
+        ],
       },
       {
         text: 'unknown keys reject',
@@ -4487,9 +5107,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "Idempotency-Key 8–128 printable ASCII": missing tests: Worker-route-level Idempotency-Key boundary tests (missing, 7 chars, 129 chars, non-printable: 400 before authorization, no quota consumed) for CMS-03C-08 (apps/worker/src/cms-composition/governed-review-assignment-input.test.ts has only the unknown-member cases; the key is asserted at the contract only) and for CMS-03C-16 (taxonomy-definition-write.test.ts and packages/contracts/src/cms-composition/taxonomy-version.test.ts assert no Idempotency-Key rule at all). The other ten POST operations are covered per route.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-040',
@@ -4721,7 +5340,27 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'focus stays until navigation or named result heading',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.result-focus.test.tsx',
+            title:
+              "template result focus: 'create designer' [P2-S12-AC-042] a verified success is a named result heading that takes focus and stays focused",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.result-focus.test.tsx',
+            title:
+              "template result focus: 'successor (edit) designer' [P2-S12-AC-042] a verified success is a named result heading that takes focus and stays focused",
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-042] a successful successor save keeps focus off every other control while pending, then moves it to the named result',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: 'Server-derived actor/context/capability',
@@ -4776,7 +5415,15 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'Render authoritative response/version/provenance/next action',
-        citations: [],
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-042] a successful successor save renders the authoritative version, the draft state and the next action, and the next action opens that very draft',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: 'announce status',
@@ -4854,6 +5501,18 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
               'CMS-11 keeps a stale tab’s unsent values through a real-route conflict and explicit rebase',
             project: 'real-route-chrome',
           },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.result-focus.test.tsx',
+            title:
+              "template result focus: 'create designer' [P2-S12-AC-042] a refusal keeps focus on the summary region, not on a result heading",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.result-focus.test.tsx',
+            title:
+              "template result focus: 'successor (edit) designer' [P2-S12-AC-042] a refusal keeps focus on the summary region, not on a result heading",
+          },
         ],
       },
       {
@@ -4893,7 +5552,169 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'scoped draft before commit',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'create designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] arms beforeunload only while the form holds unsent input',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'successor (edit) designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] arms beforeunload only while the form holds unsent input',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'create designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] shows an inline confirmation instead of leaving, keeps the draft and returns focus on Keep editing',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'successor (edit) designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] shows an inline confirmation instead of leaving, keeps the draft and returns focus on Keep editing',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'create designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] leaves only through the explicit discard, to the link the person chose',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'successor (edit) designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] leaves only through the explicit discard, to the link the person chose',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'create designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] does not intercept a link while the form is clean',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'successor (edit) designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] does not intercept a link while the form is clean',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'create designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] keeps the draft armed after a refusal and clears it only after a verified success',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 \'successor (edit) designer\': leaving with an unsent draft (FE03 "Unsaved changes") [P2-S12-AC-042] keeps the draft armed after a refusal and clears it only after a verified success',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 create designer: explicit discard [P2-S12-AC-042] Start another draft after success leaves a clean form with the guard disarmed',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx',
+            title:
+              'CMS-11 designer: the default destination [P2-S12-AC-042] without a navigate prop the explicit discard assigns the location the person chose',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is clean for an identical copy, whatever the order of the content-type set and the row ui ids',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for templateKey',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for compatibleTypeIds',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title: 'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for locale',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for audience',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for extraRegions',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot key',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot required flag',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot maxCount',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot block list',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a removed slot',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a binding key',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a binding projection',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a binding required flag',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts',
+            title:
+              'cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a removed binding',
+          },
+        ],
       },
       {
         text: 'server after success.',
@@ -4913,9 +5734,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "focus stays until navigation or named result heading": missing test: (a) jsdom case in apps/web/src/components/cms-composition/CmsTemplateDesigner.interaction.test.tsx (and the edit designer) asserting that after a SUCCESSFUL create/successor the focus stays on the commit control until navigation or moves to the named result heading (FE03 line 1109, the CMS-11 row), and (b) a Playwright assertion in tests/e2e/phase-02-slice-12-template-real-route.spec.ts for the same. Today only the refusal path is asserted (toBeFocused on the alert at real-route.spec.ts:93 and uncertain-real-route.spec.ts:92). "Render authoritative response/version/provenance/next action": missing test: web component test (CmsTemplateDesigner/CmsTemplateEditDesigner interaction) and/or the real-route spec asserting that a successful definition renders the authoritative version AND its provenance (parent version / supersession) AND the next action (link to the latest draft). Today uncertain-real-route.spec.ts:128 asserts only "version N" in the saved status; no test asserts provenance or the next action. "scoped draft before commit": missing test: web component test asserting the scoped draft store the FE03 line 1109 CMS-11 row requires (unsent values written to a per-form scoped draft before commit and cleared after server success). Today only in-memory retention across conflict/uncertain retry is asserted (CmsTemplateDesigner.interaction.test.tsx "keeps the draft values and idempotency key across an uncertain retry"), not a scoped draft store.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-043',
@@ -4966,7 +5786,19 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and readable',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql',
+            title: 'foreign-lineage: exact SQL message token NOT_FOUND',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql',
+            title:
+              'a foreign lineage is indistinguishable from an absent one [P2-S12-AC-043]',
+          },
+        ],
       },
       {
         text: 'and the resulting block tree stays acyclic within the protected depth and count limits.',
@@ -5004,7 +5836,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "and readable": missing test: pgTAP in supabase/tests/phase_02_slice_12_pattern_placement/050-refusals.sqlinc where the readable, editable revision of the caller references a pattern lineage owned by ANOTHER organization, expecting the concealed NOT_FOUND (same gap as AC-026 clause 2). Today unknown-pattern proves an absent lineage and hidden-owner hides revision and pattern together; the selector tests (pattern_selector/020-authority.sqlinc) prove who may list patterns, not that a placement of a foreign pattern is refused. "implement locked behavior and completion exactly. Operations: CMS-03C-12 (pattern version create)...": meta clause, no single test can prove it: "implement locked behavior and completion exactly. Operations: CMS-03C-12 (pattern version create), CMS-03C-13 (selector), CMS-03C-14 (update diff) and CMS-03C-15 (pattern update)" is discharged exactly when the per-operation criteria of those operations are verified (AC-100..AC-135 in this ledger). All four operations now exist (routes, RPCs, contracts, tests) but none has a composed Worker->Kong/PostgREST->database case. Proposal for root: treat as derived from those criteria.',
+      'Unproven (uncited clause): "implement locked behavior and completion exactly. Operations: CMS-03C-12 (pattern version create), CMS-03C-13 (pattern selector), CMS-03C-14 (update diff) and CMS-03C-15 (pattern update), BE03c ledger 25.03.03.": meta clause ("implement locked behavior and completion exactly. Operations: CMS-03C-12 .. -15"): no single test proves it; it holds when AC-100..AC-135 are verified. Proposal for root: treat as derived or split out.',
   },
   {
     criterion: 'P2-S12-AC-044',
@@ -5283,7 +6115,26 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'reconcile unknown mutation before retry',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx',
+            title:
+              'insert: an unknown outcome is reconciled with the entry before any retry reads the entry, keeps the identical request and key, and offers the retry only after the read',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx',
+            title:
+              'insert: an unknown outcome is reconciled with the entry before any retry says so when the entry has moved on, and still retries the same request',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx',
+            title:
+              'insert: an unknown outcome is reconciled with the entry before any retry says the entry could not be checked when the read fails, and the retry is still offered',
+          },
+        ],
       },
       {
         text: 'URL for navigation/filter',
@@ -5298,7 +6149,32 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'scoped draft before commit',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx',
+            title:
+              'insert: leaving with an unsent placement draft arms beforeunload only while the form holds unsent input, and disarms it after a success',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx',
+            title:
+              'insert: leaving with an unsent placement draft shows an inline confirmation instead of leaving, keeps the draft, and leaves only through the explicit discard',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx',
+            title:
+              'insert: leaving with an unsent placement draft never puts the draft in the URL, history or storage',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-composition-instances/CmsCompositionPage.insert.test.tsx',
+            title:
+              'insert: the request clears the pattern and overrides after a success but keeps the slot path and link mode',
+          },
+        ],
       },
       {
         text: 'server after success.',
@@ -5312,9 +6188,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "reconcile unknown mutation before retry": missing test: apps/web/src/components/cms-composition-instances/CmsCompositionPage.insert.test.tsx asserting that after an unknown placement outcome (502/503/504 or a network fault) the page reconciles with an authoritative read (the entry version / instance list) before the retry is offered, as the template designer does with its canonical GET (FE03 interaction row CMS-12). Today the test "reuses the Idempotency-Key for the identical retry after an unknown outcome" only asserts that the retry repeats the same key; no read is asserted between the unknown outcome and the retry. "scoped draft before commit": missing test: FE03 line 926 ("retain scoped draft, show inline leave confirmation, use beforeunload only while dirty, and clear only after success or explicit discard") for the composition page: a dirty insert form (chosen pattern, slot path, overrides) must raise the leave confirmation / beforeunload and keep the scoped draft until success or explicit discard. CmsCompositionPage.privacy.test.tsx asserts the opposite persistence boundary (nothing in URL, history or storage) and no test covers a leave confirmation or beforeunload for this island.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-046',
@@ -5719,7 +6594,14 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'reconcile unknown mutation before retry',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.retry.test.tsx',
+            title:
+              'CmsTaxonomyTermForm: retrying after an unknown outcome reconciles the list first, then retries the same request under the same Idempotency-Key',
+          },
+        ],
       },
       {
         text: 'URL for navigation/filter',
@@ -5734,7 +6616,32 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'scoped draft before commit',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx',
+            title:
+              'CmsTaxonomyTermForm: leaving with an unsent term draft (FE03 "Unsaved changes") arms beforeunload only while the open form holds input',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx',
+            title:
+              'CmsTaxonomyTermForm: leaving with an unsent term draft (FE03 "Unsaved changes") shows an inline confirmation instead of leaving, and keeps the typed draft',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx',
+            title:
+              'CmsTaxonomyTermForm: leaving with an unsent term draft (FE03 "Unsaved changes") leaves only through the explicit discard, to the link the person chose',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx',
+            title:
+              'CmsTaxonomyTermForm: leaving with an unsent term draft (FE03 "Unsaved changes") clears the draft and disarms the guard only after success or an explicit cancel',
+          },
+        ],
       },
       {
         text: 'server after success.',
@@ -5754,9 +6661,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "reconcile unknown mutation before retry": missing test: CmsTaxonomyTermForm test where an uncertain outcome is followed by a retry and the same Idempotency-Key is sent (or an authoritative reconcile read precedes it), per FE03 interaction row CMS-14. Today CmsTaxonomyTermForm.refusals.test.tsx "reports an unknown result without claiming success or failure" asserts only the heading and copy ("reuses the same idempotency key"), not the retry behavior. "scoped draft before commit": missing test: FE03 line 926 ("retain scoped draft, show inline leave confirmation, use beforeunload only while dirty, clear only after success or explicit discard") for the term form: a dirty create/rename/alias form must keep its scoped draft and warn on leave. No cms-taxonomy-terms test covers a leave confirmation or beforeunload. Further limits of cited clauses: The announce-status clause is half covered: the alert role of a refusal is asserted (CmsTaxonomyTermForm.refusals.test.tsx), the role and aria-live of the pending and done states of CmsTaxonomyTermStatus are not.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-049',
@@ -5776,13 +6682,96 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     text: 'Update slice tracking, feature-ledger assignments, applicable runbooks, and architecture graph in the same change; leave no unresolved implementation boundary or undocumented drift.',
     clauses: [
       {
-        text: 'Update slice tracking, feature-ledger assignments, applicable runbooks, and architecture graph in the same change; leave no unresolved implementation boundary or undocumented drift.',
+        text: 'Update slice tracking',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-closeout.test.ts',
+            title:
+              'Slice 12 tracking and feature ledger (P2-S12-AC-050) tracking: the tracker status agrees with the evidence ledger, and a Completion Signature exists exactly when every criterion is verified',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-closeout.test.ts',
+            title:
+              'Slice 12 tracking and feature ledger (P2-S12-AC-050) tracking: the progress checker reports slice, phase and index agreement with no drift',
+          },
+        ],
+      },
+      {
+        text: 'feature-ledger assignments',
         citations: [],
       },
+      {
+        text: 'applicable runbooks',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-closeout.test.ts',
+            title:
+              'Slice 12 runbooks (P2-S12-AC-050) runbook: every runbook the slice cites exists, is linked from the platform runbook index and cites only existing repository paths',
+          },
+        ],
+      },
+      {
+        text: 'and architecture graph',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-closeout.test.ts',
+            title:
+              'Slice 12 generated contracts and architecture graph (P2-S12-AC-050) architecture graph: the compiled specification graph equals the graph rebuilt from the committed spec text',
+          },
+        ],
+      },
+      {
+        text: 'in the same change;',
+        citations: [],
+      },
+      {
+        text: 'leave no unresolved implementation boundary',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-closeout.test.ts',
+            title:
+              'Slice 12 implementation boundaries (P2-S12-AC-050) boundaries: no TODO, FIXME, not-implemented or unwired marker remains in the Slice 12 production sources',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-closeout.test.ts',
+            title:
+              'Slice 12 implementation boundaries (P2-S12-AC-050) boundaries: no BOUNDARY: marker remains in the Slice 12 production sources (the nested picker is wired to cmsPatternNestableRead)',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-closeout.test.ts',
+            title:
+              'Slice 12 implementation boundaries (P2-S12-AC-050) boundaries: the SQL BOUNDARY: markers are the replaced anchors of the retire-request amendment and the restore marker the DEC-240 migration supersedes',
+          },
+        ],
+      },
+      {
+        text: 'or undocumented drift.',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-closeout.test.ts',
+            title:
+              'Slice 12 tracking and feature ledger (P2-S12-AC-050) tracking: the progress checker reports slice, phase and index agreement with no drift',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/contracts/phase-02-slice-12-closeout.test.ts',
+            title:
+              'Slice 12 generated contracts and architecture graph (P2-S12-AC-050) contracts: the committed OpenAPI document equals the one generated from the route registry (no undocumented drift)',
+          },
+        ],
+      },
     ],
-    status: 'unverified',
+    status: 'partial',
     limitation:
-      'No test is cited. Unproven: "Update slice tracking, feature-ledger assignments, applicable runbooks, and architecture graph in...": missing test: tests/contracts/phase-02-slice-12-closeout.test.ts (model: phase-02-slice-11-closeout.test.ts) asserting, for Slice 12: the tracker gate lines, the feature-ledger assignments (25.03.02, 25.03.03, 25.05.01 to 25.05.04), every runbook path the slice cites, the architecture graph equal to the graph rebuilt from the spec text, the committed OpenAPI equal to the registry-generated document, and no unresolved BOUNDARY marker without its tracking issue, typed interface and sentinel test in the Slice 12 sources and migrations (20261014070300 and 20261014160000 still carry BOUNDARY: markers for the retirement-policy confirmation). Only per-area fragments exist today (registry-parity tests, the merge-converge runbook content test, the ledger inventory test), none checks tracker, feature ledger or graph.',
+      'Unproven (uncited clauses): "feature-ledger assignments": BOUNDARY until slice close: 25.05.03 and 25.05.04 are plan-listed for Slice 12 (DEC-114) but still unassigned ("—") in the feature ledger, and the closeout test pins that drift; the assignment and the changed closeout assertion land in the slice-close change. "in the same change;": a property of the slice-close commit, not of repository state; no test can prove it (the commit itself shows it).',
   },
   {
     criterion: 'P2-S12-AC-051',
@@ -6338,7 +7327,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-055',
-    text: "CMS-03C-04 derives session and acting context server-side and serves only an assigned CMS author or editor who may edit the entry for the localizable fields of the requested locale, on a source revision the caller can read: a hidden or absent entry, locale or source revision is 404 `LOCALE_SOURCE_NOT_FOUND`, a visible entry without edit assignment is 403 `LOCALE_FORBIDDEN`, no ownership, party or person identifier is serialized, and the operation never borrows another jurisdiction's text.",
+    text: "CMS-03C-04 derives session and acting context server-side and serves only an assigned CMS author or editor who may edit the entry for the localizable fields of the requested locale, on a source revision the caller can read: a hidden or absent entry or source revision is 404 `LOCALE_SOURCE_NOT_FOUND`, a locale outside the active content-type version's `supportedLocales` is 422 `LOCALE_VALIDATION_FAILED`, a visible entry without edit assignment is 403 `LOCALE_FORBIDDEN`, no ownership, party or person identifier is serialized, and the operation never borrows another jurisdiction's text.",
     clauses: [
       {
         text: 'CMS-03C-04 derives session and acting context server-side',
@@ -6382,7 +7371,26 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'on a source revision the caller can read',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql',
+            title:
+              'a source revision that EXISTS but belongs to an entry the caller cannot read is the concealed NOT_FOUND [P2-S12-AC-033]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql',
+            title:
+              'a readable revision of another entry is not a source for this entry: the same concealed NOT_FOUND [P2-S12-AC-055]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql',
+            title:
+              "control: the same request over the entry's own readable source revision authors the draft [P2-S12-AC-033]",
+          },
+        ],
       },
       {
         text: 'a hidden or absent entry',
@@ -6412,10 +7420,6 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'locale',
-        citations: [],
-      },
-      {
         text: 'source revision is 404 `LOCALE_SOURCE_NOT_FOUND`',
         citations: [
           {
@@ -6435,6 +7439,23 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
             file: 'apps/worker/src/cms-composition-production-locale.test.ts',
             title:
               'CMS-03C-04 production locale adapter maps port refusals to exact locked CMS-03C-04 catalog codes',
+          },
+        ],
+      },
+      {
+        text: "a locale outside the active content-type version's `supportedLocales` is 422 `LOCALE_VALIDATION_FAILED`",
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_locale_config_enforcement.sql',
+            title:
+              "a locale outside the active version's supportedLocales is a validation failure (422)",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition-production-locale-unsupported.test.ts',
+            title:
+              'CMS-03C-04 unsupported locale on the write [P2-S12-AC-055] maps the bare database VALIDATION_FAILED of a locale outside supportedLocales to 422 LOCALE_VALIDATION_FAILED, not a 404',
           },
         ],
       },
@@ -6502,13 +7523,12 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "on a source revision the caller can read": missing test: pgTAP in supabase/tests/phase_02_slice_12_locale_variant/003-contract-and-idempotency.sqlinc (and the real-stack apispec) where sourceRevisionId names a revision that EXISTS but the caller cannot read (a revision of an entry another owner holds, sent with the caller\'s own entryId), expecting the concealed NOT_FOUND / 404 LOCALE_SOURCE_NOT_FOUND and unchanged stores. Today only a random (absent) sourceRevisionId is concealed. "locale": missing test or spec reconciliation: BE03c says a hidden or absent locale is 404 LOCALE_SOURCE_NOT_FOUND, but the RPC refuses a locale outside the active version\'s supportedLocales as a 422 validation failure (supabase/tests/phase_02_slice_12_locale_config_enforcement.sql: "a locale outside the active version\'s supportedLocales is a validation failure (422)"). No test asserts any 404 for a locale on the authoring POST; either the spec row or the code needs reconciling before a test can pass.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-056',
-    text: 'CMS-03C-04 requires an `Idempotency-Key` and the strong `If-Match` equal to the entry aggregate `version` (`expectedVersion`), applies CAS on the source revision and the entry, enforces a unique entry, locale and source revision, rate buckets of 60/min/user and 120/min/party, a 15,000 ms deadline, no-store and the Tier 2 p95 < 1,200 ms and RPC < 300 ms targets, replays an exact repeat of the same command, and answers a changed actor, body, path or version under the same key with 409.',
+    text: 'CMS-03C-04 requires an `Idempotency-Key` and the strong `If-Match` equal to the entry aggregate `version` (`expectedVersion`), applies CAS on the source revision and the entry, enforces a unique entry, locale and source revision, rate buckets of 60/min/user and 120/min/party, a 15,000 ms deadline, no-store and the Tier 2 p95 < 1,200 ms and RPC < 300 ms targets, replays an exact repeat of the same command, and answers a changed body, path or version under the same key with 409, and never replays to a changed acting party (an entry outside its scope is the concealed 404, answered before the key is reserved).',
     clauses: [
       {
         text: 'CMS-03C-04 requires an `Idempotency-Key` and the strong `If-Match` equal to the entry aggregate `version` (`expectedVersion`)',
@@ -6633,7 +7653,20 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the Tier 2 p95 < 1,200 ms',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_locale.sql',
+            title:
+              'CMS-03C-04 write of 128 locale fields over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-056]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-locale.apispec.ts',
+            title:
+              'Slice 12 locale latency through the real stack [CMS-03C-04] writing a 128-field fr-FR variant: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-056] [P2-S12-AC-279]',
+          },
+        ],
       },
       {
         text: 'RPC < 300 ms targets',
@@ -6668,11 +7701,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'answers a changed actor',
-        citations: [],
-      },
-      {
-        text: 'body, path or version under the same key with 409.',
+        text: 'answers a changed body, path or version under the same key with 409,',
         citations: [
           {
             tool: 'pgtap',
@@ -6700,10 +7729,26 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
           },
         ],
       },
+      {
+        text: 'and never replays to a changed acting party (an entry outside its scope is the concealed 404, answered before the key is reserved).',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql',
+            title:
+              'the same actor replaying the key under another server-resolved acting party is never served the stored response [P2-S12-AC-056]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql',
+            title:
+              'the entry belongs to organization A, so under organization B the entry itself is the concealed NOT_FOUND, answered before the reservation is read (BE03c visibility, then capability, then idempotency) [P2-S12-AC-056]',
+          },
+        ],
+      },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the Tier 2 p95 < 1,200 ms": missing test: staging/hosted performance evidence for POST /api/v1/cms/entries/{entryId}/locales/{locale}/variants p95 < 1,200 ms (Tier 2 end-to-end budget); tests/performance/api-p95-smoke.test.ts does not cover CMS-03C-04 and no local assertion can attest an end-to-end p95 (hosted/native evidence, root-owned). "answers a changed actor": missing test: pgTAP in supabase/tests/phase_02_slice_12_locale_variant/003-contract-and-idempotency.sqlinc (and the real-stack apispec) replaying a stored key as a DIFFERENT server-resolved actor / acting party and expecting the 409 IDEMPOTENCY_MISMATCH (the template RPC has this case: "CMS same key cannot replay across server-resolved acting parties" in template_authority.sql; no locale case changes the actor).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-057',
@@ -7421,7 +8466,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-061',
-    text: 'CMS-03C-05 requires an `Idempotency-Key` and the strong `If-Match` equal to the source entry aggregate `version` (`expectedVersion`), applies CAS on the source entry, enforces unique pin and exclusion targets, rate buckets of 60/min/user and 120/min/party, a 15,000 ms deadline, no-store and Tier 2, appends rows without updating any, and emits no event of its own (it consumes `cms.publication.changed.v1` for invalidation).',
+    text: 'CMS-03C-05 requires an `Idempotency-Key` and the strong `If-Match` equal to the source entry aggregate `version` (`expectedVersion`), applies CAS on the source entry, enforces unique pin and exclusion targets, rate buckets of 60/min/user and 120/min/party, a 15,000 ms deadline, no-store and Tier 2, appends rows without updating any, and emits no event of its own (related eligibility is evaluated at read, so a publication needs no invalidation and 03c consumes no `cms.publication.changed.v1`).',
     clauses: [
       {
         text: 'CMS-03C-05 requires an `Idempotency-Key` and the strong `If-Match` equal to the source entry aggregate `version` (`expectedVersion`)',
@@ -7571,13 +8616,26 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: '(it consumes `cms.publication.changed.v1` for invalidation).',
-        citations: [],
+        text: '(related eligibility is evaluated at read, so a publication needs no invalidation and 03c consumes no `cms.publication.changed.v1`).',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_related_public_targets/002-recompute-and-ties.sqlinc',
+            title:
+              'an unpublished entry (tombstone head) disappears [P2-S12-AC-157]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_related_public_targets/002-recompute-and-ties.sqlinc',
+            title:
+              'a pinned entry published after the pin appears at its pin position: nothing was stored at write time [P2-S12-AC-156]',
+          },
+        ],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "Tier 2": missing test: staging/hosted performance evidence that POST /api/v1/cms/entries/{entryId}/related-content meets the Tier 2 p95 < 1,200 ms end-to-end budget (tests/performance/api-p95-smoke.test.ts does not cover CMS-03C-05). Only the RPC bench "curating 64 related targets meets the RPC < 300 ms target (p95 of 10)" in phase_02_slice_12_related_perf.sql exists, which is the RPC share of the budget, not the end-to-end p95 (hosted/native evidence, root-owned). "(it consumes `cms.publication.changed.v1` for invalidation).": BE03c 1734 says 03c consumes cms.publication.changed.v1 to invalidate related eligibility, but the implementation recomputes at read time and no event consumer exists; the two recompute-on-read tests were refuted as proof of consumption, so the clause needs an owner decision (amend it to recompute-on-read, or build the consumer)',
+      'Unproven (uncited clauses): "Tier 2": missing test: staging/hosted performance evidence that POST /api/v1/cms/entries/{entryId}/related-content meets the Tier 2 p95 < 1,200 ms end-to-end budget (tests/performance/api-p95-smoke.test.ts does not cover CMS-03C-05). Only the RPC bench "curating 64 related targets meets the RPC < 300 ms target (p95 of 10)" in phase_02_slice_12_related_perf.sql exists, which is the RPC share of the budget, not the end-to-end p95 (hosted/native evidence, root-owned).',
   },
   {
     criterion: 'P2-S12-AC-062',
@@ -8188,7 +9246,14 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: "a `subjectId` that is the exact version row id in the caller's owner scope",
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_governed.sql',
+            title:
+              'an absent id and a version row of another organization meet the same concealed NOT_FOUND [P2-S12-AC-066]',
+          },
+        ],
       },
       {
         text: 'and a `subjectHash` of 64 lowercase hex equal to the stored `content_hash` (422 at `/subjectHash` otherwise)',
@@ -8311,9 +9376,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "a `subjectId` that is the exact version row id in the caller\'s owner scope": missing test: pgTAP in supabase/tests/phase_02_slice_12_governed_submit/ where subjectId names (a) a lineage id rather than the exact version row id, (b) a version row owned by another organization, (c) an absent id, each expecting the concealed NOT_FOUND / refusal and unchanged stores (BE03c CMS-03C-06 field matrix 389). Only the contract grammar of the id and the control that the fixture subjects resolve to draft template_versions in the owner scope are asserted. Further limits of cited clauses: The partial unique index named in the last clause is asserted by no test (every duplicate-submit test is refused earlier by the non-draft state guard, and the draft-with-a-live-review arm is unreachable through the producers); only the outcome of at most one live review is covered.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-066',
@@ -8355,7 +9419,20 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'a hidden or absent subject is 404',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_governed.sql',
+            title:
+              'an absent id and a version row of another organization meet the same concealed NOT_FOUND [P2-S12-AC-066]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_governed.sql',
+            title:
+              'the concealed refusals carry the same DETAIL (none), so nothing distinguishes hidden from absent [P2-S12-AC-066]',
+          },
+        ],
       },
       {
         text: 'a visible subject without the capability is 403 `capability_missing`',
@@ -8432,9 +9509,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "a hidden or absent subject is 404": missing test: pgTAP in supabase/tests/phase_02_slice_12_governed_submit/ where the subject is absent, or a version row of another organization, expecting the concealed NOT_FOUND from platform_api.cms_submit_governed_review and unchanged stores. NOT_FOUND is tested for assignment, decision, activation and reads but not for submit; today only the Worker transport maps a stubbed token (governed-review-refusals.test.ts "answers a hidden and an absent subject identically"). Further limits of cited clauses: The per-kind capability map (cms.template_designer for template and pattern versions, cms.taxonomy_curator for taxonomy versions) and the owner-party scope have no database test: the Worker gate is any-of and leaves the kind to SQL, and no pgTAP refuses a curator on a template, a designer on a taxonomy or a cross-party caller.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-067',
@@ -8510,7 +9586,20 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the Tier 2 p95 < 1,200 ms target',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc',
+            title:
+              'CMS-03C-06 submit over 110 real submissions: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-067]',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts',
+            title:
+              'Slice 12 governed-review latency through the real stack [CMS-03C-06] submit over a real draft template: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-067]',
+          },
+        ],
       },
       {
         text: 'in one transaction freezes the subject hash, the policy basis and the block digest, inserts the `open` review with its dependency rows',
@@ -8574,9 +9663,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "the Tier 2 p95 < 1,200 ms target": missing test: staging/hosted performance evidence for POST /api/v1/cms/governed-reviews p95 < 1,200 ms (Tier 2 end-to-end budget); no local assertion can attest an end-to-end p95 (hosted/native evidence, root-owned). Further limits of cited clauses: In one transaction is not asserted by fault injection (every no-effect refusal fires before the first write), and the block digest is asserted only for a template with an empty block tree (the digest of "[]").',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-068',
@@ -8888,7 +9976,20 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'icon',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.icon.test.tsx',
+            title:
+              'CmsGovernedReviewPanel lifecycle icon (FE03 Slice 12 governed surfaces) shows exactly one decorative icon beside the lifecycle text for every subject state',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.icon.test.tsx',
+            title:
+              'CmsGovernedReviewPanel lifecycle icon (FE03 Slice 12 governed surfaces) gives every state its own glyph, so the state is never carried by colour alone',
+          },
+        ],
       },
       {
         text: 'builds `GovernedReviewSubmissionRequest` from the served version id and hash (never typed)',
@@ -8956,7 +10057,14 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'states why a version cannot yet be activated ("Needs an independent reviewer\'s approval")',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.test.tsx',
+            title:
+              'CmsGovernedReviewPanel lifecycle (CMS-03C-06) states the review lifecycle in words and offers no submit action',
+          },
+        ],
       },
       {
         text: 'and never shows an activate control without an `approved` review',
@@ -9034,7 +10142,20 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'the 403/404 split',
-        citations: [],
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.not-found.test.tsx',
+            title:
+              'CmsGovernedReviewPanel: the 404 half of the 403/404 split shows the one non-disclosing not-available line for a hidden or absent subject, with no capability gate',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.not-found.test.tsx',
+            title:
+              'CmsGovernedReviewPanel: the 404 half of the 403/404 split keeps the two halves distinct: the 403 shows the capability gate and no not-available line',
+          },
+        ],
       },
       {
         text: 'the focused result heading.',
@@ -9057,7 +10178,7 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "CMS-03C-06 is consumed by the protected `CmsGovernedReviewPanel` on the template, pattern": the hosting of the panel on the template and pattern pages is proven by no behavioural test: the three page-mount tests of the lane read the .astro sources as text (refuted); only the real-route spec T2 drives the panel, on the vocabulary page "icon": missing test (and implementation): FE03 line 879 says "Lifecycle is text and icon". CmsGovernedReviewPanel.tsx renders the lifecycle as text only (no icon element in the panel source) and no test asserts an icon; either an icon with a text alternative is added and tested, or the FE03 row is amended. "states why a version cannot yet be activated ("Needs an independent reviewer\'s approval")": wording discrepancy, no test for the quoted string: FE03 line 879 quotes "Needs an independent reviewer\'s approval" for a version that cannot yet be activated; the panel (CmsGovernedReviewPanel.test.tsx:95) asserts "An independent reviewer must approve it" for the review lifecycle. The behavior (a reason is stated) is asserted, the quoted copy is not. Either align the copy and the test with the FE03 quote, or amend the FE03 quote. "the 403/404 split": missing test: a panel/submit-flow case asserting the 404 half of the split (a hidden or absent subject at submit time shows the concealed not-found copy, distinct from the capability gate). Only the 403 half is asserted in the panel ("submit for review renders the capability gate for a missing capability or separation of duties, never a step-up route").',
+      'Unproven (uncited clause): "CMS-03C-06 is consumed by the protected `CmsGovernedReviewPanel` on the template, pattern": missing test: behavioural page-mount test that CmsGovernedReviewPanel is hosted on the template and pattern pages (the three page-mount tests read the .astro sources as text and were refuted). Re-checked 2026-10-29: no gap-wave test carries it; only the real-route spec T2 drives the panel, on the vocabulary page.',
   },
   {
     criterion: 'P2-S12-AC-070',

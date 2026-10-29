@@ -226,27 +226,22 @@ describe('[P2-S11-AC-093] the SQL preflight registry seed equals CMS_PREFLIGHT_R
     const newer = CMS_PREFLIGHT_REGISTRY.filter(
       (row) => row.registryVersion === '2',
     );
-    // BE03c "Preflight providers registered by Slice 12" lists three providers (pattern, taxonomy,
-    // locale), each a newer registry row. The contracts registry holds a newer row for each provider
-    // registered so far: pattern (cms.pattern.active_digest, promoted 20261016044400) and locale. The
-    // taxonomy provider (P2-S12-AC-239, cms.taxonomy.assignment_integrity) is specified but not yet
-    // registered anywhere (no migration, no contracts row), so its category is still the reference
-    // gate here; this test fails the day its row lands, forcing this list to become all three.
-    expect(newer.map((row) => row.category)).toEqual(['pattern', 'locale']);
+    // BE03c "Preflight providers registered by Slice 12" lists three providers (pattern, taxonomy, locale), each a newer
+    // registry row. The contracts registry holds a newer row for each: pattern (cms.pattern.active_digest, promoted
+    // 20261016044400), taxonomy (cms.taxonomy.assignment_integrity, P2-S12-AC-239, lane taxonomy-integrity) and locale.
+    expect(newer.map((row) => row.category)).toEqual([
+      'pattern',
+      'taxonomy',
+      'locale',
+    ]);
     expect(
-      CMS_PREFLIGHT_REGISTRY.find((row) => row.category === 'taxonomy'),
-    ).toMatchObject({
-      registryVersion: '1',
-      providerKey: 'preflight.reference_gate',
-    });
+      CMS_PREFLIGHT_REGISTRY.filter(
+        (row) => row.providerKind === 'reference_gate',
+      ).map((row) => row.category),
+    ).toEqual(['privacy', 'media', 'route']);
     for (const provider of CMS_SLICE_12_PREFLIGHT_PROVIDERS) {
       const row = newer.find((entry) => entry.category === provider.category);
-      if (row === undefined) {
-        expect(provider.category, 'provider not yet registered').toBe(
-          'taxonomy',
-        );
-        continue;
-      }
+      expect(row, `provider ${provider.providerKey} registered`).toBeDefined();
       expect(row).toMatchObject({
         providerKey: provider.providerKey,
         providerVersion: provider.providerVersion,

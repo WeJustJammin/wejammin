@@ -164,6 +164,7 @@ const BODIES: Readonly<
 
 const QUERIES: Readonly<Record<string, string>> = {
   'CMS-03C-13': `?contentTypeId=${ID(1)}`,
+  cmsPatternNestableRead: `?contentTypeId=${ID(1)}&contentTypeId=${ID(2)}`,
   'CMS-03C-17': '?typeKey=article&fieldKey=instruments&locale=en-US',
 };
 
