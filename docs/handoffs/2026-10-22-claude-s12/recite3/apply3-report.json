@@ -1,0 +1,26 @@
+{
+ "problems": [],
+ "totals": {
+  "verified": 229,
+  "partial": 64,
+  "unverified": 3
+ },
+ "changes": [
+  "-AC-056 partial->verified",
+  "-AC-292 partial->verified",
+  "-AC-072 partial->partial",
+  "-AC-143 partial->partial",
+  "-AC-023 partial->verified",
+  "-AC-079 verified->verified",
+  "-AC-210 unverified->verified",
+  "-AC-223 partial->verified",
+  "-AC-225 partial->verified",
+  "-AC-155 partial->partial",
+  "-AC-256 partial->verified",
+  "-AC-086 partial->partial"
+ ],
+ "log": [
+  "AC-072 c4: removed 1 outcome-only citation(s)",
+  "AC-086 c4: 6 refusal + 1 invalidation citations"
+ ]
+}

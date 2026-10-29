@@ -1,0 +1,754 @@
+[
+ {
+  "criterion": "P2-S12-AC-001",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "and accessibility contracts in templates.",
+  "class": "pgtap",
+  "limitation": "Unproven (uncited clauses): \"and accessibility contracts in templates.\": missing test (and a spec decision): BE03c \"Accessibility handoff tests\" (lines 1816-1818) reduces template accessibility to stable JSON Pointer paths for template/slot validation errors and reserved profile/provenance regions that content cannot hide or reorder; nothing defines or compares the block registry accessibility_contract inside a template (cms_define_template never reads block_registry.accessibility_contract). Needed: a spec line stating what a template must preserve of a placed block's accessibility contract, then (a) pgTAP in supabase/tests/phase_02_slice_12_template_authority.sql where a template over a block whose accessibility_contract is dropped or changed is refused or changes the block digest, and (b) a contract case in packages/contracts/src/cms-composition/template.test.ts. The stable-pointer half is asserted today (template.test.ts rejectedAt paths) and the reserved-region half (movement refused) is cited under clause 1."
+ },
+ {
+  "criterion": "P2-S12-AC-010",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "and complete the declared happy path",
+  "class": "pgtap",
+  "limitation": "Unproven (uncited clauses): \"and complete the declared happy path\": missing test: composed Worker->Kong/PostgREST->database case in a new tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts (model: phase-02-slice-12-template-version.apispec.ts) asserting POST /api/v1/cms/compositions/pattern-instances answers 201 with { items } of CompositionInstanceResource rows, a strong entry ETag, the committed composition rows and one audit event (BE03c CMS-03C-02, lines ~1365 and 1519). Today the RPC half is pgTAP (p1: placement succeeds / body exactly {items} / entry version +1 / strong ETag in phase_02_slice_12_pattern_placement/040-positive.sqlinc) and the HTTP half runs against a stubbed port (pattern-placement-http.test.ts); no test joins them."
+ },
+ {
+  "criterion": "P2-S12-AC-013",
+  "status": "partial",
+  "clauseIndex": 6,
+  "clause": "and concurrency rules.",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"and concurrency rules.\": missing test: race (tool race) under supabase/tests (new phase_02_slice_12_pattern_placement.race.mjs, runner infra/database-races) driving two simultaneous cms_insert_pattern_instance calls into one (revision, slot) from independent sessions and asserting serialised consecutive positions, no duplicate (revision_id, path), exactly one winner on the same path, and the revision/slot lock order of BE03c (pattern placement section ~1519: \"computed under the revision/slot lock\", DEC-185). No race module touches cms_insert_pattern_instance today; the pgTAP suite is single-session by its own header."
+ },
+ {
+  "criterion": "P2-S12-AC-016",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "and complete the declared happy path",
+  "class": "pgtap",
+  "limitation": "Unproven (uncited clauses): \"and complete the declared happy path\": missing test: composed Worker->Kong/PostgREST->database case, new tests/postgrest/phase-02-slice-12-taxonomy-term-action.apispec.ts (model: phase-02-slice-12-template-version.apispec.ts), asserting POST /api/v1/cms/taxonomies/{taxonomyId}/terms/actions answers 200 with the closed TaxonomyTermResource and a quoted ETag of the term version, committed term row, one audit event (BE03c CMS-03C-03, line ~1506). LAYERED CANDIDATES root may accept instead (each read, none joins the layers): pgTAP phase_02_slice_12_taxonomy_terms/030-create.sqlinc:7/:10/:21 (creates a term; body exactly TaxonomyTermResource, 11 members; stable id, key, lifecycle active, version \"1\") and vitest cms-composition-production-taxonomy-act.test.ts \"the named RPC ... answers 200 with the strict term and a quoted ETag\" (mocked fetch)."
+ },
+ {
+  "criterion": "P2-S12-AC-019",
+  "status": "partial",
+  "clauseIndex": 7,
+  "clause": "and concurrency rules.",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"and concurrency rules.\": missing test: race (tool race) under supabase/tests (new phase_02_slice_12_taxonomy_term_action.race.mjs, runner infra/database-races) driving two simultaneous cms_act_taxonomy_term calls on one vocabulary/term from independent sessions, asserting the term lock / active-version CAS serialises them (exactly one winner of a duplicate stable key; a stale active-version operand loses), per BE03c lock order (position 1 locks, lines ~1344-1351) and the merge convergence lock order (1338). Only structural lock-order assertions exist (085-continuation.sqlinc:197,200) and single-session forms."
+ },
+ {
+  "criterion": "P2-S12-AC-023",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "/allowlisted",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"/allowlisted\": no distinct \"allowlisted\" rule exists in BE03c or cms_define_template (db1 BOUNDARY, re-checked): needs a spec decision before a test can exist."
+ },
+ {
+  "criterion": "P2-S12-AC-039",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "Idempotency-Key 8–128 printable ASCII",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"Idempotency-Key 8–128 printable ASCII\": missing tests: Worker-route-level Idempotency-Key boundary tests (missing, 7 chars, 129 chars, non-printable: 400 before authorization, no quota consumed) for CMS-03C-08 (apps/worker/src/cms-composition/governed-review-assignment-input.test.ts has only the unknown-member cases; the key is asserted at the contract only) and for CMS-03C-16 (taxonomy-definition-write.test.ts and packages/contracts/src/cms-composition/taxonomy-version.test.ts assert no Idempotency-Key rule at all). The other ten POST operations are covered per route."
+ },
+ {
+  "criterion": "P2-S12-AC-040",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "implement locked behavior and completion exactly. Operations: CMS-03C-06 (governed review submit), CMS-03C-07 (decision), CMS-03C-08 (reviewer assignment), CMS-03C-09 (activation), CMS-03C-10 (review detail), CMS-03C-11 (review queue) and CMS-03C-19 (governed scheduled-activation executor), BE03c ledger 25.03.02.",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"implement locked behavior and completion exactly. Operations: CMS-03C-06 (governed review submit)...\": meta clause, no single test can prove it: \"implement locked behavior and completion exactly. Operations: CMS-03C-06 ... CMS-03C-11 and CMS-03C-19\" is discharged exactly when the per-operation criteria of those operations are verified (governed submit/decision/assignment/activation/detail/queue/scheduled executor: AC-064..AC-099 and AC-142..AC-151 in this ledger). Citing one representative test per operation would over-claim (every one of those operations still lacks a composed Worker->Kong/PostgREST->database case). Proposal for root: treat this clause as derived (verified iff those criteria are verified) or split it out of the evidence ledger."
+ },
+ {
+  "criterion": "P2-S12-AC-042",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "focus stays until navigation or named result heading",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"focus stays until navigation or named result heading\": missing test: (a) jsdom case in apps/web/src/components/cms-composition/CmsTemplateDesigner.interaction.test.tsx (and the edit designer) asserting that after a SUCCESSFUL create/successor the focus stays on the commit control until navigation or moves to the named result heading (FE03 line 1109, the CMS-11 row), and (b) a Playwright assertion in tests/e2e/phase-02-slice-12-template-real-route.spec.ts for the same. Today only the refusal path is asserted (toBeFocused on the alert at real-route.spec.ts:93 and uncertain-real-route.spec.ts:92). \"Render authoritative response/version/provenance/next action\": missing test: web component test (CmsTemplateDesigner/CmsTemplateEditDesigner interaction) and/or the real-route spec asserting that a successful definition renders the authoritative version AND its provenance (parent version / supersession) AND the next action (link to the latest draft). Today uncertain-real-route.spec.ts:128 asserts only \"version N\" in the saved status; no test asserts provenance or the next action. \"scoped draft before commit\": missing test: web component test asserting the scoped draft store the FE03 line 1109 CMS-11 row requires (unsent values written to a per-form scoped draft before commit and cleared after server success). Today only in-memory retention across conflict/uncertain retry is asserted (CmsTemplateDesigner.interaction.test.tsx \"keeps the draft values and idempotency key across an uncertain retry\"), not a scoped draft store."
+ },
+ {
+  "criterion": "P2-S12-AC-042",
+  "status": "partial",
+  "clauseIndex": 5,
+  "clause": "Render authoritative response/version/provenance/next action",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"focus stays until navigation or named result heading\": missing test: (a) jsdom case in apps/web/src/components/cms-composition/CmsTemplateDesigner.interaction.test.tsx (and the edit designer) asserting that after a SUCCESSFUL create/successor the focus stays on the commit control until navigation or moves to the named result heading (FE03 line 1109, the CMS-11 row), and (b) a Playwright assertion in tests/e2e/phase-02-slice-12-template-real-route.spec.ts for the same. Today only the refusal path is asserted (toBeFocused on the alert at real-route.spec.ts:93 and uncertain-real-route.spec.ts:92). \"Render authoritative response/version/provenance/next action\": missing test: web component test (CmsTemplateDesigner/CmsTemplateEditDesigner interaction) and/or the real-route spec asserting that a successful definition renders the authoritative version AND its provenance (parent version / supersession) AND the next action (link to the latest draft). Today uncertain-real-route.spec.ts:128 asserts only \"version N\" in the saved status; no test asserts provenance or the next action. \"scoped draft before commit\": missing test: web component test asserting the scoped draft store the FE03 line 1109 CMS-11 row requires (unsent values written to a per-form scoped draft before commit and cleared after server success). Today only in-memory retention across conflict/uncertain retry is asserted (CmsTemplateDesigner.interaction.test.tsx \"keeps the draft values and idempotency key across an uncertain retry\"), not a scoped draft store."
+ },
+ {
+  "criterion": "P2-S12-AC-042",
+  "status": "partial",
+  "clauseIndex": 12,
+  "clause": "scoped draft before commit",
+  "class": "web",
+  "limitation": "Unproven (uncited clauses): \"focus stays until navigation or named result heading\": missing test: (a) jsdom case in apps/web/src/components/cms-composition/CmsTemplateDesigner.interaction.test.tsx (and the edit designer) asserting that after a SUCCESSFUL create/successor the focus stays on the commit control until navigation or moves to the named result heading (FE03 line 1109, the CMS-11 row), and (b) a Playwright assertion in tests/e2e/phase-02-slice-12-template-real-route.spec.ts for the same. Today only the refusal path is asserted (toBeFocused on the alert at real-route.spec.ts:93 and uncertain-real-route.spec.ts:92). \"Render authoritative response/version/provenance/next action\": missing test: web component test (CmsTemplateDesigner/CmsTemplateEditDesigner interaction) and/or the real-route spec asserting that a successful definition renders the authoritative version AND its provenance (parent version / supersession) AND the next action (link to the latest draft). Today uncertain-real-route.spec.ts:128 asserts only \"version N\" in the saved status; no test asserts provenance or the next action. \"scoped draft before commit\": missing test: web component test asserting the scoped draft store the FE03 line 1109 CMS-11 row requires (unsent values written to a per-form scoped draft before commit and cleared after server success). Today only in-memory retention across conflict/uncertain retry is asserted (CmsTemplateDesigner.interaction.test.tsx \"keeps the draft values and idempotency key across an uncertain retry\"), not a scoped draft store."
+ },
+ {
+  "criterion": "P2-S12-AC-043",
+  "status": "partial",
+  "clauseIndex": 4,
+  "clause": "implement locked behavior and completion exactly. Operations: CMS-03C-12 (pattern version create), CMS-03C-13 (pattern selector), CMS-03C-14 (update diff) and CMS-03C-15 (pattern update), BE03c ledger 25.03.03.",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"implement locked behavior and completion exactly. Operations: CMS-03C-12 (pattern version create), CMS-03C-13 (pattern selector), CMS-03C-14 (update diff) and CMS-03C-15 (pattern update), BE03c ledger 25.03.03.\": meta clause (\"implement locked behavior and completion exactly. Operations: CMS-03C-12 .. -15\"): no single test proves it; it holds when AC-100..AC-135 are verified. Proposal for root: treat as derived or split out."
+ },
+ {
+  "criterion": "P2-S12-AC-044",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "deletion",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"deletion\": missing test: pgTAP asserting the IA03 line 533 deletion rule for a pattern / composition source: an owner or source (pattern lineage, entry) deleted or tombstoned keeps the immutable evidence (pattern version and composition rows remain), removes derived access, and queues the idempotent dependent invalidation. Today only the privilege facts (no direct DELETE grant on cms_pattern_versions / cms_composition_instances, composition_authority.sql) and the typed refusal of a superseded version (070-supersede.sqlinc) exist. Further limits of cited clauses: The concurrency clause is cited by a one-session stale-operand case and the dec193_writer race (the CMS-03C-15 writer against a governed activation: typed refusal with no effects), not by two competing expected revisions; placement (CMS-03C-02) has no race module."
+ },
+ {
+  "criterion": "P2-S12-AC-046",
+  "status": "partial",
+  "clauseIndex": 5,
+  "clause": "implement locked behavior and completion exactly. Operations: CMS-03C-16 (taxonomy version create), CMS-03C-17 (taxonomy selector) and CMS-03C-18 (canonical-taxonomy overlap provider), BE03c ledger 25.05.01.",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"implement locked behavior and completion exactly. Operations: CMS-03C-16 (taxonomy version create...\": meta clause, no single test can prove it: \"implement locked behavior and completion exactly. Operations: CMS-03C-16 (taxonomy version create), CMS-03C-17 (taxonomy selector) and CMS-03C-18 (canonical-taxonomy overlap provider)\" is discharged exactly when the per-operation criteria of those operations are verified (AC-124..AC-141 in this ledger). All three exist (routes, RPCs, contracts, tests) but none has a composed Worker->Kong/PostgREST->database case. Proposal for root: treat as derived from those criteria."
+ },
+ {
+  "criterion": "P2-S12-AC-047",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "concurrency",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"concurrency\": missing test: race (tool race) for cms_act_taxonomy_term asserting two competing writers on one vocabulary/term serialize one winner and return the typed conflict (CONFLICT / TAXONOMY_VERSION_CONFLICT) to the loser without duplicate term, label, audit or outbox effect (IA03 line 538). Only one-session stale-operand and duplicate-key cases exist (050-authority.sqlinc:41-43, 030-create.sqlinc:71); no race module covers the term action."
+ },
+ {
+  "criterion": "P2-S12-AC-049",
+  "status": "unverified",
+  "clauseIndex": 0,
+  "clause": "Execute Contract → QA-RED → data, API, SSR and island implementation → QA-GREEN → refactor; retain failing-test evidence and run canonical validation.",
+  "class": "hosted",
+  "limitation": "No test is cited. Unproven: \"Execute Contract → QA-RED → data, API, SSR and island implementation → QA-GREEN → refactor; retai...\": missing test: a Slice 12 closeout test in tests/contracts/phase-02-slice-12-closeout.test.ts (model: tests/contracts/phase-02-slice-11-closeout.test.ts) that asserts the retained RED record (the failing-test evidence under .memory/pipeline/progress/verification/) and the receipts, plus a canonical pnpm validate at the closing commit (native/hosted evidence, root-owned). Process criterion: the Contract -> QA-RED -> implementation -> QA-GREEN -> refactor sequence is a working method, attested by documents and the canonical validate log, not by a unit test; today no Slice 12 test reads either."
+ },
+ {
+  "criterion": "P2-S12-AC-050",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "feature-ledger assignments",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"feature-ledger assignments\": BOUNDARY until slice close: 25.05.03 and 25.05.04 are plan-listed for Slice 12 (DEC-114) but still unassigned (\"—\") in the feature ledger, and the closeout test pins that drift; the assignment and the changed closeout assertion land in the slice-close change. \"in the same change;\": a property of the slice-close commit, not of repository state; no test can prove it (the commit itself shows it)."
+ },
+ {
+  "criterion": "P2-S12-AC-050",
+  "status": "partial",
+  "clauseIndex": 4,
+  "clause": "in the same change;",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"feature-ledger assignments\": BOUNDARY until slice close: 25.05.03 and 25.05.04 are plan-listed for Slice 12 (DEC-114) but still unassigned (\"—\") in the feature ledger, and the closeout test pins that drift; the assignment and the changed closeout assertion land in the slice-close change. \"in the same change;\": a property of the slice-close commit, not of repository state; no test can prove it (the commit itself shows it)."
+ },
+ {
+  "criterion": "P2-S12-AC-056",
+  "status": "partial",
+  "clauseIndex": 10,
+  "clause": "and never replays to a changed acting party (an entry outside its scope is the concealed 404, answered before the key is reserved).",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"and never replays to a changed acting party (an entry outside its scope is the concealed 404, answered before the key is reserved).\": pending refutation 3: lane gaps-db3 (phase_02_slice_12_gaps_db3_locale_party.sql) shows the same actor under another server-resolved acting party is never served the stored response, meets the concealed NOT_FOUND before the reservation is read, writes nothing, and that the reservation itself binds the party (IDEMPOTENCY_MISMATCH at the primitive; a different actor is its own binding); not cited until refuted (DEC-236)."
+ },
+ {
+  "criterion": "P2-S12-AC-058",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "CMS-03C-04 is consumed by the protected `CmsLocaleVariantForm` at `/app/cms-content-modeling/entries/:entryId/locales/:locale`",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"CMS-03C-04 is consumed by the protected `CmsLocaleVariantForm` at `/app/cms-content-modeling/entr...\": DEC-226(3): \"consumed by <island> at /app/...\" needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island"
+ },
+ {
+  "criterion": "P2-S12-AC-061",
+  "status": "partial",
+  "clauseIndex": 6,
+  "clause": "Tier 2",
+  "class": "hosted",
+  "limitation": "Unproven (uncited clauses): \"Tier 2\": missing test: staging/hosted performance evidence that POST /api/v1/cms/entries/{entryId}/related-content meets the Tier 2 p95 < 1,200 ms end-to-end budget (tests/performance/api-p95-smoke.test.ts does not cover CMS-03C-05). Only the RPC bench \"curating 64 related targets meets the RPC < 300 ms target (p95 of 10)\" in phase_02_slice_12_related_perf.sql exists, which is the RPC share of the budget, not the end-to-end p95 (hosted/native evidence, root-owned)."
+ },
+ {
+  "criterion": "P2-S12-AC-069",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "CMS-03C-06 is consumed by the protected `CmsGovernedReviewPanel` on the template, pattern",
+  "class": "hosted",
+  "limitation": "Unproven (uncited clause): \"CMS-03C-06 is consumed by the protected `CmsGovernedReviewPanel` on the template, pattern\": missing test: behavioural page-mount test that CmsGovernedReviewPanel is hosted on the template and pattern pages (the three page-mount tests read the .astro sources as text and were refuted). Re-checked 2026-10-29: no gap-wave test carries it; only the real-route spec T2 drives the panel, on the vocabulary page."
+ },
+ {
+  "criterion": "P2-S12-AC-072",
+  "status": "partial",
+  "clauseIndex": 5,
+  "clause": "the subject creator) is 403",
+  "class": "pgtap",
+  "limitation": "Unproven (uncited clauses): \"the subject creator) is 403\": missing test: pgTAP in supabase/tests/phase_02_slice_12_governed_decision/ where the subject creator is a DIFFERENT person from the submitter, holds an effective assignment and the standing cms.reviewer grant, and is refused the decision (separation of duties, BE03c CMS-03C-07). In the decision suite the owner is creator AND submitter of every review (010-setup.sqlinc:3), so the creator case is not separable from the submitter case; the creator case is only asserted for assignment eligibility (governed_assignment/030-refusals.sqlinc el-creator). Further limits of cited clauses: The separation_of_duties branch of the decision RPC is raised by no pgTAP (defense in depth with no public path); the submitter case is asserted by outcome only (the assignment gate refuses with capability_missing)."
+ },
+ {
+  "criterion": "P2-S12-AC-075",
+  "status": "partial",
+  "clauseIndex": 8,
+  "clause": "protected decision paths",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"protected decision paths\": missing test: apps/web/src/components/cms-governed-review/CmsGovernedDecisionForm.test.tsx (or the detail island suite) driving the protected (two-decision, specialist-slot) path: a base-slot approval leaves the review open and shows the next required capability, then the specialist approval completes it. Today the protected path is database-only (governed_decision/040-flows.sqlinc \"the first protected approval stays open\") and the UI tests cover only the specialist_slot_unsatisfiable copy and the risk-class label (CmsGovernedReviewDetail.test.tsx). Further limits of cited clauses: The real-route Playwright spec (T1, T3, T6) drives the ordinary decision path against the real stack and is not cited here."
+ },
+ {
+  "criterion": "P2-S12-AC-085",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "runs in one transaction that takes its locks in the Slice 12 lock order",
+  "class": "race",
+  "limitation": "Unproven (uncited clause): \"runs in one transaction that takes its locks in the Slice 12 lock order\": missing test: lock-order proof for CMS-03C-09 activate/schedule at BE03c 1501 positions 1, 3 (subject + graph + lineage active row), 4 (content-type version rows), 5 (review row FOR UPDATE), advisory last. Re-checked 2026-10-29: gaps_lock_sources.sql \"CMS-03C-09 locks authority (1), the subject row (3), the graph and bound versions, then the lineage advisory lock last [P2-S12-AC-276]\" anchors only authority, subject, graph and the advisory lock - no review-row anchor, no position-4 anchor - and the other literal (governed_activation/090-lineage-lock) checks only the last position; no race module drives activation. Not cited: it does not prove the review row position of the clause."
+ },
+ {
+  "criterion": "P2-S12-AC-086",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "`activation_conflict`",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"`activation_conflict`\": missing test: a two-session race (supabase/tests/phase_02_slice_12_governed_activation.race.mjs style, like phase_02_slice_12_governed_authority.race.mjs) in which two activators of one lineage race, the loser answers P0001 activation_conflict with no partial switch and the lineage keeps exactly one active version (BE03c 1326, 1348; cms_activate_governed_subject step 9). governed_activation/090-lineage-lock.sqlinc states the lost-race branch is unreachable in single-session pgTAP. Only the Worker token mapping (activation_conflict -> 409 GOVERNED_REVIEW_VERSION_CONFLICT, ACTIVATION_TABLE) exists. \"or `canonical_source_unavailable` with `details.domain` (422; a template or pattern preflight difference is the `dependency_changed` invalidation)\": missing test: pgTAP in governed_activation/080-taxonomy.sqlinc: activating a taxonomy version whose declared canonical domain has no built provider answers P0001 canonical_source_unavailable with DETAIL {\"domain\": ...} (cms_governed_first_unbuilt_domain; 20261014070400 step 8) and changes nothing. The suite only activates a taxonomy that declares the BUILT role domain. Only the Worker mapping row (canonical_source_unavailable {domain} -> 422 with details.domain) exists."
+ },
+ {
+  "criterion": "P2-S12-AC-086",
+  "status": "partial",
+  "clauseIndex": 4,
+  "clause": "or `canonical_source_unavailable` with `details.domain` (422; a template or pattern preflight difference is the `dependency_changed` invalidation)",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"`activation_conflict`\": missing test: a two-session race (supabase/tests/phase_02_slice_12_governed_activation.race.mjs style, like phase_02_slice_12_governed_authority.race.mjs) in which two activators of one lineage race, the loser answers P0001 activation_conflict with no partial switch and the lineage keeps exactly one active version (BE03c 1326, 1348; cms_activate_governed_subject step 9). governed_activation/090-lineage-lock.sqlinc states the lost-race branch is unreachable in single-session pgTAP. Only the Worker token mapping (activation_conflict -> 409 GOVERNED_REVIEW_VERSION_CONFLICT, ACTIVATION_TABLE) exists. \"or `canonical_source_unavailable` with `details.domain` (422; a template or pattern preflight difference is the `dependency_changed` invalidation)\": missing test: pgTAP in governed_activation/080-taxonomy.sqlinc: activating a taxonomy version whose declared canonical domain has no built provider answers P0001 canonical_source_unavailable with DETAIL {\"domain\": ...} (cms_governed_first_unbuilt_domain; 20261014070400 step 8) and changes nothing. The suite only activates a taxonomy that declares the BUILT role domain. Only the Worker mapping row (canonical_source_unavailable {domain} -> 422 with details.domain) exists."
+ },
+ {
+  "criterion": "P2-S12-AC-093",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "CMS-03C-10 is consumed by the protected `CmsGovernedReviewDetail` at `/app/cms-content-modeling/definition-reviews/:reviewId`",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"CMS-03C-10 is consumed by the protected `CmsGovernedReviewDetail` at `/app/cms-content-modeling/d...\": DEC-226(3): \"consumed by <island> at /app/...\" needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island"
+ },
+ {
+  "criterion": "P2-S12-AC-095",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "a body and any mutation header",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"a body and any mutation header\": missing test: apps/worker/src/cms-composition/governed-review-reads.test.ts, describe CMS-03C-11 review queue: a queue request that carries a body (415 with the empty allowlist like the CMS-03C-10 case at governed-review-reads.test.ts:90) and one that carries Idempotency-Key or If-Match (400 before any quota, like the detail cases at lines 79-82) must be refused. Only the CMS-03C-10 detail route has these cases today."
+ },
+ {
+  "criterion": "P2-S12-AC-105",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clause): \"CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`\": missing test (DEC-226 rule 3): page-level behaviour that the protected CmsPatternVersionDesigner is mounted at /app/cms-content-modeling/patterns/new and /app/cms-content-modeling/patterns/:patternKey (Astro render test or real-route Playwright spec). Re-checked 2026-10-29: the gap-wave tests of this criterion (nested picker, node pointers) mount the React island, not the Astro page."
+ },
+ {
+  "criterion": "P2-S12-AC-108",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "or other-owner version is never listed",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"or other-owner version is never listed\": that an OTHER owner's pattern version is never listed: every pattern in the pattern_selector fixtures belongs to the caller's owner party, so the owner filter has no data-backed assertion"
+ },
+ {
+  "criterion": "P2-S12-AC-111",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "CMS-03C-13 is consumed by the protected `CmsPatternSelector` in the instance-insert form at `/app/cms-content-modeling/entries/:entryId/composition`",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"CMS-03C-13 is consumed by the protected `CmsPatternSelector` in the instance-insert form at `/app...\": DEC-226(3): \"consumed by <island> at /app/...\" needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island"
+ },
+ {
+  "criterion": "P2-S12-AC-126",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "is 404",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"is 404\": missing test: Worker vitest (apps/worker/src/cms-composition/taxonomy-definition-production.test.ts) that feeds the refusal exactly as the SQL raises it and PostgREST relays it, 400 {code:P0001,message:NOT_FOUND}, through the CMS-03C-16 createVersion route and asserts 404 TAXONOMY_NOT_FOUND (BE03c 184, 1418). Existing Worker tests feed the catalog code TAXONOMY_NOT_FOUND (raised by no migration) or the structured {code:NOT_FOUND} HTTP 404 form."
+ },
+ {
+  "criterion": "P2-S12-AC-128",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "a hidden or absent taxonomy scope (404)",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"a hidden or absent taxonomy scope (404)\": missing test: Worker vitest (taxonomy-definition-production.test.ts) feeding the real SQL refusal as PostgREST raises it, 400 {code:P0001,message:NOT_FOUND}, through the CMS-03C-16 createVersion route and asserting 404 TAXONOMY_NOT_FOUND (BE03c 1418, 1447). Existing tests feed the Worker catalog code TAXONOMY_NOT_FOUND (never raised by SQL) or the structured form {code:NOT_FOUND} with HTTP 404; the P0001/message form is exercised for CMS-03C-16 by no test. \"a stale parent, key or version or an idempotency conflict (409 `TAXONOMY_VERSION_CONFLICT`)\": missing test: Worker vitest (apps/worker/src/cms-composition/taxonomy-definition-production.test.ts or taxonomy-definition-provider-fault.test.ts) that feeds the tokens the database REALLY raises for CMS-03C-16 -- PostgREST 400 {code:P0001,message:CONFLICT} and {message:IDEMPOTENCY_MISMATCH} -- through createVersion and asserts status 409 and code TAXONOMY_VERSION_CONFLICT (BE03c lines 1418, 1447). The existing production test only feeds the Worker's own output code TAXONOMY_VERSION_CONFLICT, which the SQL never raises; the real-token path for this operation is exercised only for CMS-03C-03 (cms-composition-production-taxonomy-act-tokens.test.ts) and for the reads."
+ },
+ {
+  "criterion": "P2-S12-AC-128",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "a stale parent, key or version or an idempotency conflict (409 `TAXONOMY_VERSION_CONFLICT`)",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"a hidden or absent taxonomy scope (404)\": missing test: Worker vitest (taxonomy-definition-production.test.ts) feeding the real SQL refusal as PostgREST raises it, 400 {code:P0001,message:NOT_FOUND}, through the CMS-03C-16 createVersion route and asserting 404 TAXONOMY_NOT_FOUND (BE03c 1418, 1447). Existing tests feed the Worker catalog code TAXONOMY_NOT_FOUND (never raised by SQL) or the structured form {code:NOT_FOUND} with HTTP 404; the P0001/message form is exercised for CMS-03C-16 by no test. \"a stale parent, key or version or an idempotency conflict (409 `TAXONOMY_VERSION_CONFLICT`)\": missing test: Worker vitest (apps/worker/src/cms-composition/taxonomy-definition-production.test.ts or taxonomy-definition-provider-fault.test.ts) that feeds the tokens the database REALLY raises for CMS-03C-16 -- PostgREST 400 {code:P0001,message:CONFLICT} and {message:IDEMPOTENCY_MISMATCH} -- through createVersion and asserts status 409 and code TAXONOMY_VERSION_CONFLICT (BE03c lines 1418, 1447). The existing production test only feeds the Worker's own output code TAXONOMY_VERSION_CONFLICT, which the SQL never raises; the real-token path for this operation is exercised only for CMS-03C-03 (cms-composition-production-taxonomy-act-tokens.test.ts) and for the reads."
+ },
+ {
+  "criterion": "P2-S12-AC-129",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "CMS-03C-16 is consumed by the protected `CmsTaxonomyVersionDesigner` at `/app/cms-content-modeling/taxonomies/new` and `/app/cms-content-modeling/taxonomies/:taxonomyId`",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"CMS-03C-16 is consumed by the protected `CmsTaxonomyVersionDesigner` at `/app/cms-content-modelin...\": missing test: Playwright real-route spec (new file tests/e2e/phase-02-slice-12-taxonomy-real-route.spec.ts, project chromium-real-route per playwright.s09-real.config.ts) that signs in as a curator, opens /app/cms-content-modeling/taxonomies/new and /app/cms-content-modeling/taxonomies/:taxonomyId and asserts the CmsTaxonomyVersionDesigner form renders (FE03 Page and Route Definitions). The existing evidence reads the Astro files as text; no test renders either route."
+ },
+ {
+  "criterion": "P2-S12-AC-134",
+  "status": "partial",
+  "clauseIndex": 4,
+  "clause": "the read limit (429)",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"the read limit (429)\" and \"a read dependency or deadline (502/503/504)\": missing test: Worker vitest in apps/worker/src/cms-composition/taxonomy-selector-read.test.ts that drives rateLimit to deny and asserts 429 with Retry-After and the typed RATE_LIMITED ApiError of catalog cms.03c.taxonomy.v1 for CMS-03C-17 (the 429 test exists for the write route only), plus a selector production-port case (cms-composition-production-taxonomy-reads.test.ts) for a nonsettling transport at the 8,000 ms ceiling answering 504 DEPENDENCY_UNAVAILABLE and a provider 5xx answering 503 (those two exist only for cmsTaxonomyTermsRead); BE03c lines 1419, 1447."
+ },
+ {
+  "criterion": "P2-S12-AC-134",
+  "status": "partial",
+  "clauseIndex": 5,
+  "clause": "a read dependency or deadline (502/503/504)",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"the read limit (429)\" and \"a read dependency or deadline (502/503/504)\": missing test: Worker vitest in apps/worker/src/cms-composition/taxonomy-selector-read.test.ts that drives rateLimit to deny and asserts 429 with Retry-After and the typed RATE_LIMITED ApiError of catalog cms.03c.taxonomy.v1 for CMS-03C-17 (the 429 test exists for the write route only), plus a selector production-port case (cms-composition-production-taxonomy-reads.test.ts) for a nonsettling transport at the 8,000 ms ceiling answering 504 DEPENDENCY_UNAVAILABLE and a provider 5xx answering 503 (those two exist only for cmsTaxonomyTermsRead); BE03c lines 1419, 1447."
+ },
+ {
+  "criterion": "P2-S12-AC-137",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "whitespace collapse",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"whitespace collapse\": the normalization step is unobservable in Phase 2 (facet codes contain no space), so no test can prove it; the only candidate, the \"per former\" case, passes without any collapse and was refuted"
+ },
+ {
+  "criterion": "P2-S12-AC-143",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "the subject (`scheduled` with an equal hash)",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"the subject (`scheduled` with an equal hash)\": the fire executor folds review state, review version, subject state and subject hash into one approval_invalidated (migration 20261014070600:155-157); no test changes only the subject state (\"the subject (`scheduled`\") or only its hash (\"with an equal hash)\"), so the subject re-read is not isolated. \"the policy basis\": BOUNDARY (db1): a policy basis that changes between acceptance and fire is unreachable by any lawful state (the frozen basis and the current basis are both immutable); the AC-083 seam (rename-aside wrapper) exists only for the activate and schedule commands, not for cms_execute_governed_activation. No test drives the policy-basis recheck at fire."
+ },
+ {
+  "criterion": "P2-S12-AC-143",
+  "status": "partial",
+  "clauseIndex": 4,
+  "clause": "the policy basis",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"the subject (`scheduled` with an equal hash)\": the fire executor folds review state, review version, subject state and subject hash into one approval_invalidated (migration 20261014070600:155-157); no test changes only the subject state (\"the subject (`scheduled`\") or only its hash (\"with an equal hash)\"), so the subject re-read is not isolated. \"the policy basis\": BOUNDARY (db1): a policy basis that changes between acceptance and fire is unreachable by any lawful state (the frozen basis and the current basis are both immutable); the AC-083 seam (rename-aside wrapper) exists only for the activate and schedule commands, not for cms_execute_governed_activation. No test drives the policy-basis recheck at fire."
+ },
+ {
+  "criterion": "P2-S12-AC-145",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "claims under `FOR UPDATE SKIP LOCKED`",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"claims under `FOR UPDATE SKIP LOCKED`\": missing test: the claim's `FOR UPDATE SKIP LOCKED` under concurrency -- a race module (new supabase/tests/phase_02_slice_12_governed_schedule_races/ one-claim-while-another-holds-the-row, modelled on supabase/tests/phase_02_slice_11_races/013-schedule-claim-race.mjs) in which session A holds the row lock of a due schedule and session B's cms_claim_due_governed_activations returns without waiting and without that schedule, and two concurrent claims never return the same schedule; or at minimum a catalog assertion on the function source. The sequential claims in 020-claim.sqlinc prove the CAS and the lease but not SKIP LOCKED. BE03c line 188 (mirrors CMS-03B-20)."
+ },
+ {
+  "criterion": "P2-S12-AC-146",
+  "status": "partial",
+  "clauseIndex": 5,
+  "clause": "with the prior active version intact",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"with the prior active version intact\": missing test: a terminal block (any closed reasonCode) leaves the PRIOR active version of the lineage intact (still active, activated_at unchanged, no supersession). Re-checked 2026-10-29: schedule_fire.sql asserts the blocked subject (state blocked, activated_at null) and no event but its fixtures activate no prior version of the lineage, and no other test asserts the prior active version after a fire-time block."
+ },
+ {
+  "criterion": "P2-S12-AC-148",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "the Shard 04 delivery projection",
+  "class": "worker",
+  "limitation": "Unproven (uncited clause): \"the Shard 04 delivery projection\": BOUNDARY (db1): the Shard 04 delivery projection is a later shard with no boundary stub, no migration, Worker or SQL function calling the resolver except the gate and the editorial read (gaps_db1_acl.sql \"no function calls cms_resolve_locale_field yet ...\" only records that absence). Nothing to test until Shard 04 is built."
+ },
+ {
+  "criterion": "P2-S12-AC-150",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "the Shard 04 delivery projection",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"the Shard 04 delivery projection\": BOUNDARY (db1): the Shard 04 delivery projection is not built, so it cannot be a registered caller to assert (gaps_db1_acl.sql \"no function calls cms_resolve_locale_field yet\" records only that no caller exists)."
+ },
+ {
+  "criterion": "P2-S12-AC-152",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "by the Shard 04 delivery projection (which adds no resolution rule of its own)",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"by the Shard 04 delivery projection (which adds no resolution rule of its own)\": BOUNDARY (lane gaps-db1): the Shard 04 delivery projection is not built; acl.sql proves cms_resolve_locale_field has no caller yet (gd_referrers = empty), so there is no consumer to test. Needs the Shard 04 delivery slice: pgTAP asserting the projection output equals cms_resolve_locale_field per localizationMode and that its body holds no localization rule. \"so a field blocked at publication is never resolved differently at delivery\": BOUNDARY: \"never resolved differently at delivery\" needs the unbuilt Shard 04 delivery projection (see clause 1). The gate-versus-resolver agreement is cited under clause 0 but proves only the publication side."
+ },
+ {
+  "criterion": "P2-S12-AC-152",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "so a field blocked at publication is never resolved differently at delivery",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"by the Shard 04 delivery projection (which adds no resolution rule of its own)\": BOUNDARY (lane gaps-db1): the Shard 04 delivery projection is not built; acl.sql proves cms_resolve_locale_field has no caller yet (gd_referrers = empty), so there is no consumer to test. Needs the Shard 04 delivery slice: pgTAP asserting the projection output equals cms_resolve_locale_field per localizationMode and that its body holds no localization rule. \"so a field blocked at publication is never resolved differently at delivery\": BOUNDARY: \"never resolved differently at delivery\" needs the unbuilt Shard 04 delivery projection (see clause 1). The gate-versus-resolver agreement is cited under clause 0 but proves only the publication side."
+ },
+ {
+  "criterion": "P2-S12-AC-155",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "CMS-03C-21 is executable only by the registered non-browser callers (the Shard 04 delivery projection and the Slice 11 related-content recheck",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"CMS-03C-21 is executable only by the registered non-browser callers (the Shard 04 delivery projec...\" and \"and every other role have EXECUTE revoked)\": missing test: the two registered callers do not exist yet (no migration, Worker module or SQL function other than tests calls platform_private.cms_related_content_public_targets: the Shard 04 delivery projection is unbuilt and the Slice 11 related-content recheck has no call site). Layer: pgTAP in the delivery-projection suite and in the Slice 11 related-content recheck suite, each calling the RPC as wejammin_cms_definer under the CMS RPC context and asserting a non-error answer, completing the \"executable only by the registered non-browser callers\" half (spec BE03c Internal service operations, CMS-03C-21)."
+ },
+ {
+  "criterion": "P2-S12-AC-155",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "and every other role have EXECUTE revoked)",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"CMS-03C-21 is executable only by the registered non-browser callers (the Shard 04 delivery projec...\" and \"and every other role have EXECUTE revoked)\": missing test: the two registered callers do not exist yet (no migration, Worker module or SQL function other than tests calls platform_private.cms_related_content_public_targets: the Shard 04 delivery projection is unbuilt and the Slice 11 related-content recheck has no call site). Layer: pgTAP in the delivery-projection suite and in the Slice 11 related-content recheck suite, each calling the RPC as wejammin_cms_definer under the CMS RPC context and asserting a non-error answer, completing the \"executable only by the registered non-browser callers\" half (spec BE03c Internal service operations, CMS-03C-21)."
+ },
+ {
+  "criterion": "P2-S12-AC-158",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "CMS-03C-21 is consumed by the Shard 04 delivery projection (which re-implements neither resolution nor eligibility)",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"CMS-03C-21 is consumed by the Shard 04 delivery projection (which re-implements neither resolutio...\" and \"by the Slice 11 related-content recheck\": missing test: neither named consumer exists (no code other than tests calls cms_related_content_public_targets; the Shard 04 delivery projection is unbuilt and the Slice 11 related-content recheck has no call site), so \"consumed by the Shard 04 delivery projection (which re-implements neither resolution nor eligibility) and by the Slice 11 related-content recheck\" and \"recomputation at every projection\" by those consumers are untested. Layer: pgTAP in the Shard 04 delivery-projection suite and the Slice 11 recheck suite asserting each calls the RPC (function-body or behavioural equality with the RPC) and carries no eligibility/ranking SQL of its own (spec BE03c Related-content eligibility and derived rules, D11/OD-5)."
+ },
+ {
+  "criterion": "P2-S12-AC-158",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "by the Slice 11 related-content recheck",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"CMS-03C-21 is consumed by the Shard 04 delivery projection (which re-implements neither resolutio...\" and \"by the Slice 11 related-content recheck\": missing test: neither named consumer exists (no code other than tests calls cms_related_content_public_targets; the Shard 04 delivery projection is unbuilt and the Slice 11 related-content recheck has no call site), so \"consumed by the Shard 04 delivery projection (which re-implements neither resolution nor eligibility) and by the Slice 11 related-content recheck\" and \"recomputation at every projection\" by those consumers are untested. Layer: pgTAP in the Shard 04 delivery-projection suite and the Slice 11 recheck suite asserting each calls the RPC (function-body or behavioural equality with the RPC) and carries no eligibility/ranking SQL of its own (spec BE03c Related-content eligibility and derived rules, D11/OD-5)."
+ },
+ {
+  "criterion": "P2-S12-AC-164",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "disable submission with the corresponding sign-in, capability, rate-wait or retry state when the context is missing, denied or degraded",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"disable submission with the corresponding sign-in, capability, rate-wait or retry state when the ...\" and \"verification covers each denied or degraded state\": missing test: behavioural test of the two template pages, apps/web/src/pages/app/cms-content-modeling/templates/new.astro and [templateKey].astro. Their sign-in redirect, 403/429/5xx notice, Retry-After handling and the \"no form when the context is missing, denied or degraded\" rule are inline Astro code covered only by source-text assertions (template-designer-route.test.ts expect(source).toContain(...)) and, for degradation, one Playwright case; new.astro is also not exercised for 403 or 429 at all. Layer: extract the page logic into a loader (as load-pattern-designer-page.ts does for patterns) and add vitest cases for 401 redirect, 403, 429 with Retry-After, 503/504 and a non-strict context, asserting no form view (spec FE03 CmsTemplateDesigner, Slice 12 governed definition surfaces). \"neither extend the general auth-session resource nor\": missing test: nothing asserts that the general auth-session resource is not extended with designer fields: no contract or OpenAPI case compares AuthSession (apps/web/src/server/auth-platform-api.ts, packages/contracts auth session schema) to forbid a cms.template_designer / designer member (spec FE03 line 1129). Layer: contract test in packages/contracts asserting the session resource keys exclude any CMS designer capability field."
+ },
+ {
+  "criterion": "P2-S12-AC-164",
+  "status": "partial",
+  "clauseIndex": 4,
+  "clause": "neither extend the general auth-session resource nor",
+  "class": "web",
+  "limitation": "Unproven (uncited clauses): \"disable submission with the corresponding sign-in, capability, rate-wait or retry state when the ...\" and \"verification covers each denied or degraded state\": missing test: behavioural test of the two template pages, apps/web/src/pages/app/cms-content-modeling/templates/new.astro and [templateKey].astro. Their sign-in redirect, 403/429/5xx notice, Retry-After handling and the \"no form when the context is missing, denied or degraded\" rule are inline Astro code covered only by source-text assertions (template-designer-route.test.ts expect(source).toContain(...)) and, for degradation, one Playwright case; new.astro is also not exercised for 403 or 429 at all. Layer: extract the page logic into a loader (as load-pattern-designer-page.ts does for patterns) and add vitest cases for 401 redirect, 403, 429 with Retry-After, 503/504 and a non-strict context, asserting no form view (spec FE03 CmsTemplateDesigner, Slice 12 governed definition surfaces). \"neither extend the general auth-session resource nor\": missing test: nothing asserts that the general auth-session resource is not extended with designer fields: no contract or OpenAPI case compares AuthSession (apps/web/src/server/auth-platform-api.ts, packages/contracts auth session schema) to forbid a cms.template_designer / designer member (spec FE03 line 1129). Layer: contract test in packages/contracts asserting the session resource keys exclude any CMS designer capability field."
+ },
+ {
+  "criterion": "P2-S12-AC-164",
+  "status": "partial",
+  "clauseIndex": 6,
+  "clause": "verification covers each denied or degraded state",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"disable submission with the corresponding sign-in, capability, rate-wait or retry state when the ...\" and \"verification covers each denied or degraded state\": missing test: behavioural test of the two template pages, apps/web/src/pages/app/cms-content-modeling/templates/new.astro and [templateKey].astro. Their sign-in redirect, 403/429/5xx notice, Retry-After handling and the \"no form when the context is missing, denied or degraded\" rule are inline Astro code covered only by source-text assertions (template-designer-route.test.ts expect(source).toContain(...)) and, for degradation, one Playwright case; new.astro is also not exercised for 403 or 429 at all. Layer: extract the page logic into a loader (as load-pattern-designer-page.ts does for patterns) and add vitest cases for 401 redirect, 403, 429 with Retry-After, 503/504 and a non-strict context, asserting no form view (spec FE03 CmsTemplateDesigner, Slice 12 governed definition surfaces). \"neither extend the general auth-session resource nor\": missing test: nothing asserts that the general auth-session resource is not extended with designer fields: no contract or OpenAPI case compares AuthSession (apps/web/src/server/auth-platform-api.ts, packages/contracts auth session schema) to forbid a cms.template_designer / designer member (spec FE03 line 1129). Layer: contract test in packages/contracts asserting the session resource keys exclude any CMS designer capability field."
+ },
+ {
+  "criterion": "P2-S12-AC-169",
+  "status": "partial",
+  "clauseIndex": 10,
+  "clause": "while server, queue and job callers retry it at most three times at 15 s, 60 s and 300 s with jitter (DEC-211).",
+  "class": "worker",
+  "limitation": "Unproven (uncited clauses): \"while server, queue and job callers retry it at most three times at 15 s, 60 s and 300 s with jit...\": missing test: the server, queue and job retry policy for this safe read (at most three retries at 15 s, 60 s and 300 s with jitter, DEC-211). No server, queue or job caller of cmsTemplateLatestRead exists and no shared retry-policy constant or helper for the CMS-03C template read exists in apps/worker or packages/contracts (the only 15/60/300 s jitter schedule, apps/worker/src/cms-composition/linked-scan/retry.ts, belongs to the linked-scan job). Layer: vitest in the module that owns the server-side caller (or a contract constant test) asserting 3 retries at 15 s, 60 s, 300 s with jitter for a retryable 502/503/504 of cmsTemplateLatestRead (spec BE03c Operation error coverage, DEC-211)."
+ },
+ {
+  "criterion": "P2-S12-AC-176",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "cmsPatternLatestRead is consumed by the protected `CmsPatternVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/patterns/:patternKey`",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"cmsPatternLatestRead is consumed by the protected `CmsPatternVersionDesigner` and `CmsGovernedRev...\": DEC-226(3): \"consumed by <island> at /app/...\" needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island; no route-level (real-route Playwright or Astro render) test of /app/cms-content-modeling/patterns/:patternKey exists, and the saved-pattern 403 notice has no case of its own"
+ },
+ {
+  "criterion": "P2-S12-AC-181",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "a query-bound failure (422)",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"a query-bound failure (422)\": BOUNDARY (lane gaps-db2): the versions read takes only a path id (TaxonomyVersionsApiRequestSchema is {taxonomyId}, BE03c 171); it has no query or body bound that can produce 422, so no test can drive a real 422 for this operation. The 422 member is declared in the shared route matrix only. Needs a spec decision (drop 422 from the operation) or a bound."
+ },
+ {
+  "criterion": "P2-S12-AC-182",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "cmsTaxonomyVersionsRead is consumed by the protected `CmsTaxonomyVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/taxonomies/:taxonomyId`",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"cmsTaxonomyVersionsRead is consumed by the protected `CmsTaxonomyVersionDesigner` and `CmsGoverne...\": DEC-226(3): \"consumed by <island> at /app/...\" needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island; no real-route or render test of the taxonomy pages exists (the source-text page test was refuted)"
+ },
+ {
+  "criterion": "P2-S12-AC-186",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "acting context",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"acting context\": BOUNDARY: the actor member of the cursor binding is shown (a page-1 cursor replayed by another actor of the same party is CONFLICT), but the acting-party member is unreachable: the owner-scope concealment answers NOT_FOUND before the cursor hash is compared (migration 20261014120600:95-96; lane BOUNDARY B1)."
+ },
+ {
+  "criterion": "P2-S12-AC-190",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "selectors)",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"selectors)\": BOUNDARY: the owner predicate of cms_list_pattern_selector (and the taxonomy selector) is not isolated by any test; an ACTIVE foreign row is not producible in the fixtures, and the AC-108 control uses a draft clone that the active filter excludes anyway."
+ },
+ {
+  "criterion": "P2-S12-AC-194",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "Block registry consumption: 03c consumes only the safe `BlockDefinitionRegistryRecord` projection (`id`, `version`, `blockKey`, `blockVersion`, `propsSchemaRef`, `propsSchemaHash`, `rendererRef`, `releaseDigest`, `lifecycle`, with the literal `resourceKind` `block_definition_registry_record` and no release principal, signature or raw manifest)",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"Block registry consumption: 03c consumes only the safe `BlockDefinitionRegistryRecord` projection (`id`, `version`, `blockKey`, `blockVersion`, `propsSchemaRef`, `propsSchemaHash`, `rendererRef`, `releaseDigest`, `lifecycle`, with the literal `resourceKind` `block_definition_registry_record` and no release principal, signature or raw manifest)\": missing test or spec ruling: no test shows that every 03c reader of the block registry reads only the nine-member projection; CMS-03C-12 reads props_schema_snapshot and the production SQL carries no resourceKind. \"and before every template or pattern validation refetches the record or consumes the latest `cms.block.lifecycle.changed.v1`, so that a missing, withdrawn, incompatible, duplicate or unreachable block fails closed before mutation and a deprecated block follows the fixed compatibility policy.\": missing test: refetch-or-consume before every template and pattern validation, and the duplicate and unreachable block outcomes, through the production path."
+ },
+ {
+  "criterion": "P2-S12-AC-194",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "and before every template or pattern validation refetches the record or consumes the latest `cms.block.lifecycle.changed.v1`, so that a missing, withdrawn, incompatible, duplicate or unreachable block fails closed before mutation and a deprecated block follows the fixed compatibility policy.",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"Block registry consumption: 03c consumes only the safe `BlockDefinitionRegistryRecord` projection (`id`, `version`, `blockKey`, `blockVersion`, `propsSchemaRef`, `propsSchemaHash`, `rendererRef`, `releaseDigest`, `lifecycle`, with the literal `resourceKind` `block_definition_registry_record` and no release principal, signature or raw manifest)\": missing test or spec ruling: no test shows that every 03c reader of the block registry reads only the nine-member projection; CMS-03C-12 reads props_schema_snapshot and the production SQL carries no resourceKind. \"and before every template or pattern validation refetches the record or consumes the latest `cms.block.lifecycle.changed.v1`, so that a missing, withdrawn, incompatible, duplicate or unreachable block fails closed before mutation and a deprecated block follows the fixed compatibility policy.\": missing test: refetch-or-consume before every template and pattern validation, and the duplicate and unreachable block outcomes, through the production path."
+ },
+ {
+  "criterion": "P2-S12-AC-198",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "policyVersion,",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"policyVersion,\": BOUNDARY: the policy registry holds only version 1 members (CMS_GOVERNED_DEFAULT_POLICY and the DEC-110 seeds), so the middle sort key cannot be exercised through any producer. \"(at most 16)\": BOUNDARY (lane gaps-db2): the 16-capability bound cannot be exercised -- the code-owned registry holds four specialist capabilities and only version 1 members, so no honest producer exceeds five slots. The CHECK of 1 to 16 capabilities is cited under AC-251."
+ },
+ {
+  "criterion": "P2-S12-AC-198",
+  "status": "partial",
+  "clauseIndex": 7,
+  "clause": "(at most 16)",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"policyVersion,\": BOUNDARY: the policy registry holds only version 1 members (CMS_GOVERNED_DEFAULT_POLICY and the DEC-110 seeds), so the middle sort key cannot be exercised through any producer. \"(at most 16)\": BOUNDARY (lane gaps-db2): the 16-capability bound cannot be exercised -- the code-owned registry holds four specialist capabilities and only version 1 members, so no honest producer exceeds five slots. The CHECK of 1 to 16 capabilities is cited under AC-251."
+ },
+ {
+  "criterion": "P2-S12-AC-200",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "compatible and acyclic,",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"compatible and acyclic,\": BOUNDARY (lane gaps-db2): a nested cycle after creation cannot be produced (the lineage is immutable and the cycle guard runs at create time only). Nested compatibility is driven only through the block-compatibility recompute at submit (the gap wave's \"a pattern naming a content type with no active version is refused VALIDATION_FAILED at /blockTree\" and wave 1's compat-flow.sql candidate), not through a nested pattern whose compatible type set stopped matching."
+ },
+ {
+  "criterion": "P2-S12-AC-205",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "an activation that loses a race on the lineage is 409 `activation_conflict` and nothing commits.",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"an activation that loses a race on the lineage is 409 `activation_conflict` and nothing commits.\": missing test: a two-session race schedule (supabase/tests/phase_02_slice_12_governed_authority.race.mjs, new schedule beside the CMS-03C-06 ones, using the same kit) in which two activators of one lineage run concurrently and the loser is refused 409 activation_conflict with every covered store (subject, review, superseded row, audit, outbox, idempotency) byte-identical to before it; 090-lineage-lock.sqlinc states the lost-race branch is unreachable in a single pgTAP session and only the lock and the Worker token mapping are proven; spec BE03c \"an activation that loses a race on the lineage is 409 activation_conflict and nothing commits\""
+ },
+ {
+  "criterion": "P2-S12-AC-208",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "Activating or scheduling a `template_version` runs the compatibility resolver for every `compatibleTypeIds` member",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"Activating or scheduling a `template_version` runs the compatibility resolver for every `compatibleTypeIds` member\": BOUNDARY (lane gaps-db2): the compatibility-resolver conjunct -- a bound type whose compiler falls outside the block range after approval -- is not constructible at activation by honest producers (registry rows and type compiler versions are immutable); a wave-1 candidate (governed_fix3 compat-flow.sql) exercises the pattern recompute at submit, not template activation or scheduling."
+ },
+ {
+  "criterion": "P2-S12-AC-210",
+  "status": "unverified",
+  "clauseIndex": 0,
+  "clause": "Activating or scheduling a `taxonomy_version` requires a registered provider for every declared canonical domain, else 422 `canonical_source_unavailable` with `details.domain`.",
+  "class": "impl",
+  "limitation": "No test is cited. Unproven: \"Activating or scheduling a `taxonomy_version` requires a registered provider for every declared c...\": missing test: pgTAP in supabase/tests/phase_02_slice_12_governed_activation/080-taxonomy.sqlinc: approve a taxonomy_version declaring the built role domain, then make that provider unbuilt (flip the platform_private.cms_canonical_domain_registry row to unbuilt, as phase_02_slice_12_taxonomy_terms/099-registry-drift.sqlinc does for term actions) and assert activate AND schedule are refused P0001:canonical_source_unavailable with DETAIL {\"domain\":\"role\"}, the review/subject unchanged and no event; today the SQL activation of a taxonomy is shown only with a built provider, the SQL refusal exists only at submit (060-review-successor.sqlinc) and in term actions, and the 422 mapping is proven at the Worker for CMS-03C-09 with a stubbed token; spec BE03c governed activation, taxonomy_version"
+ },
+ {
+  "criterion": "P2-S12-AC-211",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "again before publish",
+  "class": "pgtap",
+  "limitation": "Unproven (uncited clauses): \"again before publish\": missing tests for \"and again before publish\": (1) the publication path (pattern provider / CMS-03C-02 placement as used by 03b publication) re-validating the depth-8 / 512-node bounds and the lineage cycle rule on the stored forest: add a pgTAP case in supabase/tests/phase_02_slice_12_dec193_pattern_currentness/020-active-digest-provider.sqlinc (or pattern_placement/) that places/publishes a hand-built over-bound or cyclic stored forest (a legacy row, as the PC-N04 case builds one) and asserts the provider/placement refuses it with pattern_depth_exceeded / pattern_nodes_exceeded / pattern_cycle; only nested_pattern_not_active (clause 1) is re-checked at publication in the tests today; (2) a placement-side (CMS-03C-02) cycle/depth refusal case beside the existing expanded-bound ones"
+ },
+ {
+  "criterion": "P2-S12-AC-218",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "under the revision/slot lock (DEC-185),",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"under the revision/slot lock (DEC-185),\": missing test: race (tool race), new module supabase/tests/phase_02_slice_12_placement.race.mjs (add to infra/run-database-race-runners.mjs plan): two independent sessions place into one slot of one revision; assert the two runs get disjoint consecutive positions in commit order and neither shares a position (BE03c \"Slice 12 lock order\" 1336-1357, DEC-185). The only sequential evidence, `the slot main holds each position once`, is not cited because it proves no lock."
+ },
+ {
+  "criterion": "P2-S12-AC-223",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "Unbuilt canonical domain (DEC-135): a declared domain whose provider is `unbuilt` is refused with the typed `canonical_source_unavailable` carrying `details.domain` at taxonomy-version activation",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"Unbuilt canonical domain (DEC-135): a declared domain whose provider is `unbuilt` is refused with...\": missing test: pgTAP, supabase/tests/phase_02_slice_12_governed_activation (or taxonomy_definition 060): activate (CMS-03C-09) a taxonomy version whose declared domain has lost its provider (registry drift) and assert 422 canonical_source_unavailable with DETAIL {\"domain\":...}, no state change (BE03c 413, 1407-1410, 1680). Only submission is asserted today (taxonomy_definition/060-review-successor.sqlinc: `<domain>: canonical-source refusal identifies its declared domain`, submit-time), which is a different command."
+ },
+ {
+  "criterion": "P2-S12-AC-225",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "Term merge: `merge` locks the survivor and the retired term (`FOR UPDATE` in id order),",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"Term merge: `merge` locks the survivor and the retired term (`FOR UPDATE` in id order),\": missing test: the merge command's own lock order is unasserted. A source regexp over the convergence batch (taxonomy_terms/085-continuation.sqlinc:198-200, `the convergence batch locks the retired term and its survivor in ONE statement in ascending id order…`) pins only the batch function, not cms_act_taxonomy_term merge (BE03c 1377). Needed: race module (new supabase/tests/phase_02_slice_12_taxonomy_merge_lock.race.mjs): two concurrent merges A->B and B->A on the same pair, both in id order, assert no deadlock (one wins, the other CONFLICT) — or a pg_proc source-order oracle on the command. Not cited because the batch oracle is a different function."
+ },
+ {
+  "criterion": "P2-S12-AC-238",
+  "status": "partial",
+  "clauseIndex": 3,
+  "clause": "and satisfy the existing graph compatibility rule (DEC-199).",
+  "class": "pgtap",
+  "limitation": "Unproven (uncited clauses): \"and satisfy the existing graph compatibility rule (DEC-199).\": missing test: pgTAP, supabase/tests/phase_02_slice_12_dec193_pattern_currentness/020-active-digest-provider.sqlinc: a reached nested active version whose compatible type set (or owner) no longer matches the parent produces nested_pattern_not_active. dec193_pattern_currentness/README.md states this branch \"is not runtime-proven\" (create/activate guards and definition immutability prevent constructing the state); needs either an authorised fixture or a direct provider-function probe with a synthesized manifest."
+ },
+ {
+  "criterion": "P2-S12-AC-244",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "and an unknown",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"and an unknown\": BOUNDARY: an assignment to an unknown term (or a term of another owner) is not a reachable shape: cms_term_assignments carries foreign keys to cms_terms, so no honest or forged row names an unknown term; the restore plan still refuses it but no test can construct it."
+ },
+ {
+  "criterion": "P2-S12-AC-248",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "and registers the `cms.pattern.` and `cms.taxonomy.` producer prefixes only as insert-if-absent,",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"and registers the `cms.pattern.` and `cms.taxonomy.` producer prefixes only as insert-if-absent,\": BOUNDARY (lane gaps-db2): \"registers the cms.pattern. and cms.taxonomy. producer prefixes only as insert-if-absent\" is a migration statement (20261010164000 uses on conflict do nothing), not observable on an applied database; the applied registry holds each prefix exactly once (cited under the next tile)."
+ },
+ {
+  "criterion": "P2-S12-AC-256",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "Persistence `cms_canonical_domain_registry`: rows are seeded by forward migration only, immutable and never writable by a caller (`state` `seeded`, `updated_at = created_at`, `owner_id` the seeding release record), hold `domain` one of `role`, `instrument`, `gear`, `place`, `rights` and `jurisdiction` with `provider_state` `built` or `unbuilt` and `provider_key` and `provider_version` non-null exactly when `built`, `UNIQUE(domain, version)`, the current row of a domain being the one with the greatest `version`;",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"Persistence `cms_canonical_domain_registry`: rows are seeded by forward migration only, immutable...\": missing test: pgTAP, new supabase/tests/phase_02_slice_12_governed_persistence.sql (catalog + direct-write probes, BE03c Canonical records / Persistence): cms_canonical_domain_registry: domain in the six values, provider_state in (built, unbuilt), provider_key and provider_version non-null exactly when built, UNIQUE(domain, version), state seeded, updated_at = created_at, owner_id = the seeding release record, seeded by forward migration only and no caller grant. Only the generic trigger inventory (phase_02_slice_09_evidence_trigger_catalog.sql, 06-trigger-probes.sqlinc) and the schema-wide definer/RLS sweep touch these tables; neither asserts the definitions or per-table grants."
+ },
+ {
+  "criterion": "P2-S12-AC-265",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "(a missing or expired session uses the allowlisted 303 sign-in redirect),",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"(a missing or expired session uses the allowlisted 303 sign-in redirect),\": no behavioural test drives the allowlisted 303 sign-in redirect for a missing or expired session (the only citation, a source-text page test, was refuted) \"`new` never resolve as `:templateKey`,\": `new` never resolving as `:templateKey` is not asserted (new.astro is a sibling route file, so the router, not a test, resolves it): missing test: Playwright in tests/e2e/phase-02-slice-12-template-edit.spec.ts, GET /app/cms-content-modeling/templates/new renders the create page (h1 not \"Not found\", no latest read), FE03 877. \"and Back restores the form without serializing a definition.\": missing test: Playwright (real-route, project real-route-chrome) in tests/e2e/phase-02-slice-12-template-real-route.spec.ts: edit a template draft, navigate away and press Back; assert the form is restored from the browser (not from a URL carrying the definition: location.search/hash empty and the history entry holds no serialized definition) FE03 877/1066. No existing test presses Back on the template pages."
+ },
+ {
+  "criterion": "P2-S12-AC-265",
+  "status": "partial",
+  "clauseIndex": 7,
+  "clause": "`new` never resolve as `:templateKey`,",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"(a missing or expired session uses the allowlisted 303 sign-in redirect),\": no behavioural test drives the allowlisted 303 sign-in redirect for a missing or expired session (the only citation, a source-text page test, was refuted) \"`new` never resolve as `:templateKey`,\": `new` never resolving as `:templateKey` is not asserted (new.astro is a sibling route file, so the router, not a test, resolves it): missing test: Playwright in tests/e2e/phase-02-slice-12-template-edit.spec.ts, GET /app/cms-content-modeling/templates/new renders the create page (h1 not \"Not found\", no latest read), FE03 877. \"and Back restores the form without serializing a definition.\": missing test: Playwright (real-route, project real-route-chrome) in tests/e2e/phase-02-slice-12-template-real-route.spec.ts: edit a template draft, navigate away and press Back; assert the form is restored from the browser (not from a URL carrying the definition: location.search/hash empty and the history entry holds no serialized definition) FE03 877/1066. No existing test presses Back on the template pages."
+ },
+ {
+  "criterion": "P2-S12-AC-265",
+  "status": "partial",
+  "clauseIndex": 9,
+  "clause": "and Back restores the form without serializing a definition.",
+  "class": "playwright",
+  "limitation": "Unproven (uncited clauses): \"(a missing or expired session uses the allowlisted 303 sign-in redirect),\": no behavioural test drives the allowlisted 303 sign-in redirect for a missing or expired session (the only citation, a source-text page test, was refuted) \"`new` never resolve as `:templateKey`,\": `new` never resolving as `:templateKey` is not asserted (new.astro is a sibling route file, so the router, not a test, resolves it): missing test: Playwright in tests/e2e/phase-02-slice-12-template-edit.spec.ts, GET /app/cms-content-modeling/templates/new renders the create page (h1 not \"Not found\", no latest read), FE03 877. \"and Back restores the form without serializing a definition.\": missing test: Playwright (real-route, project real-route-chrome) in tests/e2e/phase-02-slice-12-template-real-route.spec.ts: edit a template draft, navigate away and press Back; assert the form is restored from the browser (not from a URL carrying the definition: location.search/hash empty and the history entry holds no serialized definition) FE03 877/1066. No existing test presses Back on the template pages."
+ },
+ {
+  "criterion": "P2-S12-AC-271",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "Definition governance states: for `governedReviewState` (CMS-03C-10 and -11), `selectorState` and `latestReadState` (CMS-03C-13 and -17 and the template, pattern, vocabulary-version and term reads), `diffState` (CMS-03C-14) and `commandState` (CMS-03C-01 to -09, -12, -15 and -16) the island renders `idle`, `loading` (a skeleton after 250 ms and only the commit control disabled), `success`, `empty`, `error`, `degraded` and `disabled` exactly as the state table states, server-authoritative, no-store and never optimistic:",
+  "class": "web",
+  "limitation": "Unproven (uncited clauses): \"Definition governance states: for `governedReviewState` (CMS-03C-10 and -11), `selectorState` and...\": missing tests: (1) a Vitest per island (governed review queue/detail, template/pattern/vocabulary/term designers, composition list, diff, locale form) asserting the seven states idle/loading/success/empty/error/degraded/disabled against the FE03 state table, including loading = a skeleton only after 250 ms with only the commit control disabled (fake timers at 249/250 ms) and never optimistic; today no test mentions the 250 ms skeleton rule and islands are covered state by state only for some commands (governed decision/activation/assignment, related content, composition insert/update)."
+ },
+ {
+  "criterion": "P2-S12-AC-272",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "Governed surface privacy: decision reasons, the policy basis, pattern diff values, canonical ids and every assignment identifier are re-derived by the server and never enter a public or private cache, an analytics event, a Realtime body, a URL or a log,",
+  "class": "web",
+  "limitation": "Unproven (uncited clauses): \"Governed surface privacy: decision reasons, the policy basis, pattern diff values, canonical ids ...\": missing test: Vitest (new apps/web/src/components/cms-governed-review/governed-privacy.test.tsx plus a Worker log/cache sweep) driving the governed detail, decision, pattern diff and assignment surfaces with sentinel values for a decision reason, policy basis hash, pattern diff value, canonical id and assignment identifier, then asserting none appears in fetch URLs, Cache-Control (no-store on every governed response), analytics/telemetry events, Realtime payloads, history/location or any log line. Partial evidence exists but is not a sweep and is not cited: governed-review headers tests (no-store), observability-governed `writes only allowlisted members and no request, session or provider text`, composition privacy journey (URL/history/storage untouched), load-governed-detail-page `refuses a body with a person identifier beyond the contract`."
+ },
+ {
+  "criterion": "P2-S12-AC-273",
+  "status": "unverified",
+  "clauseIndex": 0,
+  "clause": "End-to-end journeys: Playwright, using the real routes and two people, creates, submits, assigns, decides (ordinary and protected) and activates, schedules and retires a template, a pattern and a vocabulary; shows a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, a term merged with convergence, a locale variant with a `no_fallback` block, and related content pinned and excluded; and runs keyboard-only and at 200% zoom with no diff value, canonical id or person id in the URL, storage, logs or telemetry.",
+  "class": "playwright",
+  "limitation": "No test is cited. Unproven: \"End-to-end journeys: Playwright, using the real routes and two people, creates, submits, assigns,...\": missing tests: Playwright real-route specs (project real-route-chrome, new tests/e2e/phase-02-slice-12-definition-journeys-real-route.spec.ts, two people) for (1) create, submit, assign, decide (ordinary and protected), activate, schedule and retire of a template, a pattern and a vocabulary; (2) a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, a term merged with convergence, a locale variant with a no_fallback block, related content pinned and excluded; (3) the same under keyboard only and a 200% layout asserting no diff value, canonical id or person id in URL, storage, logs or telemetry. Existing partial evidence not cited as proof of the clause: phase-02-slice-12-governed-review-real-route.spec.ts T6 (vocabulary only: API-defined and submitted, then assign/decide/activate/retire; no schedule, no template, no pattern), T3 (keyboard and 200% for the decision form only), phase-02-slice-12-locale-real-route.spec.ts (a locale draft, no no_fallback block), phase-02-slice-12-template-real-route.spec.ts (conflict and rebase)."
+ },
+ {
+  "criterion": "P2-S12-AC-276",
+  "status": "unverified",
+  "clauseIndex": 0,
+  "clause": "Lock order: the Slice 12 writers (CMS-03C-01 to CMS-03C-09, CMS-03C-12, CMS-03C-15, CMS-03C-16 and CMS-03C-19, the linked-update scan, the revision-append carry-over, the recheck job and the term merge) take their locks in the Slice 12 lock order, the BE03b global write-path order extended by DEC-157 with one position for term rows, and never acquire an earlier position after a later one (the ten CMS-03B-06 decision steps order checks, not locks),",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"Lock order: the Slice 12 writers (CMS-03C-01 to CMS-03C-09, CMS-03C-12, CMS-03C-15, CMS-03C-16 and CMS-03C-19, the linked-update scan, the revision-append carry-over, the recheck job and the term merge) take their locks in the Slice 12 lock order, the BE03b global write-path order extended by DEC-157 with one position for term rows, and never acquire an earlier position after a later one (the ten CMS-03B-06 decision steps order checks, not locks),\": Partly proven, not citable as the whole tile: source-order oracles now exist for CMS-03C-01, -06, -09, -19, -12, -16 and -03 (gaps_lock_sources.sql, incl. the merge-enqueue mutex), CMS-03C-07/-08 (gaps_lock_order.sql, perf lane), the position-4 lock of -01/-12/-16 (gaps_lock_position4.sql and its two-session race), the position-6 term lock of the revision writers (taxonomy_integrity_lock_order.sql and _concurrency.sql), plus older oracles for -04, -05, -15, the scan, the recheck and the merge handler. Still unproven: CMS-03C-02 placement lock order (the only check is a table-lock oracle), the revision-append carry-over order (spread over shared helpers, BOUNDARY), and the id order of the term-merge command's FOR UPDATE (no `order by` assertion). No single test covers the 17 writer groups. \"re-prove their capability under the locks,\": Partly proven, not citable as the whole tile: CMS-03C-01 re-proves the designer capability after its position-1 lock (gaps_lock_sources.sql) and a two-session race shows a grant revocation committed while the define waits makes the define FORBIDDEN with nothing written (gaps_lock_position4_race.sql S4b); the other writers' capability re-proof under their locks is covered by their own suites but not as one claim. \"and map `deadlock_detected` and a lock-acquisition failure to the 409 code of the operation's catalog (`*_VERSION_CONFLICT`) with nothing committed and the same `Idempotency-Key` reusable.\": missing tests: the single-writer injection tests prove only the SQL wrapper's typed CONFLICT token for a subset of writers; no cited test shows the Worker maps it to each operation's *_VERSION_CONFLICT code, the linked-update scan and the term-merge continuation have no conversion evidence, and 'nothing committed, same Idempotency-Key reusable' is shown for CMS-03C-01 only (template_authority #36/#37). Sound single-writer evidence that does not close the clause: locale_variant/004-relay-source-race-grants.sqlinc (CMS-03C-04 deadlock and lock-acquisition conversions) and governed_recheck/070-isolation.sqlinc (the recheck job)."
+ },
+ {
+  "criterion": "P2-S12-AC-276",
+  "status": "unverified",
+  "clauseIndex": 1,
+  "clause": "re-prove their capability under the locks,",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"Lock order: the Slice 12 writers (CMS-03C-01 to CMS-03C-09, CMS-03C-12, CMS-03C-15, CMS-03C-16 and CMS-03C-19, the linked-update scan, the revision-append carry-over, the recheck job and the term merge) take their locks in the Slice 12 lock order, the BE03b global write-path order extended by DEC-157 with one position for term rows, and never acquire an earlier position after a later one (the ten CMS-03B-06 decision steps order checks, not locks),\": Partly proven, not citable as the whole tile: source-order oracles now exist for CMS-03C-01, -06, -09, -19, -12, -16 and -03 (gaps_lock_sources.sql, incl. the merge-enqueue mutex), CMS-03C-07/-08 (gaps_lock_order.sql, perf lane), the position-4 lock of -01/-12/-16 (gaps_lock_position4.sql and its two-session race), the position-6 term lock of the revision writers (taxonomy_integrity_lock_order.sql and _concurrency.sql), plus older oracles for -04, -05, -15, the scan, the recheck and the merge handler. Still unproven: CMS-03C-02 placement lock order (the only check is a table-lock oracle), the revision-append carry-over order (spread over shared helpers, BOUNDARY), and the id order of the term-merge command's FOR UPDATE (no `order by` assertion). No single test covers the 17 writer groups. \"re-prove their capability under the locks,\": Partly proven, not citable as the whole tile: CMS-03C-01 re-proves the designer capability after its position-1 lock (gaps_lock_sources.sql) and a two-session race shows a grant revocation committed while the define waits makes the define FORBIDDEN with nothing written (gaps_lock_position4_race.sql S4b); the other writers' capability re-proof under their locks is covered by their own suites but not as one claim. \"and map `deadlock_detected` and a lock-acquisition failure to the 409 code of the operation's catalog (`*_VERSION_CONFLICT`) with nothing committed and the same `Idempotency-Key` reusable.\": missing tests: the single-writer injection tests prove only the SQL wrapper's typed CONFLICT token for a subset of writers; no cited test shows the Worker maps it to each operation's *_VERSION_CONFLICT code, the linked-update scan and the term-merge continuation have no conversion evidence, and 'nothing committed, same Idempotency-Key reusable' is shown for CMS-03C-01 only (template_authority #36/#37). Sound single-writer evidence that does not close the clause: locale_variant/004-relay-source-race-grants.sqlinc (CMS-03C-04 deadlock and lock-acquisition conversions) and governed_recheck/070-isolation.sqlinc (the recheck job)."
+ },
+ {
+  "criterion": "P2-S12-AC-276",
+  "status": "unverified",
+  "clauseIndex": 2,
+  "clause": "and map `deadlock_detected` and a lock-acquisition failure to the 409 code of the operation's catalog (`*_VERSION_CONFLICT`) with nothing committed and the same `Idempotency-Key` reusable.",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"Lock order: the Slice 12 writers (CMS-03C-01 to CMS-03C-09, CMS-03C-12, CMS-03C-15, CMS-03C-16 and CMS-03C-19, the linked-update scan, the revision-append carry-over, the recheck job and the term merge) take their locks in the Slice 12 lock order, the BE03b global write-path order extended by DEC-157 with one position for term rows, and never acquire an earlier position after a later one (the ten CMS-03B-06 decision steps order checks, not locks),\": Partly proven, not citable as the whole tile: source-order oracles now exist for CMS-03C-01, -06, -09, -19, -12, -16 and -03 (gaps_lock_sources.sql, incl. the merge-enqueue mutex), CMS-03C-07/-08 (gaps_lock_order.sql, perf lane), the position-4 lock of -01/-12/-16 (gaps_lock_position4.sql and its two-session race), the position-6 term lock of the revision writers (taxonomy_integrity_lock_order.sql and _concurrency.sql), plus older oracles for -04, -05, -15, the scan, the recheck and the merge handler. Still unproven: CMS-03C-02 placement lock order (the only check is a table-lock oracle), the revision-append carry-over order (spread over shared helpers, BOUNDARY), and the id order of the term-merge command's FOR UPDATE (no `order by` assertion). No single test covers the 17 writer groups. \"re-prove their capability under the locks,\": Partly proven, not citable as the whole tile: CMS-03C-01 re-proves the designer capability after its position-1 lock (gaps_lock_sources.sql) and a two-session race shows a grant revocation committed while the define waits makes the define FORBIDDEN with nothing written (gaps_lock_position4_race.sql S4b); the other writers' capability re-proof under their locks is covered by their own suites but not as one claim. \"and map `deadlock_detected` and a lock-acquisition failure to the 409 code of the operation's catalog (`*_VERSION_CONFLICT`) with nothing committed and the same `Idempotency-Key` reusable.\": missing tests: the single-writer injection tests prove only the SQL wrapper's typed CONFLICT token for a subset of writers; no cited test shows the Worker maps it to each operation's *_VERSION_CONFLICT code, the linked-update scan and the term-merge continuation have no conversion evidence, and 'nothing committed, same Idempotency-Key reusable' is shown for CMS-03C-01 only (template_authority #36/#37). Sound single-writer evidence that does not close the clause: locale_variant/004-relay-source-race-grants.sqlinc (CMS-03C-04 deadlock and lock-acquisition conversions) and governed_recheck/070-isolation.sqlinc (the recheck job)."
+ },
+ {
+  "criterion": "P2-S12-AC-277",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "Concurrency scenarios: template activation versus block withdrawal, linked pattern update versus local override,",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"Concurrency scenarios: template activation versus block withdrawal, linked pattern update versus local override,\": missing tests (race tool, independent sessions), not covered by the gap wave: (1) template activation versus block withdrawal and (2) linked pattern update (accept) versus a concurrent local override edit. Neighbours exist (dec193_writer.race: accept versus a concurrent target ACTIVATION) but prove a different race. \"locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.\": missing tests (race tool, independent sessions), not covered by the gap wave: locale source edit versus translation in concurrent form (only the sequential 409 exists), related target unpublish, duplicate and out-of-order events, worker lease expiry (only the sequential ladder exists) and restore-epoch fencing; each needs one deterministic race outcome."
+ },
+ {
+  "criterion": "P2-S12-AC-277",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"Concurrency scenarios: template activation versus block withdrawal, linked pattern update versus local override,\": missing tests (race tool, independent sessions), not covered by the gap wave: (1) template activation versus block withdrawal and (2) linked pattern update (accept) versus a concurrent local override edit. Neighbours exist (dec193_writer.race: accept versus a concurrent target ACTIVATION) but prove a different race. \"locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.\": missing tests (race tool, independent sessions), not covered by the gap wave: locale source edit versus translation in concurrent form (only the sequential 409 exists), related target unpublish, duplicate and out-of-order events, worker lease expiry (only the sequential ladder exists) and restore-epoch fencing; each needs one deterministic race outcome."
+ },
+ {
+  "criterion": "P2-S12-AC-279",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "and 64 related targets meet the Tier 2 p95 < 1,200 ms and RPC < 300 ms targets.",
+  "class": "hosted",
+  "limitation": "Unproven (uncited clause): \"and 64 related targets meet the Tier 2 p95 < 1,200 ms and RPC < 300 ms targets.\": Partly proven: the database share is measured (gaps_perf_related.sql: \"CMS-03C-05 write of 64 related targets meets the RPC < 300 ms target (p95 of 24)\" and the Tier 2 database p95, lane report 39 ms) but the end-to-end API p95 for 64 related targets was not authored (BOUNDARY B2: it needs 64 eligible published entries over HTTP), so the Tier 2 p95 half of this tile is unmeasured at the API."
+ },
+ {
+  "criterion": "P2-S12-AC-287",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "a nonempty bindings list,",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"a nonempty bindings list,\": BOUNDARY (lane gaps-db2): a no-default type with a NONEMPTY template bindings list cannot be created -- the successor request pairs defaultTemplateVersionId with templateBindings (migration 20261002216000) and no template exists at type creation (DEC-123) -- so \"a nonempty bindings list must not supply a fallback\" has no constructible case."
+ },
+ {
+  "criterion": "P2-S12-AC-289",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "the public response is uniform across both cases and leaves no partial create effects.",
+  "class": "other",
+  "limitation": "Unproven (uncited clause): \"the public response is uniform across both cases and leaves no partial create effects.\": BOUNDARY: the public platform_api.cms_create_entry cannot reach the missing or concealed default branch, because no producer stores an absent or other-owner default (the schema compatibility guard and the template registry forbid the state), so neither the public body nor the absence of create effects can be driven. Sound gate-level evidence that does not prove the public clause: phase_02_slice_12_gaps_entry_default.sql calls the DEC-202 gate directly and shows an absent and an other-owner default give the same 404 NOT_FOUND with no detail (equal SQLSTATE, message and DETAIL); its store-count assertion there is blind (taken around an EXCEPTION block that rolls the gate back)."
+ },
+ {
+  "criterion": "P2-S12-AC-292",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "or scope does not gain replay authority.",
+  "class": "pgtap",
+  "limitation": "Unproven (uncited clauses): \"or scope does not gain replay authority.\": missing test: pgTAP in supabase/tests/phase_02_slice_12_entry_default_template/010-policy-lifecycle.sqlinc: reuse the completed key under another acting party / actor (scope) and assert IDEMPOTENCY_MISMATCH (or the existing scoped miss) with no replay body and no change to the original receipt. Only a changed business payload is asserted."
+ },
+ {
+  "criterion": "P2-S12-AC-294",
+  "status": "partial",
+  "clauseIndex": 1,
+  "clause": "Deterministic concurrent tests prove authority/visibility and exact schema/default are rechecked after waits, with no invisible/foreign definition lock lever or late position-2 acquisition.",
+  "class": "race",
+  "limitation": "Unproven (uncited clauses): \"Deterministic concurrent tests prove authority/visibility and exact schema/default are rechecked ...\": missing test: race (extend entry_default_template_lock/020-race.mjs): while a create waits at position 2, (a) revoke the caller assignment / hide the relation target and assert the create refuses after release instead of acting on pre-wait visibility; (b) change the type's exact default or schema version under the waiting create and assert the post-wait pin is the re-read one; (c) assert an invisible or foreign definition cannot be locked by the caller (no lock lever) and position 2 is never acquired after position 3. The existing races assert only the lock order and the independent post-release pin (`PIN: actual first revision must independently store exact governed T1`)."
+ },
+ {
+  "criterion": "P2-S12-AC-295",
+  "status": "partial",
+  "clauseIndex": 0,
+  "clause": "CMS-03B-10 default changes affect only later entry creation.",
+  "class": "impl",
+  "limitation": "Unproven (uncited clauses): \"CMS-03B-10 default changes affect only later entry creation.\": BOUNDARY: no case changes a type default under an entry that already holds revisions (a default change needs a successor schema version with its per-row evidence flow, unbuilt here); the existing cases supersede the template while the type default stays S1 (EDP-S03). \"append, conflict resolution, restore, and locale carry do not initialize or silently rebind historical pins from the current default.\": BOUNDARY, same cause: the behavioural form needs a default change under an existing entry. Only a source-text proxy exists (phase_02_slice_12_gaps_entry_default.sql scans seven carry writers for default_template_version_id and finds none), which a source scan cannot turn into behaviour; the DEC-201 restore gate assertions guard a different rule."
+ },
+ {
+  "criterion": "P2-S12-AC-295",
+  "status": "partial",
+  "clauseIndex": 2,
+  "clause": "append, conflict resolution, restore, and locale carry do not initialize or silently rebind historical pins from the current default.",
+  "class": "other",
+  "limitation": "Unproven (uncited clauses): \"CMS-03B-10 default changes affect only later entry creation.\": BOUNDARY: no case changes a type default under an entry that already holds revisions (a default change needs a successor schema version with its per-row evidence flow, unbuilt here); the existing cases supersede the template while the type default stays S1 (EDP-S03). \"append, conflict resolution, restore, and locale carry do not initialize or silently rebind historical pins from the current default.\": BOUNDARY, same cause: the behavioural form needs a default change under an existing entry. Only a source-text proxy exists (phase_02_slice_12_gaps_entry_default.sql scans seven carry writers for default_template_version_id and finds none), which a source scan cannot turn into behaviour; the DEC-201 restore gate assertions guard a different rule."
+ }
+]

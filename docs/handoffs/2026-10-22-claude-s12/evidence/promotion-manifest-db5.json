@@ -1,0 +1,12 @@
+{
+ "promotedAt": "2026-10-29T07:10:47.501Z",
+ "after": "20261029110000_cms_canonical_domain_registry_provider_pair.sql",
+ "review": "V16 verification round conditions met (review-v16-report.md V16-15; lane-gaps-db5-report.md fix round 2)",
+ "promoted": [
+  {
+   "file": "20261029130000_cms_restore_records_carried_vocabularies.sql",
+   "from": "gaps-db5",
+   "sha256": "6acc8551c85eca47cf58e29f07bc7750246c4556013d89e6f312324fefdb059a"
+  }
+ ]
+}

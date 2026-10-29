@@ -1,0 +1,47 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-gov-queue-degraded.test.tsx (2 tests | 2 failed) 36ms
+     × a read that fails after a verified read still shows the last verified queue, with lastVerifiedAt 17ms
+     × the queue view accepts and shows a lastVerifiedAt beside kept rows 18ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-governed-review/zz-web6-probe-gov-queue-degraded.test.tsx > PROBE queue degraded: last verified queue kept with lastVerifiedAt > a read that fails after a verified read still shows the last verified queue, with lastVerifiedAt
+AssertionError: expected 'notice' to be 'view' // Object.is equality
+
+Expected: "view"
+Received: "notice"
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-gov-queue-degraded.test.tsx:29:25
+     27|     expect(first.kind).toBe('view');
+     28|     const second = await loadGovernedQueuePage({ request: new Request(…
+     29|     expect(second.kind).toBe('view');
+       |                         ^
+     30|     expect(second).toHaveProperty('view.lastVerifiedAt');
+     31|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  apps/web/src/components/cms-governed-review/zz-web6-probe-gov-queue-degraded.test.tsx > PROBE queue degraded: last verified queue kept with lastVerifiedAt > the queue view accepts and shows a lastVerifiedAt beside kept rows
+AssertionError: expected '<section aria-labelledby="governed-qu…' to contain '2026-10-08T12:00:00Z'
+
+Expected: "2026-10-08T12:00:00Z"
+Received: "<section aria-labelledby="governed-queue-title"><h2 id="governed-queue-title" tabindex="-1">Definition reviews</h2><nav aria-label="Review scope"><a href="/x?scope=assigned#governed-queue-title" aria-current="page">Assigned to me</a> <a href="/x?scope=submitted#governed-queue-title">Submitted by me</a> <a href="/x?scope=owned#governed-queue-title">On versions I own</a> </nav><form aria-label="Filter reviews" action="/x#governed-queue-title" method="get"><input type="hidden" name="scope" value="assigned"/><label for="governed-state-filter">State</label><select id="governed-state-filter" name="state"><option value="" selected="">All states</option><option value="open">Open</option><option value="approved">Approved</option><option value="rejected">Rejected</option><option value="invalidated">Invalidated</option></select><label for="governed-kind-filter">Kind</label><select id="governed-kind-filter" name="subjectKind"><option value="" selected="">All kinds</option><option value="template_version">Template</option><option value="pattern_version">Pattern</option><option value="taxonomy_version">Vocabulary</option></select><button type="submit">Filter reviews</button></form><p role="status" aria-live="polite" aria-atomic="true">1 review loaded.</p><ul><li><a href="/x/123e4567-e89b-42d3-a456-426614176001">Template profile-header, version 1</a><br/>State: Open · Risk class: Ordinary · 0 of 1 decisions · Your decision: None yet · Assignment ends <time dateTime="2026-10-09T12:00:00Z">2026-10-09T12:00:00Z</time> · Updated <time dateTime="2026-10-08T12:00:58Z">2026-10-08T12:00:58Z</time></li></ul></section>"
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-gov-queue-degraded.test.tsx:42:18
+     40|       } as never),
+     41|     );
+     42|     expect(html).toContain('2026-10-08T12:00:00Z');
+       |                  ^
+     43|   });
+     44| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  01:08:55
+   Duration  3.57s (transform 1.65s, setup 0ms, import 2.49s, tests 36ms, environment 821ms)
+

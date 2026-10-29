@@ -1,0 +1,10 @@
+  it('[P2-S12-AC-271] selectorState degraded: after a failed read the last verified page is kept and the submit control stays disabled', async () => {
+    const page = mountPage(
+      { [SELECTOR]: [refusal(503, 'DEPENDENCY_UNAVAILABLE')] },
+      withCursor,
+    );
+    await loadMore(page);
+    expect(options(page.container)).toHaveLength(3);
+    expect(buttonNamed(page.container, 'Place pattern').disabled).toBe(true);
+  });
+

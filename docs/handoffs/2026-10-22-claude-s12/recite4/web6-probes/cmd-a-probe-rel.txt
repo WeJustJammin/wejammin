@@ -1,0 +1,13 @@
+     × D5a only the commit control is disabled while pending (whole form) 144ms
+     × D5b an edit during pending keeps the pending label 51ms
+     × D1 403 renders CapabilityGate 67ms
+     × D2 409 refetches without a click 44ms
+     × D3 unknown outcome refetches before retry 42ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 5 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected [ 'cms-related-rule-none', …(3) ] to deeply equal [ 'Saving…' ]
+- Expected
++ Received
+AssertionError: expected null not to be null
+AssertionError: expected "vi.fn()" to be called at least once
+AssertionError: expected "vi.fn()" to be called at least once
+      Tests  5 failed (5)

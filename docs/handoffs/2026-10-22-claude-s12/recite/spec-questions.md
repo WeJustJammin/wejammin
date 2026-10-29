@@ -124,3 +124,23 @@ tracker or row that drifted from a newer BE03c rule — root fixes them mechanic
 AC-086 "preflight failure" (422) at activation; AC-105 "node path" in a nested-pattern refusal; AC-207#1
 `template_not_active` vs `WITHDRAWN`; AC-128#1–2 (test gap only: the Worker maps P0001 `NOT_FOUND`/`CONFLICT` through
 `mapCmsEditorialRpcFailure`, but no CMS-03C-16 test feeds the real token form — PAT-031 class, add tests).
+
+## Q10 AC-061 #9 — does 03c consume `cms.publication.changed.v1`? (gaps-db1)
+
+- Spec: AC-061 "emits no event of its own (it consumes `cms.publication.changed.v1` for invalidation)"; BE03c 1734 event
+  table: "03c consumes the event to invalidate related/locale/composition eligibility".
+- Code: no Worker or SQL consumer of `cms.publication.changed.v1` exists in 03c (grep `apps/worker/src`).
+- Research: nothing in 03c stores eligibility that a publication could invalidate. Related-content public eligibility is
+  evaluated at read time by CMS-03C-21 from the target's lineage head (BE03c 1560, D11); locale staleness is recorded in
+  the source-change transaction ("source changes mark dependent fields stale", BE03c 218, 397); composition validity is
+  governed by the frozen-status recheck consumers (`cms.block.lifecycle.changed.v1`, `cms.schema.activated.v1`,
+  `cms.pattern.activated.v1`, BE03c 1483). Delivery-cache invalidation belongs to Shard 04.
+- Recommendation (root decision, owner may override; next spec batch): amend BE03c 1734 and AC-061 — 03c needs no
+  consumer of `cms.publication.changed.v1`: related eligibility is evaluated at read and locale staleness is recorded in
+  the source transaction; the CMS-03C-05 write emits no event. No code change.
+
+## Q11 AC-069 #6 — governed review panel copy (gaps-db1)
+
+- FE03 quotes "Needs an independent reviewer's approval"; the panel and its test use another string. The spec is the
+  contract: the web-impl lane changes the panel copy to FE03's exact string and corrects the existing test (root
+  instruction, 2026-10-24). No spec change.

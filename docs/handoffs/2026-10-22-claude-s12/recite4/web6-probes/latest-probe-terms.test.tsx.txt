@@ -1,0 +1,113 @@
+// @vitest-environment jsdom
+import './term-action-preload.test-support';
+import { act } from 'react';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+
+import {
+  buttonNamed,
+  byLabel,
+  click,
+  disableReactAct,
+  enableReactAct,
+  mountElement,
+  typeInto,
+} from '../cms-editorial-fields/cms-editor-dom.test-support';
+import CmsTaxonomyTermForm, {
+  type CmsTaxonomyTermFormProps,
+} from './CmsTaxonomyTermForm';
+import type { TermsResult } from './taxonomy-terms-read';
+import {
+  doneResult,
+  formProps,
+  heldTermsRead,
+  namedTerm,
+  optionValues,
+  pageFacts,
+  readTermsStub,
+  readVersionsStub,
+  submitStub,
+  termFacts,
+  termsLoaded,
+  termsPage,
+} from './term-form.test-support';
+
+/*
+ * [P2-S12-AC-271] `latestReadState` of `cmsTaxonomyTermsRead` (FE03 "Slice 12 definition governance states"): the term
+ * island CmsTaxonomyTermForm over its real list refresh, parent/survivor picker and reads (only the read seams are
+ * replaced). The first page is server HTML; later reads are the refresh after an action and the picker's pages.
+ */
+const CELLO = namedTerm('50000000-0000-4000-8000-0000000000c1', 'cello', 'Cello');
+const TUBA = namedTerm('50000000-0000-4000-8000-0000000000a1', 'tuba', 'Tuba');
+
+beforeAll(enableReactAct);
+afterAll(disableReactAct);
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => vi.useRealTimers());
+
+const settle = async (ms = 0): Promise<void> => {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+};
+const text = (container: HTMLElement): string => container.textContent ?? '';
+const skeleton = (container: HTMLElement): HTMLElement | null =>
+  container.querySelector('.cms-loading-region');
+const alerts = (container: HTMLElement): string[] =>
+  Array.from(container.querySelectorAll('[role="alert"]')).map(
+    (entry) => entry.textContent ?? '',
+  );
+const rows = (container: HTMLElement): string[] =>
+  Array.from(container.querySelectorAll('tbody th')).map(
+    (entry) => entry.textContent ?? '',
+  );
+const mount = (props: Partial<CmsTaxonomyTermFormProps> = {}) =>
+  mountElement(
+    <CmsTaxonomyTermForm {...formProps({ readVersions: readVersionsStub(), ...props })} />,
+  );
+/** Creates a term: the done result makes the island refetch the list and the versions. */
+const createTerm = async (container: HTMLElement): Promise<void> => {
+  await click(buttonNamed(container, 'Create a term'));
+  await typeInto(byLabel<HTMLInputElement>(container, 'Term key'), 'cello');
+  await typeInto(byLabel<HTMLInputElement>(container, 'Label 1'), 'Cello');
+  await click(buttonNamed(container, 'Create term'));
+  await settle();
+};
+const mountRefreshed = async (readTerms: CmsTaxonomyTermFormProps['readTerms']) => {
+  const view = mount({ submit: submitStub(doneResult()), readTerms });
+  await createTerm(view.container);
+  return view;
+};
+const partial = { terms: pageFacts(undefined, { nextCursor: 'page.2' }) };
+const openMerge = (container: HTMLElement) =>
+  click(buttonNamed(container, 'Merge term guitar into another'));
+
+
+describe('PROBE terms defects', () => {
+  it('loading (picker): the submit control is disabled while a picker page loads', async () => {
+    const held = heldTermsRead();
+    const { container } = mount({ ...partial, readTerms: held.read });
+    await openMerge(container);
+    await settle(250);
+    expect(skeleton(container)).not.toBeNull();
+    expect(buttonNamed(container, 'Review the merge').disabled).toBe(true);
+  });
+  it('loading (refresh): the list refresh shows a skeleton after 250 ms and keeps the create control disabled', async () => {
+    const held = heldTermsRead();
+    const { container } = await mountRefreshed(held.read);
+    expect(held.pending()).toBe(1);
+    await settle(249);
+    expect(skeleton(container)).toBeNull();
+    await settle(1);
+    expect(skeleton(container)?.getAttribute('role')).toBe('status');
+    expect(buttonNamed(container, 'Create a term').disabled).toBe(true);
+  });
+});

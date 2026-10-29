@@ -1,0 +1,162 @@
+--- a/supabase/tests/phase_02_slice_10_compare_lineage.sql
++++ b/supabase/tests/phase_02_slice_10_compare_lineage.sql
+@@ -176,15 +176,19 @@
+   'P0001:comparison_unavailable',
+   'every recorded taxonomy version must resolve: one resolvable plus one unresolvable pin is comparison_unavailable');
+ 
+--- ---- even a taxonomy version that exists is not resolved by a comparison (DEC-141) ----------------
++-- ---- a taxonomy version that exists in the caller's owner scope is resolved by identity (DEC-141 item 1) ----
+ select pg_temp.s10t_call('exists-still-unavailable', pg_temp.s10t_pin(
+   (select second_revision::uuid from s10t_second), '["a9140000-0000-4000-8000-0000000000a2"]'::jsonb)
+   || pg_temp.s10t_pin((select first_revision::uuid from s10t_entry), '[]'::jsonb)
+   || pg_temp.s10t_compare_sql((select entry_id::uuid from s10t_entry), (select first_revision::uuid from s10t_entry)));
+ select is(
+-  (select state || ':' || message from s10t_calls where label = 'exists-still-unavailable'),
+-  'P0001:comparison_unavailable',
+-  'a non-empty recorded taxonomy list fails closed even when the version exists: no Slice 10 authority resolves it (DEC-141)');
++  (select state || ':' || coalesce(message, '') from s10t_calls where label = 'exists-still-unavailable'),
++  '00000:',
++  'a recorded taxonomy version that exists in the caller''s owner scope is resolved by identity and the comparison succeeds (BE03c Receiving obligations from Slice 10 (DEC-141) item 1; P2-S12-AC-242)');
++select is(
++  (select response ? 'compare' and response->'compare' <> 'null'::jsonb from s10t_calls where label = 'exists-still-unavailable'),
++  true,
++  'and the comparison is computed, not a partial answer (BE03c Receiving obligations from Slice 10 (DEC-141) item 1; P2-S12-AC-242)');
+ 
+ -- ---- an empty recorded list compares normally ---------------------------------------------------------
+ select pg_temp.s10t_call('empty-lists', pg_temp.s10t_pin(
+--- a/supabase/tests/phase_02_slice_10_value_source_encoding.sql
++++ b/supabase/tests/phase_02_slice_10_value_source_encoding.sql
+@@ -142,8 +142,8 @@
+ )
+ from (values
+   ('taxonomy', '{"termIds":[]}'::jsonb, '<none>', 'an empty taxonomy value has no producer dependency'),
+-  ('taxonomy', '{"termIds":["a9100000-0000-4000-8000-0000000000f1"]}', 'taxonomy_source_unavailable', 'a non-empty taxonomy value fails closed with taxonomy_source_unavailable'),
+-  ('taxonomy', jsonb_build_object('termIds', pg_temp.s10s_uuids(128)), 'taxonomy_source_unavailable', 'a full taxonomy value fails closed with taxonomy_source_unavailable'),
++  ('taxonomy', '{"termIds":["a9100000-0000-4000-8000-0000000000f1"]}', '<none>', 'a non-empty taxonomy value is not refused by kind: its terms are checked against the owner, type and field by cms_require_value_source_available (DEC-141 item 5)'),
++  ('taxonomy', jsonb_build_object('termIds', pg_temp.s10s_uuids(128)), '<none>', 'a full taxonomy value is not refused by kind either (DEC-141 item 5)'),
+   ('media', '[]', '<none>', 'an empty media array has no producer dependency'),
+   ('media', '{"assetId":"a9100000-0000-4000-8000-0000000000a1","assetVersion":"3"}', 'media_source_unavailable', 'a single media reference fails closed with media_source_unavailable'),
+   ('media', '[{"assetId":"a9100000-0000-4000-8000-0000000000a1","assetVersion":"3"}]', 'media_source_unavailable', 'a non-empty media array fails closed with media_source_unavailable'),
+--- a/supabase/tests/phase_02_slice_10_value_source_refusal.sql
++++ b/supabase/tests/phase_02_slice_10_value_source_refusal.sql
+@@ -50,8 +50,8 @@
+   (10, 'list_wrong_item', '{"keywords":[1]}'::jsonb)
+ ) c(n, label, by_key);
+ 
+-select is(pg_temp.s10_probe_message('create_' || label), 'taxonomy_source_unavailable',
+-  'cms_create_entry: ' || label || ' fails closed with the typed taxonomy_source_unavailable reason [BE03b]')
++select is(pg_temp.s10_probe_message('create_' || label), 'term_unavailable',
++  'cms_create_entry: ' || label || ' names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]')
+ from unnest(array['tax_nonempty']) label;
+ select is(pg_temp.s10_probe_message('create_' || label), 'media_source_unavailable',
+   'cms_create_entry: ' || label || ' fails closed with the typed media_source_unavailable reason [BE03b]')
+@@ -131,8 +131,8 @@
+   (9, 'list_wrong_item', '{"keywords":[1]}'::jsonb)
+ ) c(n, label, by_key);
+ 
+-select is(pg_temp.s10_probe_message('append_' || label), 'taxonomy_source_unavailable',
+-  'cms_create_revision: ' || label || ' fails closed with the typed taxonomy_source_unavailable reason [BE03b]')
++select is(pg_temp.s10_probe_message('append_' || label), 'term_unavailable',
++  'cms_create_revision: ' || label || ' names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]')
+ from unnest(array['tax_nonempty']) label;
+ select is(pg_temp.s10_probe_message('append_' || label), 'media_source_unavailable',
+   'cms_create_revision: ' || label || ' fails closed with the typed media_source_unavailable reason [BE03b]')
+--- a/supabase/tests/phase_02_slice_10_value_source_resolve.sql
++++ b/supabase/tests/phase_02_slice_10_value_source_resolve.sql
+@@ -123,8 +123,8 @@
+       'value', '"asset"'::jsonb)))
+ ) c(n, label, choices);
+ 
+-select is(pg_temp.s10_probe_message('resolve_' || label), 'taxonomy_source_unavailable',
+-  'cms_resolve_conflict: ' || label || ' fails closed with the typed taxonomy_source_unavailable reason [BE03b]')
++select is(pg_temp.s10_probe_message('resolve_' || label), 'term_unavailable',
++  'cms_resolve_conflict: ' || label || ' names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]')
+ from unnest(array['tax_nonempty']) label;
+ select is(pg_temp.s10_probe_message('resolve_' || label), 'media_source_unavailable',
+   'cms_resolve_conflict: ' || label || ' fails closed with the typed media_source_unavailable reason [BE03b]')
+--- a/supabase/tests/phase_02_slice_10_field_kind_definer_reach.sql
++++ b/supabase/tests/phase_02_slice_10_field_kind_definer_reach.sql
+@@ -81,8 +81,10 @@
+     'true', 'the definer role runs the shared shape on a taxonomy value'),
+   ($$platform_private.cms_field_kind_value_shape('media', '{}'::jsonb, '[]'::jsonb)$$,
+     'true', 'the definer role runs the shared shape on a media value'),
+-  ($$platform_private.cms_value_source_refusal('taxonomy', '{"termIds":["a9100000-0000-4000-8000-0000000000f1"]}'::jsonb) = 'taxonomy_source_unavailable'$$,
+-    'true', 'the definer role runs the taxonomy producer refusal'),
++  ($$platform_private.cms_value_source_refusal('taxonomy', '{"termIds":["a9100000-0000-4000-8000-0000000000f1"]}'::jsonb) is null$$,
++    'true', 'the definer role runs the context-free producer refusal: a taxonomy value is no longer refused by kind (DEC-141 item 5)'),
++  ($$platform_private.cms_term_assignable('a9100000-0000-4000-8000-000000000001'::uuid, 's10gallery', 'tags', 'a9100000-0000-4000-8000-0000000000f1'::uuid) is false$$,
++    'true', 'the definer role runs the term assignability predicate that now decides a taxonomy value (DEC-141 item 5)'),
+   ($$platform_private.cms_value_source_refusal('media', '[{"assetId":"a9100000-0000-4000-8000-0000000000a1","assetVersion":"3"}]'::jsonb) = 'media_source_unavailable'$$,
+     'true', 'the definer role runs the media producer refusal'),
+   ($$platform_private.cms_authored_value_kind_supported('object')$$,
+--- a/supabase/tests/phase_02_slice_10_validation_pointers.sql
++++ b/supabase/tests/phase_02_slice_10_validation_pointers.sql
+@@ -124,7 +124,7 @@
+ select pg_temp.s10v_call('c-object', pg_temp.s10v_gc(jsonb_build_object('meta', jsonb_build_object('unknown', 1)), 's10-ptr-c-0016'));
+ select is(pg_temp.s10v_out('c-object'), 'object_property_invalid ["/fields/' || pg_temp.s10g_fid('meta') || '"]', 'create: an invalid object value keeps its typed reason and names its field');
+ select pg_temp.s10v_call('c-taxonomy', pg_temp.s10v_gc(jsonb_build_object('tags', jsonb_build_object('termIds', jsonb_build_array(extensions.gen_random_uuid()))), 's10-ptr-c-0017'));
+-select is(pg_temp.s10v_out('c-taxonomy'), 'taxonomy_source_unavailable ["/fields/' || pg_temp.s10g_fid('tags') || '"]', 'create: an unavailable taxonomy source keeps its typed reason and names its field');
++select is(pg_temp.s10v_out('c-taxonomy'), 'term_unavailable ["/fields/' || pg_temp.s10g_fid('tags') || '"]', 'create: a taxonomy term that is not assignable is the typed term_unavailable reason and names its field (DEC-141 item 5)');
+ select pg_temp.s10v_call('c-domain', pg_temp.s10v_rc(jsonb_build_object('people', pg_temp.s10r_rel(extensions.gen_random_uuid()::text)), 's10-ptr-c-0018'));
+ select is(pg_temp.s10v_out('c-domain'), 'relation_target_unavailable ["/fields/' || pg_temp.s10r_fid('people') || '"]', 'create: a non-empty domain relation is relation_target_unavailable at its field');
+ select pg_temp.s10v_call('c-hidden', pg_temp.s10v_rc(jsonb_build_object('related', pg_temp.s10r_rel('a9100000-0000-4000-8000-000000000331')), 's10-ptr-c-0019'));
+--- a/supabase/tests/phase_02_slice_11_helpers_preflight.sql
++++ b/supabase/tests/phase_02_slice_11_helpers_preflight.sql
+@@ -170,7 +170,7 @@
+ select is(
+   (select string_agg(category || '=' || provider_key || '@' || provider_version || '/' || provider_kind || '/' || coalesce(reference_kind, '-'), ',')
+      from platform_private.cms_preflight_registry_current()),
+-  'contract=preflight.contract@1/database/-,schema=preflight.schema@1/database/-,template=preflight.template@1/database/-,block=preflight.block@1/database/-,pattern=cms.pattern.active_digest@1/database/-,taxonomy=preflight.reference_gate@1/reference_gate/taxonomy,settings=preflight.settings@1/database/-,relation=preflight.relation@1/database/-,privacy=preflight.reference_gate@1/reference_gate/privacy,security=preflight.security@1/database/-,accessibility=cms.a11y.structural@1/worker/-,media=preflight.reference_gate@1/reference_gate/media,route=preflight.reference_gate@1/reference_gate/route,locale=cms.locale.no_fallback_gate@1/database/-,migration=preflight.migration@1/database/-,domain_binding=preflight.domain_binding@1/database/-,revocation=preflight.revocation@1/database/-',
++  'contract=preflight.contract@1/database/-,schema=preflight.schema@1/database/-,template=preflight.template@1/database/-,block=preflight.block@1/database/-,pattern=cms.pattern.active_digest@1/database/-,taxonomy=cms.taxonomy.assignment_integrity@1/database/-,settings=preflight.settings@1/database/-,relation=preflight.relation@1/database/-,privacy=preflight.reference_gate@1/reference_gate/privacy,security=preflight.security@1/database/-,accessibility=cms.a11y.structural@1/worker/-,media=preflight.reference_gate@1/reference_gate/media,route=preflight.reference_gate@1/reference_gate/route,locale=cms.locale.no_fallback_gate@1/database/-,migration=preflight.migration@1/database/-,domain_binding=preflight.domain_binding@1/database/-,revocation=preflight.revocation@1/database/-',
+   'the registry rows equal the TypeScript CMS_PREFLIGHT_REGISTRY row for row (key, version, kind, reference kind) [P2-S11-AC-093]');
+ 
+ -- Privileged reader-fixture substitutions use the existing raw helper, never caller authority.
+@@ -477,10 +477,10 @@
+ 
+ select pg_temp.h11w_revision('gate-tax', 'creatorPerson', 'en-US', jsonb_build_array(pg_temp.h11w_uuid('taxv')));
+ select pg_temp.h11p_assignment('gate-tax', 'creatorPerson');
+-select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-tax'))), 'taxonomy:failed/provider_unbuilt_reference',
+-  'a recorded taxonomy version fails the taxonomy gate [P2-S11-AC-094]');
++select is(pg_temp.h11p_bad(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-tax'))), 'taxonomy:failed/taxonomy_version_not_active',
++  'a recorded taxonomy version that is not an active version fails the taxonomy provider with taxonomy_version_not_active (BE03c Preflight providers registered by Slice 12; P2-S12-AC-239) [P2-S11-AC-094]');
+ select is((select r->>'blockingCount' from jsonb_array_elements(pg_temp.h11p_eval(pg_temp.h11p_request('submit', 'gate-tax'))->'results') r where r->>'category' = 'taxonomy'),
+-  '1', 'the remaining generic taxonomy reference gate carries the exact reference count [P2-S11-AC-094]');
++  '1', 'the taxonomy provider result carries one offending version id [P2-S12-AC-239]');
+ 
+ select pg_temp.h11w_revision('gate-priv');
+ select pg_temp.h11p_assignment('gate-priv', 'creatorPerson');
+--- a/supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql
++++ b/supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql
+@@ -185,7 +185,7 @@
+     and (select bool_and(pg_temp.r11_keys(entry) = 'category,outcome,reasonCode')
+            from jsonb_array_elements(pg_temp.r11_detail('p-failed')::jsonb->'preflight') entry)
+     and (pg_temp.r11_detail('p-failed')::jsonb->'preflight') @>
+-        '[{"category":"taxonomy","outcome":"failed","reasonCode":"provider_unbuilt_reference"}]'::jsonb
++        '[{"category":"taxonomy","outcome":"failed","reasonCode":"taxonomy_version_not_active"}]'::jsonb
+     and (select count(*) from jsonb_array_elements(pg_temp.r11_detail('p-failed')::jsonb->'preflight') entry
+           where entry->>'outcome' = 'passed') = 16,
+   'a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]');
+--- a/tests/postgrest/phase-02-slice-10-ev-ea-typed-reasons.apispec.ts
++++ b/tests/postgrest/phase-02-slice-10-ev-ea-typed-reasons.apispec.ts
+@@ -88,8 +88,8 @@
+     value: () => ({ label: 'x', extra: 1 }),
+   },
+   {
+-    label: 'a non-empty taxonomy value',
+-    reason: 'taxonomy_source_unavailable',
++    label: 'a non-empty taxonomy value naming an unknown term',
++    reason: 'term_unavailable',
+     field: 'tags',
+     value: () => ({ termIds: [randomUUID()] }),
+   },
+--- a/docs/runbooks/platform/cms-editorial.md
++++ b/docs/runbooks/platform/cms-editorial.md
+@@ -172,7 +172,7 @@
+ | `VALIDATION_FAILED`                                                                                              | 422, `details.violations[{path,code,message}]` (at most 50)     | A value, pointer or evidence failed the active schema. Paths are RFC 6901, for example `/fields/{stableFieldId}`.                                                                                       | Caller-owned. A burst right after a schema activation points at client/schema drift: check the activation with the schema owner.                                                |
+ | `rich_text_not_canonical`, `object_kind_unspecified`, `object_property_invalid`                                  | 422, `details.reasonCode`                                       | The value is not a canonical `rich_text.v1` document, or an object field has no typed structure or breaks it.                                                                                           | Caller-owned. A spike for valid editor output suggests TypeScript/PostgreSQL grammar drift: run the parity corpus `supabase/tests/phase_02_slice_10_rich_text_link_parity.sql`. |
+ | `relation_target_unavailable`                                                                                    | 422, `reasonCode`                                               | A relation target is hidden, archived, of another type or moved past its pinned version.                                                                                                                | Caller-owned. Ask the editor to relink; never loosen visibility to clear it.                                                                                                    |
+-| `taxonomy_source_unavailable`, `media_source_unavailable`                                                        | 422, `reasonCode`                                               | A non-empty taxonomy or media value was submitted while no provider exists; empty values are stored.                                                                                                    | Expected until those providers land. Do not insert rows around it.                                                                                                              |
++| `term_unavailable`, `media_source_unavailable`                                                                   | 422, `reasonCode`                                               | A taxonomy term is merged, deprecated (and not already assigned in the field), unknown, of another vocabulary, or its vocabulary does not list this content type and field; or a non-empty media value was submitted while no media provider exists. Empty values are stored.| Taxonomy: caller-owned, choose an active term of a vocabulary listed for the field. Media: expected until the media provider lands. Do not insert rows around it.               |
+ | `comparison_too_large`, `comparison_unavailable`                                                                 | 422 on CMS-03B-03, `reasonCode`                                 | More than 512 combined changes, or a recorded version/lineage that cannot be resolved (nothing disclosed).                                                                                              | `comparison_too_large`: compare closer revisions. `comparison_unavailable` in volume: escalate with identifiers (lineage or compiled-artifact drift).                           |
+ | `VERSION_MISMATCH`, `STALE_EDIT_PRESENCE`                                                                        | 409 `conflict: VERSION_MISMATCH`, `recoveryAction: reload`      | The entry moved on. `STALE_EDIT_PRESENCE` needs a caller that presents a presence version; autosave renewal sends none.                                                                                 | Expected under concurrent editing. Many `STALE_EDIT_PRESENCE` events mean an unknown caller: escalate.                                                                          |
+ | `INVALID_TRANSITION`, `CONFLICT`                                                                                 | 409 `conflict: INVALID_TRANSITION`, `recoveryAction: refresh`   | Closed or superseded conflict, expired/tampered/foreign list or history cursor, an inactive schema version, a lock deadlock victim.                                                                     | Restartable: refresh and retry. A cursor storm after a key change is expected (see the signing key section).                                                                    |

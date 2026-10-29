@@ -1,0 +1,12 @@
+{
+ "promotedAt": "2026-10-29T04:54:27.904Z",
+ "after": "20261027100020_cms_pattern_key_reserved_nestable.sql",
+ "review": "refute3 verification round PROMOTE (review-refute3-report.md)",
+ "promoted": [
+  {
+   "file": "20261029110000_cms_canonical_domain_registry_provider_pair.sql",
+   "from": "gaps-db4",
+   "sha256": "0f8e7731d7765904ce05df69ca8b0ecb064e5cfdc6cf6034be84ce0fd73e65f3"
+  }
+ ]
+}

@@ -1,0 +1,40 @@
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+ ❯ apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-tax.test.tsx (3 tests | 3 failed) 159ms
+     × D1 403 renders CapabilityGate 108ms
+     × D2 409 refetches versions without a click 30ms
+     × D4 success refetches the versions list 19ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-tax.test.tsx > probe tax > D1 403 renders CapabilityGate
+AssertionError: expected null not to be null
+ ❯ apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-tax.test.tsx:18:81
+     16|     await click(buttonNamed(container, 'Create draft'));
+     17|     await flush();
+     18|     expect(container.querySelector('[data-cms-editorial-capability-gat…
+       |                                                                                 ^
+     19|   });
+     20|   it('D2 409 refetches versions without a click', async () => {
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+ FAIL  apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-tax.test.tsx > probe tax > D2 409 refetches versions without a click
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-tax.test.tsx:27:26
+     25|     await click(buttonNamed(container, 'Save successor draft'));
+     26|     await flush();
+     27|     expect(readVersions).toHaveBeenCalledTimes(1);
+       |                          ^
+     28|   });
+     29|   it('D4 success refetches the versions list', async () => {
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+ FAIL  apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-tax.test.tsx > probe tax > D4 success refetches the versions list
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-tax.test.tsx:35:26
+     33|     await click(buttonNamed(container, 'Save successor draft'));
+     34|     await flush();
+     35|     expect(readVersions).toHaveBeenCalledTimes(1);
+       |                          ^
+     36|   });
+     37| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  01:08:37
+   Duration  3.65s (transform 1.52s, setup 0ms, import 2.35s, tests 159ms, environment 955ms)

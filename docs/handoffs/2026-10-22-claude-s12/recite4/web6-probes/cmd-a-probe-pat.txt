@@ -1,0 +1,6 @@
+     × D1 403 renders CapabilityGate 149ms
+     × D2 409 refetches latest without a click 42ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected null not to be null
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+      Tests  2 failed (2)

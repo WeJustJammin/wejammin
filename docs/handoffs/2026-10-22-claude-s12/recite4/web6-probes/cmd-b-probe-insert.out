@@ -1,0 +1,90 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-insert.test.tsx (4 tests | 4 failed) 266ms
+     × C4 only the commit control is disabled while pending 129ms
+     × C5 the entry or list is refetched after success 54ms
+     × C6 a 403 renders the CapabilityGate 41ms
+     × OBS a STEP_UP_REQUIRED-coded 401 routes to /step-up 37ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-insert.test.tsx > probe C4/C5/C6 insert > C4 only the commit control is disabled while pending
+AssertionError: expected [ 'cms-composition-pattern', …(5) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "cms-composition-pattern",
++   "Link modeLinked: receives pattern updatesDetached: a local copy that never receives updates",
++   "cms-insert-slot-path",
++   "cms-insert-overrides",
++   "Review selected updates",
++   "Detach selected",
++ ]
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-insert.test.tsx:73:68
+     71|     await send(page.container);
+     72|     expectPendingLabel(page.container, 'Placing the pattern…');
+     73|     expect(disabledBesides(page.container, place(page.container))).toE…
+       |                                                                    ^
+     74|   });
+     75|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-insert.test.tsx > probe C4/C5/C6 insert > C5 the entry or list is refetched after success
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-insert.test.tsx:80:64
+     78|     await send(page.container);
+     79|     expect(resultHeading(page.container)).toBe('Pattern placed');
+     80|     expect(page.calls.filter((call) => call.method === 'GET')).toHaveL…
+       |                                                                ^
+     81|   });
+     82|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-insert.test.tsx > probe C4/C5/C6 insert > C6 a 403 renders the CapabilityGate
+AssertionError: expected null not to be null
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-insert.test.tsx:86:86
+     84|     const page = mountPage({ [PLACE]: [refusal(403, 'COMPOSITION_FORBI…
+     85|     await send(page.container);
+     86|     expect(page.container.querySelector('[data-cms-editorial-capabilit…
+       |                                                                                      ^
+     87|   });
+     88|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-insert.test.tsx > probe C4/C5/C6 insert > OBS a STEP_UP_REQUIRED-coded 401 routes to /step-up
+AssertionError: expected 'Result not knownThe result is not kno…' to contain 'step'
+
+Expected: "step"
+Received: "Result not knownThe result is not known. Nothing is assumed. Send again to retry the same request safely, or reload the page to check. The entry could not be read to check, so nothing more is known. Sending again retries the same request and cannot place twice."
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-insert.test.tsx:92:40
+     90|     const page = mountPage({ [PLACE]: [refusal(401, 'STEP_UP_REQUIRED'…
+     91|     await send(page.container);
+     92|     expect(resultText(page.container)).toContain('step');
+       |                                        ^
+     93|   });
+     94| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Start at  01:13:16
+   Duration  2.14s (transform 391ms, setup 0ms, import 604ms, tests 266ms, environment 1.05s)
+

@@ -1,0 +1,50 @@
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+ ❯ apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-taxonomy.test.tsx (3 tests | 3 failed) 302ms
+     × loading: the submit control is disabled while the versions read runs 141ms
+     × degraded: the last verified comparison is kept and submit stays disabled after a failed re-read 101ms
+     × degraded: submit stays disabled after a failed read 57ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-taxonomy.test.tsx > PROBE taxonomy defects > loading: the submit control is disabled while the versions read runs
+AssertionError: expected false to be true // Object.is equality
+- Expected
++ Received
+- true
++ false
+ ❯ apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-taxonomy.test.tsx:115:38
+    113|     await settle(250);
+    114|     expect(skeleton(container)).not.toBeNull();
+    115|     expect(save(container).disabled).toBe(true);
+       |                                      ^
+    116|   });
+    117|   it('degraded: the last verified comparison is kept and submit stays …
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+ FAIL  apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-taxonomy.test.tsx > PROBE taxonomy defects > degraded: the last verified comparison is kept and submit stays disabled after a failed 
+AssertionError: expected 'Rules of instrumentsEditing from vers…' to contain 'Latest saved version: 4'
+Expected: "Latest saved version: 4"
+Received: "Rules of instrumentsEditing from version 2. Saving creates the next version as a private draft; it does not change the version you read.Version2LifecycleActiveShapeHierarchicalCanonical dom
+ ❯ apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-taxonomy.test.tsx:123:35
+    121|     await press(container);
+    122|     expect(alerts(container)).toContain('The latest version is unavail…
+    123|     expect(container.textContent).toContain('Latest saved version: 4');
+       |                                   ^
+    124|     expect(save(container).disabled).toBe(true);
+    125|   });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+ FAIL  apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-taxonomy.test.tsx > PROBE taxonomy defects > degraded: submit stays disabled after a failed read
+AssertionError: expected false to be true // Object.is equality
+- Expected
++ Received
+- true
++ false
+ ❯ apps/web/src/components/cms-taxonomy-designer/zz-web6-probe-taxonomy.test.tsx:129:38
+    127|     const { container } = await mountConflicted(refusal(503));
+    128|     await press(container);
+    129|     expect(save(container).disabled).toBe(true);
+       |                                      ^
+    130|   });
+    131| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  01:09:33
+   Duration  4.00s (transform 1.72s, setup 0ms, import 2.66s, tests 302ms, environment 867ms)

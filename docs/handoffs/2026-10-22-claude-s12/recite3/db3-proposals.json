@@ -1,0 +1,295 @@
+[
+ {
+  "criterion": "P2-S12-AC-056",
+  "clauses": [
+   {
+    "index": 9,
+    "text": "answers a changed acting party",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql",
+      "title": "the same actor replaying the key under another server-resolved acting party is never served the stored response [P2-S12-AC-056]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql:77 - the creator completes CMS-03C-04 key K under organization A (line 58), then replays the identical bytes under organization B (server-resolved GUC party, no context): the outcome is not OK and not the stored response"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql",
+      "title": "the entry belongs to organization A, so under organization B the entry itself is the concealed NOT_FOUND, answered before the reservation is read (BE03c visibility, then capability, then idempotency) [P2-S12-AC-056]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql:79 - the replay answers P0001:NOT_FOUND: cms_author_locale_variant checks entry visibility and owner_party_id = acting_party_id (20260927580000:94-99) before cms_reserve (line 106), so a changed party is the concealed 404 and never reaches the reservation"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql",
+      "title": "the changed-party replay wrote no variant, revision, event, audit or reservation and left the stored reservation byte-identical [P2-S12-AC-056]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql:90 - no variant, revision, event, audit or reservation is written and the stored reservation is byte-identical after the changed-party replay"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql",
+      "title": "the reservation of the stored CMS-03C-04 key answers IDEMPOTENCY_MISMATCH when the server-resolved acting party changed and nothing else did [P2-S12-AC-056]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql:98 - the reservation primitive cms_reserve(request, actor, CMS-03C-04) over the real stored key and identical bytes under party B answers P0001:IDEMPOTENCY_MISMATCH"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql",
+      "title": "control: under the original acting party the identical bytes find the completed reservation, so the acting party was the only difference [P2-S12-AC-056]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql:106 - control: the same primitive and bytes under the original party A find the completed reservation, so the acting party was the only difference"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql",
+      "title": "control: a DIFFERENT actor sending that same changed body under the same key is its own binding, not IDEMPOTENCY_MISMATCH [P2-S12-AC-056]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_locale_party.sql:121 - control: a different actor sending the changed body under the same key is its own binding (OK, two reservations, lines 115/125), the same actor and party is IDEMPOTENCY_MISMATCH"
+     }
+    ],
+    "gap": "BOUNDARY (spec ruling needed): at the CMS-03C-04 entry point a changed server-resolved acting party cannot be answered 409 IDEMPOTENCY_MISMATCH. The command is addressed by entryId and refuses an entry outside the acting party with the concealed 404 NOT_FOUND BEFORE it reserves the key (20260927580000:94-106; BE03c 149 lists visibility, capability, assignment, idempotency in that order and BE03c 1672 requires indistinguishable 404 outside disclosure scope). The key's fingerprint does bind the resolved party (proven at the reservation primitive, line 98) and CMS-03B-10, which reserves before it resolves the target, answers 409 (AC-292). Either amend BE03c 149 to 'where the target is in the caller's scope; otherwise the concealed 404' or require reservation before concealment (which would leak existence): a product/security decision, not a test."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clause): \"answers a changed acting party\" at the entry point as a 409: CMS-03C-04 answers the concealed 404 for an entry outside the acting party before it reserves the key (20260927580000:94-106); the party-bound fingerprint is proven at the reservation primitive and the 409 itself on CMS-03B-10 (AC-292). Needs a ruling on BE03c 149."
+ },
+ {
+  "criterion": "P2-S12-AC-292",
+  "clauses": [
+   {
+    "index": 2,
+    "text": "or scope does not gain replay authority.",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql",
+      "title": "the same actor reusing a completed key under a second party never receives the first party's response [P2-S12-AC-292]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql:103 - one actor (confirmed cms.author member of organizations A and B) completes a CMS-03B-10 key under A (line 94) and reuses it under B with identical bytes (no actingPartyId in the request: party is server-resolved only, control line 57): the first response is never returned"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql",
+      "title": "the second party meets the request-fingerprint mismatch (409 IDEMPOTENCY_MISMATCH): the server-resolved acting party is part of the key's binding [P2-S12-AC-292]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql:105 - the second party meets P0001:IDEMPOTENCY_MISMATCH (409): cms_reserve fingerprints the request hash plus the resolved acting party and CMS-03B-10 reserves (20260927590000:42) before the type lookup"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql",
+      "title": "the refused second-party use created no entry or revision and left the stored reservation byte-identical [P2-S12-AC-292]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql:108 - the refused use creates no entry or revision and leaves the stored reservation byte-identical"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql",
+      "title": "control: the same actor under the original party with the identical bytes receives the stored response and creates nothing [P2-S12-AC-292]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_entry_party.sql:115 - control: the same actor under the original party with identical bytes receives the stored response and creates nothing, so the acting party is the only difference"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_entry_default.sql",
+      "title": "the same completed key under another actor never returns the original response body [P2-S12-AC-292]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_entry_default.sql:150 - actor member of scope (existing, db2): a different actor under the same key never receives the original response body"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_entry_default.sql",
+      "title": "the key is scoped to the actor: the other actor creates its own distinct entry (a scoped miss, one new entry) and never replays the original [P2-S12-AC-292]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_entry_default.sql:154 - actor member of scope (existing, db2): the other actor is a scoped miss that creates its own entry"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_entry_default.sql",
+      "title": "the original owner receipt is byte-identical after the other actor reused its key: no change to the stored response or state [P2-S12-AC-292]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_entry_default.sql:156 - actor member of scope (existing, db2): the original receipt is byte-identical"
+     }
+    ],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "caveat": "Both members of scope are driven: acting party (this lane, IDEMPOTENCY_MISMATCH) and actor (db2, scoped miss). The party membership/grant of the second organization is a labelled fixture forgery (no command confirms an ungoverned membership), exactly as 01-actors.sqlinc forges designer2."
+ },
+ {
+  "criterion": "P2-S12-AC-072",
+  "clauses": [
+   {
+    "index": 4,
+    "text": "a separation-of-duties violation (the submitter",
+    "add": [],
+    "gap": "BOUNDARY (unreachable branch): the submitter cannot hold an assignment, so the decision RPC's separation_of_duties token (20261014010200:165) is never reached for a submitter. Refusing lines: cms_governed_assignment_guard raises reviewer_not_eligible for reviewer = submitted_by (20261013300600:166-168) and so does cms_assign_governed_reviewer (20261014010100:188-192); submitted_by is immutable (guard 20261013300500); the decision RPC answers capability_missing to any person without an active assignment (20261014010200:97-107) BEFORE the separation_of_duties check. Existing identities for the reachable outcomes: governed_assignment/030-refusals.sqlinc el-submitter (reviewer_not_eligible), governed_decision c4 (403 capability_missing)."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clause): \"a separation-of-duties violation (the submitter\": unreachable, the submitter can never hold the assignment the decision RPC checks first (assignment guard 20261013300600:166-168; decision RPC 20261014010200:97-107 before :165); split off like the creator part."
+ },
+ {
+  "criterion": "P2-S12-AC-143",
+  "clauses": [
+   {
+    "index": 2,
+    "text": "the subject (`scheduled` with an equal hash)",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql",
+      "title": "control: every claimed schedule has its review approved at exactly the version the schedule relied on, so only the subject disjuncts can differ [P2-S12-AC-143]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql:71 - control: every claimed schedule has its review approved at exactly the version the schedule relied on, so only the subject disjuncts of the executor condition (20261014070600 step 3) can differ"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql",
+      "title": "a subject that is not `scheduled` at fire, with its review approved at its version, blocks the schedule approval_invalidated: review untouched, subject blocked, no event, one audit record [P2-S12-AC-143]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql:134 - LABELLED SEAM: with the locked subject read substituted to a non-scheduled state, the claimed schedule (review approved at its version, hash equal) blocks approval_invalidated: review untouched, subject blocked, no event, one audit"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql",
+      "title": "a subject whose content hash differs from the frozen one at fire, with its review approved at its version, blocks the schedule approval_invalidated: review untouched, subject blocked, no event, one audit record [P2-S12-AC-143]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql:149 - LABELLED SEAM: with the locked subject read substituted to a differing content hash (state scheduled, review approved at its version) the claimed schedule blocks approval_invalidated: review untouched, no event, one audit"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql",
+      "title": "control: with the transparent wrapper installed and no fault named the claimed schedule completes, the subject is active, one event [P2-S12-AC-143]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql:119 - control: with the wrapper installed and no fault named the same schedule shape completes (active, one event)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql",
+      "title": "control: the pinned reader is restored byte for byte (source, owner, ACL) [P2-S12-AC-143]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_schedule_subject.sql:155 - control: the substituted reader is restored byte for byte (source, owner, ACL)"
+     }
+    ],
+    "gap": "No lawful producer builds this state: the content hash is immutable and every move of a scheduled subject goes through commands that also move its review or schedule (the existing revoked-approver case flips the review disjuncts too). The proof is a labelled seam (cms_governed_subject_resolve renamed aside, transparent wrapper altering state or contentHash only for the locked read named by GUC gap.fault, restored byte for byte), the same accepted shape as gaps_db1_recheck.sql (AC-083). If root's rule bars citing seam proofs, the clause reverts to BOUNDARY with these lines."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Seam-only (no lawful producer): the subject state and hash re-read at fire is proven by substituting the locked subject read (labelled seam, as AC-083); the policy basis clause is separate."
+ },
+ {
+  "criterion": "P2-S12-AC-023",
+  "clauses": [
+   {
+    "index": 2,
+    "text": "/allowlisted",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql",
+      "title": "an ACTIVE content type with an ACTIVE version that belongs to another owner is refused VALIDATION_FAILED [P2-S12-AC-023]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql:45 - cms_define_template over an ACTIVE content type with an ACTIVE version owned by another owner answers VALIDATION_FAILED (20261013100200:120-132 requires content_type.owner_id = acting_party_id)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql",
+      "title": "one other-owner member among valid owned members refuses the whole list [P2-S12-AC-023]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql:51 - one other-owner member among valid owned members refuses the whole list"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql",
+      "title": "the other-owner member refuses the list wherever it stands in it [P2-S12-AC-023]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql:55 - the other-owner member refuses the list wherever it stands in it"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql",
+      "title": "control: the owned type of the identical shape defines a draft template, so only the owner differed [P2-S12-AC-023]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db3_template_owner.sql:67 - control: the owned type of the identical shape defines a draft template (only the owner differed)"
+     }
+    ],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "caveat": "BE03c 380 names no allowlist object; \"allowlisted\" is read as the owner-scope membership that the sibling row CMS-03C-12 (BE03c 407) states as \"an active content type of the caller's owner scope\" and that cms_define_template enforces. If root wants a separate allowlist object, the clause needs a spec line first."
+ },
+ {
+  "criterion": "P2-S12-AC-079",
+  "clauses": [
+   {
+    "index": 9,
+    "text": "and Tier 2",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "tests/postgrest/phase-02-slice-12-latency-governed-revoke.apispec.ts",
+      "title": "Slice 12 governed-review revoke latency through the real stack [CMS-03C-08] revocation of an assignment on a review carrying up to the limit of 16 active assignments: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-079]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/postgrest/phase-02-slice-12-latency-governed-revoke.apispec.ts:129 - NOT RUN: counts only with a passed receipt from root. CMS-03C-08 revoke through Worker -> Kong -> PostgREST: 3 discarded warm-ups + 24 samples over 27 assignments on two reviews carrying 16 and 11 active assignments, every answer asserted 200 in measure() check, expect(result.p95).toBeLessThan(1200)"
+     }
+    ],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "caveat": "Complements the create timing in phase-02-slice-12-latency-governed.apispec.ts and the DB-share revoke bench (perf_governed/050). Clause 3 (version unchanged on revoke) is not a timing clause and is untouched."
+ }
+]

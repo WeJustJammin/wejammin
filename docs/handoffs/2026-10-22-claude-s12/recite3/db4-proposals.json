@@ -1,0 +1,937 @@
+[
+ {
+  "criterion": "P2-S12-AC-210",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "Activating or scheduling a `taxonomy_version` requires a registered provider for every declared canonical domain, else 422 `canonical_source_unavailable` with `details.domain`.",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "scheduling an approved taxonomy version whose declared role domain has lost its provider is refused canonical_source_unavailable with details.domain = role [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:170 — CMS-03C-09 schedule over a role registry row flipped to unbuilt (version 2) after approval: P0001:canonical_source_unavailable with DETAIL {\"domain\": \"role\"}"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "a vocabulary that declares no canonical domain activates while role is unbuilt: only the declared domains are checked [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:183 — negative: a vocabulary declaring no domain activates with role unbuilt, so only declared domains are checked"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "the refused schedule attempts no write to the schedules, the subject, the review, the outbox or the audit log: no schedule row, subject never scheduled, no event [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:172 — write witnesses (sequence-bumping BEFORE triggers that survive the rolled-back call) show no attempted write to schedules, subject, review, outbox or audit"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "control: a real activation moves the review, subject, outbox and audit witnesses, so the \"attempts no write\" assertions above are able to fail [P2-S12-AC-223]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:186 — control: a real activation moves the review, subject, outbox and audit witnesses, so the no-write assertions can fail"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "the step-up and capability refusals attempt no write at all: no review, subject, schedule, event, audit or idempotency row is touched, not even transiently [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:151 — witnesses show no attempted write to any of the six stores (idempotency included) for the step-up and capability refusals"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "the stale-version refusal attempts no write to the review, subject, schedule, event or audit stores [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:157 — witnesses show no attempted write to review, subject, schedule, outbox or audit for the stale-version refusal"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "activating a vocabulary that declares role and instrument is refused canonical_source_unavailable naming instrument, the unbuilt one, although role is built [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:237 — two declared domains, role built and instrument (second declared) unbuilt: activate refused naming instrument"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "scheduling a vocabulary that declares role and instrument is refused canonical_source_unavailable naming instrument, the unbuilt one, although role is built [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:240 — two declared domains, role built and instrument unbuilt: schedule refused naming instrument"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "neither refusal attempts a write to the review, subject, schedule, event or audit stores [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:242 — witnesses: neither two-domain refusal attempts a write to the covered stores"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "with both declared domains built a vocabulary declaring both activates and another is scheduled (a pending schedule row) [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:227 — both declared domains built: a vocabulary declaring both activates and another is scheduled (pending row)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "control: the schedule witness moves for a real schedule, the review and outbox witnesses for a real activation [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:229 — control: schedule witness moves for a real schedule, review and outbox for a real activation"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "control: once a built provider row is current again the same command activates a role-declaring vocabulary: the refusals above were caused by the registry state, nothing else [P2-S12-AC-223]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:199 — control: a newer built role row makes the same command activate, so the registry state caused the refusal"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "under provider drift a call without a step-up proof is STEP_UP_REQUIRED, not canonical_source_unavailable: the proof is verified before anything else [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:145 — context-cleared call: STEP_UP_REQUIRED precedes the provider check"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "under provider drift a reviewer who lacks cms.taxonomy_curator is 403 capability_missing, not canonical_source_unavailable [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:149 — capability_missing precedes the provider check"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "under provider drift a stale review version is VERSION_MISMATCH, not canonical_source_unavailable [P2-S12-AC-210]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:155 — VERSION_MISMATCH precedes the provider check"
+     }
+    ],
+    "staleExisting": [],
+    "gap": "The 422 transport mapping of the SQL token is the Worker's (token-mapping tests cited under AC-223 c1); the SQL token and DETAIL are proven here. Order note: the implementation checks the provider before the frozen canonical_domain dependency (cms_governed_activation_verdict), which makes the typed refusal reachable; BE03c step 4 would otherwise invalidate dependency_changed first.",
+    "needsSplit": false
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-223",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "Unbuilt canonical domain (DEC-135): a declared domain whose provider is `unbuilt` is refused with the typed `canonical_source_unavailable` carrying `details.domain` at taxonomy-version activation",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "activating an approved taxonomy version whose declared role domain has lost its provider is refused canonical_source_unavailable with details.domain = role [P2-S12-AC-223]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:163 — CMS-03C-09 activate over a role registry row flipped to unbuilt after approval: P0001:canonical_source_unavailable#{\"domain\": \"role\"}"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "the refused activation attempts no write to the review, the subject, the schedules, the outbox or the audit log: no invalidation, no switch, no event [P2-S12-AC-223]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:165 — write witnesses show no attempted write to review, subject, schedules, outbox or audit by the refused activation"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "control: a real activation moves the review, subject, outbox and audit witnesses, so the \"attempts no write\" assertions above are able to fail [P2-S12-AC-223]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:186 — control: a real activation moves the review, subject, outbox and audit witnesses"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "a repeat of the activation with the same idempotency key is refused canonical_source_unavailable again, never answered as a success [P2-S12-AC-223]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:175 — a repeat with the same idempotency key is refused canonical_source_unavailable again"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+      "title": "control: once a built provider row is current again the same command activates a role-declaring vocabulary: the refusals above were caused by the registry state, nothing else [P2-S12-AC-223]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:199 — control: provider restored (newer built row) so the same command activates"
+     }
+    ],
+    "staleExisting": [],
+    "gap": null,
+    "needsSplit": false
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-225",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "Term merge: `merge` locks the survivor and the retired term (`FOR UPDATE` in id order),",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "cms_act_taxonomy_term locks the retired term (termKey), the parent and the survivor (survivorId) with one statement over cms_terms ordered by term.id FOR UPDATE: ascending id order [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:47 — anchored regex over the comment-stripped source: one select over cms_terms naming termKey, parentId and survivorId, order by term.id for update"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "that statement holds the only FOR UPDATE of the function: no term row is locked a second time or out of order [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:49 — exactly one FOR UPDATE in the function"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "and the only ORDER BY of the function is the id order of that lock [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:51 — exactly one ORDER BY in the function"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "both term appliers (merge and write) run after the ordered lock statement, so nothing changes a term row before it is locked [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:55 — lock position precedes cms_term_apply_merge( and cms_term_apply_write("
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "cms_term_apply_merge takes no row lock of its own: it works under the ordered locks of the caller [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:59 — the merge applier holds no FOR UPDATE/FOR SHARE of its own"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "cms_term_apply_merge reads the retired term by the same termKey and the survivor by the same survivorId (within the vocabulary and owner) that the lock statement names [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:61 — the applier reads the retired term by the same termKey and the survivor by the same survivorId, literal fragments"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects the second `or` connective replaced by `and` (the statement would lock nothing unless parent and survivor coincide) [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:77 — inverse control: second `or` replaced by `and` rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects the first `or` connective replaced by `and` [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:79 — inverse control: first `or` replaced by `and` rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects `and false` inserted into the alternatives [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:81 — inverse control: `and false` in the alternatives rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects `and false` inserted before the alternatives [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:83 — inverse control: `and false` before the alternatives rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects descending id order [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:85 — inverse control: descending order rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects FOR SHARE in place of FOR UPDATE [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:87 — inverse control: FOR SHARE rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the applier detector rejects a survivor read that is not the named survivor [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:89 — inverse control: wrong survivor read rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the applier detector rejects a retired-term read that is not the named termKey [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:91 — inverse control: wrong retired read rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects the lock statement with its ORDER BY removed [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:67 — inverse control: ORDER BY removed is rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects an order by anything but the term id [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:69 — inverse control: order by term_key rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects FOR UPDATE written before the ORDER BY [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:71 — inverse control: FOR UPDATE before ORDER BY rejected"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+      "title": "control: the detector rejects a lock statement that no longer names the survivor [P2-S12-AC-225]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:73 — inverse control: survivor dropped from the lock rejected"
+     }
+    ],
+    "staleExisting": [],
+    "gap": "Static source order only; two simultaneous opposed merges (A->B / B->A) are a race module for root.",
+    "needsSplit": false
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-155",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "CMS-03C-21 is executable only by the registered non-browser callers (the Shard 04 delivery projection and the Slice 11 related-content recheck",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "CMS-03C-21 is owned by the CMS definer role the registered callers run as [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:55 — owner is the CMS definer, the role the registered callers run as (migration 20261014060200 header)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "no stored function in platform_private or platform_api calls CMS-03C-21 yet: the Shard 04 delivery projection and the Slice 11 recheck are later callers that run as the definer, so no unregistered caller exists [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:85 — caller inventory over pg_proc.prosrc is empty: no unregistered caller"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "no platform_api wrapper exposes CMS-03C-21: the operation has no browser route [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:94 — no platform_api wrapper references it: no browser route"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "CMS-03C-21 is SECURITY DEFINER, STABLE and runs with an empty search_path, so a registered caller reaches it only as the definer [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:100 — SECURITY DEFINER, STABLE, empty search_path"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "control: the caller scan reports a function that calls CMS-03C-21 when one is added [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:117 — inverse control: an added caller is reported"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "CMS-03C-21 cms_related_content_public_targets is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:53 — aclexplode over proacl: the only EXECUTE grantee is wejammin_cms_definer (PUBLIC absent)"
+     }
+    ],
+    "staleExisting": [],
+    "gap": "BOUNDARY: neither the Shard 04 delivery projection nor the Slice 11 related-content recheck exists as a database caller yet (no function calls CMS-03C-21), so the registered callers themselves cannot be exercised; owner-only EXECUTE plus the empty caller inventory is all that is provable (precedent AC-150, gaps_db1_acl.sql).",
+    "needsSplit": false
+   },
+   {
+    "index": 2,
+    "text": "and every other role have EXECUTE revoked)",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "CMS-03C-21 cms_related_content_public_targets is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:53 — aclexplode over proacl: the only EXECUTE grantee is wejammin_cms_definer (PUBLIC absent)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "the public-eligibility head predicate CMS-03C-21 calls is owner-only as well [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:57 — head predicate owner-only by aclexplode"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "the derived-candidate reader CMS-03C-21 calls is owner-only as well [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:59 — derived-candidate reader owner-only by aclexplode"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "no non-superuser role outside the definer's membership can execute CMS-03C-21: anon, authenticated, service_role, authenticator and every other role are revoked [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:70 — has_function_privilege over every non-superuser role outside the definer's membership is empty"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "anon, with schema USAGE, calling CMS-03C-21 is denied 42501 by the function ACL [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:75 — real role anon granted schema USAGE (so the schema cannot mask it) is denied 42501 by the function ACL"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "authenticated, with schema USAGE, calling CMS-03C-21 is denied 42501 by the function ACL [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:77 — real role authenticated granted schema USAGE is denied 42501 by the function ACL"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "control: once anon is granted EXECUTE (and holds schema USAGE) the same call runs, so the 42501 above came from the function ACL [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:107 — control: with USAGE and an EXECUTE grant the same call runs, so the denial came from the function ACL"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "service_role (the sweep principal of other operations) calling CMS-03C-21 is denied 42501 [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:79 — real role service_role denied 42501"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "control: the owning definer, the role the registered callers run as, can execute CMS-03C-21 (an absent source answers an empty array) [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:81 — control: the definer owner executes it"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "control: the ACL probe reports anon when anon is granted EXECUTE [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:110 — inverse control: an added anon grant is reported"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+      "title": "control: the ACL probe reports PUBLIC when PUBLIC is granted EXECUTE [P2-S12-AC-155]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:113 — inverse control: an added PUBLIC grant is reported"
+     }
+    ],
+    "staleExisting": [],
+    "gap": null,
+    "needsSplit": false
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clause): \"(the Shard 04 delivery projection and the Slice 11 related-content recheck\": BOUNDARY (db4): neither registered caller exists as a database caller (no function calls platform_private.cms_related_content_public_targets), so the requirement that they execute it as the definer cannot be exercised; the owner-only ACL and the empty caller inventory prove only that nobody else can."
+ },
+ {
+  "criterion": "P2-S12-AC-256",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "Persistence `cms_canonical_domain_registry`: rows are seeded by forward migration only, immutable and never writable by a caller (`state` `seeded`, `updated_at = created_at`, `owner_id` the seeding release record), hold `domain` one of `role`, `instrument`, `gear`, `place`, `rights` and `jurisdiction` with `provider_state` `built` or `unbuilt` and `provider_key` and `provider_version` non-null exactly when `built`, `UNIQUE(domain, version)`, the current row of a domain being the one with the greatest `version`;",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "the table has exactly the ten stored columns, provider_key and provider_version nullable and every other column NOT NULL [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:109 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "state defaults to seeded [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:113 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a CHECK closes state to exactly seeded [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:115 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a CHECK closes domain to exactly role, instrument, gear, place, rights and jurisdiction [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:118 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a CHECK closes provider_state to exactly built and unbuilt [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:120 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a CHECK ties provider_key and provider_version to provider_state = built, both non-null exactly when built [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:124 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a CHECK pins updated_at = created_at [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:126 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "UNIQUE (domain, version) is the registry key [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:128 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a BEFORE INSERT row guard (cms_write_guard) polices every insert [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:130 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a BEFORE UPDATE OR DELETE row guard (cms_immutable_guard) makes every row immutable [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:132 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "the migrated registry holds exactly one version-1 seeded row per domain, updated_at = created_at, owned by the seeding release record [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:140 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a domain outside the six is refused by the domain CHECK [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:146 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a provider_state other than built or unbuilt is refused [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:148 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a built row without a provider_key is refused [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:150 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a built row without a provider_version is refused [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:152 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "an unbuilt row that keeps its provider_key is refused [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:154 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "an unbuilt row that keeps its provider_version is refused [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:156 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a state other than seeded is refused [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:162 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "an updated_at that differs from created_at is refused [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:164 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a second row of an existing (domain, version) is refused by the UNIQUE key (role, 1 is seeded) [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:166 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a direct insert outside the CMS RPC context is refused DIRECT_CMS_TABLE_WRITE even for a well-formed row [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:172 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "an UPDATE of a registry row is refused IMMUTABLE_RECORD even inside the CMS context [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:174 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "an UPDATE that changes nothing is still refused: no row may be rewritten [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:176 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "a DELETE of a registry row is refused IMMUTABLE_RECORD [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:178 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "anon, authenticated and service_role hold no table or column privilege on the registry [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:185 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "PUBLIC holds no privilege on the registry [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:188 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "the only grant beyond the table owner is SELECT to the CMS definer that the pinned reader functions run as: no caller grant and no write grant [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:195 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "the CMS definer holds no write privilege either: only a forward migration can add a row [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:197 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "row level security is enabled and forced on the registry [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:200 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "the single policy admits a row only inside the CMS RPC context, for reads and writes alike [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:203 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "anon, with schema USAGE, cannot insert a registry row even inside the CMS context: the refusal is the missing table privilege itself [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:208 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "authenticated, with schema USAGE, cannot insert a registry row even inside the CMS context: the refusal is the missing table privilege itself [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:210 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "control: once anon is granted INSERT and EXECUTE on the policy function (and holds schema USAGE) the same insert runs, so the 42501 above came from the missing table privilege [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:219 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "an unbuilt row keeping both provider members is refused [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:158 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "service_role cannot insert a registry row even inside the CMS context [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:212 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "no stored function inserts a registry row: the seeds and every later provider registration are forward migrations only [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:226 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "no stored function updates or deletes a registry row [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:231 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "the current row is the one with the greatest version (5), not the one inserted last (4): an owning shard registers a provider by inserting a newer row [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:259 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+      "title": "context-cleared: outside the CMS RPC context the forced RLS conceals every registry row from the reader, so no provider is ever visible to an uncontexted caller [P2-S12-AC-256]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:251 — registry catalog/probe assertion (fix-round run 4, lane gaps-db4, 49/49 with the WIP provider-pair CHECK)"
+     }
+    ],
+    "staleExisting": [],
+    "gap": "DEC-238 (BE03c 1624 amended): two assertions (an unbuilt row keeping only provider_key / only provider_version is refused) are green ONLY with supabase/migrations-wip/gaps-db4/20261029110000_cms_canonical_domain_registry_provider_pair.sql; against the promoted migrations alone they are RED (run 1): the promoted CHECK admits a half-set pair. That migration must be promoted before the clause counts as verified.",
+    "needsSplit": false
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ }
+]

@@ -1,0 +1,86 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-update.test.tsx (3 tests | 3 failed) 461ms
+     × C4 only the commit controls are disabled while pending 216ms
+     × C5 the entry or list is refetched after success 102ms
+     × C7 an unknown outcome is pending and reconciles by refetching the entry before any retry 139ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-update.test.tsx > probe C4/C5/C7 update diff > C4 only the commit controls are disabled while pending
+AssertionError: expected [ 'cms-composition-pattern', …(11) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "cms-composition-pattern",
++   "Link modeLinked: receives pattern updatesDetached: a local copy that never receives updates",
++   "cms-insert-slot-path",
++   "cms-insert-overrides",
++   "Place pattern",
++   "Review selected updates",
++   "Detach selected",
++   "Review update for /main/row-1",
++   "Detach /main/row-1",
++   "Text changed in the patternKeep my overrideTake the new value",
++   "The pattern no longer has this blockKeep it: the block becomes a local copy that no longer receives updatesRemove it from the entry",
++   "The pattern changed this block's type or its sub-blocksKeep mine: the block becomes a local copy that no longer receives updatesTake the new structure",
++ ]
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-update.test.tsx:123:7
+    121|     expect(
+    122|       disabledBesides(page.container, accept(page.container), detach(p…
+    123|     ).toEqual([]);
+       |       ^
+    124|   });
+    125|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/3]⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-update.test.tsx > probe C4/C5/C7 update diff > C5 the entry or list is refetched after success
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-update.test.tsx:130:87
+    128|     await accepting(page);
+    129|     expect(resultHeading(page.container)).toBe('Update applied');
+    130|     expect(page.calls.filter((call) => call.path.startsWith('/api/v1/c…
+       |                                                                                       ^
+    131|   });
+    132|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/3]⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-update.test.tsx > probe C4/C5/C7 update diff > C7 an unknown outcome is pending and reconciles by refetching the entry before any retry
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-update.test.tsx:138:87
+    136|     });
+    137|     await accepting(page);
+    138|     expect(page.calls.filter((call) => call.path.startsWith('/api/v1/c…
+       |                                                                                       ^
+    139|   });
+    140| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/3]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  3 failed (3)
+   Start at  01:14:26
+   Duration  2.60s (transform 412ms, setup 0ms, import 622ms, tests 461ms, environment 1.25s)
+

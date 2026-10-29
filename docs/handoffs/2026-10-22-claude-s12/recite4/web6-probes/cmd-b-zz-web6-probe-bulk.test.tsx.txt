@@ -1,0 +1,127 @@
+// @vitest-environment jsdom
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import {
+  buttonNamed,
+  byLabel,
+  click,
+  disableReactAct,
+  enableReactAct,
+} from '../cms-editorial-fields/cms-editor-dom.test-support';
+import {
+  answerHeld,
+  expectPendingLabel,
+  heldReply,
+  disabledBesides,
+  resultHeading,
+  resultRegion,
+  resultText,
+} from './composition-command-states.test-support';
+import { UNKNOWN_OUTCOME_MESSAGE } from './composition-copy';
+import {
+  ENTRY,
+  entryDetail,
+  UPDATE,
+  diffPath,
+  json,
+  mountPage,
+  refusal,
+  settle,
+} from './composition-page.test-support';
+import {
+  diffOf,
+  entryFacts,
+  id,
+  plainPath,
+  propsPath,
+  row,
+} from './composition.test-support';
+
+/*
+ * P2-S12-AC-271, `commandState` of FE03 "Slice 12 definition governance states", for CMS-03C-15 on a selection (bulk
+ * accept, bulk detach; DEC-181) through the selected-updates panel of the composition page over a scripted wire.
+ */
+beforeAll(enableReactAct);
+afterAll(disableReactAct);
+
+const rows = () => [1, 2].map((n) => row(n, { state: 'pending_diff', version: '3' }));
+const clean = (n: number) => json(diffOf(n, [plainPath()]), 200, '"3"');
+const appended = (version = '10') =>
+  json(
+    {
+      items: [1, 2].map((n) => row(n, { version: '4', patternVersion: 2 })),
+    },
+    200,
+    `"${version}"`,
+  );
+const detached = (version = '10') =>
+  json(
+    {
+      items: [1, 2].map((n) =>
+        row(n, { version: '4', linkMode: 'detached', state: 'active' }),
+      ),
+    },
+    200,
+    `"${version}"`,
+  );
+const select = async (container: HTMLElement) => {
+  for (const n of [1, 2])
+    await click(byLabel<HTMLInputElement>(container, `Select /main/row-${n}`));
+};
+const mount = (update: Array<Response | (() => Response)>) =>
+  mountPage(
+    {
+      [diffPath(id(1))]: [clean(1)],
+      [diffPath(id(2))]: [clean(2)],
+      [UPDATE]: update,
+    },
+    { instances: rows() },
+  );
+const review = async (page: ReturnType<typeof mount>) => {
+  await select(page.container);
+  await click(buttonNamed(page.container, 'Review selected updates'));
+  await settle();
+};
+const acceptAll = (container: HTMLElement) =>
+  buttonNamed(container, 'Accept all selected updates');
+const bulkAccept = async (page: ReturnType<typeof mount>) => {
+  await review(page);
+  await click(acceptAll(page.container));
+  await settle();
+};
+const bulkDetach = async (page: ReturnType<typeof mount>) => {
+  await select(page.container);
+  await click(buttonNamed(page.container, 'Detach selected'));
+  await settle();
+};
+const posts = (page: ReturnType<typeof mount>) =>
+  page.calls.filter((call) => call.method === 'POST');
+
+describe('probe C4/C5/C7/C8 bulk', () => {
+  it('C4 only the commit control is disabled while pending', async () => {
+    const held = heldReply();
+    const page = mount([held.reply]);
+    await bulkAccept(page);
+    expectPendingLabel(page.container, 'Updates applied: request 1 of 1…');
+    expect(disabledBesides(page.container, acceptAll(page.container))).toEqual([]);
+  });
+
+  it('C5 the entry or list is refetched after success', async () => {
+    const page = mount([appended()]);
+    await bulkAccept(page);
+    expect(resultHeading(page.container)).toBe('Updates applied');
+    expect(page.calls.filter((call) => call.method === 'GET' && !call.path.endsWith('/update-diff'))).toHaveLength(1);
+  });
+
+  it('C7 an unknown outcome reconciles by refetching the entry before any retry', async () => {
+    const page = mount([refusal(502, 'DEPENDENCY_UNAVAILABLE', { retryable: true })]);
+    await bulkAccept(page);
+    expect(page.calls.filter((call) => call.path.startsWith('/api/v1/cms/entries/'))).toHaveLength(1);
+  });
+
+  it('C8 a 409 refetches the entry', async () => {
+    const page = mount([refusal(409, 'COMPOSITION_VERSION_CONFLICT', { currentVersion: '11' })]);
+    await bulkAccept(page);
+    expect(page.calls.filter((call) => call.path.startsWith('/api/v1/cms/entries/'))).toHaveLength(1);
+  });
+});

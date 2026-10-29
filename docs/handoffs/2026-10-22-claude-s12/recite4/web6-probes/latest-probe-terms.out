@@ -1,0 +1,37 @@
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+ ❯ apps/web/src/components/cms-taxonomy-terms/zz-web6-probe-terms.test.tsx (2 tests | 2 failed) 279ms
+     × loading (picker): the submit control is disabled while a picker page loads 113ms
+     × loading (refresh): the list refresh shows a skeleton after 250 ms and keeps the create control disabled 85ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  apps/web/src/components/cms-taxonomy-terms/zz-web6-probe-terms.test.tsx > PROBE terms defects > loading (picker): the submit control is disabled while a picker page loads
+AssertionError: expected false to be true // Object.is equality
+- Expected
++ Received
+- true
++ false
+ ❯ apps/web/src/components/cms-taxonomy-terms/zz-web6-probe-terms.test.tsx:101:65
+     99|     await settle(250);
+    100|     expect(skeleton(container)).not.toBeNull();
+    101|     expect(buttonNamed(container, 'Review the merge').disabled).toBe(t…
+       |                                                                 ^
+    102|   });
+    103|   it('loading (refresh): the list refresh shows a skeleton after 250 m…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  apps/web/src/components/cms-taxonomy-terms/zz-web6-probe-terms.test.tsx > PROBE terms defects > loading (refresh): the list refresh shows a skeleton after 250 ms and keeps the create control di
+AssertionError: expected undefined to be 'status' // Object.is equality
+- Expected:
+"status"
++ Received:
+undefined
+ ❯ apps/web/src/components/cms-taxonomy-terms/zz-web6-probe-terms.test.tsx:110:55
+    108|     expect(skeleton(container)).toBeNull();
+    109|     await settle(1);
+    110|     expect(skeleton(container)?.getAttribute('role')).toBe('status');
+       |                                                       ^
+    111|     expect(buttonNamed(container, 'Create a term').disabled).toBe(true…
+    112|   });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  01:10:42
+   Duration  5.34s (transform 2.71s, setup 0ms, import 3.87s, tests 279ms, environment 973ms)

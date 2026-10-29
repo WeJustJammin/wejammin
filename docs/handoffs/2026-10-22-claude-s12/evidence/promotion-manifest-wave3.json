@@ -1,0 +1,126 @@
+{
+ "promotedAt": "2026-10-29T00:17:14.159Z",
+ "after": "20261023100100_cms_publication_pattern_dependency_locks.sql",
+ "promoted": [
+  {
+   "file": "20261024100000_cms_resolve_taxonomy_version.sql",
+   "from": "taxonomy-integrity",
+   "sha256": "dcc3818ee3ef8e7ff9ebef37e3e75cf1a894ebaa32967a5da6540355f11b436b"
+  },
+  {
+   "file": "20261024100100_cms_compare_taxonomy_resolution.sql",
+   "from": "taxonomy-integrity",
+   "sha256": "f51c7b4ee6838eb5bece7dcb73833c66eabae3888e1182decbde1f42a4192ca3"
+  },
+  {
+   "file": "20261024100200_cms_taxonomy_assignment_integrity.sql",
+   "from": "taxonomy-integrity",
+   "sha256": "d6825de78680ef765809cbf4e90c9c5062fca963b611c1c82385dec748f6f564"
+  },
+  {
+   "file": "20261024100300_cms_preflight_taxonomy_provider.sql",
+   "from": "taxonomy-integrity",
+   "sha256": "10b759b7a50bb13d5222832328b72506076bcf51b19bf4208fa9e8807fdc124b"
+  },
+  {
+   "file": "20261024100400_cms_taxonomy_value_encoder.sql",
+   "from": "taxonomy-integrity",
+   "sha256": "37017b37685c919ecb2acb762065195788b559a7f90202f570b10ab0dc761ac1"
+  },
+  {
+   "file": "20261024100500_cms_taxonomy_assignment_plan.sql",
+   "from": "taxonomy-integrity",
+   "sha256": "ee109a69fa6b0ce557ac5af913524fc1a9b93ca80bfd6e34dcaeb07f469666b4"
+  },
+  {
+   "file": "20261024100600_cms_write_commands_term_assignments.sql",
+   "from": "taxonomy-integrity",
+   "sha256": "e1e34719404721f75c29dc9935350d9d7cba5ca0ebb722af6450e3d58f2fdf44"
+  },
+  {
+   "file": "20261024100700_cms_restore_term_assignments.sql",
+   "from": "taxonomy-integrity",
+   "sha256": "c120403ec2666304e9694d67138a7284b34ad233965447db59b0793efe8bba9d"
+  },
+  {
+   "file": "20261024100800_cms_restore_revision_term_plan.sql",
+   "from": "taxonomy-integrity",
+   "sha256": "d5b403133e69f353c4f901354d04a6326a857df99829c11640d3ded38db578f8"
+  },
+  {
+   "file": "20261024130000_cms_version_lifecycle_columns_governed_only.sql",
+   "from": "gaps-db2",
+   "sha256": "33b73ee9a1b3448cac1ae8d0f5ea86a1eedd3a7e287e165bb0342faf6c59c99c"
+  },
+  {
+   "file": "20261024130100_cms_relay_claim_exact_slice12_aggregates.sql",
+   "from": "gaps-db2",
+   "sha256": "67f2e06f99f6cba4b1628b8b24a4daeb2becf13d30b36e3d2515f60709cc7967"
+  },
+  {
+   "file": "20261024130200_cms_define_template_authority_lock.sql",
+   "from": "gaps-db2",
+   "sha256": "9cd2c1596925b366be4d75666348e53e404f72ebcb7622197e13b78a3ff24d18"
+  },
+  {
+   "file": "20261024130300_cms_writer_wrappers_lock_failure_conflict.sql",
+   "from": "gaps-db2",
+   "sha256": "db3f675269c5d5eab8a09d7c9e7469e53449c49d8b3670f4e4561a16291c778b"
+  },
+  {
+   "file": "20261024130400_cms_definition_writers_lock_position4.sql",
+   "from": "gaps-db2",
+   "sha256": "91993604cf0147e6d1791093a2251a56b8b463003052f375ecc94f5c0b5a162f"
+  },
+  {
+   "file": "20261024140000_cms_pattern_node_pointer_helpers.sql",
+   "from": "node-pointers",
+   "sha256": "36b3db2f79d845c8d6752cd61f70dcbd7febc6e32887f9a7763f54bb711316aa"
+  },
+  {
+   "file": "20261024140100_cms_create_pattern_version_node_pointers.sql",
+   "from": "node-pointers",
+   "sha256": "d6b778aff8e08b87a4409bf36a9018bf56be84decbb86c923b3ece66976e1801"
+  },
+  {
+   "file": "20261024150000_cms_pattern_placement_path_allocation_set_based.sql",
+   "from": "placement-perf",
+   "sha256": "6926e14e9072b848f5c8805344292d7eff4b6ae20bb651e2b236c57830332b66"
+  },
+  {
+   "file": "20261024150100_cms_block_rules_violation_linear.sql",
+   "from": "placement-perf",
+   "sha256": "5917b0a4fcb1bbfadf74386d2c9c145f533b18ac115157e3f802d5e8ba4335eb"
+  },
+  {
+   "file": "20261024150200_cms_revision_effective_state_single_query.sql",
+   "from": "placement-perf",
+   "sha256": "72f006db7e5f73be2850afc90ad065d54a75e1b96cb1afdcaea049764ebb149e"
+  },
+  {
+   "file": "20261024150300_cms_composition_instance_resource_hashed.sql",
+   "from": "placement-perf",
+   "sha256": "bbcb29c99aff656a78af41de9e07c0bd7171754ddc239b4f8c797ad13589cd11"
+  },
+  {
+   "file": "20261024150400_cms_insert_pattern_instance_override_map_hashed_resources.sql",
+   "from": "placement-perf",
+   "sha256": "a76e634ca954474a09e626b254988f743c12fc4c864272fa3927a823647796f5"
+  },
+  {
+   "file": "20261027100000_cms_list_pattern_nestable.sql",
+   "from": "nestable-read",
+   "sha256": "0721dc1115c20746e78d7295a1c2e3245aded0fbf2215811ba456b997d01edee"
+  },
+  {
+   "file": "20261027100010_cms_list_pattern_nestable_public.sql",
+   "from": "nestable-read",
+   "sha256": "284bb36552d602d34f439dfbedaf8bcc3e512b2ffa4fecc22e621a7f6fb826d0"
+  },
+  {
+   "file": "20261027100020_cms_pattern_key_reserved_nestable.sql",
+   "from": "nestable-read",
+   "sha256": "54ba1b2d277a7b4407c09e3f03fbf4296773af8bab35fb4ea02947e8f87ba01e"
+  }
+ ]
+}

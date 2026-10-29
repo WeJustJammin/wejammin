@@ -1,0 +1,105 @@
+// @vitest-environment jsdom
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from '../cms-editorial-workflow/cms-workflow-answer-machinery.test-support';
+
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
+import { MemoryStorage } from '../../lib/test-support/memory-storage';
+import {
+  buttonNamed,
+  byLabel,
+  click,
+  disableReactAct,
+  enableReactAct,
+  flush,
+  mountElement,
+  typeInto,
+} from '../cms-editorial-fields/cms-editor-dom.test-support';
+import {
+  INSTANT,
+  KEY,
+  REVIEW_ID,
+  governedActivationFixture,
+} from '../../server/cms-governed-review-fixtures.test-support';
+import CmsGovernedReviewDetailIsland from './CmsGovernedReviewDetailIsland';
+import {
+  accepted,
+  activeReview,
+  approvedReview,
+  choosing,
+  continueButton,
+  mountActivation,
+  radio,
+  statusLine,
+} from './governed-activation-form.test-support';
+import {
+  GATE,
+  disabledBesides,
+  RECONCILED,
+  WAITING,
+  alertOf,
+  conflictFor,
+  forbiddenFor,
+  heldReread,
+  heldWire,
+  invalidFor,
+  statusOf,
+  stepUpRequired,
+} from './governed-command-states.test-support';
+import {
+  flushUntil,
+  governedEnvironment,
+  headersOf,
+  queuedFetcher,
+} from './governed-review-form-test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
+// The 218 KB tz snapshot is slow on a loaded host; waits are conditions, not budgets.
+vi.setConfig({ testTimeout: 90_000 });
+beforeAll(enableReactAct);
+beforeAll(async () => {
+  await loadCmsValidators();
+});
+afterAll(disableReactAct);
+
+const activate = async (container: HTMLElement) => {
+  await choosing(container, 'Activate now');
+  await click(continueButton(container));
+  await click(buttonNamed(container, 'Activate this version'));
+};
+const schedule = async (container: HTMLElement) => {
+  await choosing(container, 'Schedule activation');
+  await flush();
+  await typeInto(
+    byLabel<HTMLInputElement>(container, 'Local date and time'),
+    '2026-12-01T09:00',
+  );
+  await typeInto(
+    byLabel<HTMLInputElement>(container, 'Time zone'),
+    'America/New_York',
+  );
+  await click(continueButton(container));
+  await click(buttonNamed(container, 'Schedule activation'));
+};
+const done = () => accepted(200, governedActivationFixture(), '"3"');
+
+describe('probe D3/D1 activation', () => {
+  it('D3 only the commit control is disabled while pending', async () => {
+    const wire = heldWire();
+    const { container } = mountActivation([], {
+      environment: governedEnvironment(wire.fetcher),
+    });
+    await activate(container);
+    await flush();
+    const commit = buttonNamed(container, 'Activate this version');
+    expect(statusOf(container)).toBe('Activating…');
+    expect(disabledBesides(container, commit)).toEqual([]);
+  });
+
+  it('D1 the form clears its draft on commit', async () => {
+    const { container } = mountActivation([done()]);
+    await activate(container);
+    await flush();
+    expect(statusLine(container)).toContain('Activated, not published');
+    expect(radio(container, 'Activate now').checked).toBe(false);
+  });
+});

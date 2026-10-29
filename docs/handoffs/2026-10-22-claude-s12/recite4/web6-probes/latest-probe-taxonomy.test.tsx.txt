@@ -1,0 +1,131 @@
+// @vitest-environment jsdom
+import * as React from 'react';
+import { act } from 'react';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+
+import {
+  buttonNamed,
+  byLabel,
+  click,
+  disableReactAct,
+  enableReactAct,
+  mountElement,
+} from '../cms-editorial-fields/cms-editor-dom.test-support';
+import CmsTaxonomyVersionDesigner from './CmsTaxonomyVersionDesigner';
+import { summaryOf } from './CmsTaxonomyVersionList';
+import {
+  CSRF_TOKEN,
+  fixtureVersions,
+  submitStub,
+  versionFacts,
+} from './taxonomy-designer.test-support';
+
+/*
+ * [P2-S12-AC-271] `latestReadState` of `cmsTaxonomyVersionsRead` (FE03 "Slice 12 definition governance states"): the
+ * vocabulary designer over its real conflict panel, hooks, version list and versions reader (only `fetch` is replaced).
+ * The page and the version table are server HTML; the read is the explicit "Check latest version" offered after a conflict.
+ */
+const base = versionFacts({ version: '2', taxonomyVersion: 2, state: 'active' });
+const page = (items: unknown[] = [newerVersion()]): Response =>
+  Response.json({ items, pageVersion: '4' }, { status: 200, headers: { etag: '"4"' } });
+const newerVersion = (): Record<string, unknown> => ({
+  ...fixtureVersions()[0],
+  id: '40000000-0000-4000-8000-000000000044',
+  version: '4',
+  taxonomyVersion: 4,
+  state: 'draft',
+  shape: 'flat',
+  allowedTypeKeys: ['article', 'release'],
+  canonicalOverlapDomains: [],
+  createdAt: '2026-10-14T12:00:00Z',
+  updatedAt: '2026-10-14T12:00:00Z',
+});
+const refusal = (status: number): Response =>
+  Response.json({ code: 'X', message: 'owner other-owner-key' }, { status });
+
+beforeAll(enableReactAct);
+afterAll(disableReactAct);
+beforeEach(() => vi.useFakeTimers());
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+
+const settle = async (ms = 0): Promise<void> => {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+};
+const check = (container: HTMLElement): HTMLButtonElement =>
+  buttonNamed(container, /^Check(ing)? latest version/u);
+const save = (container: HTMLElement): HTMLButtonElement =>
+  buttonNamed(container, /^(Save successor draft|Saving…)$/u);
+const skeleton = (container: HTMLElement): HTMLElement | null =>
+  container.querySelector('.cms-loading-region');
+const alerts = (container: HTMLElement): string[] =>
+  Array.from(container.querySelectorAll('[role="alert"]')).map(
+    (entry) => entry.textContent ?? '',
+  );
+const flat = (container: HTMLElement): HTMLInputElement =>
+  byLabel<HTMLInputElement>(container, /^Flat/u);
+const place = (container: HTMLElement): HTMLInputElement =>
+  byLabel<HTMLInputElement>(container, 'Place');
+const press = async (container: HTMLElement): Promise<void> => {
+  await click(check(container));
+  await settle();
+};
+const mount = (csrfToken = CSRF_TOKEN) =>
+  mountElement(
+    <CmsTaxonomyVersionDesigner
+      latest={base}
+      versions={fixtureVersions().map(summaryOf)}
+      csrfToken={csrfToken}
+      submit={submitStub({ kind: 'conflict', currentVersion: '4' })}
+    />,
+  );
+/** Mounts the edit form, toggles a domain and saves: the conflict offers the check. */
+const mountConflicted = async (...reads: Array<Response | Promise<Response>>) => {
+  const fetcher = vi.fn<typeof fetch>();
+  for (const read of reads) fetcher.mockImplementationOnce(() => Promise.resolve(read));
+  vi.stubGlobal('fetch', fetcher);
+  const view = mount();
+  await click(place(view.container));
+  await click(save(view.container));
+  await settle();
+  return { ...view, fetcher };
+};
+
+
+describe('PROBE taxonomy defects', () => {
+  it('loading: the submit control is disabled while the versions read runs', async () => {
+    const held = new Promise<Response>(() => undefined);
+    const { container } = await mountConflicted(held);
+    await click(check(container));
+    await settle(250);
+    expect(skeleton(container)).not.toBeNull();
+    expect(save(container).disabled).toBe(true);
+  });
+  it('degraded: the last verified comparison is kept and submit stays disabled after a failed re-read', async () => {
+    const { container } = await mountConflicted(page(), refusal(503));
+    await press(container);
+    expect(container.textContent).toContain('Latest saved version: 4');
+    await press(container);
+    expect(alerts(container)).toContain('The latest version is unavailable. Wait and try again.');
+    expect(container.textContent).toContain('Latest saved version: 4');
+    expect(save(container).disabled).toBe(true);
+  });
+  it('degraded: submit stays disabled after a failed read', async () => {
+    const { container } = await mountConflicted(refusal(503));
+    await press(container);
+    expect(save(container).disabled).toBe(true);
+  });
+});

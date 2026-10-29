@@ -1,0 +1,1142 @@
+[
+ {
+  "criterion": "P2-S12-AC-155",
+  "citations": [
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "CMS-03C-21 cms_related_content_public_targets is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-155]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:51-53 - aclexplode over proacl (acldefault when NULL; the DEC-226 rule 2 form): the only EXECUTE grantee of cms_related_content_public_targets is wejammin_cms_definer, PUBLIC absent. Proves the \"only\" side of part 0; the positive side (the REGISTERED callers execute it) cannot be exercised, neither exists. Unchanged from v1. TAP run 4 ok 1.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "CMS-03C-21 is owned by the CMS definer role the registered callers run as [P2-S12-AC-155]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:54-55 - the function is owned by wejammin_cms_definer: who may execute is fully determined by the ACL (:53) and the effective privileges (:70); the owner's name is not what the clause states. Carried from v1. TAP run 4 ok 2.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "no stored function in platform_private or platform_api calls CMS-03C-21 yet: the Shard 04 delivery projection and the Slice 11 recheck are later callers that run as the definer, so no unregistered caller exists [P2-S12-AC-155]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:84-85 - \"no stored function ... calls CMS-03C-21 yet ... so no unregistered caller exists\". The expected value is the EMPTY set: it passes precisely because the registered callers do not exist and goes red the day one is built (PROOFGAP, compare AC-050 part 0). Still unchanged; the lane's own gap text confirms the pin. Carried from v1. TAP run 4 ok 11.",
+    "fix": null,
+    "dropClass": "PROOFGAP"
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "no platform_api wrapper exposes CMS-03C-21: the operation has no browser route [P2-S12-AC-155]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:92-94 - no platform_api function body references cms_related_content_public_targets: no browser-reachable function can reach it. The \"non-browser\" half of part 0, stronger than the existing name-only check because it scans bodies. Source scan accepted like AC-150's \"no platform_api wrapper of the resolver exists\". Unchanged. TAP run 4 ok 14.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "CMS-03C-21 is SECURITY DEFINER, STABLE and runs with an empty search_path, so a registered caller reaches it only as the definer [P2-S12-AC-155]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:98-100 - SECURITY DEFINER, STABLE, empty search_path: catalog attributes, not who may execute (covered by 002-shape-and-grants.sqlinc). Carried from v1. TAP run 4 ok 16.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "control: the caller scan reports a function that calls CMS-03C-21 when one is added [P2-S12-AC-155]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:114-117 - control: the caller scan reports a function that calls CMS-03C-21 once one is added (DDL in the rolled-back transaction). Validates the oracle of :85, which is itself dropped. Carried from v1. TAP run 4 ok 20.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "CMS-03C-21 cms_related_content_public_targets is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-155]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:51-53 - the owner-only ACL of CMS-03C-21 itself (DEC-226 rule 2). Unchanged. TAP run 4 ok 1.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "the public-eligibility head predicate CMS-03C-21 calls is owner-only as well [P2-S12-AC-155]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:56-57 - the public-eligibility head predicate (cms_related_publish_head_revision) is owner-only too; family coverage as the kept \"resolver core is owner-only as well\" of AC-150. Unchanged. TAP run 4 ok 3.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "the derived-candidate reader CMS-03C-21 calls is owner-only as well [P2-S12-AC-155]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:58-59 - the derived-candidate reader (cms_related_derived_candidates) is owner-only too; family coverage. Unchanged. TAP run 4 ok 4.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "no non-superuser role outside the definer's membership can execute CMS-03C-21: anon, authenticated, service_role, authenticator and every other role are revoked [P2-S12-AC-155]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:63-70 - effective EXECUTE (has_function_privilege, PUBLIC and inheritance included) for EVERY non-superuser role outside the definer and its members: the empty set. The member exclusion is safe: no API role can SET ROLE to the dedicated roles (phase_02_slice_09_sec2_definer_rls.sql:93-99). Unchanged. TAP run 4 ok 6.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "anon, with schema USAGE, calling CMS-03C-21 is denied 42501 by the function ACL [P2-S12-AC-155]",
+    "verdict": "KEEP",
+    "vsV1": "renamed",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:71-75 - anon, WITH schema USAGE, calling CMS-03C-21 is denied 42501. REPLACES the masked v1 :72. UNMASKED in this round: the file now grants schema USAGE to anon and authenticated first (:71-73, rolled back with the transaction), so the 42501 can only come from the EXECUTE privilege on the function; the new control (:106-107) grants EXECUTE to anon and the SAME call then runs ('00000'), which is the proof that the probe sees the function ACL and not the schema. The only difference between the refused and the running call is that one grant. Independent check of the cause: before this round the denial was overdetermined (no USAGE: 20260830044317:17, database_harness.sql:185). SQLSTATE-only (a message pin would be stricter) but the control makes it conclusive. TAP run 4 ok 7.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "authenticated, with schema USAGE, calling CMS-03C-21 is denied 42501 by the function ACL [P2-S12-AC-155]",
+    "verdict": "KEEP",
+    "vsV1": "renamed",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:76-77 - authenticated, with schema USAGE, denied 42501. REPLACES the masked v1 :74. Same probe, same unmasking; the control is run for anon only, which is sufficient because both roles hold the same USAGE grant and the same absence of an EXECUTE grant (the ACL scan :70 covers every role). TAP run 4 ok 8.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "control: once anon is granted EXECUTE (and holds schema USAGE) the same call runs, so the 42501 above came from the function ACL [P2-S12-AC-155]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:104-107 - control: once anon is granted EXECUTE (and holds schema USAGE) the same call runs. This is the instrument that proves :75/:77 are unmasked; it validates the probes, not the operation. It stays in the file, where its failure (for instance if someone removes the USAGE grant, which would re-mask the probes) fails the cited file for the guard. TAP run 4 ok 17.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "service_role (the sweep principal of other operations) calling CMS-03C-21 is denied 42501 [P2-S12-AC-155]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:78-79 - service_role calling CMS-03C-21 is denied 42501. Never masked (service_role holds USAGE on platform_private: 20260830100000:258 and three sibling grants); the creating migration's header (20261014060200:14-20) lists service_role among the revoked roles. The real-role runtime confirmation of :53 and :70. Unchanged. TAP run 4 ok 9.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "control: the owning definer, the role the registered callers run as, can execute CMS-03C-21 (an absent source answers an empty array) [P2-S12-AC-155]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:80-81 - control: the owning definer can execute it. An owner executing its own function is trivially true and is not a registered caller; the positive side of part 0 is the BOUNDARY, not this. Carried from v1. TAP run 4 ok 10.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "control: the ACL probe reports anon when anon is granted EXECUTE [P2-S12-AC-155]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:108-110 - control: after GRANT EXECUTE ... TO anon (rolled back) the ACL probe reports anon. Validates the probe. Carried from v1. TAP run 4 ok 18.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+    "title": "control: the ACL probe reports PUBLIC when PUBLIC is granted EXECUTE [P2-S12-AC-155]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:111-113 - control: after GRANT EXECUTE ... TO PUBLIC the ACL probe reports PUBLIC. Validates the probe. Carried from v1. TAP run 4 ok 19.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   }
+  ],
+  "splits": [
+   {
+    "clauseIndex": 0,
+    "verdict": "ADVISE SPLIT (AC-150 shape) - unchanged from v1; the lane leaves the split to root",
+    "parts": [
+     "CMS-03C-21 is executable only by the registered non-browser callers",
+     "(the Shard 04 delivery projection and the Slice 11 related-content recheck"
+    ],
+    "reason": "Part 0 is cited (:53, :94 plus the two additions below); part 1 stays an uncited BOUNDARY. The parts tile c0 verbatim (the single space is a guard separator; simulated with the real evaluateLedger in this round and in v1: 0 problems). Both named consumers are still unbuilt and the caller inventory is still empty, so even part 0 is proven in the negative only."
+   }
+  ],
+  "missedGaps": [
+   "HONESTY (unchanged): the clause names two registered callers that do not exist as database callers; \"verified\" is still not honest. The lane now proposes status partial with the BOUNDARY limitation for exactly that part, which matches my ruling (the split is root's). Existing c1 citation 2 (002-shape-and-grants.sqlinc, a no-wrapper assertion filed under \"PUBLIC, anon, authenticated\") belongs next to :94."
+  ],
+  "missedTests": [
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "citation": {
+     "tool": "pgtap",
+     "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+     "title": "no non-superuser role outside the definer's membership can execute CMS-03C-21: anon, authenticated, service_role, authenticator and every other role are revoked [P2-S12-AC-155]"
+    },
+    "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:63-70 - add to part 0 as well (the strongest \"only\" proof); proposed only under c2."
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "citation": {
+     "tool": "pgtap",
+     "file": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql",
+     "title": "service_role (the sweep principal of other operations) calling CMS-03C-21 is denied 42501 [P2-S12-AC-155]"
+    },
+    "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_related_acl.sql:78-79 - add to part 0 (runtime confirmation for the one API role that can reach the schema); proposed only under c2."
+   }
+  ],
+  "status": "partial",
+  "proposedStatus": "partial",
+  "notes": "v2: 9 KEEP (c0 part 0: :53, :94; c2: :53, :57, :59, :70, :75, :77, :79), 8 DROP. The two masked probes are now valid (renamed :75, :77) thanks to the schema-USAGE grant and the inverse control :107 (the control is dropped as an oracle control, kept in the file). Limitation text (also in section 8 of the report): 'Unproven (uncited clause): \"(the Shard 04 delivery projection and the Slice 11 related-content recheck\": BOUNDARY (db4): neither registered caller exists as a database caller (no function calls platform_private.cms_related_content_public_targets), so the requirement that they execute it as the CMS definer under the CMS RPC context cannot be asserted; the owner-only ACL, the effective-privilege scan and the absence of any browser-reachable reference are proved.'"
+ },
+ {
+  "criterion": "P2-S12-AC-210",
+  "citations": [
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "scheduling an approved taxonomy version whose declared role domain has lost its provider is refused canonical_source_unavailable with details.domain = role [P2-S12-AC-210]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:167-170 - SCHEDULE half of \"Activating or scheduling\". ta2 (role-declaring vocabulary approved through the real producers, fixture ok 11) is scheduled after a newer UNBUILT role row (version 2, the labelled owning-shard fixture :131-137): exactly 'P0001:canonical_source_unavailable#{\"domain\": \"role\"}' (SQL token and DETAIL; the 422 is the Worker's, see missedTests). Body unchanged from v1 :145 (diff against the lane's pre-fix backup: only the witness mark before it was added). Step 7 time rules pass (+90 s), so the refusal is step 8 (20261014070400:157-160). ORDER-DEPENDENT, SETTLED by DEC-237 (BE03c step (5) states the provider-first order; the brief's root note: citations relying on the implemented order stand). TAP run 4 ok 20.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "a vocabulary that declares no canonical domain activates while role is unbuilt: only the declared domains are checked [P2-S12-AC-210]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:178-183 - the quantifier's negative: ta3 declares NO canonical domain (only two canonical_domain dependencies exist across the three reviews, fixture ok 11) and activates ('ok', subjectState active, one event) while role is unbuilt, so only the DECLARED domains are asked (cms_governed_first_unbuilt_domain iterates the subject's canonicalDomains, 20261014070200:20-33). Unchanged from v1 :160. Order-independent. TAP run 4 ok 23.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "the refused schedule attempts no write to the schedules, the subject, the review, the outbox or the audit log: no schedule row, subject never scheduled, no event [P2-S12-AC-210]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:167,171-172 - the refused schedule attempts no write to the schedule, subject, review, outbox or audit store (g4_core_untouched('sched')). Replaces the blind v1 :150. WITNESS ASSERTION: the six temporary BEFORE triggers (a_g4_witness, :63-91) bump their own sequences, and nextval is not rolled back by the nested EXCEPTION block of s12ga_rpc, so unlike the v1 snapshot equalities this CAN see a write the raise then undid (it would fail if the refusal first attempted an invalidation, a schedule row, a state move, an event or an audit record). It is a sound, non-blind test. DROPped as ADJACENT because the ledger clause states the refusal (422 + details.domain), not its effects: \"keeps the approval\" is BE03c step (5) / DEC-237 prose, and its natural home is AC-086 c7 \"commits no partial switch\". It stays in the file. TAP run 4 ok 21.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "control: a real activation moves the review, subject, outbox and audit witnesses, so the \"attempts no write\" assertions above are able to fail [P2-S12-AC-223]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:184-186 - control: a real activation (ta3) moves the review, subject, outbox and audit witnesses. Validates the witness instrument for the assertions dropped above (I verified the five core witnesses are controlled here and at :228; the idempotency witness has no control anywhere), not the clause. Stays in the file. TAP run 4 ok 24.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "the step-up and capability refusals attempt no write at all: no review, subject, schedule, event, audit or idempotency row is touched, not even transiently [P2-S12-AC-210]",
+    "verdict": "DROP",
+    "vsV1": "renamed",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:141-151 - the step-up and capability refusals attempt no write at all, idempotency included. Replaces the blind v1 :124 (snapshot equality). CMS-03C-09 steps 1-2 (20261014070400:74 and :86-89 precede the reservation), an adjacent rule that passes without the provider rule. Note: this is the only assertion that uses the idempotency witness and that witness has no control (nothing in the file shows it moving), so that part could pass vacuously. TAP run 4 ok 15.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "the stale-version refusal attempts no write to the review, subject, schedule, event or audit stores [P2-S12-AC-210]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:152-157 - the stale-version refusal attempts no write to the core stores (idempotency deliberately not asserted: the reservation precedes the CAS). CMS-03C-09 step 6, adjacent. WITNESS ASSERTION: the six temporary BEFORE triggers (a_g4_witness, :63-91) bump their own sequences, and nextval is not rolled back by the nested EXCEPTION block of s12ga_rpc, so unlike the v1 snapshot equalities this CAN see a write the raise then undid (it would fail if the refusal first attempted an invalidation, a schedule row, a state move, an event or an audit record). It is a sound, non-blind test. DROPped as ADJACENT because the ledger clause states the refusal (422 + details.domain), not its effects: \"keeps the approval\" is BE03c step (5) / DEC-237 prose, and its natural home is AC-086 c7 \"commits no partial switch\". It stays in the file. TAP run 4 ok 17.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "activating a vocabulary that declares role and instrument is refused canonical_source_unavailable naming instrument, the unbuilt one, although role is built [P2-S12-AC-210]",
+    "verdict": "KEEP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:201-237 - \"EVERY declared canonical domain\", activation half. role is built (version 3, :189-192); the owning shard of instrument registers a provider (version 2 built, labelled fixture :206-209); four vocabularies declaring ['role','instrument'] are approved through the real producers while BOTH are built (fixture ok 27: four approved reviews, eight frozen canonical_domain dependencies); tm2 is activated and tm4 scheduled as the minimal-pair partners (:220-229); instrument, the SECOND declared domain, then goes unbuilt (version 3, :230-233); tm1's activation is exactly 'P0001:canonical_source_unavailable#{\"domain\": \"instrument\"}' while role is still built. Mutation: a check of only the first declared domain, or of role alone, lets tm1 through and fails it; the same case pins that details.domain names the unbuilt domain. Closes my v1 quantifier gap for those mutants. Residual (optional hardening): a check of only the LAST declared domain still passes everything cited (position 1 of 2 here, position 0 of 1 in ta1/ta2); a mirrored [instrument, role] vocabulary would exclude it. ORDER-DEPENDENT, SETTLED by DEC-237 (BE03c step (5) states the provider-first order; the brief's root note: citations relying on the implemented order stand). TAP run 4 ok 30.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "scheduling a vocabulary that declares role and instrument is refused canonical_source_unavailable naming instrument, the unbuilt one, although role is built [P2-S12-AC-210]",
+    "verdict": "KEEP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:238-240 - the schedule half of the same case: tm3 declares ['role','instrument'], is scheduled after instrument went unbuilt and is refused 'P0001:canonical_source_unavailable#{\"domain\": \"instrument\"}' with role built. Same fixture, same mutation analysis and the same residual as :237. ORDER-DEPENDENT, SETTLED by DEC-237 (BE03c step (5) states the provider-first order; the brief's root note: citations relying on the implemented order stand). TAP run 4 ok 31.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "neither refusal attempts a write to the review, subject, schedule, event or audit stores [P2-S12-AC-210]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:241-242 - neither two-domain refusal attempts a write to the core stores. WITNESS ASSERTION: the six temporary BEFORE triggers (a_g4_witness, :63-91) bump their own sequences, and nextval is not rolled back by the nested EXCEPTION block of s12ga_rpc, so unlike the v1 snapshot equalities this CAN see a write the raise then undid (it would fail if the refusal first attempted an invalidation, a schedule row, a state move, an event or an audit record). It is a sound, non-blind test. DROPped as ADJACENT because the ledger clause states the refusal (422 + details.domain), not its effects: \"keeps the approval\" is BE03c step (5) / DEC-237 prose, and its natural home is AC-086 c7 \"commits no partial switch\". It stays in the file. TAP run 4 ok 32.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "with both declared domains built a vocabulary declaring both activates and another is scheduled (a pending schedule row) [P2-S12-AC-210]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:220-227 - with BOTH declared domains built, tm2 (declaring both) activates and tm4 is scheduled (a pending schedule row). It is a true minimal pair with :237/:240 (same vocabularies, same commands, only the registry state differs) and is what makes those refusals attributable, but the acceptance side is a control rather than an observation of the refusal the clause names (acceptance of built providers is cited elsewhere, governed_activation/080-taxonomy.sqlinc). Stays in the file; a failing control fails the cited file for the guard. TAP run 4 ok 28.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "control: the schedule witness moves for a real schedule, the review and outbox witnesses for a real activation [P2-S12-AC-210]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:228-229 - control: the schedule witness moves for the real schedule, the review and outbox witnesses for the real activation. Instrument validation for the witness assertions, not the clause. TAP run 4 ok 29.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "control: once a built provider row is current again the same command activates a role-declaring vocabulary: the refusals above were caused by the registry state, nothing else [P2-S12-AC-223]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:188-199 - control: after a newer BUILT role row (version 3) a freshly created role-declaring vocabulary (tctl) activates. Not a minimal pair with the refusal (new vocabulary, new review; ta1 itself would now be dependency_changed) and it duplicates the existing built-provider activations; the true minimal pair is the two-domain case above. Verdict carried from v1. TAP run 4 ok 26.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "under provider drift a call without a step-up proof is STEP_UP_REQUIRED, not canonical_source_unavailable: the proof is verified before anything else [P2-S12-AC-210]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:139-145 - under drift a call with no step-up proof is STEP_UP_REQUIRED: CMS-03C-09 step 1, an adjacent rule that passes without the provider rule. Carried from v1. TAP run 4 ok 13.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "under provider drift a reviewer who lacks cms.taxonomy_curator is 403 capability_missing, not canonical_source_unavailable [P2-S12-AC-210]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:146-149 - a reviewer without cms.taxonomy_curator is 403 capability_missing (step 4, 20261014070400:86-89): adjacent. Carried from v1. TAP run 4 ok 14.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "under provider drift a stale review version is VERSION_MISMATCH, not canonical_source_unavailable [P2-S12-AC-210]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:152-155 - a stale review version is VERSION_MISMATCH (step 6 CAS, 20261014070400:113-115): adjacent. Carried from v1. TAP run 4 ok 16.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "Quantifier \"every declared canonical domain\": closed by :237/:240 for the first-declared-only and role-only mutants (the second declared domain is refused although the first is built). Residual and optional: a last-declared-only mutant is not excluded; add a vocabulary declaring [instrument, role] approved before instrument goes unbuilt and expect details.domain = instrument.",
+   "The \"422 ... with details.domain\" half is still uncited for this operation (the proposal's gap note points at the AC-223 c1 token-mapping test, which is the CMS-03C-03 port, a different operation). Carry the two Worker rows of v1 (missedTests).",
+   "Witness instrument: no control shows the idempotency witness moving, and no assertion shows any witness moving inside a call that is then ROLLED BACK (the property the instrument exists for rests on sequences being non-transactional). Cheap and conclusive: assert g4_w('idem') advanced across the d-activate refusal (cms_reserve runs at step 4, before the provider check at step 8, and is rolled back)."
+  ],
+  "missedTests": [
+   {
+    "clauseIndex": 0,
+    "citation": {
+     "tool": "pgtap",
+     "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+     "title": "activating an approved taxonomy version whose declared role domain has lost its provider is refused canonical_source_unavailable with details.domain = role [P2-S12-AC-223]"
+    },
+    "evidence": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:160-163 - the \"Activating\" half of the clause; the proposal cites only the schedule assertion under AC-210. Same assertion as AC-223 c0 (KEEP there). ORDER-DEPENDENT, SETTLED by DEC-237 (BE03c step (5) states the provider-first order; the brief's root note: citations relying on the implemented order stand). TAP run 4 ok 18."
+   },
+   {
+    "clauseIndex": 0,
+    "citation": {
+     "tool": "vitest",
+     "file": "apps/worker/src/cms-composition/governed-review-ops-refusals.test.ts",
+     "title": "'CMS-03C-09' SQL refusal transport maps canonical_source_unavailable {domain}"
+    },
+    "evidence": "ACTIVATION_TABLE row (governed-activation-tokens.test-support.ts:160-168) driven for the activate request by describe.each(OPERATIONS)/it.each at governed-review-ops-refusals.test.ts:13-25; admissible since the DB raises this token on this operation (DEC-226 rule 4). Static identity only."
+   },
+   {
+    "clauseIndex": 0,
+    "citation": {
+     "tool": "vitest",
+     "file": "apps/worker/src/cms-composition/governed-activation-refusals.test.ts",
+     "title": "CMS-03C-09 SQL refusals are mapped by token, whatever the action schedule maps canonical_source_unavailable {domain}"
+    },
+    "evidence": "The same row driven through the schedule request (governed-activation-refusals.test.ts:19-34). Static identity only."
+   },
+   {
+    "clauseIndex": 4,
+    "criterion": "P2-S12-AC-086",
+    "note": "CROSS-CRITERION (unchanged from v1): AC-086 c4 \"or `canonical_source_unavailable` with `details.domain` (422; ...)\" has 0 citations; the activation assertion (:163), the schedule assertion (:170) and the two Worker rows close its first half, the parenthetical is already cited under AC-086 c0 (060-invalidation). OPTIONAL: the witness assertions (:165, :172, :242) and their controls (:186, :229) are a sound, non-blind form of \"commits no partial switch\" and could be cited under AC-086 c7."
+   }
+  ],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "v2 judgement of the 15 current citations (vs v1: 6 carried with unchanged bodies, 9 new or renamed): KEEP 4 (:170, :183, :237, :240), DROP 11. ORDER SETTLED by DEC-237: :170, :237, :240 (and the added :163) are the order-dependent ones and stand; :183 and the Worker rows are order-independent. The two-domain case is the new proof and it is sound. The status is verified only with the added activation assertion and the two Worker rows (the proposal still lacks them)."
+ },
+ {
+  "criterion": "P2-S12-AC-223",
+  "citations": [
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "activating an approved taxonomy version whose declared role domain has lost its provider is refused canonical_source_unavailable with details.domain = role [P2-S12-AC-223]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:159-163 - ta1 (approved role-declaring taxonomy version) is ACTIVATED after a newer UNBUILT role row (version 2, labelled owning-shard fixture :131-137, control ok 12): exactly 'P0001:canonical_source_unavailable#{\"domain\": \"role\"}' (CMS-03C-09 step 8, 20261014070400:157-160; the domain from cms_governed_first_unbuilt_domain, 20261014070200:20-33), through the public platform_api.cms_activate_governed_subject as the real owner with a fresh step-up. Unchanged from v1 :129. Mutation: removing the provider check from the verdict (20261014070200:58-61) turns it into the dependency_changed invalidation and fails it. ORDER-DEPENDENT, SETTLED by DEC-237 (BE03c step (5) amended; the brief's root note: it stands). TAP run 4 ok 18.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "the refused activation attempts no write to the review, the subject, the schedules, the outbox or the audit log: no invalidation, no switch, no event [P2-S12-AC-223]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:160,164-165 - the refused activation attempts no write to the review, the subject, the schedules, the outbox or the audit log (no invalidation, no switch, no event). Replaces the blind v1 :137. WITNESS ASSERTION: the BEFORE-trigger sequence witnesses (:63-91) survive the nested EXCEPTION rollback, so this CAN see an attempted write the raise undid; it is sound and non-blind. DROPped as ADJACENT: the ledger clause states the typed refusal, not its effects. BE03c step (5) now adds \"keeps the approval\" (DEC-237), which is what this proves best; no ledger clause states it (optional home: AC-086 c7 \"commits no partial switch\"). The reservation is deliberately not asserted (it precedes the provider check). Stays in the file. TAP run 4 ok 19.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "control: a real activation moves the review, subject, outbox and audit witnesses, so the \"attempts no write\" assertions above are able to fail [P2-S12-AC-223]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:184-186 - control: a real activation moves the review, subject, outbox and audit witnesses. I verified the control exists for these four (and the schedule witness at :228); it validates the instrument, not the clause. Stays in the file. TAP run 4 ok 24.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "a repeat of the activation with the same idempotency key is refused canonical_source_unavailable again, never answered as a success [P2-S12-AC-223]",
+    "verdict": "DROP",
+    "vsV1": "renamed",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:173-175 - \"a repeat of the activation with the same idempotency key is refused ... again, never answered as a success\". The v1 confound is FIXED: the repeat reuses the label 'd-activate', so the key 's12ga-d-activate' is the same (s12gb_act builds it from the label, governed_activation/000-world.sqlinc:38-42). What it can show is still only determinism: both calls run inside the nested EXCEPTION block, a raised RPC commits no reservation, so no stored outcome could ever have been replayed; the assertion passes with or without any idempotency design and the ledger clause does not state it (adjacent). TAP run 4 ok 22.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql",
+    "title": "control: once a built provider row is current again the same command activates a role-declaring vocabulary: the refusals above were caused by the registry state, nothing else [P2-S12-AC-223]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_taxonomy_activation.sql:188-199 - control: with a newer built role row a NEW role-declaring vocabulary (tctl) is created, approved and activated. Not a minimal pair with the refusal and a duplicate of the built-provider activations; carried from v1. TAP run 4 ok 26.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [
+   {
+    "clauseIndex": 0,
+    "citation": {
+     "tool": "vitest",
+     "file": "apps/worker/src/cms-composition/governed-review-ops-refusals.test.ts",
+     "title": "'CMS-03C-09' SQL refusal transport maps canonical_source_unavailable {domain}"
+    },
+    "evidence": "Optional for this clause (the \"typed ... carrying details.domain\" is the SQL token + DETAIL proved at :163); REQUIRED for AC-210 c0 and AC-086 c4, where the clause says 422. See AC-210 missedTests."
+   }
+  ],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "v2: 1 KEEP (:163, carried, order-dependent and SETTLED by DEC-237), 4 DROP (2 new witness-related, 1 renamed, 1 carried). c1 and c2 keep their existing citations, so with c0 cited all three clauses are cited and the limitation goes. The witness instrument itself is sound by construction; the only gaps (no idempotency-witness control, no in-file demonstration that a witness moves in a rolled-back call) are noted under AC-210."
+ },
+ {
+  "criterion": "P2-S12-AC-225",
+  "citations": [
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "cms_act_taxonomy_term locks the retired term (termKey), the parent and the survivor (survivorId) with one statement over cms_terms ordered by term.id FOR UPDATE: ascending id order [P2-S12-AC-225]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:28-38,46-47 - the core source-order oracle, FIX MET. The detector is now a LITERAL strpos of the whole lock statement with no wildcard: vocabulary and owner scope, then (term.term_key = termKey or term.id = parentId or term.id = survivorId), then order by term.id for update, matched against the live comment-stripped source (20261014190030:120-128). Independent check: I ported it 1:1 and ran it on the live source: true; it REJECTS or->and (both connectives), 'and false' inside the alternatives and before them, owner scope dropped, taxonomy scope inverted, descending order, FOR SHARE, FOR NO KEY UPDATE and a dropped ORDER BY (10 of 10). The only shape-preserving mutant it cannot see is dead code around the loop (for locked_id in ... wrapped in 'if false then'), which is inherent in a static oracle and the same boundary as the already-ledgered lock-order oracles. Title unchanged. TAP run 4 ok 2.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "that statement holds the only FOR UPDATE of the function: no term row is locked a second time or out of order [P2-S12-AC-225]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:48-49 - exactly one FOR UPDATE in the whole function (live count 1), so no term row is locked a second time or out of order outside the ordered statement. Supplement of the oracle; unchanged. TAP run 4 ok 3.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "and the only ORDER BY of the function is the id order of that lock [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:50-51 - exactly one ORDER BY in the function. A lock-order defect changes the lock statement or the FOR UPDATE count, never the number of ORDER BYs; an unrelated ORDER BY added later breaks it with no change of behaviour (redundant, no-effect). Carried from v1. TAP run 4 ok 4.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "both term appliers (merge and write) run after the ordered lock statement, so nothing changes a term row before it is locked [P2-S12-AC-225]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:52-55 - both term appliers (cms_term_apply_merge, cms_term_apply_write) are called after the ordered lock statement in the source (live: lock 120-128, appliers 133 and 135), so no term row is changed before it is locked. Supplement; unchanged. TAP run 4 ok 5.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "cms_term_apply_merge takes no row lock of its own: it works under the ordered locks of the caller [P2-S12-AC-225]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:58-59 - cms_term_apply_merge contains neither FOR UPDATE nor FOR SHARE (live body 20261014120400), so the merge works under the caller's ordered locks. Supplement; unchanged. TAP run 4 ok 7.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "cms_term_apply_merge reads the retired term by the same termKey and the survivor by the same survivorId (within the vocabulary and owner) that the lock statement names [P2-S12-AC-225]",
+    "verdict": "KEEP",
+    "vsV1": "renamed",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:34-39,60-61 - REPLACES the v1 :53 that only checked two substrings. Now three literal fragments of the applier's source: survivor_id constant uuid := (p_request->>'survivorId')::uuid; the retired term read by the same termKey within the vocabulary; the survivor read by survivor_id within the vocabulary and owner. These are exactly the predicates of the lock statement, so the rows the merge works on are the rows that are locked. The title is now honest and the detector is mutation-sensitive: my port rejects a survivor read that is not survivor_id, a retired read by survivorId and a survivor read with its owner scope dropped. Supplement. TAP run 4 ok 8.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects the second `or` connective replaced by `and` (the statement would lock nothing unless parent and survivor coincide) [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:77 - control: the second `or` connective replaced by `and`. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 15.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects the first `or` connective replaced by `and` [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:79 - control: the first `or` connective replaced by `and`. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 16.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects `and false` inserted into the alternatives [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:81 - control: `and false` inserted into the alternatives. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 17.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects `and false` inserted before the alternatives [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:83 - control: `and false` inserted before the alternatives. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 18.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects descending id order [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:85 - control: descending id order. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 19.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects FOR SHARE in place of FOR UPDATE [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:87 - control: FOR SHARE in place of FOR UPDATE. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 20.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the applier detector rejects a survivor read that is not the named survivor [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:89 - control: a survivor read that is not the named survivor (applier detector). A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 21.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the applier detector rejects a retired-term read that is not the named termKey [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:91 - control: a retired-term read that is not the named termKey (applier detector). A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 22.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects the lock statement with its ORDER BY removed [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:67 - control: ORDER BY removed. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 10.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects an order by anything but the term id [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:69 - control: an order by anything but the id. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 11.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects FOR UPDATE written before the ORDER BY [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:71 - control: FOR UPDATE written before ORDER BY. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 12.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql",
+    "title": "control: the detector rejects a lock statement that no longer names the survivor [P2-S12-AC-225]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_merge_lock.sql:73 - control: a lock statement that no longer names the survivor. A mutated-source control validates the oracle, not the writer (round-2 class B, same ruling as the AC-073 / AC-079 controls); it stays in the file and a failing control fails the cited file for the guard. I re-ran this mutation independently (JS port of the new detector on the live source, scratchpad claude_s12_refute3/v2/mergelock-v2.mjs): rejected, as the TAP says. TAP run 4 ok 13.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "Opposed merges (A->B and B->A on one pair) remain a race module for root; the clause is a concurrency property and the source oracle proves the SOURCE order only (same boundary as AC-073 c1 and AC-079 c1, verified on a source oracle).",
+   "Inherent limit of any static oracle (not a defect of the test): the statement text is matched, so wrapping the lock loop in dead code keeps it green. Accepted by the lock-order precedent."
+  ],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "v2: 5 KEEP (:47 now a literal detector - my v1 FIX is met; :49, :55, :59 carried; :61 renamed, honest and mutation-sensitive), 13 DROP (the v1 :51 and the 12 oracle controls, 8 of them new). The status is no longer contingent: the detector blindness that made v1 conditional is gone."
+ },
+ {
+  "criterion": "P2-S12-AC-256",
+  "contingent": "Lines :154 and :156 (and nothing else) are red on the promoted-only schema; they count once root promotes WIP 20261029110000 (DEC-238 decided it). The other 21 KEEPs hold on the promoted schema alone.",
+  "citations": [
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "the table has exactly the ten stored columns, provider_key and provider_version nullable and every other column NOT NULL [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:102-109 - exact ten-column list, types and nullability from the catalog; the clause names no column list and every probe inserts through these columns. a catalog proxy where the same file has the behavioural probe: the probes and the seed read. Unchanged from v1; verdict carried. TAP run 4 ok 2.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "state defaults to seeded [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:110-113 - state DEFAULT 'seeded': BE03c 1624 gives NOT NULL CHECK state = 'seeded' and no default; an implementation detail the clause does not state (the CHECK probe, :162, covers the value). Unchanged from v1; verdict carried. TAP run 4 ok 3.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a CHECK closes state to exactly seeded [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:114-115 - literals of the state CHECK from pg_get_constraintdef. a catalog proxy where the same file has the behavioural probe: :162. Unchanged from v1; verdict carried. TAP run 4 ok 4.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a CHECK closes domain to exactly role, instrument, gear, place, rights and jurisdiction [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:116-118 - literals of the domain CHECK. a catalog proxy where the same file has the behavioural probe: :146 with the six seeds (:140) as the positive side. Unchanged from v1; verdict carried. TAP run 4 ok 5.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a CHECK closes provider_state to exactly built and unbuilt [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:119-120 - literals of the provider_state CHECK. a catalog proxy where the same file has the behavioural probe: :148. Unchanged from v1; verdict carried. TAP run 4 ok 6.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a CHECK ties provider_key and provider_version to provider_state = built, both non-null exactly when built [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:121-124 - \"a CHECK ties provider_key and provider_version to provider_state = built, both non-null exactly when built\" as three LIKE fragments of the promoted provider_check text. Still blind: it never mentions the pair CHECK and is green on a one-directional CHECK; v1 run 1 had it green (ok 7) while the half-set probes were red. The title says \"exactly when built\", the body cannot see the direction that matters. Unchanged from v1; verdict carried. TAP run 4 ok 7.",
+    "fix": null,
+    "dropClass": "CONFOUNDED"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a CHECK pins updated_at = created_at [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:125-126 - the time CHECK text. a catalog proxy where the same file has the behavioural probe: :164. Unchanged from v1; verdict carried. TAP run 4 ok 8.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "UNIQUE (domain, version) is the registry key [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:127-128 - the UNIQUE constraint text. a catalog proxy where the same file has the behavioural probe: :166 (23505). Unchanged from v1; verdict carried. TAP run 4 ok 9.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a BEFORE INSERT row guard (cms_write_guard) polices every insert [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:129-130 - the BEFORE INSERT guard exists and is enabled. a catalog proxy where the same file has the behavioural probe: :172 (DIRECT_CMS_TABLE_WRITE). Unchanged from v1; verdict carried. TAP run 4 ok 10.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a BEFORE UPDATE OR DELETE row guard (cms_immutable_guard) makes every row immutable [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:131-132 - the BEFORE UPDATE OR DELETE guard exists and is enabled. a catalog proxy where the same file has the behavioural probe: :174-178 (IMMUTABLE_RECORD). Unchanged from v1; verdict carried. TAP run 4 ok 11.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "the migrated registry holds exactly one version-1 seeded row per domain, updated_at = created_at, owned by the seeding release record [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:135-140 - the migrated registry holds exactly one version-1 row per domain for all six domains, each state seeded, updated_at = created_at, owner_id the seeding release record 0d6a0d6a-0000-4000-8000-000000000135 (20261013300100:70). Proves \"seeded by forward migration\", \"state seeded\", \"updated_at = created_at\", \"owner_id the seeding release record\" and the positive side of the domain CHECK on the real rows. Unchanged from v1; verdict carried. TAP run 4 ok 12.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a domain outside the six is refused by the domain CHECK [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:145-146 - a well-formed built row with domain 'bogus' is refused 23514; the baseline row (control :143-144, not cited) is accepted so only the domain differs. Unchanged from v1; verdict carried. TAP run 4 ok 14.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a provider_state other than built or unbuilt is refused [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:147-148 - provider_state 'maybe' is refused 23514. Unchanged from v1; verdict carried. TAP run 4 ok 15.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a built row without a provider_key is refused [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:149-150 - built without a provider_key is refused 23514 by the promoted CHECK (20261013300100:33-35). Unchanged from v1; verdict carried. TAP run 4 ok 16.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a built row without a provider_version is refused [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:151-152 - built without a provider_version is refused 23514 (same CHECK). Unchanged from v1; verdict carried. TAP run 4 ok 17.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "an unbuilt row that keeps its provider_key is refused [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:153-154 - an unbuilt row that keeps its provider_key (version null) is refused 23514. CONTINGENT on the WIP pair CHECK being promoted (root step after DEC-238; BE03c 1624 now carries it): RED on the promoted-only schema, green once 20261029110000 is applied (run 4 applied it). Reading settled: DEC-238 (each member is non-null exactly when built; BE03c 1624 amended). (red in v1 run 1, green with the WIP). TAP run 4 ok 18.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "an unbuilt row that keeps its provider_version is refused [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:155-156 - an unbuilt row that keeps its provider_version (key null) is refused 23514. CONTINGENT on the WIP pair CHECK being promoted (root step after DEC-238; BE03c 1624 now carries it): RED on the promoted-only schema, green once 20261029110000 is applied (run 4 applied it). TAP run 4 ok 19.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "an unbuilt row keeping both provider members is refused [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:157-158 - THE MISSING PROBE I required: an UNBUILT row that keeps BOTH members (baseline key 'probe.provider' and version 1, provider_state flipped) is refused 23514 (refused by the promoted CHECK (false) = (true), independent of the WIP). The baseline is accepted (control :143-144) and unbuilt-with-neither is accepted (control :159-160), so only the both-set state differs. Mutation: a one-directional CHECK (\"built implies both set\") accepts it and fails the test; this is what makes \"exactly when built\" two-directional together with :150/:152 and :154/:156. TAP run 4 ok 20.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a state other than seeded is refused [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:161-162 - state 'unseeded' is refused 23514 (state_check). Unchanged from v1; verdict carried. TAP run 4 ok 22.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "an updated_at that differs from created_at is refused [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:163-164 - updated_at one second after created_at is refused 23514 (time_check). Unchanged from v1; verdict carried. TAP run 4 ok 23.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a second row of an existing (domain, version) is refused by the UNIQUE key (role, 1 is seeded) [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:165-166 - a second row (role, 1) is refused 23505 by UNIQUE(domain, version); the control at :167-168 (same version under another domain accepted) shows it is the pair that is unique. Unchanged from v1; verdict carried. TAP run 4 ok 24.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a direct insert outside the CMS RPC context is refused DIRECT_CMS_TABLE_WRITE even for a well-formed row [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:171-172 - a well-formed row inserted without the CMS RPC context is 'P0001:DIRECT_CMS_TABLE_WRITE' even for the test administrator: only a context-setting forward migration (the seed sets app.cms_rpc, 20261013300100:66) can add a row. Unchanged from v1; verdict carried. TAP run 4 ok 26.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "an UPDATE of a registry row is refused IMMUTABLE_RECORD even inside the CMS context [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:173-174 - an UPDATE inside the CMS context is 'P0001:IMMUTABLE_RECORD'. Unchanged from v1; verdict carried. TAP run 4 ok 27.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "an UPDATE that changes nothing is still refused: no row may be rewritten [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:175-176 - even an UPDATE that changes nothing (owner_id = owner_id) is IMMUTABLE_RECORD: no row may be rewritten. Unchanged from v1; verdict carried. TAP run 4 ok 28.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "a DELETE of a registry row is refused IMMUTABLE_RECORD [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:177-178 - a DELETE is IMMUTABLE_RECORD; the six rows survive every probe (:179-180). Unchanged from v1; verdict carried. TAP run 4 ok 29.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "anon, authenticated and service_role hold no table or column privilege on the registry [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:182-185 - anon, authenticated and service_role hold no table privilege (select, insert, update, delete, truncate, references, trigger) and no column privilege, computed effectively; the named-role form of \"never writable by a caller\", the complete form is :195. Evaluated before any grant of this file (the grants start at :206). Unchanged from v1; verdict carried. TAP run 4 ok 31.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "PUBLIC holds no privilege on the registry [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:186-188 - no ACL entry of the table has grantee PUBLIC (evaluated before the file's grants). Unchanged from v1; verdict carried. TAP run 4 ok 32.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "the only grant beyond the table owner is SELECT to the CMS definer that the pinned reader functions run as: no caller grant and no write grant [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:189-195 - aclexplode of relacl: the only grant beyond the table owner is SELECT to wejammin_cms_definer, no write grant to anyone (evaluated before the file's grants). Unchanged from v1; verdict carried. TAP run 4 ok 33.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "the CMS definer holds no write privilege either: only a forward migration can add a row [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:196-197 - the CMS definer holds no insert/update/delete/truncate privilege, so even a SECURITY DEFINER function it owns cannot write a row. Unchanged from v1; verdict carried. TAP run 4 ok 34.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "row level security is enabled and forced on the registry [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:198-200 - relrowsecurity and relforcerowsecurity are set: a catalog flag standing for a behaviour the clause does not name (RLS is not in the clause; \"never writable\" is carried by the privileges and the write guard). Unchanged from v1; verdict carried. TAP run 4 ok 35.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "the single policy admits a row only inside the CMS RPC context, for reads and writes alike [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:201-203 - the single policy's qual and with_check contain 'cms_rpc_context_valid()' (pg_policies text match). a catalog proxy where the same file has the behavioural probe: :172 and the denial probes. Unchanged from v1; verdict carried. TAP run 4 ok 36.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "anon, with schema USAGE, cannot insert a registry row even inside the CMS context: the refusal is the missing table privilege itself [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "renamed",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:204-208 - anon, WITH schema USAGE, cannot insert a registry row inside the CMS context: exactly '42501:permission denied for table cms_canonical_domain_registry'. REPLACES the masked v1 :185. UNMASKED: the file now grants schema USAGE to anon and authenticated first (:206, rolled back), so the schema can no longer refuse; the pinned message names the TABLE (an RLS refusal would read \"new row violates row-level security policy\", and the CMS context is on); the inverse control (:215-219) grants INSERT on the table and EXECUTE on the policy function to anon and the SAME insert runs ('00000'), which is what shows the probe sees the table privilege (run 3 caught the control being incomplete, run 4 green). TAP run 4 ok 37.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "authenticated, with schema USAGE, cannot insert a registry row even inside the CMS context: the refusal is the missing table privilege itself [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "renamed",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:209-210 - authenticated, with schema USAGE, same exact refusal. REPLACES the masked v1 :187. Same unmasking and the same exact message; the control runs for anon (both roles hold the same USAGE grant and the same missing INSERT, and the ACL scans :185/:195 cover every role). TAP run 4 ok 38.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "control: once anon is granted INSERT and EXECUTE on the policy function (and holds schema USAGE) the same insert runs, so the 42501 above came from the missing table privilege [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "new",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:215-219 - control: once anon is granted INSERT and EXECUTE on the policy function (and holds schema USAGE) the same insert runs. The instrument that proves :208/:210 are unmasked; validates the probes, not the registry. It stays in the file (its failure fails the cited file). TAP run 4 ok 41.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "service_role cannot insert a registry row even inside the CMS context [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:211-212 - service_role cannot insert a registry row inside the CMS context (42501). Never masked: service_role holds USAGE on platform_private (20260830100000:258), and the CMS context is on so only the privilege can refuse. Unchanged from v1; verdict carried. TAP run 4 ok 39.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "no stored function inserts a registry row: the seeds and every later provider registration are forward migrations only [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:222-226 - no stored function body matches 'insert into platform_private.cms_canonical_domain_registry' (regex over prosrc): a text scan blind to dynamic SQL; the property (\"only a forward migration adds a row\") is carried behaviourally by the privileges (:195, :197) and the write guard (:172). Unchanged from v1; verdict carried. TAP run 4 ok 42.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "no stored function updates or deletes a registry row [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:227-231 - no stored function updates or deletes a registry row (regex over prosrc): same standing; the immutability probes (:174-178) are the behaviour. Unchanged from v1; verdict carried. TAP run 4 ok 43.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "the current row is the one with the greatest version (5), not the one inserted last (4): an owning shard registers a provider by inserting a newer row [P2-S12-AC-256]",
+    "verdict": "KEEP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:252-259 - the current row of a domain is the one with the GREATEST version, not the last inserted: version 5 (built) is inserted before version 4 (unbuilt) and cms_canonical_domain_current('instrument') answers version 5; baseline reads (:244-249, not cited) pin the seeds. Unchanged from v1; verdict carried. TAP run 4 ok 48.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql",
+    "title": "context-cleared: outside the CMS RPC context the forced RLS conceals every registry row from the reader, so no provider is ever visible to an uncontexted caller [P2-S12-AC-256]",
+    "verdict": "DROP",
+    "vsV1": "carried",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db4_registry.sql:250-251 - context-cleared: outside the CMS RPC context the reader sees no registry row: a posture check of the reader, not what the clause states (the clause is about writes and the greatest version). Unchanged from v1; verdict carried. TAP run 4 ok 47.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "Consistency flag (unchanged, out of scope): AC-251..AC-255 (gaps_persistence.sql) cite the same catalog-text shapes this round drops again; each has behavioural probes elsewhere.",
+   "The proposals re-propose the 16 DROPped items unchanged (catalog proxies, source scans, the RLS flags, the context-cleared read); nothing in them changed, so the v1 verdicts are carried."
+  ],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "v2: 23 KEEP (the 20 of v1 + the missing both-members probe :158 + the two UNMASKED anon/authenticated probes :208/:210, which replace the masked v1 :185/:187), 16 DROP (15 carried + the new unmask control :219). Both of my v1 conditions on this criterion are met: the \"unbuilt row keeping both members\" probe exists and passes, and the masked probes now isolate the object privilege with a control that flips them. The proposal's limitation is now empty and its status verified, consistent with the guard; the WIP promotion is a root step, not a ledger limitation."
+ }
+]

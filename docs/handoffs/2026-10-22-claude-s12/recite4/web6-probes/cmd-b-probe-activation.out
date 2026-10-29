@@ -1,0 +1,56 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-activation.test.tsx (2 tests | 2 failed) 189ms
+     × D3 only the commit control is disabled while pending 101ms
+     × D1 the form clears its draft on commit 28ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-governed-review/zz-web6-probe-activation.test.tsx > probe D3/D1 activation > D3 only the commit control is disabled while pending
+AssertionError: expected [ Array(2) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "governed-activation-continue",
++   "Cancel",
++ ]
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-activation.test.tsx:95:48
+     93|     const commit = buttonNamed(container, 'Activate this version');
+     94|     expect(statusOf(container)).toBe('Activating…');
+     95|     expect(disabledBesides(container, commit)).toEqual([]);
+       |                                                ^
+     96|   });
+     97|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  apps/web/src/components/cms-governed-review/zz-web6-probe-activation.test.tsx > probe D3/D1 activation > D1 the form clears its draft on commit
+AssertionError: expected true to be false // Object.is equality
+
+- Expected
++ Received
+
+- false
++ true
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-activation.test.tsx:103:54
+    101|     await flush();
+    102|     expect(statusLine(container)).toContain('Activated, not published'…
+    103|     expect(radio(container, 'Activate now').checked).toBe(false);
+       |                                                      ^
+    104|   });
+    105| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  01:10:30
+   Duration  5.15s (transform 2.89s, setup 0ms, import 3.96s, tests 189ms, environment 830ms)
+

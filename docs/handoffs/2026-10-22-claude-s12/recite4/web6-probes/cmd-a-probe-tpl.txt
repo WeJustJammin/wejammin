@@ -1,0 +1,20 @@
+     × D1 403 renders CapabilityGate 134ms
+     × D2 409 refetches latest without a click 24ms
+     × D6 422 key_reserved is shown at the template key field 19ms
+     × D1 403 renders CapabilityGate 19ms
+     × D2 409 refetches latest without a click 22ms
+     × D6 422 key_reserved is shown at the template key field 19ms
+   × D3 create: unknown outcome refetches before retry 18ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  apps/web/src/components/cms-composition/zz-web6-probe-tpl.test.tsx > probe tpl 'create designer' > D1 403 renders CapabilityGate
+ FAIL  apps/web/src/components/cms-composition/zz-web6-probe-tpl.test.tsx > probe tpl 'successor (edit) designer' > D1 403 renders CapabilityGate
+AssertionError: expected null not to be null
+ FAIL  apps/web/src/components/cms-composition/zz-web6-probe-tpl.test.tsx > probe tpl 'create designer' > D2 409 refetches latest without a click
+ FAIL  apps/web/src/components/cms-composition/zz-web6-probe-tpl.test.tsx > probe tpl 'successor (edit) designer' > D2 409 refetches latest without a click
+AssertionError: expected 0 to be greater than or equal to 1
+ FAIL  apps/web/src/components/cms-composition/zz-web6-probe-tpl.test.tsx > probe tpl 'create designer' > D6 422 key_reserved is shown at the template key field
+ FAIL  apps/web/src/components/cms-composition/zz-web6-probe-tpl.test.tsx > probe tpl 'successor (edit) designer' > D6 422 key_reserved is shown at the template key field
+AssertionError: expected null to be 'true' // Object.is equality
+ FAIL  apps/web/src/components/cms-composition/zz-web6-probe-tpl.test.tsx > D3 create: unknown outcome refetches before retry
+AssertionError: expected 0 to be greater than or equal to 1
+      Tests  7 failed (7)

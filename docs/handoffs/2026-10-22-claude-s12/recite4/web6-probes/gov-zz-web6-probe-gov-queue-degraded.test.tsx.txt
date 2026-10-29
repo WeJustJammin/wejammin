@@ -1,0 +1,44 @@
+// @vitest-environment jsdom
+import * as React from 'react';
+import { describe, expect, it } from 'vitest';
+import { renderToStaticMarkup } from 'react-dom/server';
+
+import {
+  apiError,
+  governedQueueItem,
+  governedQueuePageFixture,
+  jsonResponse,
+} from '../../server/cms-governed-review-fixtures.test-support';
+import CmsGovernedReviewQueue from './CmsGovernedReviewQueue';
+import type { CmsGovernedPageReads } from './governed-review-page-reads';
+import { loadGovernedQueuePage } from './load-governed-queue-page';
+
+const ROUTE = 'https://web.test/app/cms-content-modeling/definition-reviews';
+const reads = (responses: Response[]) =>
+  ({ reviewQueue: async () => responses.shift() }) as unknown as CmsGovernedPageReads;
+
+describe('PROBE queue degraded: last verified queue kept with lastVerifiedAt', () => {
+  it('a read that fails after a verified read still shows the last verified queue, with lastVerifiedAt', async () => {
+    const shared = reads([
+      jsonResponse(200, governedQueuePageFixture([governedQueueItem(1)])),
+      jsonResponse(503, apiError('DEPENDENCY_UNAVAILABLE')),
+    ]);
+    const first = await loadGovernedQueuePage({ request: new Request(ROUTE), reads: shared });
+    expect(first.kind).toBe('view');
+    const second = await loadGovernedQueuePage({ request: new Request(ROUTE), reads: shared });
+    expect(second.kind).toBe('view');
+    expect(second).toHaveProperty('view.lastVerifiedAt');
+  });
+
+  it('the queue view accepts and shows a lastVerifiedAt beside kept rows', () => {
+    const html = renderToStaticMarkup(
+      React.createElement(CmsGovernedReviewQueue, {
+        page: governedQueuePageFixture([governedQueueItem(1)]),
+        routePath: '/x',
+        query: {},
+        lastVerifiedAt: '2026-10-08T12:00:00Z',
+      } as never),
+    );
+    expect(html).toContain('2026-10-08T12:00:00Z');
+  });
+});

@@ -1,0 +1,105 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-bulk.test.tsx (4 tests | 4 failed) 241ms
+     × C4 only the commit control is disabled while pending 109ms
+     × C5 the entry or list is refetched after success 41ms
+     × C7 an unknown outcome reconciles by refetching the entry before any retry 46ms
+     × C8 a 409 refetches the entry 42ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-bulk.test.tsx > probe C4/C5/C7/C8 bulk > C4 only the commit control is disabled while pending
+AssertionError: expected [ 'cms-composition-pattern', …(10) ] to deeply equal []
+
+- Expected
++ Received
+
+- []
++ [
++   "cms-composition-pattern",
++   "Link modeLinked: receives pattern updatesDetached: a local copy that never receives updates",
++   "cms-insert-slot-path",
++   "cms-insert-overrides",
++   "Place pattern",
++   "Review selected updates",
++   "Detach selected",
++   "Review update for /main/row-1",
++   "Detach /main/row-1",
++   "Review update for /main/row-2",
++   "Detach /main/row-2",
++ ]
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-bulk.test.tsx:106:72
+    104|     await bulkAccept(page);
+    105|     expectPendingLabel(page.container, 'Updates applied: request 1 of …
+    106|     expect(disabledBesides(page.container, acceptAll(page.container)))…
+       |                                                                        ^
+    107|   });
+    108|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-bulk.test.tsx > probe C4/C5/C7/C8 bulk > C5 the entry or list is refetched after success
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-bulk.test.tsx:113:103
+    111|     await bulkAccept(page);
+    112|     expect(resultHeading(page.container)).toBe('Updates applied');
+    113|     expect(page.calls.filter((call) => call.method === 'GET' && !call.…
+       |                                                                                                       ^
+    114|   });
+    115|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-bulk.test.tsx > probe C4/C5/C7/C8 bulk > C7 an unknown outcome reconciles by refetching the entry before any retry
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-bulk.test.tsx:119:87
+    117|     const page = mount([refusal(502, 'DEPENDENCY_UNAVAILABLE', { retry…
+    118|     await bulkAccept(page);
+    119|     expect(page.calls.filter((call) => call.path.startsWith('/api/v1/c…
+       |                                                                                       ^
+    120|   });
+    121|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  apps/web/src/components/cms-composition-instances/zz-web6-probe-bulk.test.tsx > probe C4/C5/C7/C8 bulk > C8 a 409 refetches the entry
+AssertionError: expected [] to have a length of 1 but got +0
+
+- Expected
++ Received
+
+- 1
++ 0
+
+ ❯ apps/web/src/components/cms-composition-instances/zz-web6-probe-bulk.test.tsx:125:87
+    123|     const page = mount([refusal(409, 'COMPOSITION_VERSION_CONFLICT', {…
+    124|     await bulkAccept(page);
+    125|     expect(page.calls.filter((call) => call.path.startsWith('/api/v1/c…
+       |                                                                                       ^
+    126|   });
+    127| });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed (4)
+   Start at  01:15:07
+   Duration  1.52s (transform 257ms, setup 0ms, import 410ms, tests 241ms, environment 716ms)
+

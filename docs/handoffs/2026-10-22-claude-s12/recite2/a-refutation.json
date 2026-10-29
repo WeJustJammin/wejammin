@@ -1,0 +1,3416 @@
+[
+ {
+  "criterion": "P2-S12-AC-001",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 3 \"and accessibility contracts in templates.\": gap confirmed. cms_define_template never reads a block's accessibility_contract (migration 20260927200000 and 20261013100200 contain no such comparison); grep of supabase/tests, packages/contracts/src/cms-composition and apps/worker/src/cms-composition finds no template-level accessibility assertion; BE03c names only stable JSON Pointer paths and reserved regions. The spec line has to come first (lane BOUNDARY correct)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-002",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-003",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-004",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-005",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-006",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-007",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-008",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-009",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-010",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 2 \"and complete the declared happy path\": gap confirmed. tests/postgrest has no pattern-placement apispec; the only real-stack caller of /api/v1/cms/compositions/pattern-instances is phase-02-slice-12-latency-compose.apispec.ts (lines 156-199), which asserts 201 and item counts for a latency measurement but not the strong entry ETag, the committed rows or the audit event; not citable as the happy path (lane judgement agreed)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-011",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-012",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-013",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 6 \"and concurrency rules.\": gap confirmed. No race module names cms_insert_pattern_instance (supabase/tests/*.race.mjs and the phase_02_slice_1x_races directories were searched); gaps_lock_sources.sql and gaps_lock_order.sql are static source oracles and say so."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-014",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-015",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-016",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 1 \"and complete the declared happy path\": gap confirmed. No composed apispec exists for CMS-03C-03 (tests/postgrest lists none); the layered pgTAP (taxonomy_terms/030-create) and mocked-fetch adapter tests each cover one layer."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-017",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-018",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-019",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 7 \"and concurrency rules.\": gap confirmed. phase_02_slice_12_dec194_outer.race.mjs drives one cms_act_taxonomy_term merge against authority changes (outer admission), not two competing term actions on one vocabulary; taxonomy_integrity_concurrency.sql races a replica of the merge steps. Neither proves a duplicate-key winner or a stale active-version loser."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-020",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-021",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-022",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-023",
+  "citations": [
+   {
+    "clauseIndex": 1,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql",
+    "title": "a caller-owned content type whose state is retired (with an active version) is refused VALIDATION_FAILED [P2-S12-AC-023]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql:25-28 — cms_define_template over type ..0101 (state retired, ACTIVE version: 000-fixtures.sqlinc:36,85) answers last error message VALIDATION_FAILED; the otherwise identical call over the active type ..0103 defines a draft (lines 46-49), so the refusal is caused by the type state. Proves \"each active\" on the type-state axis.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql",
+    "title": "an active caller-owned content type with no active version is refused VALIDATION_FAILED [P2-S12-AC-023]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql:29-32 — active type ..0102 whose only version is superseded (000-fixtures.sqlinc:86, fixture control line 90-99) is refused VALIDATION_FAILED: \"each active ... ContentTypeVersion family\" on the active-version axis.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql",
+    "title": "one inactive member among valid members refuses the whole list [P2-S12-AC-023]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql:33-36 — [valid ..0103, retired ..0101] answers VALIDATION_FAILED: one inactive member refuses the whole list, i.e. \"each\".",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql",
+    "title": "the three refusals created no template row [P2-S12-AC-023]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql:37-38 — count of cms_template_versions unchanged after the refusals. A no-effect assertion; the clause states the membership rule, not the absence of a row (class B of review-refute-a).",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 1,
+    "splitPart": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql",
+    "title": "an active caller-owned content type with no active version is refused VALIDATION_FAILED [P2-S12-AC-023]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_template.sql:29-32 — same assertion as the \"each active\" part, here for \"ContentTypeVersion family\": a content type with no active version is refused. Reuse across two parts of one clause is allowed (the parts are separate clauses to the guard).",
+    "fix": null
+   }
+  ],
+  "splits": [
+   {
+    "clauseIndex": 1,
+    "verdict": "OK",
+    "reason": "Tiles verbatim: \"each active\" + \"/allowlisted\" + \" \" + \"ContentTypeVersion family\" (gap between the last two is one space, allowed by CLAUSE_SEPARATOR). The middle part is correctly left uncited, but see missedGaps: \"allowlisted\" most plausibly means the owner scope the live code enforces (cms_define_template 20261013100200:120-130 requires content_type.owner_id = acting_party_id) and that is untested for templates."
+   }
+  ],
+  "missedGaps": [
+   "clause 1 \"/allowlisted\": the live check is owner_id = acting_party_id AND state = 'active' AND an active version (20261013100200_cms_define_template_per_owner.sql:120-132). The foreign fixture type ..0104 is built (gaps_db1_template/000-fixtures.sqlinc:88) but no assertion uses it; a one-line pgTAP \"another owner's active type is refused VALIDATION_FAILED\" (as AC-101 has for patterns, gaps_db1_pattern_types.sql:80-84) would prove the owner-scope reading before the part is left as \"spec silent\"."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-024",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-025",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-026",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "foreign-lineage: exact SQL message token NOT_FOUND",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:83-86 — s12pl_refused('foreign-lineage', request on the caller's own readable draft revision with patternId = a lineage owned by ANOTHER organization, 'NOT_FOUND'); helper 010-oracles.sqlinc:97-98 asserts the exact message token. Computed description, cited under the entrypoint. Owner specificity is shown by the paired own-draft-lineage case (lines 77-80, same shape, answers pattern_version_not_active).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "foreign-lineage: the refusal preserves every captured full row of every store",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:83 via 010-oracles.sqlinc:103-104 — before_rows = after_rows after the refusal; a no-effect assertion, not the lineage-scope rule.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "a foreign lineage is indistinguishable from an absent one [P2-S12-AC-043]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:101-104 — message||detail of the foreign-lineage refusal equals the absent-lineage refusal: a lineage outside the caller's owner scope is concealed as absent (the 404 reading of \"owner scope\").",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "control: the caller's own active pattern places on the same revision [P2-S12-AC-043]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:107-109 — positive half: the caller's own active lineage places on the same revision (state 00000), so the NOT_FOUND above is lineage-specific.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "vitest",
+    "file": "apps/worker/src/cms-composition/pattern-instance-routes.malformed-ids.test.ts",
+    "title": "[P2-S12-AC-026] CMS-03C-02 malformed body ids a malformed revisionId is 422 COMPOSITION_VALIDATION_FAILED at that member and never reaches the port",
+    "verdict": "FIX",
+    "reason": "apps/worker/src/cms-composition/pattern-instance-routes.malformed-ids.test.ts:85-114 — proof is sound (422 COMPOSITION_VALIDATION_FAILED, violations [/revisionId], insertPattern not called) but it.each over 4 cases yields only two distinct full names, each TWICE (revisionId: 'not-a-uuid' and 42; patternId: 'not-a-uuid' and a 37-char uuid). The guard rejects an identity with occurrences > 1 (scripts/evidence/README.md \"ambiguous identity\").",
+    "fix": "Make the case titles unique before citing (e.g. 'a malformed %s (%s) is 422 ...' with a label per case: not-a-uuid / number / ...), then cite the unique names; or cite only after the retitle. Kept for status once retitled.",
+    "dropClass": "IDENTITY"
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "vitest",
+    "file": "apps/worker/src/cms-composition/pattern-instance-routes.malformed-ids.test.ts",
+    "title": "[P2-S12-AC-026] CMS-03C-02 malformed body ids a malformed patternId is 422 COMPOSITION_VALIDATION_FAILED at that member and never reaches the port",
+    "verdict": "FIX",
+    "reason": "same file, patternId rows (lines 88, 90): identical duplicate-title defect; proof sound ([/patternId], port not called).",
+    "fix": "Same retitle as the revisionId case.",
+    "dropClass": "IDENTITY"
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "foreign-lineage: exact SQL message token NOT_FOUND",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:83-86 — the database half of \"404\": a patternId of another organization is the concealed NOT_FOUND token; the Worker maps it to 404 COMPOSITION_NOT_FOUND (see missedTests).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "absent-lineage: exact SQL message token NOT_FOUND",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:97-100 — an absent patternId lineage answers NOT_FOUND.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [
+   {
+    "clauseIndex": 3,
+    "citation": {
+     "tool": "vitest",
+     "file": "apps/worker/src/cms-composition-production-pattern.test.ts",
+     "title": "CMS-03C-02 production pattern adapter maps private domain failures and transport failures without exposing provider content"
+    },
+    "evidence": "apps/worker/src/cms-composition-production-pattern.test.ts:229-299 — the CMS-03C-02 adapter maps PostgREST {code:NOT_FOUND} 404 to 404 COMPOSITION_NOT_FOUND and VALIDATION_FAILED 422 to 422 COMPOSITION_VALIDATION_FAILED (already cited under other criteria); it is the Worker link between the pgTAP NOT_FOUND token and the \"404\" of the clause."
+   }
+  ],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "verified only once the malformed-ids titles are made unique; until then c3 is carried by the pgTAP tokens and the adapter test above."
+ },
+ {
+  "criterion": "P2-S12-AC-027",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-028",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-029",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-030",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-031",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-032",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-033",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql",
+    "title": "a source revision that EXISTS but belongs to an entry the caller cannot read is the concealed NOT_FOUND [P2-S12-AC-033]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql:109-114 — cms_author_locale_variant with sourceRevisionId = an existing revision of a stranger party's entry (built gl_entry(2,...) lines 63-91; fixture control 92-99) answers P0001:NOT_FOUND although the request is otherwise valid (control 140-145). Caveat: the revision is also of a different entry, so unreadable and wrong-entry are not separated (see AC-055 line 115-120 where a readable other-entry revision is refused too); for a caller who may edit the requested entry every revision of that entry is readable, so the two collapse.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql",
+    "title": "the unreadable-source refusals leave no variant, revision, event, audit or reservation and keep the entry version [P2-S12-AC-033]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql:131-139 — counts of variants, revisions, events, audits, reservations and the entry version unchanged; a no-effect assertion the clause does not state.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql",
+    "title": "control: the same request over the entry's own readable source revision authors the draft [P2-S12-AC-033]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql:140-145 — positive half: the same request over the entry's own readable source revision authors the draft (state draft, locale fr-FR).",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-034",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-035",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-036",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-037",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-038",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-039",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 2 \"Idempotency-Key 8-128 printable ASCII\": gap confirmed for CMS-03C-08 and CMS-03C-16. governed-review-headers.test.ts (lines 61-72) covers missing, \"bad key\" and \"x\" for CMS-03C-06 only; the CMS-03C-16 route test refuses the MISSING key only (taxonomy-definition.coverage.test.ts). No 129-char or non-printable boundary exists for the two routes."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-040",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 3 (meta, \"implement locked behavior and completion exactly. Operations: ...\"): agree it is unprovable by a test and cannot be removed from the ledger (only separators and and/or may remain between clauses); it is discharged when AC-065..AC-099 and the executor criteria are verified."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-041",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-042",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clauses 1, 5 and 12 (template designer success-path focus, authoritative response with provenance and next action, scoped draft): gaps confirmed. CmsTemplateDesigner lives in apps/web/src/components/cms-composition/; that directory has no beforeunload/leave guard (the web-impl lane added them only to the composition insert form and the term form) and the gap wave touched none of the template designer tests."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-043",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "foreign-lineage: exact SQL message token NOT_FOUND",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:83-86 — a pattern lineage owned by another organization is not readable by the caller: the concealed NOT_FOUND token (see AC-026 c2).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "foreign-lineage: the refusal preserves every captured full row of every store",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:83 via 010-oracles.sqlinc:103-104 — stores unchanged after the refusal; no-effect assertion.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "a foreign lineage is indistinguishable from an absent one [P2-S12-AC-043]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:101-104 — foreign and absent lineages are indistinguishable (message||detail), i.e. readability is the only visible axis.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql",
+    "title": "control: only the two rows of the owned pattern exist; no row names a foreign or draft lineage [P2-S12-AC-043]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_placement.sql:110-113 — the title says \"no row names a foreign or draft lineage\" but the query counts composition_instances WHERE pattern_id = the OWNED pattern's lineage (= 2); it cannot see a row of any other lineage. Title over-claims the body.",
+    "fix": null,
+    "dropClass": "CONFOUNDED"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 4 (meta: \"implement locked behavior and completion exactly. Operations: CMS-03C-12 .. CMS-03C-15\"): agree it is unprovable by one test; it cannot be removed (the guard allows only separators and and/or between clauses), so the criterion stays partial until root rules it derived from AC-100..AC-135."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-044",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 3 \"deletion\": gap confirmed; no gap-wave or earlier test asserts the IA03 533 deletion rule (immutable evidence kept, derived access removed, dependent invalidation queued) for a pattern or composition source."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-045",
+  "citations": [
+   {
+    "clauseIndex": 10,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx",
+    "title": "insert: an unknown outcome is reconciled with the entry before any retry reads the entry, keeps the identical request and key, and offers the retry only after the read",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx:184-216 — POST placement answers 502 DEPENDENCY_UNAVAILABLE; calls are exactly [POST pattern-instances, GET /api/v1/cms/entries/{id}] (194-197), \"Checking the entry\" shows and Place pattern is disabled until the held read answers (198-206), then the retry carries the same Idempotency-Key and body and If-Match \"9\" (207-214). Exactly \"reconcile unknown mutation before retry\".",
+    "fix": null
+   },
+   {
+    "clauseIndex": 10,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx",
+    "title": "insert: an unknown outcome is reconciled with the entry before any retry says so when the entry has moved on, and still retries the same request",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx:218-237 — reconcile read answers version 11: \"The entry has moved to version 11 ... cannot place twice\" and the retry still reuses key and If-Match \"9\". The moved-on branch of the same reconciliation; supplement.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 10,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx",
+    "title": "insert: an unknown outcome is reconciled with the entry before any retry says the entry could not be checked when the read fails, and the retry is still offered",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx:239-251 — reconcile read answers 503: \"could not be read to check\", retry still offered. The failed-reconciliation branch; supplement.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 12,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx",
+    "title": "insert: leaving with an unsent placement draft arms beforeunload only while the form holds unsent input, and disarms it after a success",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx:83-93 — beforeunload is armed only while the form holds unsent input and disarmed after a successful placement (FE03 927 \"beforeunload only while dirty ... clear only after success\"). dirty = fields differ from baseline (use-composition-insert.ts:219-223).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 12,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx",
+    "title": "insert: leaving with an unsent placement draft shows an inline confirmation instead of leaving, keeps the draft, and leaves only through the explicit discard",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx:122-153 — leaving with unsent input shows the inline role=alert confirmation, navigate not called, Keep editing retains pattern and slot path, navigation only after \"Leave without saving\" (FE03 927 retain / inline confirmation / explicit discard).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 12,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx",
+    "title": "insert: leaving with an unsent placement draft never puts the draft in the URL, history or storage",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx:155-172 — typed overrides text is absent from location.href, localStorage and sessionStorage (\"scoped\": in component state only). The title also says \"history\"; history.state is not asserted, which the clause does not need.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 12,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.insert.test.tsx",
+    "title": "insert: the request clears the pattern and overrides after a success but keeps the slot path and link mode",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.insert.test.tsx:119-142 — after a success Pattern and Overrides are cleared while slot path and link mode stay (the \"clear only after success\" half; baseline reset so the form is clean).",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-046",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 5 (meta \"implement locked behavior and completion exactly. Operations: CMS-03C-16, -17, -18\"): agree, unprovable by a test, cannot be removed."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-047",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 1 \"concurrency\": gap confirmed (see AC-019: no race of two competing term actions)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-048",
+  "citations": [
+   {
+    "clauseIndex": 10,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.retry.test.tsx",
+    "title": "CmsTaxonomyTermForm: retrying after an unknown outcome reconciles the list first, then retries the same request under the same Idempotency-Key",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.retry.test.tsx:30-68 — submit answers uncertain: heading \"The result is unknown\", readTerms called (it is called only by refresh() after an uncertain/done/conflict outcome, use-term-list.ts:89, use-term-form.ts:274-282, never at mount), draft survives, the second submit repeats the first call's request and Idempotency-Key. Reconcile-then-retry.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 10,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.retry.test.tsx",
+    "title": "CmsTaxonomyTermForm: retrying after an unknown outcome uses a fresh key once the request changed after an unknown outcome",
+    "verdict": "DROP",
+    "reason": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.retry.test.tsx:70-94 — asserts only that a CHANGED request gets a different Idempotency-Key (keys[1] !== keys[0]). That is the key-reuse boundary, not reconciliation before retry; it neither shows the refetch nor the retry of the same request.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 12,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx",
+    "title": "CmsTaxonomyTermForm: leaving with an unsent term draft (FE03 \"Unsaved changes\") arms beforeunload only while the open form holds input",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx:71-80 — beforeunload armed only while the open form holds input (clean/closed/emptied: not prevented).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 12,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx",
+    "title": "CmsTaxonomyTermForm: leaving with an unsent term draft (FE03 \"Unsaved changes\") shows an inline confirmation instead of leaving, and keeps the typed draft",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx:82-107 — link click defaultPrevented, navigate not called, role=alert confirmation, typed Term key and Label 1 kept after Keep editing.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 12,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx",
+    "title": "CmsTaxonomyTermForm: leaving with an unsent term draft (FE03 \"Unsaved changes\") leaves only through the explicit discard, to the link the person chose",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx:109-119 — leaves only through \"Leave without saving\", once, to the chosen link.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 12,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx",
+    "title": "CmsTaxonomyTermForm: leaving with an unsent term draft (FE03 \"Unsaved changes\") clears the draft and disarms the guard only after success or an explicit cancel",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.leave.test.tsx:130-146 — guard armed until the create succeeds (then disarmed, clean link not intercepted); a second draft is disarmed by Cancel.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-049",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "whole criterion (process: Contract -> QA-RED -> implementation -> QA-GREEN -> refactor, retained failing-test evidence, canonical validation): agree no test can prove the working method; the ledger needs root's red-green record under .memory/pipeline/progress/verification and the canonical validate log. Status unverified is right."
+  ],
+  "missedTests": [],
+  "status": "unverified",
+  "proposedStatus": "unverified"
+ },
+ {
+  "criterion": "P2-S12-AC-050",
+  "citations": [
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 tracking and feature ledger (P2-S12-AC-050) tracking: the tracker status agrees with the evidence ledger, and a Completion Signature exists exactly when every criterion is verified",
+    "verdict": "KEEP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:70-95 — the tracker Status line agrees with the evidence ledger (in-progress and no Completion Signature while any criterion is open; complete plus signature when none is) and the architecture map's Slice 12 scope line says the same. Passes in either state, so it proves agreement, not that an update was made; adequate for \"tracking\".",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 tracking and feature ledger (P2-S12-AC-050) tracking: the progress checker reports slice, phase and index agreement with no drift",
+    "verdict": "KEEP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:97-108 — scripts/check-progress-consistency.mjs --json exits 0, status \"consistent\", drift []: slice, phase and index trackers agree.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 tracking and feature ledger (P2-S12-AC-050) feature ledger: the P2-S12 rows are 25.03.02, 25.03.03, 25.05.01 and 25.05.02, complete in IA/BE/FE and listed by the phase plan; 25.05.03 and 25.05.04 are the plan-listed, unassigned remainder",
+    "verdict": "DROP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:110-154 — passes BECAUSE the feature-ledger assignments are not updated: it pins 25.05.03 and 25.05.04 as \"plan-listed, unassigned\" (\"KNOWN DRIFT, reported to root\", lines 145-153) while the phase plan lists six features for Slice 12. It proves the four assigned rows are complete, and that two are unassigned; it cannot prove \"Update ... feature-ledger assignments\". The lane's own limitation repeats the drift.",
+    "fix": null,
+    "dropClass": "PROOFGAP"
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 runbooks (P2-S12-AC-050) runbook: every runbook the slice cites exists, is linked from the platform runbook index and cites only existing repository paths",
+    "verdict": "KEEP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:157-172 — the two cited runbooks exist, are linked from docs/runbooks/platform/README.md, cite only existing repository paths and the converge runbook states DEC-194, cms_taxonomy_merge and service_role. Weak: the runbook list is hard-coded (lines 43-46), so a missing applicable runbook cannot fail it; acceptable for a closeout guard (Slice 11 precedent has content assertions per operation).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 generated contracts and architecture graph (P2-S12-AC-050) architecture graph: the compiled specification graph equals the graph rebuilt from the committed spec text",
+    "verdict": "KEEP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:174-213 — the committed .memory/schema/spec-graph.json equals buildSpecGraph over a temporary copy of the committed specs (builtAt ignored): the compiled graph is not stale (Slice 11 precedent cites the same test for \"architecture graph\").",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 2,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 implementation boundaries (P2-S12-AC-050) boundaries: no TODO, FIXME, not-implemented or unwired marker remains in the Slice 12 production sources",
+    "verdict": "KEEP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:269-271 — filesWhere(productionSources, hasLazyMarker) is []: no TODO, FIXME, not-implemented or unwired marker in 150+ Slice 12 production sources (coverage assertion lines 259-267).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 2,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 implementation boundaries (P2-S12-AC-050) boundaries: no BOUNDARY: marker remains in the Slice 12 production sources (the nested picker is wired to cmsPatternNestableRead)",
+    "verdict": "KEEP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:276-278 — no BOUNDARY: marker remains in the Slice 12 TypeScript production sources (the nested picker is wired).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 2,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 implementation boundaries (P2-S12-AC-050) boundaries: the two SQL BOUNDARY: markers are the replaced anchors of the retire-request amendment, absent from its replacement text",
+    "verdict": "KEEP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:280-298 — exactly two migrations carry BOUNDARY: and they are the replaced anchors of the retire-request amendment, absent from its replacement text. Scans supabase/migrations only; the unpromoted supabase/migrations-wip files are scanned after promotion.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 3,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 generated contracts and architecture graph (P2-S12-AC-050) contracts: the committed OpenAPI document equals the one generated from the route registry (no undocumented drift)",
+    "verdict": "KEEP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:175-179 — infra/generate-openapi.mjs --check exits 0 with empty stderr: the committed OpenAPI equals the one generated from the registry (undocumented API drift).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 3,
+    "tool": "vitest",
+    "file": "tests/contracts/phase-02-slice-12-closeout.test.ts",
+    "title": "Slice 12 tracking and feature ledger (P2-S12-AC-050) tracking: the progress checker reports slice, phase and index agreement with no drift",
+    "verdict": "KEEP",
+    "reason": "tests/contracts/phase-02-slice-12-closeout.test.ts:97-108 — progress drift [] (same assertion as the tracking part).",
+    "fix": null
+   }
+  ],
+  "splits": [
+   {
+    "clauseIndex": 0,
+    "verdict": "REJECT",
+    "reason": "Tiling is verbatim and non-overlapping (checked with the guard's CLAUSE_SEPARATOR), but part 0 bundles four artifacts of which one, \"feature-ledger assignments\", is known not to be done (25.05.03/25.05.04 read \"—\" in .memory/wiki/specs/feature-ledger.md while the plan lists them for Slice 12): citing part 0 as a whole would count it proven. Re-split as the Slice 11 ledger did (tests/contracts/phase-02-slice-11-evidence-ledger*.ts AC-045): \"Update slice tracking\" | \"feature-ledger assignments\" | \"applicable runbooks\" | \"and architecture graph\" | \"in the same change;\" | \"leave no unresolved implementation boundary\" | \"or undocumented drift.\", cite the others as proposed and leave \"feature-ledger assignments\" uncited with the drift as its limitation, or have root assign the two rows to P2-S12 (then the closeout test's pinned drift assertion changes)."
+   }
+  ],
+  "missedGaps": [
+   "clause \"feature-ledger assignments\": 25.05.03 and 25.05.04 are plan-listed for Slice 12 (DEC-114) but unassigned in the feature ledger; the update the clause asks for is still to be made (root).",
+   "clause \"in the same change;\": agree it is unprovable by a repository-state test (the commit shows it)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-051",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-052",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-053",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-054",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-055",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql",
+    "title": "a source revision that EXISTS but belongs to an entry the caller cannot read is the concealed NOT_FOUND [P2-S12-AC-033]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql:109-114 — an existing revision of a stranger party's entry as sourceRevisionId answers P0001:NOT_FOUND (concealed 404 LOCALE_SOURCE_NOT_FOUND) for an otherwise valid request (control 140-145). See AC-033 for the unreadable-versus-other-entry caveat.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql",
+    "title": "a readable revision of another entry is not a source for this entry: the same concealed NOT_FOUND [P2-S12-AC-055]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql:115-120 — a revision the caller can read but of ANOTHER own entry is refused with the same concealed NOT_FOUND: the source must be a readable revision of the requested entry. Supplement (neighbouring binding rule).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql",
+    "title": "the concealed refusal carries no DETAIL that could reveal the foreign revision [P2-S12-AC-055]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql:126-130 — the concealed refusal carries no DETAIL. That is the \"no ... identifier is serialized\" clause (clause 7), not \"on a source revision the caller can read\".",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql",
+    "title": "control: the same request over the entry's own readable source revision authors the draft [P2-S12-AC-033]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql:140-145 — positive half: the entry's own readable source revision authors the draft.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-056",
+  "citations": [
+   {
+    "clauseIndex": 6,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_locale.sql",
+    "title": "CMS-03C-04 write of 128 locale fields over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-056]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_locale.sql:41-42 — 24 real cms_author_locale_variant calls of 128 fields as service_role, all succeeded, p95 < 1,200 ms (reported 36.4 ms). DB share only: it cannot prove a Tier 2 (end-to-end) p95 by itself (round-2 brief); keep only together with the apispec below.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-locale.apispec.ts",
+    "title": "Slice 12 locale latency through the real stack [CMS-03C-04] writing a 128-field fr-FR variant: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-056] [P2-S12-AC-279]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-locale.apispec.ts:138-168 — the real proof: 128-field fr-FR variant written through Worker -> Kong -> PostgREST, 3 discarded warm-ups + 24 samples via measure() (percentile_cont), every answer asserted 201 inside measure's check, expect(result.p95).toBeLessThan(1200) and each elapsed < 15,000 ms. Static identity; NOT RUN: counts only with a passed receipt from root's run (fixtures committed, run right after db:reset).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 9,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql",
+    "title": "a different actor sending the creator's key and body is never served the creator's stored response: it is the 409 VERSION_MISMATCH of the now-stale entry version [P2-S12-AC-056]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql:147-161 — the 409 the editor gets is VERSION_MISMATCH because the creator's committed write moved the entry version past the replayed body's expectedVersion (the test asserts entry_version_now > sent_version). It is the stale CAS, not a response to the changed actor: reservations are keyed (actor, operation, key hash) (identity_idempotency_reserve, cms_reserve), so another actor never collides with the first actor's key. With a CURRENT expectedVersion the same actor change is an independent request. BE03c 150 says \"changed actor/body/path/version returns 409\"; this test cannot tell which mechanism, if any, implements the actor part.",
+    "fix": null,
+    "dropClass": "CONFOUNDED"
+   },
+   {
+    "clauseIndex": 9,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql",
+    "title": "the creator's reservation is untouched and the refused editor attempt reserved nothing: the key is bound to the actor [P2-S12-AC-056]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_variant.sql:162-169 — the creator's reservation is untouched and the editor's attempt reserved nothing: the actor-bound key mechanism, which is exactly why the clause as worded cannot be observed as an idempotency 409. Describes the mechanism; asserts no 409.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 9 \"answers a changed actor ...\": leave uncited and raise a spec question: BE03c 150 says a changed actor under the same key returns 409, the implementation scopes the key by actor (independent reservation). Needed test: the editor sends the creator's key with a CURRENT expectedVersion; expected 409 per spec, probably 201 in fact. docs/handoffs/2026-10-22-claude-s12/recite/spec-questions.md:29 and lane-gaps-db1-report.md:135 already note \"satisfied observably only through the stale entry version\".",
+   "clause 6 depends on the latency-locale apispec receipt (root has not run it)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-057",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-058",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 0 (page-level mount of CmsLocaleVariantForm at /app/cms-content-modeling/entries/:entryId/locales/:locale): gap confirmed. The only locale real-route spec (tests/e2e/phase-02-slice-12-locale-real-route.spec.ts) opens /app/cms-content-modeling/templates/release-note and fetches the variants API from the page; it never renders the locale route or the form."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-059",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-060",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-061",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 6 \"Tier 2\": agree it stays a gap. The database-share bench gaps_perf_related.sql:68 (p95 39.2 ms) exists but no real-stack related-content apispec was authored (perf lane B2), and a pgTAP bench alone never proves a Tier clause (round-2 brief). The limitation should name the missing apispec (64 eligible targets over HTTP), not only the bench."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-062",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-063",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-064",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-065",
+  "citations": [
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "an absent id and a version row of another organization meet the same concealed NOT_FOUND [P2-S12-AC-066]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:146-153 — cms_submit_governed_review with an absent subjectId and with the exact version row of ANOTHER organization both answer P0001:NOT_FOUND (actor 'other' vs subject 'sa' of ownerOrg): \"in the caller's owner scope\". The positive half (a version row id is accepted) is in the existing submit citations.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "the two concealed refusals leave the subject, reviews, reservations, audit and outbox unchanged [P2-S12-AC-065]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:154-159 — subject, reviews, reservations, audit and outbox unchanged after the two refusals; a no-effect assertion.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "control: the minted subject is a draft first version whose lineage id is its own row id [P2-S12-AC-065]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:136-139 — asserts the fixture (draft first version whose template_id = id). By the file's own note (lines 133-135) this is exactly why lineage id and row id cannot be separated here; it documents the test's blind spot and proves nothing about \"exact version row id\".",
+    "fix": null,
+    "dropClass": "CONFOUNDED"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "\"the exact version row id\" versus a lineage id is not separated for a first version (template_id = id); only a successor (row id != lineage id) discriminates, and the resolver reads item.id = p_id (cms_governed_subject_resolve). Acceptable if root takes row-id lookup as the definition; otherwise add a two-version case."
+  ],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-066",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "an absent id and a version row of another organization meet the same concealed NOT_FOUND [P2-S12-AC-066]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:146-153 — an absent subjectId and another organization's version row answer the identical concealed P0001:NOT_FOUND from platform_api.cms_submit_governed_review (\"a hidden or absent subject is 404\").",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "the concealed refusals carry the same DETAIL (none), so nothing distinguishes hidden from absent [P2-S12-AC-066]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:160-162 — count(distinct detail) <= 1 across the two refusals: nothing distinguishes hidden from absent. Supplement.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "the two concealed refusals leave the subject, reviews, reservations, audit and outbox unchanged [P2-S12-AC-065]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:154-159 — stores unchanged after the refusals; no-effect assertion.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-067",
+  "citations": [
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-06 submit over 110 real submissions: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-067]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:6-7 — 110 real cms_submit_governed_review calls as service_role, all succeeded, p95 < 1,200 ms (reported 4.4 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts",
+    "title": "Slice 12 governed-review latency through the real stack [CMS-03C-06] submit over a real draft template: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-067]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts:103-135 — submit over a real draft template (defined through CMS-03C-01) through the full stack: 24 samples + 3 warm-ups, expectCreated per answer, expect(result.p95).toBeLessThan(1200) at line 122. Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). The measure() helper (support/phase-02-slice-11-latency-stats.ts:40-66) times only the request, asserts every answer in check() and takes percentile_cont over the 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "verified only if latency-governed.apispec.ts passes in root's run; the pgTAP bench alone would not carry the clause."
+ },
+ {
+  "criterion": "P2-S12-AC-068",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-069",
+  "citations": [
+   {
+    "clauseIndex": 3,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.icon.test.tsx",
+    "title": "CmsGovernedReviewPanel lifecycle icon (FE03 Slice 12 governed surfaces) shows exactly one decorative icon beside the lifecycle text for every subject state",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.icon.test.tsx:47-63 — for every GOVERNED_SUBJECT_STATE_LABEL state the [data-governed-lifecycle] line contains \"Lifecycle: <label>\" and exactly one svg with aria-hidden=\"true\", focusable=\"false\", data-lifecycle-icon=<state>: text AND a decorative icon beside it.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.icon.test.tsx",
+    "title": "CmsGovernedReviewPanel lifecycle icon (FE03 Slice 12 governed surfaces) gives every state its own glyph, so the state is never carried by colour alone",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.icon.test.tsx:65-74 — one distinct non-empty glyph per state (Set size = number of states): the state is never carried by colour alone.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.test.tsx",
+    "title": "CmsGovernedReviewPanel lifecycle (CMS-03C-06) states the review lifecycle in words and offers no submit action",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.test.tsx:81-103 (it.each case 'review', identity \"... states the review lifecycle in words and offers no submit action\"): \"Lifecycle: In review\" and the exact sentence \"Needs an independent reviewer's approval\" (FE03 879), no form, no \"Activation is not available from this panel yet\". Title is it.each-expanded; the 7 expanded names are unique.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 11,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.not-found.test.tsx",
+    "title": "CmsGovernedReviewPanel: the 404 half of the 403/404 split shows the one non-disclosing not-available line for a hidden or absent subject, with no capability gate",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.not-found.test.tsx:57-72 — a 404 GOVERNED_REVIEW_NOT_FOUND on submit shows the single non-disclosing \"This record is not available.\" in role=alert, no capability gate, no step-up link, no result heading.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 11,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.not-found.test.tsx",
+    "title": "CmsGovernedReviewPanel: the 404 half of the 403/404 split keeps the two halves distinct: the 403 shows the capability gate and no not-available line",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-governed-review/CmsGovernedReviewPanel.not-found.test.tsx:74-89 — a 403 capability_missing shows the capability gate and not the not-available line: the other half of the 403/404 split.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 0 page-level mount stays a gap: pattern-pages.test.ts / governed-review-mounts.test.ts read .astro source text (DEC-226 rule 3: source-text tests never count); agree with the lane."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-070",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-071",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-072",
+  "citations": [
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "the subject creator holding the standing reviewer grant is refused the decision with the 403 capability_missing [P2-S12-AC-072]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:207-209 — designer2 (creator, standing cms.reviewer grant, NOT assigned: the assignment was refused two lines earlier) gets 403 capability_missing. That is the generic \"readable review without an effective assignment\" refusal every unassigned human gets (the existing c3 citations); it cannot be told from a separation-of-duties refusal. The decision RPC's separation_of_duties branch is unreachable for a creator (a creator can never be assigned), which the lane's own report states; BE03c 1468 types the creator case as 409 reviewer_not_eligible at assignment and 403 separation_of_duties only at decision. Round-2 rule: an unreachable sub-branch is left uncited with its BOUNDARY text, not verified-with-caveat. (Existing c4 for the submitter uses the same outcome-only proof; flagged under missedGaps.)",
+    "fix": null,
+    "dropClass": "CONFOUNDED"
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "the creator cannot be assigned: reviewer_not_eligible even with a standing cms.reviewer grant [P2-S12-AC-072]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:204-206 — the creator cannot be assigned: P0001:reviewer_not_eligible. That is the real creator-SoD control, but BE03c 1468 lists reviewer_not_eligible under the 409 tokens; the clause says \"is 403\". Neighbouring rule (assignment eligibility), also asserted by governed_assignment/030-refusals.sqlinc el-creator.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "the creator refusals write no assignment, decision, reservation, audit or outbox row [P2-S12-AC-072]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:210-212 — gates snapshot and decision count unchanged; a no-effect assertion.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "control: an independent assigned reviewer approves the same review, so the creator refusal was identity-specific [P2-S12-AC-072]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:213-217 — an independent reviewer who WAS assigned approves the same review; the title says the creator refusal \"was identity-specific\", but the creator differs from rev1 in the assignment, not only in identity, so the control does not isolate identity.",
+    "fix": null,
+    "dropClass": "CONFOUNDED"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 5 \"the subject creator) is 403\": keep uncited with the BOUNDARY text: a creator is stopped at assignment (409 reviewer_not_eligible) so the decision RPC separation_of_duties branch cannot be reached by any lawful state; the 403 an unassigned creator receives is capability_missing, not SoD-specific. Status partial.",
+   "consistency note for root: clause 4 (the submitter) is cited in the ledger by the same outcome-only proof (\"the readable submitter without an assignment is 403 capability_missing\", phase_02_slice_12_governed_decision.sql); if the unreachable-branch rule is applied strictly, clause 4 should be re-examined too."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-073",
+  "citations": [
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql",
+    "title": "CMS-03C-07 takes position 1 (reviewer authority rows), then the subject row (position 3), then its dependency graph and bound content-type versions (positions 3 and 4), then the review row (position 5) [BE03c lock order, DEC-157] [P2-S12-AC-073]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql:37-52 — static source-order oracle over pg_proc.prosrc of platform_private.cms_record_governed_decision(jsonb): the full lock clauses occur '1,1,1,2' times (counts, line 49) and their first occurrences are in order authority rows (cms_lock_person_authority), subject (cms_governed_subject_resolve(..., true)), dependency graph (cms_governed_lock_graph), review-row FOR UPDATE (line 51-52); the source acquires in that order (20261014010200:115-156). Proves SOURCE order only (the file says so); two simultaneous decisions are the recorded race BOUNDARY. The clause text names the order, so a source oracle is the established proof (pattern_updates/080-lock-order.sqlinc; the existing ledger limitation names exactly this).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql",
+    "title": "the first FOR UPDATE in the CMS-03C-07 source is the review-row lock itself [P2-S12-AC-073]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql:53-58 — the first 'for update' in the function source is the review-row lock inside anchor 4, so no other row lock of its own precedes the graph lock. Supplement.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql",
+    "title": "control: the order check detects the review row locked before the subject and dependency positions (the order DEC-157 rejected) [P2-S12-AC-073]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql:59-60 — mutated-source control: the detector rejects the review-row-first order. It validates the oracle, it is not evidence about the writer (a precondition control, class B); keep it in the file.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 8,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-07 decision over 50 real approvals including the protected two-slot review: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-073]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:12-13 — 50 real cms_record_governed_decision approvals including the protected two-slot review as service_role, all ok, p95 < 1,200 ms (reported 7.5 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 8,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts",
+    "title": "Slice 12 governed-review latency through the real stack [CMS-03C-07] approval by the assigned reviewer: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-073]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts:166-192 — approval by the assigned reviewer through the full stack, 24 samples + 3 warm-ups, collect(0,'approve') asserts 200 per answer, expect(result.p95).toBeLessThan(1200) at line 181. Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). The measure() helper (support/phase-02-slice-11-latency-stats.ts:40-66) times only the request, asserts every answer in check() and takes percentile_cont over the 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 1: the lane's own race BOUNDARY (two simultaneous decisions serialize) is a different statement from \"takes its locks in the Slice 12 lock order\" and is not required by the clause text; no race module exists for CMS-03C-07."
+  ],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-074",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-075",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 8 \"protected decision paths\": gap confirmed. CmsGovernedDecisionForm.test.tsx tests the specialist_slot_unsatisfiable copy (line 307) but no two-decision base-then-specialist path; the path is database-only."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-076",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-077",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-078",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-079",
+  "citations": [
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql",
+    "title": "CMS-03C-08 locks the review row FOR UPDATE (position 5) after the authority rows (position 1) and the revoke-path subject row (position 3) and before it inserts an assignment or locks the assignment row that carries the 16-active limit check [P2-S12-AC-079]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql:80-96 — static oracle over cms_assign_governed_reviewer(jsonb): the review-row FOR UPDATE occurs exactly once (counts '1,1,1,1,1', line 93) and after the authority rows and the revoke-path subject lock (order '1 2 3 5 4', line 95). \"locks the review row\" is the clause; source order only, as the file states.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql",
+    "title": "the limit of 16 active assignments is checked under the review-row lock, never before it [P2-S12-AC-079]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql:97-98 — strpos('if v_active >= 16 then') > strpos(review-row lock): the 16-active limit is evaluated under the review-row lock. Supplement.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql",
+    "title": "control: the order check detects the review row locked before the authority rows [P2-S12-AC-079]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_lock_order.sql:99-100 — mutated-source control of the detector; validates the oracle, not the writer (class B).",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 9,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-08 assignment create over 146 real creations (up to the limit of 16 active): every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-079]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:8-9 — 146 real assignment creations up to the 16-active limit, all ok, p95 < 1,200 ms (2.9 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 9,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-08 assignment revoke over 20 real revocations on a 16-active review: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-079]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:10-11 — 20 real revocations on a 16-active review, p95 < 1,200 ms (2.5 ms). DB share only and, unlike create, with NO real-stack counterpart: the apispec never times a revocation (revokeAssignment is used only as untimed setup, apispec lines 273-286). Kept as supplement; the revoke half of \"Tier 2\" is therefore proven at the database share only.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 9,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts",
+    "title": "Slice 12 governed-review latency through the real stack [CMS-03C-08] assignment of the reviewer: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-079]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts:137-164 — assignment of the reviewer through the full stack (create), expect 201 per answer, expect(result.p95).toBeLessThan(1200) at line 153. Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). The measure() helper (support/phase-02-slice-11-latency-stats.ts:40-66) times only the request, asserts every answer in check() and takes percentile_cont over the 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 9 \"and Tier 2\": the registered row covers create and revoke; only create is measured end to end. Add a timed revoke to latency-governed.apispec.ts (revokeAssignment already exists in the world helper) or accept create as representative."
+  ],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-080",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-081",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-082",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-083",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql",
+    "title": "activate with a subject hash that differs from the frozen one commits the invalidation: dependency_changed, review version 3, subject back to draft, no event, stored 409 [P2-S12-AC-083]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql:98-113,132-133 — approved review h1 activated while the CURRENT-side reader cms_governed_subject_resolve returns a different contentHash (wrapper under GUC gap.fault='hash'): result {kind:refusal, reasonCode:dependency_changed}, review invalidated at version 3, subject back to draft, no event, stored 409. The recheck function cms_governed_frozen_status and the command are unmodified. LABELLED SEAM: the frozen and the current hash are immutable on both sides, so the difference cannot arise lawfully; this is fault injection at the pinned reader, restored byte for byte (gh_restore, line 140). Accepted as test-double proof; root should state that explicitly.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql",
+    "title": "schedule with a subject hash that differs from the frozen one commits the same invalidation and creates no schedule [P2-S12-AC-083]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql:134-135 — the same hash difference on schedule: invalidation committed, no schedule row (gh_refused line 127).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql",
+    "title": "activate with a workflow-policy basis that differs from the frozen one commits the same invalidation [P2-S12-AC-083]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql:136-137 — activate with a differing policy basis (cms_governed_policy_basis wrapper alters basisHash): the same committed invalidation.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql",
+    "title": "schedule with a workflow-policy basis that differs from the frozen one commits the same invalidation and creates no schedule [P2-S12-AC-083]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql:138-139 — schedule with a differing policy basis: the same committed invalidation, no schedule.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql",
+    "title": "control: both pinned readers are restored byte for byte (source, owner, ACL) and the wrappers are gone [P2-S12-AC-083]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_recheck.sql:140-141 — the seam cleanup control (readers restored, wrappers gone). Test hygiene, not evidence about the recheck.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "seam acceptance: if root's rule is that a branch no lawful state reaches may not be cited at all (AC-244 precedent), clause 2 reverts to a gap; the reviewer's reading is that fault injection at a pinned reader with the production recheck untouched is a test double, not an unreachable-branch claim."
+  ],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-084",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "a curator is refused on a template review (hidden 404 when unassigned, 403 when assigned) and a designer is refused on a taxonomy review the same way: the capability is the subject kind's own [P2-S12-AC-084]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:243-251 — activation by a taxonomy curator (rev2) on a template review answers NOT_FOUND when unassigned and capability_missing when assigned; activation by a designer (designer2) on a taxonomy review answers NOT_FOUND unassigned / capability_missing assigned: the capability is the subject kind's own.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "the wrong-kind capability refusals leave subjects, reviews, reservations, audit and outbox unchanged [P2-S12-AC-084]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:252-255 — stores unchanged after the wrong-kind refusals; no-effect assertion.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "controls: the designer activates the template review and the curator activates the taxonomy review [P2-S12-AC-084]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:256-261 — positive half: the designer activates the template review and the curator the taxonomy review (subjects become active).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "the owner capability of a subject kind is cms.template_designer for a template or pattern version and cms.taxonomy_curator for a taxonomy version [P2-S12-AC-066]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:165-169 — platform_private.cms_governed_owner_capability maps template_version and pattern_version to cms.template_designer and taxonomy_version to cms.taxonomy_curator. Helper-level but it is the single definition of \"the subject kind's owner capability\"; the pattern kind has no behavioural case (only this mapping).",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-085",
+  "citations": [
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-09 activate over 24 real activations: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-085]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:14-15 — 24 real activations as service_role, all ok, p95 < 1,200 ms (4.9 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-09 schedule over 24 real scheduled acceptances: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-085]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:16-17 — 24 real schedule acceptances, p95 < 1,200 ms (4.7 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-09 retire over 24 real retirements: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-085]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:18-19 — 24 real retirements, p95 < 1,200 ms (2.8 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts",
+    "title": "Slice 12 governed-review latency through the real stack [CMS-03C-09] activation of an approved review: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-085]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts:194-211 — activation of an approved review through the full stack, collect(0,'activate') asserts 200, p95 < 1200 (line 210). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). The measure() helper (support/phase-02-slice-11-latency-stats.ts:40-66) times only the request, asserts every answer in check() and takes percentile_cont over the 24 samples after 3 warm-ups.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts",
+    "title": "Slice 12 governed-review latency through the real stack [CMS-03C-09] scheduling of an approved review: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-085]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts:213-227 — scheduling through the full stack, asserts 202 per answer, p95 < 1200 (line 226). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). The measure() helper (support/phase-02-slice-11-latency-stats.ts:40-66) times only the request, asserts every answer in check() and takes percentile_cont over the 24 samples after 3 warm-ups.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts",
+    "title": "Slice 12 governed-review latency through the real stack [CMS-03C-09] retirement of an active version: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-085]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts:229-247 — retirement of an active version through the full stack, expectOk per answer, p95 < 1200 (line 246). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). The measure() helper (support/phase-02-slice-11-latency-stats.ts:40-66) times only the request, asserts every answer in check() and takes percentile_cont over the 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 1 (lock order of CMS-03C-09) is correctly left a gap: gaps_lock_sources.sql:61-67 anchors authority (1), subject (3), graph and the advisory lock last, and \"the last FOR UPDATE before the advisory lock\", but names no review-row anchor and no position-4 anchor, so the review row's place after positions 3/4 is not shown (that test also belongs to AC-276, lane b)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-086",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 1 \"`activation_conflict`\": gap confirmed (no race of two activators of one lineage; governed_activation/090-lineage-lock says the lost-race branch is unreachable single-session). Clause 4 \"canonical_source_unavailable with details.domain\": gap confirmed; supabase/tests grep finds the token only for CMS-03C-06 submit (taxonomy_definition/060, governed_fix/005), the scheduled executor (gaps_db1_schedule_fire.sql) and persistence probes, none for the CMS-03C-09 activation command. The lane was right not to cite the executor test (CMS-03C-19) here."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-087",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-088",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "the served policyBasis is ordered by contentTypeLabel then policyKey (C collation), not by creation order or policy key alone [P2-S12-AC-088]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:263-282 — three real active types labelled 'gap a' (editorial), 'Gap B' (cms.disclosure.policy) and 'Gap B' (editorial); the served CMS-03C-10 policyBasis equals [[\"Gap B\",\"cms.disclosure.policy\"],[\"Gap B\",\"editorial\"],[\"gap a\",\"editorial\"]] in served order (jsonb_agg ... order by ordinality): label first, then policy key, in C collation. Creation order and policy-key-only order both differ. The spec says only \"sorted by label then policy key\" (BE03c 1088); the C collation is the portable reading and consistent with the other bytewise-order decisions, but it is a pin of an interpretation.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql",
+    "title": "control: the receipt owner reads the three-member review detail [P2-S12-AC-088]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_governed.sql:276-277 — control: the receipt owner reads the detail successfully; a precondition of the next assertion, not evidence about the order.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-089",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-090",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-091",
+  "citations": [
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-10 detail of the owner at 36 assignment rows (32 summarized), 2 decisions and a 2-type policy basis: p95 under the Tier 1 target of 750 ms [P2-S12-AC-091]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:20-21 — 30 real owner detail reads at 36 assignment rows (32 summarized), 2 decisions and a 2-type policy basis, p95 < 750 ms (4.6 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-10 detail of an assigned reviewer (no assignment summaries): p95 under the Tier 1 target of 750 ms [P2-S12-AC-091]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:22-23 — 30 assigned-reviewer detail reads, p95 < 750 ms (2.5 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts",
+    "title": "Slice 12 governed-review read latency through the real stack [CMS-03C-10] the detail of a review with 16 active and 20 revoked assignments: p95 under the Tier 1 target of 750 ms [P2-S12-AC-091]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts:251-306 — detail of a review with 16 active and 20 revoked assignments (32 summarized assignments asserted at line 295), 24 samples + 3 warm-ups, expectOk per answer, p95 < 750 (line 305, Tier 1). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). The measure() helper (support/phase-02-slice-11-latency-stats.ts:40-66) times only the request, asserts every answer in check() and takes percentile_cont over the 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-092",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-093",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 0 (page-level mount of CmsGovernedReviewDetail at /app/cms-content-modeling/definition-reviews/:reviewId): gap confirmed; no e2e spec opens a definition-reviews route (grep of tests/e2e)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-094",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-095",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 2 \"a body and any mutation header\" for the CMS-03C-11 queue: gap confirmed. In governed-review-reads.test.ts the queue describe (lines 121-290) has no body or Idempotency-Key/If-Match case; the 415 and header cases at lines 47-101 belong to the CMS-03C-10 detail route."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-096",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-097",
+  "citations": [
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-11 first page at the maximum limit of 50 from 111 assigned reviews: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:24-25 — 30 real queue first-page reads at limit 50 of 111 assigned reviews, p95 < 750 ms (4.7 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc",
+    "title": "CMS-03C-11 cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_governed/050-assert.sqlinc:26-27 — cursor page at limit 50, p95 < 750 ms (5.1 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; DEC-226 rule 1 asks for a measurement and the S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts",
+    "title": "Slice 12 governed-review read latency through the real stack [CMS-03C-11] first page at the maximum limit of 50 from the reviewer queue: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts:308-326 — first page at limit=50 (50 items and a cursor asserted, lines 313-316), 24 samples, p95 < 750 (line 325). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). The measure() helper (support/phase-02-slice-11-latency-stats.ts:40-66) times only the request, asserts every answer in check() and takes percentile_cont over the 24 samples after 3 warm-ups.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts",
+    "title": "Slice 12 governed-review read latency through the real stack [CMS-03C-11] cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-governed.apispec.ts:328-346 — cursor page at limit=50 (items > 0), 24 samples, p95 < 750 (line 345). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). The measure() helper (support/phase-02-slice-11-latency-stats.ts:40-66) times only the request, asserts every answer in check() and takes percentile_cont over the 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-098",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-099",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-100",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-101",
+  "citations": [
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql",
+    "title": "another owner's ACTIVE content type is refused at the /compatibleTypeIds pointer [P2-S12-AC-101]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql:79-84 — cms_create_pattern_version with compatibleTypeIds = [an ACTIVE content type with an active version owned by ANOTHER organization (control 72-77)] is refused VALIDATION_FAILED (s12pd_refused) with DETAIL exactly [\"/compatibleTypeIds\"]: \"of the caller's owner scope\" isolated from state and version (the foreign type is active).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql",
+    "title": "one foreign member among owned active types refuses the whole list at /compatibleTypeIds [P2-S12-AC-101]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql:85-90 — [owned active type, foreign active type] is refused as a whole at the same pointer: \"each\".",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql",
+    "title": "control: the same definition over the caller's own active types is accepted [P2-S12-AC-101]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql:91-94 — positive half: the same definition over the caller's own active types is accepted (state 00000).",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-102",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-103",
+  "citations": [
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc",
+    "title": "CMS-03C-12 save of a new lineage with a 512-node forest over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc:6-7 — 24 real cms_create_pattern_version calls with a 512-node forest, all ok, p95 < 1,200 ms (294.4 ms, which is also < 2 s). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc",
+    "title": "CMS-03C-12 save of 32 references expanding to 512 nodes over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc:10-11 — 24 saves of 32 references expanding to 512 nodes, p95 < 1,200 ms (198.5 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts",
+    "title": "Slice 12 pattern definition latency through the real stack [CMS-03C-12] saving a new lineage with a 512-node forest: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-103] [P2-S12-AC-279]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts:80-101 — a new lineage with a 512-node forest through the full stack: every answer 201 with nodeCount 512 asserted in check(), p95 < 1200 (line 100); the closing test (lines 207-217) asserts every sample under 15 s. \"(target < 2 s)\" is a soft end-to-end target and is shown here only at the p95 level (no per-request < 2 s assertion). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 7,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc",
+    "title": "CMS-03C-12 save of a new lineage with a 512-node forest over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc:6-7 — see clause 5: DB share of the 512-node new-lineage save. DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 7,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc",
+    "title": "CMS-03C-12 successor save (expectedVersion = the parent) of a 512-node forest over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc:14-15 — 24 successor saves (expectedVersion = the parent) of a 512-node forest, p95 < 1,200 ms (234.1 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 7,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts",
+    "title": "Slice 12 pattern definition latency through the real stack [CMS-03C-12] saving 32 references that expand to 512 nodes: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-103] [P2-S12-AC-279]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts:103-128 — 32 references that expand to 512 nodes through the full stack, 201 and nodeCount 512 per answer, p95 < 1200 (line 127). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 7,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts",
+    "title": "Slice 12 pattern definition latency through the real stack [CMS-03C-12] saving a successor of a 512-node lineage (expectedVersion = the parent): p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-103]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts:130-150 — successor of a 512-node lineage (If-Match = the parent version '1') through the full stack, 201 per answer, p95 < 1200 (line 149). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "verified only if latency-patterns.apispec.ts passes in root's run. Known marginal figure: 512-node save RPC p95 294 ms against the 300 ms RPC target (AC-279, lane b)."
+ },
+ {
+  "criterion": "P2-S12-AC-104",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-105",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.nested-picker.test.tsx",
+    "title": "CmsPatternVersionDesigner: the nested-pattern picker reads with the version content types, in step with the checkboxes, and adds a nested node that saves as a lineage reference",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.nested-picker.test.tsx:82-127 — with readNestable stubbed, the designer reads with the version's content types in step with the checkboxes ([TYPE_ID] then [TYPE_ID, TYPE_B]), choosing a listed version and \"Add nested pattern\" adds a node, and \"Create draft\" submits {kind:'pattern', key, patternId, patternVersion:3} (lines 113-126). UI half of \"nested pattern nodes from CmsPatternNestedPicker over cmsPatternNestableRead\"; the designer-only authority is the BE read (lane nestable-read tests).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-pattern-designer/CmsPatternNestedPicker.test.tsx",
+    "title": "CmsPatternNestedPicker: choosing adds the chosen version through onAdd and resets the choice",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-pattern-designer/CmsPatternNestedPicker.test.tsx:145-159 — the chosen version goes through onAdd {patternId, patternKey, patternVersion} and the choice resets.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-pattern-designer/CmsPatternNestedPicker.test.tsx",
+    "title": "CmsPatternNestedPicker: before and while loading reads the first page of the pattern types and lists each pattern version, never preselected",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-pattern-designer/CmsPatternNestedPicker.test.tsx:98-116 — reads the first page of the pattern types (read called once with [TYPE_ID, TYPE_B] and a null cursor), lists each version, never preselected, count announced.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.node-pointer.test.tsx",
+    "title": "CmsPatternVersionDesigner: a refusal that names its node (DEC-228) links pattern_depth_exceeded to Node 1.1 and renders it inline at that node",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.node-pointer.test.tsx:46-81 (it.each case pattern_depth_exceeded, 422, nodePath [0,0]) — the status region links \"Node 1.1: <copy>\", the copy renders as the one node-level .cms-field-errors inside that node's LI, activating the link moves focus to it. The submit result is a stub carrying nodePath; the producer is the pgTAP node-pointer cases below and the Worker relay (missedTests).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.node-pointer.test.tsx",
+    "title": "CmsPatternVersionDesigner: a refusal that names its node (DEC-228) links pattern_nodes_exceeded to Node 1.1 and renders it inline at that node",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.node-pointer.test.tsx:46-81 (case pattern_nodes_exceeded, 422) — same assertions for the node-count refusal.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.node-pointer.test.tsx",
+    "title": "CmsPatternVersionDesigner: a refusal that names its node (DEC-228) links pattern_cycle to Node 1.1 and renders it inline at that node",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.node-pointer.test.tsx:46-81 (case pattern_cycle, 409) — same assertions for the cycle refusal.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_node_pointers.sql",
+    "title": "a depth-10 chain is refused at its level 9 node, not at the root [P2-S12-AC-105, DEC-228]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_node_pointers.sql:101-107 — a depth-10 chain is refused VALIDATION_FAILED/pattern_depth_exceeded with DETAIL [\"/blockTree/0\" + 8 x \"/children/0\"]: the first level-9 node, not the root. Depends on the node-pointers WIP migrations (reviewed PROMOTE in V13; passed in the review stack).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_node_pointers.sql",
+    "title": "the 513th literal node in preorder is the offending node [P2-S12-AC-105, DEC-228]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_node_pointers.sql:116-119 — 16 roots + 32 + 15 x 31 = 513 literal nodes: pattern_nodes_exceeded names [\"/blockTree/15/children/30\"], the 513th node in preorder.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_node_pointers.sql",
+    "title": "a successor of child that nests child is refused at the nested reference [P2-S12-AC-105, DEC-228]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_node_pointers.sql:145-149 — a successor of child that nests child: CONFLICT/pattern_cycle names [\"/blockTree/1/children/0\"], the nested reference closing the cycle.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 0 (page-level mount of CmsPatternVersionDesigner at /app/cms-content-modeling/patterns/new and /:patternKey) stays a gap: pattern-pages.test.ts reads the .astro sources as text (DEC-226 rule 3); agree with the lane."
+  ],
+  "missedTests": [
+   {
+    "clauseIndex": 6,
+    "citation": {
+     "tool": "vitest",
+     "file": "apps/worker/src/cms-composition/node-pointer-refusal.test.ts",
+     "title": "nodePointerWireDetails (DEC-228) [P2-S12-AC-105] relays the first held pointer of the request blockTree grammar with the fixed code and message"
+    },
+    "evidence": "apps/worker/src/cms-composition/node-pointer-refusal.test.ts:11-33 — the root-written Worker relay of the DB DETAIL pointer /blockTree/{i}(/children/{j})* to the fixed-message violations the designer reads; the middle link between the pgTAP pointer cases and the component test (not cited by the lane; listed in the brief among the new tests)."
+   }
+  ],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-106",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-107",
+  "citations": [
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql",
+    "title": "another owner's ACTIVE content type answers the concealed NOT_FOUND [P2-S12-AC-107]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql:105-110 — platform_api.cms_list_pattern_selector for an author of the owner party naming the id of an ACTIVE content type (active version) of ANOTHER organization answers P0001:NOT_FOUND (control 72-77).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql",
+    "title": "it is exactly the outcome of an absent content type: message, DETAIL and all [P2-S12-AC-107]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql:111-112 — s12pu_oc (state:message#detail) of the foreign type equals that of an absent id: \"message, DETAIL and all\".",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql",
+    "title": "the concealed read returns no list and changes no store [P2-S12-AC-107]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql:113-114 — the concealed read returns no list and changes no store; a no-effect assertion.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql",
+    "title": "control: an author lists the selector for its own content type [P2-S12-AC-107]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql:108 — positive half: an author lists the selector for its own content type.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql",
+    "title": "it is exactly the outcome of an absent content type: message, DETAIL and all [P2-S12-AC-107]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql:111-112 — a hidden (other-owner) content type answers exactly like an absent one at the database; the 404 mapping of the NOT_FOUND token is the Worker half (existing citations).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql",
+    "title": "another owner's ACTIVE content type answers the concealed NOT_FOUND [P2-S12-AC-107]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_pattern_types.sql:109-110 — the hidden other-owner type is the concealed NOT_FOUND.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-108",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 3 \"or other-owner version is never listed\": BOUNDARY confirmed. gaps_db1_pattern_types.sql:141-151 proves a foreign DRAFT row is not listed, which the state filter alone explains (the file says so, lines 119-123); an ACTIVE foreign version needs that organization's own governed chain. Correctly not cited."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-109",
+  "citations": [
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc",
+    "title": "CMS-03C-13 first selector page at the maximum limit of 50 from 65 active versions: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc:16-17 — 30 real selector first-page reads at limit 50 of 65 active versions, p95 < 750 ms (3.3 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc",
+    "title": "CMS-03C-13 cursor page of the selector: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc:18-19 — cursor page, p95 < 750 ms (2.5 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts",
+    "title": "Slice 12 pattern read latency through the real stack [CMS-03C-13] the selector first page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts:171-189 — first page at limit=50 of 60+ active versions (50 items and a cursor asserted, lines 174-179) through the full stack, p95 < 750 (line 188). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts",
+    "title": "Slice 12 pattern read latency through the real stack [CMS-03C-13] the selector cursor page: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-patterns.apispec.ts:191-205 — cursor page, p95 < 750 (line 204). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-110",
+  "citations": [
+   {
+    "clauseIndex": 3,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.selector-restart.test.tsx",
+    "title": "the pattern selector after a cursor conflict drops the cursor, reads the first page again, replaces the list and says so",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.selector-restart.test.tsx:42-69 — a 409 COMPOSITION_VERSION_CONFLICT on the next-page read: exactly two calls, the first carries cursor=cursor-1, the second has NO cursor param (restart from page one), the option list is replaced by the new first page, the restart note is shown, no role=alert, and the new cursor drives the next press. Tests at lines 71-107 add the choice-keeping and stale-pin rules.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.selector-restart.test.tsx",
+    "title": "the pattern selector after a cursor conflict restarts only once per press: a second conflict on the first page is a plain failure",
+    "verdict": "DROP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.selector-restart.test.tsx:122-131 — two 409s in a row: asserts calls.length === 2 and an alert. It bounds the restart (no loop) but does not assert that the second call is the first page, nor the list or note; the loop bound is not what the clause says.",
+    "fix": null,
+    "dropClass": "ADJACENT"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-111",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 0 (page-level mount of CmsPatternSelector in the insert form at /app/cms-content-modeling/entries/:entryId/composition): gap confirmed; CmsCompositionPage.insert.test.tsx mounts the React island, not the Astro route (no e2e spec contains /composition)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-112",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-113",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-114",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-115",
+  "citations": [
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc",
+    "title": "CMS-03C-14 update diff at the bound of 128 changed paths: p95 under the Tier 1 target of 750 ms [P2-S12-AC-115]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc:20-21 — 30 real update-diff reads at 128 changed paths, p95 < 750 ms (45.7 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-compose.apispec.ts",
+    "title": "Slice 12 linked-update latency through the real stack [CMS-03C-14] the update diff at the bound of 128 changed paths: p95 under the Tier 1 target of 750 ms [P2-S12-AC-115]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-compose.apispec.ts:312-332 — the update diff of an instance with 128 changed paths through the full stack: schema-parsed paths length 128 and body <= 262,144 bytes asserted before timing (lines 315-322), 24 samples, p95 < 750 (line 331). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-116",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-117",
+  "citations": [
+   {
+    "clauseIndex": 4,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.degraded-diff.test.tsx",
+    "title": "a diff whose later read is degraded drops the held diff when the re-read after a conflict is unavailable, and reads it again on the next open",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.degraded-diff.test.tsx:43-81 (it.each case 'unavailable') — after a diff was shown, a conflict re-read answers 503: .cms-diff, every choice input and \"Accept update\" are gone, an error shows; reopening issues a fresh third GET update-diff and shows the diff with nothing preselected. \"Never keeps a diff when degraded\".",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "vitest",
+    "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.degraded-diff.test.tsx",
+    "title": "a diff whose later read is degraded drops the held diff when the re-read after a conflict is unverifiable, and reads it again on the next open",
+    "verdict": "KEEP",
+    "reason": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.degraded-diff.test.tsx:43-81 (case 'unverifiable') — same with a 200 body that is not a diff (fails the strict parse).",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-118",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-119",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-120",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-121",
+  "citations": [
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc",
+    "title": "CMS-03C-15 accept of 32 instances in one request over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-121]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc:22-23 — 24 real accepts of 32 instances in one request, p95 < 1,200 ms (430.4 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc",
+    "title": "CMS-03C-15 detach of 32 instances in one request over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-121]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_patterns/050-assert.sqlinc:24-25 — 24 real detaches of 32 instances, p95 < 1,200 ms (265.6 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-compose.apispec.ts",
+    "title": "Slice 12 linked-update latency through the real stack [CMS-03C-15] accepting 32 instances in one request: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-121]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-compose.apispec.ts:258-283 — accepting 32 instances in one request through the full stack: 200 and 32 items per answer (schema parse), p95 < 1200 (line 282). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-compose.apispec.ts",
+    "title": "Slice 12 linked-update latency through the real stack [CMS-03C-15] detaching 32 instances in one request: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-121]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-compose.apispec.ts:285-310 — detaching 32 instances in one request, 32 items per answer, p95 < 1200 (line 309). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-122",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-123",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-124",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-125",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-126",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 3 \"is 404\": gap confirmed. taxonomy-definition.coverage.test.ts:365-393 feeds taxonomyRpcFailure the CATALOG message TAXONOMY_NOT_FOUND ({code:P0001, message:TAXONOMY_NOT_FOUND}); the SQL raises the bare token NOT_FOUND, which the CMS-03C-03 act-tokens test and the versions-read tests feed for other routes but nothing feeds to the CMS-03C-16 createVersion route."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-127",
+  "citations": [
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_taxonomy/040-assert.sqlinc",
+    "title": "CMS-03C-16 save with 64 type keys, 64 field keys and 6 domains over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-127]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_taxonomy/040-assert.sqlinc:4-5 — 24 real cms_create_taxonomy_version calls at the bounds (64 type keys, 64 field keys, 6 domains), all ok, p95 < 1,200 ms (3.5 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts",
+    "title": "Slice 12 taxonomy latency through the real stack [CMS-03C-16] saving a version with 64 type keys, 64 field keys and 6 domains: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-127]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts:148-165 — a version with 64 type keys, 64 field keys and 6 domains through the full stack, expectCreated per answer, p95 < 1200 (line 164). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-128",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clauses 1 and 2 (404 NOT_FOUND and 409 CONFLICT/IDEMPOTENCY_MISMATCH mapped by the CMS-03C-16 route): gaps confirmed on the same ground as AC-126 (only catalog messages are fed to createVersion)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-129",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 0 (page-level mount of CmsTaxonomyVersionDesigner at /app/cms-content-modeling/taxonomies/new and /:taxonomyId): gap confirmed (no e2e spec contains taxonomies/new)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-130",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-131",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-132",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-133",
+  "citations": [
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_taxonomy/040-assert.sqlinc",
+    "title": "CMS-03C-17 first selector page at the maximum limit of 100: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_taxonomy/040-assert.sqlinc:14-15 — 30 real selector first-page reads at limit 100 of 120 terms, p95 < 750 ms (5.9 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_perf_taxonomy/040-assert.sqlinc",
+    "title": "CMS-03C-17 selector cursor page: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_perf_taxonomy/040-assert.sqlinc:16-17 — cursor page, p95 < 750 ms (2.5 ms). DB share only (service_role RPC, no Worker/Kong/PostgREST): supplement to the real-stack apispec of the same clause, never the proof by itself (round-2 brief; S11 precedent cites both).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts",
+    "title": "Slice 12 taxonomy latency through the real stack [CMS-03C-17] the selector at the maximum limit of 100: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts:235-252 — selector at limit 100 (100 items and a cursor asserted) through the full stack, p95 < 750 (line 251). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 5,
+    "tool": "vitest",
+    "file": "tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts",
+    "title": "Slice 12 taxonomy latency through the real stack [CMS-03C-17] the selector cursor page: p95 under the Tier 1 target of 750 ms [P2-S12-AC-133]",
+    "verdict": "KEEP",
+    "reason": "tests/postgrest/phase-02-slice-12-latency-taxonomy.apispec.ts:254-268 — selector cursor page, p95 < 750 (line 267). Static identity; NOT RUN: counts only with a passed receipt from root's real-stack run (fixtures commit, run right after pnpm db:reset). measure() times only the request, asserts every answer in check() and takes percentile_cont over 24 samples after 3 warm-ups.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-134",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clauses 4 and 5 (429 and 502/503/504 for the CMS-03C-17 selector): gaps confirmed. taxonomy-reads-guards.test.ts relays a limiter refusal as 503 and a malformed limiter envelope as 502 for the read routes but no test drives a denied limiter to 429/Retry-After on the selector, and the production-port 503/504 cases exist for cmsTaxonomyTermsRead only."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-135",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-136",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-137",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 3 \"whitespace collapse\": BOUNDARY confirmed. No facet code contains whitespace, so a collapsing and a non-collapsing implementation are indistinguishable; the existing \"per former\" case (090-overlap/canonical tests) proves only that internal whitespace is not removed. Correctly not cited."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-138",
+  "citations": [
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "cms_canonical_taxonomy_match is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-138]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:37-39 — pg_temp.gd_grantees (aclexplode over coalesce(proacl, acldefault), EXECUTE only, PUBLIC as 'PUBLIC') of platform_private.cms_canonical_taxonomy_match(text,jsonb) equals exactly ['wejammin_cms_definer']: an owner-only ACL assertion in the DEC-226 rule 2 form (not four named-role checks).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the only function that references cms_canonical_taxonomy_match is cms_term_overlap_check [P2-S12-AC-138]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:42-43 — gd_referrers over pg_proc.prosrc (plpgsql/sql functions of platform_private and platform_api, word-bounded name match, callee itself excluded) = ['platform_private.cms_term_overlap_check']. A catalog call-graph inventory; blind to dynamic SQL and to other schemas, adequate for \"database-internal caller\".",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the only caller of cms_term_overlap_check is the term write step cms_term_apply_write [P2-S12-AC-138]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:44-45 — the only referrer of cms_term_overlap_check is cms_term_apply_write.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the only caller of the term write step is cms_act_taxonomy_term, so the match function is reached only through the CMS-03C-03 command [P2-S12-AC-138]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:46-47 — the only referrer of cms_term_apply_write is cms_act_taxonomy_term: the chain match <- overlap_check <- apply_write <- cms_act_taxonomy_term (one intermediate step more than the clause names; the clause's \"through cms_term_overlap_check\" is met).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the overlap check itself is owner-only, so the match function is reachable only inside the term action [P2-S12-AC-138]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:48-49 — cms_term_overlap_check(jsonb,text[]) is itself owner-only.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "cms_canonical_taxonomy_match is executable by its owner wejammin_cms_definer and by no other role, PUBLIC included [P2-S12-AC-138]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:37-39 — the same owner-only proacl assertion is the proof of \"PUBLIC, anon, authenticated and every other role have EXECUTE revoked\" (any grantee other than the owner, PUBLIC included, would appear in the array).",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-139",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-140",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-141",
+  "citations": [
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the only function that references cms_canonical_taxonomy_match is cms_term_overlap_check [P2-S12-AC-138]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:42-43 — only cms_term_overlap_check references cms_canonical_taxonomy_match (\"consumed ... through cms_term_overlap_check\").",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the only caller of the term write step is cms_act_taxonomy_term, so the match function is reached only through the CMS-03C-03 command [P2-S12-AC-138]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:46-47 — the chain overlap_check <- cms_term_apply_write <- cms_act_taxonomy_term (\"only by cms_act_taxonomy_term\").",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the activation preflight reads the registry provider_state through the domain registry and never the match function [P2-S12-AC-138]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:50-54 — cms_governed_first_unbuilt_domain(jsonb) (the activation preflight reader) mentions cms_canonical_domain_current and provider_state and not cms_canonical_taxonomy_match: \"never by the taxonomy-version activation preflight, which reads the domain registry\". Source-text, but the clause is itself structural and the referrer inventory (clause 0 part 1) already excludes any other caller.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "\"(create, rename and alias)\" — the per-action split is not shown by the three cites: the chain is asserted, not which actions run the overlap check. It is proven by two EXISTING taxonomy_terms/090-overlap.sqlinc assertions (see missedTests); with them the clause is complete, without them it is not."
+  ],
+  "missedTests": [
+   {
+    "clauseIndex": 0,
+    "citation": {
+     "tool": "pgtap",
+     "file": "supabase/tests/phase_02_slice_12_taxonomy_terms/090-overlap.sqlinc",
+     "title": "with the role provider failing, create, rename and alias are 503 DEPENDENCY_UNAVAILABLE: never a success-shaped body [P2-S12-AC-140]"
+    },
+    "evidence": "supabase/tests/phase_02_slice_12_taxonomy_terms/090-overlap.sqlinc:61-63 — with cms_canonical_role_facets raising, create, rename and alias each answer P0001:DEPENDENCY_UNAVAILABLE: those three actions run the overlap check."
+   },
+   {
+    "clauseIndex": 0,
+    "citation": {
+     "tool": "pgtap",
+     "file": "supabase/tests/phase_02_slice_12_taxonomy_terms/090-overlap.sqlinc",
+     "title": "a failing provider does not touch an undeclared vocabulary, a deprecate or a merge: they introduce no new string and run no overlap check [P2-S12-AC-141]"
+    },
+    "evidence": "supabase/tests/phase_02_slice_12_taxonomy_terms/090-overlap.sqlinc:65-70 — under the same failing provider deprecate and merge (and an undeclared vocabulary) succeed: they do not run the check. Together with the previous row this is the \"(create, rename and alias)\" qualifier."
+   }
+  ],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "verified only with the two missed tests added to clause 0; the lane's three citations prove the call chain, not the action split."
+ },
+ {
+  "criterion": "P2-S12-AC-142",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-143",
+  "citations": [
+   {
+    "clauseIndex": 3,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a subject that is no longer scheduled / an approval that is no longer approved at fire blocks the schedule approval_invalidated with no event [P2-S12-AC-143]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:160-175 — the claimed schedule f5 is blocked approval_invalidated after the only approver's reviewer grant was revoked, which invalidates the review AND returns the subject to draft in the same transaction (lines 162-167). cms_execute_governed_activation ORs four conditions into one approval_invalidated block (migration 20261014070600:155-157: review.state <> 'approved' or review.version <> expected or subject state <> 'scheduled' or subject hash differs); the fixture makes the review disjunct and the subject-state disjunct true at once, so deleting the subject-state test would leave this assertion green. The title itself says \"subject no longer scheduled / approval no longer approved\". It proves the review half (c2), not \"the subject (scheduled\".",
+    "fix": null,
+    "dropClass": "CONFOUNDED"
+   },
+   {
+    "clauseIndex": 3,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "control: the review is invalidated and the subject is no longer scheduled, while the claimed schedule survives [P2-S12-AC-143]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:164-167 — control state (review invalidated, subject draft, schedule still executing); a precondition of the previous assertion.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a declared canonical domain with an unbuilt provider at fire time blocks the schedule canonical_source_unavailable: subject blocked, no event, one audit record [P2-S12-AC-143]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:141-158 — a taxonomy version declaring the built 'role' domain is scheduled; before the fire an append-only canonical_domain_registry row (version 2, unbuilt) is the owning shard's lawful way to change provider state; the execution answers outcome blocked reasonCode canonical_source_unavailable, schedule and subject blocked, no outbox event, exactly one cms.governed.schedule.block audit. The provider re-read at fire.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 6,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "control: the current registry row of the role domain is now unbuilt (version 2) [P2-S12-AC-143]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:146-147 — control: the current registry row of 'role' is now unbuilt; a precondition of the previous assertion.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 8,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a creator grant that ENDED (term passed, not revoked) before the fire instant blocks the schedule activation_authority_ended: subject blocked, review untouched, no event, one audit record [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:104-119 — the schedule creator's designer grant ENDS by the calendar before the fire (labelled lapse fixture 002-lapse-helpers: a guard in front of the single reader cms_person_holds_capability, restored byte for byte, never a revocation): outcome blocked activation_authority_ended, schedule blocked at version 3, review untouched, no event, one audit record. The executor's own call of that reader is unmodified; the reader's behaviour on real lapsed rows is proven in 085-real-reader and S09 grant tests.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 8,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a creator grant that ends after the fire instant still executes the schedule: completed, subject active, one event [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:123-128 — the complement: a creator grant that ends after the fire instant executes the schedule (completed, subject active, one event).",
+    "fix": null
+   }
+  ],
+  "splits": [
+   {
+    "clauseIndex": 3,
+    "verdict": "OK",
+    "reason": "Tiles verbatim (\"the subject (`scheduled`\" + \" \" + \"with an equal hash)\"), but with the two citations of part 0 dropped neither part is cited: leave clause 3 UNSPLIT as one gap whose BOUNDARY text is the lane's (a differing frozen hash and a subject that is not scheduled while the review stays approved are unreachable: the four conditions share one OR in the executor and both sides are immutable)."
+   }
+  ],
+  "missedGaps": [
+   "clause 3 \"the subject (`scheduled` with an equal hash)\": fully uncited (the proposed part 0 citation is confounded); the limitation must name both halves, not only \"with an equal hash)\".",
+   "clause 4 \"the policy basis\": agree it is a gap (the AC-083 seam exists only for the activate/schedule commands)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-144",
+  "citations": [
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the claim wrapper grants EXECUTE to service_role (the registered sweep principal) and its owner only [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:56-59 — platform_api.cms_claim_due_governed_activations(jsonb) EXECUTE grantees = ['service_role','wejammin_cms_definer'] (owner plus the registered sweep principal; PUBLIC, anon, authenticated absent).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the execute wrapper grants EXECUTE to service_role and its owner only [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:60-62 — the same for platform_api.cms_execute_governed_activation(jsonb).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the private claim function is owner-only [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:63-64 — the private claim function is owner-only (nothing but the wrapper can reach it).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 1,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the private execute function is owner-only [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:65-66 — the private execute function is owner-only.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a creator grant that ENDED (term passed, not revoked) before the fire instant blocks the schedule activation_authority_ended: subject blocked, review untouched, no event, one audit record [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:104-119 — see AC-143 c8: a grant END (valid_through passed, via the labelled reader guard), not a revocation, before the fire blocks activation_authority_ended.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "control: the lapse fixture is restored, rev2 holds the designer capability again, so the grant had only lapsed in the fixture, never been revoked [P2-S12-AC-144]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:120-121 — control: the lapse fixture is restored and rev2 holds the capability again (never revoked). Isolates the cause of the previous assertion but is not itself evidence of the clause (class B); it stays in the file.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a creator grant that ends after the fire instant still executes the schedule: completed, subject active, one event [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:123-128 — a grant that ends after the fire instant still executes: the end test is relative to the fire instant.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a schedule whose creator step-up is older than the 600 s window at fire still completes: MFA is never rechecked [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:74-136 — schedule f3 is accepted with a step-up 9 min 50 s old (inside the 10 min window) and executes ~75 s later, when that step-up is older than 600 s (asserted at line 132: clock_timestamp() - instant > interval '10 minutes'): outcome completed, subject active, one event. Behavioural proof of DEC-120 \"never rechecking MFA\".",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "the execute function reads no step-up or MFA input at all [P2-S12-AC-144]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:137-139 — prosrc of cms_execute_governed_activation !~* '(step_up|mfa)'. A negative text scan; a recheck through a helper with another name would pass it. The behavioural test above is the proof.",
+    "fix": null,
+    "dropClass": "SOURCE"
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified"
+ },
+ {
+  "criterion": "P2-S12-AC-145",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [
+   "clause 1 \"claims under FOR UPDATE SKIP LOCKED\": gap confirmed; governed_schedule/020-claim.sqlinc proves the CAS and lease sequentially and no test names SKIP LOCKED or races two claims."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-146",
+  "citations": [
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a declared canonical domain with an unbuilt provider at fire time blocks the schedule canonical_source_unavailable: subject blocked, no event, one audit record [P2-S12-AC-143]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:141-158 — canonical_source_unavailable is produced at fire by the unbuilt-provider registry row: schedule and subject blocked, no event, one audit record (see AC-143 c6). Closed reasonCode `canonical_source_unavailable`.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 5 \"with the prior active version intact\": real gap. 050-blocked.sqlinc and the new schedule_fire fixtures never activate a prior version of the lineage before the block; grep of governed_schedule*/ finds no prior-version assertion (only 030-execute:80 asserts supersession on the SUCCESS path)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-147",
+  "citations": [
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a failure of the final schedule CAS leaves no event, no audit record and no state change: the switch, event, audit and CAS are one atomic unit [P2-S12-AC-147]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:177-196 — a temporary BEFORE UPDATE trigger (when new.state = 'completed') refuses only the final schedule CAS after the activation switch, event and audit were written inside the call; the failed execution leaves the snapshot identical, the subject 'scheduled', the schedule 'executing', no event and no cms.governed.activate audit. The fault fires (line 190: P0001:gap_fault_after_switch), so the assertion cannot pass vacuously; a later run of the same lease completes (line 198).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "control: the injected fault refused the final schedule CAS of the execution [P2-S12-AC-147]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:190-191 — control that the injected fault fired; a precondition of the previous assertion.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 3,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "control: without the fault the same lease completes the schedule with one event and one audit record, and the fault trigger is gone [P2-S12-AC-147]",
+    "verdict": "DROP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:197-201 — control that without the fault the same lease completes with one event and one audit; a post-condition control.",
+    "fix": null,
+    "dropClass": "NOEFFECT"
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a creator grant that ENDED (term passed, not revoked) before the fire instant blocks the schedule activation_authority_ended: subject blocked, review untouched, no event, one audit record [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:104-119 — grant-end recheck at fire (see AC-143 c8).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "a schedule whose creator step-up is older than the 600 s window at fire still completes: MFA is never rechecked [P2-S12-AC-144]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:130-136 — MFA is not rechecked (see AC-144 c4).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 4,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_governed_schedule/030-execute.sqlinc",
+    "title": "a creator whose designer grant was revoked blocks the schedule activation_authority_ended: schedule blocked, subject blocked (lifecycle 5), review still approved, no event, one audit record [P2-S12-AC-146]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_governed_schedule/030-execute.sqlinc:117 — existing: a creator whose designer grant was revoked by the real CMS-03A-17 command blocks the schedule activation_authority_ended (revocation recheck).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 7,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql",
+    "title": "this suite drove the blocked reason codes activation_authority_ended, approval_invalidated and canonical_source_unavailable [P2-S12-AC-147]",
+    "verdict": "FIX",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_schedule_fire.sql:203-206 — an aggregate over the whole suite's blocked schedules (distinct reason_code = the three codes). It states that this file drove three codes, not what each produces, and it fails if a later edit adds a fourth blocked schedule; it is a coverage meta-assertion (class B), not a test of any code.",
+    "fix": "Replace by the three individual assertions under clause 7: gaps_db1_schedule_fire.sql 'a creator grant that ENDED (term passed, not revoked) before the fire instant blocks the schedule activation_authority_ended: subject blocked, review untouched, no event, one audit record [P2-S12-AC-144]' (line 119), 'a declared canonical domain with an unbuilt provider at fire time blocks the schedule canonical_source_unavailable: subject blocked, no event, one audit record [P2-S12-AC-143]' (line 158) and 'a subject that is no longer scheduled / an approval that is no longer approved at fire blocks the schedule approval_invalidated with no event [P2-S12-AC-143]' (line 175; proves the code, not the subject re-read).",
+    "dropClass": "CONFOUNDED"
+   },
+   {
+    "clauseIndex": 7,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_governed_schedule/050-blocked.sqlinc",
+    "title": "a changed frozen dependency at fire time blocks the schedule dependency_changed: schedule blocked, subject blocked (lifecycle 5), the review untouched, no event, one audit record [P2-S12-AC-146]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_governed_schedule/050-blocked.sqlinc:23 — existing: a changed frozen dependency at fire blocks the schedule dependency_changed (schedule blocked, subject blocked, review untouched, no event, one audit record).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 7,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_governed_schedule_ladder/010-ladder.sqlinc",
+    "title": "the fourth failure blocks the schedule retries_exhausted (three attempts spent) and the subject blocked, with no event and one audit record [P2-S12-AC-152]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_governed_schedule_ladder/010-ladder.sqlinc:124 — existing: the fourth consecutive retryable failure blocks the schedule retries_exhausted after the 15/60/300 s ladder (a ~12 minute suite).",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "verified only with the clause 7 FIX applied (the three individual tests instead of the aggregate)."
+ },
+ {
+  "criterion": "P2-S12-AC-148",
+  "citations": [
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql",
+    "title": "the CMS-03C-20 resolver answers the same reason code as the gate for the missing no_fallback field [P2-S12-AC-148]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql:39-46 — for the newest fr-FR revision that omits the no_fallback legal field, the gate returns no_fallback_missing (line 43) and the CMS-03C-20 resolver's reasonCode equals the gate's: both layers answer the same fact. (The file also includes the 60 assertions of locale_gate/001-gate.sqlinc; they are other identities.)",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql",
+    "title": "the resolver reports no blocking reason for the same value: gate verdict and resolver agree [P2-S12-AC-148]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql:47-51 — for a translation holding its value the gate passes ('-') and the resolver reports no reasonCode.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql",
+    "title": "the resolver answers no_fallback_stale for the same field: one resolver behind the gate and the delivery-side call [P2-S12-AC-148]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_locale_gate.sql:52-59 — after the source value changed, gate and resolver both answer no_fallback_stale.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the 03b locale preflight gate runs the shared resolver core cms_locale_resolutions, the resolver cms_resolve_locale_field also uses [P2-S12-AC-148]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:68-70 — pg_get_functiondef of cms_locale_no_fallback_gate(uuid,text) references cms_locale_resolutions: the gate runs the shared resolver core. A structural catalog assertion for a structural clause (\"the one resolver\"); weak alone, adequate together with the three agreement tests.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the field resolver is the same core [P2-S12-AC-148]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:71-72 — cms_resolve_locale_field references the same core.",
+    "fix": null
+   }
+  ],
+  "splits": [],
+  "missedGaps": [
+   "clause 3 \"the Shard 04 delivery projection\": agree it is a BOUNDARY (a later shard; gd_referrers shows no caller of cms_resolve_locale_field yet, which proves absence, not use)."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ },
+ {
+  "criterion": "P2-S12-AC-149",
+  "citations": [],
+  "splits": [],
+  "missedGaps": [],
+  "missedTests": [],
+  "status": "verified",
+  "proposedStatus": "verified",
+  "notes": "No proposal for this criterion (no inventory row in gaps/inventory-20261029.json for it); nothing to refute. Existing citations were not re-argued in this round."
+ },
+ {
+  "criterion": "P2-S12-AC-150",
+  "citations": [
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the registered callers of the resolver core are exactly the publication preflight gate, the CMS-03C-04 editorial reader and the field resolver [P2-S12-AC-150]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:79-81 — gd_referrers('cms_locale_resolutions') = [cms_get_locale_variant, cms_locale_no_fallback_gate, cms_resolve_locale_field]: the registered callers of the resolver core are the publication preflight gate, the CMS-03C-04 editorial reader and the field resolver itself.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 0,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "CMS-03C-20 cms_resolve_locale_field is executable by its owner only: PUBLIC, anon, authenticated, service_role and every other role are revoked [P2-S12-AC-150]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:75-76 — cms_resolve_locale_field(uuid,text,uuid) EXECUTE grantees = ['wejammin_cms_definer'] only: nothing but the owner (and security-definer callers) can execute CMS-03C-20.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 0,
+    "splitPart": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the registered callers of the resolver core are exactly the publication preflight gate, the CMS-03C-04 editorial reader and the field resolver [P2-S12-AC-150]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:79-81 — cms_get_locale_variant, the editorial reader, is among the registered callers of the core.",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "CMS-03C-20 cms_resolve_locale_field is executable by its owner only: PUBLIC, anon, authenticated, service_role and every other role are revoked [P2-S12-AC-150]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:75-76 — owner-only proacl (aclexplode, PUBLIC included): \"PUBLIC, anon, authenticated and every other role have EXECUTE revoked\" (DEC-226 rule 2 form).",
+    "fix": null
+   },
+   {
+    "clauseIndex": 2,
+    "tool": "pgtap",
+    "file": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql",
+    "title": "the resolver core is owner-only as well [P2-S12-AC-150]",
+    "verdict": "KEEP",
+    "reason": "supabase/tests/phase_02_slice_12_gaps_db1_acl.sql:77-78 — the resolver core cms_locale_resolutions is owner-only as well. Supplement.",
+    "fix": null
+   }
+  ],
+  "splits": [
+   {
+    "clauseIndex": 0,
+    "verdict": "OK",
+    "reason": "Tiles verbatim: \"CMS-03C-20 is executable only by the registered non-browser callers (the publication preflight `locale` provider,\" + \" \" + \"the Shard 04 delivery projection\" + \" and \" + \"and the editorial reads\" (the last part keeps its own \"and\"). The Shard 04 middle part stays uncited with the lane's BOUNDARY text."
+   }
+  ],
+  "missedGaps": [
+   "\"the Shard 04 delivery projection\": agree it is a BOUNDARY; ACL line 82-83 records that no function calls cms_resolve_locale_field yet."
+  ],
+  "missedTests": [],
+  "status": "partial",
+  "proposedStatus": "partial"
+ }
+]

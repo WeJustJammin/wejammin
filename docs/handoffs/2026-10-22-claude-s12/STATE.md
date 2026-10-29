@@ -3,6 +3,25 @@
 Resume here after any interruption or compaction. Predecessor: Codex handoff
 `docs/handoffs/2026-10-22-claude-phase2-s12-handoff.md` (Codex goal BLOCKED on native-finality gate).
 
+## LATEST (2026-10-29 ~07:20Z, root) — read first; the dated bullets below are history
+
+- Promoted today (uncommitted): wave 3 (24 migrations), `20261029110000` (DEC-238 registry pair), `20261029130000` (DEC-240
+  restore carries only assigned vocabularies). Canonical db:verify green before the two late promotions; each promotion ran a
+  canonical reset + types + its touched pgTAP. `supabase/migrations-wip/` holds only its README.
+- Product changes reviewed (V16 ACCEPT after fix rounds): template leave guard + late-edit handling (4 forms), FE03 1048
+  commit-only disabling, AC-042 result heading, no-store 303 helper on all 23 CMS pages, CMS-03C-08 201 without Location
+  (DEC-239), harness composes every Slice 12 boundary (T7 class).
+- Ledger scripts, in order: `recite/apply.mjs` → dec227 → dec230 → dec231 → dec232 → dec232b → `recite2/apply2.mjs` →
+  `recite2/dec235-ac056.mjs` → `recite2/retitles.mjs` → `recite2/limitations.mjs` → `recite2/dec236-ac056.mjs` →
+  `recite3/apply3.mjs` → `recite4/apply4.mjs` → `recite4/dec240-s10-retitle.mjs`. S12 ledger 246 / 47 / 3.
+- Root decisions DEC-235..241 (raw records 2026-10-29). PAT-036 (harness parity; tests/e2e not type-checked).
+- DONE: evidence for all four slices (all guards 70/70 after `recite4/retitles2.mjs` + `retitles3-s10-truncated.mjs` and five
+  handoff READMEs) and `pnpm validate` GREEN (`.lane-logs/canonical/validate-20261029T113949Z.log`; the DEC-203 fixture's host
+  gcc pin was re-pinned after a pacman upgrade). Checkpoint committed locally in six groups (see `git log`), not pushed.
+- AFTER the commit: web7 wave (AC-271 state-table defects + the 20 pinned rows rewritten; DEC-241 items), race-module wave
+  (15 race gaps), J1 citation proposals for AC-105, Slice 12 close (AC-050 feature-ledger rows 25.05.03/04, AC-049 record),
+  session close log.
+
 ## CURRENT POSITION (2026-10-23 ~16:45Z, root session `[6bca89]` — read this before "RESUME FIRST", which is history)
 
 - ALL Slice 12 WIP is PROMOTED into `supabase/migrations/` (80 files 2026-10-23 06:08Z + race-fixes `20261023100000/100100`;
@@ -138,6 +157,28 @@ Resume here after any interruption or compaction. Predecessor: Codex handoff
   gaps ×2, p95 benches; W2 web impl (AC-105 picker, AC-110 restart, AC-271 skeleton, Q7 node pointers), Playwright,
   races, AC-248 relay narrowing, "other" triage. Boundary: CMS-03C-21 consumers are Shard 04 (AC-148/155/158).
   OWNER question still open: Q2 AC-055.
+- 2026-10-24 09:40Z: `pnpm validate` EXIT 0 (100% coverage). COMMITTED `bde7275c`, `6a28dcc4`, `cd89d54c` (HEAD; no push).
+  Gap wave 1 LIVE (4 lanes; see LANES.md). DEC-228 (node pointers) recorded; its BE03c sentence is still to be written
+  into the CMS-03C-12 blockTree field-matrix row before the wave-2 web-impl lane starts. OWNER question open: Q2 AC-055.
+- 2026-10-27 23:00Z: weekly-limit reset. Uncommitted on disk: gaps-db1 (DONE, PARTIAL, report `c136aa62…`), gaps-perf
+  (DONE, PARTIAL: D1 placement 512 rows p95 661 ms vs RPC < 300 ms, six latency apispecs for root), plus partial work of the
+  four RESUMED lanes (taxonomy-integrity, gaps-db2, web-impl, placement-perf). Root edits pending commit: BE03c DEC-228
+  rule, spec-questions Q10 (AC-061 consumer → amend spec) / Q11 (AC-069 copy → web-impl). After the lanes: review/promote
+  WIP dirs (taxonomy-integrity, node-pointers, placement-perf, any gaps-*), canonical db gates, run the six latency
+  apispecs (each after its own db:reset, quiet host), re-cite the new identities into the S12 ledger (+ refutation of the
+  new citations), S12 evidence, validate, commit. OWNER question open: Q2 AC-055.
+- 2026-10-27 ~23:40Z: OWNER answered AC-055 → 422 (DEC-230, applied: trackers + ledger + BE03c + raw record + native
+  memory). Root DEC-229 (taxonomy provider precedence/count; TermAssignment key) and DEC-231 (no publication consumer,
+  AC-061) applied. taxonomy-integrity GREEN; review V12 running. Live lanes: gaps-db2, web-impl, placement-perf, V12.
+  No owner question open. Ledger scripts must run in order: apply.mjs → dec227 → dec230 → dec231 (each re-applies only
+  its own edit; a rerun of apply.mjs reverts the later three).
+- 2026-10-28 23:25Z: WIP dirs ready or nearly: taxonomy-integrity (V12 verified PROMOTE; checklist in LANES.md), node-pointers
+  (V13 PROMOTE), placement-perf (V14 PROMOTE), gaps-db2 (V13 conditions closed; position 4 = 130400 in progress), nestable-read
+  (V14 conditions in progress). Bundle lane closing V15 conditions (Chrome specs for root). Root decisions this stretch:
+  DEC-229..234 (raw records 2026-10-27/28). After the three lanes: ONE promotion of all five WIP dirs (timestamp order) +
+  taxonomy correction diff + delete corrected-oracle copies + README section + `database.types.ts`; canonical db:verify on a
+  quiet host; run the real-route suites incl. the new specs; then re-cite new gap identities into the S12 ledger (refuted),
+  S09–S12 evidence, validate, commit.
 - Shell traps here: zsh does not word-split and `(N)` globs are disabled — put multi-file commands in a bash script
   (`scratchpad/claude_root/run-*.sh` are examples). Never `pnpm db:stop` at the end of a script before the evidence runner.
 
