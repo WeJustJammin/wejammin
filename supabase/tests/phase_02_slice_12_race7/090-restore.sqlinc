@@ -1,0 +1,11 @@
+-- Slice 12 race7: remove the committed world again.  Include right after the scenario block, at the top level of the file (NOT inside a transaction):
+-- statements, each its own transaction (triggers off / rows out / rows out again / triggers on), then the report the file asserts on.  A failure of one
+-- of them must not stop the rest (the triggers must come back and the report must be written), so ON_ERROR_STOP is off for exactly these lines.
+\set ON_ERROR_STOP off
+select pg_temp.r7_note('missing_before', pg_temp.r7_missing_where());
+select pg_temp.r7_note('restore_off', pg_temp.r7_restore_off());
+select pg_temp.r7_note('restore', pg_temp.r7_restore_delete());
+select pg_temp.r7_note('restore2', pg_temp.r7_restore_delete());
+select pg_temp.r7_note('restore_on', pg_temp.r7_restore_on());
+select pg_temp.r7_report();
+\set ON_ERROR_STOP on

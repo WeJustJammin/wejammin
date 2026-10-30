@@ -1102,6 +1102,17 @@ conditions met); manifest `docs/handoffs/2026-10-22-claude-s12/evidence/promotio
 `…/evidence/promote-db5.sh`. Tests: `../tests/phase_02_slice_12_gaps_db5_restore_versions.sql`; corrected oracles
 `../tests/phase_02_slice_10_ev_ea_lineage.sql` (test 9) and `../tests/phase_02_slice_12_taxonomy_integrity/050-restore.sqlinc`.
 
+### Designer context lists platform blocks of 2026-10-29 (`20261029150000`)
+
+`20261029150000` drops the owner predicate from `platform_private.cms_template_context` (anchored, byte-for-byte inverse check,
+lock and statement timeouts, typed refusals): `cmsTemplateContextRead` lists every registered, currently supported block (at
+most 128, C-collation order), because a CMS-03A-05 block is owned by its release principal and never by an organization (root
+DEC-243; the Slice 09 ruling of `20261002209000`, P2-S09-AC-145). Before it the template and pattern designers' block choosers
+were empty on the real stack. Lane block_owner (RED proof, then fix), review V18; manifest
+`docs/handoffs/2026-10-22-claude-s12/evidence/promotion-manifest-block-owner.json`. Tests:
+`../tests/phase_02_slice_12_block_owner_red.sql`; corrected oracles in `../tests/phase_02_slice_12_gaps_db1_template.sql`
+(AC-159 block section). Open: the 128 cap is now platform-wide (review V18 MINOR-3).
+
 ## Related links
 
 - `../tests/README.md`

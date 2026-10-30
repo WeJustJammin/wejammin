@@ -1,8 +1,8 @@
 -- Slice 12 gap lane claude_s12_gaps_db1: template authority and designer context clauses that no earlier
 -- suite proves (docs/handoffs/2026-10-22-claude-s12/gaps/inventory.json).
 --   P2-S12-AC-023 clause 1  compatibleTypeIds members must be owned, ACTIVE content types with an ACTIVE version.
---   P2-S12-AC-159 clauses 4+6  cmsTemplateContextRead lists only active/compiled types and <=128 owned,
---                           registered, currently supported block selectors.
+--   P2-S12-AC-159 clauses 4+6  cmsTemplateContextRead lists only active/compiled types and <=128 registered,
+--                           currently supported block selectors (DEC-243: platform-wide, not owner-scoped).
 --   P2-S12-AC-161 clauses 1+3+8  the read rechecks actor, acting party, confirmed membership and grant, and
 --                           reserves nothing for a later write.
 -- Own fixtures only (the Slice 10 rolled-back world); nothing here edits an existing suite.
@@ -88,7 +88,7 @@ select is(
   'among the gap fixture types only the active, owned, active-version type is listed [P2-S12-AC-159]');
 
 -- Blocks: 129 supported owned candidates (gap.b000..gap.b128), one deprecated (gap.a000, sorts first), one
--- owned by another party (gap.a001, sorts second) and one withdrawn (gap.a002).
+-- owned by another party (gap.a001, supported, sorts second, listed since DEC-243) and one withdrawn (gap.a002).
 select set_config('app.cms_rpc', 'true', true);
 create or replace function pg_temp.gt_block(p_key text, p_owner uuid) returns uuid language plpgsql as $body$
 declare block_id uuid := extensions.gen_random_uuid();
@@ -138,20 +138,25 @@ create temp table gt_ctx_blocks on commit drop as
 select pg_temp.s10_rpc_exec(pg_temp.gt_context_sql()) as response;
 select is(pg_temp.s10_last_error_state(), '00000', 'control: the block-heavy context read succeeds [P2-S12-AC-159]');
 select is((select jsonb_array_length(response->'registeredBlocks') from gt_ctx_blocks), 128,
-  '129 owned supported candidates are cut at exactly 128 selectors [P2-S12-AC-159]');
+  '130 supported candidates (129 of the caller''s organization plus one of another owner) are cut at exactly 128 selectors [P2-S12-AC-159]');
 select is(
   (select response->'registeredBlocks'->0 from gt_ctx_blocks),
-  '{"blockKey":"gap.b000","blockVersion":1}'::jsonb,
-  'the first selector is the lowest owned supported key: the deprecated, foreign and withdrawn blocks sort before it and are absent [P2-S12-AC-159]');
+  '{"blockKey":"gap.a001","blockVersion":1}'::jsonb,
+  'the first selector is the lowest supported key, another owner''s gap.a001 (DEC-243): the deprecated gap.a000 and the withdrawn gap.a002 around it are absent [P2-S12-AC-159]');
 select is(
   (select response->'registeredBlocks'->127 from gt_ctx_blocks),
-  '{"blockKey":"gap.b127","blockVersion":1}'::jsonb,
-  'the cut keeps the first 128 keys in C-collation order, dropping gap.b128 [P2-S12-AC-159]');
+  '{"blockKey":"gap.b126","blockVersion":1}'::jsonb,
+  'the cut keeps the first 128 keys in C-collation order (gap.a001, then gap.b000 to gap.b126), dropping gap.b127 and gap.b128 [P2-S12-AC-159]');
 select ok(
   (select not exists (select 1 from jsonb_array_elements(response->'registeredBlocks') item
-     where item->>'blockKey' in ('gap.a000', 'gap.a001', 'gap.a002', 'gap.b128'))
+     where item->>'blockKey' in ('gap.a000', 'gap.a002', 'gap.b127', 'gap.b128'))
    from gt_ctx_blocks),
-  'a deprecated block, a withdrawn block and another owner''s block are not selectors [P2-S12-AC-159]');
+  'a deprecated block, a withdrawn block and the two keys beyond the 128 cut are not selectors [P2-S12-AC-159]');
+select ok(
+  (select exists (select 1 from jsonb_array_elements(response->'registeredBlocks') item
+     where item = '{"blockKey":"gap.a001","blockVersion":1}'::jsonb)
+   from gt_ctx_blocks),
+  'another owner''s supported block is a selector: blocks are platform registry records, not tenant data (DEC-243, the Slice 09 platform-registry ruling) [P2-S12-AC-159]');
 select ok(
   (select bool_and((select count(*) from jsonb_object_keys(item)) = 2
                    and item ? 'blockKey' and item ? 'blockVersion')

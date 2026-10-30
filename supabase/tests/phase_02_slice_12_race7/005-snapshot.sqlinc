@@ -1,0 +1,196 @@
+-- Slice 12 race7: snapshot / restore of the committed world (included by 000-harness.sqlinc; do not include on its own).
+-- Every ordinary table outside the system and vendor schemas is snapshotted as md5(row::text) before the world is built; the restore removes every row
+-- that is not in the snapshot, with the user triggers off and every foreign key deferred for the removal, in three transactions (see 090-restore.sqlinc).
+create temp table if not exists r7_snap(rel regclass not null, h text not null);
+create temp table if not exists r7_trig(rel regclass primary key);
+create temp table if not exists r7_fk(rel regclass not null, con name not null, was_deferrable boolean not null, was_deferred boolean not null);
+
+-- ------------------------------------------------------------------------------------------------ snapshot / restore of the committed world
+-- Every ordinary table outside the system and vendor schemas.  r7_snapshot stores md5(row::text) per row; r7_restore deletes, pass after pass (a
+-- foreign key that still points at a row simply waits for a later pass), every row that is not in the snapshot, with the user triggers of the
+-- tables disabled for the duration (append-only and immutable guards are user triggers) and re-enabled at the end.
+create or replace function pg_temp.r7_scope() returns setof regclass language sql stable as $b$
+  select c.oid::regclass
+    from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid = c.relnamespace
+   where c.relkind in ('r', 'p') and not c.relispartition
+     and pg_catalog.has_table_privilege(c.oid, 'SELECT') and pg_catalog.has_table_privilege(c.oid, 'DELETE')
+     and n.nspname not in ('pg_catalog', 'information_schema', 'pg_toast', 'extensions', 'cron', 'vault', 'supabase_migrations',
+       'supabase_functions', 'realtime', 'storage', 'graphql', 'graphql_public', 'pgsodium', 'pgsodium_masks', 'net', '_analytics',
+       '_realtime', 'pgbouncer', 'pgtap', 'tap')
+     and n.nspname !~ '^pg_(temp|toast_temp)'
+     and not exists (select 1 from pg_catalog.pg_depend d where d.objid = c.oid and d.deptype = 'e')
+   order by c.oid::regclass::text $b$;
+create or replace function pg_temp.r7_snapshot() returns integer language plpgsql as $b$
+declare t regclass; n integer; total integer := 0;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', false);
+  truncate r7_snap;
+  for t in select * from pg_temp.r7_scope() loop
+    execute format('insert into r7_snap(rel, h) select %L::regclass, pg_catalog.md5(x::text) from %s x', t, t);
+    get diagnostics n = row_count;
+    total := total + n;
+  end loop;
+  create index if not exists r7_snap_ix on r7_snap(rel, h);
+  analyze r7_snap;
+  return total;
+end;
+$b$;
+-- rows of the table that are not in the snapshot
+create or replace function pg_temp.r7_added(p_rel regclass) returns bigint language plpgsql as $b$
+declare n bigint;
+begin
+  execute format('select count(*) from %s x where not exists (select 1 from r7_snap s where s.rel = %L::regclass and s.h = pg_catalog.md5(x::text))', p_rel, p_rel) into n;
+  return n;
+end;
+$b$;
+-- snapshot rows that no longer exist unchanged (a pre-existing row the world changed or removed)
+create or replace function pg_temp.r7_missing(p_rel regclass) returns bigint language plpgsql as $b$
+declare n bigint;
+begin
+  execute format('select count(*) from r7_snap s where s.rel = %L::regclass and not exists (select 1 from %s x where pg_catalog.md5(x::text) = s.h)', p_rel, p_rel) into n;
+  return n;
+end;
+$b$;
+-- Total rows added since the snapshot, over every table in scope.
+create or replace function pg_temp.r7_added_total() returns bigint language plpgsql as $b$
+declare t regclass; n bigint := 0;
+begin
+  for t in select * from pg_temp.r7_scope() loop n := n + pg_temp.r7_added(t); end loop;
+  return n;
+end;
+$b$;
+create or replace function pg_temp.r7_missing_total() returns bigint language plpgsql as $b$
+declare t regclass; n bigint := 0;
+begin
+  for t in select * from pg_temp.r7_scope() loop n := n + pg_temp.r7_missing(t); end loop;
+  return n;
+end;
+$b$;
+-- The tables that gained rows, for a failure message.
+create or replace function pg_temp.r7_added_where() returns text language plpgsql as $b$
+declare t regclass; n bigint; out text := '';
+begin
+  for t in select * from pg_temp.r7_scope() loop
+    n := pg_temp.r7_added(t);
+    if n > 0 then out := out || t::text || '=' || n || ' '; end if;
+  end loop;
+  return out;
+end;
+$b$;
+-- The restore is THREE top-level statements (three transactions, see 090-restore.sqlinc): ALTER TABLE refuses a table with pending (deferred foreign key)
+-- trigger events of the same transaction, so the triggers go off in one transaction, the rows go in the second and the triggers come back in the third.
+create or replace function pg_temp.r7_restore_off() returns text language plpgsql as $b$
+declare t regclass; n integer := 0; fk record;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', false);
+  perform pg_catalog.set_config('lock_timeout', '10s', false);
+  truncate r7_trig;
+  for t in select * from pg_temp.r7_scope() loop
+    if exists (select 1 from pg_catalog.pg_trigger g where g.tgrelid = t and not g.tgisinternal and g.tgenabled <> 'D') then
+      begin
+        execute format('alter table %s disable trigger user', t);
+        insert into r7_trig(rel) values (t);
+        n := n + 1;
+      exception when others then null;
+      end;
+    end if;
+  end loop;
+  -- every foreign key of the scope becomes DEFERRABLE INITIALLY DEFERRED for the removal (cyclic references, e.g. an entry and its current draft revision,
+  -- cannot be removed one table at a time otherwise); the original setting is recorded and put back by r7_restore_on
+  truncate r7_fk;
+  for fk in select c.conrelid::regclass as rel, c.conname, c.condeferrable, c.condeferred from pg_catalog.pg_constraint c
+             where c.contype = 'f' and c.conrelid in (select * from pg_temp.r7_scope()) and not (c.condeferrable and c.condeferred) loop
+    begin
+      execute format('alter table %s alter constraint %I deferrable initially deferred', fk.rel, fk.conname);
+      insert into r7_fk(rel, con, was_deferrable, was_deferred) values (fk.rel, fk.conname, fk.condeferrable, fk.condeferred);
+    exception when others then null;
+    end;
+  end loop;
+  return 'disabled=' || n || ' fk_deferred=' || (select count(*) from r7_fk);
+end;
+$b$;
+create or replace function pg_temp.r7_restore_delete() returns text language plpgsql as $b$
+declare t regclass; n bigint; removed bigint := 0; pass_removed bigint; pass integer; errs text := ''; one text;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', false);
+  for pass in 1 .. 60 loop
+    pass_removed := 0;
+    for t in select * from pg_temp.r7_scope() loop
+      begin
+        execute format('delete from %s x where not exists (select 1 from r7_snap s where s.rel = %L::regclass and s.h = pg_catalog.md5(x::text))', t, t);
+        get diagnostics n = row_count;
+        pass_removed := pass_removed + n;
+      exception
+        when foreign_key_violation then null;
+        when others then
+          one := t::text || ':' || sqlstate || ':' || left(sqlerrm, 90) || ' | ';
+          if position(one in errs) = 0 then errs := errs || one; end if;
+      end;
+    end loop;
+    removed := removed + pass_removed;
+    exit when pass_removed = 0;
+  end loop;
+  -- name the blockers: a table that still holds rows after the passes, with the error its delete raises now
+  declare d text;
+  begin
+    for t in select * from pg_temp.r7_scope() loop
+      if pg_temp.r7_added(t) > 0 then
+        begin
+          execute format('delete from %s x where not exists (select 1 from r7_snap s where s.rel = %L::regclass and s.h = pg_catalog.md5(x::text))', t, t);
+        exception when others then
+          get stacked diagnostics d = pg_exception_detail;
+          errs := errs || 'BLOCKED ' || t::text || ':' || sqlstate || ':' || left(sqlerrm, 140) || ' DETAIL ' || left(coalesce(d, ''), 200) || ' | ';
+        end;
+      end if;
+    end loop;
+  end;
+  -- evaluate the deferred foreign keys NOW, so a row that cannot go is named here instead of failing the commit unexplained
+  begin
+    set constraints all immediate;
+  exception when others then
+    get stacked diagnostics one = pg_exception_detail;
+    errs := errs || 'IMMEDIATE:' || sqlstate || ':' || left(sqlerrm, 160) || ' DETAIL ' || left(coalesce(one, ''), 300) || ' | ';
+  end;
+  return 'removed=' || removed || case when errs <> '' then ' errors=' || left(errs, 600) else '' end;
+end;
+$b$;
+create or replace function pg_temp.r7_restore_on() returns text language plpgsql as $b$
+declare reenable regclass; n integer := 0; fk record; msg text := '';
+begin
+  for reenable in select rel from r7_trig loop
+    execute format('alter table %s enable trigger user', reenable);
+    n := n + 1;
+  end loop;
+  truncate r7_trig;
+  for fk in select * from r7_fk loop
+    begin
+      execute format('alter table %s alter constraint %I %s initially %s', fk.rel, fk.con,
+        case when fk.was_deferrable then 'deferrable' else 'not deferrable' end, case when fk.was_deferred then 'deferred' else 'immediate' end);
+    exception when others then
+      msg := msg || fk.con || ':' || sqlstate || ' ';
+    end;
+  end loop;
+  truncate r7_fk;
+  return 'enabled=' || n || case when msg <> '' then ' fk_restore_errors=' || msg else '' end;
+end;
+$b$;
+create or replace function pg_temp.r7_missing_where() returns text language plpgsql as $b$
+declare t regclass; n bigint; out text := '';
+begin
+  for t in select * from pg_temp.r7_scope() loop
+    n := pg_temp.r7_missing(t);
+    if n > 0 then out := out || t::text || '=' || n || ' '; end if;
+  end loop;
+  return out;
+end;
+$b$;
+create or replace function pg_temp.r7_report() returns void language plpgsql as $b$
+begin
+  perform pg_temp.r7_note('added_after_restore', pg_temp.r7_added_total()::text);
+  perform pg_temp.r7_note('added_where', pg_temp.r7_added_where());
+  perform pg_temp.r7_note('missing_after_restore', pg_temp.r7_missing_total()::text);
+  perform pg_temp.r7_note('missing_where', pg_temp.r7_missing_where());
+end;
+$b$;
+

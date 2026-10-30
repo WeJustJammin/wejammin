@@ -1,0 +1,37 @@
+-- Slice 12 race7: the committed governed world (real producers only), shared by the activation and claim files.
+-- Include INSIDE the world transaction, after `select no_plan();` and with psql output redirected (\o /dev/null), exactly as the governed-b suite
+-- (phase_02_slice_12_governed_activation.sql) builds its own: S09 owner initialization, real CMS-03A-15 grants, two real active content types,
+-- real CMS-03C-01 templates, real CMS-03C-06 submissions, real CMS-03C-08 assignments, real CMS-03C-07 approvals.  No governed row is inserted by hand
+-- and no trigger is disabled.  The paths start with `../` because \ir resolves them against THIS file's directory.
+\ir ../phase_02_slice_09_dec108/00-helpers.sqlinc
+\ir ../phase_02_slice_09_dec108/01-actors.sqlinc
+\ir ../phase_02_slice_09_dec108/02-chain.sqlinc
+\ir ../phase_02_slice_09_dec119/00-support.sqlinc
+select pg_temp.s09d_session('owner', 'authenticated');
+\ir ../phase_02_slice_12_governed_submit/000-fixtures.sqlinc
+\ir ../phase_02_slice_12_governed_submit/005-real-type-chains.sqlinc
+\ir ../phase_02_slice_12_governed_assignment/000-world.sqlinc
+\ir ../phase_02_slice_12_governed_recheck/002-lapse-helpers.sqlinc
+\ir ../phase_02_slice_12_governed_activation/000-world.sqlinc
+\ir ../phase_02_slice_12_governed_activation/005-lineage-helpers.sqlinc
+
+-- the reviewer of every approved review below (the governed-b setup's rev1 grant and its owner-party membership)
+select pg_temp.r7_note('grant_rev1', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1));
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2');
+select pg_temp.r7_note('owner_org', pg_temp.s09d_id('ownerOrg')::text);
+select pg_temp.r7_note('owner_person', (select person_id::text from s09d_actor where key = 'owner'));
+select pg_temp.r7_note('type_version_a', (select value from s12gov_ids where key = 'typeVersionA'));
+
+-- Stash the CMS-03C-09 `activate` of an APPROVED template review under the key 'act:<tag>' (the request of pg_temp.s12gb_act) and note its identities.
+create or replace function pg_temp.r7_stash_act(p_tag text) returns void language plpgsql as $b$
+declare v_review uuid := pg_temp.s12ga_review(p_tag); v_version text := pg_temp.s12ga_rver(pg_temp.s12ga_review(p_tag));
+begin
+  perform pg_temp.r7_stash_cmd('act:' || p_tag, 'owner', 'platform_api.cms_activate_governed_subject',
+    jsonb_build_object('reviewId', v_review, 'action', 'activate', 'expectedVersion', v_version, 'ifMatch', v_version,
+      'idempotencyKey', 'r7-act-' || p_tag));
+  perform pg_temp.r7_note('review:' || p_tag, v_review::text);
+  perform pg_temp.r7_note('subject:' || p_tag, pg_temp.s12ga_subject(p_tag)::text);
+  perform pg_temp.r7_note('lineage:' || p_tag,
+    (select template_id::text from platform_private.cms_template_versions where id = pg_temp.s12ga_subject(p_tag)));
+end;
+$b$;
