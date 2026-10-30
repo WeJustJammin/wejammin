@@ -1697,12 +1697,66 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and concurrency rules.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'once the first placement commits the second placement succeeds [P2-S12-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'two simultaneous placements into one slot get disjoint consecutive positions 0, 1, 2 in commit order, each path once [P2-S12-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'both placements advanced the entry aggregate version by one each [P2-S12-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'the competing placement of the same paths waits for the first [P2-S12-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'exactly one winner on the same path: the loser answers the typed CONFLICT at /slotPath after waiting for the winner [P2-S12-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'the loser wrote no composition row, audit, outbox or idempotency row: the stores equal what the winner left [P2-S12-AC-013]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'waiting at position 0 the placement holds no later position: the authority rows, the pattern version row and the content type version row are all free [P2-S12-AC-218]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'waiting at position 3 the placement already holds the entry row (position 0) and the authority rows (position 1) [P2-S12-AC-276]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'waiting at position 3 the placement does not yet hold the content type version row (position 4): no earlier position is taken after a later one [P2-S12-AC-276]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and concurrency rules.": missing test: race (tool race) under supabase/tests (new phase_02_slice_12_pattern_placement.race.mjs, runner infra/database-races) driving two simultaneous cms_insert_pattern_instance calls into one (revision, slot) from independent sessions and asserting serialised consecutive positions, no duplicate (revision_id, path), exactly one winner on the same path, and the revision/slot lock order of BE03c (pattern placement section ~1519: "computed under the revision/slot lock", DEC-185). No race module touches cms_insert_pattern_instance today; the pgTAP suite is single-session by its own header.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-014',
@@ -2393,12 +2447,102 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'and concurrency rules.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'a second create of the same stable key is observed blocked BY the first in the live lock manager [P2-S12-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'the second create waits for the first transaction to finish (the unique stable key) [P2-S12-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'exactly one winner of a duplicate stable key: the loser answers the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT) [P2-S12-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'the term action holds the curator grant rows (position 1) before the vocabulary row (position 3) [P2-S12-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'a term write carrying the previous active version waits for the activation in flight (the position 3 row) [P2-S12-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'a writer that waited on the active version row the activation superseded is refused with the typed taxonomy_not_active (Slice 12 lock order rule 2: a superseded bound definition row) and loses [P2-S12-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'a stale active-version operand arriving after the activation committed loses with the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT) [P2-S12-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'the stale write wrote nothing and the vocabulary now has exactly one active version, the successor [P2-S12-AC-019]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'a second deprecation of the same term waits for the first (the position 6 term row) [P2-S12-AC-047]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'two competing writers on one term serialize: the loser answers the typed CONFLICT, never a second transition [P2-S12-AC-047]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'the term action is observed blocked BY the holder of the vocabulary active version row (position 3) [P2-S12-AC-276]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'waiting at position 3 the term action does not yet hold the term row (position 6): no earlier position is taken after a later one [P2-S12-AC-276]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'the term action is observed blocked BY the holder of the term row (position 6) [P2-S12-AC-276]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'waiting at position 6 the term action already holds the grant rows (1) and the vocabulary active version row (3) [P2-S12-AC-276]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'waiting at position 3 the term action already holds the curator grant rows (position 1) [P2-S12-AC-276]',
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "and concurrency rules.": missing test: race (tool race) under supabase/tests (new phase_02_slice_12_taxonomy_term_action.race.mjs, runner infra/database-races) driving two simultaneous cms_act_taxonomy_term calls on one vocabulary/term from independent sessions, asserting the term lock / active-version CAS serialises them (exactly one winner of a duplicate stable key; a stale active-version operand loses), per BE03c lock order (position 1 locks, lines ~1344-1351) and the merge convergence lock order (1338). Only structural lock-order assertions exist (085-continuation.sqlinc:197,200) and single-session forms.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-020',
@@ -6355,7 +6499,38 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'concurrency',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'two competing writers on one vocabulary serialize: the loser gets the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT) [P2-S12-AC-047]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'the loser created no duplicate term, label, audit, outbox or idempotency row: the stores equal what the winner left and one term holds the key [P2-S12-AC-047]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'a second deprecation of the same term waits for the first (the position 6 term row) [P2-S12-AC-047]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'two competing writers on one term serialize: the loser answers the typed CONFLICT, never a second transition [P2-S12-AC-047]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql',
+            title:
+              'the loser wrote no label, audit, outbox or idempotency row and the term is deprecated exactly once [P2-S12-AC-047]',
+          },
+        ],
       },
       {
         text: 'revocation',
@@ -6420,9 +6595,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "concurrency": missing test: race (tool race) for cms_act_taxonomy_term asserting two competing writers on one vocabulary/term serialize one winner and return the typed conflict (CONFLICT / TAXONOMY_VERSION_CONFLICT) to the loser without duplicate term, label, audit or outbox effect (IA03 line 538). Only one-session stale-operand and duplicate-key cases exist (050-authority.sqlinc:41-43, 030-create.sqlinc:71); no race module covers the term action.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-048',
@@ -7998,7 +8172,15 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'CMS-03C-04 is consumed by the protected `CmsLocaleVariantForm` at `/app/cms-content-modeling/entries/:entryId/locales/:locale`',
-        citations: [],
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-page-operations-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-058] saves a translation from /entries/:entryId/locales/:locale: the command is sent, one draft variant is committed, and a fresh load shows the stored translation',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: 'which offers only localizable fields',
@@ -8191,9 +8373,8 @@ export const S12_EVIDENCE_LEDGER_001_071: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "CMS-03C-04 is consumed by the protected `CmsLocaleVariantForm` at `/app/cms-content-modeling/entr...": DEC-226(3): "consumed by <island> at /app/..." needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-059',

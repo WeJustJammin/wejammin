@@ -583,7 +583,32 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'under the revision/slot lock (DEC-185),',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'a second placement into the same slot of the same revision is observed blocked BY the first in the live lock manager (the revision/slot lock) [P2-S12-AC-218]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'the second placement waits for the first transaction to finish (the entry row, position 0, owned by the first) [P2-S12-AC-218]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'the placement under the revision/slot lock computes its positions after the winner committed: disjoint consecutive positions in commit order [P2-S12-AC-218]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_placement.sql',
+            title:
+              'the placement is observed blocked BY the holder of the entry row (position 0) [P2-S12-AC-218]',
+          },
+        ],
       },
       {
         text: 'and answers 201 `PatternPlacementResource`, an `items` list of one or more `CompositionInstanceResource` in position order;',
@@ -806,9 +831,8 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "under the revision/slot lock (DEC-185),": missing test: race (tool race), new module supabase/tests/phase_02_slice_12_placement.race.mjs (add to infra/run-database-race-runners.mjs plan): two independent sessions place into one slot of one revision; assert the two runs get disjoint consecutive positions in commit order and neither shares a position (BE03c "Slice 12 lock order" 1336-1357, DEC-185). The only sequential evidence, `the slot main holds each position once`, is not cited because it proves no lock.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-219',
@@ -6781,7 +6805,7 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'unverified',
     limitation:
-      'No clause is cited. Unproven: the template journey, the protected decision inside a journey, schedule of a pattern, creating and assigning a pattern in the browser, a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, a term merged with convergence, a locale variant with a no_fallback block, related content pinned and excluded, and the diff value / canonical id / telemetry scan. Partial evidence not cited (a single-clause entry cannot be partial): tests/e2e/phase-02-slice-12-definition-journeys-real-route.spec.ts J1 (a vocabulary defined, submitted, assigned, decided keyboard-only at a 640x400 viewport and scheduled in the browser; a second activated and retired) and J2 (a pattern submitted, decided, activated and retired), each scanning URLs, console and storage for person ids and content hashes; phase-02-slice-12-governed-review-real-route.spec.ts T6/T3 (vocabulary only; decision form at 200%).',
+      "No clause is cited. Unproven: a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, the protected decision inside a journey, a pattern scheduled, a pattern created and assigned in the browser, and the diff-value / canonical-id / telemetry scan beyond requests, URLs, console and storage. Partial evidence not cited (a single-clause entry cannot be partial): definition-journeys J1 (a vocabulary defined, submitted, assigned, decided keyboard-only at a 640x400 viewport and scheduled in the browser; a second activated and retired) and J2 (a pattern submitted, decided, activated and retired); template-journey J3 (a template defined in the browser form, submitted, assigned, decided and scheduled by three people, a second decided, activated and retired; person ids and the second template's content hash scanned in URLs, console and storage); locale-related-journeys J4 (a locale variant with a no_fallback block) and J5 (related content pinned in order and excluded); term-merge-journey J6 (a term merged with convergence in the browser: retired assignment superseded, survivor assignment active, no merge work left; same-transaction convergence only); governed-review-real-route T6/T3 (vocabulary only; decision form at 200%). The 200% zoom is a 640x400 viewport.",
   },
   {
     criterion: 'P2-S12-AC-274',
@@ -9564,14 +9588,49 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
     ],
     status: 'unverified',
     limitation:
-      "Unproven (uncited clauses): \"Lock order: the Slice 12 writers (CMS-03C-01 to CMS-03C-09, CMS-03C-12, CMS-03C-15, CMS-03C-16 and CMS-03C-19, the linked-update scan, the revision-append carry-over, the recheck job and the term merge) take their locks in the Slice 12 lock order, the BE03b global write-path order extended by DEC-157 with one position for term rows, and never acquire an earlier position after a later one (the ten CMS-03B-06 decision steps order checks, not locks),\": Partly proven, not citable as the whole tile: source-order oracles now exist for CMS-03C-01, -06, -09, -19, -12, -16 and -03 (gaps_lock_sources.sql, incl. the merge-enqueue mutex), CMS-03C-07/-08 (gaps_lock_order.sql, perf lane), the position-4 lock of -01/-12/-16 (gaps_lock_position4.sql and its two-session race), the position-6 term lock of the revision writers (taxonomy_integrity_lock_order.sql and _concurrency.sql), plus older oracles for -04, -05, -15, the scan, the recheck and the merge handler. Still unproven: CMS-03C-02 placement lock order (the only check is a table-lock oracle), the revision-append carry-over order (spread over shared helpers, BOUNDARY), and the id order of the term-merge command's FOR UPDATE (no `order by` assertion). No single test covers the 17 writer groups. \"re-prove their capability under the locks,\": Partly proven, not citable as the whole tile: CMS-03C-01 re-proves the designer capability after its position-1 lock (gaps_lock_sources.sql) and a two-session race shows a grant revocation committed while the define waits makes the define FORBIDDEN with nothing written (gaps_lock_position4_race.sql S4b); the other writers' capability re-proof under their locks is covered by their own suites but not as one claim. \"and map `deadlock_detected` and a lock-acquisition failure to the 409 code of the operation's catalog (`*_VERSION_CONFLICT`) with nothing committed and the same `Idempotency-Key` reusable.\": missing tests: the single-writer injection tests prove only the SQL wrapper's typed CONFLICT token for a subset of writers; no cited test shows the Worker maps it to each operation's *_VERSION_CONFLICT code, the linked-update scan and the term-merge continuation have no conversion evidence, and 'nothing committed, same Idempotency-Key reusable' is shown for CMS-03C-01 only (template_authority #36/#37). Sound single-writer evidence that does not close the clause: locale_variant/004-relay-source-race-grants.sqlinc (CMS-03C-04 deadlock and lock-acquisition conversions) and governed_recheck/070-isolation.sqlinc (the recheck job).",
+      "Unproven (uncited clauses 0, 1, 2). Partly proven, not citable as a tile because the clauses quantify over the 17 writer groups of clause 0: source-order oracles for CMS-03C-01, -06, -09, -19, -12, -16, -03 (gaps_lock_sources.sql), CMS-03C-07/-08 (gaps_lock_order.sql), position 4 of -01/-12/-16 (gaps_lock_position4.sql and its two-session race), position 6 of the revision writers (taxonomy_integrity_lock_order.sql and _concurrency.sql); two-session lock-order observations (phase_02_slice_12_race7_*.sql): CMS-03C-02 positions 0 < 1 < 3 < 4, CMS-03C-03 positions 1 < 3 < 6, CMS-03C-09 {1,3,4} < 5 < advisory. Capability re-proved under the position 1 lock, a revocation committed first winning and a later revocation waiting, by two-session tests for CMS-03C-09 (race7 S4), -02 (P5), -03 (T6) and -01 (S4b). A real lock-acquisition failure converted to the typed CONFLICT with nothing committed and the same Idempotency-Key reusable, at the SQL layer only, for CMS-03C-09 (S2, and a real deadlock_detected S5), -02 (P3), -03 (T3), -01 and -04. Not shown: the Worker mapping of CONFLICT to each operation's *_VERSION_CONFLICT code; CMS-03C-04/-05/-06/-07/-08/-12/-15/-16/-19, the linked-update scan, the recheck job, the term merge and the revision-append carry-over under a real capability revocation or lock failure; the approver-revocation versus activation race of rule 3.",
   },
   {
     criterion: 'P2-S12-AC-277',
     text: 'Concurrency scenarios: template activation versus block withdrawal, linked pattern update versus local override, term merge versus assignment, locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.',
     clauses: [
       {
-        text: 'Concurrency scenarios: template activation versus block withdrawal, linked pattern update versus local override,',
+        text: 'Concurrency scenarios: template activation versus block withdrawal,',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_template_block.sql',
+            title:
+              'the template activation is held at the review row by the holder session [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_template_block.sql',
+            title:
+              'the signed CMS-03A-08 commands deprecate and then withdraw the block and commit while the activation waits (the activation holds no lock on the block) [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_template_block.sql',
+            title:
+              'the activation that resumes after the withdrawal answers the committed refusal envelope with reasonCode dependency_changed (409 GOVERNED_REVIEW_VERSION_CONFLICT at the Worker) [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_template_block.sql',
+            title:
+              'the review is invalidated (version + 1), the subject returns to draft and no activation event was emitted [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_template_block.sql',
+            title:
+              'the template is never activated on the stale block digest: no version of the lineage is active [P2-S12-AC-277]',
+          },
+        ],
+      },
+      {
+        text: 'linked pattern update versus local override,',
         citations: [],
       },
       {
@@ -9628,13 +9687,84 @@ export const S12_EVIDENCE_LEDGER_214_285: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.',
+        text: 'locale source edit versus translation,',
+        citations: [],
+      },
+      {
+        text: 'related target unpublish,',
+        citations: [],
+      },
+      {
+        text: 'duplicate and out-of-order events,',
+        citations: [],
+      },
+      {
+        text: 'worker lease expiry',
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_lease.sql',
+            title:
+              'the worker whose lease expired is still executing: it is observed blocked at the lineage advisory lock while it owns its schedule row [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_lease.sql',
+            title:
+              'the in-flight worker waits for the lineage advisory lock, the last position [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_lease.sql',
+            title:
+              'the expiry sweep returns at once, without waiting for the in-flight worker, and claims nothing yet [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_lease.sql',
+            title:
+              'the sweep recovered only the expired leases it could lock: the two idle schedules are failed_retryable at attempt 1, the in-flight schedule keeps its row and its lease [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_lease.sql',
+            title:
+              'the in-flight worker then completes: no double execution and no lost activation [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_lease.sql',
+            title:
+              'the schedule is completed and the subject is active exactly once [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_lease.sql',
+            title:
+              'after the retry delay the next claim re-leases the recovered schedules with new leases [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_lease.sql',
+            title:
+              'a worker presenting the replaced lease is refused P0001:CONFLICT and changes nothing: the schedule row and the new lease are untouched [P2-S12-AC-277]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_lease.sql',
+            title:
+              'the worker holding the new lease completes the activation [P2-S12-AC-277]',
+          },
+        ],
+      },
+      {
+        text: 'and restore-epoch fencing each have a deterministic tested outcome.',
         citations: [],
       },
     ],
     status: 'partial',
     limitation:
-      'Unproven (uncited clauses): "Concurrency scenarios: template activation versus block withdrawal, linked pattern update versus local override,": missing tests (race tool, independent sessions), not covered by the gap wave: (1) template activation versus block withdrawal and (2) linked pattern update (accept) versus a concurrent local override edit. Neighbours exist (dec193_writer.race: accept versus a concurrent target ACTIVATION) but prove a different race. "locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.": missing tests (race tool, independent sessions), not covered by the gap wave: locale source edit versus translation in concurrent form (only the sequential 409 exists), related target unpublish, duplicate and out-of-order events, worker lease expiry (only the sequential ladder exists) and restore-epoch fencing; each needs one deterministic race outcome.',
+      'Unproven (uncited parts): "linked pattern update versus local override," (BE03c names no override-writing command other than the CMS-03C-02 placement and the CMS-03C-15 resolution; owner reading needed), "locale source edit versus translation," and "related target unpublish," (specified but unbuilt: each needs a committed Slice 11 world with the 03b revision-append / unpublish commands beside CMS-03C-04/-05), "duplicate and out-of-order events," and "and restore-epoch fencing each have a deterministic tested outcome." (BE03c states no 03c consumer-ordering or restore-fence rule beyond the idempotent recheck job and the platform fence; owner reading needed). Proven by two-session pgTAP (phase_02_slice_12_race7_template_block.sql, _lease.sql): template activation versus block withdrawal and worker lease expiry.',
   },
   {
     criterion: 'P2-S12-AC-278',

@@ -2294,7 +2294,68 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'runs in one transaction that takes its locks in the Slice 12 lock order',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'CMS-03C-09 activate is observed blocked BY the review row holder, the position 5 lock [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'while blocked at the review row the activation already holds the owner-capability grant rows (position 1) [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'while blocked at the review row the activation already holds the subject version row (position 3) [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'while blocked at the review row the activation already holds the bound content type version row (position 4) [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'while blocked at the review row the activation does not yet hold the lineage advisory lock, which is taken last [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'CMS-03C-09 activate is observed blocked BY the advisory lock holder [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'the activation waits for the lineage advisory lock, the last position [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'blocked at the advisory lock the activation already holds the review row (position 5) [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'blocked at the advisory lock the activation also holds positions 1, 3 and 4: the advisory lock is acquired after every row lock [P2-S12-AC-085]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_lock_sources.sql',
+            title:
+              'CMS-03C-09 locks authority (1), the subject row (3), the graph and bound versions, then the lineage advisory lock last [P2-S12-AC-276]',
+          },
+        ],
       },
       {
         text: 'holds the review row and the lineage advisory lock as an atomic CAS switch',
@@ -2407,9 +2468,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clause): "runs in one transaction that takes its locks in the Slice 12 lock order": missing test: lock-order proof for CMS-03C-09 activate/schedule at BE03c 1501 positions 1, 3 (subject + graph + lineage active row), 4 (content-type version rows), 5 (review row FOR UPDATE), advisory last. Re-checked 2026-10-29: gaps_lock_sources.sql "CMS-03C-09 locks authority (1), the subject row (3), the graph and bound versions, then the lineage advisory lock last [P2-S12-AC-276]" anchors only authority, subject, graph and the advisory lock - no review-row anchor, no position-4 anchor - and the other literal (governed_activation/090-lineage-lock) checks only the last position; no race module drives activation. Not cited: it does not prove the review row position of the clause.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-086',
@@ -2506,7 +2566,44 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: '`activation_conflict`',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'the second activator of the lineage is observed blocked BY the first in the live lock manager [P2-S12-AC-086]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'the second activator waits for the lineage ADVISORY lock, the last position, and not for a row [P2-S12-AC-086]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'the lineage advisory lock (the CMS-03C-19 key) is held by the first activator while the second waits [P2-S12-AC-086]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'the activation that loses a race on the lineage answers P0001 activation_conflict (409 at the Worker) [P2-S12-AC-086]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'after the lost race the lineage keeps exactly one active version, the winner, and no partial switch [P2-S12-AC-086]',
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-ops-refusals.test.ts',
+            title:
+              "'CMS-03C-09' SQL refusal transport maps activation_conflict (a lost race on the lineage)",
+          },
+        ],
       },
       {
         text: 'and `schedule_exists` (409)',
@@ -2776,9 +2873,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clause): "`activation_conflict`": missing test: a two-session race (supabase/tests/phase_02_slice_12_governed_activation.race.mjs style, like phase_02_slice_12_governed_authority.race.mjs) in which two activators of one lineage race, the loser answers P0001 activation_conflict with no partial switch and the lineage keeps exactly one active version (BE03c 1326, 1348; cms_activate_governed_subject step 9). governed_activation/090-lineage-lock.sqlinc states the lost-race branch is unreachable in single-session pgTAP. Only the Worker token mapping (activation_conflict -> 409 GOVERNED_REVIEW_VERSION_CONFLICT, ACTIVATION_TABLE) exists.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-087',
@@ -5821,7 +5917,22 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`',
-        citations: [],
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-page-operations-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-105] saves a first pattern version from /patterns/new: the form sends CMS-03C-12, a draft is committed, and the page links the saved pattern',
+            project: 'real-route-chrome',
+          },
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-page-operations-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-105] saves a successor version from /patterns/:patternKey: the form sends version 1 as If-Match, version 2 is committed beside it',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: "which builds `PatternVersionRequest` over a native nested ordered list of `PatternNode`s (block nodes chosen from the context's registered block selectors,",
@@ -6038,9 +6149,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clause): "CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`": missing test (DEC-226 rule 3): page-level behaviour that the protected CmsPatternVersionDesigner is mounted at /app/cms-content-modeling/patterns/new and /app/cms-content-modeling/patterns/:patternKey (Astro render test or real-route Playwright spec). Re-checked 2026-10-29: the gap-wave tests of this criterion (nested picker, node pointers) mount the React island, not the Astro page.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-106',
@@ -6853,7 +6963,15 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
     clauses: [
       {
         text: 'CMS-03C-13 is consumed by the protected `CmsPatternSelector` in the instance-insert form at `/app/cms-content-modeling/entries/:entryId/composition`',
-        citations: [],
+        citations: [
+          {
+            tool: 'playwright',
+            file: 'tests/e2e/phase-02-slice-12-page-operations-real-route.spec.ts',
+            title:
+              '[P2-S12-AC-111] lists an active compatible pattern in the instance-insert form of /entries/:entryId/composition and places the pattern chosen there',
+            project: 'real-route-chrome',
+          },
+        ],
       },
       {
         text: "which renders `PatternSelectorPage` items for the entry's content type (`patternKey`, `patternVersion`, `nodeCount`) as a native list or select with the result count announced politely",
@@ -6941,9 +7059,8 @@ export const S12_EVIDENCE_LEDGER_072_142: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "CMS-03C-13 is consumed by the protected `CmsPatternSelector` in the instance-insert form at `/app...": DEC-226(3): "consumed by <island> at /app/..." needs page-level behaviour (an Astro render test or a real-route Playwright spec); the cited loader, component, composed React and source-text tests do not prove that the page mounts the island',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-112',

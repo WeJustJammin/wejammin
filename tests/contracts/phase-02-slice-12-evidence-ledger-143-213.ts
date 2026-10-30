@@ -321,7 +321,32 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'claims under `FOR UPDATE SKIP LOCKED`',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_claim.sql',
+            title:
+              'a concurrent claim returns WITHOUT WAITING for the row session A holds and without that schedule: it claims the next due schedule (FOR UPDATE SKIP LOCKED) [P2-S12-AC-145]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_claim.sql',
+            title:
+              'two concurrent claims never return the same schedule: both claimed rows are executing at version 2 with distinct leases and the third stays pending [P2-S12-AC-145]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_claim.sql',
+            title:
+              'a claim while a holder owns the only due schedule row returns the empty claim at once instead of waiting [P2-S12-AC-145]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_claim.sql',
+            title:
+              'once the holder releases the row, the next claim returns that schedule [P2-S12-AC-145]',
+          },
+        ],
       },
       {
         text: 'with a version CAS from `pending` or `failed_retryable` to `executing` and a five-minute `lease_id` and `lease_until`',
@@ -370,9 +395,8 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "claims under `FOR UPDATE SKIP LOCKED`": missing test: the claim\'s `FOR UPDATE SKIP LOCKED` under concurrency -- a race module (new supabase/tests/phase_02_slice_12_governed_schedule_races/ one-claim-while-another-holds-the-row, modelled on supabase/tests/phase_02_slice_11_races/013-schedule-claim-race.mjs) in which session A holds the row lock of a due schedule and session B\'s cms_claim_due_governed_activations returns without waiting and without that schedule, and two concurrent claims never return the same schedule; or at minimum a catalog assertion on the function source. The sequential claims in 020-claim.sqlinc prove the CAS and the lease but not SKIP LOCKED. BE03c line 188 (mirrors CMS-03B-20).',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-146',
@@ -1767,7 +1791,7 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S12-AC-159',
-    text: 'cmsTemplateContextRead registers GET /api/v1/cms/templates/context with an empty request and returns the strict `TemplateDesignerContext`: at most 64 owned active compiled content-type selectors (`id`, `typeKey`, `activeVersionId`, `activeVersion`, `sourceLocale`) and at most 128 owned registered, currently supported block selectors (`blockKey`, `blockVersion`), excluding owner IDs, grant records, renderer refs, manifests and policy internals; generated OpenAPI and the discovered Hono route match the registry row.',
+    text: 'cmsTemplateContextRead registers GET /api/v1/cms/templates/context with an empty request and returns the strict `TemplateDesignerContext`: at most 64 owned active compiled content-type selectors (`id`, `typeKey`, `activeVersionId`, `activeVersion`, `sourceLocale`) and at most 128 registered, currently supported block selectors (`blockKey`, `blockVersion`) of the platform registry, whichever release registered them, excluding owner IDs, grant records, renderer refs, manifests and policy internals; generated OpenAPI and the discovered Hono route match the registry row.',
     clauses: [
       {
         text: 'cmsTemplateContextRead registers GET /api/v1/cms/templates/context with an empty request',
@@ -1896,31 +1920,31 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'at most 128 owned registered, currently supported block selectors (`blockKey`, `blockVersion`)',
+        text: 'at most 128 registered, currently supported block selectors (`blockKey`, `blockVersion`) of the platform registry, whichever release registered them',
         citations: [
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
             title:
-              '129 owned supported candidates are cut at exactly 128 selectors [P2-S12-AC-159]',
+              "130 supported candidates (129 of the caller's organization plus one of another owner) are cut at exactly 128 selectors [P2-S12-AC-159]",
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
             title:
-              'the first selector is the lowest owned supported key: the deprecated, foreign and withdrawn blocks sort before it and are absent [P2-S12-AC-159]',
+              "the first selector is the lowest supported key, another owner's gap.a001 (DEC-243): the deprecated gap.a000 and the withdrawn gap.a002 around it are absent [P2-S12-AC-159]",
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
             title:
-              'the cut keeps the first 128 keys in C-collation order, dropping gap.b128 [P2-S12-AC-159]',
+              'the cut keeps the first 128 keys in C-collation order (gap.a001, then gap.b000 to gap.b126), dropping gap.b127 and gap.b128 [P2-S12-AC-159]',
           },
           {
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
             title:
-              "a deprecated block, a withdrawn block and another owner's block are not selectors [P2-S12-AC-159]",
+              'a deprecated block, a withdrawn block and the two keys beyond the 128 cut are not selectors [P2-S12-AC-159]',
           },
           {
             tool: 'pgtap',
@@ -1933,6 +1957,12 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
             file: 'packages/contracts/src/cms-composition/template.context-bounds.test.ts',
             title:
               'TemplateDesignerContext bounds accepts exactly 128 registered block selectors and refuses 129',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_gaps_db1_template.sql',
+            title:
+              "another owner's supported block is a selector: blocks are platform registry records, not tenant data (DEC-243, the Slice 09 platform-registry ruling) [P2-S12-AC-159]",
           },
         ],
       },
@@ -8601,12 +8631,42 @@ export const S12_EVIDENCE_LEDGER_143_213: readonly EvidenceLedgerEntry[] = [
       },
       {
         text: 'an activation that loses a race on the lineage is 409 `activation_conflict` and nothing commits.',
-        citations: [],
+        citations: [
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'an activation that loses a race on the lineage is 409 activation_conflict: the loser answers P0001 activation_conflict [P2-S12-AC-205]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'the loser changed nothing: its subject, its review and its decisions are byte-identical to before the race [P2-S12-AC-205]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              'the loser wrote no audit, outbox or idempotency row: the stores equal what the winner left [P2-S12-AC-205]',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_12_race7_activation.sql',
+            title:
+              "the loser's identical request (same Idempotency-Key) is reusable: it then activates and supersedes the winner [P2-S12-AC-205]",
+          },
+          {
+            tool: 'vitest',
+            file: 'apps/worker/src/cms-composition/governed-review-ops-refusals.test.ts',
+            title:
+              "'CMS-03C-09' SQL refusal transport maps activation_conflict (a lost race on the lineage)",
+          },
+        ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Unproven (uncited clauses): "an activation that loses a race on the lineage is 409 `activation_conflict` and nothing commits.": missing test: a two-session race schedule (supabase/tests/phase_02_slice_12_governed_authority.race.mjs, new schedule beside the CMS-03C-06 ones, using the same kit) in which two activators of one lineage run concurrently and the loser is refused 409 activation_conflict with every covered store (subject, review, superseded row, audit, outbox, idempotency) byte-identical to before it; 090-lineage-lock.sqlinc states the lost-race branch is unreachable in a single pgTAP session and only the lock and the Worker token mapping are proven; spec BE03c "an activation that loses a race on the lineage is 409 activation_conflict and nothing commits"',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S12-AC-206',
