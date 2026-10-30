@@ -106,7 +106,7 @@ export const useCmsTemplateEditState = (detail: TemplateVersionDetail) => {
     setLatestRateLimited(false);
     setLatestRetryAt(null);
     setLatestRemaining(null);
-    setLatest(null);
+    // FE03 1048: the last verified comparison is kept while a re-read runs or fails.
     const result = await readLatestCmsTemplateVersion(detail.templateKey);
     if (!attempt.finishRead(token)) return;
     if (result.kind === 'loaded') {
@@ -124,7 +124,6 @@ export const useCmsTemplateEditState = (detail: TemplateVersionDetail) => {
       setLatest(result.detail);
       return;
     }
-    setLatest(null);
     if (result.kind === 'rejected' && result.status === 429) {
       const seconds = result.retryAfterSeconds;
       setLatestRemaining(seconds ?? null);

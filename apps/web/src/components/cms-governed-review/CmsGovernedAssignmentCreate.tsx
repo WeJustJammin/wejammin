@@ -23,6 +23,7 @@ import { GOVERNED_DETAIL_HEADING_IDS } from './CmsGovernedReviewDetail';
 import { GOVERNED_COMMAND_SPECS } from './governed-review-command-specs';
 import { governedFrameVisible } from './governed-review-form-visibility';
 import { useGovernedCommand } from './use-governed-review-command';
+import { useClearSentOnCommit, useSentDraft } from './use-governed-sent-draft';
 
 export interface CmsGovernedAssignmentCreateProps {
   readonly reviewId: string;
@@ -65,12 +66,15 @@ export default function CmsGovernedAssignmentCreate({
   const [localErrors, setLocalErrors] = React.useState<
     readonly WorkflowLocalError[]
   >([]);
+  const sentDraft = useSentDraft();
   const { controller, state } = useGovernedCommand({
     spec: GOVERNED_COMMAND_SPECS['CMS-03C-08'],
     draftKey: 'CMS-03C-08-create',
     ids: { reviewId },
     refetch,
     onCommitted: () => {
+      // FE03 1048: a verified success clears the form's draft, the chosen reviewer included.
+      sentDraft.commit();
       void refetch().then(() =>
         onDone(GOVERNED_DETAIL_HEADING_IDS.assignments),
       );
@@ -81,6 +85,12 @@ export default function CmsGovernedAssignmentCreate({
     if (permitted) controller.restore(version);
   }, [controller, permitted, version]);
   const fields = useDraftFields(state.restoredValues);
+  // The chosen reviewer is cleared too, unless it was changed after dispatch.
+  const person = React.useMemo(
+    () => ({ key: 'personId', set: setPersonId }),
+    [],
+  );
+  useClearSentOnCommit(sentDraft, fields.clearSent, person);
   const expires = fields.value('expiresAt');
   const reason = fields.value('reason');
   const blocked = isCommitBlocked(state, disabledReason);
@@ -113,6 +123,7 @@ export default function CmsGovernedAssignmentCreate({
           found.push({ ...ASSIGNMENT_REASON, message: reasonError });
         setLocalErrors(found);
         if (chosen === null || !expiry.ok || found.length > 0) return;
+        sentDraft.remember({ ...fields.typedValues, personId });
         void controller.submit({
           body: {
             action: 'create',

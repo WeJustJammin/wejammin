@@ -43,6 +43,7 @@ const exempt: Readonly<Record<string, string>> = {
   'components/cms-pattern-designer/pattern-designer-submit.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/pattern-latest-read.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/pattern-nestable-read.ts': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/pattern-status-copy.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/use-pattern-conflict.ts': NO_STEP_UP_ROW,
   'components/cms-related-content/CmsRelatedStatus.tsx': NO_STEP_UP_ROW,
   'components/cms-related-content/related-candidates.ts': NO_STEP_UP_ROW,

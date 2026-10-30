@@ -1,31 +1,18 @@
 // @vitest-environment jsdom
-import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { preloadWorkflowAnswerMachinery } from '../cms-editorial-workflow/cms-workflow-answer-machinery.test-support';
 
 import { loadCmsValidators } from '../../lib/cms-contract-validators';
-import { MemoryStorage } from '../../lib/test-support/memory-storage';
 import {
   buttonNamed,
   byLabel,
-  choose,
   click,
   disableReactAct,
   enableReactAct,
   flush,
-  mountWithIntent,
-  typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
 import { localInputValue } from '../cms-editorial-workflow/cms-workflow-expiry';
-import {
-  KEY,
-  REVIEWER_PERSON_ID,
-  governedAssignmentFixture,
-  governedAssignmentSummaryFixture,
-  governedDetailFixture,
-  jsonResponse,
-} from '../../server/cms-governed-review-fixtures.test-support';
-import CmsGovernedAssignmentForm from './CmsGovernedAssignmentForm';
+import { KEY } from '../../server/cms-governed-review-fixtures.test-support';
 import {
   GATE,
   RECONCILED,
@@ -43,10 +30,24 @@ import {
 } from './governed-command-states.test-support';
 import {
   flushUntil,
-  governedEnvironment,
   headersOf,
   queuedFetcher,
 } from './governed-review-form-test-support';
+import {
+  NOW,
+  DAY,
+  review,
+  created,
+  revoked,
+  mount,
+  ends,
+  why,
+  assign,
+  revoke,
+  revokeFrame,
+  fill,
+  create,
+} from './CmsGovernedAssignmentForm.states.test-support';
 
 beforeAll(preloadWorkflowAnswerMachinery);
 beforeAll(enableReactAct);
@@ -54,80 +55,6 @@ beforeAll(async () => {
   await loadCmsValidators();
 });
 afterAll(disableReactAct);
-
-const NOW = Date.parse('2026-10-08T12:00:00Z');
-const DAY = 24 * 3_600_000;
-const BOTH = ['assign_reviewer', 'revoke_assignment'];
-const review = (permittedNextActions: string[] = BOTH) =>
-  governedDetailFixture({
-    version: '2',
-    permittedNextActions,
-    assignments: [governedAssignmentSummaryFixture()],
-  });
-const created = () =>
-  jsonResponse(201, governedAssignmentFixture(), { etag: '"1"' });
-const revoked = () =>
-  jsonResponse(200, governedAssignmentFixture({ state: 'revoked' }), {
-    etag: '"1"',
-  });
-
-const mount = (
-  fetcher: ReturnType<typeof vi.fn>,
-  extra: Partial<React.ComponentProps<typeof CmsGovernedAssignmentForm>> = {},
-  storage = new MemoryStorage(),
-) => {
-  const refetch = vi.fn(async () => true);
-  const onDone = vi.fn();
-  const navigate = vi.fn();
-  const mounted = mountWithIntent(
-    <CmsGovernedAssignmentForm
-      review={review()}
-      disabledReason={null}
-      refetch={refetch}
-      onDone={onDone}
-      now={() => NOW}
-      loadOptions={async () => ({
-        kind: 'ok',
-        options: [
-          {
-            personId: REVIEWER_PERSON_ID,
-            endsAt: new Date(NOW + 30 * DAY).toISOString(),
-          },
-        ],
-      })}
-      environment={governedEnvironment(fetcher, storage, navigate)}
-      {...extra}
-    />,
-  );
-  return { ...mounted, refetch, onDone, navigate, storage };
-};
-
-const ends = (container: HTMLElement) =>
-  byLabel<HTMLInputElement>(container, 'Assignment ends');
-const why = (container: HTMLElement) =>
-  byLabel<HTMLTextAreaElement>(container, 'Reason (optional)');
-const assign = (container: HTMLElement) =>
-  buttonNamed(container, 'Assign reviewer');
-const revoke = (container: HTMLElement) =>
-  buttonNamed(container, 'Revoke Reviewer A');
-/** The revoke command is its own frame beside the create frame, each with its own status line. */
-const revokeFrame = (container: HTMLElement): HTMLElement =>
-  container.querySelector(
-    'section[aria-labelledby="governed-assignment-revoke-title"]',
-  ) as HTMLElement;
-const fill = async (container: HTMLElement) => {
-  await flush();
-  await choose(
-    byLabel<HTMLSelectElement>(container, 'Reviewer'),
-    REVIEWER_PERSON_ID,
-  );
-  await typeInto(ends(container), localInputValue(NOW + DAY));
-  await typeInto(why(container), 'Legal slot.');
-};
-const create = async (container: HTMLElement) => {
-  await fill(container);
-  await click(assign(container));
-};
 
 describe('CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState', () => {
   it('[P2-S12-AC-271] commandState idle: no form open, or a form with an unsent scoped draft', async () => {
@@ -195,7 +122,7 @@ describe('CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState'
     expect(revokeWire.fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it('[P2-S12-AC-271] commandState success (kept half): the named resources, stored draft cleared and review refetched; typed create fields are not cleared (C1)', async () => {
+  it('[P2-S12-AC-271] commandState success: the named resources, stored draft cleared, typed create fields cleared and review refetched', async () => {
     const assigning = mount(queuedFetcher([created()]));
     await create(assigning.container);
     await flush();
@@ -203,6 +130,11 @@ describe('CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState'
     expect(assigning.refetch).toHaveBeenCalledTimes(1);
     expect(assigning.onDone).toHaveBeenCalledWith('governed-assignments-title');
     expect(assigning.storage.length).toBe(0);
+    expect(why(assigning.container).value).toBe('');
+    expect(ends(assigning.container).value).toBe('');
+    expect(
+      byLabel<HTMLSelectElement>(assigning.container, 'Reviewer').value,
+    ).toBe('');
     assigning.unmount();
 
     const revoking = mount(queuedFetcher([revoked()]));
@@ -370,7 +302,7 @@ describe('CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState'
     );
   });
 
-  it('[P2-S12-AC-271] commandState disabled (kept half): an unverified read withholds both controls with its reason; no reason names the missing assign_reviewer entry (C2)', async () => {
+  it('[P2-S12-AC-271] commandState disabled: an unverified read withholds both controls with its reason (the missing assign_reviewer entry is stated by the island, CmsGovernedReviewDetailIsland.test.tsx)', async () => {
     const wire = queuedFetcher([created()]);
     const { container } = mount(wire, {
       disabledReason:

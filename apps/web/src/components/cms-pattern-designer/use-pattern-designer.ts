@@ -108,7 +108,9 @@ export const usePatternDesigner = ({
     csrfToken.length === 0 ||
     rateWait.waiting ||
     done ||
-    outcome.unresolved;
+    outcome.unresolved ||
+    conflict.state.kind === 'checking' ||
+    conflict.state.kind === 'failed';
 
   const onSubmit = useCallback(async (): Promise<void> => {
     if (blocked || !outcome.canSubmit()) return;
@@ -151,8 +153,7 @@ export const usePatternDesigner = ({
     );
   }, []);
 
-  const loaded =
-    conflict.state.kind === 'loaded' ? conflict.state.latest : null;
+  const loaded = conflict.verified;
   const rebase = useCallback((): void => {
     if (loaded === null) return;
     outcome.resolve();

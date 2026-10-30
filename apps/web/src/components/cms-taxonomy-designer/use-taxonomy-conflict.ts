@@ -50,6 +50,8 @@ export const useTaxonomyConflict = (
   readVersions: typeof readTaxonomyVersions = readTaxonomyVersions,
 ) => {
   const [state, setState] = useState<TaxonomyConflictState>({ kind: 'none' });
+  // FE03 1048: the last verified latest version is kept while a re-read runs or fails.
+  const [kept, setKept] = useState<TaxonomyVersionFacts | null>(null);
 
   /** Resolves to what the server answered; `unavailable` when it is not comparable. */
   const check = useCallback(async (): Promise<TaxonomyVersionsResult> => {
@@ -59,13 +61,16 @@ export const useTaxonomyConflict = (
     if (result.kind === 'loaded') {
       const latest = result.page.items[0];
       if (latest === undefined) {
+        setKept(null);
         setState({ kind: 'failed', message: UNVERIFIED_LATEST_MESSAGE });
         return { kind: 'unavailable' };
       }
       if (base !== null && !versionIdentityValid(base, latest)) {
+        setKept(null);
         setState({ kind: 'failed', message: UNVERIFIED_LATEST_MESSAGE });
         return { kind: 'unavailable' };
       }
+      setKept(latest);
       setState({ kind: 'loaded', latest });
       return result;
     }
@@ -73,10 +78,15 @@ export const useTaxonomyConflict = (
     return result;
   }, [base, readVersions, taxonomyId]);
 
-  const clear = useCallback((): void => setState({ kind: 'none' }), []);
-  const latest = state.kind === 'loaded' ? state.latest : null;
+  const clear = useCallback((): void => {
+    setKept(null);
+    setState({ kind: 'none' });
+  }, []);
+  const latest = kept;
   return {
     state,
+    /** The last verified latest version, kept across a re-read that is running or failed. */
+    verified: kept,
     check,
     clear,
     newer: latest !== null && isNewerThanBase(latest, base),

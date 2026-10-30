@@ -61,6 +61,7 @@ const surfaces: ReadonlyArray<
     (loading) => (
       <CmsPatternConflictPanel
         state={loading ? { kind: 'checking' } : { kind: 'none' }}
+        verified={null}
         baseVersion="1"
         newer={false}
         waiting={false}

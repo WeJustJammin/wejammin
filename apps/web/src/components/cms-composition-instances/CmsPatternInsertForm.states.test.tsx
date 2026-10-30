@@ -80,7 +80,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
     expect(window.sessionStorage.length).toBe(0);
   });
 
-  it('[P2-S12-AC-271] commandState loading (kept half): a stable pending label and the commit control disabled, a second press sends nothing; the fields are disabled as well (C4)', async () => {
+  it('[P2-S12-AC-271] commandState loading: a stable pending label and only the commit control disabled, a second press sends nothing; the fields stay editable', async () => {
     const held = heldReply();
     const page = mountPage({ [PLACE]: [held.reply] });
     await send(page.container);
@@ -88,6 +88,20 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
     expectPendingLabel(page.container, 'Placing the pattern…');
     expect(place(page.container).disabled).toBe(true);
     expect(place(page.container).textContent).toBe('Place pattern');
+    // FE03 1048: only the commit control is disabled; every field stays editable.
+    expect(
+      Array.from(
+        page.container.querySelectorAll<HTMLElement>(
+          '.cms-insert select, .cms-insert input, .cms-insert textarea, .cms-insert button',
+        ),
+      )
+        .filter(
+          (control) =>
+            control.matches(':disabled') &&
+            control.textContent !== 'Place pattern',
+        )
+        .map((control) => control.id || control.textContent),
+    ).toEqual([]);
     await click(place(page.container));
     expect(page.calls).toHaveLength(1);
     await answerHeld(held, placed());
@@ -127,7 +141,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
     expect(page.unexpected).toEqual([]);
   });
 
-  it('[P2-S12-AC-271] commandState error: 403 renders the fixed sentence in the result alert (kept half: no CapabilityGate component is used, C6)', async () => {
+  it('[P2-S12-AC-271] commandState error: 403 renders the CapabilityGate with the fixed sentence in the result alert', async () => {
     const page = mountPage({
       [PLACE]: [refusal(403, 'COMPOSITION_FORBIDDEN')],
     });
@@ -135,6 +149,15 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
     expect(resultRegion(page.container)?.getAttribute('role')).toBe('alert');
     expect(resultText(page.container)).toContain(
       'This account cannot edit the composition of this entry.',
+    );
+    expect(
+      resultRegion(page.container)?.querySelector(
+        '[data-cms-editorial-capability-gate]',
+      ),
+    ).not.toBeNull();
+    // FE03 "focus summary/field": the gate's heading is the focused named result.
+    expect(document.activeElement).toBe(
+      document.querySelector('[data-cms-editorial-capability-gate] h2'),
     );
     expect(page.container.querySelector('a[href*="step-up"]')).toBeNull();
   });

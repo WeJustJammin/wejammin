@@ -87,7 +87,7 @@ export default function CmsPatternUpdateDiff({
                 index={index}
                 choice={choices[entry.path]}
                 onChoose={onChoose}
-                disabled={blocked}
+                disabled={disabled}
               />
             ))}
           </ul>

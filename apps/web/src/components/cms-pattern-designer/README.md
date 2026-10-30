@@ -43,7 +43,10 @@ first-party proxies in `apps/web/src/server/cms-pattern-platform-*.ts`.
 - Views: `CmsPatternVersionDesigner` over `CmsPatternFields`, `CmsPatternTree`,
   `CmsPatternNode`, `CmsPatternNestedPicker`, `CmsPatternStatus` (the one focusable result
   region with a named result heading), `CmsPatternConflictPanel` and
-  `CmsPatternVersionFacts` (version, lifecycle, node count and the server's registry digest).
+  `CmsPatternVersionFacts` (version, lifecycle, node count and the server's registry digest). The fixed copy of every
+  outcome is `pattern-status-copy.ts`; a 403 is rendered as the shared `CmsEditorialCapabilityGate`. The conflict
+  panel keeps the last verified latest version while a re-read runs or fails, and the submit control is off until a
+  read verifies (FE03 1048).
 - Page: `load-pattern-designer-page.ts` is the tested loader the two Astro pages call.
 
 ## Extension rules

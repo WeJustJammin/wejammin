@@ -13,7 +13,6 @@ export const MAX_CANDIDATES_ID = 'cms-related-max-candidates';
 interface Props {
   readonly ruleKey: RelatedRuleKey | '';
   readonly maxCandidates: string;
-  readonly disabled: boolean;
   /** The message of a problem with the bound, or null. */
   readonly maxIssue: string | null;
   /** The stored rule is shown without its bound (DEC-195): say so beside the field. */
@@ -26,14 +25,13 @@ interface Props {
 export default function CmsRelatedRuleFields({
   ruleKey,
   maxCandidates,
-  disabled,
   maxIssue,
   boundUnknown,
   onRule,
   onMax,
 }: Props): React.ReactElement {
   return (
-    <fieldset className="cms-related-rule" disabled={disabled}>
+    <fieldset className="cms-related-rule">
       <legend>Derived rule</legend>
       <p>
         A rule adds more related entries after the pins. It only chooses

@@ -10,6 +10,7 @@ export interface CmsCompositionInstanceListProps {
   /** Selected row ids; kept by id so a selection survives a row scrolling out of the window. */
   readonly selected: ReadonlySet<string>;
   readonly reviewingId: string | null;
+  /** A command is in flight or a diff is being read: every control that starts another command waits (DEC-241). */
   readonly busy: boolean;
   readonly disabled: boolean;
   readonly onToggle: (id: string) => void;

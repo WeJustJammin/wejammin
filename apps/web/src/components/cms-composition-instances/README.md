@@ -51,10 +51,18 @@ path by position then path. The first-party proxy is `../../server/cms-compositi
   `use-composition-page.ts`.
 - Views: `CmsCompositionPage` over `CmsPatternInsertForm` (with `CmsPatternSelector`), `CmsCompositionInstanceList`
   (with `CmsCompositionInstanceRow`), `CmsPatternUpdateDiff` (with `CmsDiffPath`, `CmsDiffNewRoots`),
-  `CmsBulkUpdatePanel` and `CmsCompositionStatus` (the one focusable result region).
+  `CmsBulkUpdatePanel` and `CmsCompositionStatus` (the one focusable result region). `use-composition-panel-now.ts` gives a
+  command's completion the panel as it is now.
 
 ## Conventions
 
+- FE03 1046 and DEC-241 (extended by root): while a command is in flight (or a diff is being read) every control that
+  starts another command is disabled: Place pattern, Accept update, Detach, Accept all selected updates, Detach
+  selected, place new roots, and Review update / Review selected updates. Inputs stay editable: the insert fields, the
+  diff answers and the row selection. A value typed or an answer changed while the command runs survives its
+  completion: a verified placement clears only the pattern and overrides that still equal what was sent, and a 409
+  reload keeps the answers as they are now (`use-composition-panel-now.ts`). A 403 is rendered as the shared
+  `CmsEditorialCapabilityGate` in the result region; the failed pattern read keeps the listed page and holds submit off.
 - `:entryId` is the only URL state: any query is a 400. Instance ids are row-local; a diff is read on every open and
   never cached; choices live in component state only. No diff value, canonical id or person id reaches a URL, storage,
   a log or telemetry (`CmsCompositionPage.privacy.test.tsx`).

@@ -11,7 +11,7 @@ import CmsTemplateLatestCheck from './CmsTemplateLatestCheck';
 import CmsTemplateLatestVersionPanel from './CmsTemplateLatestVersionPanel';
 import CmsTemplateLeaveGuard from './CmsTemplateLeaveGuard';
 import CmsTemplateSlots from './CmsTemplateSlots';
-import CmsTemplateStatus from './CmsTemplateStatus';
+import CmsTemplateStatus, { templateKeyError } from './CmsTemplateStatus';
 import { useCmsTemplateEditState } from './cms-template-edit-reconcile-state';
 import {
   cmsTemplateUnavailableTypeIds,
@@ -92,6 +92,11 @@ export default function CmsTemplateEditDesigner({
         Editing version {state.baseDetail.version}. Your values remain in this
         form until you explicitly choose a newer parent version.
       </p>
+      {context.contentTypes.length === 0 ? (
+        <p role="status">
+          No active content types are available to this designer.
+        </p>
+      ) : null}
       {csrfToken.length === 0 ? (
         <p role="status">Reload to restore the protected form session.</p>
       ) : null}
@@ -99,6 +104,7 @@ export default function CmsTemplateEditDesigner({
         status={state.status}
         summaryRef={state.summaryRef}
         mode="successor"
+        parentVersion={state.baseDetail.version}
         returnTo={'/app/cms-content-modeling/templates/' + detail.templateKey}
       />
       <CmsTemplateLatestCheck
@@ -131,6 +137,7 @@ export default function CmsTemplateEditDesigner({
           <CmsTemplateFields
             contentTypes={context.contentTypes}
             templateKey={detail.templateKey}
+            keyError={templateKeyError(state.status)}
             setTemplateKey={() => undefined}
             templateKeyReadOnly
             compatibleTypeIds={state.compatibleTypeIds}

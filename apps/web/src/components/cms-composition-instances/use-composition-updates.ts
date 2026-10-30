@@ -18,6 +18,7 @@ import {
   type UpdateBody,
 } from './composition-update-request';
 import type { Choice, ChoiceMap, UpdateDiff } from './composition-types';
+import { usePanelNow } from './use-composition-panel-now';
 import type { CompositionSession } from './use-composition-session';
 
 export interface PanelState {
@@ -45,6 +46,7 @@ export const useCompositionUpdates = (
 ) => {
   const { fetcher, mutate, addRows, setEntry, setStatus, refreshEntry } =
     session;
+  const { panelRef, choicesNow } = usePanelNow(panel);
   const readOptions = useMemo(
     () => (fetcher === undefined ? {} : { fetcher }),
     [fetcher],
@@ -127,16 +129,18 @@ export const useCompositionUpdates = (
       }
       if (answer.status === 409) {
         await refreshEntry();
-        if (keep !== null) await reloadDiff(keep.diff, keep.choices);
+        if (keep !== null) await reloadDiff(keep.diff, choicesNow(keep));
       }
       setStatus(
         failure(
           heading,
           refusalMessage('update', answer.status, answer.reason),
+          [],
+          answer.status === 403,
         ),
       );
     },
-    [refreshEntry, reloadDiff, setStatus],
+    [choicesNow, refreshEntry, reloadDiff, setStatus],
   );
 
   const send = useCallback(
@@ -154,12 +158,13 @@ export const useCompositionUpdates = (
       addRows(answer.rows);
       setEntry({ ...session.entryRef.current, version: answer.version });
       // A diff of another instance stays open with its choices: only an affected instance's panel closes.
-      if (panel.kind === 'diff' && ids.includes(panel.diff.instance.id))
+      const open = panelRef.current;
+      if (open.kind === 'diff' && ids.includes(open.diff.instance.id))
         setPanel(NO_PANEL);
       prune(ids);
       setStatus(success(heading, outcomeLines(answer)));
     },
-    [addRows, panel, prune, session.entryRef, setEntry, setPanel, setStatus],
+    [addRows, prune, session.entryRef, setEntry, setPanel, setStatus],
   );
 
   const accept = useCallback(async (): Promise<void> => {
@@ -244,7 +249,7 @@ export const useCompositionUpdates = (
             `Placed ${answer.rows.length} ${answer.rows.length === 1 ? 'block' : 'blocks'} from pattern version ${request.patternVersion}.`,
           ]),
         );
-        await reloadDiff(panel.diff, panel.choices);
+        await reloadDiff(panel.diff, choicesNow(panel));
         return;
       }
       if (answer.kind === 'rate_limited') return;
@@ -254,17 +259,20 @@ export const useCompositionUpdates = (
       }
       if (answer.status === 409) {
         await refreshEntry();
-        await reloadDiff(panel.diff, panel.choices);
+        await reloadDiff(panel.diff, choicesNow(panel));
       }
       setStatus(
         failure(
           'Blocks not placed',
           refusalMessage('place', answer.status, answer.reason),
+          [],
+          answer.status === 403,
         ),
       );
     },
     [
       addRows,
+      choicesNow,
       mutate,
       panel,
       refreshEntry,

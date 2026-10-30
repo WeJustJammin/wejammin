@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsEditorialCapabilityGate from '../cms-editorial/CmsEditorialCapabilityGate';
 import { MAX_CANDIDATES_ID, RULE_NONE_ID } from './CmsRelatedRuleFields';
 import { EXCLUSIONS_HEADING_ID } from './CmsRelatedExclusionList';
 import { PINS_HEADING_ID } from './CmsRelatedPinList';
@@ -23,6 +24,13 @@ interface Props {
   readonly status: RelatedStatus;
   readonly returnTo: string;
 }
+
+/** FE03 1048: a 403 renders the CapabilityGate copy (never a step-up route). */
+const isCapabilityDenial = (
+  result: Extract<RelatedStatus, { kind: 'result' }>['result'],
+): boolean =>
+  (result.kind === 'refused' && result.reason === 'capability_missing') ||
+  (result.kind === 'rejected' && result.status === 403);
 
 const ruleSentence = (key: string): string => {
   const member = ruleByKey(key);
@@ -94,7 +102,15 @@ export default function CmsRelatedStatus({
           </p>
         </>
       ) : null}
-      {status.kind === 'result' ? (
+      {status.kind === 'result' && isCapabilityDenial(status.result) ? (
+        <CmsEditorialCapabilityGate
+          headingId={RELATED_RESULT_HEADING_ID}
+          title={failureHeading(status.result)}
+          reason={failureCopy(status.result)}
+          focusable
+        />
+      ) : null}
+      {status.kind === 'result' && !isCapabilityDenial(status.result) ? (
         <>
           <h2 id={RELATED_RESULT_HEADING_ID} tabIndex={-1}>
             {failureHeading(status.result)}

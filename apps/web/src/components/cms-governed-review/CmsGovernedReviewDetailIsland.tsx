@@ -73,6 +73,12 @@ export default function CmsGovernedReviewDetailIsland({
   );
   const { data: review, status, refetch } = canonical;
   const confirmation = useIslandConfirmation();
+  // FE03 1050: a degraded review is re-required, so it stays degraded (hidden, forms off) until a read VERIFIES, which
+  // includes the time a re-read is in flight; derived during render so no frame shows the unverified review.
+  const [unverified, setUnverified] = React.useState(false);
+  if (status === 'degraded' && !unverified) setUnverified(true);
+  if (status === 'ready' && unverified) setUnverified(false);
+  const degraded = status === 'degraded' || unverified;
   if (review === null)
     return (
       <CmsWorkflowClosedState
@@ -80,7 +86,6 @@ export default function CmsGovernedReviewDetailIsland({
       />
     );
 
-  const degraded = status === 'degraded';
   // FE03 1042: while a read runs past 250 ms the skeleton shows and every form is off.
   const disabledReason = degraded
     ? UNVERIFIED
@@ -111,6 +116,11 @@ export default function CmsGovernedReviewDetailIsland({
         <CmsGovernedReviewDetail
           review={review}
           degradedSince={degraded ? canonical.lastVerifiedAt : null}
+          onReread={
+            status === 'degraded' && canonical.rateLimit === null
+              ? () => void refetch()
+              : undefined
+          }
         />
         <section aria-labelledby="governed-actions-title">
           <h2 id="governed-actions-title" tabIndex={-1}>
@@ -125,6 +135,11 @@ export default function CmsGovernedReviewDetailIsland({
           <CmsWorkflowRateLimitNotice rateLimit={canonical.rateLimit} />
           {review.state === 'open' && !permitted.has('record_decision') ? (
             <p>{governedDisabledActionCopy('record_decision')}</p>
+          ) : null}
+          {review.state === 'open' &&
+          !permitted.has('assign_reviewer') &&
+          !permitted.has('revoke_assignment') ? (
+            <p>{governedDisabledActionCopy('assign_reviewer')}</p>
           ) : null}
           <WhenOffered offered={permitted.has('record_decision')}>
             <GovernedDecisionFormView
@@ -141,7 +156,8 @@ export default function CmsGovernedReviewDetailIsland({
           >
             <GovernedAssignmentFormView
               {...shared}
-              review={review}
+              // While degraded the stale assignments are not listed (FE03 1050: the review is re-required).
+              review={degraded ? { ...review, assignments: [] } : review}
               {...(loadOptions === undefined ? {} : { loadOptions })}
             />
           </WhenOffered>

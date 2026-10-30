@@ -118,8 +118,10 @@ export const useRelatedContentForm = ({
     setLists(next);
     setRows([]);
     setNote(message);
+    // FE03 1048: an edit never lifts the stable pending label, nor a conflict the person still has to review.
     setStatus((current) =>
-      current.kind === 'result' && current.result.kind === 'conflict'
+      current.kind === 'pending' ||
+      (current.kind === 'result' && current.result.kind === 'conflict')
         ? current
         : { kind: 'idle' },
     );
@@ -170,8 +172,10 @@ export const useRelatedContentForm = ({
   const chooseRule = useCallback((key: RelatedRuleKey | '') => {
     setRuleKey(key);
     setRows([]);
+    // Like `edited`: a rule chosen while the save is pending keeps the stable pending label.
     setStatus((current) =>
-      current.kind === 'result' && current.result.kind === 'conflict'
+      current.kind === 'pending' ||
+      (current.kind === 'result' && current.result.kind === 'conflict')
         ? current
         : { kind: 'idle' },
     );

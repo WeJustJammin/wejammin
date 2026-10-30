@@ -115,6 +115,23 @@ describe('CmsGovernedReviewDetailIsland (CMS-03C-10)', () => {
     );
   });
 
+  it('[P2-S12-AC-271] commandState disabled: states why no assignment form is offered on an open review for a reader who is not the owner', () => {
+    const { container } = mount(
+      governedDetailFixture({ permittedNextActions: ['record_decision'] }),
+    );
+    expect(container.textContent).toContain(
+      'Only the owner of this version can assign a reviewer while the review is open.',
+    );
+    const owner = mount(
+      governedDetailFixture({
+        permittedNextActions: ['record_decision', 'assign_reviewer'],
+      }),
+    );
+    expect(owner.container.textContent).not.toContain(
+      'Only the owner of this version can assign a reviewer',
+    );
+  });
+
   it('offers no command on a closed review', () => {
     const { container } = mount(
       governedDetailFixture({
@@ -256,7 +273,7 @@ describe('CmsGovernedReviewDetailIsland (CMS-03C-10)', () => {
     );
   });
 
-  it('keeps the last verified review with the forms off when a later read fails', async () => {
+  it('does not keep the stale review and keeps the forms off when a later read fails', async () => {
     const { container, readReview } = mount(
       governedDetailFixture(),
       [{ kind: 'degraded', requestId: null }],
@@ -278,13 +295,11 @@ describe('CmsGovernedReviewDetailIsland (CMS-03C-10)', () => {
     await click(buttonNamed(container, /Record/u));
     await flush();
     expect(readReview).toHaveBeenCalledTimes(1);
-    expect(container.textContent).toContain(
-      'Showing the last verified state from',
-    );
+    expect(container.textContent).toContain('The review is not shown');
     expect(container.textContent).toContain(
       'The last read could not be verified. Commands are off until it is.',
     );
-    expect(container.textContent).toContain('Frozen version');
+    expect(container.textContent).not.toContain('Frozen version');
   });
 
   it('removes the protected data when the review is gone or the session ended', async () => {

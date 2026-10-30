@@ -109,7 +109,7 @@ describe('CmsGovernedActivationForm (CMS-03C-09 activate, schedule, retire) comm
     expect(returned.fetcher).not.toHaveBeenCalled();
   });
 
-  it('[P2-S12-AC-271] commandState loading (kept half): a stable pending label with the commit control disabled and busy; no field is withheld; Continue and Cancel are also aria-disabled (C3)', async () => {
+  it('[P2-S12-AC-271] commandState loading: a stable pending label with the commit control disabled and busy; no field is withheld; Continue and Cancel stay aria-disabled while the command runs (DEC-241 item 2)', async () => {
     const wire = heldWire();
     const { container } = mountActivation([], {
       environment: governedEnvironment(wire.fetcher),
@@ -134,7 +134,7 @@ describe('CmsGovernedActivationForm (CMS-03C-09 activate, schedule, retire) comm
     expect(wire.fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it('[P2-S12-AC-271] commandState success (kept half): the named resource, stored draft cleared and review refetched; the chosen action stays checked (C1)', async () => {
+  it('[P2-S12-AC-271] commandState success: the named resource, stored draft cleared, the chosen action cleared and review refetched', async () => {
     const { container, refetch, onDone, storage } = mountActivation([done()]);
     await activate(container);
     await flush();
@@ -147,6 +147,9 @@ describe('CmsGovernedActivationForm (CMS-03C-09 activate, schedule, retire) comm
     expect(
       container.querySelector('#governed-activation-confirm-title'),
     ).toBeNull();
+    expect(
+      container.querySelectorAll('input[type="radio"]:checked'),
+    ).toHaveLength(0);
   });
 
   it('[P2-S12-AC-271] commandState error: 401 STEP_UP_REQUIRED routes to /step-up?returnTo= and never renders a gate', async () => {

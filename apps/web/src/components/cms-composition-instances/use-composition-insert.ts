@@ -152,9 +152,20 @@ export const useCompositionInsert = (
     if (answer.kind === 'placed') {
       addRows(answer.rows);
       setEntry({ ...session.entryRef.current, version: answer.version });
-      const cleared = { ...fields, item: null, overridesText: '' };
-      setFields(cleared);
-      setBaseline(cleared);
+      // FE03 927: only what was sent is cleared; a value edited while the command ran is kept, and keeps the form dirty.
+      const sent = fields;
+      setFields((current) => ({
+        ...current,
+        item:
+          current.item?.patternVersionId === sent.item?.patternVersionId
+            ? null
+            : current.item,
+        overridesText:
+          current.overridesText === sent.overridesText
+            ? ''
+            : current.overridesText,
+      }));
+      setBaseline({ ...sent, item: null, overridesText: '' });
       setStatus(
         success('Pattern placed', [
           placedLine(fields.item, built.request.linkMode, answer.rows.length),
@@ -201,6 +212,8 @@ export const useCompositionInsert = (
       failure(
         'Pattern not placed',
         refusalMessage('place', answer.status, answer.reason),
+        [],
+        answer.status === 403,
       ),
     );
   }, [

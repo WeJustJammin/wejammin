@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsEditorialCapabilityGate from '../cms-editorial/CmsEditorialCapabilityGate';
 import {
   failureCopy,
   failureHeading,
@@ -15,6 +16,11 @@ interface Props {
   /** Field id to the id of its control, for the summary links. */
   readonly controlIdFor: (target: string) => string;
 }
+
+/** FE03 1048: a 403 renders the CapabilityGate copy (never a step-up route). */
+const isCapabilityDenial = (
+  result: Extract<LocaleStatus, { kind: 'result' }>['result'],
+): boolean => result.kind === 'rejected' && result.status === 403;
 
 /** The one focusable result region: error summary, outcome and the next action. */
 export default function CmsLocaleStatus({
@@ -77,7 +83,15 @@ export default function CmsLocaleStatus({
           </p>
         </>
       ) : null}
-      {status.kind === 'result' ? (
+      {status.kind === 'result' && isCapabilityDenial(status.result) ? (
+        <CmsEditorialCapabilityGate
+          headingId={LOCALE_RESULT_HEADING_ID}
+          title={failureHeading(status.result)}
+          reason={failureCopy(status.result, locale)}
+          focusable
+        />
+      ) : null}
+      {status.kind === 'result' && !isCapabilityDenial(status.result) ? (
         <>
           <h2 id={LOCALE_RESULT_HEADING_ID} tabIndex={-1}>
             {failureHeading(status.result)}

@@ -31,6 +31,7 @@ afterEach(() => vi.useRealTimers());
 const panel = (state: TaxonomyConflictState) => (
   <CmsTaxonomyConflictPanel
     state={state}
+    verified={null}
     baseVersion="1"
     newer={false}
     draft={{ shape: '', typeKeys: [], fieldKeys: [], domains: [] }}

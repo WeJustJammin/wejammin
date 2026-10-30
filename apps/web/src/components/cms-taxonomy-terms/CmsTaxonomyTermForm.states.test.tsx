@@ -117,7 +117,7 @@ describe('CmsTaxonomyTermForm (CMS-03C-03) commandState', () => {
       expect(typed(container)).toEqual(['cello', 'Cello']);
     });
 
-    it('[P2-S12-AC-271] commandState error (kept half): a 403 capability_missing renders the fixed curator-access copy as an alert, no step-up route; no CapabilityGate element (D1) (CMS-03C-03)', async () => {
+    it('[P2-S12-AC-271] commandState error: a 403 capability_missing renders the CapabilityGate with the fixed curator-access copy as an alert, no step-up route (CMS-03C-03)', async () => {
       const { container } = await createWith({
         kind: 'refused',
         status: 403,
@@ -126,6 +126,15 @@ describe('CmsTaxonomyTermForm (CMS-03C-03) commandState', () => {
       expect(region(container)?.getAttribute('role')).toBe('alert');
       expect(region(container)?.textContent).toContain(
         'Taxonomy curator access is required for this acting context. Nothing was saved.',
+      );
+      expect(
+        region(container)?.querySelector(
+          '[data-cms-editorial-capability-gate]',
+        ),
+      ).not.toBeNull();
+      // FE03 "focus summary/field": the gate's heading is the focused named result.
+      expect(document.activeElement).toBe(
+        document.querySelector('[data-cms-editorial-capability-gate] h2'),
       );
       expect(container.querySelector('a[href*="step-up"]')).toBeNull();
       expect(typed(container)).toEqual(['cello', 'Cello']);
@@ -231,11 +240,14 @@ describe('CmsTaxonomyTermForm (CMS-03C-03) commandState', () => {
       expect(container.querySelector('.cms-term-action')).toBeNull();
     });
 
-    it('[P2-S12-AC-271] commandState disabled (kept half): without a security token the commit control is off and nothing is sent; no reason is stated (D7) (CMS-03C-03)', async () => {
+    it('[P2-S12-AC-271] commandState disabled: without a security token the commit control is off, nothing is sent and the reason is stated (CMS-03C-03)', async () => {
       const submit = submitStub();
       const { container } = mount({ csrfToken: '', submit });
       await openCreate(container);
       expect(buttonNamed(container, 'Create term').disabled).toBe(true);
+      expect(container.textContent).toContain(
+        'Reload to restore the protected form session.',
+      );
       await click(buttonNamed(container, 'Create term'));
       expect(submit).not.toHaveBeenCalled();
     });

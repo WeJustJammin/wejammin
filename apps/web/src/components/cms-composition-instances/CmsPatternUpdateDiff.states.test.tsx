@@ -125,13 +125,17 @@ describe('CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) comman
     expect(window.sessionStorage.length).toBe(0);
   });
 
-  it('[P2-S12-AC-271] commandState loading (kept half): a stable pending label per command and the commit controls disabled, a second press sends nothing; the answers are disabled as well (C4)', async () => {
+  it('[P2-S12-AC-271] commandState loading: a stable pending label per command and the commit controls disabled, a second press sends nothing; the answers stay editable', async () => {
     const heldAccept = heldReply();
     const accepting1 = mount([heldAccept.reply]);
     await accepting(accepting1);
     expectPendingLabel(accepting1.container, 'Accepting the update…');
     expect(accept(accepting1.container).disabled).toBe(true);
     expect(detach(accepting1.container).disabled).toBe(true);
+    // FE03 1048: only the commit controls are disabled; the answers stay editable.
+    expect(
+      accepting1.container.querySelectorAll('input[type="radio"]:disabled'),
+    ).toHaveLength(0);
     await click(accept(accepting1.container));
     expect(
       accepting1.calls.filter((call) => call.method === 'POST'),
@@ -246,12 +250,21 @@ describe('CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) comman
     expect(radio(page.container, '/a', 'yours').checked).toBe(true);
   });
 
-  it('[P2-S12-AC-271] commandState error: 403 renders the fixed sentence in the result alert (kept half: no CapabilityGate component is used, C6)', async () => {
+  it('[P2-S12-AC-271] commandState error: 403 renders the CapabilityGate with the fixed sentence in the result alert', async () => {
     const page = mount([refusal(403, 'COMPOSITION_FORBIDDEN')]);
     await accepting(page);
     expect(resultRegion(page.container)?.getAttribute('role')).toBe('alert');
     expect(resultText(page.container)).toContain(
       'This account cannot edit the composition of this entry.',
+    );
+    expect(
+      resultRegion(page.container)?.querySelector(
+        '[data-cms-editorial-capability-gate]',
+      ),
+    ).not.toBeNull();
+    // FE03 "focus summary/field": the gate's heading is the focused named result.
+    expect(document.activeElement).toBe(
+      document.querySelector('[data-cms-editorial-capability-gate] h2'),
     );
   });
 

@@ -30,6 +30,7 @@ import {
   LOAD_NEXT_LABEL,
   START_AGAIN_LABEL,
   TRY_AGAIN_LABEL,
+  advanceTimers,
   deferred,
   failureResponse,
   hasButton,
@@ -45,6 +46,7 @@ import {
 beforeAll(enableReactAct);
 afterAll(disableReactAct);
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.body.replaceChildren();
 });
@@ -71,14 +73,22 @@ describe('selectorState (CMS-03C-17, connected taxonomy field)', () => {
     expect(mounted.onValue).not.toHaveBeenCalled();
   });
 
-  it('[P2-S12-AC-271] selectorState loading: a first read in flight states it politely, offers no term and writes no value', async () => {
+  it('[P2-S12-AC-271] selectorState loading: a first read in flight shows no loading state before 250 ms and a polite skeleton at 250 ms, offers no term and writes no value', async () => {
+    vi.useFakeTimers();
     const pending = deferred<Response>();
     const fd = recordingFetcher([pending.promise]);
     const mounted = mountConnectedTaxonomy({
       context: entryContext(fd.fetcher),
     });
     await settle();
+    await advanceTimers(249);
+    expect(noticeMatches(mounted.container, LOADING_PATTERN)).toBe(false);
+    expect(mounted.container.querySelector('.cms-loading-region')).toBeNull();
+    await advanceTimers(1);
     expect(noticeMatches(mounted.container, LOADING_PATTERN)).toBe(true);
+    expect(
+      mounted.container.querySelector('.cms-loading-region'),
+    ).not.toBeNull();
     expect(termCheckboxes(mounted.container)).toHaveLength(0);
     expect(mounted.onValue).not.toHaveBeenCalled();
     await settle(() => pending.resolve(servedPage({ items: twoTerms })));

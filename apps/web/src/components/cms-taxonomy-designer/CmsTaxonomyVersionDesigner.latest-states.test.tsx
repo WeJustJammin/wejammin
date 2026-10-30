@@ -136,7 +136,7 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
     expect(save(container).disabled).toBe(false);
   });
 
-  it('[P2-S12-AC-271] latestReadState loading (kept half): cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): a skeleton after 250 ms (nothing at 249), the check control disabled, the read no-store; the submit control stays enabled (DEFECT)', async () => {
+  it('[P2-S12-AC-271] latestReadState loading: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): a skeleton after 250 ms (nothing at 249), the check control disabled, the read no-store, and the submit control disabled until the read answers', async () => {
     let release: (response: Response) => void = () => undefined;
     const held = new Promise<Response>((resolve) => {
       release = resolve;
@@ -152,6 +152,7 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
     expect(skeleton(container)?.textContent).toBe(
       'Checking the latest version…',
     );
+    expect(save(container).disabled).toBe(true);
     const [url, init] = fetcher.mock.calls[0] as [string, RequestInit];
     expect(url).toMatch(
       /^\/api\/v1\/cms\/taxonomies\/[0-9a-f-]{36}\/versions$/u,
@@ -223,7 +224,7 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
     },
   );
 
-  it('[P2-S12-AC-271] latestReadState degraded (kept half): cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): a read that fails keeps the base version and the unsent draft; the earlier verified comparison is dropped and submit is not held off (DEFECT)', async () => {
+  it('[P2-S12-AC-271] latestReadState degraded: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): a read that fails keeps the base version, the unsent draft and the earlier verified comparison, and submit stays disabled', async () => {
     const { container } = await mountConflicted(page(), refusal(503));
     await press(container);
     expect(container.textContent).toContain('Latest saved version: 4');
@@ -232,8 +233,31 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
       'The latest version is unavailable. Wait and try again.',
     );
     expect(container.textContent).toContain('Editing from version 2.');
+    expect(container.textContent).toContain('Latest saved version: 4');
     expect(place(container).checked).toBe(true);
     expect(container.querySelector('caption')?.textContent).toContain('(3)');
+    expect(save(container).disabled).toBe(true);
+  });
+
+  it('[P2-S12-AC-271] latestReadState loading: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): the kept comparison cannot be adopted while a re-read runs, and can be once the read failed or answered', async () => {
+    let release: (response: Response) => void = () => undefined;
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const { container } = await mountConflicted(page(), held);
+    await press(container);
+    const keep = () =>
+      buttonNamed(container, 'Keep my edits and base them on version 4');
+    const discard = () =>
+      buttonNamed(container, 'Discard my edits and load version 4');
+    expect([keep().disabled, discard().disabled]).toEqual([false, false]);
+    await click(check(container));
+    expect([keep().disabled, discard().disabled]).toEqual([true, true]);
+    await act(async () => {
+      release(refusal(503));
+    });
+    await settle();
+    expect([keep().disabled, discard().disabled]).toEqual([false, false]);
   });
 
   it('[P2-S12-AC-271] latestReadState disabled: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): the reason names the missing session or the missing curator capability; the empty prerequisite is N/A (a new vocabulary has no version to read, so no check exists)', async () => {

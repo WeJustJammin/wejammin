@@ -107,6 +107,10 @@ genuine authenticated two-request HTTP conflict or hosted acceptance proof.
 
 ## Conventions
 
+A 403 renders the shared `CmsEditorialCapabilityGate`; a 422 `key_reserved` renders its fixed copy at the template key
+field (`templateKeyError`); a successful successor names the parent version it was based on; the successor's latest
+comparison is kept while a re-read runs or fails.
+
 Use semantic fieldsets and persistent labels for editable manifests. Keep
 status and conflict messages in a focusable live region; report private draft
 creation separately from activation or publication. Tests use shared contract

@@ -143,13 +143,15 @@ describe('CmsGovernedReviewDetail (CMS-03C-10)', () => {
     expect(html).toContain('No active assignments');
   });
 
-  it('marks a degraded read with the last verified time', () => {
+  it('does not keep the stale review on a degraded read: it names the last verified time and re-requires the read', () => {
     const html = render({}, '2026-10-14T12:00:00Z');
-    expect(html).toContain('Showing the last verified state from');
-    expect(html).toContain(
-      'Commands are off until the page is verified again.',
-    );
-    expect(render()).not.toContain('last verified state');
+    expect(html).toContain('The review is not shown');
+    expect(html).toContain('2026-10-14T12:00:00Z');
+    expect(html).toContain('Commands are off until the review is read again.');
+    expect(html).not.toContain('Frozen version');
+    expect(html).not.toContain('Subject hash');
+    expect(render()).not.toContain('The review is not shown');
+    expect(render()).toContain('Frozen version');
   });
 
   it('says a scheduled subject is not active', () => {

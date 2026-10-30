@@ -1,7 +1,10 @@
 import * as React from 'react';
 
+import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
 import { useCmsEditorialLeaveGuard } from '../cms-editorial/use-cms-editorial-leave-guard';
 import type { TaxonomyShape } from '../cms-taxonomy-designer/taxonomy-vocabulary';
+import { defaultNavigate, defaultReplaceUrl } from './term-form-defaults';
+import CmsTaxonomyTermListNotices from './CmsTaxonomyTermListNotices';
 import CmsTaxonomyTermFilter, { FILTER_LABEL } from './CmsTaxonomyTermFilter';
 import CmsTaxonomyTermLeaveConfirm from './CmsTaxonomyTermLeaveConfirm';
 import CmsTaxonomyTermStatus from './CmsTaxonomyTermStatus';
@@ -46,21 +49,6 @@ export interface CmsTaxonomyTermFormProps {
   readonly navigate?: (href: string) => void;
 }
 
-const defaultNavigate = (href: string): void => {
-  if (typeof window !== 'undefined') window.location.assign(href);
-};
-
-const defaultReplaceUrl =
-  (basePath: string) =>
-  (lifecycle: TermLifecycle | null): void => {
-    if (typeof window === 'undefined') return;
-    window.history.replaceState(
-      null,
-      '',
-      lifecycle === null ? basePath : `${basePath}?lifecycle=${lifecycle}`,
-    );
-  };
-
 /**
  * The vocabulary's terms and their actions (FE03 :887): the curator's list from
  * `cmsTaxonomyTermsRead` and the create, rename, alias, deprecate and merge forms of
@@ -100,7 +88,8 @@ export default function CmsTaxonomyTermForm(
     stillUnsent: () => true,
     navigate: props.navigate ?? defaultNavigate,
   });
-  const canAct = list.active !== null && !failed;
+  // FE03 1048: the prior list stays while a refresh runs, and every term action is off until it answers.
+  const canAct = list.active !== null && !failed && !list.refreshing;
   const issues = term.status.kind === 'invalid' ? term.status.issues : [];
   const pageLink = (cursor: string | null): string => {
     const search = new URLSearchParams();
@@ -131,24 +120,18 @@ export default function CmsTaxonomyTermForm(
       ) : (
         <p>Term actions run under the active version, {list.active.version}.</p>
       )}
-      {failed ? (
-        <p role="alert">
-          The list could not be refreshed, so the last verified list is shown
-          and term actions are off.{' '}
-          <button
-            type="button"
-            disabled={list.refreshing}
-            onClick={() => void list.refresh()}
-          >
-            {list.refreshing ? 'Refreshing…' : 'Refresh the list'}
-          </button>
-        </p>
-      ) : null}
-      {list.notice.kind === 'restarted' ? (
-        <p role="status">
-          The list changed while you were paging, so it restarted from the first
-          page.
-        </p>
+      <CmsTaxonomyTermListNotices
+        failed={failed}
+        restarted={list.notice.kind === 'restarted'}
+        refreshing={list.refreshing}
+        onRefresh={() => void list.refresh()}
+      />
+      <CmsLoadingRegion
+        active={list.refreshing}
+        label="Refreshing the terms…"
+      />
+      {csrfToken.length === 0 ? (
+        <p role="status">Reload to restore the protected form session.</p>
       ) : null}
       <CmsTaxonomyTermFilter basePath={basePath} lifecycle={query.lifecycle} />
       <CmsTaxonomyTermStatus
@@ -179,7 +162,7 @@ export default function CmsTaxonomyTermForm(
           readTerms={props.readTerms}
           issues={issues}
           pending={term.pending}
-          disabled={term.blocked}
+          disabled={term.blocked || list.refreshing}
           onChange={term.edit}
           onSubmit={() => void term.onSubmit()}
           onCancel={term.close}

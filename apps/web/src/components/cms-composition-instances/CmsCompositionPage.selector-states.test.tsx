@@ -151,7 +151,7 @@ describe('selectorState (CMS-03C-13)', () => {
     },
   );
 
-  it('[P2-S12-AC-271] selectorState degraded (kept half): after a failed read the last verified page stays listed and a retry is offered', async () => {
+  it('[P2-S12-AC-271] selectorState degraded: after a failed read the last verified page stays listed, a retry is offered and the submit control stays off until a read verifies', async () => {
     const page = mountPage(
       { [SELECTOR]: [refusal(503, 'DEPENDENCY_UNAVAILABLE')] },
       withCursor,
@@ -162,6 +162,7 @@ describe('selectorState (CMS-03C-13)', () => {
     expect(buttonNamed(page.container, 'Load more patterns').disabled).toBe(
       false,
     );
+    expect(buttonNamed(page.container, 'Place pattern').disabled).toBe(true);
   });
 
   it('[P2-S12-AC-271] selectorState disabled: a draft that cannot be edited names the reason and turns the selector and submit off', () => {

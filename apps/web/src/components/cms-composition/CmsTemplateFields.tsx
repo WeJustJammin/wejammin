@@ -2,6 +2,8 @@ import * as React from 'react';
 import type { TemplateDesignerContext } from '@wejammin/contracts';
 
 interface Props {
+  /** The refusal the key field owns (FE03 1048: a 422 reason renders at its field), or null. */
+  readonly keyError?: string | null;
   readonly contentTypes: TemplateDesignerContext['contentTypes'];
   readonly templateKey: string;
   readonly setTemplateKey: (value: string) => void;
@@ -26,6 +28,7 @@ export default function CmsTemplateFields({
   templateKeyReadOnly = false,
   compatibleTypeIds,
   unavailableTypeIds = [],
+  keyError = null,
   setCompatibleTypeIds,
   locale,
   setLocale,
@@ -46,8 +49,17 @@ export default function CmsTemplateFields({
           maxLength={64}
           required
           pattern="[a-z][a-z0-9-]{1,63}"
-          aria-describedby="cms-template-key-help"
+          aria-invalid={keyError === null ? undefined : true}
+          aria-describedby={`cms-template-key-help${keyError === null ? '' : ' cms-template-key-error'}`}
         />
+        {keyError === null ? null : (
+          <p
+            id="cms-template-key-error"
+            className="cms-template-designer-error"
+          >
+            {keyError}
+          </p>
+        )}
         <small id="cms-template-key-help">
           Lowercase letters, numbers, and hyphens; immutable after creation.
         </small>

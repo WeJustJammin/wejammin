@@ -68,6 +68,8 @@ export const usePatternConflict = (
   readLatest: typeof readLatestPatternVersion = readLatestPatternVersion,
 ) => {
   const [state, setState] = useState<PatternConflictState>({ kind: 'none' });
+  // FE03 1048: the last verified latest version is kept while a re-read runs or fails.
+  const [kept, setKept] = useState<PatternLatestDetail | null>(null);
   const mountedRef = useRef(false);
   const sequenceRef = useRef(0);
   const controllerRef = useRef<AbortController | null>(null);
@@ -152,9 +154,11 @@ export const usePatternConflict = (
           (target.base !== null &&
             !patternLatestIdentityValid(target.base, result.detail))
         ) {
+          setKept(null);
           setState({ kind: 'failed', message: UNVERIFIED_LATEST_MESSAGE });
           return { kind: 'unavailable' };
         }
+        setKept(result.detail);
         setState({ kind: 'loaded', latest: result.detail });
         return result;
       }
@@ -179,9 +183,10 @@ export const usePatternConflict = (
     controllerRef.current?.abort();
     controllerRef.current = null;
     startReadWait();
+    setKept(null);
     setState({ kind: 'none' });
   }, [startReadWait]);
-  const latest = state.kind === 'loaded' ? state.latest : null;
+  const latest = kept;
   const remaining =
     retryAt === null
       ? null
@@ -200,6 +205,8 @@ export const usePatternConflict = (
       : state;
   return {
     state: projectedState,
+    /** The last verified latest version, kept across a re-read that is running or failed. */
+    verified: kept,
     check,
     clear,
     /** True while a 429's stated wait has not elapsed: the check stays off. */

@@ -152,7 +152,7 @@ describe('CmsGovernedDecisionForm (CMS-03C-07) commandState', () => {
     expect(wire.fetcher).toHaveBeenCalledTimes(1);
   });
 
-  it('[P2-S12-AC-271] commandState success (kept half): the named resource, the stored draft cleared and the review refetched; typed fields are not cleared (C1)', async () => {
+  it('[P2-S12-AC-271] commandState success: the named resource, the stored draft cleared, the typed fields cleared and the review refetched', async () => {
     const { container, refetch, onDone, storage } = mount(
       queuedFetcher([decided()]),
     );
@@ -162,6 +162,8 @@ describe('CmsGovernedDecisionForm (CMS-03C-07) commandState', () => {
     expect(refetch).toHaveBeenCalledTimes(1);
     expect(onDone).toHaveBeenCalledWith('governed-decisions-title');
     expect(storage.length).toBe(0);
+    expect(reason(container).value).toBe('');
+    expect(radio(container, 'approve').checked).toBe(false);
   });
 
   it('[P2-S12-AC-271] commandState error: 401 STEP_UP_REQUIRED routes to /step-up?returnTo= and never renders a gate', async () => {

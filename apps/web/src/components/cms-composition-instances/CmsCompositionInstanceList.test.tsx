@@ -138,11 +138,18 @@ describe('CmsCompositionInstanceList: rows', () => {
     expect(items(container)[0]?.hasAttribute('aria-current')).toBe(false);
   });
 
-  it('disables the row commands while busy or unavailable', () => {
+  it('disables every command control while a command is in flight or a diff is read, and the commands when unavailable', () => {
     const { container } = mount(rows, { busy: true });
     expect(buttonNamed(container, 'Detach /main/row-1').disabled).toBe(true);
     expect(
       buttonNamed(container, 'Review update for /main/row-2').disabled,
+    ).toBe(true);
+    const off = mount(rows, { disabled: true });
+    expect(buttonNamed(off.container, 'Detach /main/row-1').disabled).toBe(
+      true,
+    );
+    expect(
+      buttonNamed(off.container, 'Review update for /main/row-2').disabled,
     ).toBe(true);
   });
 });

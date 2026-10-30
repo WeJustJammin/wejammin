@@ -126,7 +126,6 @@ export default function CmsRelatedContentForm(
       <CmsRelatedRuleFields
         ruleKey={form.ruleKey}
         maxCandidates={form.maxCandidates}
-        disabled={form.pending}
         maxIssue={maxIssue}
         boundUnknown={form.boundUnknown}
         onRule={form.chooseRule}

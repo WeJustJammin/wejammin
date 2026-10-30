@@ -85,6 +85,7 @@ export default function CmsTaxonomyVersionDesigner(
       {designer.showConflict ? (
         <CmsTaxonomyConflictPanel
           state={designer.conflict.state}
+          verified={designer.conflict.verified}
           baseVersion={designer.base?.version ?? null}
           newer={designer.conflict.newer}
           draft={{

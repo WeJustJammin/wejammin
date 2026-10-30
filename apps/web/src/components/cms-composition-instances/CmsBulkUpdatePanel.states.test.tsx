@@ -113,12 +113,28 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
     expect(window.sessionStorage.length).toBe(0);
   });
 
-  it('[P2-S12-AC-271] commandState loading (kept half): a stable pending label per command and the commit control disabled, a second press sends nothing; other controls are disabled as well (C4)', async () => {
+  it('[P2-S12-AC-271] commandState loading: a stable pending label per command and the commit control disabled, a second press sends nothing; selecting stays enabled and the controls that start another command (Review, Detach) stay disabled', async () => {
     const heldAccept = heldReply();
     const accepting = mount([heldAccept.reply]);
     await bulkAccept(accepting);
     expectPendingLabel(accepting.container, 'Updates applied: request 1 of 1…');
     expect(acceptAll(accepting.container).disabled).toBe(true);
+    // FE03 1048 and DEC-241: selecting stays enabled; the controls that start another command stay disabled.
+    expect(
+      accepting.container.querySelectorAll('input[type="checkbox"]:disabled'),
+    ).toHaveLength(0);
+    expect(
+      Array.from(accepting.container.querySelectorAll('button:disabled')).map(
+        (control) => control.textContent,
+      ),
+    ).toEqual(
+      expect.arrayContaining([
+        'Review selected updates',
+        'Detach selected',
+        'Review update',
+        'Detach',
+      ]),
+    );
     await click(acceptAll(accepting.container));
     expect(posts(accepting)).toHaveLength(1);
     await answerHeld(heldAccept, appended());
@@ -176,12 +192,21 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
     expect(page.container.textContent).toContain('2 selected');
   });
 
-  it('[P2-S12-AC-271] commandState error: 403 renders the fixed sentence in the result alert (kept half: no CapabilityGate component is used, C6)', async () => {
+  it('[P2-S12-AC-271] commandState error: 403 renders the CapabilityGate with the fixed sentence in the result alert', async () => {
     const page = mount([refusal(403, 'COMPOSITION_FORBIDDEN')]);
     await bulkAccept(page);
     expect(resultRegion(page.container)?.getAttribute('role')).toBe('alert');
     expect(resultText(page.container)).toContain(
       'This account cannot edit the composition of this entry.',
+    );
+    expect(
+      resultRegion(page.container)?.querySelector(
+        '[data-cms-editorial-capability-gate]',
+      ),
+    ).not.toBeNull();
+    // FE03 "focus summary/field": the gate's heading is the focused named result.
+    expect(document.activeElement).toBe(
+      document.querySelector('[data-cms-editorial-capability-gate] h2'),
     );
   });
 

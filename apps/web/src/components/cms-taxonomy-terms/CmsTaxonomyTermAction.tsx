@@ -7,8 +7,14 @@ import CmsTaxonomyTermChoice from './CmsTaxonomyTermChoice';
 import { TermKeyField } from './CmsTaxonomyTermFields';
 import type { TermFacts, readTaxonomyTerms } from './taxonomy-terms-read';
 import type { TermIssue } from './term-action-request';
-import { ACTION_CONSEQUENCE, ACTION_LABEL } from './term-copy';
+import {
+  ACTION_CONSEQUENCE,
+  ACTION_LABEL,
+  PARENT_HELP,
+  SUBMIT_LABEL,
+} from './term-copy';
 import { termReview } from './term-review';
+import { useTermActionFocus } from './use-term-action-focus';
 import { useTermActionChoices } from './use-term-action-choices';
 import { TERM_FORM_HEADING_ID, type TermFormState } from './use-term-form';
 
@@ -30,20 +36,6 @@ interface Props {
   /** Asked when the form mounts: is focus still where the opening press left it? Default: yes. */
   readonly shouldTakeFocus?: (() => boolean) | undefined;
 }
-
-const SUBMIT_LABEL = {
-  create: 'Create term',
-  rename: 'Rename term',
-  alias: 'Add the alias',
-  deprecate: 'Review the deprecation',
-  merge: 'Review the merge',
-} as const;
-
-const PARENT_HELP = {
-  rename:
-    'Leave the current parent to keep the term where it is. Choosing none moves it to the top level.',
-  create: 'Lists the active and deprecated terms of this vocabulary.',
-} as const;
 
 const issuesFor = (issues: readonly TermIssue[], field: TermIssue['field']) =>
   issues.filter((entry) => entry.field === field);
@@ -75,8 +67,8 @@ export default function CmsTaxonomyTermAction({
       readTerms,
       onChange,
     });
-  // Distinct held options, in order: the form's own parent, then the stored current parent to undo to.
-  const held = [heldParent, undoParent].filter(
+  // Distinct held parent options, in order: the form's own parent, then the stored current parent to undo to.
+  const heldOptions = [heldParent, undoParent].filter(
     (choice): choice is NonNullable<typeof choice> => choice !== null,
   );
   const title =
@@ -84,20 +76,17 @@ export default function CmsTaxonomyTermAction({
       ? ACTION_LABEL.create
       : `${ACTION_LABEL[action]}: ${target.termKey}`;
   const onBack = () => onChange({ step: 'edit' });
-  const review = termReview({ form, survivor, pending, disabled, onBack });
+  // FE03 1048: the commit control is also off while a picker page is still loading.
+  const commitOff = disabled || loader.status === 'loading';
+  const review = termReview({
+    form,
+    survivor,
+    pending,
+    disabled: commitOff,
+    onBack,
+  });
   const confirming = review !== null;
-  const heading = React.useRef<HTMLHeadingElement>(null);
-  // This form loads on demand: the hook's focus effect ran before the chunk arrived and found no heading, so the form
-  // takes focus itself when it mounts (and again when its confirmation step appears, with the hook's effect).
-  const takeFocus = React.useRef(shouldTakeFocus);
-  // A form that arrives while the person is elsewhere does not take their place; it says that it is there instead.
-  const [arrivedElsewhere, setArrivedElsewhere] = React.useState(false);
-  React.useEffect(() => {
-    // On mount only: the arrival of the chunk, not a later render.
-    if (takeFocus.current === undefined || takeFocus.current())
-      heading.current?.focus();
-    else setArrivedElsewhere(true);
-  }, []);
+  const { heading, arrivedElsewhere } = useTermActionFocus(shouldTakeFocus);
   return (
     <section className="cms-term-action" aria-labelledby={TERM_FORM_HEADING_ID}>
       <h3 id={TERM_FORM_HEADING_ID} tabIndex={-1} ref={heading}>
@@ -159,7 +148,7 @@ export default function CmsTaxonomyTermAction({
                   value={form.parentId}
                   empty="No parent (top level)"
                   choices={choices}
-                  held={held}
+                  held={heldOptions}
                   loader={loader}
                   issues={issuesFor(issues, 'parentId')}
                   onChange={(parentId) => onChange({ parentId })}
@@ -194,7 +183,7 @@ export default function CmsTaxonomyTermAction({
                   {entry.message}
                 </p>
               ))}
-              <button type="submit" disabled={pending || disabled}>
+              <button type="submit" disabled={pending || commitOff}>
                 {pending ? 'Saving…' : SUBMIT_LABEL[action]}
               </button>
               <button type="button" disabled={pending} onClick={onCancel}>

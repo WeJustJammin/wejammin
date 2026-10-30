@@ -31,6 +31,12 @@ export interface CmsPatternInsertFormProps {
   readonly onLoadMore: () => void;
 }
 
+/** FE03 1048: while the pattern read runs or after it failed, the last verified page is kept but submit stays off. */
+const selectorUnverified = (state: ReadState<unknown>): boolean =>
+  state.kind === 'loading' ||
+  state.kind === 'failed' ||
+  state.kind === 'rate_limited';
+
 const messageOf = (
   issues: readonly InsertIssue[],
   field: InsertField,
@@ -104,7 +110,7 @@ export default function CmsPatternInsertForm(
           state={selectorState}
           selectedId={fields.item?.patternVersionId ?? null}
           invalid={messageOf(issues, 'pattern')}
-          disabled={disabled || pending}
+          disabled={disabled}
           onSelect={(item) => props.onChange({ item })}
           onLoadMore={props.onLoadMore}
         />
@@ -112,7 +118,7 @@ export default function CmsPatternInsertForm(
           aria-describedby={
             linkMessage === null ? undefined : `${LINK_ID}-error`
           }
-          disabled={disabled || pending}
+          disabled={disabled}
         >
           <legend>Link mode</legend>
           {(
@@ -145,7 +151,7 @@ export default function CmsPatternInsertForm(
             id={SLOT_ID}
             type="text"
             value={fields.slotPath}
-            disabled={disabled || pending}
+            disabled={disabled}
             aria-invalid={slotMessage === null ? undefined : true}
             aria-describedby={
               slotMessage === null ? undefined : `${SLOT_ID}-error`
@@ -162,7 +168,7 @@ export default function CmsPatternInsertForm(
             id={OVERRIDES_ID}
             rows={4}
             value={fields.overridesText}
-            disabled={disabled || pending}
+            disabled={disabled}
             aria-invalid={overridesMessage === null ? undefined : true}
             aria-describedby={`${OVERRIDES_ID}-hint${overridesMessage === null ? '' : ` ${OVERRIDES_ID}-error`}`}
             onChange={(event) =>
@@ -181,7 +187,7 @@ export default function CmsPatternInsertForm(
         </div>
         <button
           type="submit"
-          disabled={disabled || pending || selectorState.kind === 'loading'}
+          disabled={disabled || pending || selectorUnverified(selectorState)}
         >
           Place pattern
         </button>

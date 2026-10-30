@@ -49,7 +49,11 @@ The canonical record a refused overlap points to is shown as copyable text, neve
 - Views: `CmsTaxonomyTermForm` over `CmsTaxonomyTermFilter`, `CmsTaxonomyTermTable`, `CmsTaxonomyTermAction`,
   `CmsTaxonomyTermFields`, `CmsTaxonomyLabelRows`, `CmsTaxonomyAliasList`, `CmsTaxonomyTermConfirm`
   (a merge review requires its survivor by type; `term-review.tsx` picks the review to show),
-  `CmsTaxonomyCanonicalId` and `CmsTaxonomyTermStatus` (the one focusable result region).
+  `CmsTaxonomyCanonicalId` and `CmsTaxonomyTermStatus` (the one focusable result region; a 403 is rendered as the
+  shared `CmsEditorialCapabilityGate`). `CmsTaxonomyTermListNotices` carries the failed-refresh and restarted notices,
+  `term-form-defaults.ts` the browser defaults of the two test seams and `use-term-action-focus.ts` the focus of the
+  on-demand action form. FE03 1048: a list refresh shows a skeleton after 250 ms and turns every term action off until
+  it answers; the commit control is also off while a picker page loads.
   `CmsTaxonomyTermLeaveConfirm` is the inline leave confirmation of FE03 "Unsaved changes": the form arms
   `beforeunload` and intercepts in-app links only while it holds unsent input (`isTermFormDirty`), through the shared
   `useCmsEditorialLeaveGuard`; the only exits are keeping the draft or the explicit discard.

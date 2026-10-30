@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsEditorialCapabilityGate from '../cms-editorial/CmsEditorialCapabilityGate';
 import type { IssueTarget } from './pattern-designer-request';
 import CmsPatternVersionFacts from './CmsPatternVersionFacts';
 import {
@@ -8,7 +9,11 @@ import {
   nodeNumber,
   targetDomId,
 } from './pattern-designer-ids';
-import { PATTERN_REFUSAL_COPY } from './pattern-designer-reasons';
+import {
+  headingOf,
+  isCapabilityDenial,
+  resultCopy,
+} from './pattern-status-copy';
 import type { PatternSubmitResult } from './pattern-designer-submit';
 import { locateNode, type EditableTree } from './pattern-tree-state';
 
@@ -37,46 +42,6 @@ export type PatternFormStatus =
       /** The refusal as a linked item when a control owns it. */
       readonly items: readonly PatternSummaryItem[];
     };
-
-export const PATTERN_REJECTED_COPY: Readonly<Record<number, string>> = {
-  400: 'The server could not read the pattern. Review the form and try again. Nothing was saved.',
-  403: 'Template designer access is required for this acting context. Nothing was saved.',
-  404: 'This pattern is unavailable to the current acting context. Nothing was saved.',
-  415: 'The server could not read the pattern. Reload the page and try again. Nothing was saved.',
-  422: 'The server rejected the pattern. Review the form and try again. Nothing was saved.',
-};
-const UNAVAILABLE =
-  'The pattern service is unavailable. Your tree remains here for a later retry.';
-
-const resultCopy = (
-  result: Exclude<PatternSubmitResult, { kind: 'created' }>,
-): string => {
-  switch (result.kind) {
-    case 'uncertain':
-      return 'The result is unknown. The latest version could not settle it. Your tree remains here. Check the latest version before changing anything; retrying these unchanged values reuses the same idempotency key, so it cannot save twice.';
-    case 'conflict':
-      return 'Another version of this pattern was saved after the one you started from. Nothing was overwritten. Check the latest version, then choose how to continue.';
-    case 'refused':
-      return PATTERN_REFUSAL_COPY[result.reason];
-    case 'rejected':
-      if (result.status === 401)
-        return 'Your session expired. Sign in again before submitting; your tree remains here.';
-      if (result.status === 429)
-        return result.retryAfterSeconds === undefined
-          ? 'The request was rate-limited. Wait before retrying.'
-          : `The request was rate-limited. Wait at least ${result.retryAfterSeconds} seconds before retrying.`;
-      return PATTERN_REJECTED_COPY[result.status] ?? UNAVAILABLE;
-  }
-};
-
-const headingOf = (
-  result: Exclude<PatternSubmitResult, { kind: 'created' }>,
-): string =>
-  result.kind === 'uncertain'
-    ? 'The result is unknown'
-    : result.kind === 'conflict'
-      ? 'Another version was saved'
-      : 'The pattern was not saved';
 
 const labelOf = (item: PatternSummaryItem, tree: EditableTree): string => {
   if (item.target.kind !== 'node') return '';
@@ -135,7 +100,15 @@ export default function CmsPatternStatus({
           </p>
         </>
       ) : null}
-      {status.kind === 'result' ? (
+      {status.kind === 'result' && isCapabilityDenial(status.result) ? (
+        <CmsEditorialCapabilityGate
+          headingId={PATTERN_RESULT_HEADING_ID}
+          title={headingOf(status.result)}
+          reason={resultCopy(status.result)}
+          focusable
+        />
+      ) : null}
+      {status.kind === 'result' && !isCapabilityDenial(status.result) ? (
         <>
           <h3 id={PATTERN_RESULT_HEADING_ID} tabIndex={-1}>
             {headingOf(status.result)}

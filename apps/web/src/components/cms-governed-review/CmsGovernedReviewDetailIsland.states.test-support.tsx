@@ -97,6 +97,15 @@ export const commitControls = (container: HTMLElement): HTMLButtonElement[] => [
   buttonNamed(container, 'Continue'),
 ];
 
+/** The commit controls left while the review is degraded: the stale assignment list (Revoke) is not shown. */
+export const degradedCommitControls = (
+  container: HTMLElement,
+): HTMLButtonElement[] => [
+  buttonNamed(container, /^Record/u),
+  buttonNamed(container, 'Assign reviewer'),
+  buttonNamed(container, 'Continue'),
+];
+
 export const reasonsShown = (container: HTMLElement): string[] =>
   [...container.querySelectorAll('[data-cms-workflow-disabled]')].map(
     (node) => node.textContent ?? '',

@@ -48,7 +48,8 @@ no server message is ever rendered (fixed copy only).
   `If-Match` come from the committed `entryVersion`. `CmsEditorialEditorBanners.tsx`,
   `CmsEditorialStatus.tsx` (the one polite live region),
   `CmsEditorialSyncConflict.tsx` (no last-write-wins) and
-  `CmsEditorialCapabilityGate.tsx` carry the non-field states.
+  `CmsEditorialCapabilityGate.tsx` (its heading is a focus target when `focusable`, so a form's named result heading can
+  be the gate) carry the non-field states.
   `cms-editorial-draft-values.ts` projects a verified draft onto its fields.
   Reconciliation never overwrites a field edited after dispatch (a merged 201
   keeps it; a field both sides changed stops in `sync-conflict`), and a stale

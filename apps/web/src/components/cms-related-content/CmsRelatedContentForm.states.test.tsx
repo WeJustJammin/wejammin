@@ -65,16 +65,13 @@ const heldSubmit = () => {
   );
   return { submit, answer: (result: RelatedSubmitResult) => answer(result) };
 };
-const disabledOutsideRule = (container: HTMLElement): string[] =>
+const disabledControls = (container: HTMLElement): string[] =>
   Array.from(
     container.querySelectorAll<HTMLElement>(
       'form input, form select, form textarea, form button',
     ),
   )
-    .filter(
-      (control) =>
-        control.matches(':disabled') && !control.closest('.cms-related-rule'),
-    )
+    .filter((control) => control.matches(':disabled'))
     .map((control) => (control.textContent ?? '') || control.id);
 
 describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
@@ -90,7 +87,7 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it('[P2-S12-AC-271] commandState loading (kept half): the pending label is stable and the commit control is disabled; the Derived rule fieldset is ALSO disabled and an edit lifts the pending label (D5) (CMS-03C-05)', async () => {
+  it('[P2-S12-AC-271] commandState loading: the pending label is stable and only the commit control is disabled, the Derived rule fieldset included; an edit neither lifts the pending label nor is blocked (CMS-03C-05)', async () => {
     const held = heldSubmit();
     const { container } = mount({ submit: held.submit });
     await click(buttonNamed(container, `Exclude ${name(3)}`));
@@ -99,8 +96,25 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
     expect(held.submit).toHaveBeenCalledTimes(1);
     expect(commit(container).textContent).toBe('Saving…');
     expect(regionOf(container)?.textContent).toBe('Saving related content…');
-    // Outside the rule fieldset the commit control is the one disabled control.
-    expect(disabledOutsideRule(container)).toEqual(['Saving…']);
+    // FE03 1048: the commit control is the one disabled control, the Derived rule fieldset included.
+    expect(disabledControls(container)).toEqual(['Saving…']);
+    expect(
+      container.querySelector('.cms-related-rule')?.matches(':disabled'),
+    ).toBe(false);
+    // An edit while the command is in flight keeps the stable pending label.
+    await click(buttonNamed(container, `Pin ${name(1)}`));
+    expect(regionOf(container)?.textContent).toBe('Saving related content…');
+    expect(commit(container).textContent).toBe('Saving…');
+    // Choosing a derived rule during the command neither lifts the label nor re-enables the commit control.
+    const rule = Array.from(
+      container.querySelectorAll<HTMLInputElement>(
+        '.cms-related-rule input[type="radio"]',
+      ),
+    ).find((radio) => !radio.checked)!;
+    await click(rule);
+    expect(regionOf(container)?.textContent).toBe('Saving related content…');
+    expect(commit(container).textContent).toBe('Saving…');
+    expect(commit(container).disabled).toBe(true);
     // A second activation sends nothing.
     await click(commit(container));
     expect(held.submit).toHaveBeenCalledTimes(1);
@@ -164,12 +178,21 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
         'This account cannot change related content for this entry, or the page is out of date. Reload the page and try again.',
       ],
     ])(
-      '[P2-S12-AC-271] commandState error (kept half): a 403 %j renders fixed capability copy as an alert, no step-up route; no CapabilityGate element (D1) (CMS-03C-05)',
+      '[P2-S12-AC-271] commandState error: a 403 %j renders the CapabilityGate with fixed capability copy as an alert, no step-up route (CMS-03C-05)',
       async (result, expectedHeading, copy) => {
         const { container } = await draftThenSave(result);
         expect(heading(container)).toBe(expectedHeading);
         expect(regionOf(container)?.getAttribute('role')).toBe('alert');
         expect(text(container)).toContain(copy);
+        expect(
+          regionOf(container)?.querySelector(
+            '[data-cms-editorial-capability-gate]',
+          ),
+        ).not.toBeNull();
+        // FE03 "focus summary/field": the gate's heading is the focused named result.
+        expect(document.activeElement).toBe(
+          document.querySelector('[data-cms-editorial-capability-gate] h2'),
+        );
         expect(container.querySelector('a[href*="step-up"]')).toBeNull();
         expect(listItems(container, 'ol.cms-related-rows')).toContain(id(1));
       },
@@ -191,6 +214,16 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
       expect(commit(container).disabled).toBe(true);
       expect(listItems(container, 'ol.cms-related-rows')).toContain(id(1));
       expect(fetchSpy).not.toHaveBeenCalled();
+      // Choosing a rule does not lift the conflict the person still has to review.
+      await click(
+        Array.from(
+          container.querySelectorAll<HTMLInputElement>(
+            '.cms-related-rule input[type="radio"]',
+          ),
+        ).find((radio) => !radio.checked)!,
+      );
+      expect(heading(container)).toBe('This entry changed');
+      expect(commit(container).disabled).toBe(true);
       vi.unstubAllGlobals();
     });
 

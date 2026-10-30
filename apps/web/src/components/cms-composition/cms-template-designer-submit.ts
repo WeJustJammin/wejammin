@@ -31,11 +31,15 @@ export type CmsTemplateSubmitResult =
       readonly status:
         400 | 401 | 403 | 404 | 415 | 422 | 429 | 500 | 502 | 503 | 504;
       readonly retryAfterSeconds?: number;
+      /** The closed 422 reason the field owns (BE03c: TEMPLATE_VALIDATION_FAILED incl. `key_reserved`). */
+      readonly reasonCode?: typeof KEY_RESERVED_REASON;
     }
   | { readonly kind: 'uncertain' };
 
 /** The one 409 reason CMS-03C-01 publishes; the browser reads it by exact match and never loads zod for it. */
 export const DIGEST_MISMATCH_REASON = 'block_registry_digest_mismatch';
+/** The 422 reason that belongs to the template key field. */
+export const KEY_RESERVED_REASON = 'key_reserved';
 const REJECTED_STATUSES = new Set([
   400, 401, 403, 404, 415, 422, 429, 500, 502, 503, 504,
 ]);
@@ -121,6 +125,11 @@ const submitCmsTemplateVersion = async (
         return { kind: 'uncertain' };
       return { kind: 'rejected', status: 429, retryAfterSeconds: seconds };
     }
+    if (
+      response.status === 422 &&
+      error.details.reasonCode === KEY_RESERVED_REASON
+    )
+      return { kind: 'rejected', status: 422, reasonCode: KEY_RESERVED_REASON };
     return {
       kind: 'rejected',
       status: response.status as Extract<

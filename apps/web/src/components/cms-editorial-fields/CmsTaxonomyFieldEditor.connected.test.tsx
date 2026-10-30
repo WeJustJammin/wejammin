@@ -43,6 +43,7 @@ import {
   START_AGAIN_LABEL,
   TAXONOMY_FIELD_KEY,
   TRY_AGAIN_LABEL,
+  advanceTimers,
   announcedCount,
   decodedTaxonomyField,
   deferred,
@@ -67,6 +68,7 @@ import {
 beforeAll(enableReactAct);
 afterAll(disableReactAct);
 afterEach(() => {
+  vi.useRealTimers();
   vi.unstubAllGlobals();
   document.body.replaceChildren();
 });
@@ -169,12 +171,14 @@ describe('the connected taxonomy selector: the protected read', () => {
 
 describe('the connected taxonomy selector: the read states', () => {
   it('[P2-S12-AC-135] announces a polite loading state while the first page is in flight, keeps the field label and writes no value', async () => {
+    vi.useFakeTimers();
     const pending = deferred<Response>();
     const fd = recordingFetcher([pending.promise]);
     const mounted = mountConnectedTaxonomy({
       context: entryContext(fd.fetcher),
     });
     await settle();
+    await advanceTimers(250);
     expect(noticeMatches(mounted.container, LOADING_PATTERN)).toBe(true);
     expect(
       mounted.container.querySelector('[role="status"][aria-live="polite"]'),

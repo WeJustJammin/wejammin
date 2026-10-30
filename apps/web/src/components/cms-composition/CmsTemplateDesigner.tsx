@@ -8,6 +8,7 @@ import CmsTemplateFields from './CmsTemplateFields';
 import CmsTemplateLeaveGuard from './CmsTemplateLeaveGuard';
 import CmsTemplateSlots from './CmsTemplateSlots';
 import CmsTemplateStatus, {
+  templateKeyError,
   type CmsTemplateFormStatus,
 } from './CmsTemplateStatus';
 import { buildCmsTemplateDraftRequest } from './cms-template-designer-request';
@@ -151,6 +152,7 @@ export default function CmsTemplateDesigner({
           <CmsTemplateFields
             contentTypes={context.contentTypes}
             templateKey={draft.templateKey}
+            keyError={templateKeyError(status)}
             setTemplateKey={draft.setTemplateKey}
             compatibleTypeIds={draft.compatibleTypeIds}
             setCompatibleTypeIds={draft.setCompatibleTypeIds}

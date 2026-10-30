@@ -5,10 +5,13 @@ import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
 import CmsPatternReview from './CmsPatternReview';
 import type { PatternDesignerContext } from './pattern-designer-request';
 import type { EditableTree } from './pattern-tree-state';
+import type { PatternLatestDetail } from './pattern-latest-read';
 import type { PatternConflictState } from './use-pattern-conflict';
 
 interface Props {
   readonly state: PatternConflictState;
+  /** The last verified latest version (kept while a re-read runs or after one failed), or null. */
+  readonly verified: PatternLatestDetail | null;
   /** The version the unsent edits are based on, or null for a first version. */
   readonly baseVersion: string | null;
   /** The latest version is newer than the base and may be adopted (decided by the hook). */
@@ -27,6 +30,7 @@ interface Props {
 /** After a conflict: compare with the latest version and choose, never overwrite. */
 export default function CmsPatternConflictPanel({
   state,
+  verified,
   baseVersion,
   newer,
   waiting,
@@ -37,7 +41,7 @@ export default function CmsPatternConflictPanel({
   onRebase,
   onDiscard,
 }: Props): React.ReactElement {
-  const latest = state.kind === 'loaded' ? state.latest : null;
+  const latest = verified;
   return (
     <section
       aria-labelledby="cms-pattern-conflict-title"
@@ -90,10 +94,18 @@ export default function CmsPatternConflictPanel({
                 draftTypeIds={draftTypeIds}
                 context={context}
               />
-              <button type="button" onClick={onRebase}>
+              <button
+                type="button"
+                disabled={state.kind === 'checking'}
+                onClick={onRebase}
+              >
                 Keep my edits and base them on version {latest.version}
               </button>
-              <button type="button" onClick={onDiscard}>
+              <button
+                type="button"
+                disabled={state.kind === 'checking'}
+                onClick={onDiscard}
+              >
                 Discard my edits and load version {latest.version}
               </button>
               <p>

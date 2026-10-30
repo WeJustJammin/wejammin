@@ -97,6 +97,7 @@ export default function CmsPatternVersionDesigner(
       {designer.showConflict ? (
         <CmsPatternConflictPanel
           state={designer.conflict.state}
+          verified={designer.conflict.verified}
           baseVersion={designer.baseVersion}
           newer={designer.conflict.newer}
           waiting={designer.conflict.waiting}

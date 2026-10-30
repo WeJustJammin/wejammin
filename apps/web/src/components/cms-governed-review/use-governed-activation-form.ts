@@ -41,6 +41,7 @@ import {
   type ActivationTyped,
 } from './governed-activation-model';
 import { useGovernedCommand } from './use-governed-review-command';
+import { useClearSentOnCommit, useSentDraft } from './use-governed-sent-draft';
 
 export interface GovernedActivationFormInput {
   readonly review: GovernedReviewDetailResource;
@@ -96,6 +97,7 @@ export const useGovernedActivationForm = (
   >([]);
   const [confirmed, setConfirmed] = React.useState<string | null>(null);
   const [scheduleChosen, setScheduleChosen] = React.useState(false);
+  const sentDraft = useSentDraft();
   const { controller, state } = useGovernedCommand({
     spec: GOVERNED_ACTIVATION_SPEC,
     ids: { reviewId: review.id },
@@ -105,6 +107,10 @@ export const useGovernedActivationForm = (
     onCommitted: () => {
       void refetch().then(() => {
         onDone(GOVERNED_DETAIL_HEADING_IDS.summary);
+        // FE03 1048: a verified success clears the form's draft, the chosen action included; only after the summary
+        // heading took focus, so focus never falls off the commit control.
+        sentDraft.commit();
+        setScheduleChosen(false);
         setConfirmed(null);
       });
     },
@@ -123,6 +129,7 @@ export const useGovernedActivationForm = (
   const fields = useDraftFields(state.restoredValues, {
     timezone: time.authority?.hasZone(suggested) === true ? suggested : '',
   });
+  useClearSentOnCommit(sentDraft, fields.clearSent);
   const typed = typedFrom(fields.value, offered);
   const resolution: ScheduleResolution =
     typed.action !== 'schedule' || time.authority === null
@@ -214,6 +221,7 @@ export const useGovernedActivationForm = (
       const submission = activationSubmission(version, typed, resolution);
       if (blocked || submission === null) return;
       setSubmitted(typed.action);
+      sentDraft.remember(fields.typedValues);
       void controller.submit(submission);
     },
     cancel: () => {

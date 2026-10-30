@@ -3,10 +3,13 @@ import * as React from 'react';
 import CmsLoadingRegion from '../cms-editorial-workflow/CmsLoadingRegion';
 import { LIFECYCLE_LABEL } from './CmsTaxonomyVersionFacts';
 import { reviewRows, type DraftRules } from './taxonomy-review-outline';
+import type { TaxonomyVersionFacts } from './taxonomy-versions-read';
 import type { TaxonomyConflictState } from './use-taxonomy-conflict';
 
 interface Props {
   readonly state: TaxonomyConflictState;
+  /** The last verified latest version (kept while a re-read runs or after one failed), or null. */
+  readonly verified: TaxonomyVersionFacts | null;
   /** The version the unsent edits are based on. */
   readonly baseVersion: string | null;
   /** The latest version is newer than the base and may be adopted (decided by the hook). */
@@ -21,6 +24,7 @@ interface Props {
 /** After a conflict: compare with the latest version and choose, never overwrite. */
 export default function CmsTaxonomyConflictPanel({
   state,
+  verified,
   baseVersion,
   newer,
   draft,
@@ -28,7 +32,7 @@ export default function CmsTaxonomyConflictPanel({
   onRebase,
   onDiscard,
 }: Props): React.ReactElement {
-  const latest = state.kind === 'loaded' ? state.latest : null;
+  const latest = verified;
   return (
     <section
       aria-labelledby="cms-taxonomy-conflict-title"
@@ -78,10 +82,18 @@ export default function CmsTaxonomyConflictPanel({
                   </li>
                 ))}
               </ul>
-              <button type="button" onClick={onRebase}>
+              <button
+                type="button"
+                disabled={state.kind === 'checking'}
+                onClick={onRebase}
+              >
                 Keep my edits and base them on version {latest.version}
               </button>
-              <button type="button" onClick={onDiscard}>
+              <button
+                type="button"
+                disabled={state.kind === 'checking'}
+                onClick={onDiscard}
+              >
                 Discard my edits and load version {latest.version}
               </button>
               <p>

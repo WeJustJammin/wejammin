@@ -130,7 +130,7 @@ describe('CmsTaxonomyTermForm (cmsTaxonomyTermsRead) latestReadState', () => {
     expect(buttonNamed(container, 'Create a term').disabled).toBe(false);
   });
 
-  it('[P2-S12-AC-271] latestReadState loading (kept half): cmsTaxonomyTermsRead (CmsTaxonomyTermForm): a picker page read shows a skeleton after 250 ms (nothing at 249) over a no-store GET; the list refresh shows no skeleton and the submit controls stay enabled (DEFECT)', async () => {
+  it('[P2-S12-AC-271] latestReadState loading: cmsTaxonomyTermsRead (CmsTaxonomyTermForm): a picker page read shows a skeleton after 250 ms (nothing at 249) over a no-store GET with the commit control off', async () => {
     const held = heldTermsRead();
     const { container } = mount({ ...partial, readTerms: held.read });
     await openMerge(container);
@@ -140,10 +140,64 @@ describe('CmsTaxonomyTermForm (cmsTaxonomyTermsRead) latestReadState', () => {
     await settle(1);
     expect(skeleton(container)?.getAttribute('role')).toBe('status');
     expect(skeleton(container)?.textContent).toBe('Loading terms…');
+    expect(buttonNamed(container, 'Review the merge').disabled).toBe(true);
     expect(held.read).toHaveBeenCalledWith(expect.any(String), { limit: 50 });
     await act(async () => held.release(termsPage([TUBA], null)));
     await settle();
     expect(skeleton(container)).toBeNull();
+    expect(buttonNamed(container, 'Review the merge').disabled).toBe(false);
+  });
+
+  it('[P2-S12-AC-271] latestReadState loading (list refresh): cmsTaxonomyTermsRead (CmsTaxonomyTermForm): the refresh after an action shows a skeleton after 250 ms (nothing at 249) with the prior list kept and every term action off until it answers', async () => {
+    const held = heldTermsRead();
+    const { container } = mount({
+      submit: submitStub(doneResult()),
+      readTerms: held.read,
+    });
+    await click(buttonNamed(container, 'Create a term'));
+    await typeInto(byLabel<HTMLInputElement>(container, 'Term key'), 'cello');
+    await typeInto(byLabel<HTMLInputElement>(container, 'Label 1'), 'Cello');
+    await click(buttonNamed(container, 'Create term'));
+    await settle(249);
+    expect(held.pending()).toBe(1);
+    expect(skeleton(container)).toBeNull();
+    await settle(1);
+    expect(skeleton(container)?.getAttribute('role')).toBe('status');
+    expect(skeleton(container)?.textContent).toBe('Refreshing the terms…');
+    expect(rows(container)).toEqual([
+      'guitar',
+      'organ',
+      'strings',
+      'old-organ',
+    ]);
+    expect(() => buttonNamed(container, 'Create a term')).toThrow();
+    expect(() => buttonNamed(container, 'Rename term guitar')).toThrow();
+    await act(async () =>
+      held.release(termsLoaded(pageFacts([termFacts(), CELLO]))),
+    );
+    await settle();
+    expect(skeleton(container)).toBeNull();
+    expect(buttonNamed(container, 'Create a term').disabled).toBe(false);
+  });
+
+  it('[P2-S12-AC-271] latestReadState loading (list refresh): cmsTaxonomyTermsRead (CmsTaxonomyTermForm): a form kept open by a conflict has its commit control off until the reconciling refresh answers', async () => {
+    const held = heldTermsRead();
+    const { container } = mount({
+      submit: submitStub({ kind: 'conflict', currentVersion: '3' }),
+      readTerms: held.read,
+    });
+    await click(buttonNamed(container, 'Create a term'));
+    await typeInto(byLabel<HTMLInputElement>(container, 'Term key'), 'cello');
+    await typeInto(byLabel<HTMLInputElement>(container, 'Label 1'), 'Cello');
+    await click(buttonNamed(container, 'Create term'));
+    await settle();
+    expect(held.pending()).toBe(1);
+    expect(buttonNamed(container, 'Create term').disabled).toBe(true);
+    await act(async () =>
+      held.release(termsLoaded(pageFacts([termFacts(), CELLO]))),
+    );
+    await settle();
+    expect(buttonNamed(container, 'Create term').disabled).toBe(false);
   });
 
   it('[P2-S12-AC-271] latestReadState success: cmsTaxonomyTermsRead (CmsTaxonomyTermForm): a 200 page is shown in place of the list and a form opened afterwards prefills from it; a picker page adds its terms to the choices', async () => {

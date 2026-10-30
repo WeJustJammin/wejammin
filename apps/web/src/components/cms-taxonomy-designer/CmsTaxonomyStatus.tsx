@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsEditorialCapabilityGate from '../cms-editorial/CmsEditorialCapabilityGate';
 import {
   TAXONOMY_RESULT_HEADING_ID,
   TAXONOMY_STATUS_ID,
@@ -47,6 +48,11 @@ const headingOf = (result: Failure): string =>
     : result.kind === 'conflict'
       ? 'Another version was saved'
       : 'The vocabulary was not saved';
+
+/** FE03 1048: a 403 renders the CapabilityGate copy (never a step-up route). */
+const isCapabilityDenial = (result: Failure): boolean =>
+  result.kind === 'refused' ||
+  (result.kind === 'rejected' && result.status === 403);
 
 interface Props {
   readonly status: TaxonomyFormStatus;
@@ -116,7 +122,15 @@ export default function CmsTaxonomyStatus({
           </p>
         </>
       ) : null}
-      {status.kind === 'result' ? (
+      {status.kind === 'result' && isCapabilityDenial(status.result) ? (
+        <CmsEditorialCapabilityGate
+          headingId={TAXONOMY_RESULT_HEADING_ID}
+          title={headingOf(status.result)}
+          reason={copyOf(status.result)}
+          focusable
+        />
+      ) : null}
+      {status.kind === 'result' && !isCapabilityDenial(status.result) ? (
         <>
           <h3 id={TAXONOMY_RESULT_HEADING_ID} tabIndex={-1}>
             {headingOf(status.result)}

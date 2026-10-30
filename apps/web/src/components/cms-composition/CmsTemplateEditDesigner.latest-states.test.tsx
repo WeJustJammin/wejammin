@@ -282,7 +282,7 @@ describe('CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState', () =
     expect(save(container).disabled).toBe(true);
   });
 
-  it('[P2-S12-AC-271] latestReadState degraded (kept half): cmsTemplateLatestRead (CmsTemplateEditDesigner): a read that fails keeps the last verified base version and the unsent values, and submit stays disabled; the earlier verified latest panel is dropped (DEFECT)', async () => {
+  it('[P2-S12-AC-271] latestReadState degraded: cmsTemplateLatestRead (CmsTemplateEditDesigner): a read that fails keeps the last verified base version, the last verified latest comparison and the unsent values, and submit stays disabled', async () => {
     const { container } = await mountConflicted(newer(), refusal(503));
     await press(container);
     expect(container.textContent).toContain('Latest version 3');
@@ -291,11 +291,12 @@ describe('CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState', () =
       'The latest version is unavailable. Wait and try again.',
     );
     expect(container.textContent).toContain('Editing version 2.');
+    expect(container.textContent).toContain('Latest version 3');
     expect(audience(container).value).toBe('changed');
     expect(save(container).disabled).toBe(true);
   });
 
-  it('[P2-S12-AC-271] latestReadState disabled (kept half): cmsTemplateLatestRead (CmsTemplateEditDesigner): the reason names the missing session or the missing designer capability, and submit is off; the empty content-type prerequisite names no reason (DEFECT)', async () => {
+  it('[P2-S12-AC-271] latestReadState disabled: cmsTemplateLatestRead (CmsTemplateEditDesigner): the reason names the missing session or the missing designer capability, and submit is off (the empty content-type reason is proved in CmsTemplateDesigner.states.test.tsx)', async () => {
     vi.stubGlobal('fetch', vi.fn<typeof fetch>());
     const { container } = mountElement(element(''));
     expect(container.textContent).toContain(

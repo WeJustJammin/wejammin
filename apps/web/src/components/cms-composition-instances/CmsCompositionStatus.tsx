@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsEditorialCapabilityGate from '../cms-editorial/CmsEditorialCapabilityGate';
 import type { CompositionStatus } from './composition-status';
 
 export const RESULT_HEADING_ID = 'cms-composition-result-heading';
@@ -28,10 +29,19 @@ export default function CmsCompositionStatus({
       className="cms-composition-status"
       role={status.kind === 'error' ? 'alert' : 'status'}
     >
-      <h2 id={RESULT_HEADING_ID} tabIndex={-1}>
-        {status.heading}
-      </h2>
-      {status.kind === 'error' ? <p>{status.message}</p> : null}
+      {status.kind === 'error' && status.gate ? (
+        <CmsEditorialCapabilityGate
+          headingId={RESULT_HEADING_ID}
+          title={status.heading}
+          reason={status.message}
+          focusable
+        />
+      ) : (
+        <h2 id={RESULT_HEADING_ID} tabIndex={-1}>
+          {status.heading}
+        </h2>
+      )}
+      {status.kind === 'error' && !status.gate ? <p>{status.message}</p> : null}
       {lines.length > 0 ? (
         <ul>
           {lines.map((line, index) => (

@@ -24,6 +24,7 @@ import { GOVERNED_DETAIL_HEADING_IDS } from './CmsGovernedReviewDetail';
 import { GOVERNED_COMMAND_SPECS } from './governed-review-command-specs';
 import { governedFrameVisible } from './governed-review-form-visibility';
 import { useGovernedCommand } from './use-governed-review-command';
+import { useClearSentOnCommit, useSentDraft } from './use-governed-sent-draft';
 
 export interface CmsGovernedDecisionFormProps {
   readonly review: GovernedReviewDetailResource;
@@ -80,11 +81,14 @@ export default function CmsGovernedDecisionForm({
   const [localErrors, setLocalErrors] = React.useState<
     readonly WorkflowLocalError[]
   >([]);
+  const sentDraft = useSentDraft();
   const { controller, state } = useGovernedCommand({
     spec: GOVERNED_COMMAND_SPECS['CMS-03C-07'],
     ids: { reviewId: review.id },
     refetch,
     onCommitted: () => {
+      // FE03 1048: a verified success clears the form's draft.
+      sentDraft.commit();
       void refetch().then(() => onDone(GOVERNED_DETAIL_HEADING_IDS.decisions));
     },
     ...(environment === undefined ? {} : { environment }),
@@ -94,6 +98,7 @@ export default function CmsGovernedDecisionForm({
     if (permitted) controller.restore(version);
   }, [controller, permitted, version]);
   const fields = useDraftFields(state.restoredValues);
+  useClearSentOnCommit(sentDraft, fields.clearSent);
   const decision = asChoice(fields.value('decision'));
   const reason = fields.value('reason');
   const blocked = isCommitBlocked(state, disabledReason);
@@ -114,6 +119,7 @@ export default function CmsGovernedDecisionForm({
           found.push({ ...REASON_FIELD, message: reasonError });
         setLocalErrors(found);
         if (decision === '' || found.length > 0) return;
+        sentDraft.remember(fields.typedValues);
         void controller.submit({
           body: {
             reviewId: review.id,

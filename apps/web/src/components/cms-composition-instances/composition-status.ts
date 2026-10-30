@@ -14,6 +14,8 @@ export type CompositionStatus =
       readonly message: string;
       /** Extra lines (partial progress of a multi-request command). */
       readonly lines: readonly string[];
+      /** A 403: rendered as the CapabilityGate (FE03 1048), never as a step-up route. */
+      readonly gate: boolean;
       readonly nonce: number;
     };
 
@@ -44,10 +46,12 @@ export const failure = (
   heading: string,
   message: string,
   lines: readonly string[] = [],
+  gate = false,
 ): CompositionStatus => ({
   kind: 'error',
   heading,
   message,
   lines,
+  gate,
   nonce: nextNonce(),
 });

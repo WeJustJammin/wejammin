@@ -105,12 +105,12 @@ const notice = (container: HTMLElement): Element | null =>
   container.querySelector('[data-cms-workflow-rate-limit]');
 
 describe('governed review island: canonical read answered 429', () => {
-  it('announces the wait politely, keeps the review and the typed reason, and reads again after it', async () => {
+  it('announces the wait politely, does not keep the stale review, keeps the typed reason, and reads again after it', async () => {
     const { container, readReview } = await mountAndRead([limited(6)]);
     expect(notice(container)?.getAttribute('role')).toBe('status');
     expect(notice(container)?.getAttribute('aria-live')).toBe('polite');
     expect(notice(container)?.textContent).toBe(rateLimitMessage(6));
-    expect(container.textContent).toContain('Frozen version');
+    expect(container.textContent).not.toContain('Frozen version');
     expect(container.textContent).toContain(
       'The last read could not be verified. Commands are off until it is.',
     );
@@ -122,6 +122,7 @@ describe('governed review island: canonical read answered 429', () => {
     await advance(1);
     expect(readReview).toHaveBeenCalledTimes(2);
     expect(notice(container)?.textContent).toBe('');
+    expect(container.textContent).toContain('Frozen version');
     expect(container.textContent).not.toContain('Commands are off');
   });
 

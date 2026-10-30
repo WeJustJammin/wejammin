@@ -121,6 +121,7 @@ export const useCompositionBulk = (
                 ? UNKNOWN_OUTCOME_MESSAGE
                 : refusalMessage('update', answer.status, answer.reason),
               progress,
+              answer.kind === 'refused' && answer.status === 403,
             ),
           );
         }

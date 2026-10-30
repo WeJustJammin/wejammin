@@ -159,7 +159,8 @@ describe('CmsRelatedContentForm: saving', () => {
     await save(container);
     expect(buttonNamed(container, 'Saving…').disabled).toBe(true);
     expect(text(container)).toContain('Saving related content…');
-    expect(container.querySelector('fieldset')?.disabled).toBe(true);
+    // FE03 1048: only the commit control is disabled while the command is pending, not the rule fieldset.
+    expect(container.querySelector('fieldset')?.disabled).toBe(false);
     release?.();
   });
 

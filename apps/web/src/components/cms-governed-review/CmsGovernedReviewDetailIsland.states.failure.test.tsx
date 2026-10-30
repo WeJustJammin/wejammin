@@ -34,6 +34,7 @@ import {
   advance,
   aria,
   commitControls,
+  degradedCommitControls,
   everyFormReview,
   loadingRegion,
   mountDetail,
@@ -135,7 +136,7 @@ describe('CmsGovernedReviewDetailIsland (CMS-03C-10) governedReviewState: error'
 });
 
 describe('CmsGovernedReviewDetailIsland (CMS-03C-10) governedReviewState: degraded and disabled', () => {
-  it('[P2-S12-AC-271] governedReviewState degraded: a failed read keeps the last verified review with lastVerifiedAt, turns every form off with the unverified reason, and re-enables them only after a later read verifies', async () => {
+  it('[P2-S12-AC-271] governedReviewState degraded: a failed read does not keep the stale review (it is re-required) but names lastVerifiedAt, turns every form off with the unverified reason, and re-shows the review and re-enables the forms only after a later read verifies', async () => {
     const review = everyFormReview();
     const reads: Read[] = [
       {
@@ -150,16 +151,14 @@ describe('CmsGovernedReviewDetailIsland (CMS-03C-10) governedReviewState: degrad
     await flush();
     await provokeRefetch(container);
 
-    expect(container.textContent).toContain('Frozen version');
+    expect(container.textContent).not.toContain('Frozen version');
     const notice = container.querySelector('[data-cms-workflow-degraded]');
-    expect(notice?.textContent).toContain(
-      'Showing the last verified state from',
-    );
+    expect(notice?.textContent).toContain('The review is not shown');
     expect(notice?.querySelector('time')?.getAttribute('datetime')).toBe(
       INSTANT,
     );
-    expect(commitControls(container).map(aria)).toEqual([
-      'true',
+    // The stale assignment list is not shown, so there is no Revoke control while degraded.
+    expect(degradedCommitControls(container).map(aria)).toEqual([
       'true',
       'true',
       'true',
@@ -168,14 +167,12 @@ describe('CmsGovernedReviewDetailIsland (CMS-03C-10) governedReviewState: degrad
       UNVERIFIED,
       UNVERIFIED,
       UNVERIFIED,
-      UNVERIFIED,
     ]);
     expect(loadingRegion(container)).toBeNull();
 
     await advance(5_999);
     expect(readReview).toHaveBeenCalledTimes(1);
-    expect(commitControls(container).map(aria)).toEqual([
-      'true',
+    expect(degradedCommitControls(container).map(aria)).toEqual([
       'true',
       'true',
       'true',
@@ -183,6 +180,7 @@ describe('CmsGovernedReviewDetailIsland (CMS-03C-10) governedReviewState: degrad
     await advance(1);
     expect(readReview).toHaveBeenCalledTimes(2);
     expect(container.querySelector('[data-cms-workflow-degraded]')).toBeNull();
+    expect(container.textContent).toContain('Frozen version');
     expect(commitControls(container).slice(1).map(aria)).toEqual([
       'false',
       'false',

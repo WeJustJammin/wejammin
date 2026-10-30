@@ -132,13 +132,20 @@ describe('CmsTaxonomyVersionDesigner (CMS-03C-16) commandState', () => {
       [{ kind: 'refused', status: 403, reason: 'capability_missing' } as const],
       [{ kind: 'rejected', status: 403 } as const],
     ])(
-      '[P2-S12-AC-271] commandState error (kept half): a 403 %j renders the fixed capability copy as an alert, no step-up route; no CapabilityGate element (D1) (CMS-03C-16)',
+      '[P2-S12-AC-271] commandState error: a 403 %j renders the CapabilityGate with the fixed capability copy as an alert, no step-up route (CMS-03C-16)',
       async (result) => {
         const { container } = await refusedWith(result);
         const region = container.querySelector('.cms-taxonomy-status');
         expect(region?.getAttribute('role')).toBe('alert');
         expect(region?.textContent).toContain(
           'Taxonomy curator access is required for this acting context. Nothing was saved.',
+        );
+        expect(
+          region?.querySelector('[data-cms-editorial-capability-gate]'),
+        ).not.toBeNull();
+        // FE03 "focus summary/field": the gate's heading is the focused named result.
+        expect(document.activeElement).toBe(
+          document.querySelector('[data-cms-editorial-capability-gate] h2'),
         );
         expect(container.querySelector('a[href*="step-up"]')).toBeNull();
         expect(

@@ -107,7 +107,7 @@ describe('CmsLocaleVariantForm (CMS-03C-04) commandState', () => {
       );
     });
 
-    it('[P2-S12-AC-271] commandState error (kept half): a 403 renders the fixed edit-authority copy as an alert, no step-up route; no CapabilityGate element (D1) (CMS-03C-04)', async () => {
+    it('[P2-S12-AC-271] commandState error: a 403 renders the CapabilityGate with the fixed edit-authority copy as an alert, no step-up route (CMS-03C-04)', async () => {
       const { container } = await saveWith({ kind: 'rejected', status: 403 });
       expect(heading(container)).toBe('Not allowed');
       expect(
@@ -115,6 +115,15 @@ describe('CmsLocaleVariantForm (CMS-03C-04) commandState', () => {
       ).toBe('alert');
       expect(text(container)).toContain(
         'This account cannot edit this entry, so it cannot save translations for it. Nothing was saved.',
+      );
+      expect(
+        container.querySelector(
+          '.cms-locale-status [data-cms-editorial-capability-gate]',
+        ),
+      ).not.toBeNull();
+      // FE03 "focus summary/field": the gate's heading is the focused named result.
+      expect(document.activeElement).toBe(
+        document.querySelector('[data-cms-editorial-capability-gate] h2'),
       );
       expect(container.querySelector('a[href*="step-up"]')).toBeNull();
       expect(byLabel<HTMLInputElement>(container, 'Title').value).toBe(
@@ -148,7 +157,7 @@ describe('CmsLocaleVariantForm (CMS-03C-04) commandState', () => {
       },
     );
 
-    it('[P2-S12-AC-271] commandState error (kept half): a 409 FALLBACK_CHAIN_MISMATCH renders fixed copy and adopts the active order the 409 carries; the entry is NOT refetched (D2) (CMS-03C-04)', async () => {
+    it('[P2-S12-AC-271] commandState error (reading): a 409 FALLBACK_CHAIN_MISMATCH renders fixed copy and adopts the authoritative active order the 409 itself carries (FE03 1336), so no source refetch precedes the next save (CMS-03C-04)', async () => {
       const refresh = refreshStub(READY_SOURCE);
       const { container } = await saveWith(
         {
@@ -163,9 +172,10 @@ describe('CmsLocaleVariantForm (CMS-03C-04) commandState', () => {
       );
       expect(text(container)).toContain('fr-CA: fr → de → en-US');
       expect(refresh).not.toHaveBeenCalled();
+      expect(commit(container).disabled).toBe(false);
     });
 
-    it('[P2-S12-AC-271] commandState error (kept half): a 422 renders the fixed refused copy in the result region and keeps every value; the server reason is NOT shown at a field (D6) (CMS-03C-04)', async () => {
+    it('[P2-S12-AC-271] commandState error: a 422 renders the fixed refused copy in the result region and keeps every value (CMS-03C-04)', async () => {
       const { container } = await saveWith({ kind: 'rejected', status: 422 });
       expect(heading(container)).toBe('Could not save');
       expect(

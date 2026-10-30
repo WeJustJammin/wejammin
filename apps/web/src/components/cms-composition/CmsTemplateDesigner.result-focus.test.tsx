@@ -69,6 +69,17 @@ describe.each(templateSurfaces)('template result focus: $name', (surface) => {
     expect(document.activeElement).toBe(heading);
   });
 
+  it('[P2-S12-AC-042] a verified success renders the provenance: the saved version, and for a successor the parent version it was based on', async () => {
+    const container = await mountAndSubmit(surface, surface.response);
+    const region = container.querySelector('[role="status"]');
+    expect(region?.textContent).toContain(
+      surface.name === 'create designer'
+        ? 'version 1'
+        : 'version 3, based on version 2',
+    );
+    expect(region?.textContent).toContain('This is not a published template.');
+  });
+
   it('[P2-S12-AC-042] a refusal keeps focus on the summary region, not on a result heading', async () => {
     const container = await mountAndSubmit(surface, () =>
       Response.json({ code: 'TEMPLATE_FORBIDDEN' }, { status: 403 }),

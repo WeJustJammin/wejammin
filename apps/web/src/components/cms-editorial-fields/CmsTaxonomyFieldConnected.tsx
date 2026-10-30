@@ -1,6 +1,7 @@
 import type { JsonValue } from '@wejammin/contracts';
 import * as React from 'react';
 
+import { useLoadingDelay } from '../cms-editorial-workflow/CmsLoadingRegion';
 import CmsFieldFrame from './CmsFieldFrame';
 import CmsTaxonomyFieldEditor, {
   CMS_TAXONOMY_TERM_IDS_MAX,
@@ -86,13 +87,24 @@ export default function CmsTaxonomyFieldConnected({
   onChange,
 }: CmsTaxonomyFieldConnectedProps): React.ReactElement {
   const read = useTaxonomyRead(descriptor.key, context);
-  const copy = noticeCopy(read.notice, read.remainingSeconds);
+  // FE03 1042: a read still running after 250 ms shows the skeleton; a faster one never flashes it.
+  const loadingShown = useLoadingDelay(read.notice.kind === 'loading');
+  const copy =
+    read.notice.kind === 'loading' && !loadingShown
+      ? null
+      : noticeCopy(read.notice, read.remainingSeconds);
   const wholeFieldIssues = (issues ?? []).filter(
     (issue) => issue.index === undefined && issue.propertyKey === undefined,
   );
   const status =
     copy === null ? null : (
-      <p role="status" aria-live="polite">
+      <p
+        role="status"
+        aria-live="polite"
+        className={
+          read.notice.kind === 'loading' ? 'cms-loading-region' : undefined
+        }
+      >
         {copy}
         {read.notice.kind === 'signed_out' ? (
           <>

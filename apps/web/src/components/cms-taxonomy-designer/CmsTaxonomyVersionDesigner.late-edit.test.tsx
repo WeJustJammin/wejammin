@@ -72,11 +72,13 @@ describe('CmsTaxonomyVersionDesigner: an edit typed while the save is pending', 
 });
 
 /**
- * The snapshot is the CONFIRMED save's, not the latest attempt's: an earlier unknown attempt can be verified
- * as committed while a later, edited attempt (refused here) was the last one sent.
+ * An unknown attempt whose check later verifies it as committed: an edit made while that check runs is flagged as
+ * not part of the saved draft. FE03 1046 holds the submit control off while the check reads, so a second attempt
+ * cannot be sent in that window; "the snapshot is the confirmed save's, not the latest attempt's" is therefore no
+ * longer distinguishable here (the earlier two-attempt scenario is unreachable) and this row proves only the flag.
  */
-describe('CmsTaxonomyVersionDesigner: a verified earlier attempt beside a later edited one', () => {
-  it('[P2-S12-AC-271] flags the edit made after the verified attempt as not part of the saved draft', async () => {
+describe('CmsTaxonomyVersionDesigner: an edit typed while an unknown attempt is checked', () => {
+  it('[P2-S12-AC-271] flags the edit made while the unknown attempt was checked as not part of the saved draft once the check verifies it', async () => {
     const base = versionFacts({
       version: '2',
       taxonomyVersion: 2,
@@ -95,20 +97,16 @@ describe('CmsTaxonomyVersionDesigner: a verified earlier attempt beside a later 
           verify = resolve;
         }),
     );
-    const submit = submitStub(
-      { kind: 'uncertain' },
-      { kind: 'rejected', status: 503 },
-    );
+    const submit = submitStub({ kind: 'uncertain' });
     const { container } = mount({ latest: base, submit, readVersions });
     // Attempt 1 is unknown and its check is still reading.
     await click(buttonNamed(container, 'Save successor draft'));
     await flush();
     expect(readVersions).toHaveBeenCalledTimes(1);
-    // An edit, then attempt 2 (refused) while that check runs.
+    // An edit while that check runs; FE03 1048 holds the submit control off until the read answers, so no second attempt is sent.
     await click(byLabel(container, 'Place'));
-    await click(buttonNamed(container, 'Save successor draft'));
-    await flush();
-    expect(submit).toHaveBeenCalledTimes(2);
+    expect(buttonNamed(container, 'Save successor draft').disabled).toBe(true);
+    expect(submit).toHaveBeenCalledTimes(1);
     // The check now verifies attempt 1 as committed.
     verify(loadedVersions([mine, base]));
     await flush();

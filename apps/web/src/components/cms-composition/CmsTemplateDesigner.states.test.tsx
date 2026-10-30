@@ -146,7 +146,7 @@ describe.each(templateSurfaces)(
       expect(container.querySelector('a[href*="step-up"]')).toBeNull();
     });
 
-    it(`[P2-S12-AC-271] commandState error (kept half): a 403 renders the fixed designer-access copy as an alert, no step-up route; no CapabilityGate element (D1) (CMS-03C-01 ${surface.name})`, async () => {
+    it(`[P2-S12-AC-271] commandState error: a 403 renders the CapabilityGate with the fixed designer-access copy as an alert, no step-up route (CMS-03C-01 ${surface.name})`, async () => {
       const fetcher = vi
         .fn<typeof fetch>()
         .mockResolvedValue(refusal(403, 'TEMPLATE_FORBIDDEN'));
@@ -157,6 +157,11 @@ describe.each(templateSurfaces)(
       expect(region(container).textContent).toContain(
         'Template designer access is required for this acting context.',
       );
+      expect(
+        region(container).querySelector('[data-cms-editorial-capability-gate]'),
+      ).not.toBeNull();
+      // FE03 CMS-11 "focus summary/field": a refusal keeps focus on the summary region, not on the gate heading.
+      expect(document.activeElement).toBe(region(container));
       expect(container.querySelector('a[href*="step-up"]')).toBeNull();
       expect(commit(container).disabled).toBe(false);
     });
@@ -203,7 +208,7 @@ describe.each(templateSurfaces)(
       }
     });
 
-    it(`[P2-S12-AC-271] commandState error (kept half): a 422 renders the fixed rejected copy in the result region and keeps the values; the reason token is NOT shown at its field (D6) (CMS-03C-01 ${surface.name})`, async () => {
+    it(`[P2-S12-AC-271] commandState error: a 422 renders the fixed rejected copy in the result region and keeps the values (CMS-03C-01 ${surface.name})`, async () => {
       const fetcher = vi
         .fn<typeof fetch>()
         .mockResolvedValue(refusal(422, 'TEMPLATE_VALIDATION_FAILED'));
@@ -215,6 +220,34 @@ describe.each(templateSurfaces)(
         'The server rejected the draft values. Review the form and try again.',
       );
       expect(commit(container).disabled).toBe(false);
+      expect(
+        container.querySelector<HTMLInputElement>('#cms-template-audience')!
+          .value.length,
+      ).toBeGreaterThan(0);
+    });
+
+    it(`[P2-S12-AC-271] commandState error: a 422 key_reserved renders its fixed copy at the template key field, links the summary to it and keeps the values (CMS-03C-01 ${surface.name})`, async () => {
+      const fetcher = vi.fn<typeof fetch>().mockResolvedValue(
+        refusal(422, 'TEMPLATE_VALIDATION_FAILED', {
+          reasonCode: 'key_reserved',
+        }),
+      );
+      const container = await mountElement(surface.element, fetcher);
+      await surface.prepare(container);
+      await nativeSubmit(container);
+      const key =
+        container.querySelector<HTMLInputElement>('#cms-template-key')!;
+      const message = container.querySelector('#cms-template-key-error');
+      expect(message?.textContent).toBe(
+        'This template key is reserved. Choose another key.',
+      );
+      expect(key.getAttribute('aria-invalid')).toBe('true');
+      expect(key.getAttribute('aria-describedby')).toContain(
+        'cms-template-key-error',
+      );
+      expect(
+        region(container).querySelector('a[href="#cms-template-key"]'),
+      ).not.toBeNull();
       expect(
         container.querySelector<HTMLInputElement>('#cms-template-audience')!
           .value.length,
@@ -247,10 +280,9 @@ describe.each(templateSurfaces)(
       expect(commit(container).disabled).toBe(true);
       await nativeSubmit(container);
       expect(fetcher).not.toHaveBeenCalled();
-      if (surface.name === 'create designer')
-        expect(container.textContent).toContain(
-          'No active content types are available to this designer.',
-        );
+      expect(container.textContent).toContain(
+        'No active content types are available to this designer.',
+      );
     });
   },
 );

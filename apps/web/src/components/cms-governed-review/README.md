@@ -117,6 +117,15 @@ lives in a component.
 
 ## Conventions
 
+A degraded review detail is never kept (FE03 1050): `CmsGovernedReviewDegraded` shows only that the review is not
+shown and when it was last verified, the stale assignment list is not shown, and the review stays hidden with every
+commit control disabled until a read VERIFIES, including while a re-read is in flight (the island derives `unverified`
+during render). A non-429 degrade offers "Read the review again"; a 429 offers none, because Retry-After governs and
+the automatic read follows it. A verified success clears the form's draft (decision, assignment, activation; activation
+only after the summary heading took focus), but only the fields that still hold what was sent: a value typed while the
+command ran is kept (`use-governed-sent-draft.ts`). The queue's degraded cell is settled by DEC-242: a closed notice
+with Retry, nothing from an earlier read (FE03 1050 amended).
+
 No person, actor, party or lineage identifier in text, URL, storage or logs; the
 chosen reviewer id is island-local and is discarded on a step-up navigation. A
 scheduled version reads "Scheduled, not active". A decision reason, the policy basis

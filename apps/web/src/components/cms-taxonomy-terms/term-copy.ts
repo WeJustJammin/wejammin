@@ -68,3 +68,17 @@ export const ACTION_CONSEQUENCE = {
   merge:
     'The retired term redirects permanently to the term it merges into, and every use of it moves there. This cannot be undone.',
 } as const;
+
+export const SUBMIT_LABEL = {
+  create: 'Create term',
+  rename: 'Rename term',
+  alias: 'Add the alias',
+  deprecate: 'Review the deprecation',
+  merge: 'Review the merge',
+} as const;
+
+export const PARENT_HELP = {
+  rename:
+    'Leave the current parent to keep the term where it is. Choosing none moves it to the top level.',
+  create: 'Lists the active and deprecated terms of this vocabulary.',
+} as const;

@@ -15,6 +15,7 @@ interface Props {
   readonly row: InstanceRow;
   readonly selected: boolean;
   readonly reviewing: boolean;
+  /** A command is in flight (or a diff is being read): every control that starts another command waits (DEC-241). */
   readonly busy: boolean;
   readonly windowed: boolean;
   readonly posInSet: number;

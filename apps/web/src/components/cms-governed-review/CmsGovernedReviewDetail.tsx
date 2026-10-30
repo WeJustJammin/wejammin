@@ -1,6 +1,7 @@
 import type { GovernedReviewDetailResource } from '@wejammin/contracts';
 import * as React from 'react';
 
+import CmsGovernedReviewDegraded from './CmsGovernedReviewDegraded';
 import {
   GOVERNED_DECISION_LABEL,
   GOVERNED_INVALIDATED_COPY,
@@ -16,8 +17,10 @@ import { GOVERNED_QUEUE_PATH } from './governed-review-routes';
 
 export interface CmsGovernedReviewDetailProps {
   readonly review: GovernedReviewDetailResource;
-  /** The time of the last verified read when a later read failed, else null. */
+  /** The time of the last verified read when a later read failed (the review is then re-required, not shown), else null. */
   readonly degradedSince?: string | null;
+  /** Reads the review again: offered in the degraded notice (a 429 re-reads by itself, so the island passes none). */
+  readonly onReread?: (() => void) | undefined;
 }
 
 export const GOVERNED_DETAIL_HEADING_IDS = {
@@ -47,22 +50,28 @@ const Time = ({ value }: { readonly value: string }): React.ReactElement => (
 export default function CmsGovernedReviewDetail({
   review,
   degradedSince = null,
+  onReread,
 }: CmsGovernedReviewDetailProps): React.ReactElement {
   const showAssignments =
     review.assignments.length > 0 ||
     review.permittedNextActions.includes('assign_reviewer') ||
     review.permittedNextActions.includes('revoke_assignment');
+  const back = (
+    <p>
+      <a href={GOVERNED_QUEUE_PATH}>Back to definition reviews</a>
+    </p>
+  );
+  // FE03 1050: a degraded review detail is re-required, never kept; only the time of the last verified read is named.
+  if (degradedSince !== null)
+    return (
+      <div data-cms-governed-review-detail="">
+        <CmsGovernedReviewDegraded since={degradedSince} onReread={onReread} />
+        {back}
+      </div>
+    );
   return (
     <div data-cms-governed-review-detail="">
-      {degradedSince === null ? null : (
-        <p data-cms-workflow-degraded="">
-          Showing the last verified state from <Time value={degradedSince} />.
-          Commands are off until the page is verified again.
-        </p>
-      )}
-      <p>
-        <a href={GOVERNED_QUEUE_PATH}>Back to definition reviews</a>
-      </p>
+      {back}
       <section aria-labelledby={GOVERNED_DETAIL_HEADING_IDS.summary}>
         <h2 id={GOVERNED_DETAIL_HEADING_IDS.summary} tabIndex={-1}>
           {GOVERNED_SUBJECT_KIND_LABEL[review.subjectKind]} {review.subjectKey},

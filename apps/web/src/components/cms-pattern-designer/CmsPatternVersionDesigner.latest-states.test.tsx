@@ -142,7 +142,7 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
     expect(save(container).disabled).toBe(false);
   });
 
-  it('[P2-S12-AC-271] latestReadState loading (kept half): cmsPatternLatestRead (CmsPatternVersionDesigner): a skeleton after 250 ms (nothing at 249), the check control disabled, the read no-store; the submit control stays enabled (DEFECT)', async () => {
+  it('[P2-S12-AC-271] latestReadState loading: cmsPatternLatestRead (CmsPatternVersionDesigner): a skeleton after 250 ms (nothing at 249), the check control disabled, the read no-store, and the submit control disabled until the read answers', async () => {
     let release: (response: Response) => void = () => undefined;
     const held = new Promise<Response>((resolve) => {
       release = resolve;
@@ -158,6 +158,7 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
     expect(skeleton(container)?.textContent).toBe(
       'Checking the latest version…',
     );
+    expect(save(container).disabled).toBe(true);
     const [url, init] = fetcher.mock.calls[0] as [string, RequestInit];
     expect(url).toBe('/api/v1/cms/patterns/profile-hero');
     expect(init).toMatchObject({ method: 'GET', cache: 'no-store' });
@@ -233,7 +234,7 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
     expect(nodeKey(container)).toBe('edited');
   });
 
-  it('[P2-S12-AC-271] latestReadState degraded (kept half): cmsPatternLatestRead (CmsPatternVersionDesigner): a read that fails keeps the base version and the unsent tree; the earlier verified latest comparison is dropped and submit is not held off (DEFECT)', async () => {
+  it('[P2-S12-AC-271] latestReadState degraded: cmsPatternLatestRead (CmsPatternVersionDesigner): a read that fails keeps the base version, the unsent tree and the earlier verified latest comparison, and submit stays disabled', async () => {
     const { container } = await mountConflicted(newer(), refusal(503));
     await press(container);
     expect(container.textContent).toContain('Latest saved version: 5');
@@ -242,7 +243,30 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
       'The latest version is unavailable. Wait and try again.',
     );
     expect(container.textContent).toContain('Editing from version 2.');
+    expect(container.textContent).toContain('Latest saved version: 5');
     expect(nodeKey(container)).toBe('edited');
+    expect(save(container).disabled).toBe(true);
+  });
+
+  it('[P2-S12-AC-271] latestReadState loading: cmsPatternLatestRead (CmsPatternVersionDesigner): the kept comparison cannot be adopted while a re-read runs, and can be once the read failed or answered', async () => {
+    let release: (response: Response) => void = () => undefined;
+    const held = new Promise<Response>((resolve) => {
+      release = resolve;
+    });
+    const { container } = await mountConflicted(newer(), held);
+    await press(container);
+    const keep = () =>
+      buttonNamed(container, /^Keep my edits and base them on version 5/u);
+    const discard = () =>
+      buttonNamed(container, /^Discard my edits and load version 5/u);
+    expect([keep().disabled, discard().disabled]).toEqual([false, false]);
+    await click(check(container));
+    expect([keep().disabled, discard().disabled]).toEqual([true, true]);
+    await act(async () => {
+      release(refusal(503));
+    });
+    await settle();
+    expect([keep().disabled, discard().disabled]).toEqual([false, false]);
   });
 
   it('[P2-S12-AC-271] latestReadState disabled: cmsPatternLatestRead (CmsPatternVersionDesigner): the reason names the missing session, the empty content-type prerequisite or the missing designer capability', async () => {

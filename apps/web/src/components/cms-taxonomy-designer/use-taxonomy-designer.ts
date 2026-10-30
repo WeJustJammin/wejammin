@@ -100,7 +100,12 @@ export const useTaxonomyDesigner = ({
   }, [status]);
 
   const done = status.kind === 'created';
-  const blocked = csrfToken.length === 0 || rateWait.waiting || done;
+  const blocked =
+    csrfToken.length === 0 ||
+    rateWait.waiting ||
+    done ||
+    conflict.state.kind === 'checking' ||
+    conflict.state.kind === 'failed';
 
   const onSubmit = useCallback(async (): Promise<void> => {
     if (blocked || inFlightRef.current) return;
@@ -207,8 +212,7 @@ export const useTaxonomyDesigner = ({
     typeKeys,
   ]);
 
-  const loaded =
-    conflict.state.kind === 'loaded' ? conflict.state.latest : null;
+  const loaded = conflict.verified;
   const rebase = useCallback((): void => {
     if (loaded === null) return;
     setBase(loaded);

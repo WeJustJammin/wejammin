@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsEditorialCapabilityGate from '../cms-editorial/CmsEditorialCapabilityGate';
 import CmsTaxonomyCanonicalId from './CmsTaxonomyCanonicalId';
 import type { TermFacts } from './taxonomy-terms-read';
 import type { TermIssue } from './term-action-request';
@@ -34,6 +35,13 @@ interface Props {
   readonly reviewHref: string;
   readonly returnTo: string;
 }
+
+/** FE03 1048: a 403 renders the CapabilityGate copy (never a step-up route). */
+const isCapabilityDenial = (
+  result: Extract<TermStatus, { kind: 'result' }>['result'],
+): boolean =>
+  (result.kind === 'refused' && result.reason === 'capability_missing') ||
+  (result.kind === 'rejected' && result.status === 403);
 
 const doneBody = (
   status: Extract<TermStatus, { kind: 'done' }>,
@@ -112,7 +120,15 @@ export default function CmsTaxonomyTermStatus({
           <p>{doneBody(status, terms)}</p>
         </>
       ) : null}
-      {status.kind === 'result' ? (
+      {status.kind === 'result' && isCapabilityDenial(status.result) ? (
+        <CmsEditorialCapabilityGate
+          headingId={TERM_RESULT_HEADING_ID}
+          title={failureHeading(status.result)}
+          reason={failureCopy(status.result)}
+          focusable
+        />
+      ) : null}
+      {status.kind === 'result' && !isCapabilityDenial(status.result) ? (
         <>
           <h3 id={TERM_RESULT_HEADING_ID} tabIndex={-1}>
             {failureHeading(status.result)}
