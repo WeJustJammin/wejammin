@@ -28,10 +28,11 @@ const rawPublicKey = (key: KeyObject): Buffer =>
   Buffer.from(String(key.export({ format: 'jwk' }).x), 'base64url');
 
 /**
- * Registers the block once per database and returns its block version id. The block registry is global by
- * (block_key, block_version) and no 03c reader scopes a block by owner, so a later spec in the same `pnpm db:api-test`
- * run (compose and patterns both need the block) reuses the registered row instead of meeting the 409 a second
- * registration of the same pair answers.
+ * Registers the block once per database and returns its block version id. The block registry is unique by
+ * (block_key, block_version), and the CMS-03C-01/-02/-12 validators these latency specs time read a block by key and
+ * version, not by owner, so a later spec in the same `pnpm db:api-test` run (compose and patterns both need the block)
+ * reuses the registered row instead of meeting the 409 a second registration of the same pair answers. Since DEC-243 the
+ * designer context read (`cms_template_context`) also lists every registered, supported block, whoever released it.
  */
 export const registerLatencyBlock = async (
   owner: CmsOwner,

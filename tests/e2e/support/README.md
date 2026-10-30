@@ -119,6 +119,9 @@ layers these on the same world:
 - `s11-dst-gap.ts` (with `s11-dst-gap.test.ts`) — the next real spring-forward
   gap inside the schedule horizon, read from the host's tz data, so the schedule
   spec never types a fixed calendar date that goes stale.
+- `s12-pw7-world.ts`, `s12-pw7-flow.ts`, `s12-pw7-tagged.ts` — the worlds, browser steps and tagged-entry helpers of the
+  Slice 12 page-operation and journey specs (template, locale `no_fallback`, related content, term merge); each spec builds
+  its own data through the real routes.
 - `s12-real-governed.ts` (with `s12-real-governed.test.ts`) — the Slice 12 CMS
   composition boundaries of the real-route API Worker (governed review, taxonomy
   definition and term actions, pattern placement, definition and update, related

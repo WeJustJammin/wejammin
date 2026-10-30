@@ -136,9 +136,10 @@ test('[P2-S12-AC-042] a successful successor save renders the authoritative vers
     version: String(BigInt(base) + 1n),
   });
   const status = savedStatus(page);
-  // The response, not the form, is what is rendered: its server-assigned id and version, and that it is only a draft.
+  // The response, not the form, is what is rendered: its server-assigned id and version, its provenance (the parent version
+  // it was saved from, FE03 CMS-11 "authoritative response/version/provenance"), and that it is only a draft.
   await expect(status).toContainText(
-    `Template ID ${resource.id}, version ${resource.version}.`,
+    `Template ID ${resource.id}, version ${resource.version}, based on version ${base}.`,
   );
   await expect(status).toContainText('This is not a published template.');
   const next = status.getByRole('link', { name: 'Open latest draft' });
