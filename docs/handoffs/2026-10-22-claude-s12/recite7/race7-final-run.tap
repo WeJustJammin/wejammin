@@ -1,0 +1,228 @@
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_harness.sql:11: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_harness.sql:14: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_harness.sql ......... 
+1..17
+# rolsuper=false rolbypassrls=true snapshot_rows=78 restore=removed=145 missing_before= missing_where= added_where= restore_error=-
+ok 1 - the race7 harness ran every scenario without an error of its own
+ok 2 - the committed DEC-108 world built with no failed fixture assertion
+ok 3 - the committed world added rows that the restore has to remove
+ok 4 - a raw holder transaction takes a row lock and stays open
+ok 5 - a sent statement is observed blocked BY the holder in the live lock manager
+ok 6 - the blocked session waits for a row-lock owner (transactionid or tuple), not for a sleep
+ok 7 - a probe session sees the held row as locked (FOR UPDATE NOWAIT is refused 55P03)
+ok 8 - the holder commits
+ok 9 - the blocked statement completes with its own result once the holder commits
+ok 10 - after the release the probe session finds the row free
+ok 11 - the contender waits for nobody afterwards
+ok 12 - an error keeps its SQLSTATE and message through the collect
+ok 13 - the connection is reusable after an error
+ok 14 - a stashed command runs through the remote r7_cmd with the request and its context
+ok 15 - a stashed copy carries extra transaction-local settings
+ok 16 - the restore removed every row the committed world added ()
+ok 17 - the restore left every pre-existing row unchanged
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_activation.sql:21: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_activation.sql:22: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_activation.sql:23: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_activation.sql:24: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_activation.sql ...... 
+1..44
+# restore=removed=355 restore2=removed=0 off=disabled=118 fk_deferred=339 on=enabled=118 missing_before= missing_where= added_where= restore_error=-
+ok 1 - the committed-world harness ran every activation scenario without an error of its own [P2-S12-AC-086]
+ok 2 - the committed governed world built with no failed fixture assertion [P2-S12-AC-086]
+ok 3 - fixture: seven real APPROVED governed reviews exist before the scenarios [P2-S12-AC-086]
+ok 4 - fixture: the lineage holds two approved versions and no active one before the race [P2-S12-AC-086]
+ok 5 - the first activator of the lineage commits (held open until the second is waiting) [P2-S12-AC-086]
+ok 6 - the second activator of the lineage is observed blocked BY the first in the live lock manager [P2-S12-AC-086]
+ok 7 - the second activator waits for the lineage ADVISORY lock, the last position, and not for a row [P2-S12-AC-086]
+ok 8 - the lineage advisory lock (the CMS-03C-19 key) is held by the first activator while the second waits [P2-S12-AC-086]
+ok 9 - the activation that loses a race on the lineage answers P0001 activation_conflict (409 at the Worker) [P2-S12-AC-086]
+ok 10 - an activation that loses a race on the lineage is 409 activation_conflict: the loser answers P0001 activation_conflict [P2-S12-AC-205]
+ok 11 - the loser changed nothing: its subject, its review and its decisions are byte-identical to before the race [P2-S12-AC-205]
+ok 12 - the loser wrote no audit, outbox or idempotency row: the stores equal what the winner left [P2-S12-AC-205]
+ok 13 - after the lost race the lineage keeps exactly one active version, the winner, and no partial switch [P2-S12-AC-086]
+ok 14 - the loser's identical request (same Idempotency-Key) is reusable: it then activates and supersedes the winner [P2-S12-AC-205]
+ok 15 - the retry leaves exactly one active version (the previous active one is superseded in the same transaction) [P2-S12-AC-205]
+ok 16 - fixture: the holder owns the governed review row FOR UPDATE (position 5) [P2-S12-AC-085]
+ok 17 - CMS-03C-09 activate is observed blocked BY the review row holder, the position 5 lock [P2-S12-AC-085]
+ok 18 - while blocked at the review row the activation already holds the owner-capability grant rows (position 1) [P2-S12-AC-085]
+ok 19 - while blocked at the review row the activation already holds the subject version row (position 3) [P2-S12-AC-085]
+ok 20 - while blocked at the review row the activation already holds the bound content type version row (position 4) [P2-S12-AC-085]
+ok 21 - while blocked at the review row the activation does not yet hold the lineage advisory lock, which is taken last [P2-S12-AC-085]
+ok 22 - a lock-acquisition failure (lock_timeout) at the review row is the retryable P0001 CONFLICT of the operation [P2-S12-AC-276]
+ok 23 - the lock failure committed nothing: review, subject, audit, outbox and idempotency rows are unchanged [P2-S12-AC-276]
+ok 24 - the same request (same Idempotency-Key) succeeds once the lock is free: the key is reusable after the conflict [P2-S12-AC-276]
+ok 25 - CMS-03C-09 activate is observed blocked BY the advisory lock holder [P2-S12-AC-085]
+ok 26 - the activation waits for the lineage advisory lock, the last position [P2-S12-AC-085]
+ok 27 - blocked at the advisory lock the activation already holds the review row (position 5) [P2-S12-AC-085]
+ok 28 - blocked at the advisory lock the activation also holds positions 1, 3 and 4: the advisory lock is acquired after every row lock [P2-S12-AC-085]
+ok 29 - once the advisory holder releases the activation completes and the subject is active [P2-S12-AC-085]
+ok 30 - fixture: the activation holds the authority rows (position 1) while open [P2-S12-AC-276]
+ok 31 - a revocation of the activator's grant arriving while the activation runs WAITS for it (the position 1 FOR SHARE lock) [P2-S12-AC-276]
+ok 32 - the waiting revocation has not changed the grant yet [P2-S12-AC-276]
+ok 33 - the activation committed first and the waiting revocation then committed: the subject is active and the grant is revoked [P2-S12-AC-276]
+ok 34 - an activation arriving while a revocation of its grant is in flight waits for the revoking transaction [P2-S12-AC-276]
+ok 35 - a revocation committed first wins: the activation re-proves the capability under the lock and is refused capability_missing [P2-S12-AC-276]
+ok 36 - the refused activation wrote nothing: the subject stays approved and the stores are unchanged [P2-S12-AC-276]
+ok 37 - cleanup: the activator grant is restored before the next scenario [P2-S12-AC-276]
+ok 38 - fixture: the command is blocked at the review row held by the other session before the lock cycle closes [P2-S12-AC-276]
+ok 39 - deadlock_detected inside CMS-03C-09 is converted to the retryable P0001 CONFLICT (not a raw 40P01) [P2-S12-AC-276]
+ok 40 - the deadlock victim committed nothing: review, subject and the audit, outbox and idempotency stores are unchanged [P2-S12-AC-276]
+ok 41 - the other session of the cycle obtained the subject row once the victim rolled back (one committed command, no lost write) [P2-S12-AC-276]
+ok 42 - the same Idempotency-Key succeeds after the deadlock conflict [P2-S12-AC-276]
+ok 43 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-086]
+ok 44 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-086]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_claim.sql:11: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_claim.sql:12: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_claim.sql:13: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_claim.sql:14: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_claim.sql ........... 
+1..14
+# restore=removed=294 restore2=removed=0 off=disabled=118 fk_deferred=339 on=enabled=118 missing_before= missing_where= added_where= restore_error=-
+ok 1 - the committed-world harness ran every claim scenario without an error of its own [P2-S12-AC-145]
+ok 2 - the committed governed world built with no failed fixture assertion [P2-S12-AC-145]
+ok 3 - fixture: three schedules were accepted by the real CMS-03C-09 producer [P2-S12-AC-145]
+ok 4 - fixture: all three schedules are real pending rows and really fall due before the first claim [P2-S12-AC-145]
+ok 5 - session A claims exactly the oldest due schedule (batch 1) and its transaction stays open, holding that schedule row FOR UPDATE [P2-S12-AC-145]
+ok 6 - a concurrent claim returns WITHOUT WAITING for the row session A holds and without that schedule: it claims the next due schedule (FOR UPDATE SKIP LOCKED) [P2-S12-AC-145]
+ok 7 - the concurrent claim was not blocked by the open claim of session A [P2-S12-AC-145]
+ok 8 - two concurrent claims never return the same schedule: both claimed rows are executing at version 2 with distinct leases and the third stays pending [P2-S12-AC-145]
+ok 9 - a claim while a holder owns the only due schedule row returns the empty claim at once instead of waiting [P2-S12-AC-145]
+ok 10 - the schedule row a claim skipped is untouched: still pending at version 1 [P2-S12-AC-145]
+ok 11 - once the holder releases the row, the next claim returns that schedule [P2-S12-AC-145]
+ok 12 - every schedule ends executing at version 2 under its own claim [P2-S12-AC-145]
+ok 13 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-145]
+ok 14 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-145]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_placement.sql:18: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_placement.sql:19: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_placement.sql:20: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_placement.sql:21: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_placement.sql ....... 
+1..33
+# restore=removed=336 restore2=removed=0 off=disabled=118 fk_deferred=339 on=enabled=118 missing_before= missing_where= added_where= restore_error=-
+ok 1 - the committed-world harness ran every placement scenario without an error of its own [P2-S12-AC-218]
+ok 2 - the committed placement world built with no failed fixture assertion [P2-S12-AC-218]
+ok 3 - fixture: the real CMS-03C-01 template with slots main, side and fresh exists [P2-S12-AC-218]
+ok 4 - the first placement (2 block roots into /main) commits while its session stays open [P2-S12-AC-013]
+ok 5 - a second placement into the same slot of the same revision is observed blocked BY the first in the live lock manager (the revision/slot lock) [P2-S12-AC-218]
+ok 6 - the second placement waits for the first transaction to finish (the entry row, position 0, owned by the first) [P2-S12-AC-218]
+ok 7 - once the first placement commits the second placement succeeds [P2-S12-AC-013]
+ok 8 - two simultaneous placements into one slot get disjoint consecutive positions 0, 1, 2 in commit order, each path once [P2-S12-AC-013]
+ok 9 - the placement under the revision/slot lock computes its positions after the winner committed: disjoint consecutive positions in commit order [P2-S12-AC-218]
+ok 10 - no (revision_id, path) is duplicated after the concurrent placements [P2-S12-AC-013]
+ok 11 - both placements advanced the entry aggregate version by one each [P2-S12-AC-013]
+ok 12 - fixture: the first placement of the shared pattern into /side commits while its session stays open [P2-S12-AC-013]
+ok 13 - the competing placement of the same paths waits for the first [P2-S12-AC-013]
+ok 14 - exactly one winner on the same path: the loser answers the typed CONFLICT at /slotPath after waiting for the winner [P2-S12-AC-013]
+ok 15 - the loser wrote no composition row, audit, outbox or idempotency row: the stores equal what the winner left [P2-S12-AC-013]
+ok 16 - the revision holds the winner's two rows only, each path exactly once, and the entry advanced by the winner alone [P2-S12-AC-218]
+ok 17 - the placement is observed blocked BY the holder of the entry row (position 0) [P2-S12-AC-218]
+ok 18 - waiting at position 0 the placement holds no later position: the authority rows, the pattern version row and the content type version row are all free [P2-S12-AC-218]
+ok 19 - a lock-acquisition failure (lock_timeout) at the entry row is the retryable P0001 CONFLICT of CMS-03C-02 [P2-S12-AC-276]
+ok 20 - the lock failure committed nothing: no row, audit, outbox or idempotency record and the entry version is unchanged [P2-S12-AC-276]
+ok 21 - the same request (same Idempotency-Key) succeeds once the entry row is free: the key is reusable after the conflict [P2-S12-AC-276]
+ok 22 - the placement is observed blocked BY the holder of the pattern version row (position 3) [P2-S12-AC-218]
+ok 23 - waiting at position 3 the placement already holds the entry row (position 0) and the authority rows (position 1) [P2-S12-AC-276]
+ok 24 - waiting at position 3 the placement does not yet hold the content type version row (position 4): no earlier position is taken after a later one [P2-S12-AC-276]
+ok 25 - once the pattern row holder releases, the placement completes with positions 0 and 1 [P2-S12-AC-218]
+ok 26 - the placement (held open) owns the author authority rows (position 1) [P2-S12-AC-276]
+ok 27 - a revocation of the author grant arriving while the placement runs WAITS for it (the position 1 FOR SHARE lock) [P2-S12-AC-276]
+ok 28 - the placement committed first and the waiting revocation then committed: two rows exist and the grant is revoked [P2-S12-AC-276]
+ok 29 - a placement arriving while a revocation of its author grant is in flight waits for the revoking transaction [P2-S12-AC-276]
+ok 30 - a revocation committed first wins: the placement re-proves the capability under the lock and is refused capability_missing [P2-S12-AC-276]
+ok 31 - the refused placement wrote nothing: no composition row, audit, outbox or idempotency record [P2-S12-AC-276]
+ok 32 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-218]
+ok 33 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-218]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:17: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:18: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:19: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:20: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql ... 
+1..37
+# restore=removed=323 restore2=removed=0 off=disabled=118 fk_deferred=339 on=enabled=118 missing_before= missing_where= added_where=
+ok 1 - the committed-world harness ran every term scenario without an error of its own [P2-S12-AC-019]
+ok 2 - the committed vocabulary world built with no failed fixture assertion [P2-S12-AC-019]
+ok 3 - fixture: the curator and reviewer grants, an approved successor vocabulary and three real terms exist before the scenarios [P2-S12-AC-019]
+ok 4 - the first create of the stable key commits while its session stays open [P2-S12-AC-019]
+ok 5 - a second create of the same stable key is observed blocked BY the first in the live lock manager [P2-S12-AC-019]
+ok 6 - the second create waits for the first transaction to finish (the unique stable key) [P2-S12-AC-019]
+ok 7 - exactly one winner of a duplicate stable key: the loser answers the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT) [P2-S12-AC-019]
+ok 8 - two competing writers on one vocabulary serialize: the loser gets the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT) [P2-S12-AC-047]
+ok 9 - the loser created no duplicate term, label, audit, outbox or idempotency row: the stores equal what the winner left and one term holds the key [P2-S12-AC-047]
+ok 10 - a second deprecation of the same term waits for the first (the position 6 term row) [P2-S12-AC-047]
+ok 11 - two competing writers on one term serialize: the loser answers the typed CONFLICT, never a second transition [P2-S12-AC-047]
+ok 12 - the loser wrote no label, audit, outbox or idempotency row and the term is deprecated exactly once [P2-S12-AC-047]
+ok 13 - the term action is observed blocked BY the holder of the vocabulary active version row (position 3) [P2-S12-AC-276]
+ok 14 - waiting at position 3 the term action already holds the curator grant rows (position 1) [P2-S12-AC-276]
+ok 15 - waiting at position 3 the term action does not yet hold the term row (position 6): no earlier position is taken after a later one [P2-S12-AC-276]
+ok 16 - a lock-acquisition failure (lock_timeout) at the active version row is the retryable P0001 CONFLICT of CMS-03C-03 [P2-S12-AC-276]
+ok 17 - the lock failure committed nothing: no label, audit, outbox or idempotency row and the term is unchanged [P2-S12-AC-276]
+ok 18 - the same request (same Idempotency-Key) succeeds once the row is free: the key is reusable after the conflict [P2-S12-AC-276]
+ok 19 - the term action holds the curator grant rows (position 1) before the vocabulary row (position 3) [P2-S12-AC-019]
+ok 20 - the term action is observed blocked BY the holder of the term row (position 6) [P2-S12-AC-276]
+ok 21 - waiting at position 6 the term action already holds the grant rows (1) and the vocabulary active version row (3) [P2-S12-AC-276]
+ok 22 - once the term row holder releases, the term action completes [P2-S12-AC-276]
+ok 23 - fixture: the vocabulary has an active version and an approved successor before the activation race [P2-S12-AC-019]
+ok 24 - the activation of the successor vocabulary version commits while its session stays open [P2-S12-AC-019]
+ok 25 - a term write carrying the previous active version waits for the activation in flight (the position 3 row) [P2-S12-AC-019]
+ok 26 - a writer that waited on the active version row the activation superseded is refused with the typed taxonomy_not_active (Slice 12 lock order rule 2: a superseded bound definition row) and loses [P2-S12-AC-019]
+ok 27 - a stale active-version operand arriving after the activation committed loses with the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT) [P2-S12-AC-019]
+ok 28 - the stale write wrote nothing and the vocabulary now has exactly one active version, the successor [P2-S12-AC-019]
+ok 29 - the same write with the new active version as its operand succeeds [P2-S12-AC-019]
+ok 30 - the term create (held open) owns the curator authority rows (position 1) [P2-S12-AC-276]
+ok 31 - a revocation of the curator grant arriving while the term action runs WAITS for it (the position 1 FOR SHARE lock) [P2-S12-AC-276]
+ok 32 - the term action committed first and the waiting revocation then committed: the term exists and the grant is revoked [P2-S12-AC-276]
+ok 33 - a term action arriving while a revocation of its curator grant is in flight waits for the revoking transaction [P2-S12-AC-276]
+ok 34 - a revocation committed first wins: the term action re-proves the capability under the lock and is refused capability_missing [P2-S12-AC-276]
+ok 35 - the refused term action wrote nothing: no term, label, audit, outbox or idempotency record [P2-S12-AC-276]
+ok 36 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-019]
+ok 37 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-019]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_template_block.sql:12: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_template_block.sql:13: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_template_block.sql:14: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_template_block.sql:15: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_template_block.sql .. 
+1..10
+# restore=removed=278 off=disabled=118 fk_deferred=339 on=enabled=118 missing_before= missing_where= added_where=
+ok 1 - the committed-world harness ran the block withdrawal scenario without an error of its own [P2-S12-AC-277]
+ok 2 - the committed governed world built with no failed fixture assertion [P2-S12-AC-277]
+ok 3 - fixture: the signed block is registered and the APPROVED template review froze it as exactly one block dependency [P2-S12-AC-277]
+ok 4 - the template activation is held at the review row by the holder session [P2-S12-AC-277]
+ok 5 - the signed CMS-03A-08 commands deprecate and then withdraw the block and commit while the activation waits (the activation holds no lock on the block) [P2-S12-AC-277]
+ok 6 - the activation that resumes after the withdrawal answers the committed refusal envelope with reasonCode dependency_changed (409 GOVERNED_REVIEW_VERSION_CONFLICT at the Worker) [P2-S12-AC-277]
+ok 7 - the review is invalidated (version + 1), the subject returns to draft and no activation event was emitted [P2-S12-AC-277]
+ok 8 - the template is never activated on the stale block digest: no version of the lineage is active [P2-S12-AC-277]
+ok 9 - cleanup: the harness removed every row the committed world and the scenario added () [P2-S12-AC-277]
+ok 10 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-277]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_lease.sql:10: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_lease.sql:11: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_lease.sql:12: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_lease.sql:13: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race7_lease.sql ........... 
+1..16
+# restore=removed=300 off=disabled=118 fk_deferred=339 on=enabled=118 added_where=
+ok 1 - the committed-world harness ran the lease scenarios without an error of its own [P2-S12-AC-277]
+ok 2 - the committed governed world built with no failed fixture assertion [P2-S12-AC-277]
+ok 3 - fixture: three real schedules were accepted by CMS-03C-09 and really fell due [P2-S12-AC-277]
+ok 4 - fixture: the first claim moved all three schedules to executing with three distinct leases [P2-S12-AC-277]
+ok 5 - the five-minute leases really expired (no clock was forged) [P2-S12-AC-277]
+ok 6 - the worker whose lease expired is still executing: it is observed blocked at the lineage advisory lock while it owns its schedule row [P2-S12-AC-277]
+ok 7 - the in-flight worker waits for the lineage advisory lock, the last position [P2-S12-AC-277]
+ok 8 - the expiry sweep returns at once, without waiting for the in-flight worker, and claims nothing yet [P2-S12-AC-277]
+ok 9 - the sweep recovered only the expired leases it could lock: the two idle schedules are failed_retryable at attempt 1, the in-flight schedule keeps its row and its lease [P2-S12-AC-277]
+ok 10 - the in-flight worker then completes: no double execution and no lost activation [P2-S12-AC-277]
+ok 11 - the schedule is completed and the subject is active exactly once [P2-S12-AC-277]
+ok 12 - after the retry delay the next claim re-leases the recovered schedules with new leases [P2-S12-AC-277]
+ok 13 - a worker presenting the replaced lease is refused P0001:CONFLICT and changes nothing: the schedule row and the new lease are untouched [P2-S12-AC-277]
+ok 14 - the worker holding the new lease completes the activation [P2-S12-AC-277]
+ok 15 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-277]
+ok 16 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-277]
+ok
+All tests successful.
+Files=7, Tests=171, 471 wallclock secs ( 0.02 usr  0.00 sys +  0.08 cusr  0.04 csys =  0.14 CPU)
+Result: PASS

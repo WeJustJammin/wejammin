@@ -1,0 +1,1346 @@
+[
+ {
+  "criterion": "P2-S12-AC-013",
+  "clauses": [
+   {
+    "index": 6,
+    "text": "and concurrency rules.",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the first placement (2 block roots into /main) commits while its session stays open [P2-S12-AC-013]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:192 - the first placement (2 block roots into /main) commits while its session stays open. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 192
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "once the first placement commits the second placement succeeds [P2-S12-AC-013]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:197 - once the first placement commits the second placement succeeds. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 197
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "two simultaneous placements into one slot get disjoint consecutive positions 0, 1, 2 in commit order, each path once [P2-S12-AC-013]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:199 - two simultaneous placements into one slot get disjoint consecutive positions 0, 1, 2 in commit order, each path once. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 199
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "no (revision_id, path) is duplicated after the concurrent placements [P2-S12-AC-013]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:202 - no (revision_id, path) is duplicated after the concurrent placements. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 202
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "both placements advanced the entry aggregate version by one each [P2-S12-AC-013]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:203 - both placements advanced the entry aggregate version by one each. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 203
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the competing placement of the same paths waits for the first [P2-S12-AC-013]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:207 - the competing placement of the same paths waits for the first. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 207
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "exactly one winner on the same path: the loser answers the typed CONFLICT at /slotPath after waiting for the winner [P2-S12-AC-013]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:209 - exactly one winner on the same path: the loser answers the typed CONFLICT at /slotPath after waiting for the winner. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 209
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the loser wrote no composition row, audit, outbox or idempotency row: the stores equal what the winner left [P2-S12-AC-013]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:211 - the loser wrote no composition row, audit, outbox or idempotency row: the stores equal what the winner left. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 211
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-019",
+  "clauses": [
+   {
+    "index": 7,
+    "text": "and concurrency rules.",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the first create of the stable key commits while its session stays open [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:214 - the first create of the stable key commits while its session stays open. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 214
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "a second create of the same stable key is observed blocked BY the first in the live lock manager [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:215 - a second create of the same stable key is observed blocked BY the first in the live lock manager. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 215
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the second create waits for the first transaction to finish (the unique stable key) [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:216 - the second create waits for the first transaction to finish (the unique stable key). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 216
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "exactly one winner of a duplicate stable key: the loser answers the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT) [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:218 - exactly one winner of a duplicate stable key: the loser answers the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 218
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the term action holds the curator grant rows (position 1) before the vocabulary row (position 3) [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:240 - the term action holds the curator grant rows (position 1) before the vocabulary row (position 3). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 240
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the activation of the successor vocabulary version commits while its session stays open [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:250 - the activation of the successor vocabulary version commits while its session stays open. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 250
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "a term write carrying the previous active version waits for the activation in flight (the position 3 row) [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:251 - a term write carrying the previous active version waits for the activation in flight (the position 3 row). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 251
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "a writer that waited on the active version row the activation superseded is refused with the typed taxonomy_not_active (Slice 12 lock order rule 2: a superseded bound definition row) and loses [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:253 - a writer that waited on the active version row the activation superseded is refused with the typed taxonomy_not_active (Slice 12 lock order rule 2: a superseded bound definition row) and loses. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 253
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "a stale active-version operand arriving after the activation committed loses with the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT) [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:255 - a stale active-version operand arriving after the activation committed loses with the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 255
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the stale write wrote nothing and the vocabulary now has exactly one active version, the successor [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:257 - the stale write wrote nothing and the vocabulary now has exactly one active version, the successor. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 257
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the same write with the new active version as its operand succeeds [P2-S12-AC-019]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:259 - the same write with the new active version as its operand succeeds. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 259
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-044",
+  "clauses": [
+   {
+    "index": 3,
+    "text": "deletion",
+    "add": [],
+    "staleExisting": [],
+    "gap": "BOUNDARY (no 03c deletion operation to drive): BE03c defines no command, state or trigger that deletes or tombstones a pattern lineage, a composition source or an entry - a pattern version has only `retire` (CMS-03C-09, DEC-190, active -> retired) and an entry only the 03b archive; IA03 line 533 states the owner/source deletion row generically for every CMS-nn operation (preserve immutable evidence/tombstone, remove derived access/projection, queue idempotent dependent invalidation). The immutability half is already cited (no direct DELETE grant, immutable rows). Needed first: an owner ruling whether the CMS-12 deletion row means retire/archive of the pinned source (then pgTAP: composition rows and pattern version retained, placement refused pattern_version_not_active, one idempotent governed-review recheck queued) or a deletion command spec; nothing was written that would invent that behaviour."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clause): \"deletion\": BE03c has no deletion/tombstone operation for a pattern lineage, composition source or entry (only retire and archive); IA03 line 533 is generic. Needs an owner ruling on what deletion means for CMS-12 before a test can assert it. The concurrency clause of this criterion is now cited by the race7 placement file (AC-013/AC-218 rows) only for the placement writer."
+ },
+ {
+  "criterion": "P2-S12-AC-047",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "concurrency",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "two competing writers on one vocabulary serialize: the loser gets the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT) [P2-S12-AC-047]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:220 - two competing writers on one vocabulary serialize: the loser gets the typed CONFLICT (409 TAXONOMY_VERSION_CONFLICT). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 220
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the loser created no duplicate term, label, audit, outbox or idempotency row: the stores equal what the winner left and one term holds the key [P2-S12-AC-047]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:222 - the loser created no duplicate term, label, audit, outbox or idempotency row: the stores equal what the winner left and one term holds the key. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 222
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "a second deprecation of the same term waits for the first (the position 6 term row) [P2-S12-AC-047]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:225 - a second deprecation of the same term waits for the first (the position 6 term row). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 225
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "two competing writers on one term serialize: the loser answers the typed CONFLICT, never a second transition [P2-S12-AC-047]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:227 - two competing writers on one term serialize: the loser answers the typed CONFLICT, never a second transition. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 227
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the loser wrote no label, audit, outbox or idempotency row and the term is deprecated exactly once [P2-S12-AC-047]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:229 - the loser wrote no label, audit, outbox or idempotency row and the term is deprecated exactly once. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 229
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-085",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "runs in one transaction that takes its locks in the Slice 12 lock order",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "CMS-03C-09 activate is observed blocked BY the review row holder, the position 5 lock [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:221 - CMS-03C-09 activate is observed blocked BY the review row holder, the position 5 lock. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 221
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "while blocked at the review row the activation already holds the owner-capability grant rows (position 1) [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:223 - while blocked at the review row the activation already holds the owner-capability grant rows (position 1). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 223
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "while blocked at the review row the activation already holds the subject version row (position 3) [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:225 - while blocked at the review row the activation already holds the subject version row (position 3). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 225
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "while blocked at the review row the activation already holds the bound content type version row (position 4) [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:227 - while blocked at the review row the activation already holds the bound content type version row (position 4). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 227
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "while blocked at the review row the activation does not yet hold the lineage advisory lock, which is taken last [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:229 - while blocked at the review row the activation does not yet hold the lineage advisory lock, which is taken last. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 229
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "CMS-03C-09 activate is observed blocked BY the advisory lock holder [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:238 - CMS-03C-09 activate is observed blocked BY the advisory lock holder. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 238
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the activation waits for the lineage advisory lock, the last position [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:239 - the activation waits for the lineage advisory lock, the last position. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 239
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "blocked at the advisory lock the activation already holds the review row (position 5) [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:241 - blocked at the advisory lock the activation already holds the review row (position 5). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 241
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "blocked at the advisory lock the activation also holds positions 1, 3 and 4: the advisory lock is acquired after every row lock [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:243 - blocked at the advisory lock the activation also holds positions 1, 3 and 4: the advisory lock is acquired after every row lock. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 243
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "once the advisory holder releases the activation completes and the subject is active [P2-S12-AC-085]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:245 - once the advisory holder releases the activation completes and the subject is active. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 245
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-086",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "`activation_conflict`",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the first activator of the lineage commits (held open until the second is waiting) [P2-S12-AC-086]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:196 - the first activator of the lineage commits (held open until the second is waiting). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 196
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the second activator of the lineage is observed blocked BY the first in the live lock manager [P2-S12-AC-086]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:198 - the second activator of the lineage is observed blocked BY the first in the live lock manager. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 198
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the second activator waits for the lineage ADVISORY lock, the last position, and not for a row [P2-S12-AC-086]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:200 - the second activator waits for the lineage ADVISORY lock, the last position, and not for a row. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 200
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the lineage advisory lock (the CMS-03C-19 key) is held by the first activator while the second waits [P2-S12-AC-086]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:202 - the lineage advisory lock (the CMS-03C-19 key) is held by the first activator while the second waits. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 202
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the activation that loses a race on the lineage answers P0001 activation_conflict (409 at the Worker) [P2-S12-AC-086]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:204 - the activation that loses a race on the lineage answers P0001 activation_conflict (409 at the Worker). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 204
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "after the lost race the lineage keeps exactly one active version, the winner, and no partial switch [P2-S12-AC-086]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:212 - after the lost race the lineage keeps exactly one active version, the winner, and no partial switch. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 212
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-145",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "claims under `FOR UPDATE SKIP LOCKED`",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_claim.sql",
+      "title": "session A claims exactly the oldest due schedule (batch 1) and its transaction stays open, holding that schedule row FOR UPDATE [P2-S12-AC-145]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_claim.sql:95 - session A claims exactly the oldest due schedule (batch 1) and its transaction stays open, holding that schedule row FOR UPDATE. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 95
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_claim.sql",
+      "title": "a concurrent claim returns WITHOUT WAITING for the row session A holds and without that schedule: it claims the next due schedule (FOR UPDATE SKIP LOCKED) [P2-S12-AC-145]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_claim.sql:97 - a concurrent claim returns WITHOUT WAITING for the row session A holds and without that schedule: it claims the next due schedule (FOR UPDATE SKIP LOCKED). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 97
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_claim.sql",
+      "title": "the concurrent claim was not blocked by the open claim of session A [P2-S12-AC-145]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_claim.sql:99 - the concurrent claim was not blocked by the open claim of session A. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 99
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_claim.sql",
+      "title": "two concurrent claims never return the same schedule: both claimed rows are executing at version 2 with distinct leases and the third stays pending [P2-S12-AC-145]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_claim.sql:102 - two concurrent claims never return the same schedule: both claimed rows are executing at version 2 with distinct leases and the third stays pending. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 102
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_claim.sql",
+      "title": "a claim while a holder owns the only due schedule row returns the empty claim at once instead of waiting [P2-S12-AC-145]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_claim.sql:104 - a claim while a holder owns the only due schedule row returns the empty claim at once instead of waiting. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 104
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_claim.sql",
+      "title": "the schedule row a claim skipped is untouched: still pending at version 1 [P2-S12-AC-145]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_claim.sql:106 - the schedule row a claim skipped is untouched: still pending at version 1. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 106
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_claim.sql",
+      "title": "once the holder releases the row, the next claim returns that schedule [P2-S12-AC-145]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_claim.sql:108 - once the holder releases the row, the next claim returns that schedule. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 108
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_claim.sql",
+      "title": "every schedule ends executing at version 2 under its own claim [P2-S12-AC-145]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_claim.sql:109 - every schedule ends executing at version 2 under its own claim. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 109
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-205",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "an activation that loses a race on the lineage is 409 `activation_conflict` and nothing commits.",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "an activation that loses a race on the lineage is 409 activation_conflict: the loser answers P0001 activation_conflict [P2-S12-AC-205]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:206 - an activation that loses a race on the lineage is 409 activation_conflict: the loser answers P0001 activation_conflict. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 206
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the loser changed nothing: its subject, its review and its decisions are byte-identical to before the race [P2-S12-AC-205]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:208 - the loser changed nothing: its subject, its review and its decisions are byte-identical to before the race. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 208
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the loser wrote no audit, outbox or idempotency row: the stores equal what the winner left [P2-S12-AC-205]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:210 - the loser wrote no audit, outbox or idempotency row: the stores equal what the winner left. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 210
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the loser's identical request (same Idempotency-Key) is reusable: it then activates and supersedes the winner [P2-S12-AC-205]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:214 - the loser's identical request (same Idempotency-Key) is reusable: it then activates and supersedes the winner. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 214
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the retry leaves exactly one active version (the previous active one is superseded in the same transaction) [P2-S12-AC-205]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:216 - the retry leaves exactly one active version (the previous active one is superseded in the same transaction). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 216
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-218",
+  "clauses": [
+   {
+    "index": 3,
+    "text": "under the revision/slot lock (DEC-185),",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "a second placement into the same slot of the same revision is observed blocked BY the first in the live lock manager (the revision/slot lock) [P2-S12-AC-218]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:194 - a second placement into the same slot of the same revision is observed blocked BY the first in the live lock manager (the revision/slot lock). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 194
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the second placement waits for the first transaction to finish (the entry row, position 0, owned by the first) [P2-S12-AC-218]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:196 - the second placement waits for the first transaction to finish (the entry row, position 0, owned by the first). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 196
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the placement under the revision/slot lock computes its positions after the winner committed: disjoint consecutive positions in commit order [P2-S12-AC-218]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:201 - the placement under the revision/slot lock computes its positions after the winner committed: disjoint consecutive positions in commit order. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 201
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the revision holds the winner's two rows only, each path exactly once, and the entry advanced by the winner alone [P2-S12-AC-218]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:214 - the revision holds the winner's two rows only, each path exactly once, and the entry advanced by the winner alone. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 214
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the placement is observed blocked BY the holder of the entry row (position 0) [P2-S12-AC-218]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:217 - the placement is observed blocked BY the holder of the entry row (position 0). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 217
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "waiting at position 0 the placement holds no later position: the authority rows, the pattern version row and the content type version row are all free [P2-S12-AC-218]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:219 - waiting at position 0 the placement holds no later position: the authority rows, the pattern version row and the content type version row are all free. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 219
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the placement is observed blocked BY the holder of the pattern version row (position 3) [P2-S12-AC-218]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:228 - the placement is observed blocked BY the holder of the pattern version row (position 3). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 228
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "once the pattern row holder releases, the placement completes with positions 0 and 1 [P2-S12-AC-218]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:234 - once the pattern row holder releases, the placement completes with positions 0 and 1. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 234
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-276",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "re-prove their capability under the locks,",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "a revocation of the activator's grant arriving while the activation runs WAITS for it (the position 1 FOR SHARE lock) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:250 - a revocation of the activator's grant arriving while the activation runs WAITS for it (the position 1 FOR SHARE lock). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 250
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the waiting revocation has not changed the grant yet [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:251 - the waiting revocation has not changed the grant yet. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 251
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the activation committed first and the waiting revocation then committed: the subject is active and the grant is revoked [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:253 - the activation committed first and the waiting revocation then committed: the subject is active and the grant is revoked. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 253
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "an activation arriving while a revocation of its grant is in flight waits for the revoking transaction [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:255 - an activation arriving while a revocation of its grant is in flight waits for the revoking transaction. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 255
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "a revocation committed first wins: the activation re-proves the capability under the lock and is refused capability_missing [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:257 - a revocation committed first wins: the activation re-proves the capability under the lock and is refused capability_missing. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 257
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "waiting at position 3 the placement already holds the entry row (position 0) and the authority rows (position 1) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:230 - waiting at position 3 the placement already holds the entry row (position 0) and the authority rows (position 1). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 230
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the placement (held open) owns the author authority rows (position 1) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:237 - the placement (held open) owns the author authority rows (position 1). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 237
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "a revocation of the author grant arriving while the placement runs WAITS for it (the position 1 FOR SHARE lock) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:238 - a revocation of the author grant arriving while the placement runs WAITS for it (the position 1 FOR SHARE lock). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 238
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the placement committed first and the waiting revocation then committed: two rows exist and the grant is revoked [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:240 - the placement committed first and the waiting revocation then committed: two rows exist and the grant is revoked. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 240
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "a placement arriving while a revocation of its author grant is in flight waits for the revoking transaction [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:241 - a placement arriving while a revocation of its author grant is in flight waits for the revoking transaction. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 241
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "a revocation committed first wins: the placement re-proves the capability under the lock and is refused capability_missing [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:243 - a revocation committed first wins: the placement re-proves the capability under the lock and is refused capability_missing. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 243
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "waiting at position 3 the term action already holds the curator grant rows (position 1) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:233 - waiting at position 3 the term action already holds the curator grant rows (position 1). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 233
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "waiting at position 6 the term action already holds the grant rows (1) and the vocabulary active version row (3) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:245 - waiting at position 6 the term action already holds the grant rows (1) and the vocabulary active version row (3). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 245
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the term create (held open) owns the curator authority rows (position 1) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:262 - the term create (held open) owns the curator authority rows (position 1). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 262
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "a revocation of the curator grant arriving while the term action runs WAITS for it (the position 1 FOR SHARE lock) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:263 - a revocation of the curator grant arriving while the term action runs WAITS for it (the position 1 FOR SHARE lock). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 263
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the term action committed first and the waiting revocation then committed: the term exists and the grant is revoked [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:265 - the term action committed first and the waiting revocation then committed: the term exists and the grant is revoked. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 265
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "a term action arriving while a revocation of its curator grant is in flight waits for the revoking transaction [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:266 - a term action arriving while a revocation of its curator grant is in flight waits for the revoking transaction. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 266
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "a revocation committed first wins: the term action re-proves the capability under the lock and is refused capability_missing [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:268 - a revocation committed first wins: the term action re-proves the capability under the lock and is refused capability_missing. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 268
+     }
+    ],
+    "staleExisting": [],
+    "gap": "Partly proven by the race7 files: the capability is re-proved under the position 1 lock, with a revocation committed first winning (capability_missing, nothing written) and a later revocation waiting for the writer, for CMS-03C-09 (activation), CMS-03C-02 (placement) and CMS-03C-03 (term action). Not shown by a two-session test: CMS-03C-01/-04/-05/-06/-07/-08/-12/-15/-16/-19, the linked-update scan, the recheck job and the term merge (their own suites cover the single-writer forms); the lock-order claim itself is the clause 0 tile, not this clause."
+   },
+   {
+    "index": 2,
+    "text": "and map `deadlock_detected` and a lock-acquisition failure to the 409 code of the operation's catalog (`*_VERSION_CONFLICT`) with nothing committed and the same `Idempotency-Key` reusable.",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "a lock-acquisition failure (lock_timeout) at the review row is the retryable P0001 CONFLICT of the operation [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:231 - a lock-acquisition failure (lock_timeout) at the review row is the retryable P0001 CONFLICT of the operation. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 231
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the lock failure committed nothing: review, subject, audit, outbox and idempotency rows are unchanged [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:233 - the lock failure committed nothing: review, subject, audit, outbox and idempotency rows are unchanged. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 233
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the same request (same Idempotency-Key) succeeds once the lock is free: the key is reusable after the conflict [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:235 - the same request (same Idempotency-Key) succeeds once the lock is free: the key is reusable after the conflict. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 235
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the refused activation wrote nothing: the subject stays approved and the stores are unchanged [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:260 - the refused activation wrote nothing: the subject stays approved and the stores are unchanged. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 260
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "deadlock_detected inside CMS-03C-09 is converted to the retryable P0001 CONFLICT (not a raw 40P01) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:266 - deadlock_detected inside CMS-03C-09 is converted to the retryable P0001 CONFLICT (not a raw 40P01). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 266
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the deadlock victim committed nothing: review, subject and the audit, outbox and idempotency stores are unchanged [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:268 - the deadlock victim committed nothing: review, subject and the audit, outbox and idempotency stores are unchanged. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 268
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the other session of the cycle obtained the subject row once the victim rolled back (one committed command, no lost write) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:270 - the other session of the cycle obtained the subject row once the victim rolled back (one committed command, no lost write). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 270
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_activation.sql",
+      "title": "the same Idempotency-Key succeeds after the deadlock conflict [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_activation.sql:272 - the same Idempotency-Key succeeds after the deadlock conflict. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 272
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "a lock-acquisition failure (lock_timeout) at the entry row is the retryable P0001 CONFLICT of CMS-03C-02 [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:221 - a lock-acquisition failure (lock_timeout) at the entry row is the retryable P0001 CONFLICT of CMS-03C-02. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 221
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the lock failure committed nothing: no row, audit, outbox or idempotency record and the entry version is unchanged [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:223 - the lock failure committed nothing: no row, audit, outbox or idempotency record and the entry version is unchanged. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 223
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the same request (same Idempotency-Key) succeeds once the entry row is free: the key is reusable after the conflict [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:225 - the same request (same Idempotency-Key) succeeds once the entry row is free: the key is reusable after the conflict. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 225
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "waiting at position 3 the placement does not yet hold the content type version row (position 4): no earlier position is taken after a later one [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:232 - waiting at position 3 the placement does not yet hold the content type version row (position 4): no earlier position is taken after a later one. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 232
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_placement.sql",
+      "title": "the refused placement wrote nothing: no composition row, audit, outbox or idempotency record [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_placement.sql:245 - the refused placement wrote nothing: no composition row, audit, outbox or idempotency record. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 245
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the term action is observed blocked BY the holder of the vocabulary active version row (position 3) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:232 - the term action is observed blocked BY the holder of the vocabulary active version row (position 3). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 232
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "waiting at position 3 the term action does not yet hold the term row (position 6): no earlier position is taken after a later one [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:234 - waiting at position 3 the term action does not yet hold the term row (position 6): no earlier position is taken after a later one. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 234
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "a lock-acquisition failure (lock_timeout) at the active version row is the retryable P0001 CONFLICT of CMS-03C-03 [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:235 - a lock-acquisition failure (lock_timeout) at the active version row is the retryable P0001 CONFLICT of CMS-03C-03. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 235
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the lock failure committed nothing: no label, audit, outbox or idempotency row and the term is unchanged [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:237 - the lock failure committed nothing: no label, audit, outbox or idempotency row and the term is unchanged. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 237
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the same request (same Idempotency-Key) succeeds once the row is free: the key is reusable after the conflict [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:239 - the same request (same Idempotency-Key) succeeds once the row is free: the key is reusable after the conflict. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 239
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the term action is observed blocked BY the holder of the term row (position 6) [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:243 - the term action is observed blocked BY the holder of the term row (position 6). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 243
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "once the term row holder releases, the term action completes [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:246 - once the term row holder releases, the term action completes. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 246
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql",
+      "title": "the refused term action wrote nothing: no term, label, audit, outbox or idempotency record [P2-S12-AC-276]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_taxonomy_term.sql:270 - the refused term action wrote nothing: no term, label, audit, outbox or idempotency record. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 270
+     }
+    ],
+    "staleExisting": [],
+    "gap": "Partly proven at the SQL layer for CMS-03C-09, CMS-03C-02 and CMS-03C-03: a lock-acquisition failure (lock_timeout) is the retryable P0001 CONFLICT with nothing committed and the same Idempotency-Key then succeeds, and for CMS-03C-09 a real deadlock_detected is the same CONFLICT. Not shown: the Worker mapping of that CONFLICT to each operation's *_VERSION_CONFLICT code (an apps/worker test, outside this SQL lane), and any conversion evidence for the linked-update scan and the term-merge continuation."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clauses): \"Lock order: the Slice 12 writers ... take their locks in the Slice 12 lock order\" (clause 0, not a race class): still only partly proven; \"re-prove their capability under the locks\": proven by two-session tests for CMS-03C-09, CMS-03C-02 and CMS-03C-03 only; \"map deadlock_detected and a lock-acquisition failure to the 409 code of the operation's catalog\": the SQL CONFLICT token and nothing-committed / same-key-reusable are proven for those three writers (and a real deadlock for CMS-03C-09), the Worker mapping per operation and the scan / merge-continuation conversions are not."
+ },
+ {
+  "criterion": "P2-S12-AC-277",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "Concurrency scenarios: template activation versus block withdrawal, linked pattern update versus local override,",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_template_block.sql",
+      "title": "the template activation is held at the review row by the holder session [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_template_block.sql:100 - the template activation is held at the review row by the holder session. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 100
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_template_block.sql",
+      "title": "the signed CMS-03A-08 commands deprecate and then withdraw the block and commit while the activation waits (the activation holds no lock on the block) [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_template_block.sql:102 - the signed CMS-03A-08 commands deprecate and then withdraw the block and commit while the activation waits (the activation holds no lock on the block). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 102
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_template_block.sql",
+      "title": "the activation that resumes after the withdrawal answers the committed refusal envelope with reasonCode dependency_changed (409 GOVERNED_REVIEW_VERSION_CONFLICT at the Worker) [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_template_block.sql:105 - the activation that resumes after the withdrawal answers the committed refusal envelope with reasonCode dependency_changed (409 GOVERNED_REVIEW_VERSION_CONFLICT at the Worker). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 105
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_template_block.sql",
+      "title": "the review is invalidated (version + 1), the subject returns to draft and no activation event was emitted [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_template_block.sql:107 - the review is invalidated (version + 1), the subject returns to draft and no activation event was emitted. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 107
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_template_block.sql",
+      "title": "the template is never activated on the stale block digest: no version of the lineage is active [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_template_block.sql:108 - the template is never activated on the stale block digest: no version of the lineage is active. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 108
+     }
+    ],
+    "staleExisting": [],
+    "gap": "Template activation versus block withdrawal is proven (a signed withdrawal commits while the activation waits at the review row; the activation answers the committed dependency_changed refusal). BOUNDARY for \"linked pattern update versus local override\": BE03c names no command that edits a local override apart from CMS-03C-02 placement and the CMS-03C-15 resolution itself, so the two commands of the race are not identified; the neighbours are the entry-row serialization of two composition writers (race7 placement P1/P2, the entry row is the shared position 0 of CMS-03C-02 and CMS-03C-15) and phase_02_slice_12_dec193_writer.race.mjs (accept versus a concurrent target activation). Needed: the owner names the override writer; then a race module on the dec193 world."
+   },
+   {
+    "index": 2,
+    "text": "locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "the five-minute leases really expired (no clock was forged) [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:129 - the five-minute leases really expired (no clock was forged). Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 129
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "the worker whose lease expired is still executing: it is observed blocked at the lineage advisory lock while it owns its schedule row [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:130 - the worker whose lease expired is still executing: it is observed blocked at the lineage advisory lock while it owns its schedule row. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 130
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "the in-flight worker waits for the lineage advisory lock, the last position [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:131 - the in-flight worker waits for the lineage advisory lock, the last position. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 131
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "the expiry sweep returns at once, without waiting for the in-flight worker, and claims nothing yet [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:133 - the expiry sweep returns at once, without waiting for the in-flight worker, and claims nothing yet. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 133
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "the sweep recovered only the expired leases it could lock: the two idle schedules are failed_retryable at attempt 1, the in-flight schedule keeps its row and its lease [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:135 - the sweep recovered only the expired leases it could lock: the two idle schedules are failed_retryable at attempt 1, the in-flight schedule keeps its row and its lease. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 135
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "the in-flight worker then completes: no double execution and no lost activation [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:137 - the in-flight worker then completes: no double execution and no lost activation. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 137
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "the schedule is completed and the subject is active exactly once [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:138 - the schedule is completed and the subject is active exactly once. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 138
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "after the retry delay the next claim re-leases the recovered schedules with new leases [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:140 - after the retry delay the next claim re-leases the recovered schedules with new leases. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 140
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "a worker presenting the replaced lease is refused P0001:CONFLICT and changes nothing: the schedule row and the new lease are untouched [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:142 - a worker presenting the replaced lease is refused P0001:CONFLICT and changes nothing: the schedule row and the new lease are untouched. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 142
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_race7_lease.sql",
+      "title": "the worker holding the new lease completes the activation [P2-S12-AC-277]",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "supabase/tests/phase_02_slice_12_race7_lease.sql:144 - the worker holding the new lease completes the activation. Real two-session dblink run on the ALT stack (lane none, promoted migrations only), TAP alt-staged-none-090552-3909549.tap SHA-256 7ced07bdeb039901aabd085708096521bf5aa735f71da01206099031ca0ca037; the command under test is the real platform_api function under service_role.",
+      "descriptionLine": 144
+     }
+    ],
+    "staleExisting": [],
+    "gap": "Worker lease expiry is proven (an expired lease versus an in-flight executor; a replaced lease refused P0001:CONFLICT). BOUNDARY for the rest: locale source edit versus translation and related target unpublish each need a committed Slice 11 world (the 03b revision-append / unpublish commands next to CMS-03C-04 / CMS-03C-05) that no 03c fixture builds; duplicate and out-of-order events have no 03c event-consumer ordering rule beyond the idempotent recheck job (governed_recheck suites); restore-epoch fencing is the platform restore fence (migrations 20260830130000, 20260830135000) and BE03c states no 03c-specific fence rule. Existing neighbour: phase_02_slice_12_restore_relation_visibility/020-race.mjs."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clauses): \"linked pattern update versus local override\" (the override writer is not named by BE03c); \"locale source edit versus translation, related target unpublish, duplicate and out-of-order events ... and restore-epoch fencing\" each have no two-session test (they need Slice 11 publication / revision worlds or a spec rule). Template activation versus block withdrawal and worker lease expiry are now proven by two-session tests."
+ },
+ {
+  "criterion": "P2-S12-AC-294",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "Deterministic concurrent tests prove authority/visibility and exact schema/default are rechecked after waits, with no invisible/foreign definition lock lever or late position-2 acquisition.",
+    "add": [],
+    "staleExisting": [],
+    "gap": "NOT BUILT in this lane (reachable): BE03b 1729 and 1750 (rules 1-2) and DEC-202 make position 2 (visible relation targets, FOR SHARE) precede position 3 (the exact stored default template, FOR SHARE) and position 4 (the schema row), with authority, visibility, the exact schema and the default re-proved after waits. The world exists as a committed pgTAP fragment (phase_02_slice_12_entry_default_template_lock/000-world.sqlinc: three producer-built types, an active default T1, a relation field, a real article target and the exact create request builder s12edtl_request). Plan with the race7 harness: (a) hold the target entry row FOR UPDATE, archive the target through the real command, release, assert the create is the uniform VALIDATION_FAILED at /fields/{id}; (b) hold the template row, activate a successor schema through the real chain steps stashed from the world, release, assert the create is refused at /contentTypeVersionId and no unlocked replacement pin is stored; (c) a create naming a concealed foreign target returns at once while a holder owns that foreign entry row (no lock lever) and probes show position 2 is never taken after position 3. Not run here: it needs the 30-step schema chain plus a mid-scenario activation and an entry archive."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clause): \"Deterministic concurrent tests prove authority/visibility and exact schema/default are rechecked after waits\": the existing entry_default_template_lock races assert the lock order and the post-release pin only; the three post-wait rechecks and the no-lock-lever case have no test yet (plan in the gap)."
+ }
+]

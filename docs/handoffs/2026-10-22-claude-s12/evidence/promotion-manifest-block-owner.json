@@ -1,0 +1,12 @@
+{
+ "promotedAt": "2026-10-29T14:35:16.183Z",
+ "after": "20261029130000_cms_restore_records_carried_vocabularies.sql",
+ "review": "V18 PROMOTE-WITH-CONDITIONS (review-v18-report.md); conditions met by root: AC-159 text, four ledger re-points, RED test 25 title",
+ "promoted": [
+  {
+   "file": "20261029150000_cms_template_context_platform_blocks.sql",
+   "from": "block-owner",
+   "sha256": "77057575a7408cc872858f15359ffe2364a226eec16dac89cb4c273be235876a"
+  }
+ ]
+}

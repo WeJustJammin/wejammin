@@ -3,24 +3,22 @@
 Resume here after any interruption or compaction. Predecessor: Codex handoff
 `docs/handoffs/2026-10-22-claude-phase2-s12-handoff.md` (Codex goal BLOCKED on native-finality gate).
 
-## LATEST (2026-10-29 ~07:20Z, root) — read first; the dated bullets below are history
+## LATEST (2026-10-30 ~06:20Z, root) — read first; the dated bullets below are history
 
-- Promoted today (uncommitted): wave 3 (24 migrations), `20261029110000` (DEC-238 registry pair), `20261029130000` (DEC-240
-  restore carries only assigned vocabularies). Canonical db:verify green before the two late promotions; each promotion ran a
-  canonical reset + types + its touched pgTAP. `supabase/migrations-wip/` holds only its README.
-- Product changes reviewed (V16 ACCEPT after fix rounds): template leave guard + late-edit handling (4 forms), FE03 1048
-  commit-only disabling, AC-042 result heading, no-store 303 helper on all 23 CMS pages, CMS-03C-08 201 without Location
-  (DEC-239), harness composes every Slice 12 boundary (T7 class).
-- Ledger scripts, in order: `recite/apply.mjs` → dec227 → dec230 → dec231 → dec232 → dec232b → `recite2/apply2.mjs` →
-  `recite2/dec235-ac056.mjs` → `recite2/retitles.mjs` → `recite2/limitations.mjs` → `recite2/dec236-ac056.mjs` →
-  `recite3/apply3.mjs` → `recite4/apply4.mjs` → `recite4/dec240-s10-retitle.mjs`. S12 ledger 246 / 47 / 3.
-- Root decisions DEC-235..241 (raw records 2026-10-29). PAT-036 (harness parity; tests/e2e not type-checked).
-- DONE: evidence for all four slices (all guards 70/70 after `recite4/retitles2.mjs` + `retitles3-s10-truncated.mjs` and five
-  handoff READMEs) and `pnpm validate` GREEN (`.lane-logs/canonical/validate-20261029T113949Z.log`; the DEC-203 fixture's host
-  gcc pin was re-pinned after a pacman upgrade). Checkpoint committed locally in six groups (see `git log`), not pushed.
-- AFTER the commit: web7 wave (AC-271 state-table defects + the 20 pinned rows rewritten; DEC-241 items), race-module wave
-  (15 race gaps), J1 citation proposals for AC-105, Slice 12 close (AC-050 feature-ledger rows 25.05.03/04, AC-049 record),
-  session close log.
+- COMMITTED locally (no push): checkpoint 1 `dccf5e91..4f643787` (2026-10-29) and checkpoint 2 (2026-10-30, see `git log`):
+  wave 7 — race7 dblink concurrency pgTAP, pw7 page-operation + journey specs, web7 FE03 state-table fixes (three review rounds,
+  V17 accepted), DEC-243 block-owner migration `20261029150000` (designer context lists every registered supported block; RED
+  proof → fix → V18), apply7 (race7 + pw7 citations), AC-159 text. S12 ledger 257 verified / 36 partial / 3 unverified.
+  Checkpoint 2 gates: browser gate 123 + 197 PASS, evidence all four slices first pass (guards 70/70), `pnpm validate` exit 0
+  (`.lane-logs/canonical/validate-20261030T053453Z.log`).
+- Root decisions this stretch: DEC-242 (FE03 queue degraded cell), DEC-243 (platform-wide blocks); readings in LANES (M1 in-flight
+  rule, AC-044 deletion BOUNDARY, post-wait taxonomy_not_active).
+- NEXT wave (post-checkpoint 2): (1) DEC-242 refetch wave — 409 auto-refetch, unknown refetch-before-retry, success list refetch,
+  other 422 field reasons, reviewer_not_eligible refetch (A2/A3/A4/B5/B7/B8), plus V17 N1 (row selection in flight), N7 (focus
+  after "Read the review again"), N5 titles; then AC-271 parts loading/disabled per refute7 partRulings (repair
+  `recite7/web7-proposals.json` per V17 N8 first). (2) AC-294 (reachable, refute7), AC-085 waits at positions 3/4, AC-277
+  locale/related scenarios, AC-276 other writers + Worker mapping. (3) V18 MINOR-2 second-org designer test; the 128 cap is now
+  platform-wide (open item). (4) Slice 12 close: AC-050 feature-ledger rows 25.05.03/04, AC-049 record, session close log.
 
 ## CURRENT POSITION (2026-10-23 ~16:45Z, root session `[6bca89]` — read this before "RESUME FIRST", which is history)
 

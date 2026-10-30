@@ -1,0 +1,382 @@
+[
+  {
+    "criterion": "P2-S12-AC-271",
+    "clauses": [
+      {
+        "index": 0,
+        "text": "(the whole 7-state x 5-family table; root splits c0 by state per refute5 section 6.2)",
+        "add": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.selector-states.test.tsx",
+            "title": "selectorState (CMS-03C-13) [P2-S12-AC-271] selectorState degraded: after a failed read the last verified page stays listed, a retry is offered and the submit control stays off until a read verifies",
+            "part": "degraded",
+            "cell": "CMS-03C-13 selector: last verified page kept, submit stays disabled (D1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-editorial-fields/CmsTaxonomyFieldEditor.connected-states.test.tsx",
+            "title": "selectorState (CMS-03C-17, connected taxonomy field) [P2-S12-AC-271] selectorState loading: a first read in flight shows no loading state before 250 ms and a polite skeleton at 250 ms, offers no term and writes no value",
+            "part": "loading",
+            "cell": "CMS-03C-17 selector: skeleton after 250 ms (D2)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewDetailIsland.states.failure.test.tsx",
+            "title": "CmsGovernedReviewDetailIsland (CMS-03C-10) governedReviewState: degraded and disabled [P2-S12-AC-271] governedReviewState degraded: a failed read does not keep the stale review (it is re-required) but names lastVerifiedAt, turns every form off with the unverified reason, and re-shows the review and re-enables the forms only after a later read verifies",
+            "part": "degraded",
+            "cell": "CMS-03C-10 detail: review re-required while degraded (G-A1, DEC-241 item 1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'create designer' [P2-S12-AC-271] commandState error: a 403 renders the CapabilityGate with the fixed designer-access copy as an alert, no step-up route (CMS-03C-01 create designer)",
+            "part": "error",
+            "cell": "CMS-03C-01 403 CapabilityGate (A1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'successor (edit) designer' [P2-S12-AC-271] commandState error: a 403 renders the CapabilityGate with the fixed designer-access copy as an alert, no step-up route (CMS-03C-01 successor (edit) designer)",
+            "part": "error",
+            "cell": "CMS-03C-01 403 CapabilityGate (A1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.states.test.tsx",
+            "title": "CmsLocaleVariantForm (CMS-03C-04) commandState commandState error [P2-S12-AC-271] commandState error: a 403 renders the CapabilityGate with the fixed edit-authority copy as an alert, no step-up route (CMS-03C-04)",
+            "part": "error",
+            "cell": "CMS-03C-04 403 CapabilityGate (A1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "title": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 403 capability_missing renders the CapabilityGate with the fixed designer-access copy as an alert, no step-up route (CMS-03C-12)",
+            "part": "error",
+            "cell": "CMS-03C-12 403 CapabilityGate (A1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx",
+            "title": "CmsRelatedContentForm (CMS-03C-05) commandState commandState error [P2-S12-AC-271] commandState error: a 403 {\"kind\":\"refused\",\"status\":403,\"reason\":\"capability_missing\",\"rows\":[]} renders the CapabilityGate with fixed capability copy as an alert, no step-up route (CMS-03C-05)",
+            "part": "error",
+            "cell": "CMS-03C-05 403 CapabilityGate (A1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx",
+            "title": "CmsRelatedContentForm (CMS-03C-05) commandState commandState error [P2-S12-AC-271] commandState error: a 403 {\"kind\":\"rejected\",\"status\":403} renders the CapabilityGate with fixed capability copy as an alert, no step-up route (CMS-03C-05)",
+            "part": "error",
+            "cell": "CMS-03C-05 403 CapabilityGate (A1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.states.test.tsx",
+            "title": "CmsTaxonomyTermForm (CMS-03C-03) commandState commandState error [P2-S12-AC-271] commandState error: a 403 capability_missing renders the CapabilityGate with the fixed curator-access copy as an alert, no step-up route (CMS-03C-03)",
+            "part": "error",
+            "cell": "CMS-03C-03 403 CapabilityGate (A1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx",
+            "title": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState error: 403 renders the CapabilityGate with the fixed sentence in the result alert",
+            "part": "error",
+            "cell": "CMS-03C-02/-15 403 CapabilityGate (B6)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsPatternInsertForm.states.test.tsx",
+            "title": "CmsPatternInsertForm (CMS-03C-02 place) commandState [P2-S12-AC-271] commandState error: 403 renders the CapabilityGate with the fixed sentence in the result alert",
+            "part": "error",
+            "cell": "CMS-03C-02/-15 403 CapabilityGate (B6)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx",
+            "title": "CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) commandState [P2-S12-AC-271] commandState error: 403 renders the CapabilityGate with the fixed sentence in the result alert",
+            "part": "error",
+            "cell": "CMS-03C-02/-15 403 CapabilityGate (B6)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateEditDesigner.latest-states.test.tsx",
+            "title": "CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState [P2-S12-AC-271] latestReadState degraded: cmsTemplateLatestRead (CmsTemplateEditDesigner): a read that fails keeps the last verified base version, the last verified latest comparison and the unsent values, and submit stays disabled",
+            "part": "degraded",
+            "cell": "template latest read: comparison kept, submit disabled (L1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.latest-states.test.tsx",
+            "title": "CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState [P2-S12-AC-271] latestReadState loading: cmsPatternLatestRead (CmsPatternVersionDesigner): a skeleton after 250 ms (nothing at 249), the check control disabled, the read no-store, and the submit control disabled until the read answers",
+            "part": "loading",
+            "cell": "pattern latest read: submit disabled while loading (L3)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.latest-states.test.tsx",
+            "title": "CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState [P2-S12-AC-271] latestReadState degraded: cmsPatternLatestRead (CmsPatternVersionDesigner): a read that fails keeps the base version, the unsent tree and the earlier verified latest comparison, and submit stays disabled",
+            "part": "degraded",
+            "cell": "pattern latest read: comparison kept, submit disabled (L4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.latest-states.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState [P2-S12-AC-271] latestReadState loading: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): a skeleton after 250 ms (nothing at 249), the check control disabled, the read no-store, and the submit control disabled until the read answers",
+            "part": "loading",
+            "cell": "vocabulary versions read: submit disabled while loading (L5)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.latest-states.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState [P2-S12-AC-271] latestReadState degraded: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): a read that fails keeps the base version, the unsent draft and the earlier verified comparison, and submit stays disabled",
+            "part": "degraded",
+            "cell": "vocabulary versions read: comparison kept, submit disabled (L6)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.latest-states.test.tsx",
+            "title": "CmsTaxonomyTermForm (cmsTaxonomyTermsRead) latestReadState [P2-S12-AC-271] latestReadState loading: cmsTaxonomyTermsRead (CmsTaxonomyTermForm): a picker page read shows a skeleton after 250 ms (nothing at 249) over a no-store GET with the commit control off",
+            "part": "loading",
+            "cell": "terms picker: commit control off while loading (L7)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.latest-states.test.tsx",
+            "title": "CmsTaxonomyTermForm (cmsTaxonomyTermsRead) latestReadState [P2-S12-AC-271] latestReadState loading (list refresh): cmsTaxonomyTermsRead (CmsTaxonomyTermForm): the refresh after an action shows a skeleton after 250 ms (nothing at 249) with the prior list kept and every term action off until it answers",
+            "part": "loading",
+            "cell": "terms list refresh: skeleton after 250 ms, actions off (L8)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'create designer' [P2-S12-AC-271] commandState disabled: with no active content type the reason is stated and the commit control is off (CMS-03C-01 create designer)",
+            "part": "disabled",
+            "cell": "template successor: empty content-type reason (L2)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'successor (edit) designer' [P2-S12-AC-271] commandState disabled: with no active content type the reason is stated and the commit control is off (CMS-03C-01 successor (edit) designer)",
+            "part": "disabled",
+            "cell": "template successor: empty content-type reason (L2)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx",
+            "title": "CmsRelatedContentForm (CMS-03C-05) commandState [P2-S12-AC-271] commandState loading: the pending label is stable and only the commit control is disabled, the Derived rule fieldset included; an edit neither lifts the pending label nor is blocked (CMS-03C-05)",
+            "part": "loading",
+            "cell": "CMS-03C-05 loading: only the commit control disabled (A5)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedDecisionForm.states.test.tsx",
+            "title": "CmsGovernedDecisionForm (CMS-03C-07) commandState [P2-S12-AC-271] commandState success: the named resource, the stored draft cleared, the typed fields cleared and the review refetched",
+            "part": "success",
+            "cell": "CMS-03C-07 success clears the form (B1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.states.test.tsx",
+            "title": "CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState [P2-S12-AC-271] commandState success: the named resources, stored draft cleared, typed create fields cleared and review refetched",
+            "part": "success",
+            "cell": "CMS-03C-08 success clears the form (B1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedActivationForm.states.test.tsx",
+            "title": "CmsGovernedActivationForm (CMS-03C-09 activate, schedule, retire) commandState [P2-S12-AC-271] commandState success: the named resource, stored draft cleared, the chosen action cleared and review refetched",
+            "part": "success",
+            "cell": "CMS-03C-09 success clears the form (B1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsPatternInsertForm.states.test.tsx",
+            "title": "CmsPatternInsertForm (CMS-03C-02 place) commandState [P2-S12-AC-271] commandState loading: a stable pending label and only the commit control disabled, a second press sends nothing; the fields stay editable",
+            "part": "loading",
+            "cell": "CMS-03C-02 loading: only the commit control disabled (B4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx",
+            "title": "CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) commandState [P2-S12-AC-271] commandState loading: a stable pending label per command and the commit controls disabled, a second press sends nothing; the answers stay editable",
+            "part": "loading",
+            "cell": "CMS-03C-15 loading: only the commit controls disabled (B4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx",
+            "title": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState loading: a stable pending label per command and the commit control disabled, a second press sends nothing; selecting stays enabled and the controls that start another command (Review, Detach) stay disabled",
+            "part": "loading",
+            "cell": "CMS-03C-15 bulk loading: commit and start-another-command controls disabled (B4, M1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'create designer' [P2-S12-AC-271] commandState error: a 422 key_reserved renders its fixed copy at the template key field, links the summary to it and keeps the values (CMS-03C-01 create designer)",
+            "part": "error",
+            "cell": "CMS-03C-01 422 key_reserved at its field (A6)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'successor (edit) designer' [P2-S12-AC-271] commandState error: a 422 key_reserved renders its fixed copy at the template key field, links the summary to it and keeps the values (CMS-03C-01 successor (edit) designer)",
+            "part": "error",
+            "cell": "CMS-03C-01 422 key_reserved at its field (A6)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.states.test.tsx",
+            "title": "CmsTaxonomyTermForm (CMS-03C-03) commandState commandState disabled [P2-S12-AC-271] commandState disabled: without a security token the commit control is off, nothing is sent and the reason is stated (CMS-03C-03)",
+            "part": "disabled",
+            "cell": "CMS-03C-03 disabled reason (A7)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.states.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner (CMS-03C-16) commandState commandState error [P2-S12-AC-271] commandState error: a 403 {\"kind\":\"refused\",\"status\":403,\"reason\":\"capability_missing\"} renders the CapabilityGate with the fixed capability copy as an alert, no step-up route (CMS-03C-16)",
+            "part": "error",
+            "cell": "CMS-03C-16 403 CapabilityGate (A1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.states.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner (CMS-03C-16) commandState commandState error [P2-S12-AC-271] commandState error: a 403 {\"kind\":\"rejected\",\"status\":403} renders the CapabilityGate with the fixed capability copy as an alert, no step-up route (CMS-03C-16)",
+            "part": "error",
+            "cell": "CMS-03C-16 403 CapabilityGate (A1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+            "title": "composition page: a command in flight [P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, the pending label holds and the open review survives the answer",
+            "part": "loading",
+            "cell": "CMS-03C-15 loading: controls that start another command stay disabled (M1, DEC-241 extended)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+            "title": "composition page: a command in flight [P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer and keep the form dirty",
+            "part": "loading",
+            "cell": "CMS-03C-02 late edit survives completion (M2)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+            "title": "composition page: a command in flight [P2-S12-AC-271] commandState loading: fields that were not edited after dispatch are still cleared by a verified placement",
+            "part": "success",
+            "cell": "CMS-03C-02 success clears what was sent (M2)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+            "title": "composition page: a command in flight [P2-S12-AC-271] commandState loading: an answer changed while the accept is in flight is the one kept when the accept is refused 409 and the diff reloaded",
+            "part": "error",
+            "cell": "CMS-03C-15 409 keeps the answer flipped meanwhile (M2)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+            "title": "composition page: placing the blocks a newer version adds (DEC-193) [P2-S12-AC-271] commandState error: a 403 on placing new blocks renders the CapabilityGate in the result alert",
+            "part": "error",
+            "cell": "CMS-03C-02 roots 403 CapabilityGate (m4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+            "title": "composition page: placing the blocks a newer version adds (DEC-193) [P2-S12-AC-271] commandState error: a 409 on placing new blocks refreshes the entry and reloads the diff before saying so",
+            "part": "error",
+            "cell": "CMS-03C-02 roots 409 reconcile (m4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+            "title": "composition page: placing the blocks a newer version adds (DEC-193) [P2-S12-AC-271] commandState degraded: an unknown outcome on placing new blocks says so without claiming a result",
+            "part": "degraded",
+            "cell": "CMS-03C-02 roots unknown outcome (m4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedDecisionForm.late-edit.test.tsx",
+            "title": "CmsGovernedDecisionForm: text typed while the decision is in flight [P2-S12-AC-271] commandState success: a reason typed after dispatch is kept and the chosen decision that was sent is cleared",
+            "part": "success",
+            "cell": "CMS-03C-07 late edit survives completion (m2)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.states.test.tsx",
+            "title": "CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState [P2-S12-AC-271] commandState success: a reason typed and a reviewer cleared after dispatch are kept as edited, the sent values are cleared",
+            "part": "success",
+            "cell": "CMS-03C-08 late edit survives completion (m2)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewDetailIsland.test.tsx",
+            "title": "CmsGovernedReviewDetailIsland (CMS-03C-10) shows no stale assignment while degraded, announces it politely and offers a re-read that restores the review",
+            "part": "degraded",
+            "cell": "CMS-03C-10 degraded: no stale assignments, polite status, re-read control (m1)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.latest-states.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState [P2-S12-AC-271] latestReadState loading: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): the kept comparison cannot be adopted while a re-read runs, and can be once the read failed or answered",
+            "part": "loading",
+            "cell": "latest read: adopt waits for the re-read (m4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.latest-states.test.tsx",
+            "title": "CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState [P2-S12-AC-271] latestReadState loading: cmsPatternLatestRead (CmsPatternVersionDesigner): the kept comparison cannot be adopted while a re-read runs, and can be once the read failed or answered",
+            "part": "loading",
+            "cell": "latest read: adopt waits for the re-read (m4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.latest-states.test.tsx",
+            "title": "CmsTaxonomyTermForm (cmsTaxonomyTermsRead) latestReadState [P2-S12-AC-271] latestReadState loading (list refresh): cmsTaxonomyTermsRead (CmsTaxonomyTermForm): a form kept open by a conflict has its commit control off until the reconciling refresh answers",
+            "part": "loading",
+            "cell": "terms refresh keeps the open form off (m4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewDetailIsland.test.tsx",
+            "title": "CmsGovernedReviewDetailIsland (CMS-03C-10) [P2-S12-AC-271] commandState disabled: states why no assignment form is offered on an open review for a reader who is not the owner",
+            "part": "disabled",
+            "cell": "CMS-03C-10 assign_reviewer disabled reason (B2)"
+          }
+        ],
+        "staleExisting": [],
+        "gap": "Open cells remain: G1 (queue last verified queue, BOUNDARY: no source for a server-rendered no-store page), A2 (409 refetch, template/pattern/vocabulary/related/composition), A3 (unknown outcome refetch before retry), A4 (success refetches lists), A6 (422 at the field except template key_reserved), B5/B7/B8 (composition refetch, no browser instance-list read route). Each added row asserts a corrected FE03 cell; cite a state part only when every island of that part is closed."
+      }
+    ],
+    "proposedStatus": "partial",
+    "proposedLimitation": "Unproven cells: governed queue degraded (last verified queue), 409 and unknown-outcome reconciliation by refetch before any retry, success refetch of the lists shown, and 422 reasons at their field, in the form islands named in lane-web7-report.md."
+  },
+  {
+    "criterion": "P2-S12-AC-042",
+    "clauses": [
+      {
+        "index": 5,
+        "text": "Render authoritative response/version/provenance/next action",
+        "add": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.result-focus.test.tsx",
+            "title": "template result focus: 'create designer' [P2-S12-AC-042] a verified success renders the provenance: the saved version, and for a successor the parent version it was based on",
+            "part": "",
+            "cell": ""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.result-focus.test.tsx",
+            "title": "template result focus: 'successor (edit) designer' [P2-S12-AC-042] a verified success renders the provenance: the saved version, and for a successor the parent version it was based on",
+            "part": "",
+            "cell": ""
+          }
+        ],
+        "staleExisting": [],
+        "gap": null
+      }
+    ],
+    "proposedStatus": "verified",
+    "proposedLimitation": "(only if the other unproven clauses are closed by the pw5 rows)"
+  }
+]

@@ -503,3 +503,118 @@ Rules: `docs/handoffs/2026-10-14-claude-s12/lane-rules.md`. All lanes Sonnet 5.5
 - `2026-10-29` validate #2 GREEN (`.lane-logs/canonical/validate-20261029T113949Z.log`, 1,962 s): 2,245 test files PASS,
   coverage 100% statements (27,913) and branches (20,985), test:evidence:s09, test:e2e, build, bundle:check, performance:smoke
   all 0. Checkpoint commit in six groups (explicit lists from `scratchpad/claude_root/commit/groups.py`), no push.
+- `2026-10-29` CHECKPOINT COMMITTED locally (no push): `dccf5e91` db, `3e73d916` worker, `99acd9d0` web, `4244ea29` browser/API
+  tests, `e64beafc` ledgers + receipts, `4f643787` docs. Inventory `gaps/inventory-20261029c.json`: 66 uncited (race 14,
+  playwright 6, web 6, worker 3, pgtap 3, impl 5, other 25, hosted 4). Wave 7 released (`briefs/gaps-wave7.md`, no sub-agents):
+  `claude_s12_race7` (dblink two-session pgTAP first, race modules for root), `claude_s12_web7` (AC-271 state-table defects +
+  the 20 pinned rows + DEC-241 web items), `claude_s12_pw7` (page-level operation specs for AC-058/105/111 + AC-273 journeys).
+- `2026-10-29` pw7 DONE PARTIAL (report SHA `659c4aff…`, proposals `f79bcf97…`): 4 real-route specs (page operations for
+  AC-058/105/111 performed from the page; AC-273 J3 template, J4 locale no_fallback, J5 related content, J6 term merge) + 3
+  support files; unrun. Root registered them (8 listed in real-route-chrome, excluded from the default config) and added the
+  support README lines. Run waits for web7 (components in flight). AC-273 stays partial (invalidation, linked update, protected
+  decision in a journey, pattern schedule, telemetry scan undriven).
+- `2026-10-29` web7 DONE PARTIAL (report SHA `ab9c9c3b…`, proposals `786b0638…`, 34 AC-271 + 2 AC-042 c5 rows): fixed D1, D2,
+  G-A1, A1 (403 CapabilityGate in 6 forms + composition islands), L1-L8, A5, A6 (template key_reserved), A7, B1, B2, B4, AC-042
+  c5 provenance; ~45 test corrections incl. pinned rows; apps/web 761 files / 8,813 PASS. Open: A2/A3/A4/B5/B7/B8 (409
+  auto-refetch, unknown refetch-before-retry — scripted explicit-check tests), other 422 field reasons, reviewer_not_eligible
+  refetch. Root DEC-242 (G1 queue degraded = closed notice with Retry, FE03 1050 + changelog; FALLBACK_CHAIN_MISMATCH reconciled
+  by its 409 body; 409/unknown refetch and reviewer_not_eligible stay defects for a later wave). Build 0, bundle 0 failed. Full
+  browser gate running (`evidence/run-e2e-full.sh`).
+- `2026-10-29` race7 DONE PARTIAL (report SHA `a4e44b40…`, proposals `3cb93331…`, TAP `recite7/race7-final-run.tap`): 7 dblink
+  two-session pgTAP files + harness, 171/171 on ALT, world restored after each; closes AC-013 c6, AC-218 c3, AC-019 c7, AC-047
+  c1, AC-085 c1, AC-086 c1, AC-205 c1, AC-145 c1; AC-276/277 partial; AC-294 not built (plan in report). No defect, no WIP.
+  `race7_lease.sql` waits ~6.5 min real time, `race7_claim.sql` ~70 s (db:test grows). Root rulings: AC-044 "deletion" =
+  BOUNDARY (IA03 edge matrix generic "owner/source deletion": 03c only retires immutable versions; owner-party deletion belongs
+  to the identity/erasure shards, unbuilt); post-wait term write on a superseded vocabulary version answers `taxonomy_not_active`
+  (the post-wait recheck), a stale operand after it `CONFLICT`. refute7 (race7 + web7 + pw7) and V17 (web7 product) running.
+- `2026-10-29` Browser gate after web7 + pw7 (`.lane-logs/canonical/e2e-20261029T130804Z/`): default 123/123; real-route 193
+  passed / 4 failed — pw7 AC-105 ×2 ("Node 1 block" select never enabled; successor POST never sent) → pw7 resumed to diagnose
+  (world vs web7 regression); pw5 AC-042 render text now carries web7's provenance ("…, based on version N.") → root corrected
+  the assertion (FE03 CMS-11 provenance); pw5 AC-164 403 alert no longer focused after web7's CapabilityGate → web7 resumed
+  (RED first). 6 of 8 pw7 tests PASS (AC-058, AC-111, J3-J6).
+- `2026-10-29` pw7 fix round (report SHA `f3b8538b…`): AC-105 failures were pw7's world — the designer context read
+  (`cms_template_context`, `20261013100500:99-100`) lists only the caller's own blocks, and the reused `s12lat.block` belonged to
+  another owner; new `tests/e2e/support/s12-pw7-block.ts` registers a world-owned block. CORRECTION to root's earlier note
+  ("no owner scope on block lookups"): that grep missed the `block_row` alias — the validators read blocks by key/version, the
+  designer context read is owner-scoped; `registerLatencyBlock`'s comment corrected (the latency apispecs never use the context
+  read, so their reuse stands). Rerun of page-operations + template-states after web7's 403-focus fix.
+- `2026-10-29` web7 fix round GREEN (report SHA `bddd0c7b…`): the template CapabilityGate heading had taken the result-heading
+  id, so a 403 moved focus off the summary region; own id + not focusable; RED→green in both template surfaces; the other
+  islands' 403 rows gained focus assertions (no product change); apps/web 8,813 PASS. web7 confirms its diff cannot disable the
+  pattern block select (pw7's cause was its world). Targeted rerun of template-states + page-operations started.
+- `2026-10-29` Targeted rerun (`pw-rerun-20261029T134805Z`): template-states all PASS (AC-042 provenance, AC-164 403 focus fixed);
+  AC-105 ×2 still FAIL. Root diagnosis (`ac105-diag-20261029T135422Z`): the world block IS registered and supported, owner =
+  `cms_release_actor` = the signed RELEASE PRINCIPAL (`20261003130600:34,67-77`), while the designer context read lists only
+  `owner_id = acting_party_id` (`20261013100500:99-100`) — no organization designer can ever see a released block in the
+  template/pattern choosers, while the validators accept any registered block. Cross-slice PRODUCT DEFECT + spec conflict
+  (BE03a 2550 "authorized template/schema consumer sees" vs BE03c 202 "owned"). Lane `claude_s12_block_owner` (brief
+  `briefs/block-owner-red.md`): RED pgTAP + spec map + option table; no fix until the owner picks (architecture decision).
+- `2026-10-29` block_owner RED CONFIRMED (report SHA `af57657a…`, TAP `.lane-logs/alt-staged-none-100342-4158467.tap`): 28/31,
+  the 3 [RED] fail as predicted (registeredBlocks [] for four released blocks); CMS-03C-01/-12 accept the same block. Spec map:
+  IA03/BE03a/FE03 = code-owned platform-wide registry; only BE03c 206 / FE03 1129 said "owned/scoped"; Slice 09 already fixed
+  the same bug for CMS-03A-06/-07 (`20261002209000`, P2-S09-AC-145). Root DEC-243 = option A (designer context lists every
+  registered supported block); BE03c 206 + FE03 1129 + changelog amended. Lane resumed for the fix (WIP block-owner
+  `20261029150000`, RED → 31/31, named corrections).
+- `2026-10-29` V17 DONE (report SHA `285a2832…`): web7 ACCEPT-WITH-CONDITIONS, 0 BLOCKER / 3 MAJOR / 5 MINOR / 5 NIT. M1
+  composition Review enabled during an in-flight command clobbers the pending state; M2 insert fields / diff answers typed during
+  a command overwritten on completion; M3 related-content derived-rule choice during save re-enables a dead commit; m1 G-A1 stale
+  Revoke labels; m3 stale taxonomy late-edit test; m4 coverage claim false (placeNewRoots 403, surviving mutants). Do not cite the
+  B4 / A5 loading rows until fixed. Root reading for M1 (extends DEC-241 item 2): a control that starts another command stays
+  disabled while one is in flight; inputs stay editable and late values survive completion. web7 fix round 2 dispatched.
+- `2026-10-29` block_owner fix GREEN (report SHA `8794c5cb…`, TAP `.lane-logs/alt-staged-block-owner-100855-4179341.tap`): WIP
+  `supabase/migrations-wip/block-owner/20261029150000_cms_template_context_platform_blocks.sql` (owner predicate dropped only;
+  cap/order/lifecycle kept; inverse check); RED file 31/31 (two controls relabelled); 5 named corrections in
+  `gaps_db1_template.sql` (AC-159 block section, +1 assertion); 11 suites / 304 PASS. Lane self-reported a forbidden `pkill -f`
+  (matched only its own pg_prove). Root corrected the two stale block-visibility comments (latency-blocks, s12-pw7-block).
+  V18 review launched before promotion; ledger 143-213:1899-1911 re-point after promotion.
+- `2026-10-29` refute7 DONE (report SHA `e5958ac7…`, JSON `c92d2a2c…`): ACCEPT-WITH-DROPS, 159 cites → 99 KEEP / 20 DROP / 40
+  FIX; race7 evidence real (pg_blocking_pids/pg_locks + third-session probes + restore), 4 blind assertions dropped; AC-276 not
+  applied (3 of 17 writer groups, SQL layer only); AC-277 needs two verbatim splits; AC-273 one clause, not cited; AC-294
+  reachable (not a BOUNDARY); AC-085 accepted standard (positions 3/4 waits would close); AC-271 only loading/disabled parts
+  citable with named extra rows; projected 254/39/3 → 257/36/3 with pw7 receipts + DEC-243.
+- `2026-10-29` `recite7/apply7.mjs` APPLIED (race7 + pw7 rows of refute7; AC-277 c0/c2 split, parts cited per rows; refiles to
+  AC-013 c6 / AC-019 c7; AC-273/276 uncited with refute7's limitations; AC-271 + web7 AC-042 c5 DEFERRED to an apply after V17
+  verifies web7 round 2): S12 ledger 257 verified / 36 partial / 3 unverified (= refute7's projection). AC-105 receipts need the
+  DEC-243 promotion first.
+- `2026-10-29` V18 DONE (report SHA `14d0bc8a…`): PROMOTE-WITH-CONDITIONS, 0 BLOCKER / 1 MAJOR / 9 MINOR / 5 NIT; V18's own ALT
+  run 12 files / 357 PASS. Root met the conditions: `recite7/dec243-ac159.mjs` (AC-159 text "128 owned registered" → platform
+  registry, in phase-2.md + the Slice 12 tracker + ledger criterion/clause text; four db1 titles re-pointed, incl. the one the lane
+  missed; the new platform-wide assertion cited); RED test 25 retitled to what it asserts. Open: MINOR-2 no second-org designer
+  test; MINOR-3 the 128 cap is platform-wide. Promotion `evidence/promote-block-owner.sh` running; README section written.
+- `2026-10-29` block-owner PROMOTED (`20261029150000`, `evidence/promotion-manifest-block-owner.json`; canonical reset + types
+  match + 6 files / 149 PASS, `.lane-logs/canonical/promote-block-owner-20261029T143516Z.log`). page-operations spec after it
+  (`.lane-logs/canonical/ac105-after-20261029T143615Z/`): 4/4 PASS — both AC-105 page saves now work (the designer chooser lists
+  released blocks). Waiting on web7 fix round 2 → V17 verify round.
+- `2026-10-29` web7 fix round 2 GREEN (report SHA `a29400ec…`, proposals `caef3985…` 48 AC-271 + 2 AC-042 c5 rows): M1 (Review,
+  Accept, Detach disabled while in flight/rate wait/diff read), M2 (insert and diff answers keep late values), M3, m1, m3, m4 +
+  m2 (reasons typed during decision/assignment/activation survive success, `useDraftFields.clearSent`); apps/web 766 files /
+  8,832 PASS. Caution: lane measured changed-line coverage only (some whole files < 100% on its subset run) — validate decides.
+  V17 resumed for its verification round.
+- `2026-10-29` Early coverage run (`.lane-logs/canonical/coverage-20261029T145244Z.log`): 2,247/2,250 files; failures = recite7/
+  README missing (added), S09 marker rule (the new db1 assertion title embedded "P2-S09-AC-145" → retitled to "the Slice 09
+  platform-registry ruling", ledger citation re-pointed), S12 guard 159 stale receipts (expected until evidence). Both fixed tests
+  11/11. Coverage summary decided at validate.
+- `2026-10-29` V17 verification round (report SHA `3d31bcd7…`): ACCEPT-WITH-CONDITIONS (narrowed) — M1-M3, m1, m3, m4 met, no
+  regression; 18/22 round-2 mutants killed; B4/A5 loading rows citable (two titles overclaim). New: N1 row selection toggled in
+  flight overwritten (pre-existing at HEAD; later wave), N2 degraded-detail re-read shows the unverified review + enabled
+  controls for 250 ms (fix before citing the G-A1 row), N3 size limits broken (3 product, 2 test files) and N6 stale composition
+  README (both BLOCK the commit), N4 no assertion that a 429 degrade hides the re-read control, N5 title overclaims. web7 fix
+  round 3 dispatched (N2, N3, N4, N6).
+- `2026-10-29` web7 fix round 3 GREEN (report SHA `06ae6277…`): N2 (unverified detail hidden through re-read + 429 window, RED
+  first), N4, N3 (all changed files within size limits; extractions CmsGovernedReviewDegraded.tsx, use-governed-sent-draft.ts,
+  use-composition-panel-now.ts; two tests moved, one retitled — not ledger citations), N6 READMEs; apps/web 768 files / 8,834
+  PASS. Code final for checkpoint 2. AC-271 loading/disabled parts and web7's AC-042 c5 rows NOT applied in this checkpoint
+  (conditional rows; queued with the DEC-242 refetch wave). V17 short verify + full browser gate running.
+- `2026-10-30` Full browser gate GREEN on checkpoint-2 code (`.lane-logs/canonical/e2e-20261030T014803Z/`): build 0, default
+  123/123, real-route 197/197 (pw7 page operations incl. AC-105 after DEC-243, J3-J6; web7 state-table changes). Evidence run
+  for all four slices started (dir in scratchpad `evidence3.dir`).
+- `2026-10-30` V17 verification round 2 (report SHA `e7278a3a…`): N2, N3, N4, N6 MET (revert-checked; 26/31 mutants killed, 2
+  equivalent); no BLOCKER/MAJOR; checkpoint-2 commit unblocked. Open for the post-commit wave: N7 MINOR (focus drops to body after
+  "Read the review again"; seed in Appendix F), N8 MINOR (`recite7/web7-proposals.json` stale after the lane's own test moves — 2
+  of 50 rows; repairs listed), N9 NIT, N1, N5, n1-n5. G-A1 degraded cell citable only together with reread rows 2-3, after N8.
+- `2026-10-30` Evidence run GREEN first pass (`.lane-logs/canonical/evidence-all-20261030T020151Z/`):
+  S12 4,356 receipts, S11 2,316, S10 2,058, S09 pass 1 + 2; ALL guards + docs + reconciliation + inventory 7 files / 70 PASS.
+  `pnpm validate` gate started.
+- `2026-10-30` validate #1 failed at format:check only (race7 README table padding) → formatted (padding only); validate #2
+  GREEN (`.lane-logs/canonical/validate-20261030T053453Z.log`, 2,615 s): 2,252 test files, coverage 100%/100%, all steps 0.
+  Checkpoint 2 committed locally in groups (explicit lists), no push.

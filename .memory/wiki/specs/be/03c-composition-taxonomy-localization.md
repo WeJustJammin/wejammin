@@ -203,8 +203,8 @@ CMS-03C-18 through CMS-03C-21 are not browser routes and are never listed in the
 human form, not another template mutation or a grant in the general auth
 session. Its strict `TemplateDesignerContext` contains at most 64 owned active,
 compiled content-type selectors (`id`, `typeKey`, `activeVersionId`,
-`activeVersion`, `sourceLocale`) and 128 owned registered, currently supported
-block selectors (`blockKey`, `blockVersion`). It excludes owner IDs, grant
+`activeVersion`, `sourceLocale`) and 128 registered, currently supported
+block selectors (blocks are platform registry records owned by their release principal, never a tenant; DEC-243, P2-S09-AC-145) (`blockKey`, `blockVersion`). It excludes owner IDs, grant
 records, renderer refs, manifests, and policy internals. The private RPC
 rechecks the actor, acting party, confirmed membership, and current designer
 grant on each read; the browser and authenticated database roles cannot call
@@ -1927,6 +1927,7 @@ None.
 | 2026-10-29 | Taxonomy provider check before the frozen comparison (root DEC-237, owner may override; lane gaps-db4): AC-210 and AC-223 require 422 `canonical_source_unavailable` at taxonomy-version activation, which is reachable only if the unbuilt-provider check precedes the step (4) dependency comparison (the versioned registry gives an unbuilt provider a new row); step (5) now states that order, as the shared activation verdict (`20261014070200`) implements it. | root | Governed activation, retirement and scheduled activation |
 | 2026-10-29 | Canonical registry provider pair (root DEC-238, lane gaps-db4, refute3): the ratified AC-256 says `provider_key` and `provider_version` are each non-null exactly when `built`; the DDL CHECK admitted an unbuilt row holding one of them, so the row now also carries `CHECK((provider_key IS NULL) = (provider_version IS NULL))` (forward migration `20261029110000`). | root | Canonical records and fields |
 | 2026-10-29 | Restore records only carried vocabularies (root DEC-240, review V16 / closeout BOUNDARY in `20261024100700`): a source-recorded taxonomy version whose vocabulary has no carried assignment is not carried; the restored revision records one current active id per vocabulary with a carried assignment, as every revision writer does, so a restored revision with no terms of a vocabulary never fails publication on that vocabulary's stale version. | root | Receiving obligations from Slice 10 (DEC-141) |
+| 2026-10-29 | Designer context blocks are platform-wide (root DEC-243, owner may override; lane block_owner RED): `cmsTemplateContextRead` lists every registered, currently supported block (at most 128), not blocks owned by the acting party — a CMS-03A-05 block is owned by its release principal, never an organization (the Slice 09 ruling of `20261002209000` and P2-S09-AC-145), so the owner-scoped list was always empty on the real stack while the CMS-03C-01/-12 validators accept any registered block. | root | Route Registry (cmsTemplateContextRead) |
 | 2026-10-22 | Render plan and checker pointers (DEC-214, root implementation decision; review R1-008, lane F1 BOUNDARY). The render plan reads each row as a block root followed by the descendant blocks of its effective tree (as the detached-tree rule already required for detached rows), and the plan and checker input name them `/composition/{rowId}` and `/composition/{rowId}/nodes/{i}` (canonical preorder index), matching the DEC-193 implementation. P2-S12-AC-247 updated identically. | /propagate-decision | Pattern versions and linked updates, Changelog |
 
 ## Dependency References
