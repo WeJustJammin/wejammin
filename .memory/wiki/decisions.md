@@ -2601,7 +2601,7 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Problem**: PR #129 CI timed out (quality 45 min, database 30 min) while db:verify alone takes about 51 min; the browser step waited 25.5 of 30 lock minutes behind the database job.
 - **Options considered**: rerun unchanged; raise limits; split browser gates into a job that needs database.
 - **Decision**: Raise limits: quality 120 min, database 90 min, browser lock wait 60 min (6980e266, e119cc6f). Splitting jobs would change the required-check set.
-- **Downstream**: infra/verify-database.sh still waits only 600 s for the lock, so concurrent CI runs collide (BLOCKER-020).
+- **Downstream**: infra/verify-database.sh still waits only 600 s for the lock, so local runs holding the lock can fail it (BLOCKER-020).
 - **Reversibility**: High.
 
 ## DEC-162: Narrow first-empty schema baseline representation
@@ -5042,7 +5042,7 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Problem**: PR #129 CI timed out (quality 45 min, database 30 min) while db:verify alone takes about 51 min; the browser step waited 25.5 of 30 lock minutes behind the database job.
 - **Options considered**: rerun unchanged; raise limits; split browser gates into a job that needs database.
 - **Decision**: Raise limits: quality 120 min, database 90 min, browser lock wait 60 min (6980e266, e119cc6f). Splitting jobs would change the required-check set.
-- **Downstream**: infra/verify-database.sh still waits only 600 s for the lock, so concurrent CI runs collide (BLOCKER-020).
+- **Downstream**: infra/verify-database.sh still waits only 600 s for the lock, so local runs holding the lock can fail it (BLOCKER-020).
 - **Reversibility**: High.
 
 ### DEC-162: Narrow first-empty schema baseline representation

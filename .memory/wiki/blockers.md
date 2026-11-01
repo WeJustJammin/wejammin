@@ -87,7 +87,7 @@
 - **Report**: `.memory/wiki/specs/audits/2026-08-05-ia-ambiguity-report.md`
 - **Resolution**: unresolved. Remediation deferred to a single pass; 14 items need owner decisions first.
 
-## BLOCKER-020: Concurrent CI runs collide on the shared Supabase lock (2026-11-01)
+## BLOCKER-020: Local database runs can starve CI of the shared Supabase lock (2026-11-01)
 
 - **Occurrences**: 1
 - **Latest timestamp**: 2026-11-01T21:02:26.423Z
@@ -96,8 +96,8 @@
 - **Index**: [[index]]
 
 - **Status**: active
-- **Impact**: All three self-hosted runners share one local Supabase stack. infra/verify-database.sh waits only 600 s for the lock while a database job holds it about 40-55 min, so a second concurrent CI run (another PR, or main after a merge) fails its database job.
-- **Resolution**: Open; serialize CI runs (workflow-level concurrency group) or lengthen the database-job lock wait.
+- **Impact**: CI runs themselves never overlap: ci.yml has one repository-wide concurrency group (ci-${{ github.repository }}, cancel-in-progress false), so runs queue, and a newer queued run cancels an older pending one. All three self-hosted runners share one local Supabase stack with local lanes and evidence runs, and infra/verify-database.sh waits only 600 s for /tmp/wejammin-supabase-ci.lock. A local run holding the lock longer (an evidence regeneration takes about 35 min) fails the CI database job.
+- **Resolution**: Open. Do not hold the lock locally while a CI run is queued or running, or lengthen the database job lock wait.
 
 ## Full Log
 
@@ -177,7 +177,7 @@
 - **Report**: `.memory/wiki/specs/audits/2026-08-05-ia-ambiguity-report.md`
 - **Resolution**: unresolved. Remediation deferred to a single pass; 14 items need owner decisions first.
 
-### BLOCKER-020: Concurrent CI runs collide on the shared Supabase lock (2026-11-01)
+### BLOCKER-020: Local database runs can starve CI of the shared Supabase lock (2026-11-01)
 
 - **Timestamp**: 2026-11-01T21:02:26.423Z
 - **Agent**: claude
@@ -185,5 +185,5 @@
 - **Tags**: blocker, ci
 
 - **Status**: active
-- **Impact**: All three self-hosted runners share one local Supabase stack. infra/verify-database.sh waits only 600 s for the lock while a database job holds it about 40-55 min, so a second concurrent CI run (another PR, or main after a merge) fails its database job.
-- **Resolution**: Open; serialize CI runs (workflow-level concurrency group) or lengthen the database-job lock wait.
+- **Impact**: CI runs themselves never overlap: ci.yml has one repository-wide concurrency group (ci-${{ github.repository }}, cancel-in-progress false), so runs queue, and a newer queued run cancels an older pending one. All three self-hosted runners share one local Supabase stack with local lanes and evidence runs, and infra/verify-database.sh waits only 600 s for /tmp/wejammin-supabase-ci.lock. A local run holding the lock longer (an evidence regeneration takes about 35 min) fails the CI database job.
+- **Resolution**: Open. Do not hold the lock locally while a CI run is queued or running, or lengthen the database job lock wait.
