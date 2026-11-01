@@ -14,6 +14,10 @@ import {
   approvedDraft,
 } from './support/phase-02-slice-11-flow';
 import {
+  nextFallBackFold,
+  ordinaryZonedTime,
+} from './support/phase-02-slice-11-fixture-time';
+import {
   postSchedule,
   utcScheduleBody,
 } from './support/phase-02-slice-11-schedule-support';
@@ -56,31 +60,36 @@ describe('CMS-03B-07 pinned time authority through the real stack', () => {
     const berlin = await approvedDraft(stack, world, 'Berlin subject');
     const fold = await approvedDraft(stack, world, 'Fold subject');
     stack.as(world.publisher, 'fresh');
+    // Both schedules stay pending, so their instants come from the host tz data
+    // inside the acceptance horizon and beyond the run, never a fixed date.
+    const now = new Date();
+    const berlinTime = ordinaryZonedTime(now, 'Europe/Berlin', '09:00:00');
+    const nextFold = nextFallBackFold(now);
     const ordinary = await schedule(berlin, {
       ...utcBody(berlin, 0),
-      localDateTime: '2026-12-01T09:00:00',
+      localDateTime: berlinTime.localDateTime,
       timezone: 'Europe/Berlin',
-      resolvedUtc: '2026-12-01T08:00:00Z',
+      resolvedUtc: berlinTime.resolvedUtc,
     });
     expectStatus(ordinary, 202);
     const ordinaryResource = PublicationScheduleResourceSchema.parse(
       ordinary.body,
     );
     expect(ordinaryResource.timezone).toBe('Europe/Berlin');
-    // The selected UTC instant is what the time authority resolved: 09:00 Berlin on
-    // 2026-12-01 is 08:00Z. Compare by instant value, not by ISO string spelling (the
-    // strict schema permits a second- or millisecond-precision offset instant).
+    // The selected UTC instant is what the time authority resolved for 09:00
+    // Berlin. Compare by instant value, not by ISO string spelling (the strict
+    // schema permits a second- or millisecond-precision offset instant).
     expectSameInstant(
       ordinaryResource.resolvedUtc,
-      '2026-12-01T08:00:00Z',
-      'Europe/Berlin 09:00 resolves to 08:00Z',
+      berlinTime.resolvedUtc,
+      'Europe/Berlin 09:00 resolves to the tz-data instant',
     );
-    expect(ordinaryResource.localDateTime).toBe('2026-12-01T09:00:00');
+    expect(ordinaryResource.localDateTime).toBe(berlinTime.localDateTime);
     const earlier = await schedule(fold, {
       ...utcBody(fold, 0),
-      localDateTime: '2026-11-01T01:30:00',
-      timezone: 'America/New_York',
-      resolvedUtc: '2026-11-01T05:30:00Z',
+      localDateTime: nextFold.ambiguousLocal,
+      timezone: nextFold.zone,
+      resolvedUtc: nextFold.earlierUtc,
       disambiguation: 'earlier',
     });
     expectStatus(earlier, 202);
@@ -241,38 +250,34 @@ describe('CMS-03B-07 pinned time authority through the real stack', () => {
     }
   });
 
+  // Each success stays pending, so its instant comes from the host tz data at
+  // run time (fixture-time), never a fixed calendar date.
+  const ordinaryIn = (timezone: string) => (now: Date) => ({
+    ...ordinaryZonedTime(now, timezone, '09:00:00'),
+    timezone,
+    disambiguation: 'none' as const,
+  });
   it.each([
     [
       'later fold',
-      '2026-11-01T01:30:00',
-      'America/New_York',
-      '2026-11-01T06:30:00Z',
-      'later',
+      (now: Date) => {
+        const fold = nextFallBackFold(now);
+        return {
+          localDateTime: fold.ambiguousLocal,
+          timezone: fold.zone,
+          resolvedUtc: fold.laterUtc,
+          disambiguation: 'later' as const,
+        };
+      },
     ],
-    [
-      'three-segment zone',
-      '2026-12-01T09:00:00',
-      'America/Argentina/Buenos_Aires',
-      '2026-12-01T12:00:00Z',
-      'none',
-    ],
-    [
-      'negative twelve-hour edge',
-      '2026-12-01T09:00:00',
-      'Etc/GMT+12',
-      '2026-12-01T21:00:00Z',
-      'none',
-    ],
-    [
-      'positive fourteen-hour edge',
-      '2026-12-01T09:00:00',
-      'Pacific/Kiritimati',
-      '2026-11-30T19:00:00Z',
-      'none',
-    ],
+    ['three-segment zone', ordinaryIn('America/Argentina/Buenos_Aires')],
+    ['negative twelve-hour edge', ordinaryIn('Etc/GMT+12')],
+    ['positive fourteen-hour edge', ordinaryIn('Pacific/Kiritimati')],
   ] as const)(
     '[CMS-03B-07] %s persists the verified instant',
-    async (_label, localDateTime, timezone, resolvedUtc, disambiguation) => {
+    async (_label, fixtureAt) => {
+      const { localDateTime, timezone, resolvedUtc, disambiguation } =
+        fixtureAt(new Date());
       const draft = await approvedDraft(stack, world, 'Pinned-zone success');
       stack.as(world.publisher, 'fresh');
       const response = await schedule(

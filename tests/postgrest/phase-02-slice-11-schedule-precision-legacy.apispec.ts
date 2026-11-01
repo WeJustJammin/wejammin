@@ -18,6 +18,7 @@ import {
   postSchedule,
   utcScheduleBody,
 } from './support/phase-02-slice-11-schedule-support';
+import { farFutureWholeSecond } from './support/phase-02-slice-11-fixture-time';
 import {
   createS11Stack,
   type S11Stack,
@@ -44,8 +45,9 @@ describe('CMS schedule legacy precision compatibility', () => {
       world,
       'Legacy six-digit schedule',
     );
-    // Date supplies only a real future whole second, never fractional arithmetic.
-    const second = new Date(Date.now() + 300_000).toISOString().slice(0, 19);
+    // Date supplies only a real future whole second, never fractional arithmetic;
+    // the schedule stays pending, so it resolves beyond the run (fixture-time).
+    const second = farFutureWholeSecond(new Date());
     const body = utcScheduleBody(draft, 0, tzdb, {
       localDateTime: `${second}.123456`,
       resolvedUtc: `${second}.123456Z`,
