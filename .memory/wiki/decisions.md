@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 179
-- **Unique decision titles**: 179
+- **Total decisions**: 182
+- **Unique decision titles**: 182
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -2562,6 +2562,48 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: a contract test must parse exactly the five outcomes before the clause is cited.
 - **Reversibility**: Medium
 
+## DEC-260: Consolidate onto main by landing the slice stack in order (2026-11-01)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-11-01T21:02:26.422Z
+- **Agents**: claude
+- **Sources**: branch-consolidation
+- **Index**: [[index]]
+
+- **Problem**: Work sat on 209 local branches and 3 worktrees; main had not moved since #126 (2026-10-08).
+- **Options considered**: (A) merge #129 then open a Slice 12 PR; (B) one combined Slice 11+12 PR; (C) keep working on the Slice 12 branch.
+- **Decision**: A (owner). #129 squash-merged as 2473ad19. Slice 12 took main by MERGE, not rebase (e8c8755f: final Slice 11 tip; 8987d6d2: -s ours over main, whose tree equals that tip), so no Slice 12 SHA cited by handoffs was rewritten. Draft PR #133 opened. 189 merged branches deleted locally and 70 on GitHub, each archived under refs/archive/branches/ (manifest ~/.codex/archive/branch-archive-20261101.tsv).
+- **Downstream**: Work from the main checkout with one branch per slice. Slice 12 uncommitted wave-9 work stays in its owner worktree (backup/s12-wip-20261031).
+- **Reversibility**: High (archived refs, backup branch).
+
+## DEC-261: Merge Slice 11 to main in-progress at 121/122 (2026-11-01)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-11-01T21:02:26.422Z
+- **Agents**: claude
+- **Sources**: branch-consolidation
+- **Index**: [[index]]
+
+- **Problem**: #129 was green but a deliberate draft; AC-045 cannot close until #127 (Slice 13) and #128 (Slice 12) resolve.
+- **Options considered**: merge now in-progress; keep draft until AC-045 closes; land Slices 11+12 together.
+- **Decision**: Merge now (owner), matching the Slice 10 precedent; Slice 11 stays in-progress and unsigned on main. Repository allow_auto_merge enabled (owner) to land it on green.
+- **Downstream**: AC-045 closes in a later change once #127/#128 resolve; Phase 2 slice count unchanged.
+- **Reversibility**: Low (merged to main).
+
+## DEC-262: Size CI job limits to the Phase 2 suite (2026-11-01)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-11-01T21:02:26.423Z
+- **Agents**: claude
+- **Sources**: branch-consolidation
+- **Index**: [[index]]
+
+- **Problem**: PR #129 CI timed out (quality 45 min, database 30 min) while db:verify alone takes about 51 min; the browser step waited 25.5 of 30 lock minutes behind the database job.
+- **Options considered**: rerun unchanged; raise limits; split browser gates into a job that needs database.
+- **Decision**: Raise limits: quality 120 min, database 90 min, browser lock wait 60 min (6980e266, e119cc6f). Splitting jobs would change the required-check set.
+- **Downstream**: infra/verify-database.sh still waits only 600 s for the lock, so concurrent CI runs collide (BLOCKER-020).
+- **Reversibility**: High.
+
 ## DEC-162: Narrow first-empty schema baseline representation
 
 - **Occurrences**: 1
@@ -4963,6 +5005,45 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Decision**: owner chose (A) on 2026-10-12 ("A for AC-079"). Applied to the phase plan, Slice 11 tracker and evidence ledger.
 - **Downstream**: a contract test must parse exactly the five outcomes before the clause is cited.
 - **Reversibility**: Medium
+
+### DEC-260: Consolidate onto main by landing the slice stack in order (2026-11-01)
+
+- **Timestamp**: 2026-11-01T21:02:26.422Z
+- **Agent**: claude
+- **Source**: branch-consolidation
+- **Tags**: decision, git, consolidation
+
+- **Problem**: Work sat on 209 local branches and 3 worktrees; main had not moved since #126 (2026-10-08).
+- **Options considered**: (A) merge #129 then open a Slice 12 PR; (B) one combined Slice 11+12 PR; (C) keep working on the Slice 12 branch.
+- **Decision**: A (owner). #129 squash-merged as 2473ad19. Slice 12 took main by MERGE, not rebase (e8c8755f: final Slice 11 tip; 8987d6d2: -s ours over main, whose tree equals that tip), so no Slice 12 SHA cited by handoffs was rewritten. Draft PR #133 opened. 189 merged branches deleted locally and 70 on GitHub, each archived under refs/archive/branches/ (manifest ~/.codex/archive/branch-archive-20261101.tsv).
+- **Downstream**: Work from the main checkout with one branch per slice. Slice 12 uncommitted wave-9 work stays in its owner worktree (backup/s12-wip-20261031).
+- **Reversibility**: High (archived refs, backup branch).
+
+### DEC-261: Merge Slice 11 to main in-progress at 121/122 (2026-11-01)
+
+- **Timestamp**: 2026-11-01T21:02:26.422Z
+- **Agent**: claude
+- **Source**: branch-consolidation
+- **Tags**: decision, slice-11, release
+
+- **Problem**: #129 was green but a deliberate draft; AC-045 cannot close until #127 (Slice 13) and #128 (Slice 12) resolve.
+- **Options considered**: merge now in-progress; keep draft until AC-045 closes; land Slices 11+12 together.
+- **Decision**: Merge now (owner), matching the Slice 10 precedent; Slice 11 stays in-progress and unsigned on main. Repository allow_auto_merge enabled (owner) to land it on green.
+- **Downstream**: AC-045 closes in a later change once #127/#128 resolve; Phase 2 slice count unchanged.
+- **Reversibility**: Low (merged to main).
+
+### DEC-262: Size CI job limits to the Phase 2 suite (2026-11-01)
+
+- **Timestamp**: 2026-11-01T21:02:26.423Z
+- **Agent**: claude
+- **Source**: branch-consolidation
+- **Tags**: decision, ci
+
+- **Problem**: PR #129 CI timed out (quality 45 min, database 30 min) while db:verify alone takes about 51 min; the browser step waited 25.5 of 30 lock minutes behind the database job.
+- **Options considered**: rerun unchanged; raise limits; split browser gates into a job that needs database.
+- **Decision**: Raise limits: quality 120 min, database 90 min, browser lock wait 60 min (6980e266, e119cc6f). Splitting jobs would change the required-check set.
+- **Downstream**: infra/verify-database.sh still waits only 600 s for the lock, so concurrent CI runs collide (BLOCKER-020).
+- **Reversibility**: High.
 
 ### DEC-162: Narrow first-empty schema baseline representation
 

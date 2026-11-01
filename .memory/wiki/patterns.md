@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total patterns**: 34
-- **Unique pattern titles**: 31
+- **Total patterns**: 37
+- **Unique pattern titles**: 34
 
 ## PAT-001: Verify a generated claim against the kit's own reference before propagating it (2026-07-16)
 
@@ -463,6 +463,48 @@
 - **Context**: React island tests after a production change made a dependency lazy (dynamic `import()` of zod validators for the AC-106 bundle budget).
 - **Pattern**: Microtask-only `flush()`/`settle()` helpers race a dynamic import, which resolves after real time; the tests passed in warm full runs and failed alone or under load. Give the lazy module a test-only `settle...ForTest()` that awaits the in-flight load without starting one, make every shared flush helper await it, and find every exposed test by running the suite once with the default loader delayed (a temporary local edit, reverted). Also guard module-level caches against a test reset overtaken by a pending load (a generation counter).
 - **Source**: Slice 11 receipt pass 2 failure in CmsEditorialReviewSubmitForm.test.tsx; probe found 13 exposed tests in 6 files.
+
+## PAT-040: Pending schedule fixtures must never come due during a PostgREST run (2026-11-01)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-11-01T21:02:26.423Z
+- **Agents**: claude
+- **Sources**: branch-consolidation
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: tests/postgrest suites share one committed database; sweep suites assert the global claim holds only their own schedules; CMS-03B-07 accepts 60 s..366 d ahead.
+- **Pattern**: Never leave a pending schedule at a short Date.now() lead or a fixed calendar date. Use tests/postgrest/support/phase-02-slice-11-fixture-time.ts (>= 6 h ahead, inside the horizon, tz-derived folds).
+- **Source**: CI run 41267061612 (+300 s precision fixtures claimed by the sweep-outcomes retry ladder) and a fixed 2026-11-01T05:30Z fold that would fail from 05:29Z.
+
+## PAT-041: Editing a ledger-cited test file stales its evidence receipts (2026-11-01)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-11-01T21:02:26.423Z
+- **Agents**: claude
+- **Sources**: branch-consolidation
+- **Index**: [[index]]
+
+- **Type**: best-practice
+- **Confidence**: 0.5
+- **Context**: Slice 10+ evidence guards compare each receipt fileSha256 with the cited file.
+- **Pattern**: After changing any cited test file, run node scripts/evidence/run-slice-evidence.mjs --slice NN for every slice that cites it and commit the receipts before pushing. Start the Supabase stack first (CI cleanup stops it; the runner only resets). Never hand-patch receipt rows.
+- **Source**: CI run 41271472256 (17 stale receipts) and a first regeneration that aborted on a stopped stack.
+
+## PAT-042: Read origin/main and active worktrees before reporting pipeline status (2026-11-01)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-11-01T21:02:26.423Z
+- **Agents**: claude
+- **Sources**: branch-consolidation
+- **Index**: [[index]]
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: The main checkout can lag origin/main by weeks; slice work lives in ~/.codex/worktrees/<lane>/WeJammin.
+- **Pattern**: git fetch, compare main with origin/main, git worktree list, and read the newest worktree progress files and handoff STATE.md before stating where the pipeline is.
+- **Source**: A status report built from a 29-commit-stale main checkout said Slice 09 was blocked when Slices 09-10 had merged and 11-12 were in progress.
 
 ## Full Log
 
@@ -932,3 +974,42 @@
 - **Context**: React island tests after a production change made a dependency lazy (dynamic `import()` of zod validators for the AC-106 bundle budget).
 - **Pattern**: Microtask-only `flush()`/`settle()` helpers race a dynamic import, which resolves after real time; the tests passed in warm full runs and failed alone or under load. Give the lazy module a test-only `settle...ForTest()` that awaits the in-flight load without starting one, make every shared flush helper await it, and find every exposed test by running the suite once with the default loader delayed (a temporary local edit, reverted). Also guard module-level caches against a test reset overtaken by a pending load (a generation counter).
 - **Source**: Slice 11 receipt pass 2 failure in CmsEditorialReviewSubmitForm.test.tsx; probe found 13 exposed tests in 6 files.
+
+### PAT-040: Pending schedule fixtures must never come due during a PostgREST run (2026-11-01)
+
+- **Timestamp**: 2026-11-01T21:02:26.423Z
+- **Agent**: claude
+- **Source**: branch-consolidation
+- **Tags**: pattern, testing, time
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: tests/postgrest suites share one committed database; sweep suites assert the global claim holds only their own schedules; CMS-03B-07 accepts 60 s..366 d ahead.
+- **Pattern**: Never leave a pending schedule at a short Date.now() lead or a fixed calendar date. Use tests/postgrest/support/phase-02-slice-11-fixture-time.ts (>= 6 h ahead, inside the horizon, tz-derived folds).
+- **Source**: CI run 41267061612 (+300 s precision fixtures claimed by the sweep-outcomes retry ladder) and a fixed 2026-11-01T05:30Z fold that would fail from 05:29Z.
+
+### PAT-041: Editing a ledger-cited test file stales its evidence receipts (2026-11-01)
+
+- **Timestamp**: 2026-11-01T21:02:26.423Z
+- **Agent**: claude
+- **Source**: branch-consolidation
+- **Tags**: pattern, evidence
+
+- **Type**: best-practice
+- **Confidence**: 0.5
+- **Context**: Slice 10+ evidence guards compare each receipt fileSha256 with the cited file.
+- **Pattern**: After changing any cited test file, run node scripts/evidence/run-slice-evidence.mjs --slice NN for every slice that cites it and commit the receipts before pushing. Start the Supabase stack first (CI cleanup stops it; the runner only resets). Never hand-patch receipt rows.
+- **Source**: CI run 41271472256 (17 stale receipts) and a first regeneration that aborted on a stopped stack.
+
+### PAT-042: Read origin/main and active worktrees before reporting pipeline status (2026-11-01)
+
+- **Timestamp**: 2026-11-01T21:02:26.423Z
+- **Agent**: claude
+- **Source**: branch-consolidation
+- **Tags**: pattern, status
+
+- **Type**: anti-pattern
+- **Confidence**: 0.5
+- **Context**: The main checkout can lag origin/main by weeks; slice work lives in ~/.codex/worktrees/<lane>/WeJammin.
+- **Pattern**: git fetch, compare main with origin/main, git worktree list, and read the newest worktree progress files and handoff STATE.md before stating where the pipeline is.
+- **Source**: A status report built from a 29-commit-stale main checkout said Slice 09 was blocked when Slices 09-10 had merged and 11-12 were in progress.

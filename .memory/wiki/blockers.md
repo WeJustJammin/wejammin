@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total blockers**: 6
-- **Unique blocker titles**: 6
+- **Total blockers**: 7
+- **Unique blocker titles**: 7
 
 ## BLOCKER-001: `gh` authenticated as personal account, not business account (2026-07-16)
 
@@ -87,6 +87,18 @@
 - **Report**: `.memory/wiki/specs/audits/2026-08-05-ia-ambiguity-report.md`
 - **Resolution**: unresolved. Remediation deferred to a single pass; 14 items need owner decisions first.
 
+## BLOCKER-020: Concurrent CI runs collide on the shared Supabase lock (2026-11-01)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-11-01T21:02:26.423Z
+- **Agents**: claude
+- **Sources**: branch-consolidation
+- **Index**: [[index]]
+
+- **Status**: active
+- **Impact**: All three self-hosted runners share one local Supabase stack. infra/verify-database.sh waits only 600 s for the lock while a database job holds it about 40-55 min, so a second concurrent CI run (another PR, or main after a merge) fails its database job.
+- **Resolution**: Open; serialize CI runs (workflow-level concurrency group) or lengthen the database-job lock wait.
+
 ## Full Log
 
 ### BLOCKER-001: `gh` authenticated as personal account, not business account (2026-07-16)
@@ -164,3 +176,14 @@
 - **Agent findings**: 138 raw, 104 refuted on adversarial review, 34 upheld (25 blocking).
 - **Report**: `.memory/wiki/specs/audits/2026-08-05-ia-ambiguity-report.md`
 - **Resolution**: unresolved. Remediation deferred to a single pass; 14 items need owner decisions first.
+
+### BLOCKER-020: Concurrent CI runs collide on the shared Supabase lock (2026-11-01)
+
+- **Timestamp**: 2026-11-01T21:02:26.423Z
+- **Agent**: claude
+- **Source**: branch-consolidation
+- **Tags**: blocker, ci
+
+- **Status**: active
+- **Impact**: All three self-hosted runners share one local Supabase stack. infra/verify-database.sh waits only 600 s for the lock while a database job holds it about 40-55 min, so a second concurrent CI run (another PR, or main after a merge) fails its database job.
+- **Resolution**: Open; serialize CI runs (workflow-level concurrency group) or lengthen the database-job lock wait.

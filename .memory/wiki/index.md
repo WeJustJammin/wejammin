@@ -1660,6 +1660,13 @@
 
 ## Structured Memory
 
+- decision: DEC-262: Size CI job limits to the Phase 2 suite (2026-11-01) — 2026-11-01T21:02:26.423Z
+- pattern: PAT-040: Pending schedule fixtures must never come due during a PostgREST run (2026-11-01) — 2026-11-01T21:02:26.423Z
+- pattern: PAT-041: Editing a ledger-cited test file stales its evidence receipts (2026-11-01) — 2026-11-01T21:02:26.423Z
+- pattern: PAT-042: Read origin/main and active worktrees before reporting pipeline status (2026-11-01) — 2026-11-01T21:02:26.423Z
+- blocker: BLOCKER-020: Concurrent CI runs collide on the shared Supabase lock (2026-11-01) — 2026-11-01T21:02:26.423Z
+- decision: DEC-260: Consolidate onto main by landing the slice stack in order (2026-11-01) — 2026-11-01T21:02:26.422Z
+- decision: DEC-261: Merge Slice 11 to main in-progress at 121/122 (2026-11-01) — 2026-11-01T21:02:26.422Z
 - pattern: PAT-029: DOM test flush helpers must await lazy imports; probe with a deliberately slow loader (2026-10-12) — 2026-10-13T03:00:38.061Z
 - pattern: PAT-028: Closure guards must follow the ledger, never demand a claim it does not support (2026-10-12) — 2026-10-12T09:56:00.747Z
 - decision: DEC-177: P2-S11-AC-079 lists the executor cancelled (entry_unavailable) outcome (2026-10-12) — 2026-10-12T05:26:46.711Z
