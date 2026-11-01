@@ -1,5 +1,16 @@
 # Phase 2 / Slice 11: Review, scheduling, preview, and safe publication
 
+## Latest — 2026-10-13 Codex: fresh local gates pass; acceptance remains 121/122
+
+- Fresh canonical `db:verify`, then `validate`, both exited 0 with successful post-resets and
+  independently matched final log hashes. [Exact scope, counts and limits](../verification/2026-10-13-codex-slice-11-local-gates.md).
+- Validation passed 1,600 files / 20,231 tests (one skipped), 100% coverage, 121 functional and
+  151 real-route browser tests, build, bundle budgets and local performance smoke.
+- The fail-closed runner repair passed ten regressions. The prior RED/GREEN attestation remains
+  unchanged; no receipt, criterion, Completion Signature or commit is fabricated from these gates.
+- AC-045 stays partial and the slice stays `in-progress`, unsigned. The projection foreign-key
+  boundary and claimed-preparation receiving work still require their actual integration proof.
+
 ## Latest — 2026-10-12 Claude: Slice 11 implementation complete locally; 121/122 criteria receipt-verified; AC-045 open
 
 - Evidence ledger (`tests/contracts/phase-02-slice-11-evidence-ledger*.ts`): 121 verified, 1 partial (AC-045), backed by
@@ -38,7 +49,7 @@ schedule-precision migrations (`20261010150000`–`154000`) were authored but un
   `local_datetime_submicro_ns` in the unique key. The CMS-03B-07 refusal case asserted the old six-digit
   limit; BE03b:266 locks nine digits, so the invalid probe is now a ten-digit fraction. Changed test
   title: `every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: … at most nine fraction
-  digits, …` (was `six`).
+digits, …` (was `six`).
 - Canonical `pnpm db:verify` on a fresh reset: SQL 336 files / 12,988 assertions PASS. The API stage
   result is recorded in the next update.
 - Evidence ledger skeleton generated (`tests/contracts/phase-02-slice-11-evidence-ledger*.ts`, four
