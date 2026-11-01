@@ -42,11 +42,9 @@ export function assertTarget() {
     });
     return;
   }
-  assert.equal(
-    root,
-    '/home/rob/.codex/worktrees/phase2-slice12/WeJammin',
-    'claimed source worktree only',
-  );
+  // ALT mode: the explicit root release and the fixed ALT container are the claim, as
+  // in the other Slice 12 race kits; no checkout path is pinned (the shared rule above
+  // already refuses the protected primary checkout).
   assert.equal(
     process.env.S12_DEC199_PUBLICATION_RACE_ROOT_RELEASE,
     '2026-10-16-native-publication-red',
