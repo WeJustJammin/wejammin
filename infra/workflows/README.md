@@ -311,8 +311,9 @@ filesystem and validation operations.
   (start, reset to this checkout's migrations, always stop) while holding the
   host lock `infra/verify-database.sh` takes, because the Slice 10 real-route
   specs drive the production Worker, PostgREST and the newest SQL. It waits up
-  to 60 minutes for that lock (a full database job), so the quality job's
-  timeout (120 minutes) covers coverage, the wait and the browser run.
+  to 180 minutes for that lock (a full database job, itself limited to 180
+  minutes), so the quality job's timeout (240 minutes) covers coverage, the wait
+  and the browser run.
 - `verify-staging-artifacts.sh` validates the workflow-derived staging
   identity, origins, and downloaded artifact boundary.
 - `record-staging-artifacts.sh` records deterministic SHA-256 entries for the
