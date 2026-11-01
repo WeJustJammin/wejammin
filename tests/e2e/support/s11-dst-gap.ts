@@ -51,7 +51,7 @@ const formatterFor = (zone: string): Intl.DateTimeFormat => {
 };
 
 /** The zone's UTC offset in minutes at `instantMs`. */
-const offsetMinutes = (zone: string, instantMs: number): number => {
+export const offsetMinutes = (zone: string, instantMs: number): number => {
   const name =
     formatterFor(zone)
       .formatToParts(new Date(instantMs))

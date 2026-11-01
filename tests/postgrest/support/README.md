@@ -83,6 +83,12 @@
 - `phase-02-slice-11-schedule-support.ts`: DB-BEARING CMS-03B-07 request/row
   helpers (`utcScheduleBody`, `postSchedule`, `scheduleRow`, `SCHEDULES`); imports
   `./stack`, so pure controls must not import it.
+- `phase-02-slice-11-fixture-time.ts`: PURE schedule fixture instants from the host
+  tz data (`farFutureWholeSecond`, `nextFallBackFold`, `ordinaryZonedTime`,
+  `isSuiteSafe`). Every schedule a suite leaves pending must resolve at least
+  `SUITE_SAFE_LEAD_MS` (6 h) ahead and inside the 366-day horizon: the sweep suites
+  assert the global claim holds only their own rows. Never use a fixed calendar
+  date or a short `Date.now()` lead for a schedule that stays pending.
 - `phase-02-slice-11-read-fixtures.ts`: shared refusal fixtures for the split
   Slice 11 read/command-refusal suites (submit body/request, frozen-manifest
   drift).

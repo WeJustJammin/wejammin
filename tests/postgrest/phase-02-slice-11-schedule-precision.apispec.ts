@@ -25,6 +25,7 @@ import {
   postSchedule,
   utcScheduleBody,
 } from './support/phase-02-slice-11-schedule-support';
+import { farFutureWholeSecond } from './support/phase-02-slice-11-fixture-time';
 import {
   createS11Stack,
   type S11Stack,
@@ -43,8 +44,9 @@ beforeAll(async () => {
   world = await prepareS11World();
   stack = createS11Stack(world.owner);
   tzdb = psql('select platform_private.cms_tzdb_version()');
-  // Sample once after setup; Date is only the whole-second fixture source.
-  SECOND = new Date(Date.now() + 300_000).toISOString().slice(0, 19);
+  // Sample once after setup; Date is only the whole-second fixture source. The
+  // schedules stay pending, so they resolve beyond the run (fixture-time).
+  SECOND = farFutureWholeSecond(new Date());
 }, 120_000);
 
 const bodyOf = (draft: ReviewedDraft, fraction: string, offset = 'Z') =>
