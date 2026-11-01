@@ -6,7 +6,7 @@
  *
  * Two kinds of mutation, both committed to the live database (PostgREST serves
  * it from other connections, so a rolled-back transaction would be invisible to
- * it) and restored in a `finally` that is verified:
+ * it):
  *
  *  - ENTRY mutation, for EVERY manifest entry: the function is replaced by a
  *    gate-less stub of the same signature that reads no claim and acts for
@@ -19,13 +19,21 @@
  *    check dropped or reading the legacy claim GUC PostgREST never sets) and
  *    EXACTLY the entries that rely on it must fail, no more and no fewer.
  *
+ * Restoration does not depend on how a test ends (support/claim-gate-restore.ts).
+ * Every function is snapshotted into a journal BEFORE it is mutated; the `finally`
+ * of `withMutation` restores and verifies it; a body past its own deadline or whose
+ * test timed out stops at its next checkpoint instead of mutating further (vitest
+ * does not cancel a timed-out body); and `afterEach` waits for the body to unwind,
+ * restores anything still journaled and then compares a fingerprint of EVERY
+ * function of the gate schemas with the baseline taken before the first mutation.
+ *
  * If the process is killed between mutate and restore, run `pnpm db:reset`
  * (every suite in this directory requires a reset anyway).
  *
  * Run right after `pnpm db:reset`; it shares the fixtures of
  * claim-gate-manifest.apispec.ts.
  */
-import { beforeAll, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import {
   driftFindings,
@@ -41,26 +49,40 @@ import {
   HELPER_MUTANTS,
   type HelperMutant,
 } from './support/claim-gate-mutants';
+import {
+  apiTarget,
+  catalogFingerprint,
+  MutationGuard,
+  withMutation,
+} from './support/claim-gate-restore';
 import { type GateWorld, prepareGateWorld } from './support/claim-gate-world';
-import { type ApiFunction, listApiFunctions, psql } from './support/stack';
+import { listApiFunctions, psql } from './support/stack';
 
 let world: GateWorld;
+let baseline = '';
+const guard = new MutationGuard();
+
+/** Test budgets (ms). A body stops itself `DEADLINE_MARGIN_MS` before vitest's own timeout fires. */
+const ENTRIES_TIMEOUT_MS = 900_000;
+const HELPER_TIMEOUT_MS = 300_000;
+const ACL_TIMEOUT_MS = 120_000;
+const DEADLINE_MARGIN_MS = 30_000;
+const SETTLE_TIMEOUT_MS = 180_000;
 
 beforeAll(() => {
   world = prepareGateWorld();
+  baseline = guard.baseline();
 });
 
-type Original = Readonly<{ definition: string; signature: string }>;
+// Whatever ended the test (pass, assertion, throw, timeout): nothing stays mutated.
+afterEach(async () => {
+  await guard.settle();
+}, SETTLE_TIMEOUT_MS);
 
-const originalOf = (name: string): Original => {
-  const row = psql(`
-    select pg_get_function_arguments(p.oid) || chr(31)
-           || replace(pg_get_functiondef(p.oid), chr(10), chr(30))
-      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
-     where n.nspname = 'platform_api' and p.proname = '${name}'`);
-  const [signature = '', definition = ''] = row.split('\u001f');
-  return { signature, definition: definition.replaceAll('\u001e', '\n') };
-};
+afterAll(async () => {
+  await guard.settle();
+  expect(catalogFingerprint()).toBe(baseline);
+}, SETTLE_TIMEOUT_MS);
 
 const failuresFor = (
   failures: readonly string[],
@@ -74,54 +96,48 @@ const entriesOf = (families: readonly ActorFamily[]): string[] =>
     return family !== undefined && families.includes(family);
   });
 
-const mutateEntry = async (
+const mutateEntry = (
   name: string,
-  functions: readonly ApiFunction[],
 ): Promise<
   Readonly<{ drift: readonly string[]; behaviour: readonly string[] }>
 > => {
-  const original = originalOf(name);
   const ungranted = CLAIM_GATED_API_FUNCTIONS[name] === 'ungranted';
-  if (ungranted) psql(`grant execute on function platform_api.${name} to anon`);
-  else
-    // A gate-less stub of the same signature: it reads no claim and acts for anyone.
-    psql(`create or replace function platform_api.${name}(${original.signature})
-          returns jsonb language sql security definer set search_path = ''
-          as $stub$ select '{}'::jsonb $stub$`);
-  try {
-    const mutated = listApiFunctions();
-    return {
-      drift: driftFindings(manifestDrift(mutated)),
-      behaviour: await gateBehaviourFailures(mutated, world, [name]),
-    };
-  } finally {
-    if (ungranted)
-      psql(`revoke execute on function platform_api.${name} from anon`);
-    else psql(original.definition);
-    void functions;
-  }
-};
-
-const functionDefinition = (qualified: string): string =>
-  psql(
-    `select replace(pg_get_functiondef('${qualified}'::regprocedure), chr(10), chr(30))`,
-  ).replaceAll('\u001e', '\n');
-
-const runHelperMutant = async (
-  mutant: HelperMutant,
-): Promise<readonly string[]> => {
-  const original = functionDefinition(mutant.target);
-  const mutated = mutant.mutate(original);
-  expect(mutated, `${mutant.name} must change the definition`).not.toBe(
-    original,
+  const { target, signature } = apiTarget(name);
+  return withMutation(
+    guard.journal,
+    target,
+    () => {
+      if (ungranted)
+        psql(`grant execute on function platform_api.${name} to anon`);
+      else
+        // A gate-less stub of the same signature: it reads no claim and acts for anyone.
+        psql(`create or replace function platform_api.${name}(${signature})
+              returns jsonb language sql security definer set search_path = ''
+              as $stub$ select '{}'::jsonb $stub$`);
+    },
+    async () => {
+      const mutated = listApiFunctions();
+      return {
+        drift: driftFindings(manifestDrift(mutated)),
+        behaviour: await gateBehaviourFailures(mutated, world, [name]),
+      };
+    },
   );
-  psql(mutated);
-  try {
-    return await gateBehaviourFailures(listApiFunctions(), world);
-  } finally {
-    psql(original);
-  }
 };
+
+const runHelperMutant = (mutant: HelperMutant): Promise<readonly string[]> =>
+  withMutation(
+    guard.journal,
+    mutant.target,
+    (original) => {
+      const mutated = mutant.mutate(original.definition);
+      expect(mutated, `${mutant.name} must change the definition`).not.toBe(
+        original.definition,
+      );
+      psql(mutated);
+    },
+    () => gateBehaviourFailures(listApiFunctions(), world),
+  );
 
 describe('SEC-1 deleting a claims gate fails the manifest checks, for every entry', () => {
   const names = Object.keys(CLAIM_GATED_API_FUNCTIONS).sort();
@@ -132,60 +148,130 @@ describe('SEC-1 deleting a claims gate fails the manifest checks, for every entr
     expect(await gateBehaviourFailures(functions, world)).toEqual([]);
   });
 
-  it(`mutates all ${String(names.length)} manifest entries and each one is caught by drift and by its own behaviour probes`, async () => {
-    const functions = listApiFunctions();
-    const uncaught: string[] = [];
-    let caught = 0;
-    for (const name of names) {
-      const mutated = await mutateEntry(name, functions);
-      const named = mutated.drift.some((line) => line.startsWith(`${name}: `));
-      const failing = mutated.behaviour.length > 0;
-      const ownOnly = mutated.behaviour.every((line) =>
-        line.startsWith(`${name}: `),
-      );
-      if (named && failing && ownOnly) caught += 1;
-      else
-        uncaught.push(
-          `${name}: drift=${String(named)} behaviour=${String(mutated.behaviour.length)} ownOnly=${String(ownOnly)}`,
-        );
-    }
-    expect(uncaught).toEqual([]);
-    expect(caught).toBe(names.length);
-    // Every restore is real: the original gates are back, so both checks are clean.
-    const restored = listApiFunctions();
-    expect(driftFindings(manifestDrift(restored))).toEqual([]);
-    expect(await gateBehaviourFailures(restored, world)).toEqual([]);
-  }, 900_000);
+  it(
+    `mutates all ${String(names.length)} manifest entries and each one is caught by drift and by its own behaviour probes`,
+    async () => {
+      await guard.run(ENTRIES_TIMEOUT_MS - DEADLINE_MARGIN_MS, async () => {
+        const uncaught: string[] = [];
+        let caught = 0;
+        for (const name of names) {
+          guard.checkpoint(name);
+          const mutated = await mutateEntry(name);
+          const named = mutated.drift.some((line) =>
+            line.startsWith(`${name}: `),
+          );
+          const failing = mutated.behaviour.length > 0;
+          const ownOnly = mutated.behaviour.every((line) =>
+            line.startsWith(`${name}: `),
+          );
+          if (named && failing && ownOnly) caught += 1;
+          else
+            uncaught.push(
+              `${name}: drift=${String(named)} behaviour=${String(mutated.behaviour.length)} ownOnly=${String(ownOnly)}`,
+            );
+        }
+        expect(uncaught).toEqual([]);
+        expect(caught).toBe(names.length);
+        // Every restore is real: the original gates are back, so both checks are clean.
+        expect(guard.journal.open).toEqual([]);
+        expect(catalogFingerprint()).toBe(baseline);
+        const restored = listApiFunctions();
+        expect(driftFindings(manifestDrift(restored))).toEqual([]);
+        expect(await gateBehaviourFailures(restored, world)).toEqual([]);
+      });
+    },
+    ENTRIES_TIMEOUT_MS,
+  );
 });
 
 describe('SEC-1 weakening a shared gate fails exactly the entries that rely on it', () => {
   it.each(HELPER_MUTANTS.map((mutant) => [mutant.name, mutant] as const))(
     '%s',
     async (_name, mutant) => {
-      const failures = await runHelperMutant(mutant);
-      const expected = mutant.expected(world).sort();
-      const failing = [
-        ...new Set(failures.map((line) => line.split(': ')[0] ?? '')),
-      ].sort();
-      expect(failing).toEqual(expected);
-      expect(failuresFor(failures, expected).length).toBe(failures.length);
-      // The restore is real.
-      expect(await gateBehaviourFailures(listApiFunctions(), world)).toEqual(
-        [],
-      );
+      await guard.run(HELPER_TIMEOUT_MS - DEADLINE_MARGIN_MS, async () => {
+        guard.checkpoint(mutant.name);
+        const failures = await runHelperMutant(mutant);
+        const expected = [...mutant.expected()].sort();
+        const failing = [
+          ...new Set(failures.map((line) => line.split(': ')[0] ?? '')),
+        ].sort();
+        expect(failing).toEqual(expected);
+        expect(failuresFor(failures, expected).length).toBe(failures.length);
+        // The restore is real.
+        expect(guard.journal.open).toEqual([]);
+        expect(catalogFingerprint()).toBe(baseline);
+        expect(await gateBehaviourFailures(listApiFunctions(), world)).toEqual(
+          [],
+        );
+      });
     },
-    300_000,
+    HELPER_TIMEOUT_MS,
   );
 
   it('covers every actor family with at least one helper mutation', () => {
     const covered = new Set(
       HELPER_MUTANTS.flatMap((mutant) => mutant.families),
     );
+    // An actorless service-principal entry resolves no caller, so no shared caller
+    // helper can be weakened for it; its boundary is the service_role EXECUTE grant,
+    // covered by the ACL mutants below (DEC-156).
     expect([...covered].sort()).toEqual(
-      [...new Set(Object.values(CLAIM_ACTOR_FAMILY))].sort(),
+      [...new Set(Object.values(CLAIM_ACTOR_FAMILY))]
+        .filter((family) => family !== 'service-principal')
+        .sort(),
     );
     expect(entriesOf([...covered]).length).toBe(
-      Object.keys(CLAIM_GATED_API_FUNCTIONS).length,
+      Object.keys(CLAIM_GATED_API_FUNCTIONS).length -
+        entriesOf(['service-principal']).length,
     );
   });
+});
+
+describe('SEC-1 the actorless service-principal boundary is the EXECUTE grant (DEC-156)', () => {
+  it.each(entriesOf(['service-principal']).sort())(
+    'widening the actorless execute grant of %s to authenticated fails exactly that entry, then the ACL and every catalog body are restored',
+    async (name) => {
+      await guard.run(ACL_TIMEOUT_MS - DEADLINE_MARGIN_MS, async () => {
+        guard.checkpoint(name);
+        const before = listApiFunctions().find(
+          (candidate) => candidate.name === name,
+        );
+        // Exact precondition: the function is service_role-only (anon and authenticated denied).
+        expect(before).toMatchObject({
+          anon: false,
+          authenticated: false,
+          serviceRole: true,
+        });
+        const failures = await withMutation(
+          guard.journal,
+          apiTarget(name).target,
+          () => {
+            psql(
+              `grant execute on function platform_api.${name}(jsonb) to authenticated`,
+            );
+          },
+          () => gateBehaviourFailures(listApiFunctions(), world, [name]),
+        );
+        expect(failures.length).toBeGreaterThan(0);
+        expect(failures.every((line) => line.startsWith(`${name}: `))).toBe(
+          true,
+        );
+        // The restore is real: the grant is back and both checks are clean again, so no
+        // catalog body and no ACL entry is left mutated.
+        expect(guard.journal.open).toEqual([]);
+        expect(catalogFingerprint()).toBe(baseline);
+        const restored = listApiFunctions();
+        expect(
+          restored.find((candidate) => candidate.name === name),
+        ).toMatchObject({
+          anon: false,
+          authenticated: false,
+          serviceRole: true,
+        });
+        expect(driftFindings(manifestDrift(restored))).toEqual([]);
+        expect(await gateBehaviourFailures(restored, world)).toEqual([]);
+      });
+    },
+    ACL_TIMEOUT_MS,
+  );
 });

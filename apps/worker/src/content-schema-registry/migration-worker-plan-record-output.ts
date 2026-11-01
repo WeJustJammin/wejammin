@@ -5,7 +5,7 @@ export const toMigrationPlanRecord = (
 ): MigrationPlanRecord => ({
   id: value.id as string,
   contentTypeId: value.contentTypeId as string,
-  fromVersionId: value.fromVersionId as string,
+  fromVersionId: value.fromVersionId as string | null,
   toVersionId: value.toVersionId as string,
   state: value.state as MigrationPlanRecord['state'],
   version: value.version as string,
@@ -22,7 +22,7 @@ export const toMigrationPlanRecord = (
   compilerHash: value.compilerHash as string,
   sourceHash: value.sourceHash as string,
   targetHash: value.targetHash as string,
-  activeVersionId: value.activeVersionId as string,
+  activeVersionId: value.activeVersionId as string | null,
   leaseOwner: value.leaseOwner as string | null,
   leaseToken: value.leaseToken as string | null,
   leaseExpiresAt: value.leaseExpiresAt as string | null,

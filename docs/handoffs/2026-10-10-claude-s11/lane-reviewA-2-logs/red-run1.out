@@ -1,0 +1,32 @@
+[alt] waiting for lock 17:53:23
+[alt] lock acquired 17:53:23
+[alt] reset ok 17:56:09
+[alt] pg_prove exit=1  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-175323-1807200.tap
+not ok 24 - every refusal above changed no durable table (assignment, review, reservation, audit record, outbox event), observed inside its own call before the probe rolled back; only the successful controls wrote [P2-S11-AC-071]
+not ok 25 - every refusal above changed no durable table (decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]
+not ok 25 - every refusal above changed no durable table (review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event), observed inside its own call before the probe rolled back; only the successful controls wrote [P2-S11-AC-009]
+not ok 29 - every raised refusal above changed no durable table (schedule, review, lineage row, reservation, event, audit record, snapshot), observed inside its own call before the probe rolled back; only the successful controls wrote [P2-S11-AC-018]
+not ok 27 - every raised refusal above changed no durable table (lineage row, review, schedule, reservation, event, audit record, snapshot), observed inside its own call before the probe rolled back; only the successful controls wrote [P2-S11-AC-030]
+not ok 26 - every refusal above changed no durable table (token, reservation, audit record, event, settings snapshot), observed inside its own call before the probe rolled back; only the successful controls wrote [P2-S11-AC-027]
+Test Summary Report
+-------------------
+phase_02_slice_11_effect_oracle.sql                    (Wstat: 0 Tests: 18 Failed: 9)
+  Failed tests:  10-18
+  Parse errors: Bad plan.  You planned 9 tests but ran 18.
+phase_02_slice_11_rpc_review_assign_refusals.sql       (Wstat: 0 Tests: 24 Failed: 1)
+  Failed test:  24
+phase_02_slice_11_rpc_review_decision_refusals.sql     (Wstat: 0 Tests: 26 Failed: 1)
+  Failed test:  25
+phase_02_slice_11_rpc_review_submit_refusals.sql       (Wstat: 0 Tests: 25 Failed: 1)
+  Failed test:  25
+phase_02_slice_11_rpc_publication_schedule_refusals.sql (Wstat: 0 Tests: 41 Failed: 1)
+  Failed test:  29
+phase_02_slice_11_rpc_publication_publish_refusals.sql (Wstat: 0 Tests: 36 Failed: 1)
+  Failed test:  27
+phase_02_slice_11_rpc_preview_mint_refusals.sql        (Wstat: 0 Tests: 27 Failed: 1)
+  Failed test:  26
+Files=11, Tests=311, 97 wallclock secs ( 0.76 usr  0.18 sys +  1.55 cusr  0.80 csys =  3.29 CPU)
+Result: FAIL
+Files=11, Tests=311, 97 wallclock secs ( 0.76 usr  0.18 sys +  1.55 cusr  0.80 csys =  3.29 CPU)
+Result: FAIL
+exit=1

@@ -12,6 +12,7 @@ import {
   vi,
 } from 'vitest';
 
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import { installCmsEditorialPageActions } from '../../lib/cms-editorial-page-actions-core';
 import {
   allKindFields,
@@ -27,6 +28,7 @@ import {
   mountElement,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
 import CmsEditorialConflictResolveIsland from './CmsEditorialConflictResolveIsland';
 import CmsEditorialEntryCreateIsland from './CmsEditorialEntryCreateIsland';
 import { conflictDetailBody } from './cms-editorial-conflict-fixtures.test-support';
@@ -45,6 +47,7 @@ import {
  */
 
 beforeAll(enableReactAct);
+beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 beforeEach(() => {
   document.cookie = 'wj_csrf=csrf-token';
@@ -73,7 +76,7 @@ describe('focus: the activated submit control stays enabled while the command is
           ],
         }),
       ),
-      editorFields(),
+      describeCmsAuthoringFields(editorFields()),
     );
     const { container } = mountElement(
       <CmsEditorialConflictResolveIsland
@@ -100,6 +103,7 @@ describe('focus: the activated submit control stays enabled while the command is
       <CmsEditorialEntryCreateIsland
         type={selectedType()}
         fields={allKindFields()}
+        descriptors={describeCmsAuthoringFields(allKindFields())}
         fetcher={pending}
         navigate={vi.fn()}
       />,

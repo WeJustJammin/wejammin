@@ -64,59 +64,69 @@ const migrationEvent = {
   },
 } as const;
 
+/** The row the real `platform_api.claim_job` returns (no lease token): the Worker binds it to its own request. */
+const claimRow = {
+  attempt_count: 1,
+  job_id: JOB_ID,
+  lease_until: '2025-08-30T13:25:00.000000+00:00',
+  state: 'running',
+  version: '2',
+} as const;
+
+/** Drives one `job.requested` message through the production queue seam against a mocked PostgREST. */
+const runObjectVerification = async (
+  claim: Readonly<Record<string, unknown>>,
+) => {
+  const verifyObject = vi.fn<
+    ProductionVerificationDependencies['verifyObject']
+  >(async (input) => ({
+    errorCode: null,
+    resultRef: { id: input.job.id, type: 'object' },
+    state: 'succeeded',
+  }));
+  const fetchImpl = vi.fn(
+    async (input: RequestInfo | URL, init?: RequestInit) => {
+      void init;
+      const operation = new URL(String(input)).pathname.split('/').at(-1);
+      const response: Readonly<Record<string, unknown>> = {
+        apply_job_outcome: true,
+        claim_job: claim,
+        read_canonical_job: {
+          id: JOB_ID,
+          leaseUntilMs: null,
+          state: 'queued',
+          type: 'platform.object.verify',
+          version: '1',
+        },
+        read_restore_fence: {
+          expected_epoch: '1',
+          consumer_epoch: '1',
+          integrity_verified: true,
+          reconciliation_complete: true,
+        },
+        record_processed_event: 'recorded',
+      };
+      return Response.json(response[operation ?? ''] ?? null);
+    },
+  );
+  const ack = vi.fn();
+  const retry = vi.fn();
+
+  await createProductionAsyncEntrypoint(fetchImpl, { verifyObject }).queue(
+    {
+      messages: [{ ack, attempts: 1, body: envelope, id: 'message-1', retry }],
+      queue: 'platform-jobs',
+    },
+    { ...bindings, PLATFORM_JOBS: { send: vi.fn() } },
+    { waitUntil: vi.fn() },
+  );
+  return { ack, fetchImpl, retry, verifyObject };
+};
+
 describe('production Worker composition', () => {
   it('executes approved internal object verification through the queue seam', async () => {
-    const verifyObject = vi.fn<
-      ProductionVerificationDependencies['verifyObject']
-    >(async (input) => ({
-      errorCode: null,
-      resultRef: { id: input.job.id, type: 'object' },
-      state: 'succeeded',
-    }));
-    const fetchImpl = vi.fn(
-      async (input: RequestInfo | URL, init?: RequestInit) => {
-        void init;
-        const operation = new URL(String(input)).pathname.split('/').at(-1);
-        const response: Readonly<Record<string, unknown>> = {
-          apply_job_outcome: true,
-          claim_job: {
-            jobId: JOB_ID,
-            leaseToken: LEASE_TOKEN,
-            expectedVersion: '1',
-            leaseUntilMs: 1_756_560_300_000,
-            version: '2',
-          },
-          read_canonical_job: {
-            id: JOB_ID,
-            leaseUntilMs: null,
-            state: 'queued',
-            type: 'platform.object.verify',
-            version: '1',
-          },
-          read_restore_fence: {
-            expected_epoch: '1',
-            consumer_epoch: '1',
-            integrity_verified: true,
-            reconciliation_complete: true,
-          },
-          record_processed_event: 'recorded',
-        };
-        return Response.json(response[operation ?? ''] ?? null);
-      },
-    );
-    const ack = vi.fn();
-    const retry = vi.fn();
-
-    await createProductionAsyncEntrypoint(fetchImpl, { verifyObject }).queue(
-      {
-        messages: [
-          { ack, attempts: 1, body: envelope, id: 'message-1', retry },
-        ],
-        queue: 'platform-jobs',
-      },
-      { ...bindings, PLATFORM_JOBS: { send: vi.fn() } },
-      { waitUntil: vi.fn() },
-    );
+    const { ack, fetchImpl, retry, verifyObject } =
+      await runObjectVerification(claimRow);
 
     expect(verifyObject).toHaveBeenCalledOnce();
     expect(ack).toHaveBeenCalledOnce();
@@ -129,6 +139,21 @@ describe('production Worker composition', () => {
       p_next_state: 'succeeded',
       p_result_ref: { id: JOB_ID, type: 'object' },
     });
+  });
+
+  it('refuses a claim receipt that does not bind the lease the Worker requested, running no effect and writing no outcome', async () => {
+    const { ack, fetchImpl, retry, verifyObject } = await runObjectVerification(
+      { ...claimRow, lease_token: LEASE_TOKEN },
+    );
+
+    expect(verifyObject).not.toHaveBeenCalled();
+    expect(ack).not.toHaveBeenCalled();
+    expect(retry).toHaveBeenCalledOnce();
+    expect(
+      fetchImpl.mock.calls.some(([input]) =>
+        String(input).endsWith('/apply_job_outcome'),
+      ),
+    ).toBe(false);
   });
 
   it('dispatches schema activation events through the production migration queue entry', async () => {

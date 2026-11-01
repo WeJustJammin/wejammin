@@ -17,6 +17,9 @@ Worker and the proxies.
 
 ## Module map
 
+- The edit and conflict loaders (and the Astro create form) decode the author-safe
+  field definitions into descriptors with `describeCmsAuthoringFields` and put
+  them in the island's `init`, so the islands ship no zod (AC-106).
 - `cms-editorial-page-outcome.ts` — every non-200 becomes a 401 redirect to the
   allowlisted sign-in route (safe `returnTo`) or one fixed notice (400/422 invalid
   request, 403, 404, 409 stale list position, 429 with a coarse wait, 5xx
@@ -26,6 +29,9 @@ Worker and the proxies.
 - `load-entry-list-page.ts`, `load-entry-create-page.ts`,
   `load-entry-edit-page.ts`, `load-conflict-page.ts`,
   `load-revision-history-page.ts` — one per route.
+- `load-workflow-page.ts`, `load-review-detail-page.ts`,
+  `load-review-queue-page.ts` — the Slice 11 routes (CMS-03B-15, -16, -17); the
+  queue restarts from the first page after a refused cursor like the entry list.
 - `CmsEditorialPageNotice.tsx`, `CmsEditorialEntryEditUnavailable.tsx` — the
   shared closed views.
 

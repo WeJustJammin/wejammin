@@ -1,0 +1,173 @@
+{
+  "schemaVersion": 1,
+  "checkpoint": {
+    "staticLog": ".lane-logs/parent-s11-typed-digest-lookup-checkpoint-static-20261010.log",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "contractsCheck": 0,
+    "progressCheck": 0,
+    "targetLint": 0,
+    "typeCheck": 0,
+    "diffCheck": 0,
+    "canonicalFlushOk": true,
+    "canonicalCompileOk": true,
+    "inheritedGraphIssues": 64,
+    "allThreeFrozenSourceHashesExact": true,
+    "selectedNext": [
+      "sole lookup SQL QA amendment before producer",
+      "four new inline writer-tail SQL QA paths, source-reviewed actual-command RED only"
+    ],
+    "producer": "UNRUN until strengthened lookup + writer QA RED and clean pushed QA checkpoint"
+  },
+  "baseline": "227cbde5cb04abc776da7d96b7951dd1114da8b2",
+  "scope": "two narrow API fixture repairs; initial E7 lookup RED only",
+  "acceptance": "0/122; Slices12-17 not started",
+  "files": [
+    {
+      "path": "tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts",
+      "lines": 397,
+      "sha": "1b41f0a72afc1ed44be81ce9414aa945c8f8fdfdd4b87951f5ce49572b039625"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-lifecycle.apispec.ts",
+      "lines": 221,
+      "sha": "9c9b8d2f53ead454d6ecb1f3660995df5d1f3b8c6167c9f75535705d0144daa4"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings_lookup.sql",
+      "lines": 187,
+      "sha": "940eff21f15825f3aa3404f694269cf173318667ea1c38330e5523875a2fc40f"
+    }
+  ],
+  "static": {
+    "contractsCheck": 0,
+    "progressCheck": 0,
+    "targetLint": 0,
+    "typeCheck": 0,
+    "diffCheck": 0,
+    "proof": {
+      "assignmentLines": 397,
+      "lifecycleLines": 221,
+      "lifecycleOutsideFirstExact": true,
+      "sha": [
+        {
+          "path": "tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts",
+          "sha": "1b41f0a72afc1ed44be81ce9414aa945c8f8fdfdd4b87951f5ce49572b039625"
+        },
+        {
+          "path": "tests/postgrest/phase-02-slice-11-lifecycle.apispec.ts",
+          "sha": "9c9b8d2f53ead454d6ecb1f3660995df5d1f3b8c6167c9f75535705d0144daa4"
+        }
+      ],
+      "assignmentInverseByteExact": true
+    },
+    "review": "s11_api_foundation_refutation: no bounded finding; static only"
+  },
+  "changedTitles": [
+    {
+      "file": "tests/postgrest/phase-02-slice-11-assignment-lifecycle.apispec.ts",
+      "change": "only shared conflict helper removes generic conflict/recoveryAction fields; all four case titles and bodies unchanged"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-lifecycle.apispec.ts",
+      "title": "activates a fresh draft only with the actual dry-run, independent decision and server-derived approval hash",
+      "change": "first leaf digest uses independent exact persisted canonical projection; title unchanged; other six cases token-exact"
+    }
+  ],
+  "focus": {
+    "log": ".lane-logs/parent-s11-typed-digest-fixtures-api11-e7-lookup-red-20261010.log",
+    "sha": "7aad144de1020c6ce87cb01f874f7b0ab38f64009886d2bba1f90ac2d68764fb",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "preReset": 0,
+    "api": {
+      "exit": 0,
+      "files": 2,
+      "tests": 11,
+      "passed": 11,
+      "durationSeconds": 24.82
+    },
+    "lookup": {
+      "exit": 1,
+      "runnerTests": 32,
+      "failed": 10,
+      "status": "NOT clean RED evidence; ran after persistent API data without intervening reset",
+      "failedTests": "9,11-14,26-30",
+      "counter": "finish reports planned32/ran24 after savepoint rollback; bookkeeping mismatch observed, internal mechanism inferred"
+    },
+    "postReset": 0,
+    "driverClosed": 1
+  },
+  "full": {
+    "log": ".lane-logs/parent-s11-typed-digest-lookup-initial-full-gate-20261010.log",
+    "sha": "416e37eeba5892a89937c6d65b28716d4eb7c864102d30f2c4f44c8bd325ca9d",
+    "activeCI": 0,
+    "sharedFlock": true,
+    "sql": {
+      "files": 334,
+      "runnerAssertions": 12796,
+      "durationSeconds": 110,
+      "failedFile": "supabase/tests/phase_02_slice_11_e7_settings_lookup.sql",
+      "runnerTestsInFailedFile": 32,
+      "failed": 8,
+      "failedTests": "12-14,26-30",
+      "failedLabels": ["L08", "L09", "L10", "L22", "L23", "L24", "L25", "L26"],
+      "status": "fresh missing/noncurrent materialization RED; QA counter defect prevents QA completion"
+    },
+    "dbVerify": 1,
+    "api": "UNRUN",
+    "races": "UNRUN",
+    "dbTypes": "UNRUN",
+    "validate": "UNRUN",
+    "postReset": 0,
+    "driverClosed": 1
+  },
+  "sqlFormattingAttempt": {
+    "exit": 2,
+    "reason": "Prettier has no SQL parser; no file mutation; not validation or functional evidence",
+    "log": ".lane-logs/parent-s11-e7-lookup-format-20261010.log"
+  },
+  "lookupQaReview": {
+    "reviewer": "s11_sql2_refutation_exact",
+    "findings": [
+      "P3 ordinal1-only positives do not prove stored ordinal return",
+      "P3 no foreign-owner matching-hash row leaves owner predicate mutation unproved",
+      "P3 current ordinal2 alone could admit MAX(owner.ordinal); retain current ordinal1 plus later noncurrent ordinal2 witness",
+      "savepoint rollback of pgTAP counter must be isolated without dropping assertions"
+    ],
+    "repair": "sole SQL QA amendment only after canonical clean pushed checkpoint; actual local subtransaction probe observations outside pgTAP rollback; add storedordinal2 and real foreign owner controls",
+    "producer": "UNRUN; no GREEN author until strengthened actual RED"
+  },
+  "grantFreeAlternative": {
+    "status": "source-compatible bounded producer design; author UNRUN until new writer+lookup actual RED and clean QA checkpoint",
+    "existingOwnedReplacementProbe": {
+      "log": ".lane-logs/parent-s11-e7-existing-owned-replace-probe-20261010.log",
+      "activeCI": 0,
+      "sharedFlock": true,
+      "exit": 0,
+      "okCount": 6,
+      "refused": [],
+      "ok": [
+        "NOTICE:  S11_EXISTING_REPLACE_OK platform_private.cms_create_entry(jsonb) unchanged=d7855d363775652e3e5028c83637944f",
+        "NOTICE:  S11_EXISTING_REPLACE_OK platform_private.cms_create_revision(jsonb) unchanged=8813bdc948c8ff144a2df0b0ac1a2ccb",
+        "NOTICE:  S11_EXISTING_REPLACE_OK platform_private.cms_resolve_conflict(jsonb) unchanged=f249d3072fb36fbb510a62b23e0f5291",
+        "NOTICE:  S11_EXISTING_REPLACE_OK platform_private.cms_restore_revision(jsonb) unchanged=1ac24770572b089e8fb6723f2ffc922a",
+        "NOTICE:  S11_EXISTING_REPLACE_OK platform_private.cms_author_locale_variant(jsonb) unchanged=5d022c89e83a49396678b1abd2cbc166",
+        "NOTICE:  S11_EXISTING_REPLACE_OK platform_private.cms_settings_snapshot(uuid) unchanged=3970fc1b407c03012efed279fd24a464"
+      ],
+      "rolledBack": true
+    },
+    "writerRedBrief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-e7-inline-writer-tail-red-2026-10-10.md",
+    "greenBrief": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-e7-inline-write-tail-green-2026-10-10.md",
+    "sourceReviews": [
+      "s11_recovery_reference_source",
+      "s11_sql2_refutation_exact"
+    ],
+    "limits": [
+      "actual changed behavior/runtime/catalog proof unrun",
+      "canonical owner field mutation sensitivity unproved; authorized divergent witness impossible",
+      "causal audit checkpoint must use source-verified existing-authority observer, never new grants",
+      "missing pure lookup deliberately remaps old postinsert INTERNAL_ERROR to established DEPENDENCY_UNAVAILABLE"
+    ]
+  }
+}

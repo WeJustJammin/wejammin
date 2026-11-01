@@ -1,0 +1,6 @@
+# CHAIN 1 create128 p50=214.0 p95=239.3 max=240.4 n=10
+# CHAIN 2 dry_run p50=101.6 p95=107.9 max=108.4 n=10
+# CHAIN 3 submit p50=102.9 p95=115.2 max=119.9 n=10
+# CHAIN 4 assign p50=12.0 p95=16.2 max=16.9 n=10
+# CHAIN 5 decide p50=51.5 p95=58.6 max=59.9 n=10
+# CHAIN 6 activate p50=222.8 p95=247.8 max=251.6 n=10

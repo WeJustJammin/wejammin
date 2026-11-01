@@ -43,7 +43,6 @@ const canonical = {
 
 const lease = {
   jobId: JOB_ID,
-  leaseToken: LEASE_TOKEN,
   expectedVersion: '1',
   version: '2',
   leaseUntilMs: 300_000,

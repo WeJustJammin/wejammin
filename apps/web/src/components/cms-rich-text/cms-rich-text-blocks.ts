@@ -1,5 +1,5 @@
 import {
-  RichTextV1DocumentSchema,
+  isCanonicalRichText,
   type RichTextV1Document,
 } from './cms-rich-text-contracts';
 import {
@@ -96,10 +96,9 @@ export const toEditorBlocks = (
   value: unknown,
   idFor: BlockIdFor = positionalBlockId,
 ): EditorBlock[] => {
-  const parsed = RichTextV1DocumentSchema.safeParse(value);
-  if (!parsed.success) return [];
+  if (!isCanonicalRichText(value)) return [];
   const blocks: EditorBlock[] = [];
-  for (const raw of parsed.data.blocks) {
+  for (const raw of value.blocks) {
     const spans = raw.spans;
     const markup = serializeSpans(spans);
     if (raw.type === 'heading') {
@@ -181,7 +180,7 @@ export const assembleRichTextDocument = (
     format: 'rich_text.v1',
     blocks: outputs,
   };
-  if (!RichTextV1DocumentSchema.safeParse(document).success)
+  if (!isCanonicalRichText(document))
     return { ok: false, error: inlineError('rich_text_not_canonical') };
   return { ok: true, document };
 };

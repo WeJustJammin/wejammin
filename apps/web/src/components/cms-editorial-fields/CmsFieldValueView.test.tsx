@@ -3,10 +3,8 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
 import CmsFieldValueView from './CmsFieldValueView';
-import {
-  describeCmsAuthoringFields,
-  type CmsFieldDescriptor,
-} from './cms-field-descriptor';
+import { describeCmsAuthoringFields } from './cms-field-descriptor-decode';
+import { type CmsFieldDescriptor } from './cms-field-descriptor';
 import { allKindFields, fieldUuid } from './cms-field-fixtures.test-support';
 
 const descriptor = (key: string): CmsFieldDescriptor => {

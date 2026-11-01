@@ -1,0 +1,47 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts (6 tests | 2 failed) 15504ms
+     × shares ONE 15,000 ms job deadline between the claim and the execute: a claim that takes 10,000 ms leaves 5,000 ms 75ms
+     × starts no further schedule once the job deadline has passed and logs how many were left unstarted 15010ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts > the 15,000 ms job deadline > shares ONE 15,000 ms job deadline between the claim and the execute: a claim that takes 10,000 ms leaves 5,000 ms
+AssertionError: expected false to be true // Object.is equality
+
+- Expected
++ Received
+
+- true
++ false
+
+ ❯ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts:215:28
+    213|     expect(state.settled).toBe(false);
+    214|     await vi.advanceTimersByTimeAsync(1);
+    215|     expect(signal.aborted).toBe(true);
+       |                            ^
+    216|     await expect(outcome).resolves.toBe('resolved');
+    217|     const text = logged();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts > the 15,000 ms job deadline > starts no further schedule once the job deadline has passed and logs how many were left unstarted
+Error: Test timed out in 15000ms.
+If this is a long-running test, pass a timeout value as the last argument or configure it globally with "testTimeout".
+ ❯ apps/worker/src/cms-publication-schedule-sweep-deadline.test.ts:222:3
+    220|   });
+    221|
+    222|   it('starts no further schedule once the job deadline has passed and …
+       |   ^
+    223|     vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] });
+    224|     const second = {
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed | 2 passed (3)
+      Tests  2 failed | 20 passed (22)
+   Start at  16:50:29
+   Duration  28.90s (transform 21.84s, setup 0ms, import 36.35s, tests 16.28s, environment 2ms)
+

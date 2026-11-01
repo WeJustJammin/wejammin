@@ -31,7 +31,11 @@ Astro routes and layouts live under `src/`; static assets live under `public/`;
 the Cloudflare adapter is configured in `astro.config.mjs`.
 `client-chunk-boundaries.mjs` keeps shared browser contracts together so the
 production bundle cannot split their Zod initialization into a circular chunk;
-the Slice 12 production-built Chrome test verifies island hydration.
+the Slice 12 production-built Chrome test verifies island hydration. The
+zod-free browser entry of the contracts owns three chunks (core, workflow,
+editor) so a route loads only the rules it uses (AC261, AC-106), and
+`pnpm bundle:check` measures every CMS editorial route and island against the
+declared thresholds.
 
 ## Ownership
 

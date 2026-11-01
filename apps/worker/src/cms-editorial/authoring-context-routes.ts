@@ -16,6 +16,7 @@ import {
   requireEditorialCapability,
   validHumanSession,
 } from './admission-identity';
+import { INVALID_DEPENDENCY_RESPONSE } from './route-error-details';
 import { rateCheck } from './route-execution';
 import { createRouteFinish } from './route-telemetry';
 import {
@@ -191,13 +192,7 @@ export const registerCmsEditorialAuthoringContextRoutes = <E extends Env>(
       query: query.value,
       resource: result.value,
     });
-    if (!parsed.success)
-      return fail({
-        ok: false,
-        status: 502,
-        code: 'BAD_GATEWAY',
-        message: 'The CMS editorial dependency returned invalid data.',
-      });
+    if (!parsed.success) return fail(INVALID_DEPENDENCY_RESPONSE);
     const resource = parsed.data.resource;
     const selectedVersionId = resource.selectedType?.contentTypeVersionId;
     if (
@@ -206,12 +201,7 @@ export const registerCmsEditorialAuthoringContextRoutes = <E extends Env>(
         (type) => type.contentTypeVersionId === selectedVersionId,
       )
     )
-      return fail({
-        ok: false,
-        status: 502,
-        code: 'BAD_GATEWAY',
-        message: 'The CMS editorial dependency returned invalid data.',
-      });
+      return fail(INVALID_DEPENDENCY_RESPONSE);
     const allTypes = [
       ...resource.creatableTypes,
       ...(resource.selectedType === null ? [] : [resource.selectedType]),
@@ -224,12 +214,7 @@ export const registerCmsEditorialAuthoringContextRoutes = <E extends Env>(
         ].includes('cms.schema_registry.read'),
       )
     )
-      return fail({
-        ok: false,
-        status: 502,
-        code: 'BAD_GATEWAY',
-        message: 'The CMS editorial dependency returned invalid data.',
-      });
+      return fail(INVALID_DEPENDENCY_RESPONSE);
     const body = JSON.stringify(resource);
     let digest: string;
     try {

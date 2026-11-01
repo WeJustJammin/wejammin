@@ -18,6 +18,7 @@ import {
   cmsEditorialContextFor,
   type CmsEditorialPortInput,
 } from './cms-editorial-production-session';
+import { validateWorkflowPortInput } from './cms-editorial-production-workflow';
 
 /**
  * Reject caller-supplied authority before the body reaches the RPC. BE03b
@@ -207,6 +208,8 @@ export const validateCmsEditorialPortInput = (
         { reasonCode: 'authoring_context_precondition_invalid' },
       );
   }
+  const workflow = validateWorkflowPortInput(input, expectedOperationId);
+  if (workflow !== null) return workflow;
   if (input.ifMatch !== undefined && !BARE_VERSION_PATTERN.test(input.ifMatch))
     return errorResult(
       400,
@@ -290,6 +293,9 @@ const cmsEditorialRpcBodyUnchecked = (
   ...(expectedVersion === undefined
     ? {}
     : { expectedVersion, ifMatch: input.ifMatch }),
+  // Server-built proof: it follows the browser members so it can never be
+  // shadowed by one (the route body schemas are strict and refuse the key).
+  ...(input.evidence === undefined ? {} : { evidence: input.evidence }),
   context: cmsEditorialContextFor(input, contexts, now),
 });
 

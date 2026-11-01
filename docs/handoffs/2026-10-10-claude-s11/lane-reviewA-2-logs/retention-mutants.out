@@ -1,0 +1,203 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret.test.tsx (6 tests | 1 failed) 2246ms
+     × [P2-S11-AC-037] keeps the chosen decision and the typed reason after a definite 409 refusal and re-sends them 957ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason through an unknown outcome and re-sends them under the same key 267ms
+     ✓ [P2-S11-AC-037] has no typed input to lose, and a definite refusal leaves the same preparation to send again 196ms
+     ✓ [P2-S11-AC-037] re-sends the same request under the same key after an unknown outcome 142ms
+     ✓ [P2-S11-AC-043] keeps the audience and route after a definite 409 refusal and re-sends them  469ms
+     ✓ [P2-S11-AC-043] keeps the audience and route through an unknown outcome and re-sends them under the same key 183ms
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M2unknown-ret.test.tsx (6 tests | 1 failed) 2519ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason after a definite 409 refusal and re-sends them  995ms
+     × [P2-S11-AC-037] keeps the chosen decision and the typed reason through an unknown outcome and re-sends them under the same key 315ms
+     ✓ [P2-S11-AC-037] has no typed input to lose, and a definite refusal leaves the same preparation to send again 182ms
+     ✓ [P2-S11-AC-037] re-sends the same request under the same key after an unknown outcome 199ms
+     ✓ [P2-S11-AC-043] keeps the audience and route after a definite 409 refusal and re-sends them  515ms
+     ✓ [P2-S11-AC-043] keeps the audience and route through an unknown outcome and re-sends them under the same key 285ms
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M2unknown-ret-time.test.tsx (5 tests | 2 failed) 6822ms
+     ✓ [P2-S11-AC-040] keeps the action, local time, zone and audience after a definite 409 refusal and re-sends them  2972ms
+     ✓ [P2-S11-AC-040] keeps every entry after a 422 that names a field, and the named field is marked  2120ms
+     × [P2-S11-AC-040] keeps every entry through an unknown outcome and re-sends them under the same key 1273ms
+     ✓ [P2-S11-AC-043] keeps the audience after a definite 409 refusal and re-sends it 200ms
+     × [P2-S11-AC-043] keeps the audience through an unknown outcome and re-sends it under the same key 223ms
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret-time.test.tsx (5 tests | 3 failed) 7917ms
+     × [P2-S11-AC-040] keeps the action, local time, zone and audience after a definite 409 refusal and re-sends them 3471ms
+     × [P2-S11-AC-040] keeps every entry after a 422 that names a field, and the named field is marked 2039ms
+     ✓ [P2-S11-AC-040] keeps every entry through an unknown outcome and re-sends them under the same key  1987ms
+     × [P2-S11-AC-043] keeps the audience after a definite 409 refusal and re-sends it 206ms
+     ✓ [P2-S11-AC-043] keeps the audience through an unknown outcome and re-sends it under the same key 189ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 7 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret-time.test.tsx > CMS-03B-07 schedule form keeps its entries > [P2-S11-AC-040] keeps the action, local time, zone and audience after a definite 409 refusal and re-sends them
+AssertionError: expected { action: 'publish', local: '', …(2) } to deeply equal { action: 'expire', …(3) }
+
+- Expected
++ Received
+
+  {
+-   "action": "expire",
+-   "audience": "staff",
+-   "local": "2026-11-02T09:30",
+-   "zone": "America/New_York",
++   "action": "publish",
++   "audience": "",
++   "local": "",
++   "zone": "",
+  }
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret-time.test.tsx:171:41
+    169|     expect(refusalKind(container)).toBe('refetch');
+    170|     expect(refetch).toHaveBeenCalledTimes(1);
+    171|     expect(scheduleControls(container)).toEqual(ENTERED_SCHEDULE);
+       |                                         ^
+    172|
+    173|     await click(buttonNamed(container, 'Schedule'));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/7]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret-time.test.tsx > CMS-03B-07 schedule form keeps its entries > [P2-S11-AC-040] keeps every entry after a 422 that names a field, and the named field is marked
+AssertionError: expected { action: 'publish', local: '', …(2) } to deeply equal { action: 'expire', …(3) }
+
+- Expected
++ Received
+
+  {
+-   "action": "expire",
+-   "audience": "staff",
+-   "local": "2026-11-02T09:30",
+-   "zone": "America/New_York",
++   "action": "publish",
++   "audience": "",
++   "local": "",
++   "zone": "",
+  }
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret-time.test.tsx:209:41
+    207|       ),
+    208|     ).toBe('true');
+    209|     expect(scheduleControls(container)).toEqual(ENTERED_SCHEDULE);
+       |                                         ^
+    210|     await click(buttonNamed(container, 'Schedule'));
+    211|     await flush();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/7]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret-time.test.tsx > CMS-03B-09 publish confirmation keeps its entry > [P2-S11-AC-043] keeps the audience after a definite 409 refusal and re-sends it
+AssertionError: expected '' to be 'members' // Object.is equality
+
+- Expected
++ Received
+
+- members
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret-time.test.tsx:287:68
+    285|     expect(refusalKind(container)).toBe('refetch');
+    286|     expect(refetch).toHaveBeenCalledTimes(1);
+    287|     expect(byLabel<HTMLInputElement>(container, 'Audience').value).toB…
+       |                                                                    ^
+    288|       'members',
+    289|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/7]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret.test.tsx > CMS-03B-06 decision form keeps its entries > [P2-S11-AC-037] keeps the chosen decision and the typed reason after a definite 409 refusal and re-sends them
+AssertionError: expected { reject: false, approve: false, …(1) } to deeply equal { reject: true, approve: false, …(1) }
+
+- Expected
++ Received
+
+  {
+    "approve": false,
+-   "reason": "Needs a clearer headline.",
+-   "reject": true,
++   "reason": "",
++   "reject": false,
+  }
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M1refusal-ret.test.tsx:135:41
+    133|     expect(refusalKind(container)).toBe('refetch');
+    134|     expect(refetch).toHaveBeenCalledTimes(1);
+    135|     expect(decisionControls(container)).toEqual({
+       |                                         ^
+    136|       reject: true,
+    137|       approve: false,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/7]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M2unknown-ret-time.test.tsx > CMS-03B-07 schedule form keeps its entries > [P2-S11-AC-040] keeps every entry through an unknown outcome and re-sends them under the same key
+AssertionError: expected { action: 'publish', local: '', …(2) } to deeply equal { action: 'expire', …(3) }
+
+- Expected
++ Received
+
+  {
+-   "action": "expire",
+-   "audience": "staff",
+-   "local": "2026-11-02T09:30",
+-   "zone": "America/New_York",
++   "action": "publish",
++   "audience": "",
++   "local": "",
++   "zone": "",
+  }
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M2unknown-ret-time.test.tsx:225:41
+    223|       container.querySelector('[data-cms-workflow-status]')?.textConte…
+    224|     ).toBe('The current state is loaded. You can retry the same reques…
+    225|     expect(scheduleControls(container)).toEqual(ENTERED_SCHEDULE);
+       |                                         ^
+    226|     await click(buttonNamed(container, 'Retry the same request'));
+    227|     await flush();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[5/7]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M2unknown-ret-time.test.tsx > CMS-03B-09 publish confirmation keeps its entry > [P2-S11-AC-043] keeps the audience through an unknown outcome and re-sends it under the same key
+AssertionError: expected '' to be 'members' // Object.is equality
+
+- Expected
++ Received
+
+- members
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M2unknown-ret-time.test.tsx:306:68
+    304|     await click(buttonNamed(container, 'Confirm publish'));
+    305|     await flush();
+    306|     expect(byLabel<HTMLInputElement>(container, 'Audience').value).toB…
+       |                                                                    ^
+    307|       'members',
+    308|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[6/7]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M2unknown-ret.test.tsx > CMS-03B-06 decision form keeps its entries > [P2-S11-AC-037] keeps the chosen decision and the typed reason through an unknown outcome and re-sends them under the same key
+AssertionError: expected { reject: false, approve: false, …(1) } to deeply equal { reject: true, approve: false, …(1) }
+
+- Expected
++ Received
+
+  {
+    "approve": false,
+-   "reason": "Needs a clearer headline.",
+-   "reject": true,
++   "reason": "",
++   "reject": false,
+  }
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-M2unknown-ret.test.tsx:166:41
+    164|       container.querySelector('[data-cms-workflow-status]')?.textConte…
+    165|     ).toBe('The current state is loaded. You can retry the same reques…
+    166|     expect(decisionControls(container)).toEqual({
+       |                                         ^
+    167|       reject: true,
+    168|       approve: false,
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[7/7]⎯
+
+
+ Test Files  4 failed (4)
+      Tests  7 failed | 15 passed (22)
+   Start at  18:02:04
+   Duration  72.38s (transform 37.56s, setup 0ms, import 80.43s, tests 19.50s, environment 35.46s)
+

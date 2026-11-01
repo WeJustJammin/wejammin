@@ -17,7 +17,8 @@
     "@wejammin/contracts": "workspace:*",
     "@wejammin/observability": "workspace:*",
     "hono": "4.13.5",
-    "jose": "6.2.10"
+    "jose": "6.2.10",
+    "zod": "4.4.3"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "5.20260829.1",

@@ -23,6 +23,8 @@ import {
   mountElement,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
+import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
 import CmsEditorialConflictResolveIsland from './CmsEditorialConflictResolveIsland';
 import {
   conflictDetailBody,
@@ -44,6 +46,7 @@ import { fieldUuid } from '../cms-editorial-fields/cms-field-fixtures.test-suppo
 import { takeCmsEditorialResult } from './cms-editorial-result-handoff';
 
 beforeAll(enableReactAct);
+beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 beforeEach(() => {
   document.cookie = 'wj_csrf=csrf-token';
@@ -72,7 +75,7 @@ const paths: readonly ConflictPathOptions[] = [
 const init = () =>
   conflictInitFrom(
     ConflictDetailResourceSchema.parse(conflictDetailBody({ paths })),
-    editorFields(),
+    describeCmsAuthoringFields(editorFields()),
   );
 
 const resolved = () =>

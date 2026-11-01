@@ -382,7 +382,7 @@ describe('CMS-03B-04 production restore port (RED: seam still returns 503)', () 
     expect(result).toMatchObject({
       ok: false,
       status: 502,
-      code: 'BAD_GATEWAY',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
 });

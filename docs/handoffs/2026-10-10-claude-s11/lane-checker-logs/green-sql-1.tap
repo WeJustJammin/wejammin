@@ -1,0 +1,628 @@
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:15: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:99: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:99: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:110: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:127: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:129: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:157: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:174: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:180: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:186: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql:187: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_checker_render_plan.sql ...... 
+{"created": true, "personId": "e8b18b23-b950-439e-8278-7d1d7bbecf7c", "contextKind": "self", "accountState": "active", "actingPartyId": "e8b18b23-b950-439e-8278-7d1d7bbecf7c", "bindingVersion": 1}
+{"created": true, "personId": "a82bde26-845e-4a40-9ccb-78380fd408df", "contextKind": "self", "accountState": "active", "actingPartyId": "a82bde26-845e-4a40-9ccb-78380fd408df", "bindingVersion": 1}
+{"created": true, "personId": "53e99e25-f2b5-41b3-b970-98690f802399", "contextKind": "self", "accountState": "active", "actingPartyId": "53e99e25-f2b5-41b3-b970-98690f802399", "bindingVersion": 1}
+{"created": true, "personId": "ab358a3e-8701-49b0-83d1-c58fce46b9d6", "contextKind": "self", "accountState": "active", "actingPartyId": "ab358a3e-8701-49b0-83d1-c58fce46b9d6", "bindingVersion": 1}
+
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+{"created": true, "personId": "825fc08a-ff25-48d9-8cd7-c7b7767e911c", "contextKind": "self", "accountState": "active", "actingPartyId": "825fc08a-ff25-48d9-8cd7-c7b7767e911c", "bindingVersion": 1}
+{"created": true, "personId": "6530ba62-b077-4ec2-932f-958ef1dde038", "contextKind": "self", "accountState": "active", "actingPartyId": "6530ba62-b077-4ec2-932f-958ef1dde038", "bindingVersion": 1}
+{"created": true, "personId": "1b9f7750-a5b2-4ed7-a31f-b4f728022c79", "contextKind": "self", "accountState": "active", "actingPartyId": "1b9f7750-a5b2-4ed7-a31f-b4f728022c79", "bindingVersion": 1}
+{"created": true, "personId": "3bee0f98-0619-400d-aad9-cdb4157213ce", "contextKind": "self", "accountState": "active", "actingPartyId": "3bee0f98-0619-400d-aad9-cdb4157213ce", "bindingVersion": 1}
+{"created": true, "personId": "b6d30ff3-4647-4756-a209-ef4cb6987883", "contextKind": "self", "accountState": "active", "actingPartyId": "b6d30ff3-4647-4756-a209-ef4cb6987883", "bindingVersion": 1}
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+a9200000-0000-4000-8000-d92edd1b9139
+a9200000-0000-4000-8000-0efe4591326c
+a9200000-0000-4000-8000-a0c685ef3882
+{"terms": [], "blocks": [], "schema": {"id": "085ce01f-12d5-4a2f-af63-505a71bbeefd", "hash": "de08830883dd6150ca93b3dca91ada6278ba41a77931ea0ba6ed25c4928b9080", "validatorRefs": [{"key": "rich_text.v1", "version": "1"}], "schemaArtifact": {"id": "ba89671b-04cc-40ee-b04b-69274f0322b4", "artifactHash": "de08830883dd6150ca93b3dca91ada6278ba41a77931ea0ba6ed25c4928b9080", "zodContractRef": "cms/content-type/h11doc/v1", "compilerVersion": "1", "contentTypeVersionId": "085ce01f-12d5-4a2f-af63-505a71bbeefd"}, "workflowPolicy": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "06eb5a1a2d717fd611c8909f330d4496788a6648fb771307f0ca7f1d1d0359cf", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}, "activationEvidence": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}}, "checker": {"key": "cms.a11y.structural", "version": "1"}, "patterns": [], "settings": {"hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945", "version": "1"}, "template": null, "relations": [], "localeSources": []}
+{"terms": [], "blocks": [], "schema": {"id": "085ce01f-12d5-4a2f-af63-505a71bbeefd", "hash": "de08830883dd6150ca93b3dca91ada6278ba41a77931ea0ba6ed25c4928b9080", "validatorRefs": [{"key": "rich_text.v1", "version": "1"}], "schemaArtifact": {"id": "ba89671b-04cc-40ee-b04b-69274f0322b4", "artifactHash": "de08830883dd6150ca93b3dca91ada6278ba41a77931ea0ba6ed25c4928b9080", "zodContractRef": "cms/content-type/h11doc/v1", "compilerVersion": "1", "contentTypeVersionId": "085ce01f-12d5-4a2f-af63-505a71bbeefd"}, "workflowPolicy": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "06eb5a1a2d717fd611c8909f330d4496788a6648fb771307f0ca7f1d1d0359cf", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}, "activationEvidence": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}}, "checker": {"key": "cms.a11y.structural", "version": "1"}, "patterns": [], "settings": {"hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945", "version": "1"}, "template": null, "relations": [], "localeSources": []}
+{"terms": [], "blocks": [{"id": "a9200000-0000-4000-8000-0000000b0001", "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, {"id": "a9200000-0000-4000-8000-0000000b0002", "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, {"id": "a9200000-0000-4000-8000-0000000b0004", "hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}], "schema": {"id": "085ce01f-12d5-4a2f-af63-505a71bbeefd", "hash": "de08830883dd6150ca93b3dca91ada6278ba41a77931ea0ba6ed25c4928b9080", "validatorRefs": [{"key": "rich_text.v1", "version": "1"}], "schemaArtifact": {"id": "ba89671b-04cc-40ee-b04b-69274f0322b4", "artifactHash": "de08830883dd6150ca93b3dca91ada6278ba41a77931ea0ba6ed25c4928b9080", "zodContractRef": "cms/content-type/h11doc/v1", "compilerVersion": "1", "contentTypeVersionId": "085ce01f-12d5-4a2f-af63-505a71bbeefd"}, "workflowPolicy": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "06eb5a1a2d717fd611c8909f330d4496788a6648fb771307f0ca7f1d1d0359cf", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}, "activationEvidence": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}}, "checker": {"key": "cms.a11y.structural", "version": "1"}, "patterns": [], "settings": {"hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945", "version": "1"}, "template": {"id": "a9200000-0000-4000-8000-0000000d0001", "hash": "9999999999999999999999999999999999999999999999999999999999999999"}, "relations": [], "localeSources": []}
+ok 10 - fixture: the stored key order of the object value (lead, note, label) differs from the order its structure declares (note, label, lead)
+ok 11 - an object field with rich text loads for the submit phase [P2-S11-AC-101]
+ok 12 - the nodes are meta#note, meta#lead, body: object properties in DECLARED order at the field's editor position (1), ahead of body (3) although body sorts first by key and meta is stored lead-first [P2-S11-AC-100] [P2-S11-AC-101]
+ok 13 - a property node is exactly { kind, fieldId, propertyKey, fieldKind rich_text, value } with the stored rich_text.v1 of that property verbatim: its heading and its link reach the checker [P2-S11-AC-101]
+ok 14 - a whole rich_text value keeps its four-member node shape (no propertyKey) [P2-S11-AC-101]
+ok 15 - a scalar property and another locale's value are never nodes [P2-S11-AC-101]
+ok 16 - loading twice answers the identical document [P2-S11-AC-101]
+ok 17 - an object field without any rich_text property value adds no node [P2-S11-AC-101]
+ok 18 - cms_revision_render_plan is a private SECURITY DEFINER nobody (not even service_role) can execute [P2-S11-AC-101]
+ok 19 - the plan rows are the stable location identities in render order [P2-S11-AC-100]
+ok 20 - every node is its plan identity plus its payload: the load adds no order and no identity of its own [P2-S11-AC-100]
+ok 21 - renderPlanHash is the independent vector sha256 of {"nodes":[meta#note,meta#lead,body],"templateVersionId":null}: the value the Worker render-plan test pins [P2-S11-AC-100]
+ok 22 - and it is the hash of exactly the plan the rows name [P2-S11-AC-100]
+ok 23 - with a template the plan is the fields (properties nested at their field), then the instances by slot and path [P2-S11-AC-100]
+ok 24 - the render-plan hash binds the template version and the block identities (independent vector) [P2-S11-AC-100]
+ok 25 - plan positions are 1..n without a gap [P2-S11-AC-100]
+ok 26 - declaring lead before note moves the nodes and changes the render-plan hash [P2-S11-AC-100]
+ok 27 - giving body the editor position 0 renders it ahead of the object field [P2-S11-AC-100]
+ok 28 - the load writes nothing: no audit record, event, reservation, review, schedule or publication is created or changed [P2-S11-AC-101]
+1..28
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:10: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:11: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:12: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:83: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:94: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:134: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:138: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:150: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:157: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:161: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:172: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:212: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:213: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:215: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:234: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:235: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:257: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:260: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:262: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql:263: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_gate.sql ........... 
+1..36
+{"created": true, "personId": "61655e95-83d3-451f-af41-6e8887ff2814", "contextKind": "self", "accountState": "active", "actingPartyId": "61655e95-83d3-451f-af41-6e8887ff2814", "bindingVersion": 1}
+{"created": true, "personId": "2883e8de-6117-48c7-8a04-1f97cd7be392", "contextKind": "self", "accountState": "active", "actingPartyId": "2883e8de-6117-48c7-8a04-1f97cd7be392", "bindingVersion": 1}
+{"created": true, "personId": "19cdb29f-b4b6-4b43-a932-254c10b807bb", "contextKind": "self", "accountState": "active", "actingPartyId": "19cdb29f-b4b6-4b43-a932-254c10b807bb", "bindingVersion": 1}
+{"created": true, "personId": "f6b33dbc-2a83-4921-b6e1-0962674094d9", "contextKind": "self", "accountState": "active", "actingPartyId": "f6b33dbc-2a83-4921-b6e1-0962674094d9", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+{"created": true, "personId": "76a96e72-d29c-4905-a884-e6e47cfda94e", "contextKind": "self", "accountState": "active", "actingPartyId": "76a96e72-d29c-4905-a884-e6e47cfda94e", "bindingVersion": 1}
+{"created": true, "personId": "33588715-e51b-47eb-a300-6e83f1346ec0", "contextKind": "self", "accountState": "active", "actingPartyId": "33588715-e51b-47eb-a300-6e83f1346ec0", "bindingVersion": 1}
+{"created": true, "personId": "8c70fd8a-625a-4b00-bea2-5e0f68c6b0c1", "contextKind": "self", "accountState": "active", "actingPartyId": "8c70fd8a-625a-4b00-bea2-5e0f68c6b0c1", "bindingVersion": 1}
+{"created": true, "personId": "767f88a6-91e5-4c72-9373-28b4fe668366", "contextKind": "self", "accountState": "active", "actingPartyId": "767f88a6-91e5-4c72-9373-28b4fe668366", "bindingVersion": 1}
+{"created": true, "personId": "7ff0cdb9-f455-4316-8846-cedaf65a3176", "contextKind": "self", "accountState": "active", "actingPartyId": "7ff0cdb9-f455-4316-8846-cedaf65a3176", "bindingVersion": 1}
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+a9200000-0000-4000-8000-47e2a2f68439
+a9200000-0000-4000-8000-32ab9b0995b0
+a9200000-0000-4000-8000-fadf4c64cad6
+a9200000-0000-4000-8000-2b1296e80dc7
+a9200000-0000-4000-8000-af4d60588603
+a9200000-0000-4000-8000-a7976b6c1022
+a9200000-0000-4000-8000-fb4e9d1685e7
+ok 10 - the load and its input builder are private SECURITY DEFINERs nobody can execute; the platform_api wrapper is executable by service_role only, never a browser route [P2-S11-AC-101]
+ok 11 - the SQL binding hash reproduces the independent vector of the accessibility module (revision 1111..., content hash a*64, dependency hash e*64) [P2-S11-AC-101]
+{"terms": [], "blocks": [{"id": "a9200000-0000-4000-8000-0000000b0001", "hash": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}, {"id": "a9200000-0000-4000-8000-0000000b0002", "hash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}, {"id": "a9200000-0000-4000-8000-0000000b0004", "hash": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd"}], "schema": {"id": "1738b4e9-8736-416e-bbcc-310334f51cf4", "hash": "de08830883dd6150ca93b3dca91ada6278ba41a77931ea0ba6ed25c4928b9080", "validatorRefs": [{"key": "rich_text.v1", "version": "1"}], "schemaArtifact": {"id": "176785be-8881-4ec0-8c60-46c379b24b2d", "artifactHash": "de08830883dd6150ca93b3dca91ada6278ba41a77931ea0ba6ed25c4928b9080", "zodContractRef": "cms/content-type/h11doc/v1", "compilerVersion": "1", "contentTypeVersionId": "1738b4e9-8736-416e-bbcc-310334f51cf4"}, "workflowPolicy": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "536de4d635d501516dd74d8ca92463e7f3ef4e49f96bfd7f812a3f0e838afe31", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}, "activationEvidence": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}}, "checker": {"key": "cms.a11y.structural", "version": "1"}, "patterns": [], "settings": {"hash": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945", "version": "1"}, "template": null, "relations": [], "localeSources": []}
+ok 12 - an entry assignee loads their revision for the submit phase [P2-S11-AC-101]
+ok 13 - the answer is exactly AccessibilityCheckerInput [P2-S11-AC-101]
+ok 14 - revision identity, locale and content hash come from the revision; the submit-phase dependency hash is the manifest rebuilt now [P2-S11-AC-101]
+ok 15 - the evidence bound to this document verifies: the database binding hash over the document equals the JCS hash the Worker computes [P2-S11-AC-101]
+ok 16 - a field node is exactly { kind, fieldId, fieldKind rich_text, value } with the stored rich_text.v1 value verbatim; the short_text title is not a node [P2-S11-AC-101]
+ok 17 - block nodes are the live (draft | active) instances, after the revision's field nodes (the render plan: fields, then instances by slot and path), ordered by path here (a superseded and a pending_diff instance are not rendered) [P2-S11-AC-101]
+ok 18 - a block node carries its key, integer version, registry release digest, lifecycle (supported by default), name rules and pointer: exactly the nine schema members [P2-S11-AC-101]
+ok 19 - a withdrawn block reports withdrawn [P2-S11-AC-101]
+ok 20 - nameRequired and the accessible_name prop definition come from the registry record and the name from the instance props; absent means false / false / null [P2-S11-AC-101]
+ok 21 - no media node ever appears in Phase 2 [P2-S11-AC-101]
+ok 22 - the document carries no author, owner, party or account identifier [P2-S11-AC-101]
+ok 23 - loading twice answers the identical document [P2-S11-AC-101]
+ok 24 - moving an instance changes the order and the render-plan hash [P2-S11-AC-101]
+ok 25 - with a template the instances follow its slot order (primary) and an instance in an unknown slot comes last [P2-S11-AC-101]
+ok 26 - the workflow_read phase is the submit phase: the same document for the same revision [P2-S11-AC-101]
+ok 27 - the schedule and publish phases bind to the approved review's FROZEN dependency hash (NOT_FOUND when there is no approved review) and need no manifest build; the submit phase of a revision whose manifest cannot be built (an unregistered block) is DEPENDENCY_UNAVAILABLE [P2-S11-AC-101]
+ok 28 - the schedule and publish phases load the same document; a block key/version missing from the registry reports unregistered with the digest the instance recorded [P2-S11-AC-101]
+ok 29 - the execute phase loads the schedule's revision for the sweep with no session, bound to the hash it was given [P2-S11-AC-101]
+ok 30 - a hash other than the schedule's frozen one, an absent schedule and a revision that is not the schedule's are NOT_FOUND; a context member on the service shape is INVALID_REQUEST [P2-S11-AC-101]
+ok 31 - an owner-party publisher and a reviewer assignee of a review of the revision hold the read scope [P2-S11-AC-101]
+ok 32 - a member with no scope, an unassigned reviewer, a non-member, an absent entry, a revision of another entry, an archived entry and another acting party are ONE indistinguishable NOT_FOUND [P2-S11-AC-101]
+ok 33 - a held entry loads; a revision id alone resolves its entry; neither an entry nor a revision is INVALID_REQUEST [P2-S11-AC-101]
+ok 34 - an unknown phase, a missing phase or context, an unknown member and a malformed id are INVALID_REQUEST [P2-S11-AC-101]
+ok 35 - a document above 1 MiB is the uniform NOT_FOUND (the Worker then sends no evidence) [P2-S11-AC-101]
+ok 36 - the load writes nothing: no audit record, event, reservation, review, schedule or publication is created or changed [P2-S11-AC-101]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_r8_api_surface.sql:1: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_r8_api_surface.sql:2: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_r8_api_surface.sql:3: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_r8_api_surface.sql ........... 
+ok 1 - the original set is exactly eight named operations [P2-S09-AC-180]
+ok 2 - no function is both original and amendment [P2-S09-AC-180]
+ok 3 - the four sets are disjoint [P2-S09-AC-180]
+ok 4 - every cms_ function of platform_api and public_api is classified: no unreviewed RPC is exposed [P2-S09-AC-180]
+ok 5 - every classified function exists in platform_api, so the lists carry no stale name [P2-S09-AC-180]
+ok 6 - public_api exposes no cms_ function [P2-S09-AC-180]
+ok 7 - all eight original RPCs are SECURITY DEFINER and executable by the service role [P2-S09-AC-180]
+ok 8 - neither anon nor PUBLIC can execute any original RPC [P2-S09-AC-180]
+ok 9 - the authenticated role executes exactly the five signed-in-human originals, not the other three (the migration's grant of all eight is revoked before it ends) [P2-S09-AC-180]
+ok 10 - every amendment and supporting RPC is service-role only: never anon, PUBLIC or authenticated [P2-S09-AC-180]
+ok 11 - anon and authenticated hold no INSERT, UPDATE or DELETE on any platform_private.cms_ table [P2-S09-AC-180]
+ok 12 - no API role can execute a spec-named but uncalled cms_ function [P2-S09-AC-180]
+ok 13 - the API-executable cms_ set is exactly the enumerated original, amendment and supporting RPCs [P2-S09-AC-180]
+ok 14 - every enumerated RPC is executable by an API role and nothing else is: 8 + 10 + 51 [P2-S09-AC-180]
+1..14
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_r3_grants_misc.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_r3_grants_misc.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_r3_grants_misc.sql:4: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_r3_grants_misc.sql ........... 
+{"created": true, "personId": "0105b701-85aa-44d8-892b-fbbbc0ca7e99", "contextKind": "self", "accountState": "active", "actingPartyId": "0105b701-85aa-44d8-892b-fbbbc0ca7e99", "bindingVersion": 1}
+{"created": true, "personId": "6433093a-c889-47c5-9e30-7ccdccbc9104", "contextKind": "self", "accountState": "active", "actingPartyId": "6433093a-c889-47c5-9e30-7ccdccbc9104", "bindingVersion": 1}
+{"created": true, "personId": "c4384367-7cca-4a17-aa9c-a3f99b62edd1", "contextKind": "self", "accountState": "active", "actingPartyId": "c4384367-7cca-4a17-aa9c-a3f99b62edd1", "bindingVersion": 1}
+{"created": true, "personId": "a9ff45e5-9857-4362-b454-79ee7eb6fbd6", "contextKind": "self", "accountState": "active", "actingPartyId": "a9ff45e5-9857-4362-b454-79ee7eb6fbd6", "bindingVersion": 1}
+{"created": true, "personId": "5bba81e0-8dce-4c90-9157-c3cfbbf26a94", "contextKind": "self", "accountState": "active", "actingPartyId": "5bba81e0-8dce-4c90-9157-c3cfbbf26a94", "bindingVersion": 1}
+{"created": true, "personId": "10d60656-fd8d-478b-87e9-f85a8fd3f030", "contextKind": "self", "accountState": "active", "actingPartyId": "10d60656-fd8d-478b-87e9-f85a8fd3f030", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+{"id": "dc388607-4828-483b-876f-59e9b16561a2", "state": "active", "endsAt": "2026-10-16T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:31.772118+00:00", "updatedAt": "2026-10-10T23:54:31.772118+00:00", "validFrom": "2026-10-10", "capability": "cms.author", "lastAction": "granted", "contentHash": "53a07f1c01f789d08b06162a95fd441ff5f0cd4d2bf256ec5af23c6227978fa4", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-15", "subjectPersonId": "c4384367-7cca-4a17-aa9c-a3f99b62edd1"}
+ok 1 - fixture: the owner grants rev1 (an owner-organization member) cms.author through CMS-03A-15
+true
+ok 2 - negative control: a forged row owned by ANOTHER organization names the owner-organization member rev1 as its subject [P2-S09-AC-616]
+{"items": [{"id": "dc388607-4828-483b-876f-59e9b16561a2", "state": "active", "endsAt": "2026-10-16T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:31.772118+00:00", "updatedAt": "2026-10-10T23:54:31.772118+00:00", "validFrom": "2026-10-10", "capability": "cms.author", "lastAction": "granted", "contentHash": "53a07f1c01f789d08b06162a95fd441ff5f0cd4d2bf256ec5af23c6227978fa4", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-15", "subjectPersonId": "c4384367-7cca-4a17-aa9c-a3f99b62edd1"}, {"id": "ad982492-30e6-4253-8a08-a82659f3560b", "state": "active", "endsAt": "2026-10-12T00:00:00+00:00", "reason": "dec108 test human", "version": "1", "createdAt": "2026-10-10T23:54:31.51844+00:00", "updatedAt": "2026-10-10T23:54:31.518441+00:00", "validFrom": "2026-10-10", "capability": "cms.schema_designer", "lastAction": "granted", "contentHash": "7bf00b569944aef858dce3b9a5c16a2f07efad745462779ae5e7bef58c50b017", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-11", "subjectPersonId": "6433093a-c889-47c5-9e30-7ccdccbc9104"}, {"id": "b5cbed51-838d-4c28-860e-53df50a6e788", "state": "active", "endsAt": "2026-10-13T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:31.21658+00:00", "updatedAt": "2026-10-10T23:54:31.21658+00:00", "validFrom": "2026-10-10", "capability": "cms.schema_designer", "lastAction": "granted", "contentHash": "506b46e3a58bb39fb5b5e33c5250e8fabcd1809a2ce4b8b804b70ff1b9ce4cbe", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-12", "subjectPersonId": "0105b701-85aa-44d8-892b-fbbbc0ca7e99"}, {"id": "9aaee227-e9e1-45fa-87d9-2ee282d8c144", "state": "active", "endsAt": "2026-10-13T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:31.215508+00:00", "updatedAt": "2026-10-10T23:54:31.215508+00:00", "validFrom": "2026-10-10", "capability": "cms.schema_registry.read", "lastAction": "granted", "contentHash": "72c5edfc0920a31491dce95b78f3ebb7f6c7e866f2e025303ef8715575ca90e7", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-12", "subjectPersonId": "0105b701-85aa-44d8-892b-fbbbc0ca7e99"}], "nextCursor": null}
+ok 3 - the owner list succeeds: it never emits 404 for the other organization row [P2-S09-AC-616]
+ok 4 - the other organization row is omitted although its subject is a member of the owner organization: only owner_id scoping can hide it [P2-S09-AC-616]
+ok 5 - the owner own aggregate for the same subject is returned [P2-S09-AC-616]
+ok 6 - the list returns exactly the rows owned by the owner organization [P2-S09-AC-616]
+ok 7 - after cms_grant_capability the actor-grant row equals the aggregate (active, valid_through) [P2-S09-AC-658]
+ok 8 - and the projection row exists [P2-S09-AC-658]
+ok 9 - fixture: a failing outbox write fails the grant command
+ok 10 - a rolled-back grant leaves neither the aggregate nor the projection row [P2-S09-AC-658]
+ok 11 - fixture: a failing outbox write fails the renew command
+ok 12 - a rolled-back renewal leaves the aggregate and the projection both unchanged and equal [P2-S09-AC-658]
+ok 13 - and still at the original validThrough [P2-S09-AC-658]
+ok 14 - fixture: a failing outbox write fails the revoke command
+ok 15 - a rolled-back revocation leaves the projection active [P2-S09-AC-658]
+{"id": "dc388607-4828-483b-876f-59e9b16561a2", "state": "active", "endsAt": "2026-10-20T00:00:00+00:00", "reason": null, "version": "2", "createdAt": "2026-10-10T23:54:31.772118+00:00", "updatedAt": "2026-10-10T23:54:32.231712+00:00", "validFrom": "2026-10-10", "capability": "cms.author", "lastAction": "renewed", "contentHash": "af091234e6afbe6b2f17e43957e54548bcf7ebed23b7022aa79bebdd1809ec5b", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-19", "subjectPersonId": "c4384367-7cca-4a17-aa9c-a3f99b62edd1"}
+ok 16 - fixture: the renewal succeeds once the outbox works
+ok 17 - after cms_renew_capability_grant the actor-grant row equals the aggregate [P2-S09-AC-658]
+ok 18 - and carries the renewed validThrough [P2-S09-AC-658]
+{"id": "dc388607-4828-483b-876f-59e9b16561a2", "state": "revoked", "endsAt": "2026-10-20T00:00:00+00:00", "reason": null, "version": "3", "createdAt": "2026-10-10T23:54:31.772118+00:00", "updatedAt": "2026-10-10T23:54:32.315098+00:00", "validFrom": "2026-10-10", "capability": "cms.author", "lastAction": "revoked", "contentHash": "0985fe7a3c47668efdfd73f091f1bb52225c2272f20d21900445ff2d73d1dffa", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-19", "subjectPersonId": "c4384367-7cca-4a17-aa9c-a3f99b62edd1"}
+ok 19 - fixture: the revocation succeeds
+ok 20 - after cms_revoke_capability_grant the actor-grant row equals the aggregate (inactive) [P2-S09-AC-658]
+ok 21 - and the projection is inactive [P2-S09-AC-658]
+ok 22 - role anon cannot INSERT into the actor-grant projection [P2-S09-AC-658]
+ok 23 - role authenticated cannot INSERT into the actor-grant projection [P2-S09-AC-658]
+ok 24 - role service_role cannot INSERT into the actor-grant projection [P2-S09-AC-658]
+ok 25 - role anon cannot UPDATE the actor-grant projection [P2-S09-AC-658]
+ok 26 - role authenticated cannot UPDATE the actor-grant projection [P2-S09-AC-658]
+ok 27 - role service_role cannot UPDATE the actor-grant projection [P2-S09-AC-658]
+ok 28 - role anon cannot DELETE from the actor-grant projection [P2-S09-AC-658]
+ok 29 - role authenticated cannot DELETE from the actor-grant projection [P2-S09-AC-658]
+ok 30 - role service_role cannot DELETE from the actor-grant projection [P2-S09-AC-658]
+ok 31 - the only writers of the actor-grant projection are the organization bootstrap, the owner initialization and cms_capability_grant_project [P2-S09-AC-658]
+ok 32 - only the grant, renew and revoke functions call the projection writer [P2-S09-AC-658]
+ok 33 - the exact writer set of the actor-grant projection over every schema is the organization bootstrap, the owner initialization and the single projection upsert [P2-S09-AC-658]
+ok 34 - no trigger on the actor-grant projection writes it back [P2-S09-AC-658]
+ok 35 - no rewrite rule redirects writes of the actor-grant projection [P2-S09-AC-658]
+ok 36 - no role other than the table owner and the NOLOGIN CMS definer that owns the single projection upsert holds a write privilege on the actor-grant projection [P2-S09-AC-658]
+ok 37 - the owner-initialization backfill writes the grant aggregate and never the actor-grant projection [P2-S09-AC-658]
+ok 38 - known answer 1: a scrambled-order policy member hashes to the independently computed canonical digest [P2-S09-AC-665]
+ok 39 - known answer 2: {"b":"é€","a":1} hashes over {"a":1,"b":"é€"} (UTF-8, no escaping of non-ASCII) [P2-S09-AC-665]
+ok 40 - known answer 3: RFC 8785 string escaping (\u000f, \n, quote, backslash, unescaped solidus) [P2-S09-AC-665]
+ok 41 - known answer 4: literals and arrays keep order while object keys sort [P2-S09-AC-665]
+ok 42 - known answer 5: empty array and object [P2-S09-AC-665]
+ok 43 - a one-value change changes the digest [P2-S09-AC-665]
+ok 44 - the BE03a-named API has exactly eighteen members [P2-S09-AC-685]
+ok 45 - every one of the eighteen named RPCs exists in platform_api [P2-S09-AC-685]
+ok 46 - all eighteen are SECURITY DEFINER [P2-S09-AC-685]
+ok 47 - the service role (the named capability grantee) can execute all eighteen [P2-S09-AC-685]
+ok 48 - neither anon nor PUBLIC can execute any of the eighteen [P2-S09-AC-685]
+ok 49 - the authenticated role can execute exactly the five signed-in-human RPCs (draft, field, relation, list, detail) and none of the other thirteen [P2-S09-AC-685]
+ok 50 - no platform_api cms_ function of any slice is non-definer or executable by anon/PUBLIC [P2-S09-AC-685]
+ok 51 - anon and authenticated hold no INSERT, UPDATE or DELETE on any platform_private.cms_ table [P2-S09-AC-685]
+ok 52 - every checked table has RLS enabled [P2-S09-AC-685]
+{"id": "16458674-e05c-41e9-b76c-fb283a53d379", "label": "DEC-108 r3_tmplbind", "state": "draft", "typeKey": "r3_tmplbind", "version": "1", "dryRunId": null, "createdAt": "2026-10-10T23:54:30.805442+00:00", "updatedAt": "2026-10-10T23:54:30.805442+00:00", "fieldCount": 1, "contentHash": "dc14c336162d968c2fcd51ebe1092def757a2e6e2fb92e5cb69fa98b21f3131d", "workflowKey": "editorial", "resourceKind": "content_type_version", "sourceLocale": "en-US", "compatibility": "additive", "contentTypeId": "90fbab02-6cef-423e-be3d-341f28c62635", "defaultLocale": "en-US", "relationCount": 0, "fallbackChains": {}, "ownerCapability": "cms.schema_designer", "workflowVersion": "1", "localeConfigHash": "604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860", "schemaArtifactId": "5ad0db9f-a088-4e1f-bb3c-3510b7c6156c", "supportedLocales": ["en-US"], "activationEvidence": null, "capabilityBindingCount": 0, "defaultTemplateVersionId": null}
+{"id": "16458674-e05c-41e9-b76c-fb283a53d379", "jobId": null, "state": "active", "version": "5", "createdAt": "2026-10-10T23:54:30.805442+00:00", "eventType": "cms.schema.activated.v1", "updatedAt": "2026-10-10T23:54:35.571431+00:00", "activatedAt": "2026-10-10T23:54:35.571431+00:00", "contentHash": "176911a722d207a6e82800a9fd3c1260d5710bc7592c051dd76857813e117757", "migrationPlanId": "fd9f8e97-4e8b-41b5-b52a-b675b5cee531", "localeConfigHash": "604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860", "activationEvidence": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "75dc48b50fa0d63fce73ba50c6be5017556b15dfa3e4d54e4d4817cb7f75f94f", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}, "contentTypeVersionId": "16458674-e05c-41e9-b76c-fb283a53d379"}
+{"id": "1cf2ec1d-929f-447f-8238-eb427a7fd531", "state": "draft", "version": "1", "createdAt": "2026-10-10T23:54:35.634Z", "updatedAt": "2026-10-10T23:54:35.634Z", "contentHash": "633cd72b945b183e9e997f27080acafac5f3ff6d398445f4e7347180860b92c7", "templateKey": "r3-tmpl-bind", "reservedRegions": ["header", "now", "record", "detail", "provenance"], "templateVersion": 1, "compatibleTypeIds": ["90fbab02-6cef-423e-be3d-341f28c62635"], "blockRegistryDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"}
+{"id": "51d92068-7afe-42c4-8038-da580293de9b", "label": "DEC-108 r3_tmplbind", "state": "draft", "typeKey": "r3_tmplbind", "version": "1", "dryRunId": null, "createdAt": "2026-10-10T23:54:30.805442+00:00", "updatedAt": "2026-10-10T23:54:35.812591+00:00", "fieldCount": 1, "contentHash": "0e3f7d3139531210a0d859f8f4d0f4e3504c0543aba1c3d0598e7306def9fbea", "workflowKey": "editorial", "resourceKind": "content_type_version", "sourceLocale": "en-US", "compatibility": "unknown", "contentTypeId": "90fbab02-6cef-423e-be3d-341f28c62635", "defaultLocale": "en-US", "relationCount": 0, "fallbackChains": {}, "ownerCapability": "cms.schema_designer", "workflowVersion": "1", "localeConfigHash": "604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860", "schemaArtifactId": "78fc9a03-14da-4c80-8bd8-65d9f87b7704", "supportedLocales": ["en-US"], "activationEvidence": null, "capabilityBindingCount": 0, "defaultTemplateVersionId": "1cf2ec1d-929f-447f-8238-eb427a7fd531"}
+ok 53 - fixture: CMS-03A-09 wrote the template binding of the successor
+{"id": "51d92068-7afe-42c4-8038-da580293de9b", "jobId": null, "state": "active", "version": "5", "createdAt": "2026-10-10T23:54:30.805442+00:00", "eventType": "cms.schema.activated.v1", "updatedAt": "2026-10-10T23:54:36.551334+00:00", "activatedAt": "2026-10-10T23:54:36.551334+00:00", "contentHash": "519250b5f46e14406dbee32b2c36b89949a7e6163befd42e15b17402dc43bdc5", "migrationPlanId": "d27e32d6-4f96-468b-b855-b0517fb02b97", "localeConfigHash": "604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860", "activationEvidence": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "38aa9966d922e73b67c845b9f6ad48d6c8337d6f86a3aaf7f3b97f3fa011793c", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}, "contentTypeVersionId": "51d92068-7afe-42c4-8038-da580293de9b"}
+ok 54 - fixture: the bound version is active through the real chain
+ok 55 - fixture: one producer-made binding row on the activated version
+true
+ok 56 - UPDATE of a binding of an activated version raises IMMUTABLE_RECORD with the guards enabled [P2-S09-AC-169]
+ok 57 - DELETE of a binding of an activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]
+ok 58 - INSERT of a binding into an activated version raises IMMUTABLE_RECORD [P2-S09-AC-169]
+ok 59 - the activated version still has exactly its one binding [P2-S09-AC-169]
+{"id": "23cc7dfd-4229-4407-8a5d-288f39d6a96f", "label": "DEC-108 r3_tmplbind2", "state": "draft", "typeKey": "r3_tmplbind2", "version": "1", "dryRunId": null, "createdAt": "2026-10-10T23:54:30.805442+00:00", "updatedAt": "2026-10-10T23:54:30.805442+00:00", "fieldCount": 1, "contentHash": "13c14f987835ef9910cda8106d0e9a595799d60e9d4ccda02b07cb30d42a58ed", "workflowKey": "editorial", "resourceKind": "content_type_version", "sourceLocale": "en-US", "compatibility": "additive", "contentTypeId": "b0bba14e-ff1b-4c06-9d86-2963167c3ed7", "defaultLocale": "en-US", "relationCount": 0, "fallbackChains": {}, "ownerCapability": "cms.schema_designer", "workflowVersion": "1", "localeConfigHash": "604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860", "schemaArtifactId": "d169b3b5-a910-4a90-bc26-1a16f723df27", "supportedLocales": ["en-US"], "activationEvidence": null, "capabilityBindingCount": 0, "defaultTemplateVersionId": null}
+{"id": "23cc7dfd-4229-4407-8a5d-288f39d6a96f", "jobId": null, "state": "active", "version": "5", "createdAt": "2026-10-10T23:54:30.805442+00:00", "eventType": "cms.schema.activated.v1", "updatedAt": "2026-10-10T23:54:37.269489+00:00", "activatedAt": "2026-10-10T23:54:37.26949+00:00", "contentHash": "962cdaf1b9d978008431370667e4dff1b497a398a25f9cd590dab2c1474369f5", "migrationPlanId": "726aed89-8929-4fcc-b90a-9d96e0ad40c8", "localeConfigHash": "604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860", "activationEvidence": {"key": "editorial", "version": "1", "riskClass": "ordinary", "policyHash": "36204fade3bb296a5bbf7cb412dd1cc30fe945d7b28ef3a8ddebec2feeb71d1f", "approvalEvidenceHash": "59c6e90cefb3ea53d98cb352ef76f22899b8789af267fc14f79a4a8d0d1d0166", "requiredCapabilities": ["cms.reviewer"], "requiredDecisionCount": 1}, "contentTypeVersionId": "23cc7dfd-4229-4407-8a5d-288f39d6a96f"}
+{"id": "df75c634-3df1-4bc6-bd5b-c6d85aaabb9d", "state": "draft", "version": "1", "createdAt": "2026-10-10T23:54:37.287Z", "updatedAt": "2026-10-10T23:54:37.287Z", "contentHash": "e2b38bc5b085c5eef020ae9eed8be508c0cec4d0ba117fe8218c3e6afadf5ebf", "templateKey": "r3-tmpl-bind-two", "reservedRegions": ["header", "now", "record", "detail", "provenance"], "templateVersion": 1, "compatibleTypeIds": ["b0bba14e-ff1b-4c06-9d86-2963167c3ed7"], "blockRegistryDigest": "4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945"}
+{"id": "14cdb317-55f2-4b3f-a7ef-401fef1e8757", "label": "DEC-108 r3_tmplbind2", "state": "draft", "typeKey": "r3_tmplbind2", "version": "1", "dryRunId": null, "createdAt": "2026-10-10T23:54:30.805442+00:00", "updatedAt": "2026-10-10T23:54:37.399415+00:00", "fieldCount": 1, "contentHash": "a6db25f745af92a019ce8f34cdefbde1a6c1875338a967f529f7e5a8c8721372", "workflowKey": "editorial", "resourceKind": "content_type_version", "sourceLocale": "en-US", "compatibility": "unknown", "contentTypeId": "b0bba14e-ff1b-4c06-9d86-2963167c3ed7", "defaultLocale": "en-US", "relationCount": 0, "fallbackChains": {}, "ownerCapability": "cms.schema_designer", "workflowVersion": "1", "localeConfigHash": "604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860", "schemaArtifactId": "ab11e8e9-e282-40fc-aee6-d5144ed2188c", "supportedLocales": ["en-US"], "activationEvidence": null, "capabilityBindingCount": 0, "defaultTemplateVersionId": "df75c634-3df1-4bc6-bd5b-c6d85aaabb9d"}
+ok 60 - fixture: CMS-03A-09 wrote the draft successor binding the unique pair probe overrides
+ok 61 - the unique (parent version, template version) pair rejects a duplicate and accepts a different template [P2-S09-AC-169]
+1..61
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_grants.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_grants.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_grants.sql:4: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_grants.sql .......... 
+{"created": true, "personId": "6863e26f-6161-4623-baa4-62eb85253b6e", "contextKind": "self", "accountState": "active", "actingPartyId": "6863e26f-6161-4623-baa4-62eb85253b6e", "bindingVersion": 1}
+{"created": true, "personId": "70576b04-7bca-4be2-9582-331138547ca4", "contextKind": "self", "accountState": "active", "actingPartyId": "70576b04-7bca-4be2-9582-331138547ca4", "bindingVersion": 1}
+{"created": true, "personId": "f44bbb1e-3ed9-4177-8847-6d5af0860cc0", "contextKind": "self", "accountState": "active", "actingPartyId": "f44bbb1e-3ed9-4177-8847-6d5af0860cc0", "bindingVersion": 1}
+{"created": true, "personId": "6a9c0499-3f6a-48b2-85f6-654ee45346c7", "contextKind": "self", "accountState": "active", "actingPartyId": "6a9c0499-3f6a-48b2-85f6-654ee45346c7", "bindingVersion": 1}
+{"created": true, "personId": "47bcdd10-d3c1-41c8-92d9-490245b95f58", "contextKind": "self", "accountState": "active", "actingPartyId": "47bcdd10-d3c1-41c8-92d9-490245b95f58", "bindingVersion": 1}
+{"created": true, "personId": "adc95ccd-6803-46fd-9e0d-89f56f751af8", "contextKind": "self", "accountState": "active", "actingPartyId": "adc95ccd-6803-46fd-9e0d-89f56f751af8", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+ok 1 - CMS-03A-15 refuses a subject whose membership ended yesterday as an indistinguishable 404 [P2-S09-AC-507]
+ok 2 - the refused grant left every effect table unchanged [P2-S09-AC-507]
+{"id": "d6a10a95-1066-4e08-8fb3-9325f06f7b1f", "state": "active", "endsAt": "2026-10-21T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:38.772606+00:00", "updatedAt": "2026-10-10T23:54:38.772607+00:00", "validFrom": "2026-10-10", "capability": "cms.editor", "lastAction": "granted", "contentHash": "af5dbe19b93ba4cec3908a908c3ad641666c2c9e66b8855078dd10e5c85663b2", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-20", "subjectPersonId": "f44bbb1e-3ed9-4177-8847-6d5af0860cc0"}
+ok 3 - fixture: the editor grant is created
+ok 4 - CMS-03A-16 with a binding whose MFA is older than ten minutes is 401 STEP_UP_REQUIRED [P2-S09-AC-556]
+ok 5 - the stale-MFA renewal reserved nothing and changed nothing [P2-S09-AC-556]
+{"id": "d6a10a95-1066-4e08-8fb3-9325f06f7b1f", "state": "active", "endsAt": "2026-10-31T00:00:00+00:00", "reason": null, "version": "2", "createdAt": "2026-10-10T23:54:38.772606+00:00", "updatedAt": "2026-10-10T23:54:38.861119+00:00", "validFrom": "2026-10-10", "capability": "cms.editor", "lastAction": "renewed", "contentHash": "ab6c8def2734582caa9b9c9d3349fed772090e5318be59290a9800c5416e5856", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-30", "subjectPersonId": "f44bbb1e-3ed9-4177-8847-6d5af0860cc0"}
+ok 6 - fixture: the renewal with recent MFA succeeds
+ok 7 - CMS-03A-17 by a schema designer of the owner organization who is not the receipt-derived owner is 403 [P2-S09-AC-585]
+ok 8 - the refused revocation left the capability effective [P2-S09-AC-585]
+ok 9 - an exact same-key revoke retry returns the first response [P2-S09-AC-587]
+ok 10 - the revoke replay appended no second event [P2-S09-AC-587]
+{"id": "25fc9ef4-198b-4dcd-8e8e-9d48280e46a0", "state": "active", "endsAt": "2026-10-21T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:39.051896+00:00", "updatedAt": "2026-10-10T23:54:39.051897+00:00", "validFrom": "2026-10-10", "capability": "cms.navigation_editor", "lastAction": "granted", "contentHash": "47f9c3724ee697e5e1ce3fe5f6c1aec9037be9d2f8f09a5ed7965625887fe143", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-20", "subjectPersonId": "f44bbb1e-3ed9-4177-8847-6d5af0860cc0"}
+ok 11 - precondition: the navigation grant is effective
+ok 12 - a grant whose valid_from is still in the future confers no authority in any capability predicate [P2-S09-AC-584]
+ok 13 - a lapsed grant (valid_through before today) confers no authority [P2-S09-AC-584]
+ok 14 - a grant is effective on its first and last valid UTC day (valid_from <= today <= valid_through) [P2-S09-AC-584]
+ok 15 - a grant without a reason returns lastAction granted, reason null and subjectPersonId to the receipt-derived owner [P2-S09-AC-522]
+ok 16 - subjectPersonId is never returned to a non-owner: a non-owner designer reads no grant at all [P2-S09-AC-522]
+ok 17 - grant, renew and revoke each emit cms.capability.grant.changed.v1 with exactly { grantId, subjectPersonId } and aggregateVersion equal to the committed grant version [P2-S09-AC-687]
+ok 18 - each event row has its outbox row and each outbox row follows its committed aggregate, event row, projection and audit [P2-S09-AC-688]
+ok 19 - the revocation commits exactly one outbox row at the committed aggregate version 3 [P2-S09-AC-588]
+true
+{"items": [{"id": "25fc9ef4-198b-4dcd-8e8e-9d48280e46a0", "state": "active", "endsAt": "2026-10-11T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:39.051896+00:00", "updatedAt": "2026-10-10T23:54:39.051897+00:00", "validFrom": "2026-10-07", "capability": "cms.navigation_editor", "lastAction": "granted", "contentHash": "b399b6057115e2091d2585568bd2d3909343d7287de2f8b2103b8548924c2162", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-10", "subjectPersonId": "f44bbb1e-3ed9-4177-8847-6d5af0860cc0"}, {"id": "d6a10a95-1066-4e08-8fb3-9325f06f7b1f", "state": "revoked", "endsAt": "2026-10-31T00:00:00+00:00", "reason": null, "version": "3", "createdAt": "2026-10-10T23:54:38.772606+00:00", "updatedAt": "2026-10-10T23:54:38.964293+00:00", "validFrom": "2026-10-10", "capability": "cms.editor", "lastAction": "revoked", "contentHash": "8e38b1cb4e490a23a28661f87d8e886cbdf800fc54405eae482c4ba28232d909", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-30", "subjectPersonId": "f44bbb1e-3ed9-4177-8847-6d5af0860cc0"}, {"id": "9cdf0e76-2269-4804-ad55-d9e1b89735a2", "state": "active", "endsAt": "2026-10-12T00:00:00+00:00", "reason": "dec108 test human", "version": "1", "createdAt": "2026-10-10T23:54:38.480183+00:00", "updatedAt": "2026-10-10T23:54:38.480183+00:00", "validFrom": "2026-10-10", "capability": "cms.schema_designer", "lastAction": "granted", "contentHash": "0761ed457d1178d30659f01c4229e6729f775d4f969b2a3cd005d1c36f34c589", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-11", "subjectPersonId": "70576b04-7bca-4be2-9582-331138547ca4"}, {"id": "0c1984a4-9202-4bde-8b00-3065387c58dc", "state": "active", "endsAt": "2026-10-13T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:38.21721+00:00", "updatedAt": "2026-10-10T23:54:38.21721+00:00", "validFrom": "2026-10-10", "capability": "cms.schema_designer", "lastAction": "granted", "contentHash": "dd24a9e8ed91de269bfcae530e1cd68006be562142181f2130fcfe8048055c42", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-12", "subjectPersonId": "6863e26f-6161-4623-baa4-62eb85253b6e"}, {"id": "8f39c5e9-5a04-4030-a5f6-5397b4aa30a1", "state": "active", "endsAt": "2026-10-13T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:38.213906+00:00", "updatedAt": "2026-10-10T23:54:38.213906+00:00", "validFrom": "2026-10-10", "capability": "cms.schema_registry.read", "lastAction": "granted", "contentHash": "0d0aa6e8a99764041dc07b4c69587c7661ebc68afc7648dc266d3c74c502abd0", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-12", "subjectPersonId": "6863e26f-6161-4623-baa4-62eb85253b6e"}], "nextCursor": null}
+ok 20 - the owner list returns only the owner organization's aggregates and omits the other organization's row without emitting 404 [P2-S09-AC-616]
+ok 21 - the other organization's own designer is still not the receipt-derived owner of any organization [P2-S09-AC-616]
+ok 22 - only the projection writer, the organization bootstrap and the owner initialization write organization_actor_grant [P2-S09-AC-917]
+ok 23 - only cms_grant_capability, cms_renew_capability_grant and cms_revoke_capability_grant call the projection writer [P2-S09-AC-917]
+ok 24 - the organization bootstrap writer names no cms.* capability code [P2-S09-AC-917]
+ok 25 - the backfill creates exactly one aggregate: the grantable, finite, bounded CMS actor-grant row [P2-S09-AC-659]
+ok 26 - the backfilled aggregate is version 1, last_action granted, grantor the owner initialization receipt person [P2-S09-AC-659]
+ok 27 - an over-long term, a non-CMS code and a row with no end date are left to their projection [P2-S09-AC-659]
+ok 28 - the backfill wrote only one CMS aggregate and left the actor-grant projection byte-for-byte unchanged [P2-S09-AC-917]
+ok 29 - the backfill is idempotent: a second run inserts nothing [P2-S09-AC-659]
+ok 30 - an organization with no owner initialization receipt is never backfilled [P2-S09-AC-659]
+1..30
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_g1_consumer_boundary.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_g1_consumer_boundary.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_g1_consumer_boundary.sql:4: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_g1_consumer_boundary.sql ..... 
+{"created": true, "personId": "4828988e-9625-4c89-840a-582ed77037c1", "contextKind": "self", "accountState": "active", "actingPartyId": "4828988e-9625-4c89-840a-582ed77037c1", "bindingVersion": 1}
+{"created": true, "personId": "f8325ee1-42e3-47ad-b561-ff9a446f4c63", "contextKind": "self", "accountState": "active", "actingPartyId": "f8325ee1-42e3-47ad-b561-ff9a446f4c63", "bindingVersion": 1}
+{"created": true, "personId": "198725f7-3a40-4a88-b472-9345eac05fe1", "contextKind": "self", "accountState": "active", "actingPartyId": "198725f7-3a40-4a88-b472-9345eac05fe1", "bindingVersion": 1}
+{"created": true, "personId": "565f97af-42d0-4f82-bf4d-bb99d82bab8f", "contextKind": "self", "accountState": "active", "actingPartyId": "565f97af-42d0-4f82-bf4d-bb99d82bab8f", "bindingVersion": 1}
+{"created": true, "personId": "d0937d4a-e9b0-4d6f-9f34-5a66e02e05fd", "contextKind": "self", "accountState": "active", "actingPartyId": "d0937d4a-e9b0-4d6f-9f34-5a66e02e05fd", "bindingVersion": 1}
+{"created": true, "personId": "39da8672-d86c-4f60-ac81-1d010b3370cf", "contextKind": "self", "accountState": "active", "actingPartyId": "39da8672-d86c-4f60-ac81-1d010b3370cf", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+ok 1 - platform_api.auth_mfa_factor_reconcile_read(uuid) is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+ok 2 - platform_api.auth_mfa_reconciling_age() is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+ok 3 - platform_api.identity_security_notification_read(uuid) is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+ok 4 - platform_api.cms_capability_grant_read_current(uuid) is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+ok 5 - platform_api.consumer_dead_letter_event(jsonb) is a service-role-only security definer with a pinned empty search_path [P2-S09-AC-913]
+afec5c9f-d1e4-4c6a-8b6e-2589faaf2c77
+f6741722-713b-473c-8582-df881f6fc50a
+ok 6 - fixture: two verified factors through the enrollment producers
+ok 7 - reconcile_read returns exactly {found, state, authUserId, providerFactorId, version} for a factor [P2-S09-AC-913]
+ok 8 - an unknown factor id is exactly {"found": false} [P2-S09-AC-913]
+ok 9 - a null factor id is {"found": false} [P2-S09-AC-913]
+ok 10 - no reconciling factor: count 0 and oldestAgeSeconds null [P2-S09-AC-908]
+{"marked": true}
+ok 11 - fixture: one factor moved to reconciling by the producer
+ok 12 - one reconciling factor: count 1 and oldestAgeSeconds about its age, exactly two keys [P2-S09-AC-908]
+ok 13 - reconcile_read reports the reconciling state [P2-S09-AC-913]
+ok 14 - a mfa.enroll.verified event reads back exactly {found, reasonCode, requestId} [P2-S09-AC-916]
+ok 15 - an unknown security event id is {"found": false} [P2-S09-AC-916]
+ok 16 - an event outside the three notifiable actions is never readable as a notification [P2-S09-AC-916]
+ok 17 - precondition: the fixture holds at least one non-notifiable security event, so the negative is not vacuous [P2-S09-AC-916]
+{"id": "982e53f5-89e9-45c1-a7b5-0b2daeb771ef", "state": "active", "endsAt": "2026-10-16T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:41.878613+00:00", "updatedAt": "2026-10-10T23:54:41.878613+00:00", "validFrom": "2026-10-10", "capability": "cms.author", "lastAction": "granted", "contentHash": "890ba089c61ba6e7770044f606666e440ef2a0769b7ac3b54aac683da66e3bb7", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-15", "subjectPersonId": "4828988e-9625-4c89-840a-582ed77037c1"}
+ok 18 - fixture: a real active grant through CMS-03A-15
+ok 19 - an active grant reads back exactly {found, grantId, subjectPersonId, version, state, capabilityCode} [P2-S09-AC-689]
+{"id": "982e53f5-89e9-45c1-a7b5-0b2daeb771ef", "state": "revoked", "endsAt": "2026-10-16T00:00:00+00:00", "reason": null, "version": "2", "createdAt": "2026-10-10T23:54:41.878613+00:00", "updatedAt": "2026-10-10T23:54:41.947599+00:00", "validFrom": "2026-10-10", "capability": "cms.author", "lastAction": "revoked", "contentHash": "4a6232789542d0e42c897072412da7d8991d2c55df1b4673014436de13452f8a", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-15", "subjectPersonId": "4828988e-9625-4c89-840a-582ed77037c1"}
+ok 20 - fixture: the grant is revoked through CMS-03A-17
+ok 21 - a revoked grant reads state revoked and its new version [P2-S09-AC-689]
+ok 22 - the read carries the current aggregate version [P2-S09-AC-689]
+{"id": "b5b3c334-6224-4091-b1ca-ae1f1b51e50d", "state": "active", "endsAt": "2026-10-13T00:00:00+00:00", "reason": null, "version": "1", "createdAt": "2026-10-10T23:54:42.060136+00:00", "updatedAt": "2026-10-10T23:54:42.060136+00:00", "validFrom": "2026-10-10", "capability": "cms.author", "lastAction": "granted", "contentHash": "704fd25d29de6a6bf9a39a3b8bf35a5735a9fa08b47427b45e123de456444fc8", "resourceKind": "cms_capability_grant", "validThrough": "2026-10-12", "subjectPersonId": "f8325ee1-42e3-47ad-b561-ff9a446f4c63"}
+ok 23 - fixture: a second real grant
+t
+ok 24 - a grant whose validThrough is before the current UTC date reads state lapsed [P2-S09-AC-689]
+ok 25 - an unknown grant id is {"found": false} [P2-S09-AC-689]
+ok 26 - consumer_dead_letters forces RLS and grants no API role any privilege [P2-S09-AC-689]
+ok 27 - a dead letter is recorded and acknowledged with exactly {accepted: true} [P2-S09-AC-689]
+ok 28 - replaying the same (consumer, eventId) is accepted again [P2-S09-AC-689]
+ok 29 - the replay wrote no second row (idempotent per consumer and event) [P2-S09-AC-689]
+ok 30 - another consumer with the same event id is its own row [P2-S09-AC-689]
+ok 31 - two consumers, two rows [P2-S09-AC-689]
+ok 32 - an unidentifiable payload (null event identity) is still recorded [P2-S09-AC-689]
+ok 33 - two null-identity records are both accepted: the unique index applies only to identified events [P2-S09-AC-689]
+ok 34 - null-identity records are not collapsed [P2-S09-AC-689]
+ok 35 - an unknown reason code is refused [P2-S09-AC-689]
+ok 36 - a malformed consumer name is refused [P2-S09-AC-689]
+ok 37 - an extra key (a queue body) is refused: only the closed identifier set is stored [P2-S09-AC-689]
+ok 38 - a missing key is refused: the request is exactly the eight named keys [P2-S09-AC-689]
+ok 39 - the job.requested job tuple is still claimed [P2-S09-AC-913]
+ok 40 - identity.mfa-factor.changed.v1 on a mfa_factor aggregate is claimed [P2-S09-AC-913]
+ok 41 - identity.security-notification.requested.v1 on a security_event aggregate is claimed [P2-S09-AC-916]
+ok 42 - cms.capability.grant.changed.v1 on a cms_capability_grant aggregate is claimed [P2-S09-AC-689]
+ok 43 - a wrong aggregate type, a wrong schema version and an unlisted event are never claimed [P2-S09-AC-913]
+ok 44 - precondition: claim_outbox_batch is a function, not a relation
+ok 45 - the returned column list is the identifier columns plus occurred_at and the registered producer (AC190) [P2-S09-AC-913]
+ok 46 - each claimed consumer event carries its registered producer [P2-S09-AC-190]
+ok 47 - every claimed row carries a producer and the outbox occurred_at [P2-S09-AC-190]
+ok 48 - the claimed occurred_at is the outbox row instant, not the claim time [P2-S09-AC-190]
+1..48
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:14: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:15: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:95: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:103: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:107: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql .... 
+1..18
+{"created": true, "personId": "88f6e87b-4b71-4aa0-9b99-1a30806daa9d", "contextKind": "self", "accountState": "active", "actingPartyId": "88f6e87b-4b71-4aa0-9b99-1a30806daa9d", "bindingVersion": 1}
+{"created": true, "personId": "c8af2f5d-e66e-4af2-9588-23b537ed88d2", "contextKind": "self", "accountState": "active", "actingPartyId": "c8af2f5d-e66e-4af2-9588-23b537ed88d2", "bindingVersion": 1}
+{"created": true, "personId": "5a100882-ad47-4db9-a6c4-d65fb7a81501", "contextKind": "self", "accountState": "active", "actingPartyId": "5a100882-ad47-4db9-a6c4-d65fb7a81501", "bindingVersion": 1}
+{"created": true, "personId": "4a560e1e-9b50-4222-9e81-21e5e331517f", "contextKind": "self", "accountState": "active", "actingPartyId": "4a560e1e-9b50-4222-9e81-21e5e331517f", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+a9200000-0000-4000-8000-8683cdf3bd16
+ok 8 - the builder is owned by the CMS definer role, which is neither superuser nor BYPASSRLS, so every read it makes is subject to row-level security [P2-S11-AC-087]
+ok 9 - every table the builder reads has forced row-level security with a policy on the CMS RPC context [P2-S11-AC-087]
+ok 10 - control: with the CMS RPC context the builder returns the nine-group manifest of the revision [P2-S11-AC-087]
+ok 11 - without the CMS RPC context the revision is invisible under RLS: the builder answers NOT_FOUND [P2-S11-AC-087]
+ok 12 - a context other than true is no context: NOT_FOUND [P2-S11-AC-087]
+ok 13 - the context match is exact (TRUE is not true): NOT_FOUND [P2-S11-AC-087]
+ok 14 - the context is evaluated per statement: restored, the same call returns the manifest again [P2-S11-AC-087]
+ok 15 - outside the context the currency predicates see no canonical rows: the frozen manifest is stale and its identities are not current [P2-S11-AC-087]
+ok 16 - control: inside the context the same frozen manifest is current and its identities are current [P2-S11-AC-087]
+ok 17 - there is exactly one builder and its only input is the revision id: no manifest, hash or version-set value can be passed in [P2-S11-AC-087]
+ok 18 - no other function named like a manifest builder returns a manifest [P2-S11-AC-087]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql:5: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql:6: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql:7: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc:148: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc:150: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc:150: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql .. 
+1..72
+{"created": true, "personId": "45a872cd-3670-4935-a7c0-aa7220e84180", "contextKind": "self", "accountState": "active", "actingPartyId": "45a872cd-3670-4935-a7c0-aa7220e84180", "bindingVersion": 1}
+{"created": true, "personId": "95e1f828-696b-4454-8e28-3a1b3f211d9a", "contextKind": "self", "accountState": "active", "actingPartyId": "95e1f828-696b-4454-8e28-3a1b3f211d9a", "bindingVersion": 1}
+{"created": true, "personId": "72d7b499-ae4d-410f-acec-b6d5ce1933ee", "contextKind": "self", "accountState": "active", "actingPartyId": "72d7b499-ae4d-410f-acec-b6d5ce1933ee", "bindingVersion": 1}
+{"created": true, "personId": "e344af20-a818-46c2-abea-94160559fde9", "contextKind": "self", "accountState": "active", "actingPartyId": "e344af20-a818-46c2-abea-94160559fde9", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - B10: isolated legacy owner begins absent
+ok 6 - B10: actual writer completes201 with exact canonical response_ref (00000:)
+ok 7 - B10: response names committed canonical resource and owner
+ok 8 - B10: one ordinal1 registry1 active snapshot contains [] and independent JCS hash
+ok 9 - B10: other owners snapshot row images unchanged
+ok 10 - B10: exact replay preserves complete response and all effect fingerprints
+ok 11 - B10: replay preserves exact snapshot IDs/timestamps/versions/ordinals
+ok 12 - B10: malformed request is exact INVALID_REQUEST with no effects
+ok 13 - B01: isolated legacy owner begins absent
+ok 14 - B01: actual writer completes201 with exact canonical response_ref (00000:)
+ok 15 - B01: response names committed canonical resource and owner
+ok 16 - B01: one ordinal1 registry1 active snapshot contains [] and independent JCS hash
+ok 17 - B01: other owners snapshot row images unchanged
+ok 18 - B01: exact replay preserves complete response and all effect fingerprints
+ok 19 - B01: replay preserves exact snapshot IDs/timestamps/versions/ordinals
+ok 20 - B01: malformed request is exact INVALID_REQUEST with no effects
+ok 21 - B02: isolated legacy owner begins absent
+ok 22 - B02: actual writer completes201 with exact canonical response_ref (00000:)
+ok 23 - B02: response names committed canonical resource and owner
+ok 24 - B02: one ordinal1 registry1 active snapshot contains [] and independent JCS hash
+ok 25 - B02: other owners snapshot row images unchanged
+ok 26 - B02: exact replay preserves complete response and all effect fingerprints
+ok 27 - B02: replay preserves exact snapshot IDs/timestamps/versions/ordinals
+ok 28 - B02: malformed request is exact INVALID_REQUEST with no effects
+ok 29 - B04: isolated legacy owner begins absent
+ok 30 - B04: actual writer completes201 with exact canonical response_ref (00000:)
+ok 31 - B04: response names committed canonical resource and owner
+ok 32 - B04: one ordinal1 registry1 active snapshot contains [] and independent JCS hash
+ok 33 - B04: other owners snapshot row images unchanged
+ok 34 - B04: exact replay preserves complete response and all effect fingerprints
+ok 35 - B04: replay preserves exact snapshot IDs/timestamps/versions/ordinals
+ok 36 - B04: malformed request is exact INVALID_REQUEST with no effects
+ok 37 - C04: isolated legacy owner begins absent
+ok 38 - C04: actual writer completes201 with exact canonical response_ref (00000:)
+ok 39 - C04: response names committed canonical resource and owner
+ok 40 - C04: one ordinal1 registry1 active snapshot contains [] and independent JCS hash
+ok 41 - C04: other owners snapshot row images unchanged
+ok 42 - C04: exact replay preserves complete response and all effect fingerprints
+ok 43 - C04: replay preserves exact snapshot IDs/timestamps/versions/ordinals
+ok 44 - C04: malformed request is exact INVALID_REQUEST with no effects
+ok 45 - B01 negative: guarded predecessor yields actual typed conflict409 and completed receipt
+ok 46 - B01 negative: committed conflict409 does not initialize owner settings
+ok 47 - CMS03A01 control is an actual successful schema command
+ok 48 - CMS03A01 does not initialize entry/revision settings
+ok 49 - legacy reserve+generic complete stores matching hash/resourceRef/safeHeaders without settings
+ok 50 - actual B01 exact completed legacy replay returns the full stored canonical resource
+ok 51 - legacy completed replay neither initializes settings nor changes any canonical/effect row
+ok 52 - cms_create_entry: existing CMS owner/ACL/SECURITY DEFINER/empty search_path; no API execute
+ok 53 - cms_create_revision: existing CMS owner/ACL/SECURITY DEFINER/empty search_path; no API execute
+ok 54 - cms_resolve_conflict: existing CMS owner/ACL/SECURITY DEFINER/empty search_path; no API execute
+ok 55 - cms_restore_revision: existing CMS owner/ACL/SECURITY DEFINER/empty search_path; no API execute
+ok 56 - cms_author_locale_variant: existing CMS owner/ACL/SECURITY DEFINER/empty search_path; no API execute
+ok 57 - existing CMS role remains NOLOGIN/nonbypass/nonsuperuser
+ok 58 - writer tails introduce no CMS schema CREATE privilege or new production helper seam
+e7100000-0000-4000-8000-000000000301|d27bcd2c-0f8b-442c-aacb-58d0b812aee7
+3bcee89e-590d-4d72-8e75-621a7cdddda2|4|2
+628f250e325b6fd22968d0d1d5d8594eaac0f353aa1ddeb75e994f683f1ec9ac
+ok 59 - causal fixture: exact owner snapshot images are absent immediately before healthy B01
+ok 60 - causal fixture: healthy B01 alone initializes canonical-owner registry1 ordinal1 [] snapshot with independent JCS hash before any manifest read
+ok 61 - causal fixture: genuine authorized B01 healthy save succeeds before submit
+ok 62 - healthy existing-hash B01 uses a fresh key, returns a new canonical successor and advances actual CAS with completed201
+ok 63 - healthy existing-hash B01 preserves all owner and other-owner snapshot row images including IDs/timestamps/versions/ordinals/values/hash
+ok 64 - causal fixture: current manifest and bound checker evidence pass all seventeen submit categories
+ok 65 - causal fixture: actual cms_submit_review succeeds, not a direct review-row insertion
+ok 66 - causal fixture: submitted review really freezes current draft hash and exact manifest
+ok 67 - fault targets an existing owner/hash snapshot: no cold-read/warm-submit initialization claim
+ok 68 - duplicate-hash ordinary save still reaches snapshot BEFORE INSERT fault after completion
+ok 69 - causal tail checkpoint observes canonical/CAS/review/audit/outbox/completed201 before raising
+ok 70 - snapshot fault rolls back every complete canonical/value/relation/review/audit/outbox/idempotency row fingerprint
+ok 71 - duplicate-hash fault preserves every preexisting snapshot field, including IDs/timestamps/ordinals
+ok 72 - savepoint cleanup removes only the test-owned fault trigger, no production guard disabled
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:10: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:11: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:12: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:46: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:50: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:58: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:120: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:120: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:120: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:142: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:142: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:142: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:142: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:160: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:160: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:161: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:161: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:162: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:162: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:162: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:162: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:163: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:163: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:163: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:163: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:164: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:164: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:164: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:164: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:165: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:165: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:165: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:179: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:183: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:183: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:183: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:239: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:239: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:254: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:255: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:259: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:273: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:273: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:273: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql:282: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_rpc_reads_workflow.sql ....... 
+1..33
+{"created": true, "personId": "e15c7c9a-ea7a-44cf-8248-79dd9691ff3e", "contextKind": "self", "accountState": "active", "actingPartyId": "e15c7c9a-ea7a-44cf-8248-79dd9691ff3e", "bindingVersion": 1}
+{"created": true, "personId": "e5782f13-9cec-4e57-a275-3d228444ce7d", "contextKind": "self", "accountState": "active", "actingPartyId": "e5782f13-9cec-4e57-a275-3d228444ce7d", "bindingVersion": 1}
+{"created": true, "personId": "721f97a3-658f-47d9-9f61-5d9fdac2f9cd", "contextKind": "self", "accountState": "active", "actingPartyId": "721f97a3-658f-47d9-9f61-5d9fdac2f9cd", "bindingVersion": 1}
+{"created": true, "personId": "980698ae-8816-48f0-833c-f9cc105018b3", "contextKind": "self", "accountState": "active", "actingPartyId": "980698ae-8816-48f0-833c-f9cc105018b3", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+{"created": true, "personId": "ba81ac31-b78f-4517-ae81-6576377eafb0", "contextKind": "self", "accountState": "active", "actingPartyId": "ba81ac31-b78f-4517-ae81-6576377eafb0", "bindingVersion": 1}
+{"created": true, "personId": "41a4fb70-428b-4df6-a839-9af6e8207638", "contextKind": "self", "accountState": "active", "actingPartyId": "41a4fb70-428b-4df6-a839-9af6e8207638", "bindingVersion": 1}
+{"created": true, "personId": "c1fac203-3961-4eed-b8dc-b380d256acd2", "contextKind": "self", "accountState": "active", "actingPartyId": "c1fac203-3961-4eed-b8dc-b380d256acd2", "bindingVersion": 1}
+{"created": true, "personId": "996f80dc-ecc1-491c-96ee-9c382123b51c", "contextKind": "self", "accountState": "active", "actingPartyId": "996f80dc-ecc1-491c-96ee-9c382123b51c", "bindingVersion": 1}
+{"created": true, "personId": "70da30ee-7156-43ad-a8ef-f2e9ab79d8e1", "contextKind": "self", "accountState": "active", "actingPartyId": "70da30ee-7156-43ad-a8ef-f2e9ab79d8e1", "bindingVersion": 1}
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+a9200000-0000-4000-8000-b44326bc5ec9
+a9200000-0000-4000-8000-046d9878cab4
+a9200000-0000-4000-8000-c62a01cca66d
+a9200000-0000-4000-8000-b1021cb35dbf
+a9200000-0000-4000-8000-525889a29491
+a9200000-0000-4000-8000-2fa449e3eea3
+a9200000-0000-4000-8000-53a988556572
+a9200000-0000-4000-8000-f90e170577e4
+a9200000-0000-4000-8000-0bbc3fd7413e
+a9200000-0000-4000-8000-d85c4184e6fa
+ok 10 - cms_get_entry_workflow and its scope and action helpers are private SECURITY DEFINERs of the CMS definer nobody can execute; the platform_api wrapper is executable by service_role only [P2-S11-AC-052]
+ok 11 - an entry assignee reads the workflow of a draft entry [P2-S11-AC-049]
+ok 12 - the document is exactly EntryWorkflowResource (7 members) [P2-S11-AC-049]
+ok 13 - the entry meta carries the aggregate version (the If-Match operand) and the revision its derived state, true content hash, locale, schema version and current-draft flag [P2-S11-AC-049]
+ok 14 - the preparation serves the manifest, its hash, the version set, the risk class and the workflow policy exactly as the server rebuilds them, so a form can echo them unmodified [P2-S11-AC-089]
+ok 15 - the submit-phase preflight lists all seventeen categories in registry order and passes with healthy evidence [P2-S11-AC-096]
+ok 16 - a draft with no review, schedule or publication offers the assignee submit_review and preview [P2-S11-AC-049]
+ok 17 - the document carries no author, assignee, owner, party or account identifier [P2-S11-AC-051]
+ok 18 - absent, stale, other-provider and mis-bound evidence degrade the accessibility result to unavailable / checker_failed inside the report and never fail the read [P2-S11-AC-053]
+ok 19 - blocked evidence is a failed blocking_finding and the rest of the preparation is identical whatever the proof [P2-S11-AC-096]
+ok 20 - an owner-party publisher reads the draft but gets no preparation (only an assignee may submit) and may preview [P2-S11-AC-051]
+ok 21 - an entry editor assignee gets the preparation too [P2-S11-AC-051]
+ok 22 - a reviewer assignee reads the entry: the revision is derived `submitted`, the latest review is served with its frozen candidate, and they may record a decision and preview [P2-S11-AC-051]
+ok 23 - the owner of the entry (an assignee) sees assign_reviewer and preview, and no preparation for a revision under review [P2-S11-AC-054]
+ok 24 - an approved revision offers its owner-party publisher schedule, preview and publish [P2-S11-AC-054]
+ok 25 - a pending publish schedule makes the revision `scheduled` (E2): the schedule is listed, schedule is no longer offered but publish still is [P2-S11-AC-054]
+ok 26 - at most 16 schedules (newest first, a blocked one with its reason code) and 64 publications are served; a published revision is derived `published` [P2-S11-AC-050]
+ok 27 - a publication row carries its lineage id, own id, sequence, derived state (superseded / active / revoked), action, hash and projectionState pending (never converged) [P2-S11-AC-050]
+ok 28 - no revisionId serves the current draft; an older revision is served with isCurrentDraft false and no preparation [P2-S11-AC-050]
+ok 29 - a confirmed member with no workflow read scope (an unassigned reviewer, a member with no capability) is 403 capability_missing [P2-S11-AC-051]
+ok 30 - a non-member, an absent entry, a revision of another entry, an absent revision, an archived entry and another acting party are one indistinguishable NOT_FOUND [P2-S11-AC-051]
+ok 31 - a held entry is readable, offers no action and reports the revocation category as entry_unavailable [P2-S11-AC-051]
+ok 32 - an unknown member, a missing or malformed id and a non-object proof are INVALID_REQUEST [P2-S11-AC-050]
+ok 33 - the read writes nothing: reviews, assignments, decisions, reservations, audit, events, tokens, schedules, publications and entry versions are unchanged by every read above [P2-S11-AC-053]
+ok
+All tests successful.
+Files=9, Tests=340, 36 wallclock secs ( 0.52 usr  0.11 sys +  1.01 cusr  0.40 csys =  2.04 CPU)
+Result: PASS

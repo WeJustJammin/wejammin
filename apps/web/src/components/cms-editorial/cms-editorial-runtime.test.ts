@@ -2,6 +2,7 @@
 
 import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { cmsEditorialOutcomeMessage } from './cms-editorial-runtime-dom-feedback';
 import {
   applyCmsEditorialAcceptedRevision,
   cmsEditorialRetryAfterSecondsFrom,
@@ -187,7 +188,7 @@ describe('executeCmsEditorialRevisionMutation outcomes', () => {
     [404, 'NOT_FOUND', 'not-found', false],
     [415, 'UNSUPPORTED_MEDIA_TYPE', 'unsupported-media', false],
     [429, 'RATE_LIMITED', 'rate-limited', true],
-    [502, 'BAD_GATEWAY', 'degraded', true],
+    [502, 'DEPENDENCY_UNAVAILABLE', 'degraded', true],
     [503, 'DEPENDENCY_UNAVAILABLE', 'degraded', true],
     [500, 'INTERNAL_ERROR', 'degraded', true],
   ] as const)(
@@ -209,6 +210,41 @@ describe('executeCmsEditorialRevisionMutation outcomes', () => {
       expect(result.outcomeUnknown).toBe(false);
     },
   );
+
+  it('verifies a 502 DEPENDENCY_UNAVAILABLE as a degraded outcome with the generic failure copy and refuses the retired BAD_GATEWAY code (BE00:172)', async () => {
+    const invalid = await submit(async () =>
+      jsonResponse(502, apiError('DEPENDENCY_UNAVAILABLE')),
+    );
+    expect(invalid).toMatchObject({
+      outcome: 'degraded',
+      status: 502,
+      retryable: true,
+      outcomeUnknown: false,
+    });
+    // The write may have committed, so a 502 keeps the copy it always showed
+    // ("check the current version") while a 503 says the service is unavailable.
+    expect(
+      cmsEditorialOutcomeMessage('degraded', invalid.errorCode, null),
+    ).toBe(
+      'Saving failed unexpectedly. Check the current version before retrying.',
+    );
+    const unavailable = await submit(async () =>
+      jsonResponse(503, apiError('DEPENDENCY_UNAVAILABLE')),
+    );
+    expect(
+      cmsEditorialOutcomeMessage('degraded', unavailable.errorCode, null),
+    ).toBe(
+      'Saving is unavailable right now. Editing continues; nothing was published.',
+    );
+    const retired = await submit(async () =>
+      jsonResponse(502, apiError('BAD_GATEWAY')),
+    );
+    expect(retired).toMatchObject({
+      outcome: 'unknown',
+      outcomeUnknown: true,
+      errorCode: null,
+    });
+  });
 
   it('treats a network failure as an unknown outcome, never a success', async () => {
     const result = await submit(async () => {

@@ -1,0 +1,33 @@
+psql:/w/scratch/bench2-lane/probe-catalog.sql:2: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-catalog.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench2-lane/probe-catalog.sql:4: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-catalog.sql:22: ERROR:  operator is not unique: text || "char"
+LINE 1: ...ype || ' fn=' || t.tgfoid::regproc || ' enabled=' || t.tgena...
+                                                             ^
+HINT:  Could not choose a best candidate operator. You might need to add explicit type casts.
+/w/scratch/bench2-lane/probe-catalog.sql .. 
+# CAT platform_private.cms_activation_references_valid(uuid) owner=wejammin_cms_definer lang=plpgsql vol=s strict=f secdef=t config={"search_path=\"\""} acl={wejammin_cms_definer=X/wejammin_cms_definer} md5=4dcce515a24261c30beb83271f828e4b len=20476 comment=-
+# CAT platform_private.cms_activation_review_invalidation_trigger() owner=wejammin_cms_definer lang=plpgsql vol=v strict=f secdef=t config={"search_path=\"\""} acl={wejammin_cms_definer=X/wejammin_cms_definer} md5=86e04a3b1171f1a1cb7ec257ecad1e58 len=8100 comment=-
+# CAT platform_private.cms_active_parent_guard() owner=wejammin_cms_definer lang=plpgsql vol=v strict=f secdef=f config={"search_path=\"\""} acl={wejammin_cms_definer=X/wejammin_cms_definer} md5=24ea514757a3faabcbcc79d5643f6a58 len=3179 comment=-
+# CAT platform_private.cms_create_type_draft(jsonb) owner=wejammin_cms_definer lang=plpgsql vol=v strict=f secdef=t config={"search_path=\"\""} acl={wejammin_cms_definer=X/wejammin_cms_definer} md5=3713a2e62c973b749531b9a63b2f09ff len=17460 comment=-
+# CAT platform_private.cms_exact_keys(jsonb,text[],text[]) owner=postgres lang=plpgsql vol=i strict=f secdef=f config={"search_path=\"\""} acl={postgres=X/postgres,wejammin_cms_definer=X/postgres,wejammin_cms_authority_reader=X/postgres} md5=ba8d065c0e807763196f59e340625c59 len=450 comment=-
+# CAT platform_private.cms_invalidate_activation_reviews(uuid) owner=wejammin_cms_definer lang=plpgsql vol=v strict=f secdef=t config={"search_path=\"\""} acl={wejammin_cms_definer=X/wejammin_cms_definer} md5=65f5c724242db0c6c4efa6fdf8c0ee86 len=2107 comment=-
+# CAT platform_private.cms_json_bounded(jsonb,integer,integer,integer,integer) owner=postgres lang=plpgsql vol=i strict=f secdef=f config={"search_path=\"\""} acl={postgres=X/postgres,wejammin_cms_definer=X/postgres} md5=eb90c29820436cdf74e89812b4b3e742 len=1722 comment=-
+# CAT platform_private.cms_reserved_key(text) owner=postgres lang=sql vol=i strict=f secdef=f config={"search_path=\"\""} acl={postgres=X/postgres,wejammin_cms_definer=X/postgres} md5=0aeffed73fefa8ca4e3026a55849187c len=728 comment=-
+# CAT platform_private.cms_rpc_context_valid() owner=postgres lang=sql vol=s strict=f secdef=t config={"search_path=\"\""} acl={postgres=X/postgres,wejammin_cms_definer=X/postgres} md5=67a66676c5c949e0b040d02a2844c918 len=67 comment=-
+# CAT platform_private.cms_valid_field_input(jsonb,boolean) owner=postgres lang=plpgsql vol=i strict=f secdef=f config={"search_path=\"\""} acl={postgres=X/postgres,wejammin_cms_definer=X/postgres} md5=f3fbc53fdde3f16a338c3edadc94a02b len=9037 comment=BE03a field definition input. A DEC-133 
+# CAT platform_private.cms_valid_uuid(text) owner=postgres lang=sql vol=i strict=f secdef=f config={"search_path=\"\""} acl={postgres=X/postgres,wejammin_cms_definer=X/postgres,wejammin_cms_authority_reader=X/postgres} md5=b3bdaa7baf758ab166112db18844b2c3 len=124 comment=-
+# CAT src cms_rpc_context_valid: 
+#   select pg_catalog.current_setting('app.cms_rpc', true) = 'true'
+# 
+# CAT grants wejammin_cms_definer exec valid_field_input=true authority_reader=false platform_definer=false public=false
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/probe-catalog.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  1 wallclock secs ( 0.10 usr  0.01 sys +  0.06 cusr  0.01 csys =  0.18 CPU)
+Result: FAIL

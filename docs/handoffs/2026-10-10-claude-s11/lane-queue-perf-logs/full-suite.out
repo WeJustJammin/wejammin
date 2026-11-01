@@ -1,0 +1,8 @@
+[alt] waiting for lock 01:30:40
+[alt] lock acquired 01:30:40
+[alt] reset ok 01:31:07
+[alt] pg_prove exit=0  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-013040-1213007.tap
+All tests successful.
+Files=369, Tests=14026, 130 wallclock secs ( 1.80 usr  0.46 sys +  3.37 cusr  1.52 csys =  7.15 CPU)
+Result: PASS
+RUNNER DONE rc=0

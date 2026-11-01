@@ -1,0 +1,131 @@
+-- CMS-03B-05 builders and call probe (lane S11-3a).  Include after 000-world.sqlinc AND
+-- phase_02_slice_11_helpers/001-world.sqlinc (the h11doc type with the real editorial policy).
+
+-- The all-pass baseline of the preflight suite: the world type's no_fallback field becomes a plain
+-- localized field, otherwise EVERY h11doc revision is a `locale` reference and fails closed (D19).
+select pg_temp.h11_raw_exec('platform_private.cms_field_definition_versions',
+  $$update platform_private.cms_field_definition_versions set localization_mode = 'localized' where field_key = 'legal'$$);
+
+-- An active entry (version 1) with ONE draft revision of the world type, authored by p_author, with
+-- a title and a rich-text body.  The revision payload_hash is the TRUE projection hash of its
+-- stored values (the command recomputes it).  The creator holds cms.author and the editor
+-- cms.editor assignments on the entry.  The revision id is h11w_uuid(tag || ':revision').
+create or replace function pg_temp.r11_entry(
+  p_tag text, p_author text default 'creator', p_title text default 'Hello world',
+  p_taxonomy jsonb default '[]'::jsonb
+)
+returns uuid
+language plpgsql
+as $body$
+declare
+  entry_uuid uuid := pg_temp.h11w_uuid(p_tag || ':entry');
+  revision_uuid uuid := pg_temp.h11w_uuid(p_tag || ':revision');
+  stamp timestamptz := clock_timestamp();
+  title_value jsonb := to_jsonb(p_title);
+  body_value jsonb := pg_temp.h11w_rich('Body of ' || p_title);
+  payload text;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  payload := platform_private.cms_jcs_sha256(jsonb_build_object(
+    pg_temp.h11w_fid('title')::text, title_value, pg_temp.h11w_fid('body')::text, body_value));
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle, current_draft_revision_id,
+    version, created_by, created_at, updated_at
+  ) values (
+    entry_uuid, pg_temp.h11w_org(), (select value::uuid from h11w_ids where key = 'typeId'),
+    pg_temp.h11w_org(), 'active', null, 1,
+    (select value::uuid from s10_ids where key = 'creatorAuth'), stamp, stamp);
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id, template_version_id,
+    taxonomy_version_ids, parent_revision_ids, locale, payload_hash, author_person_id,
+    acting_party_id, state, version, validation_state, validation_report, created_at, updated_at
+  ) values (
+    revision_uuid, pg_temp.h11w_org(), entry_uuid, 1, pg_temp.h11w_version(), null,
+    p_taxonomy, '[]'::jsonb, 'en-US', payload, pg_temp.s11_id(p_author),
+    pg_temp.h11w_org(), 'draft', 1, 'valid', '{}'::jsonb, stamp, stamp);
+  insert into platform_private.cms_entry_field_values(
+    owner_id, state, version, revision_id, field_id, field_definition_id, locale, value,
+    provenance, value_hash, created_at, updated_at
+  ) values
+    (pg_temp.h11w_org(), 'active', 1, revision_uuid, pg_temp.h11w_fid('title'), pg_temp.h11w_fdef('title'),
+     'en-US', title_value, 'authored', platform_private.cms_jcs_sha256(title_value)::char(64), stamp, stamp),
+    (pg_temp.h11w_org(), 'active', 1, revision_uuid, pg_temp.h11w_fid('body'), pg_temp.h11w_fdef('body'),
+     'en-US', body_value, 'authored', platform_private.cms_jcs_sha256(body_value)::char(64), stamp, stamp);
+  update platform_private.cms_content_entries
+     set current_draft_revision_id = revision_uuid where id = entry_uuid;
+  insert into platform_private.cms_entry_assignments(
+    owner_id, entry_id, assignee_person_id, capability_key, state, version, created_at, updated_at
+  ) values
+    (pg_temp.h11w_org(), entry_uuid, pg_temp.s11_id('creator'), 'cms.author', 'active', 1, stamp, stamp),
+    (pg_temp.h11w_org(), entry_uuid, pg_temp.s11_id('editor'), 'cms.editor', 'active', 1, stamp, stamp);
+  return revision_uuid;
+end;
+$body$;
+
+create or replace function pg_temp.r11_manifest(p_revision uuid)
+returns jsonb
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  return platform_private.cms_build_dependency_manifest(p_revision);
+end;
+$body$;
+
+-- Accessibility PreflightEvidence for a revision; the binding hash is computed from the literal
+-- JCS (an oracle independent of cms_accessibility_binding_hash).
+create or replace function pg_temp.r11_evidence(
+  p_revision uuid, p_outcome text default 'healthy', p_age interval default interval '0 seconds',
+  p_overrides jsonb default '{}'::jsonb
+)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'category', 'accessibility', 'providerKey', 'cms.a11y.structural', 'providerVersion', '1',
+    'outcome', p_outcome, 'blockingCount', case p_outcome when 'blocked' then 2 else 0 end,
+    'inputHash', repeat('a', 64),
+    'bindingHash', pg_temp.h11_sha256(
+      '{"checkerKey":"cms.a11y.structural","checkerVersion":"1","dependencyHash":"'
+      || platform_private.cms_jcs_sha256(pg_temp.r11_manifest(p_revision))
+      || '","revisionContentHash":"' || (select payload_hash from platform_private.cms_entry_revisions where id = p_revision)
+      || '","revisionId":"' || p_revision::text || '"}'),
+    'evaluatedAt', platform_private.auth_iso_time(clock_timestamp() - p_age)
+  ) || p_overrides
+$body$;
+
+-- A well-formed submission request for the entry/revision of tag p_tag at the entry's CURRENT
+-- version, with healthy evidence (p_evidence replaces it; 'null' => JSON null).
+create or replace function pg_temp.r11_sreq(
+  p_tag text, p_extra jsonb default '{}'::jsonb, p_drop text[] default '{}'::text[],
+  p_evidence jsonb default null
+)
+returns jsonb
+language sql
+as $body$
+  select ((
+    jsonb_build_object(
+      'entryId', entry.id, 'revisionId', revision.id, 'frozenHash', revision.payload_hash,
+      'dependencyManifest', pg_temp.r11_manifest(revision.id),
+      'expectedVersion', entry.version::text, 'ifMatch', entry.version::text,
+      'idempotencyKey', 'r11-' || replace(extensions.gen_random_uuid()::text, '-', ''),
+      'evidence', coalesce(p_evidence, pg_temp.r11_evidence(revision.id)),
+      'context', pg_temp.r11_ctx())
+    || p_extra) - p_drop)
+  from platform_private.cms_content_entries entry
+  join platform_private.cms_entry_revisions revision on revision.id = pg_temp.h11w_uuid(p_tag || ':revision')
+  where entry.id = pg_temp.h11w_uuid(p_tag || ':entry')
+$body$;
+
+create or replace function pg_temp.r11_scall(
+  p_label text, p_actor text, p_request jsonb, p_keep boolean default true
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.r11_session(p_actor);
+  perform pg_temp.r11_try(p_label,
+    format('select platform_api.cms_submit_review(%L::jsonb)', p_request::text), p_keep);
+end;
+$body$;

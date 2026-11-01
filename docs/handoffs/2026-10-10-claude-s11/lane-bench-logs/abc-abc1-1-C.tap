@@ -1,0 +1,41 @@
+psql:/w/supabase/tests/phase_02_slice_09_evidence_bench128.sql:2: WARNING:  there is no transaction in progress
+psql:/w/supabase/tests/phase_02_slice_09_evidence_bench128.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/supabase/tests/phase_02_slice_09_evidence_bench128.sql:4: WARNING:  there is no transaction in progress
+/w/supabase/tests/phase_02_slice_09_evidence_bench128.sql .. 
+{"created": true, "personId": "ef8f00b0-3067-427a-a852-28d8961186ab", "contextKind": "self", "accountState": "active", "actingPartyId": "ef8f00b0-3067-427a-a852-28d8961186ab", "bindingVersion": 1}
+{"created": true, "personId": "ef6a44e3-8461-4c69-b426-6dc5d37e4722", "contextKind": "self", "accountState": "active", "actingPartyId": "ef6a44e3-8461-4c69-b426-6dc5d37e4722", "bindingVersion": 1}
+{"created": true, "personId": "8a60f525-2e15-4770-8686-0f11c6ed8cf3", "contextKind": "self", "accountState": "active", "actingPartyId": "8a60f525-2e15-4770-8686-0f11c6ed8cf3", "bindingVersion": 1}
+{"created": true, "personId": "15e373a6-ba97-42e4-8d99-d5fc74785a98", "contextKind": "self", "accountState": "active", "actingPartyId": "15e373a6-ba97-42e4-8d99-d5fc74785a98", "bindingVersion": 1}
+{"created": true, "personId": "0217e423-aa02-4ed3-b666-48df6a67d490", "contextKind": "self", "accountState": "active", "actingPartyId": "0217e423-aa02-4ed3-b666-48df6a67d490", "bindingVersion": 1}
+{"created": true, "personId": "a7c43c1c-49a0-4737-9300-0350afb58bef", "contextKind": "self", "accountState": "active", "actingPartyId": "a7c43c1c-49a0-4737-9300-0350afb58bef", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+ok 1 - fixture: twenty-five 128-field definitions were created, reviewed and activated through the real producers [P2-S09-AC-217]
+ok 2 - each activated definition carries exactly 128 fields [P2-S09-AC-217]
+# activate p50=191.5ms p95=246.3ms max=259.7ms n=25
+# assign p50=10.1ms p95=14.9ms max=21.8ms n=25
+# create128 p50=192.2ms p95=252.2ms max=313.8ms n=25
+# decide p50=50.5ms p95=70.6ms max=80.7ms n=25
+# dry_run p50=92.6ms p95=117.7ms max=159.1ms n=25
+# submit p50=94.2ms p95=125.0ms max=145.8ms n=25
+ok 3 - activate on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 4 - assign on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 6 - decide on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 7 - dry_run on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 8 - submit on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 9 - create128: the p95 is taken over at least twenty samples (n=25) [P2-S09-AC-217]
+# create128: 128-field create RPC p95=252.2ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget [P2-S09-AC-217]
+ok 10 - activate: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 11 - assign: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 12 - create128: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 13 - decide: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 14 - dry_run: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 15 - submit: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+1..15
+ok
+All tests successful.
+Files=1, Tests=15, 18 wallclock secs ( 0.07 usr  0.02 sys +  0.03 cusr  0.01 csys =  0.13 CPU)
+Result: PASS

@@ -82,6 +82,9 @@ export const isSafeToken = (value: unknown, maxLength = 128): value is string =>
   value.length <= maxLength &&
   /^[A-Za-z][A-Za-z0-9_.:-]*$/u.test(value);
 
+export const isMigrationLeaseToken = (value: unknown): value is string =>
+  isUuid(value) || isSafeToken(value, 200);
+
 export const withinJsonBudget = (value: unknown): boolean => {
   try {
     const encoded = new TextEncoder().encode(JSON.stringify(value));

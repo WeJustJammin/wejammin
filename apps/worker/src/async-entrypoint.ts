@@ -3,9 +3,12 @@ import {
   type ConsumerQueueEnvelope,
   QueueEnvelopeSchema,
   type QueueEnvelope,
+  type ReviewDependencyRecheckMessage,
+  type ReviewRecheckSourceEnvelope,
 } from '@wejammin/contracts';
 import type { ServerEnvironment } from '@wejammin/config/environment';
 
+import { classifyReviewRecheckMessage } from './cms-editorial/review-recheck/message';
 import type { EventConsumerOutcome } from './event-consumers/types';
 import {
   SchemaMigrationQueueEnvelopeSchema,
@@ -22,7 +25,12 @@ const OUTBOX_SWEEP_CRON = '* * * * *' as const;
 type MaybePromise<T> = T | Promise<T>;
 
 export type PlatformJobsQueue = Pick<
-  Queue<QueueEnvelope | ConsumerQueueEnvelope>,
+  Queue<
+    | QueueEnvelope
+    | ConsumerQueueEnvelope
+    | ReviewRecheckSourceEnvelope
+    | ReviewDependencyRecheckMessage
+  >,
   'send'
 >;
 
@@ -99,6 +107,15 @@ export type AsyncEntrypointDependencies = Readonly<{
   processEventConsumer?: (
     input: EventConsumerOrchestrationInput,
   ) => MaybePromise<EventConsumerOutcome>;
+  /**
+   * The Slice 11 dependency recheck (BE03b "Review invalidation"): the six
+   * source events the outbox relay delivers as identifier-only envelopes, and
+   * the `cms.review.dependency_recheck` job messages those consumers enqueue.
+   * Same outcome contract as the registered event consumers.
+   */
+  processReviewRecheck?: (
+    input: EventConsumerOrchestrationInput,
+  ) => MaybePromise<EventConsumerOutcome>;
   sweepOutbox?: (input: OutboxSweepInput) => MaybePromise<OutboxSweepOutcome>;
   /**
    * Samples the oldest reconciling MFA factor age once per sweep tick. It is
@@ -152,6 +169,29 @@ export const createAsyncEntrypoint = (
     for (const message of batch.messages) {
       if (batch.queue !== PLATFORM_QUEUE_NAMES[env.APP_ENVIRONMENT]) {
         retryMessage(message);
+        continue;
+      }
+
+      // Before the schema-migration branch: the relayed cms.schema.activated.v1
+      // envelope is identifier-only and belongs to the recheck consumer, while
+      // the full activation envelope (it carries a payload) stays with the worker.
+      if (classifyReviewRecheckMessage(message.body) !== null) {
+        if (dependencies.processReviewRecheck === undefined) {
+          retryMessage(message);
+          continue;
+        }
+        try {
+          const result = await dependencies.processReviewRecheck({
+            env,
+            executionContext,
+            message,
+          });
+          if (result.outcome === 'ack') message.ack();
+          else if (result.delaySeconds === undefined) retryMessage(message);
+          else message.retry({ delaySeconds: result.delaySeconds });
+        } catch {
+          retryMessage(message);
+        }
         continue;
       }
 

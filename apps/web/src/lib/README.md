@@ -23,9 +23,22 @@ do not own API policy, persistence, or provider credentials.
 - `cms-editorial-page-actions.ts` (the bundled self-installing entry) and
   `cms-editorial-page-actions-core.ts` — the document-level handling the CMS
   editorial pages need beyond their islands: the create type selector, the
-  CMS-03B-04 restore confirmation (sent as the real JSON command, then the app
-  route of the entry is opened), and `cms-editorial-restore-review.ts` for the
-  inline review's focus, Escape and Cancel behavior.
+  review behavior of the CMS-07 restore confirmation (`cms-editorial-restore-review.ts`:
+  focus, Escape and Cancel; `cms-editorial-restore-draft.ts` and
+  `cms-editorial-restore-feedback.ts`: a kept confirmation and the typed failure
+  summary) and the delegation of its submit. The restore command itself (sent as
+  the real JSON command, then the app route of the entry is opened) is
+  `cms-editorial-page-actions-restore.ts`, imported dynamically on the first
+  restore submit and when the review opens, because it brings the command's
+  contract schemas while the document shell ships the core to every CMS route
+  (AC-106). `cms-editorial-page-actions-dom.ts` holds the status line and storage
+  helpers both share.
+- `cms-contract-validators.ts` — the lazy loader of the zod validators of the CMS
+  editorial islands (`@wejammin/contracts/cms-editorial/validators`). An island
+  ships no zod; code that must check a payload or an input writes
+  `loadedCmsValidators() ?? (await loadCmsValidators())` (async) or
+  `withCmsValidators(use, unavailable)` (form handlers), and a control receiving
+  focus calls `warmCmsValidators`. A cold route load fetches none of it.
 
 ## Ownership
 

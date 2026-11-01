@@ -157,7 +157,7 @@ describe('safe-read error projection', () => {
     });
     expect(sanitizeReadError(failure(502), policy).details).toEqual({
       dependencyClass: 'cms_editorial',
-      retryable: false,
+      retryable: true,
     });
     for (const status of [503, 504])
       expect(sanitizeReadError(failure(status), policy)).toMatchObject({

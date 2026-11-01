@@ -1,12 +1,23 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
 
 vi.mock('../../lib/client-binding', () => ({
   addClientBindingIdHeader: async (_input: unknown, init?: RequestInit) => init,
 }));
 
 import { GRANTABLE_CMS_CAPABILITIES } from '@wejammin/contracts';
+import * as validators from '@wejammin/contracts/cms-editorial/validators';
 
 import {
   GRANT_ID,
@@ -47,6 +58,11 @@ const mount = (overrides = {}) => {
   return mounted.container;
 };
 const listResponse = () => jsonResponse(200, grantListPage(sampleItems()));
+
+// The form checks run synchronously once the lazily loaded validators are in.
+beforeAll(async () => {
+  await loadCmsValidators();
+});
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });
@@ -186,6 +202,7 @@ describe('AC-1137 two grant commands race on one grant', () => {
 describe('AC-1138 owner targets itself', () => {
   it("[P2-S09-AC-1138] the grant form has no self-target rule: any person id, including the owner's own, is accepted locally", () => {
     const errors = validateGrantFields(
+      validators,
       {
         subjectPersonId: GRANT_UUID,
         capability: 'cms.schema_designer',

@@ -1,0 +1,45 @@
+psql:/w/scratch/bench2-lane/mut/m15_minlength_digits.sql:2: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/mut/m15_minlength_digits.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench2-lane/mut/m15_minlength_digits.sql:4: WARNING:  there is no transaction in progress
+/w/scratch/bench2-lane/mut/m15_minlength_digits.sql .. 
+ok 1 - fixture: the legacy copy is the body that 20261010167000 pins by md5 before replacing it [P2-S09-AC-217]
+ok 2 - the installed cms_valid_field_input carries the early accept, not the previous body [P2-S09-AC-217]
+ok 3 - the replacement keeps its owner [P2-S09-AC-217]
+ok 4 - the replacement is IMMUTABLE, not SECURITY DEFINER, not strict, plpgsql, pins an empty search_path and keeps the signature and the default [P2-S09-AC-217]
+ok 5 - the replacement keeps the ACL of the function it replaces (the CMS definer role and the owner only) [P2-S09-AC-217]
+ok 6 - no API role and no other dedicated role can execute the validator, as before [P2-S09-AC-217]
+ok 7 - the function comment survived the replacement [P2-S09-AC-217]
+ok 8 - fixture: the corpus holds the base, every variant alone, 3,000 mixtures and every reserved word in three spellings [P2-S09-AC-217]
+not ok 9 - p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]
+# Failed test 9: "p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]"
+#         have: constraints#19 new=true old=false | mix#1181 new=true old=false | mix#2582 new=true old=false | mix#2810 new=true old=false
+#         want: NULL
+ok 10 - p_require_stable_id = false (the incremental edit path): the answers are identical on every corpus input [P2-S09-AC-217]
+ok 11 - p_require_stable_id = NULL: the answers are identical on every corpus input [P2-S09-AC-217]
+ok 12 - the comparison is not vacuous: the previous body accepts at least 400 and refuses at least 1,500 corpus inputs [P2-S09-AC-217]
+ok 13 - the previous body raises on no corpus input (every malformed value is answered false) [P2-S09-AC-217]
+# corpus: 3374 inputs, previous body accepts 633 and refuses 2741; early accept on 630, full rules on 2744
+not ok 14 - soundness: no input the previous body refuses is accepted early [P2-S09-AC-217]
+# Failed test 14: "soundness: no input the previous body refuses is accepted early [P2-S09-AC-217]"
+#         have: constraints#19 | mix#1181 | mix#2582 | mix#2810
+#         want: NULL
+ok 15 - the early accept is taken on at least 400 corpus inputs (630) [P2-S09-AC-217]
+ok 16 - the full rules still decide at least 1,500 corpus inputs (2744) [P2-S09-AC-217]
+ok 17 - the base field is accepted early [P2-S09-AC-217]
+ok 18 - all 164 benchmark and authored field shapes are valid and take the early accept (no call reaches the full rules) [P2-S09-AC-217]
+ok 19 - a field that carries a literal default is decided by the full rules (the early accept does not read defaults) [P2-S09-AC-217]
+ok 20 - a list field (itemKind) is decided by the full rules [P2-S09-AC-217]
+ok 21 - a field bound to a protected validator is decided by the full rules [P2-S09-AC-217]
+ok 22 - a key that merely resembles a reserved word is not reserved and is accepted early [P2-S09-AC-217]
+ok 23 - a reserved key is never accepted early [P2-S09-AC-217]
+ok 24 - and is refused, as before [P2-S09-AC-217]
+1..24
+# Looks like you failed 2 tests of 24
+Failed 2/24 subtests 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/mut/m15_minlength_digits.sql (Wstat: 0 Tests: 24 Failed: 2)
+  Failed tests:  9, 14
+Files=1, Tests=24, 20 wallclock secs ( 0.11 usr  0.02 sys +  0.05 cusr  0.02 csys =  0.20 CPU)
+Result: FAIL

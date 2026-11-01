@@ -1,0 +1,32 @@
+psql:/w/scratch/bench-lane/q3_keys_129.sql:2: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench-lane/q3_keys_129.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench-lane/q3_keys_129.sql:4: WARNING:  there is no transaction in progress
+/w/scratch/bench-lane/q3_keys_129.sql .. 
+ok 1 - the manifest bound keeps its owner, language, volatility, strictness, search_path and ACL (definer-only EXECUTE) [P2-S09-AC-217]
+ok 2 - the manifest bound is the jsonpath body, not the previous cms_json_bounded wrapper [P2-S09-AC-217]
+ok 3 - fixture: the reference is cms_json_bounded exactly as 20261003130100 installed it, and this migration leaves it alone [P2-S09-AC-217]
+ok 4 - both artifact manifest CHECK constraints still call the manifest bound [P2-S09-AC-217]
+not ok 5 - the manifest bound equals cms_json_bounded(doc, 524288, 12, 128, 128) on every boundary and generated document [P2-S09-AC-217]
+# Failed test 5: "the manifest bound equals cms_json_bounded(doc, 524288, 12, 128, 128) on every boundary and generated document [P2-S09-AC-217]"
+#         have: 129 keys, 129 keys at level 1, 129 keys at level 11, generated 110, generated 117, generated 128, generated 139, generated 149, generated 154, generated 155, generated 173, generated 214, generated 229, generated 234, generated 251, generated 260, generated 274, generated 281, generated 298, generated 368, generated 399, generated 407, generated 419, generated 438, generated 449, generated 48, generated 494, generated 495, generated 521, generated 529, generated 599, generated 67, generated 87, generated 9, wide objects of wide objects plus one key
+#         want: NULL
+not ok 6 - every boundary document gets the answer the bounds dictate (depth 12 levels, 128 keys, 128 elements, 524288 bytes) [P2-S09-AC-217]
+# Failed test 6: "every boundary document gets the answer the bounds dictate (depth 12 levels, 128 keys, 128 elements, 524288 bytes) [P2-S09-AC-217]"
+#         have: 129 keys, 129 keys at level 1, 129 keys at level 11, wide objects of wide objects plus one key
+#         want: NULL
+ok 7 - the generated corpus has documents inside every bound [P2-S09-AC-217]
+ok 8 - the generated corpus has documents outside a bound, so the equality is not between two constants [P2-S09-AC-217]
+ok 9 - no document answers NULL [P2-S09-AC-217]
+ok 10 - STRICT: a NULL manifest answers NULL exactly as before (the NOT NULL column keeps that unreachable) [P2-S09-AC-217]
+true
+ok 11 - a manifest nested past 12 levels is refused by cms_schema_artifacts_editor_manifest_check [P2-S09-AC-217]
+1..11
+# Looks like you failed 2 tests of 11
+Failed 2/11 subtests 
+
+Test Summary Report
+-------------------
+/w/scratch/bench-lane/q3_keys_129.sql (Wstat: 0 Tests: 11 Failed: 2)
+  Failed tests:  5-6
+Files=1, Tests=11,  4 wallclock secs ( 0.13 usr  0.02 sys +  0.06 cusr  0.00 csys =  0.21 CPU)
+Result: FAIL

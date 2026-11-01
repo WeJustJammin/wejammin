@@ -342,7 +342,7 @@ describe('CMS-03C-04 production locale adapter', () => {
     expect(malformedProvider).toMatchObject({
       ok: false,
       status: 502,
-      code: 'BAD_GATEWAY',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
 

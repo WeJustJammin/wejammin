@@ -8,7 +8,13 @@ import { ApiErrorSchema } from '@wejammin/contracts';
  * (FE03 "Error and Recovery").
  */
 export type CmsEditorialPageSubject =
-  'entry' | 'entries' | 'conflict' | 'history';
+  | 'entry'
+  | 'entries'
+  | 'conflict'
+  | 'history'
+  | 'workflow'
+  | 'review'
+  | 'reviews';
 
 export interface CmsEditorialPageNotice {
   readonly status: number;
@@ -42,6 +48,9 @@ const NOT_FOUND_COPY: Readonly<Record<CmsEditorialPageSubject, string>> = {
   entries: 'The entry list is not available.',
   conflict: 'This conflict is not open.',
   history: 'This entry is not available.',
+  workflow: 'This entry or revision is not available.',
+  review: 'This review is not available.',
+  reviews: 'The review list is not available.',
 };
 
 const FORBIDDEN_COPY: Readonly<Record<CmsEditorialPageSubject, string>> = {
@@ -49,6 +58,9 @@ const FORBIDDEN_COPY: Readonly<Record<CmsEditorialPageSubject, string>> = {
   entries: 'This account cannot read the entry list.',
   conflict: 'This account cannot read this conflict.',
   history: 'This account cannot read this entry history.',
+  workflow: 'This account cannot read this entry workflow.',
+  review: 'This account cannot read this review.',
+  reviews: 'This account cannot read the review list.',
 };
 
 const requestIdFrom = async (response: Response): Promise<string | null> => {

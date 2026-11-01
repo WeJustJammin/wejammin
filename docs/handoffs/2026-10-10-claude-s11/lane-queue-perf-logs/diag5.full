@@ -1,0 +1,287 @@
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_diag_queue_perf.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_diag_queue_perf.sql:4: WARNING:  there is no transaction in progress
+--- C1 POISONED stats, plain stage1 ids=201 in 0.8 ms
+Aggregate  (cost=24.98..24.99 rows=1 width=32)
+  ->  Nested Loop  (cost=9.57..13.62 rows=1 width=244)
+        Join Filter: (revision_item.schema_version_id = version_item.id)
+        ->  Nested Loop  (cost=9.57..12.61 rows=1 width=228)
+              Join Filter: (entry_item.content_type_id = type_item.id)
+              ->  Nested Loop  (cost=9.57..11.60 rows=1 width=212)
+                    Join Filter: (entry_item.id = review_scoped.entry_id)
+                    ->  Nested Loop  (cost=9.57..10.59 rows=1 width=196)
+                          Join Filter: (revision_item.id = review_scoped.revision_id)
+                          ->  Limit  (cost=9.57..9.57 rows=1 width=140)
+                                ->  Sort  (cost=9.57..9.57 rows=1 width=140)
+                                      Sort Key: (date_trunc('milliseconds'::text, review_scoped.updated_at)) DESC, review_scoped.id DESC
+                                      ->  Index Scan using cms_editorial_reviews_revision_submitted_idx on cms_editorial_reviews review_scoped  (cost=1.03..9.56 rows=1 width=140)
+                                            Index Cond: (id = ANY ('{a9200000-0000-4000-8000-00ceff60faa3,a9200000-0000-4000-8000-0239db3a3a9e,a9200000-0000-4000-8000-04f9b674f634,a9200000-0000-4000-8000-059fe818c60c,a9200000-0000-4000-8000-05b3e05bee8b,a9200000-0000-4000-8000-05c7395f821a,a9200000-0000-4000-8000-07a098c0f248,a9200000-0000-4000-8000-084b01b98c04,a9200000-0000-4000-8000-0a7b9f06f6d9,a9200000-0000-4000-8000-0bb7fc0fce5c,a9200000-0000-4000-8000-0fad88031236,a9200000-0000-4000-8000-123262f3a486,a9200000-0000-4000-8000-141e5f47faed,a9200000-0000-4000-8000-1457752db1af,a9200000-0000-4000-8000-156aae71ae37,a9200000-0000-4000-8000-1584711cf77c,a9200000-0000-4000-8000-16d78c8b9ffb,a9200000-0000-4000-8000-18b92ab6923d,a9200000-0000-4000-8000-1972f1ab2630,a9200000-0000-4000-8000-1a7c677d2a9e,a9200000-0000-4000-8000-1bc996cb24a3,a9200000-0000-4000-8000-1d3e8c3775dd,a9200000-0000-4000-8000-1da1c929ff77,a9200000-0000-4000-8000-1e14b6c8f5bb,a9200000-0000-4000-8000-1eff1920f5da,a9200000-0000-4000-8000-22d037a43a40,a9200000-0000-4000-8000-25392d3cb467,a9200000-0000-4000-8000-2579a5d85598,a9200000-0000-4000-8000-261ac8802380,a9200000-0000-4000-8000-278bac748f82,a9200000-0000-4000-8000-2b8458873736,a9200000-0000-4000-8000-2bce34b21571,a9200000-0000-4000-8000-2c1f3a090825,a9200000-0000-4000-8000-2d399ff85bed,a9200000-0000-4000-8000-2d8c6ec21b77,a9200000-0000-4000-8000-2ffac9538fa0,a9200000-0000-4000-8000-31353c962acb,a9200000-0000-4000-8000-34a95fc0b46a,a9200000-0000-4000-8000-34fbe6e68d68,a9200000-0000-4000-8000-3a0d63e5a742,a9200000-0000-4000-8000-3addec240523,a9200000-0000-4000-8000-3d66cb475303,a9200000-0000-4000-8000-3ee5879c8282,a9200000-0000-4000-8000-4109605c1919,a9200000-0000-4000-8000-41864a14d6aa,a9200000-0000-4000-8000-41be64cff844,a9200000-0000-4000-8000-45dea0a0421b,a9200000-0000-4000-8000-46b1d99ac911,a9200000-0000-4000-8000-4833e4e29c02,a9200000-0000-4000-8000-489dade86f32,a9200000-0000-4000-8000-498d2d79dabe,a9200000-0000-4000-8000-49b548d15fde,a9200000-0000-4000-8000-4beaaca28deb,a9200000-0000-4000-8000-4c05fd865c42,a9200000-0000-4000-8000-4c219467bd33,a9200000-0000-4000-8000-4c4527e8ad38,a9200000-0000-4000-8000-4c45a5970ddf,a9200000-0000-4000-8000-4d9f5fd7611f,a9200000-0000-4000-8000-5093c0e14bcd,a9200000-0000-4000-8000-50c7085a5044,a9200000-0000-4000-8000-52661d28e6ba,a9200000-0000-4000-8000-52d608e363be,a9200000-0000-4000-8000-53fcd0158f81,a9200000-0000-4000-8000-543a93d0b22b,a9200000-0000-4000-8000-551a99b99fbd,a9200000-0000-4000-8000-572c79fc4818,a9200000-0000-4000-8000-594bfcfc8d9e,a9200000-0000-4000-8000-5b0d44b0d646,a9200000-0000-4000-8000-5d0e1158529d,a9200000-0000-4000-8000-5fce97e87db1,a9200000-0000-4000-8000-60b442c76824,a9200000-0000-4000-8000-61ae172fc373,a9200000-0000-4000-8000-652d6b7089e4,a9200000-0000-4000-8000-65706ad3726e,a9200000-0000-4000-8000-66bc9b66aa1a,a9200000-0000-4000-8000-67c15542e060,a9200000-0000-4000-8000-68f1045eff81,a9200000-0000-4000-8000-6a11711bf0bc,a9200000-0000-4000-8000-6a9a8a6f2eaa,a9200000-0000-4000-8000-6b2afac6199f,a9200000-0000-4000-8000-6d05a21a85a4,a9200000-0000-4000-8000-6e440e986f6b,a9200000-0000-4000-8000-71c6e7ff98e9,a9200000-0000-4000-8000-725644d81820,a9200000-0000-4000-8000-73b699996672,a9200000-0000-4000-8000-74b3b810566d,a9200000-0000-4000-8000-76d88116806a,a9200000-0000-4000-8000-77f1213b2269,a9200000-0000-4000-8000-785dc6323f59,a9200000-0000-4000-8000-78bb52fac735,a9200000-0000-4000-8000-7935855e3619,a9200000-0000-4000-8000-79bdd635a8b3,a9200000-0000-4000-8000-7b9e9b8dd09c,a9200000-0000-4000-8000-7bfac63e4ce2,a9200000-0000-4000-8000-81e63564ca87,a9200000-0000-4000-8000-85001edac5cf,a9200000-0000-4000-8000-85820199c9fb,a9200000-0000-4000-8000-8592bf30eaec,a9200000-0000-4000-8000-859b34621875,a9200000-0000-4000-8000-85df28205522,a9200000-0000-4000-8000-85fc656ce009,a9200000-0000-4000-8000-880e68af136d,a9200000-0000-4000-8000-8904c5d18107,a9200000-0000-4000-8000-8ac47380e62a,a9200000-0000-4000-8000-8d6072f578a7,a9200000-0000-4000-8000-8de37d77d3e2,a9200000-0000-4000-8000-8eb0695d0ca0,a9200000-0000-4000-8000-8ffef2cf017d,a9200000-0000-4000-8000-905ae0da832b,a9200000-0000-4000-8000-927a469a359f,a9200000-0000-4000-8000-94216573d9ef,a9200000-0000-4000-8000-95681b240577,a9200000-0000-4000-8000-95c47d3b6b38,a9200000-0000-4000-8000-9877ca4e432c,a9200000-0000-4000-8000-99a227fa8c93,a9200000-0000-4000-8000-9af483527a09,a9200000-0000-4000-8000-9af75ed77472,a9200000-0000-4000-8000-9b1cc0864fde,a9200000-0000-4000-8000-9bf681e5c641,a9200000-0000-4000-8000-9c750a73cf35,a9200000-0000-4000-8000-9ecd87268993,a9200000-0000-4000-8000-9f68f80528a1,a9200000-0000-4000-8000-a074c586003a,a9200000-0000-4000-8000-a1184fee7674,a9200000-0000-4000-8000-a25d97c40855,a9200000-0000-4000-8000-a3ee6059f76e,a9200000-0000-4000-8000-a493f7db1ad6,a9200000-0000-4000-8000-a5b1236afeb1,a9200000-0000-4000-8000-a6d78918d1e2,a9200000-0000-4000-8000-a77c034d873b,a9200000-0000-4000-8000-a90b209b4429,a9200000-0000-4000-8000-ac08193416d5,a9200000-0000-4000-8000-ad16768089fe,a9200000-0000-4000-8000-add1f57dea1b,a9200000-0000-4000-8000-af22a42487ea,a9200000-0000-4000-8000-af7c8391fae6,a9200000-0000-4000-8000-afa2a49fba4a,a9200000-0000-4000-8000-b112d527bea6,a9200000-0000-4000-8000-b126af70b849,a9200000-0000-4000-8000-b1700c4a47a5,a9200000-0000-4000-8000-b2adb4c0e900,a9200000-0000-4000-8000-b4acfe90db05,a9200000-0000-4000-8000-b4e48c274cac,a9200000-0000-4000-8000-b5f609574983,a9200000-0000-4000-8000-b7b4b9b5261e,a9200000-0000-4000-8000-b8494ffcf5e3,a9200000-0000-4000-8000-b88d64edd695,a9200000-0000-4000-8000-b8ec38f8d929,a9200000-0000-4000-8000-bad40b5db3de,a9200000-0000-4000-8000-baeb8acfd9ca,a9200000-0000-4000-8000-bb7bb9e6d5f0,a9200000-0000-4000-8000-bcec658e3d5e,a9200000-0000-4000-8000-bd351a307177,a9200000-0000-4000-8000-bf612837de34,a9200000-0000-4000-8000-c10ccc5807ac,a9200000-0000-4000-8000-c12f30b25bba,a9200000-0000-4000-8000-c3319d24b413,a9200000-0000-4000-8000-c3f19ba8d71d,a9200000-0000-4000-8000-c44450851f12,a9200000-0000-4000-8000-c92e9d0e3991,a9200000-0000-4000-8000-c9553fc98e74,a9200000-0000-4000-8000-cbe8b211431f,a9200000-0000-4000-8000-cca90bea82b4,a9200000-0000-4000-8000-cddffd4b24be,a9200000-0000-4000-8000-cec83f92060d,a9200000-0000-4000-8000-cfd2cbeb3bf4,a9200000-0000-4000-8000-d12e066ae236,a9200000-0000-4000-8000-d4f803016e34,a9200000-0000-4000-8000-d627473109a0,a9200000-0000-4000-8000-d88ba387afa2,a9200000-0000-4000-8000-d8a209301e03,a9200000-0000-4000-8000-d9fa775eff98,a9200000-0000-4000-8000-db00ab13f485,a9200000-0000-4000-8000-db5251938786,a9200000-0000-4000-8000-dcd992e3ce29,a9200000-0000-4000-8000-dcdb5f12bf24,a9200000-0000-4000-8000-ddc84bfe0861,a9200000-0000-4000-8000-dea721a7b132,a9200000-0000-4000-8000-e067418a1c23,a9200000-0000-4000-8000-e22ad61474bc,a9200000-0000-4000-8000-e267bc2b9c4b,a9200000-0000-4000-8000-e424cf7e5126,a9200000-0000-4000-8000-e47c0576f1ed,a9200000-0000-4000-8000-e56c49b80c58,a9200000-0000-4000-8000-e6c13d5d0c8f,a9200000-0000-4000-8000-e73c24b69a67,a9200000-0000-4000-8000-e7ec4765c8d1,a9200000-0000-4000-8000-ed61840ade05,a9200000-0000-4000-8000-ed7b0e8a85fb,a9200000-0000-4000-8000-ee3af7bfcca8,a9200000-0000-4000-8000-ef27c26310fa,a9200000-0000-4000-8000-f13c081e177c,a9200000-0000-4000-8000-f4a071ea9207,a9200000-0000-4000-8000-f5979adde80b,a9200000-0000-4000-8000-f6145144df40,a9200000-0000-4000-8000-f6cab30d7343,a9200000-0000-4000-8000-f9c2d22f40f3,a9200000-0000-4000-8000-fc3e3feba405,a9200000-0000-4000-8000-fe4fa8fcf5eb,a9200000-0000-4000-8000-feeaa4ba03a7,fe2f51af-de97-4efb-93b7-9a72397964b6}'::uuid[]))
+                                            Filter: (((InitPlan 10).col1 OR (owner_id = (InitPlan 11).col1)) AND (owner_id = '9eb0ef14-a7b6-4262-929b-d188c8f8d5c4'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 9).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                            InitPlan 9
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                            InitPlan 10
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1)
+                                            InitPlan 11
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=16)
+                          ->  Seq Scan on cms_entry_revisions revision_item  (cost=0.00..1.00 rows=1 width=72)
+                                Filter: platform_private.cms_rpc_context_valid()
+                    ->  Seq Scan on cms_content_entries entry_item  (cost=0.00..1.00 rows=1 width=32)
+                          Filter: platform_private.cms_rpc_context_valid()
+              ->  Seq Scan on cms_content_types type_item  (cost=0.00..1.00 rows=1 width=48)
+                    Filter: platform_private.cms_rpc_context_valid()
+        ->  Seq Scan on cms_content_type_versions version_item  (cost=0.00..1.00 rows=1 width=48)
+              Filter: platform_private.cms_rpc_context_valid()
+  SubPlan 4
+    ->  Index Scan using cms_editorial_review_assignments_active_reviewer_unique on cms_editorial_review_assignments assignment_item  (cost=1.03..9.56 rows=1 width=8)
+          Index Cond: ((review_id = review_scoped.id) AND (reviewer_person_id = '3869093c-8dd1-4c61-ae87-eb620e4446c1'::uuid))
+          Filter: (((InitPlan 2).col1 OR (owner_id = (InitPlan 3).col1)) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 1).col1 OR platform_private.cms_s11_assignment_readable(reviewer_person_id, state)) END AND platform_private.cms_rpc_context_valid())
+          InitPlan 1
+            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+          InitPlan 2
+            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+          InitPlan 3
+            ->  Result  (cost=0.00..0.26 rows=1 width=16)
+  SubPlan 8
+    ->  Limit  (cost=0.78..1.78 rows=1 width=32)
+          InitPlan 5
+            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+          InitPlan 6
+            ->  Result  (cost=0.00..0.26 rows=1 width=1)
+          InitPlan 7
+            ->  Result  (cost=0.00..0.26 rows=1 width=16)
+          ->  Seq Scan on cms_editorial_decisions decision_item  (cost=0.00..1.00 rows=1 width=32)
+                Filter: (((InitPlan 6).col1 OR (owner_id = (InitPlan 7).col1)) AND (review_id = review_scoped.id) AND (reviewer_person_id = '3869093c-8dd1-4c61-ae87-eb620e4446c1'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 5).col1 OR platform_private.cms_s11_review_readable(review_id)) END AND platform_private.cms_rpc_context_valid())
+Planning Time: 0.528 ms
+--- C2 POISONED stats, ANALYZE stage1 ids=201 in 0.7 ms
+Aggregate  (cost=24.98..24.99 rows=1 width=32) (actual time=4.134..4.138 rows=1 loops=1)
+  Buffers: shared hit=693
+  ->  Nested Loop  (cost=9.57..13.62 rows=1 width=244) (actual time=0.991..3.287 rows=51 loops=1)
+        Join Filter: (revision_item.schema_version_id = version_item.id)
+        Rows Removed by Join Filter: 102
+        Buffers: shared hit=481
+        ->  Nested Loop  (cost=9.57..12.61 rows=1 width=228) (actual time=0.974..2.919 rows=51 loops=1)
+              Join Filter: (entry_item.content_type_id = type_item.id)
+              Rows Removed by Join Filter: 102
+              Buffers: shared hit=430
+              ->  Nested Loop  (cost=9.57..11.60 rows=1 width=212) (actual time=0.943..2.547 rows=51 loops=1)
+                    Join Filter: (entry_item.id = review_scoped.entry_id)
+                    Rows Removed by Join Filter: 306
+                    Buffers: shared hit=379
+                    ->  Nested Loop  (cost=9.57..10.59 rows=1 width=196) (actual time=0.916..1.774 rows=51 loops=1)
+                          Join Filter: (revision_item.id = review_scoped.revision_id)
+                          Rows Removed by Join Filter: 357
+                          Buffers: shared hit=328
+                          ->  Limit  (cost=9.57..9.57 rows=1 width=140) (actual time=0.883..0.892 rows=51 loops=1)
+                                Buffers: shared hit=277
+                                ->  Sort  (cost=9.57..9.57 rows=1 width=140) (actual time=0.882..0.887 rows=51 loops=1)
+                                      Sort Key: (date_trunc('milliseconds'::text, review_scoped.updated_at)) DESC, review_scoped.id DESC
+                                      Sort Method: top-N heapsort  Memory: 36kB
+                                      Buffers: shared hit=277
+                                      ->  Index Scan using cms_editorial_reviews_revision_submitted_idx on cms_editorial_reviews review_scoped  (cost=1.03..9.56 rows=1 width=140) (actual time=0.157..0.821 rows=201 loops=1)
+                                            Index Cond: (id = ANY ('{a9200000-0000-4000-8000-00ceff60faa3,a9200000-0000-4000-8000-0239db3a3a9e,a9200000-0000-4000-8000-04f9b674f634,a9200000-0000-4000-8000-059fe818c60c,a9200000-0000-4000-8000-05b3e05bee8b,a9200000-0000-4000-8000-05c7395f821a,a9200000-0000-4000-8000-07a098c0f248,a9200000-0000-4000-8000-084b01b98c04,a9200000-0000-4000-8000-0a7b9f06f6d9,a9200000-0000-4000-8000-0bb7fc0fce5c,a9200000-0000-4000-8000-0fad88031236,a9200000-0000-4000-8000-123262f3a486,a9200000-0000-4000-8000-141e5f47faed,a9200000-0000-4000-8000-1457752db1af,a9200000-0000-4000-8000-156aae71ae37,a9200000-0000-4000-8000-1584711cf77c,a9200000-0000-4000-8000-16d78c8b9ffb,a9200000-0000-4000-8000-18b92ab6923d,a9200000-0000-4000-8000-1972f1ab2630,a9200000-0000-4000-8000-1a7c677d2a9e,a9200000-0000-4000-8000-1bc996cb24a3,a9200000-0000-4000-8000-1d3e8c3775dd,a9200000-0000-4000-8000-1da1c929ff77,a9200000-0000-4000-8000-1e14b6c8f5bb,a9200000-0000-4000-8000-1eff1920f5da,a9200000-0000-4000-8000-22d037a43a40,a9200000-0000-4000-8000-25392d3cb467,a9200000-0000-4000-8000-2579a5d85598,a9200000-0000-4000-8000-261ac8802380,a9200000-0000-4000-8000-278bac748f82,a9200000-0000-4000-8000-2b8458873736,a9200000-0000-4000-8000-2bce34b21571,a9200000-0000-4000-8000-2c1f3a090825,a9200000-0000-4000-8000-2d399ff85bed,a9200000-0000-4000-8000-2d8c6ec21b77,a9200000-0000-4000-8000-2ffac9538fa0,a9200000-0000-4000-8000-31353c962acb,a9200000-0000-4000-8000-34a95fc0b46a,a9200000-0000-4000-8000-34fbe6e68d68,a9200000-0000-4000-8000-3a0d63e5a742,a9200000-0000-4000-8000-3addec240523,a9200000-0000-4000-8000-3d66cb475303,a9200000-0000-4000-8000-3ee5879c8282,a9200000-0000-4000-8000-4109605c1919,a9200000-0000-4000-8000-41864a14d6aa,a9200000-0000-4000-8000-41be64cff844,a9200000-0000-4000-8000-45dea0a0421b,a9200000-0000-4000-8000-46b1d99ac911,a9200000-0000-4000-8000-4833e4e29c02,a9200000-0000-4000-8000-489dade86f32,a9200000-0000-4000-8000-498d2d79dabe,a9200000-0000-4000-8000-49b548d15fde,a9200000-0000-4000-8000-4beaaca28deb,a9200000-0000-4000-8000-4c05fd865c42,a9200000-0000-4000-8000-4c219467bd33,a9200000-0000-4000-8000-4c4527e8ad38,a9200000-0000-4000-8000-4c45a5970ddf,a9200000-0000-4000-8000-4d9f5fd7611f,a9200000-0000-4000-8000-5093c0e14bcd,a9200000-0000-4000-8000-50c7085a5044,a9200000-0000-4000-8000-52661d28e6ba,a9200000-0000-4000-8000-52d608e363be,a9200000-0000-4000-8000-53fcd0158f81,a9200000-0000-4000-8000-543a93d0b22b,a9200000-0000-4000-8000-551a99b99fbd,a9200000-0000-4000-8000-572c79fc4818,a9200000-0000-4000-8000-594bfcfc8d9e,a9200000-0000-4000-8000-5b0d44b0d646,a9200000-0000-4000-8000-5d0e1158529d,a9200000-0000-4000-8000-5fce97e87db1,a9200000-0000-4000-8000-60b442c76824,a9200000-0000-4000-8000-61ae172fc373,a9200000-0000-4000-8000-652d6b7089e4,a9200000-0000-4000-8000-65706ad3726e,a9200000-0000-4000-8000-66bc9b66aa1a,a9200000-0000-4000-8000-67c15542e060,a9200000-0000-4000-8000-68f1045eff81,a9200000-0000-4000-8000-6a11711bf0bc,a9200000-0000-4000-8000-6a9a8a6f2eaa,a9200000-0000-4000-8000-6b2afac6199f,a9200000-0000-4000-8000-6d05a21a85a4,a9200000-0000-4000-8000-6e440e986f6b,a9200000-0000-4000-8000-71c6e7ff98e9,a9200000-0000-4000-8000-725644d81820,a9200000-0000-4000-8000-73b699996672,a9200000-0000-4000-8000-74b3b810566d,a9200000-0000-4000-8000-76d88116806a,a9200000-0000-4000-8000-77f1213b2269,a9200000-0000-4000-8000-785dc6323f59,a9200000-0000-4000-8000-78bb52fac735,a9200000-0000-4000-8000-7935855e3619,a9200000-0000-4000-8000-79bdd635a8b3,a9200000-0000-4000-8000-7b9e9b8dd09c,a9200000-0000-4000-8000-7bfac63e4ce2,a9200000-0000-4000-8000-81e63564ca87,a9200000-0000-4000-8000-85001edac5cf,a9200000-0000-4000-8000-85820199c9fb,a9200000-0000-4000-8000-8592bf30eaec,a9200000-0000-4000-8000-859b34621875,a9200000-0000-4000-8000-85df28205522,a9200000-0000-4000-8000-85fc656ce009,a9200000-0000-4000-8000-880e68af136d,a9200000-0000-4000-8000-8904c5d18107,a9200000-0000-4000-8000-8ac47380e62a,a9200000-0000-4000-8000-8d6072f578a7,a9200000-0000-4000-8000-8de37d77d3e2,a9200000-0000-4000-8000-8eb0695d0ca0,a9200000-0000-4000-8000-8ffef2cf017d,a9200000-0000-4000-8000-905ae0da832b,a9200000-0000-4000-8000-927a469a359f,a9200000-0000-4000-8000-94216573d9ef,a9200000-0000-4000-8000-95681b240577,a9200000-0000-4000-8000-95c47d3b6b38,a9200000-0000-4000-8000-9877ca4e432c,a9200000-0000-4000-8000-99a227fa8c93,a9200000-0000-4000-8000-9af483527a09,a9200000-0000-4000-8000-9af75ed77472,a9200000-0000-4000-8000-9b1cc0864fde,a9200000-0000-4000-8000-9bf681e5c641,a9200000-0000-4000-8000-9c750a73cf35,a9200000-0000-4000-8000-9ecd87268993,a9200000-0000-4000-8000-9f68f80528a1,a9200000-0000-4000-8000-a074c586003a,a9200000-0000-4000-8000-a1184fee7674,a9200000-0000-4000-8000-a25d97c40855,a9200000-0000-4000-8000-a3ee6059f76e,a9200000-0000-4000-8000-a493f7db1ad6,a9200000-0000-4000-8000-a5b1236afeb1,a9200000-0000-4000-8000-a6d78918d1e2,a9200000-0000-4000-8000-a77c034d873b,a9200000-0000-4000-8000-a90b209b4429,a9200000-0000-4000-8000-ac08193416d5,a9200000-0000-4000-8000-ad16768089fe,a9200000-0000-4000-8000-add1f57dea1b,a9200000-0000-4000-8000-af22a42487ea,a9200000-0000-4000-8000-af7c8391fae6,a9200000-0000-4000-8000-afa2a49fba4a,a9200000-0000-4000-8000-b112d527bea6,a9200000-0000-4000-8000-b126af70b849,a9200000-0000-4000-8000-b1700c4a47a5,a9200000-0000-4000-8000-b2adb4c0e900,a9200000-0000-4000-8000-b4acfe90db05,a9200000-0000-4000-8000-b4e48c274cac,a9200000-0000-4000-8000-b5f609574983,a9200000-0000-4000-8000-b7b4b9b5261e,a9200000-0000-4000-8000-b8494ffcf5e3,a9200000-0000-4000-8000-b88d64edd695,a9200000-0000-4000-8000-b8ec38f8d929,a9200000-0000-4000-8000-bad40b5db3de,a9200000-0000-4000-8000-baeb8acfd9ca,a9200000-0000-4000-8000-bb7bb9e6d5f0,a9200000-0000-4000-8000-bcec658e3d5e,a9200000-0000-4000-8000-bd351a307177,a9200000-0000-4000-8000-bf612837de34,a9200000-0000-4000-8000-c10ccc5807ac,a9200000-0000-4000-8000-c12f30b25bba,a9200000-0000-4000-8000-c3319d24b413,a9200000-0000-4000-8000-c3f19ba8d71d,a9200000-0000-4000-8000-c44450851f12,a9200000-0000-4000-8000-c92e9d0e3991,a9200000-0000-4000-8000-c9553fc98e74,a9200000-0000-4000-8000-cbe8b211431f,a9200000-0000-4000-8000-cca90bea82b4,a9200000-0000-4000-8000-cddffd4b24be,a9200000-0000-4000-8000-cec83f92060d,a9200000-0000-4000-8000-cfd2cbeb3bf4,a9200000-0000-4000-8000-d12e066ae236,a9200000-0000-4000-8000-d4f803016e34,a9200000-0000-4000-8000-d627473109a0,a9200000-0000-4000-8000-d88ba387afa2,a9200000-0000-4000-8000-d8a209301e03,a9200000-0000-4000-8000-d9fa775eff98,a9200000-0000-4000-8000-db00ab13f485,a9200000-0000-4000-8000-db5251938786,a9200000-0000-4000-8000-dcd992e3ce29,a9200000-0000-4000-8000-dcdb5f12bf24,a9200000-0000-4000-8000-ddc84bfe0861,a9200000-0000-4000-8000-dea721a7b132,a9200000-0000-4000-8000-e067418a1c23,a9200000-0000-4000-8000-e22ad61474bc,a9200000-0000-4000-8000-e267bc2b9c4b,a9200000-0000-4000-8000-e424cf7e5126,a9200000-0000-4000-8000-e47c0576f1ed,a9200000-0000-4000-8000-e56c49b80c58,a9200000-0000-4000-8000-e6c13d5d0c8f,a9200000-0000-4000-8000-e73c24b69a67,a9200000-0000-4000-8000-e7ec4765c8d1,a9200000-0000-4000-8000-ed61840ade05,a9200000-0000-4000-8000-ed7b0e8a85fb,a9200000-0000-4000-8000-ee3af7bfcca8,a9200000-0000-4000-8000-ef27c26310fa,a9200000-0000-4000-8000-f13c081e177c,a9200000-0000-4000-8000-f4a071ea9207,a9200000-0000-4000-8000-f5979adde80b,a9200000-0000-4000-8000-f6145144df40,a9200000-0000-4000-8000-f6cab30d7343,a9200000-0000-4000-8000-f9c2d22f40f3,a9200000-0000-4000-8000-fc3e3feba405,a9200000-0000-4000-8000-fe4fa8fcf5eb,a9200000-0000-4000-8000-feeaa4ba03a7,fe2f51af-de97-4efb-93b7-9a72397964b6}'::uuid[]))
+                                            Filter: (((InitPlan 10).col1 OR (owner_id = (InitPlan 11).col1)) AND (owner_id = '9eb0ef14-a7b6-4262-929b-d188c8f8d5c4'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 9).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                            Buffers: shared hit=277
+                                            InitPlan 9
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 10
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.032..0.032 rows=1 loops=1)
+                                            InitPlan 11
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.070..0.070 rows=1 loops=1)
+                                                    Buffers: shared hit=4
+                          ->  Seq Scan on cms_entry_revisions revision_item  (cost=0.00..1.00 rows=1 width=72) (actual time=0.003..0.016 rows=8 loops=51)
+                                Filter: platform_private.cms_rpc_context_valid()
+                                Buffers: shared hit=51
+                    ->  Seq Scan on cms_content_entries entry_item  (cost=0.00..1.00 rows=1 width=32) (actual time=0.003..0.014 rows=7 loops=51)
+                          Filter: platform_private.cms_rpc_context_valid()
+                          Buffers: shared hit=51
+              ->  Seq Scan on cms_content_types type_item  (cost=0.00..1.00 rows=1 width=48) (actual time=0.003..0.006 rows=3 loops=51)
+                    Filter: platform_private.cms_rpc_context_valid()
+                    Buffers: shared hit=51
+        ->  Seq Scan on cms_content_type_versions version_item  (cost=0.00..1.00 rows=1 width=48) (actual time=0.003..0.006 rows=3 loops=51)
+              Filter: platform_private.cms_rpc_context_valid()
+              Buffers: shared hit=51
+  SubPlan 4
+    ->  Index Scan using cms_editorial_review_assignments_active_reviewer_unique on cms_editorial_review_assignments assignment_item  (cost=1.03..9.56 rows=1 width=8) (actual time=0.005..0.005 rows=1 loops=51)
+          Index Cond: ((review_id = review_scoped.id) AND (reviewer_person_id = '3869093c-8dd1-4c61-ae87-eb620e4446c1'::uuid))
+          Filter: (((InitPlan 2).col1 OR (owner_id = (InitPlan 3).col1)) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 1).col1 OR platform_private.cms_s11_assignment_readable(reviewer_person_id, state)) END AND platform_private.cms_rpc_context_valid())
+          Buffers: shared hit=157
+          InitPlan 1
+            ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+          InitPlan 2
+            ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.018..0.018 rows=1 loops=1)
+          InitPlan 3
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.063..0.063 rows=1 loops=1)
+                  Buffers: shared hit=4
+  SubPlan 8
+    ->  Limit  (cost=0.78..1.78 rows=1 width=32) (actual time=0.002..0.003 rows=0 loops=51)
+          Buffers: shared hit=55
+          InitPlan 5
+            ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+          InitPlan 6
+            ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.020..0.020 rows=1 loops=1)
+          InitPlan 7
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.046..0.046 rows=1 loops=1)
+                  Buffers: shared hit=4
+          ->  Seq Scan on cms_editorial_decisions decision_item  (cost=0.00..1.00 rows=1 width=32) (actual time=0.002..0.002 rows=0 loops=51)
+                Filter: (((InitPlan 6).col1 OR (owner_id = (InitPlan 7).col1)) AND (review_id = review_scoped.id) AND (reviewer_person_id = '3869093c-8dd1-4c61-ae87-eb620e4446c1'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 5).col1 OR platform_private.cms_s11_review_readable(review_id)) END AND platform_private.cms_rpc_context_valid())
+                Rows Removed by Filter: 7
+                Buffers: shared hit=55
+Planning Time: 0.531 ms
+Execution Time: 4.198 ms
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_diag_queue_perf.sql ........ 
+{"created": true, "personId": "81ce3f29-00e1-43ca-b0ed-427b0f2aa2e2", "contextKind": "self", "accountState": "active", "actingPartyId": "81ce3f29-00e1-43ca-b0ed-427b0f2aa2e2", "bindingVersion": 1}
+{"created": true, "personId": "f5232b8c-1a13-4165-b986-df5cc76bdedf", "contextKind": "self", "accountState": "active", "actingPartyId": "f5232b8c-1a13-4165-b986-df5cc76bdedf", "bindingVersion": 1}
+{"created": true, "personId": "f41531f7-7dde-400b-a5ec-dc3e37614306", "contextKind": "self", "accountState": "active", "actingPartyId": "f41531f7-7dde-400b-a5ec-dc3e37614306", "bindingVersion": 1}
+{"created": true, "personId": "701b0149-4a5b-4987-a5a5-85635be55671", "contextKind": "self", "accountState": "active", "actingPartyId": "701b0149-4a5b-4987-a5a5-85635be55671", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+{"created": true, "personId": "3869093c-8dd1-4c61-ae87-eb620e4446c1", "contextKind": "self", "accountState": "active", "actingPartyId": "3869093c-8dd1-4c61-ae87-eb620e4446c1", "bindingVersion": 1}
+{"created": true, "personId": "ede30eb9-2790-4c47-9574-70dcbde6f315", "contextKind": "self", "accountState": "active", "actingPartyId": "ede30eb9-2790-4c47-9574-70dcbde6f315", "bindingVersion": 1}
+{"created": true, "personId": "a24ce5e2-287c-42f9-826c-43ecf0934f89", "contextKind": "self", "accountState": "active", "actingPartyId": "a24ce5e2-287c-42f9-826c-43ecf0934f89", "bindingVersion": 1}
+{"created": true, "personId": "abdf0173-f77e-40bc-9a55-6dcba8170dab", "contextKind": "self", "accountState": "active", "actingPartyId": "abdf0173-f77e-40bc-9a55-6dcba8170dab", "bindingVersion": 1}
+{"created": true, "personId": "24ac9cb3-b68d-4d7f-a3a9-ea7d0c681e92", "contextKind": "self", "accountState": "active", "actingPartyId": "24ac9cb3-b68d-4d7f-a3a9-ea7d0c681e92", "bindingVersion": 1}
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+true
+49c94e19-8dd5-41c1-ae20-7b5e149170ad
+a9200000-0000-4000-8000-679878a9a754
+a9200000-0000-4000-8000-e16a4a4af66c
+a9200000-0000-4000-8000-fd3a8f988adb
+a9200000-0000-4000-8000-33d173aa7abf
+# READER cms_list_editorial_reviews md5src=0661c70b7149cae7aa328232753e822f md5def=0ca3c49c24d32d3ee4f6216de530d48d owner=wejammin_cms_definer kind=f vol=v secdef=t strict=f leak=f par=u config={"search_path=\"\""} acl={wejammin_cms_definer=X/wejammin_cms_definer} nargs=1 ret=jsonb retset=f lang=plpgsql
+# READER comment=CMS-03B-17 internal keyset reader (unsigned cursor; reachable only through cms_list_editorial_reviews_signed). Lists only the caller's own assigned or submitted reviews of the acting party, ordered (updatedAt DESC at millisecond precision, reviewId DESC), driven from the caller's assignment / submission rows. Writes nothing. Private.
+1..9
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_diag_queue_perf_fresh.sql:2: WARNING:  there is no transaction in progress
+extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_diag_queue_perf_fresh.sql:4: WARNING:  there is no transaction in progress
+--- C0 FRESH (never analyzed) stats stage1 ids=201 in 0.9 ms
+Aggregate  (cost=24.98..24.99 rows=1 width=32) (actual time=4.310..4.314 rows=1 loops=1)
+  Buffers: shared hit=699
+  ->  Nested Loop  (cost=9.57..13.62 rows=1 width=244) (actual time=1.055..3.426 rows=51 loops=1)
+        Join Filter: (revision_item.schema_version_id = version_item.id)
+        Rows Removed by Join Filter: 102
+        Buffers: shared hit=487
+        ->  Nested Loop  (cost=9.57..12.61 rows=1 width=228) (actual time=1.034..3.058 rows=51 loops=1)
+              Join Filter: (entry_item.content_type_id = type_item.id)
+              Rows Removed by Join Filter: 102
+              Buffers: shared hit=436
+              ->  Nested Loop  (cost=9.57..11.60 rows=1 width=212) (actual time=1.017..2.689 rows=51 loops=1)
+                    Join Filter: (entry_item.id = review_scoped.entry_id)
+                    Rows Removed by Join Filter: 306
+                    Buffers: shared hit=385
+                    ->  Nested Loop  (cost=9.57..10.59 rows=1 width=196) (actual time=0.990..1.880 rows=51 loops=1)
+                          Join Filter: (revision_item.id = review_scoped.revision_id)
+                          Rows Removed by Join Filter: 357
+                          Buffers: shared hit=334
+                          ->  Limit  (cost=9.57..9.57 rows=1 width=140) (actual time=0.951..0.961 rows=51 loops=1)
+                                Buffers: shared hit=283
+                                ->  Sort  (cost=9.57..9.57 rows=1 width=140) (actual time=0.950..0.956 rows=51 loops=1)
+                                      Sort Key: (date_trunc('milliseconds'::text, review_scoped.updated_at)) DESC, review_scoped.id DESC
+                                      Sort Method: top-N heapsort  Memory: 36kB
+                                      Buffers: shared hit=283
+                                      ->  Index Scan using cms_editorial_reviews_revision_submitted_idx on cms_editorial_reviews review_scoped  (cost=1.03..9.56 rows=1 width=140) (actual time=0.189..0.888 rows=201 loops=1)
+                                            Index Cond: (id = ANY ('{659c039a-5256-48af-9607-b7a155729bcf,a9200000-0000-4000-8000-00ceff60faa3,a9200000-0000-4000-8000-0239db3a3a9e,a9200000-0000-4000-8000-04f9b674f634,a9200000-0000-4000-8000-059fe818c60c,a9200000-0000-4000-8000-05b3e05bee8b,a9200000-0000-4000-8000-05c7395f821a,a9200000-0000-4000-8000-07a098c0f248,a9200000-0000-4000-8000-084b01b98c04,a9200000-0000-4000-8000-0a7b9f06f6d9,a9200000-0000-4000-8000-0bb7fc0fce5c,a9200000-0000-4000-8000-0fad88031236,a9200000-0000-4000-8000-123262f3a486,a9200000-0000-4000-8000-141e5f47faed,a9200000-0000-4000-8000-1457752db1af,a9200000-0000-4000-8000-156aae71ae37,a9200000-0000-4000-8000-1584711cf77c,a9200000-0000-4000-8000-16d78c8b9ffb,a9200000-0000-4000-8000-18b92ab6923d,a9200000-0000-4000-8000-1972f1ab2630,a9200000-0000-4000-8000-1a7c677d2a9e,a9200000-0000-4000-8000-1bc996cb24a3,a9200000-0000-4000-8000-1d3e8c3775dd,a9200000-0000-4000-8000-1da1c929ff77,a9200000-0000-4000-8000-1e14b6c8f5bb,a9200000-0000-4000-8000-1eff1920f5da,a9200000-0000-4000-8000-22d037a43a40,a9200000-0000-4000-8000-25392d3cb467,a9200000-0000-4000-8000-2579a5d85598,a9200000-0000-4000-8000-261ac8802380,a9200000-0000-4000-8000-278bac748f82,a9200000-0000-4000-8000-2b8458873736,a9200000-0000-4000-8000-2bce34b21571,a9200000-0000-4000-8000-2c1f3a090825,a9200000-0000-4000-8000-2d399ff85bed,a9200000-0000-4000-8000-2d8c6ec21b77,a9200000-0000-4000-8000-2ffac9538fa0,a9200000-0000-4000-8000-31353c962acb,a9200000-0000-4000-8000-34a95fc0b46a,a9200000-0000-4000-8000-34fbe6e68d68,a9200000-0000-4000-8000-3a0d63e5a742,a9200000-0000-4000-8000-3addec240523,a9200000-0000-4000-8000-3d66cb475303,a9200000-0000-4000-8000-3ee5879c8282,a9200000-0000-4000-8000-4109605c1919,a9200000-0000-4000-8000-41864a14d6aa,a9200000-0000-4000-8000-41be64cff844,a9200000-0000-4000-8000-45dea0a0421b,a9200000-0000-4000-8000-46b1d99ac911,a9200000-0000-4000-8000-4833e4e29c02,a9200000-0000-4000-8000-489dade86f32,a9200000-0000-4000-8000-498d2d79dabe,a9200000-0000-4000-8000-49b548d15fde,a9200000-0000-4000-8000-4beaaca28deb,a9200000-0000-4000-8000-4c05fd865c42,a9200000-0000-4000-8000-4c219467bd33,a9200000-0000-4000-8000-4c4527e8ad38,a9200000-0000-4000-8000-4c45a5970ddf,a9200000-0000-4000-8000-4d9f5fd7611f,a9200000-0000-4000-8000-5093c0e14bcd,a9200000-0000-4000-8000-50c7085a5044,a9200000-0000-4000-8000-52661d28e6ba,a9200000-0000-4000-8000-52d608e363be,a9200000-0000-4000-8000-53fcd0158f81,a9200000-0000-4000-8000-543a93d0b22b,a9200000-0000-4000-8000-551a99b99fbd,a9200000-0000-4000-8000-572c79fc4818,a9200000-0000-4000-8000-594bfcfc8d9e,a9200000-0000-4000-8000-5b0d44b0d646,a9200000-0000-4000-8000-5d0e1158529d,a9200000-0000-4000-8000-5fce97e87db1,a9200000-0000-4000-8000-60b442c76824,a9200000-0000-4000-8000-61ae172fc373,a9200000-0000-4000-8000-652d6b7089e4,a9200000-0000-4000-8000-65706ad3726e,a9200000-0000-4000-8000-66bc9b66aa1a,a9200000-0000-4000-8000-67c15542e060,a9200000-0000-4000-8000-68f1045eff81,a9200000-0000-4000-8000-6a11711bf0bc,a9200000-0000-4000-8000-6a9a8a6f2eaa,a9200000-0000-4000-8000-6b2afac6199f,a9200000-0000-4000-8000-6d05a21a85a4,a9200000-0000-4000-8000-6e440e986f6b,a9200000-0000-4000-8000-71c6e7ff98e9,a9200000-0000-4000-8000-725644d81820,a9200000-0000-4000-8000-73b699996672,a9200000-0000-4000-8000-74b3b810566d,a9200000-0000-4000-8000-76d88116806a,a9200000-0000-4000-8000-77f1213b2269,a9200000-0000-4000-8000-785dc6323f59,a9200000-0000-4000-8000-78bb52fac735,a9200000-0000-4000-8000-7935855e3619,a9200000-0000-4000-8000-79bdd635a8b3,a9200000-0000-4000-8000-7b9e9b8dd09c,a9200000-0000-4000-8000-7bfac63e4ce2,a9200000-0000-4000-8000-81e63564ca87,a9200000-0000-4000-8000-85001edac5cf,a9200000-0000-4000-8000-85820199c9fb,a9200000-0000-4000-8000-8592bf30eaec,a9200000-0000-4000-8000-859b34621875,a9200000-0000-4000-8000-85df28205522,a9200000-0000-4000-8000-85fc656ce009,a9200000-0000-4000-8000-880e68af136d,a9200000-0000-4000-8000-8904c5d18107,a9200000-0000-4000-8000-8ac47380e62a,a9200000-0000-4000-8000-8d6072f578a7,a9200000-0000-4000-8000-8de37d77d3e2,a9200000-0000-4000-8000-8eb0695d0ca0,a9200000-0000-4000-8000-8ffef2cf017d,a9200000-0000-4000-8000-905ae0da832b,a9200000-0000-4000-8000-927a469a359f,a9200000-0000-4000-8000-94216573d9ef,a9200000-0000-4000-8000-95681b240577,a9200000-0000-4000-8000-95c47d3b6b38,a9200000-0000-4000-8000-9877ca4e432c,a9200000-0000-4000-8000-99a227fa8c93,a9200000-0000-4000-8000-9af483527a09,a9200000-0000-4000-8000-9af75ed77472,a9200000-0000-4000-8000-9b1cc0864fde,a9200000-0000-4000-8000-9bf681e5c641,a9200000-0000-4000-8000-9c750a73cf35,a9200000-0000-4000-8000-9ecd87268993,a9200000-0000-4000-8000-9f68f80528a1,a9200000-0000-4000-8000-a074c586003a,a9200000-0000-4000-8000-a1184fee7674,a9200000-0000-4000-8000-a25d97c40855,a9200000-0000-4000-8000-a3ee6059f76e,a9200000-0000-4000-8000-a493f7db1ad6,a9200000-0000-4000-8000-a5b1236afeb1,a9200000-0000-4000-8000-a6d78918d1e2,a9200000-0000-4000-8000-a77c034d873b,a9200000-0000-4000-8000-a90b209b4429,a9200000-0000-4000-8000-ac08193416d5,a9200000-0000-4000-8000-ad16768089fe,a9200000-0000-4000-8000-add1f57dea1b,a9200000-0000-4000-8000-af22a42487ea,a9200000-0000-4000-8000-af7c8391fae6,a9200000-0000-4000-8000-afa2a49fba4a,a9200000-0000-4000-8000-b112d527bea6,a9200000-0000-4000-8000-b126af70b849,a9200000-0000-4000-8000-b1700c4a47a5,a9200000-0000-4000-8000-b2adb4c0e900,a9200000-0000-4000-8000-b4acfe90db05,a9200000-0000-4000-8000-b4e48c274cac,a9200000-0000-4000-8000-b5f609574983,a9200000-0000-4000-8000-b7b4b9b5261e,a9200000-0000-4000-8000-b8494ffcf5e3,a9200000-0000-4000-8000-b88d64edd695,a9200000-0000-4000-8000-b8ec38f8d929,a9200000-0000-4000-8000-bad40b5db3de,a9200000-0000-4000-8000-baeb8acfd9ca,a9200000-0000-4000-8000-bb7bb9e6d5f0,a9200000-0000-4000-8000-bcec658e3d5e,a9200000-0000-4000-8000-bd351a307177,a9200000-0000-4000-8000-bf612837de34,a9200000-0000-4000-8000-c10ccc5807ac,a9200000-0000-4000-8000-c12f30b25bba,a9200000-0000-4000-8000-c3319d24b413,a9200000-0000-4000-8000-c3f19ba8d71d,a9200000-0000-4000-8000-c44450851f12,a9200000-0000-4000-8000-c92e9d0e3991,a9200000-0000-4000-8000-c9553fc98e74,a9200000-0000-4000-8000-cbe8b211431f,a9200000-0000-4000-8000-cca90bea82b4,a9200000-0000-4000-8000-cddffd4b24be,a9200000-0000-4000-8000-cec83f92060d,a9200000-0000-4000-8000-cfd2cbeb3bf4,a9200000-0000-4000-8000-d12e066ae236,a9200000-0000-4000-8000-d4f803016e34,a9200000-0000-4000-8000-d627473109a0,a9200000-0000-4000-8000-d88ba387afa2,a9200000-0000-4000-8000-d8a209301e03,a9200000-0000-4000-8000-d9fa775eff98,a9200000-0000-4000-8000-db00ab13f485,a9200000-0000-4000-8000-db5251938786,a9200000-0000-4000-8000-dcd992e3ce29,a9200000-0000-4000-8000-dcdb5f12bf24,a9200000-0000-4000-8000-ddc84bfe0861,a9200000-0000-4000-8000-dea721a7b132,a9200000-0000-4000-8000-e067418a1c23,a9200000-0000-4000-8000-e22ad61474bc,a9200000-0000-4000-8000-e267bc2b9c4b,a9200000-0000-4000-8000-e424cf7e5126,a9200000-0000-4000-8000-e47c0576f1ed,a9200000-0000-4000-8000-e56c49b80c58,a9200000-0000-4000-8000-e6c13d5d0c8f,a9200000-0000-4000-8000-e73c24b69a67,a9200000-0000-4000-8000-e7ec4765c8d1,a9200000-0000-4000-8000-ed61840ade05,a9200000-0000-4000-8000-ed7b0e8a85fb,a9200000-0000-4000-8000-ee3af7bfcca8,a9200000-0000-4000-8000-ef27c26310fa,a9200000-0000-4000-8000-f13c081e177c,a9200000-0000-4000-8000-f4a071ea9207,a9200000-0000-4000-8000-f5979adde80b,a9200000-0000-4000-8000-f6145144df40,a9200000-0000-4000-8000-f6cab30d7343,a9200000-0000-4000-8000-f9c2d22f40f3,a9200000-0000-4000-8000-fc3e3feba405,a9200000-0000-4000-8000-fe4fa8fcf5eb,a9200000-0000-4000-8000-feeaa4ba03a7}'::uuid[]))
+                                            Filter: (((InitPlan 10).col1 OR (owner_id = (InitPlan 11).col1)) AND (owner_id = 'a61f1177-cde5-418c-990d-c9af450896b3'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 9).col1 OR platform_private.cms_s11_review_readable(id)) END AND platform_private.cms_rpc_context_valid())
+                                            Buffers: shared hit=283
+                                            InitPlan 9
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+                                            InitPlan 10
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.041..0.041 rows=1 loops=1)
+                                            InitPlan 11
+                                              ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.088..0.089 rows=1 loops=1)
+                                                    Buffers: shared hit=4
+                          ->  Seq Scan on cms_entry_revisions revision_item  (cost=0.00..1.00 rows=1 width=72) (actual time=0.003..0.017 rows=8 loops=51)
+                                Filter: platform_private.cms_rpc_context_valid()
+                                Buffers: shared hit=51
+                    ->  Seq Scan on cms_content_entries entry_item  (cost=0.00..1.00 rows=1 width=32) (actual time=0.003..0.015 rows=7 loops=51)
+                          Filter: platform_private.cms_rpc_context_valid()
+                          Buffers: shared hit=51
+              ->  Seq Scan on cms_content_types type_item  (cost=0.00..1.00 rows=1 width=48) (actual time=0.003..0.006 rows=3 loops=51)
+                    Filter: platform_private.cms_rpc_context_valid()
+                    Buffers: shared hit=51
+        ->  Seq Scan on cms_content_type_versions version_item  (cost=0.00..1.00 rows=1 width=48) (actual time=0.003..0.006 rows=3 loops=51)
+              Filter: platform_private.cms_rpc_context_valid()
+              Buffers: shared hit=51
+  SubPlan 4
+    ->  Index Scan using cms_editorial_review_assignments_active_reviewer_unique on cms_editorial_review_assignments assignment_item  (cost=1.03..9.56 rows=1 width=8) (actual time=0.006..0.006 rows=1 loops=51)
+          Index Cond: ((review_id = review_scoped.id) AND (reviewer_person_id = 'f74befaa-b4b1-4fcd-ac40-dd5d54518929'::uuid))
+          Filter: (((InitPlan 2).col1 OR (owner_id = (InitPlan 3).col1)) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 1).col1 OR platform_private.cms_s11_assignment_readable(reviewer_person_id, state)) END AND platform_private.cms_rpc_context_valid())
+          Buffers: shared hit=157
+          InitPlan 1
+            ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+          InitPlan 2
+            ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.020..0.021 rows=1 loops=1)
+          InitPlan 3
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.077..0.077 rows=1 loops=1)
+                  Buffers: shared hit=4
+  SubPlan 8
+    ->  Limit  (cost=0.78..1.78 rows=1 width=32) (actual time=0.003..0.003 rows=0 loops=51)
+          Buffers: shared hit=55
+          InitPlan 5
+            ->  Result  (cost=0.00..0.26 rows=1 width=1) (never executed)
+          InitPlan 6
+            ->  Result  (cost=0.00..0.26 rows=1 width=1) (actual time=0.019..0.019 rows=1 loops=1)
+          InitPlan 7
+            ->  Result  (cost=0.00..0.26 rows=1 width=16) (actual time=0.053..0.053 rows=1 loops=1)
+                  Buffers: shared hit=4
+          ->  Seq Scan on cms_editorial_decisions decision_item  (cost=0.00..1.00 rows=1 width=32) (actual time=0.002..0.002 rows=0 loops=51)
+                Filter: (((InitPlan 6).col1 OR (owner_id = (InitPlan 7).col1)) AND (review_id = review_scoped.id) AND (reviewer_person_id = 'f74befaa-b4b1-4fcd-ac40-dd5d54518929'::uuid) AND CASE WHEN (CURRENT_USER = 'wejammin_cms_definer'::name) THEN true ELSE ((InitPlan 5).col1 OR platform_private.cms_s11_review_readable(review_id)) END AND platform_private.cms_rpc_context_valid())
+                Rows Removed by Filter: 7
+                Buffers: shared hit=55
+Planning:
+  Buffers: shared hit=10
+Planning Time: 0.621 ms
+Execution Time: 4.385 ms
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/zz_diag_queue_perf_fresh.sql .. 
+{"created": true, "personId": "86a0dcdc-8bb7-4e29-bbff-00126d9f96ea", "contextKind": "self", "accountState": "active", "actingPartyId": "86a0dcdc-8bb7-4e29-bbff-00126d9f96ea", "bindingVersion": 1}
+{"created": true, "personId": "f5912e38-2d5e-4780-8fa0-d6c2c82899ab", "contextKind": "self", "accountState": "active", "actingPartyId": "f5912e38-2d5e-4780-8fa0-d6c2c82899ab", "bindingVersion": 1}
+{"created": true, "personId": "8bd5f69b-da0c-4a8d-87c3-506915eb0e6c", "contextKind": "self", "accountState": "active", "actingPartyId": "8bd5f69b-da0c-4a8d-87c3-506915eb0e6c", "bindingVersion": 1}
+{"created": true, "personId": "f743a030-c6e7-4243-8115-9757fd4ba3ea", "contextKind": "self", "accountState": "active", "actingPartyId": "f743a030-c6e7-4243-8115-9757fd4ba3ea", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+{"created": true, "personId": "f74befaa-b4b1-4fcd-ac40-dd5d54518929", "contextKind": "self", "accountState": "active", "actingPartyId": "f74befaa-b4b1-4fcd-ac40-dd5d54518929", "bindingVersion": 1}
+{"created": true, "personId": "2145e7d9-e541-416f-a753-a2a22cef5b44", "contextKind": "self", "accountState": "active", "actingPartyId": "2145e7d9-e541-416f-a753-a2a22cef5b44", "bindingVersion": 1}
+{"created": true, "personId": "dc085d5e-473e-47db-a004-5364cd8ed370", "contextKind": "self", "accountState": "active", "actingPartyId": "dc085d5e-473e-47db-a004-5364cd8ed370", "bindingVersion": 1}
+{"created": true, "personId": "85330612-c3d8-413d-8b71-3b662482ffb3", "contextKind": "self", "accountState": "active", "actingPartyId": "85330612-c3d8-413d-8b71-3b662482ffb3", "bindingVersion": 1}
+{"created": true, "personId": "76b72e49-cc9d-469a-9f0b-3c2f00c775f2", "contextKind": "self", "accountState": "active", "actingPartyId": "76b72e49-cc9d-469a-9f0b-3c2f00c775f2", "bindingVersion": 1}
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+true
+305e04e2-676f-451b-a970-663f809412f6
+a9200000-0000-4000-8000-679878a9a754
+a9200000-0000-4000-8000-e16a4a4af66c
+a9200000-0000-4000-8000-fd3a8f988adb
+a9200000-0000-4000-8000-33d173aa7abf
+# READER cms_list_editorial_reviews md5src=0661c70b7149cae7aa328232753e822f md5def=0ca3c49c24d32d3ee4f6216de530d48d owner=wejammin_cms_definer kind=f vol=v secdef=t strict=f leak=f par=u config={"search_path=\"\""} acl={wejammin_cms_definer=X/wejammin_cms_definer} nargs=1 ret=jsonb retset=f lang=plpgsql
+# READER comment=CMS-03B-17 internal keyset reader (unsigned cursor; reachable only through cms_list_editorial_reviews_signed). Lists only the caller's own assigned or submitted reviews of the acting party, ordered (updatedAt DESC at millisecond precision, reviewId DESC), driven from the caller's assignment / submission rows. Writes nothing. Private.
+1..9
+ok
+All tests successful.
+Files=2, Tests=18,  1 wallclock secs ( 0.02 usr  0.00 sys +  0.02 cusr  0.01 csys =  0.05 CPU)
+Result: PASS

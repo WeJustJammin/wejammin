@@ -70,7 +70,7 @@ describe.each(OPERATIONS)(
       expect(body.details).toEqual({});
     });
 
-    it(`${operation.id} maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY`, async () => {
+    it(`${operation.id} maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically`, async () => {
       const fetchImpl = vi.fn(
         async () =>
           new Response(JSON.stringify({ unexpected: LEAK }), {
@@ -85,7 +85,12 @@ describe.each(OPERATIONS)(
       expect(response.status).toBe(502);
       expect(response.headers.get('x-cms-editorial-retryable')).toBe('false');
       const body = await read(response);
-      expect(body.code).toBe('BAD_GATEWAY');
+      expect(body.code).toBe('DEPENDENCY_UNAVAILABLE');
+      expect(body.details).toEqual({
+        dependencyClass: 'cms_editorial',
+        retryable: true,
+      });
+      expect(response.headers.get('retry-after')).toBeNull();
       expect(JSON.stringify(body)).not.toContain(LEAK);
     });
 

@@ -1,0 +1,40 @@
+m01_no_uuid_check                  KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m02_uuid_version_nibble            KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m03_uuid_variant_nibble            KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m04_no_reserved_check              KILLED       failing=4 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m05_reserved_case_sensitive        SURVIVED     failing=0 
+m06_one_reserved_word_missing      KILLED       failing=4 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m07_key_min_length                 KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m08_key_max_length                 KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m09_kind_list                      ANCHOR-ERROR failing=0 
+m10_kind_object                    ANCHOR-ERROR failing=0 
+m11_kind_any_string                KILLED       failing=7 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m12_constraint_key_enum            KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m13_constraint_key_item_kind       KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m14_constraint_bytes               KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m15_minlength_digits               KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m16_maxlength_digits               KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m17_maxlength_type                 SURVIVED     failing=0 
+m18_min_le_max_length              KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m19_min_le_max_value               KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m20_minimum_type                   KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m21_required_type                  KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m22_default_mode_literal           KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m23_default_value_present          ANCHOR-ERROR failing=0 
+m24_localization_any               KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m25_lifecycle_any                  KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m26_validator_key                  KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m27_validator_version              KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m28_extra_top_level_key            KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m29_required_keys_present          KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m30_editor_extra_key               KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m31_editor_required_label          SURVIVED     failing=0 
+m32_label_length                   ANCHOR-ERROR failing=0 
+m33_label_empty                    ANCHOR-ERROR failing=0 
+m34_label_raw_length               SURVIVED     failing=0 
+m35_help_text_length               KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m36_help_text_type                 KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m37_order_max                      KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m38_order_type                     KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i
+m39_flag_ignored                   SURVIVED     failing=0 
+m40_label_type                     KILLED       failing=2 p_require_stable_id = true: the current function answers exactly what the previous body answers on every corpus input [P2-S09-AC-217]; soundness: no i

@@ -1,5 +1,4 @@
-import { CmsUuidSchema, CmsVersionSchema } from '@wejammin/contracts';
-import { z } from 'zod';
+import { isCmsUuid, isCmsVersion } from '@wejammin/contracts/client';
 
 import {
   loadStepUpDraft,
@@ -15,23 +14,75 @@ import {
  * it on its next load. It holds identifiers the caller can already read
  * (revision ids, the migration chain id), versions and counts: never a value, an
  * owner, an assignee or a capability.
+ *
+ * The record is read back with a zod-free guard (`isResultSummary`), not a
+ * schema, because the document shell loads this module on every CMS page
+ * (AC-106): the guard applies the same rules the strict object schema did.
  */
-export const CmsEditorialResultSummarySchema = z.strictObject({
-  kind: z.enum(['created', 'resolved', 'restored']),
-  entryId: CmsUuidSchema,
-  revisionNumber: CmsVersionSchema,
+export interface CmsEditorialResultSummary {
+  readonly kind: 'created' | 'resolved' | 'restored';
+  readonly entryId: string;
+  readonly revisionNumber: string;
   /** The committed entry version: the next `If-Match`. */
-  entryVersion: CmsVersionSchema,
-  state: z.string().min(1).max(32),
+  readonly entryVersion: string;
+  readonly state: string;
   /** `[current draft, source]` for a restore; empty for a created entry. */
-  parentRevisionIds: z.array(CmsUuidSchema).max(2),
-  migrationChainId: CmsUuidSchema.nullable(),
-  edgeCount: z.number().int().min(0).max(64).nullable(),
-});
+  readonly parentRevisionIds: readonly string[];
+  readonly migrationChainId: string | null;
+  readonly edgeCount: number | null;
+}
 
-export type CmsEditorialResultSummary = z.infer<
-  typeof CmsEditorialResultSummarySchema
->;
+const RESULT_KINDS: readonly string[] = ['created', 'resolved', 'restored'];
+const SUMMARY_KEYS: readonly string[] = [
+  'kind',
+  'entryId',
+  'revisionNumber',
+  'entryVersion',
+  'state',
+  'parentRevisionIds',
+  'migrationChainId',
+  'edgeCount',
+];
+
+const isUuid = (value: unknown): value is string =>
+  typeof value === 'string' && isCmsUuid(value);
+const isVersion = (value: unknown): value is string =>
+  typeof value === 'string' && isCmsVersion(value);
+
+/** True for a well-formed summary: exactly the declared members, each in range. */
+const isResultSummary = (
+  value: unknown,
+): value is CmsEditorialResultSummary => {
+  if (typeof value !== 'object' || value === null || Array.isArray(value))
+    return false;
+  const record = value as Record<string, unknown>;
+  const keys = Object.keys(record);
+  if (
+    keys.length !== SUMMARY_KEYS.length ||
+    !SUMMARY_KEYS.every((key) => keys.includes(key))
+  )
+    return false;
+  const { parentRevisionIds, edgeCount, migrationChainId, state } = record;
+  return (
+    typeof record.kind === 'string' &&
+    RESULT_KINDS.includes(record.kind) &&
+    isUuid(record.entryId) &&
+    isVersion(record.revisionNumber) &&
+    isVersion(record.entryVersion) &&
+    typeof state === 'string' &&
+    state.length >= 1 &&
+    state.length <= 32 &&
+    Array.isArray(parentRevisionIds) &&
+    parentRevisionIds.length <= 2 &&
+    parentRevisionIds.every(isUuid) &&
+    (migrationChainId === null || isUuid(migrationChainId)) &&
+    (edgeCount === null ||
+      (typeof edgeCount === 'number' &&
+        Number.isInteger(edgeCount) &&
+        edgeCount >= 0 &&
+        edgeCount <= 64))
+  );
+};
 
 type ResultStorage = Pick<Storage, 'getItem' | 'removeItem' | 'setItem'>;
 
@@ -115,13 +166,12 @@ export const takeCmsEditorialResult = (
   const draft = loadStepUpDraft(storage, RESULT_SCOPE);
   if (draft === null) return null;
   const decoded = decode(draft.values);
-  const parsed = CmsEditorialResultSummarySchema.safeParse(decoded.summary);
   const age = now - decoded.at;
-  return parsed.success &&
-    parsed.data.entryId === entryId &&
+  return isResultSummary(decoded.summary) &&
+    decoded.summary.entryId === entryId &&
     Number.isFinite(age) &&
     age >= 0 &&
     age <= CMS_EDITORIAL_RESULT_TTL_MS
-    ? parsed.data
+    ? decoded.summary
     : null;
 };

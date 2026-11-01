@@ -31,7 +31,7 @@ describe('EC-087 the typed rich-text renderer has no raw-HTML escape hatch', () 
   });
 
   it('only parses a document through the shared canonical schema before it builds an element', () => {
-    expect(renderer).toMatch(/RichTextV1DocumentSchema\.safeParse\(value\)/u);
+    expect(renderer).toMatch(/isCanonicalRichText\(value\)/u);
     expect(renderer).toMatch(/role="note"/u);
   });
 });
@@ -68,7 +68,7 @@ describe('EC-081 the Astro create route hands the loaded projection to the islan
 
   it('passes the selected type and the projected fields to the island, with no field of its own', () => {
     expect(form).toMatch(
-      /<CmsEditorialEntryCreateIsland\s+type=\{selected\}\s+fields=\{fields\}\s+client:load/u,
+      /<CmsEditorialEntryCreateIsland\s+type=\{selected\}\s+fields=\{fields\}\s+descriptors=\{descriptors\}\s+client:load/u,
     );
     expect(form).not.toMatch(
       /objectStructure|properties\.map|JSON\.stringify/u,

@@ -1,0 +1,63 @@
+psql:/w/scratch/bench2-lane/probe-plans.sql:2: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-plans.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench2-lane/probe-plans.sql:4: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-plans.sql:61: ERROR:  # No tests run!
+CONTEXT:  PL/pgSQL function _finish(integer,integer,integer,boolean) line 12 at RAISE
+SQL function "finish" statement 1
+/w/scratch/bench2-lane/probe-plans.sql .. 
+{"created": true, "personId": "d3a4e9ff-cdee-495c-9235-cb35ef556742", "contextKind": "self", "accountState": "active", "actingPartyId": "d3a4e9ff-cdee-495c-9235-cb35ef556742", "bindingVersion": 1}
+{"created": true, "personId": "e4c9d8aa-7856-4ea6-a4df-de1d11a4b465", "contextKind": "self", "accountState": "active", "actingPartyId": "e4c9d8aa-7856-4ea6-a4df-de1d11a4b465", "bindingVersion": 1}
+{"created": true, "personId": "49be9755-8f65-49e2-b439-4e63a3bdb83f", "contextKind": "self", "accountState": "active", "actingPartyId": "49be9755-8f65-49e2-b439-4e63a3bdb83f", "bindingVersion": 1}
+{"created": true, "personId": "4c821f91-e8f0-4e18-9406-b5809dadc99a", "contextKind": "self", "accountState": "active", "actingPartyId": "4c821f91-e8f0-4e18-9406-b5809dadc99a", "bindingVersion": 1}
+{"created": true, "personId": "444058b8-4f82-48e8-9b39-b72bb4df9467", "contextKind": "self", "accountState": "active", "actingPartyId": "444058b8-4f82-48e8-9b39-b72bb4df9467", "bindingVersion": 1}
+{"created": true, "personId": "642f9775-9bd9-4f70-804b-aebdfb7a6ce9", "contextKind": "self", "accountState": "active", "actingPartyId": "642f9775-9bd9-4f70-804b-aebdfb7a6ce9", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+# prosrc md5=3713a2e62c973b749531b9a63b2f09ff owner=wejammin_cms_definer vol=v acl={wejammin_cms_definer=X/wejammin_cms_definer} config={"search_path=\"\""}
+# fields | Insert on cms_field_definition_versions (actual time=44.723..44.724 rows=0 loops=1)
+# fields |   Buffers: shared hit=2168 dirtied=7 written=7
+# fields |   ->  Function Scan on jsonb_array_elements field_entry (actual time=0.050..1.017 rows=128 loops=1)
+# fields | Planning:
+# fields |   Buffers: shared hit=3
+# fields | Planning Time: 0.158 ms
+# fields | Trigger for constraint cms_field_definition_versions_content_type_version_id_fkey: time=3.441 calls=128
+# fields | Trigger for constraint cms_field_definition_versions_created_by_fkey: time=2.636 calls=128
+# fields | Trigger cms_field_definition_versions_activation_review_invalidation: time=18.022 calls=128
+# fields | Trigger cms_field_definition_versions_parent_state_guard: time=16.491 calls=128
+# fields | Trigger cms_field_definition_versions_write_guard: time=1.080 calls=128
+# fields | Execution Time: 68.983 ms
+# -- | ---- end run 1
+# fields | Insert on cms_field_definition_versions (actual time=48.011..48.011 rows=0 loops=1)
+# fields |   Buffers: shared hit=2074 dirtied=12 written=12
+# fields |   ->  Function Scan on jsonb_array_elements field_entry (actual time=0.054..1.122 rows=128 loops=1)
+# fields | Planning Time: 0.163 ms
+# fields | Trigger for constraint cms_field_definition_versions_content_type_version_id_fkey: time=3.508 calls=128
+# fields | Trigger for constraint cms_field_definition_versions_created_by_fkey: time=2.468 calls=128
+# fields | Trigger cms_field_definition_versions_activation_review_invalidation: time=18.545 calls=128
+# fields | Trigger cms_field_definition_versions_parent_state_guard: time=16.805 calls=128
+# fields | Trigger cms_field_definition_versions_write_guard: time=1.066 calls=128
+# fields | Execution Time: 72.696 ms
+# -- | ---- end run 2
+# fields | Insert on cms_field_definition_versions (actual time=46.740..46.741 rows=0 loops=1)
+# fields |   Buffers: shared hit=2066 dirtied=8 written=8
+# fields |   ->  Function Scan on jsonb_array_elements field_entry (actual time=0.055..1.093 rows=128 loops=1)
+# fields | Planning Time: 0.166 ms
+# fields | Trigger for constraint cms_field_definition_versions_content_type_version_id_fkey: time=3.004 calls=128
+# fields | Trigger for constraint cms_field_definition_versions_created_by_fkey: time=2.182 calls=128
+# fields | Trigger cms_field_definition_versions_activation_review_invalidation: time=16.081 calls=128
+# fields | Trigger cms_field_definition_versions_parent_state_guard: time=16.445 calls=128
+# fields | Trigger cms_field_definition_versions_write_guard: time=1.038 calls=128
+# fields | Execution Time: 68.151 ms
+# -- | ---- end run 3
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/probe-plans.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  1 wallclock secs ( 0.03 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.04 CPU)
+Result: FAIL

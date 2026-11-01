@@ -68,7 +68,7 @@ describe('loadEntryEditPage', () => {
     });
     expect(init.values[TITLE]).toBe('Release notes');
     expect(init.values[BLURB]).toBeNull();
-    expect(init.fields).toHaveLength(editorFields().length);
+    expect(init.descriptors).toHaveLength(editorFields().length);
     // The definitions are read for the DRAFT's schema version, not a caller choice.
     expect(authoringContext).toHaveBeenCalledWith(
       expect.any(Request),

@@ -1,0 +1,147 @@
+-- CMS-03B-06 builders and call probe (lane S11-3a).  Include after 000-world.sqlinc AND
+-- phase_02_slice_11_helpers/001-world.sqlinc (the h11doc type with the real editorial policy).
+
+-- A review frozen from the REAL dependency manifest of a fresh h11doc revision (tag p_tag) of
+-- entry author p_author (an s10_ids person key), submitted by p_submitter (an s11 key).  The
+-- policy columns come from the manifest's own workflow-policy evidence; p_overrides replaces any
+-- review column (for example a protected policy).
+create or replace function pg_temp.r11_frozen_review(
+  p_key text, p_tag text, p_overrides jsonb default '{}'::jsonb,
+  p_author text default 'creatorPerson', p_submitter text default 'editor'
+)
+returns void
+language plpgsql
+as $body$
+declare
+  revision uuid;
+  manifest jsonb;
+  policy jsonb;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  revision := pg_temp.h11w_revision(p_tag, p_author);
+  manifest := platform_private.cms_build_dependency_manifest(revision);
+  policy := manifest->'schema'->'workflowPolicy';
+  perform pg_temp.h11r_review(p_key, jsonb_build_object(
+    'revision_id', revision,
+    'entry_id', (select revision_item.entry_id from platform_private.cms_entry_revisions revision_item where revision_item.id = revision),
+    'frozen_hash', (select revision_item.payload_hash from platform_private.cms_entry_revisions revision_item where revision_item.id = revision),
+    'dependency_manifest', manifest,
+    'dependency_hash', platform_private.cms_jcs_sha256(manifest),
+    'activation_evidence', manifest->'schema'->'activationEvidence',
+    'workflow_policy_key', policy->>'key', 'workflow_policy_version', (policy->>'version')::bigint,
+    'workflow_policy_hash', policy->>'policyHash', 'risk_class', policy->>'riskClass',
+    'required_decision_count', (policy->>'requiredDecisionCount')::integer,
+    'required_capabilities', policy->'requiredCapabilities',
+    'approval_evidence_hash', policy->>'approvalEvidenceHash',
+    'submitted_by', pg_temp.s11_id(p_submitter)
+  ) || p_overrides);
+end;
+$body$;
+
+-- The protected editorial policy cms.disclosure.policy (two humans, one holding cms.reviewer.policy).
+create or replace function pg_temp.r11_protected()
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'workflow_policy_key', member->>'key', 'workflow_policy_version', (member->>'version')::bigint,
+    'workflow_policy_hash', member->>'policyHash', 'risk_class', 'protected',
+    'required_decision_count', (member->>'requiredDecisionCount')::integer,
+    'required_capabilities', member->'requiredCapabilities')
+  from (select platform_private.cms_workflow_policy_member('cms.disclosure.policy', 1) as member) policy
+$body$;
+
+-- An assignment whose window covers now (decide authority), created through the guard.
+create or replace function pg_temp.r11_assign_now(p_key text, p_review text, p_reviewer text)
+returns void
+language sql
+as $body$
+  select pg_temp.h11r_assign(p_key, p_review, p_reviewer, jsonb_build_object(
+    'starts_at', clock_timestamp() - interval '1 hour', 'ends_at', clock_timestamp() + interval '23 hours'))
+$body$;
+
+-- A well-formed decision request for the review under its CURRENT version.
+create or replace function pg_temp.r11_dreq(
+  p_review text, p_decision text, p_extra jsonb default '{}'::jsonb, p_drop text[] default '{}'::text[]
+)
+returns jsonb
+language sql
+as $body$
+  select ((
+    jsonb_build_object(
+      'reviewId', pg_temp.s11_id(p_review), 'decision', p_decision,
+      'reason', case p_decision when 'approve' then 'Reads well; approved.' else 'Needs work; rejected.' end,
+      'expectedVersion', review.version::text, 'ifMatch', review.version::text,
+      'idempotencyKey', 'r11-' || replace(extensions.gen_random_uuid()::text, '-', ''),
+      'context', pg_temp.r11_ctx())
+    || p_extra) - p_drop)
+  from platform_private.cms_editorial_reviews review
+  where review.id = pg_temp.s11_id(p_review)
+$body$;
+
+create or replace function pg_temp.r11_dcall(
+  p_label text, p_actor text, p_request jsonb, p_keep boolean default true
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.r11_session(p_actor);
+  perform pg_temp.r11_try(p_label,
+    format('select platform_api.cms_record_review_decision(%L::jsonb)', p_request::text), p_keep);
+end;
+$body$;
+
+-- State of a review as 'state/version/recorded'.
+create or replace function pg_temp.r11_rv(p_review text)
+returns text
+language sql
+stable
+as $body$
+  select review.state || '/' || review.version || '/' || review.recorded_decision_count
+  from platform_private.cms_editorial_reviews review where review.id = pg_temp.s11_id(p_review)
+$body$;
+
+-- Append a decision row INSIDE a now-window assignment, then advance the review under CAS (the
+-- builder pg_temp.h11r_decide stamps the fixed 2026-10-01 instants, which fall outside a window
+-- that covers now).  A reject ends the review; the approve that reaches the required count approves.
+create or replace function pg_temp.r11_decide_now(
+  p_key text, p_review_key text, p_reviewer_key text, p_assignment_key text,
+  p_decision text, p_capability text default 'cms.reviewer'
+)
+returns void
+language plpgsql
+as $body$
+declare
+  review platform_private.cms_editorial_reviews%rowtype;
+  stamp timestamptz := clock_timestamp();
+  next_count integer;
+  next_state text;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into s11_ids(key, value) values (p_key, extensions.gen_random_uuid()::text)
+  on conflict (key) do nothing;
+  select * into review from platform_private.cms_editorial_reviews where id = pg_temp.s11_id(p_review_key);
+  execute pg_temp.s11_insert_sql(
+    'platform_private.cms_editorial_decisions',
+    pg_temp.s11_decision_row(jsonb_build_object(
+      'id', pg_temp.s11_id(p_key), 'review_id', review.id,
+      'reviewer_person_id', pg_temp.s11_id(p_reviewer_key),
+      'assignment_id', pg_temp.s11_id(p_assignment_key),
+      'decision', p_decision, 'capability', p_capability, 'reviewed_hash', review.frozen_hash,
+      'decided_at', stamp, 'step_up_at', stamp - interval '60 seconds',
+      'created_at', stamp, 'updated_at', stamp
+    ))
+  );
+  next_count := review.recorded_decision_count + 1;
+  next_state := case
+    when p_decision = 'reject' then 'rejected'
+    when next_count = review.required_decision_count then 'approved'
+    else 'open' end;
+  update platform_private.cms_editorial_reviews
+     set recorded_decision_count = next_count, state = next_state,
+         decided_at = case when next_state in ('approved', 'rejected') then stamp end,
+         version = version + 1, updated_at = stamp
+   where id = review.id;
+end;
+$body$;

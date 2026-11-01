@@ -264,7 +264,7 @@ describe('CMS-03C-02 production pattern adapter', () => {
           headers: { 'content-type': 'application/json' },
         }),
         502,
-        'BAD_GATEWAY',
+        'DEPENDENCY_UNAVAILABLE',
       ],
     ] as const) {
       const result = await create(

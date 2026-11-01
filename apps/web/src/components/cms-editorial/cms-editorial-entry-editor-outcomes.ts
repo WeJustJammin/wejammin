@@ -1,6 +1,6 @@
 import type { CmsEditorialEditorState } from './cms-editorial-entry-editor-state';
 import type { CmsEditorialMutationResult } from './cms-editorial-runtime';
-import { cmsEditorialViolationsFrom } from './cms-editorial-entry-create-submit';
+import { cmsEditorialViolationsFrom } from './cms-editorial-request-support';
 import { cmsEditorialReasonMessage } from './cms-editorial-reason-copy';
 import { safeCmsEditorialErrorMessage } from './cms-editorial-types';
 

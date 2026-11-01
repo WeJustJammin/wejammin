@@ -1,4 +1,9 @@
-import { ApiErrorSchema } from '@wejammin/contracts';
+import {
+  ApiErrorSchema,
+  cmsEditorialDeclaredStatuses,
+  cmsEditorialDeclaresError,
+  type CmsEditorialErrorDeclaration,
+} from '@wejammin/contracts';
 
 import {
   CMS_EDITORIAL_DETAIL_POLICIES,
@@ -120,32 +125,50 @@ export const cmsEditorialBoundedResponseJson = async (
  * keeping only the upstream request id as correlation. A malformed, oversize,
  * non-JSON, or out-of-range error collapses to a local safe error.
  */
+/**
+ * An operation family that publishes structured details of its own (the Slice 11
+ * workflow) supplies its projector: it receives the upstream status, code and
+ * details and returns the rebuilt, allowlisted details.
+ */
+export type CmsEditorialDetailProjector = (
+  status: number,
+  code: string,
+  upstreamDetails: unknown,
+) => Record<string, unknown>;
+
 export const cmsEditorialForwardedError = async (
   request: Request,
   upstream: Response,
-  allowedErrors: Readonly<Record<string, number>>,
+  allowedErrors: CmsEditorialErrorDeclaration,
   detailPolicy: CmsEditorialErrorDetailPolicy = CMS_EDITORIAL_DETAIL_POLICIES.read,
+  projector?: CmsEditorialDetailProjector,
 ): Promise<Response> => {
   // Each BE03b operation publishes a closed code/status registry. A valid
   // ApiError envelope is not enough: an upstream 403 carrying INTERNAL_ERROR,
   // or a draft read returning an undeclared 409, must not be relayed as truth.
-  if (!Object.values(allowedErrors).includes(upstream.status))
+  if (!cmsEditorialDeclaredStatuses(allowedErrors).includes(upstream.status))
     return cmsEditorialLocalError(request, 502);
   const body = await cmsEditorialBoundedResponseJson(upstream);
   if (!body.ok) return cmsEditorialLocalError(request, upstream.status);
   const parsed = ApiErrorSchema.safeParse(body.value);
-  if (!parsed.success || allowedErrors[parsed.data.code] !== upstream.status)
+  if (
+    !parsed.success ||
+    !cmsEditorialDeclaresError(allowedErrors, parsed.data.code, upstream.status)
+  )
     return cmsEditorialLocalError(request, upstream.status);
   const headers = cmsEditorialCopyResponseHeaders(upstream);
   headers.set('x-request-id', parsed.data.requestId);
   const published = ApiErrorSchema.safeParse({
     code: parsed.data.code,
-    message: cmsEditorialErrorMessage(parsed.data.code),
-    details: projectCmsEditorialErrorDetails(
-      upstream.status,
-      parsed.data.details,
-      detailPolicy,
-    ),
+    message: cmsEditorialErrorMessage(parsed.data.code, upstream.status),
+    details:
+      projector === undefined
+        ? projectCmsEditorialErrorDetails(
+            upstream.status,
+            parsed.data.details,
+            detailPolicy,
+          )
+        : projector(upstream.status, parsed.data.code, parsed.data.details),
     requestId: parsed.data.requestId,
   });
   if (!published.success)

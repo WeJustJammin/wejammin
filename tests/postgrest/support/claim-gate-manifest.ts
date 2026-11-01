@@ -62,6 +62,7 @@ export const CLAIM_GATED_API_FUNCTIONS: Readonly<Record<string, ClaimGate>> = {
   cms_dead_letter_schema_migration_event: 'service-role',
   cms_decide_schema_review: 'service-role',
   cms_define_template: 'service-role',
+  cms_dependency_recheck_run: 'service-role',
   cms_finalize_schema_migration_dry_run: 'service-role',
   cms_get_content_type_version: 'subject-or-service',
   cms_get_entry_draft: 'service-role',
@@ -88,6 +89,17 @@ export const CLAIM_GATED_API_FUNCTIONS: Readonly<Record<string, ClaimGate>> = {
   cms_restore_revision: 'service-role',
   cms_start_schema_dry_run: 'service-role',
   cms_submit_schema_review: 'service-role',
+  cms_assign_editorial_reviewer: 'service-role',
+  cms_execute_publication_schedule: 'service-role',
+  cms_get_editorial_review: 'service-role',
+  cms_get_entry_workflow: 'service-role',
+  cms_list_editorial_reviews: 'service-role',
+  cms_load_quality_gate_input: 'service-role',
+  cms_mint_preview: 'service-role',
+  cms_publish_revision: 'service-role',
+  cms_record_review_decision: 'service-role',
+  cms_schedule_publication: 'service-role',
+  cms_submit_review: 'service-role',
   cms_template_context: 'service-role',
   cms_template_latest: 'service-role',
   cms_verify_schema_migration: 'service-role',
@@ -146,6 +158,14 @@ export const CLAIM_GATED_API_FUNCTIONS: Readonly<Record<string, ClaimGate>> = {
  *   - 'profile-subject': `profile_actor` reading the token subject; no
  *     `context` member is accepted.
  *   - 'public-read': an anonymous caller is served; a token subject must be real.
+ *   - 'service-principal': an actorless internal operation whose only caller
+ *     class is the Worker service credential: CMS-03B-20 execute
+ *     (`cms_execute_publication_schedule`) and the dependency recheck job run
+ *     (`cms_dependency_recheck_run`, P2-S11-AC-113, which only reaches a claim
+ *     reader through the invalidation core it calls). It resolves no caller, so
+ *     it is ineligible for caller-binding ghost/forged probes; its boundary is
+ *     the EXECUTE grant (ACL) plus the Worker module boundary (DEC-156), proven
+ *     separately, never a body-level human gate.
  */
 export type ActorFamily =
   | 'cfg-actor'
@@ -154,7 +174,8 @@ export type ActorFamily =
   | 'release-principal'
   | 'profile-claims'
   | 'profile-subject'
-  | 'public-read';
+  | 'public-read'
+  | 'service-principal';
 
 const FAMILY_MEMBERS: Readonly<Record<ActorFamily, readonly string[]>> = {
   'cfg-actor': [
@@ -200,6 +221,16 @@ const FAMILY_MEMBERS: Readonly<Record<ActorFamily, readonly string[]>> = {
     'cms_submit_schema_review',
     'cms_template_context',
     'cms_template_latest',
+    'cms_assign_editorial_reviewer',
+    'cms_record_review_decision',
+    'cms_schedule_publication',
+    'cms_publish_revision',
+    'cms_get_editorial_review',
+    'cms_get_entry_workflow',
+    'cms_load_quality_gate_input',
+    'cms_list_editorial_reviews',
+    'cms_mint_preview',
+    'cms_submit_review',
   ],
   'identity-auth-user': [
     'identity_alias_create',
@@ -260,6 +291,10 @@ const FAMILY_MEMBERS: Readonly<Record<ActorFamily, readonly string[]>> = {
     'rpc_profile_section',
   ],
   'public-read': ['identity_organization_read'],
+  'service-principal': [
+    'cms_dependency_recheck_run',
+    'cms_execute_publication_schedule',
+  ],
 };
 
 export const CLAIM_ACTOR_FAMILY: Readonly<Record<string, ActorFamily>> =

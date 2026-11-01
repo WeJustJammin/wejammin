@@ -2,7 +2,7 @@ import * as React from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
 
-import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor';
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import CmsEditorialConflictPath from './CmsEditorialConflictPath';
 import {
   TITLE,

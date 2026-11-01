@@ -21,6 +21,7 @@ import {
   createProductionAsyncEntrypoint,
   runProductionOperationalAlerts,
 } from './production-async-entrypoint';
+import { runProductionCmsPublicationScheduleSweep } from './cms-publication-schedule-sweep';
 import { runProductionCmsEditPresenceSweep } from './production-cms-edit-presence-sweep';
 import { runProductionCmsReviewAuthoritySweep } from './production-cms-review-authority-sweep';
 import { runProductionIdempotencyExpirySweep } from './production-idempotency-expiry-sweep';
@@ -58,6 +59,7 @@ export type ProductionPlatformConfigurationOptions = Pick<
 >;
 export type { ProductionContentSchemaRegistryOptions } from './production-worker-runtime';
 export {
+  createProductionSchemaMigrationPreparationWorker,
   createProductionSchemaMigrationWorker,
   migrationQueueOutcome,
 } from './production-worker-runtime';
@@ -207,18 +209,22 @@ const handler = {
     const idempotencyExpirySweep = runProductionIdempotencyExpirySweep(env);
     const reviewAuthoritySweep = runProductionCmsReviewAuthoritySweep(env);
     const editPresenceSweep = runProductionCmsEditPresenceSweep(env);
+    const publicationScheduleSweep =
+      runProductionCmsPublicationScheduleSweep(env);
     const operationalAlerts = runProductionOperationalAlerts(controller, env);
     const [
       sweepResult,
       expiryResult,
       reviewAuthorityResult,
       editPresenceResult,
+      publicationScheduleResult,
       alertResult,
     ] = await Promise.allSettled([
       outboxSweep,
       idempotencyExpirySweep,
       reviewAuthoritySweep,
       editPresenceSweep,
+      publicationScheduleSweep,
       operationalAlerts,
     ]);
     const rejectedResults = [
@@ -226,6 +232,7 @@ const handler = {
       expiryResult,
       reviewAuthorityResult,
       editPresenceResult,
+      publicationScheduleResult,
       alertResult,
     ].filter(
       (result): result is PromiseRejectedResult => result.status === 'rejected',
@@ -247,6 +254,8 @@ const handler = {
       throw reviewAuthorityResult.reason;
     if (editPresenceResult.status === 'rejected')
       throw editPresenceResult.reason;
+    if (publicationScheduleResult.status === 'rejected')
+      throw publicationScheduleResult.reason;
     if (alertResult.status === 'rejected') throw alertResult.reason;
   },
 } satisfies ExportedHandler<AsyncWorkerBindings>;

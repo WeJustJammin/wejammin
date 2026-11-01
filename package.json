@@ -28,7 +28,7 @@
     "contracts:check": "node infra/generate-openapi.mjs --check",
     "db:start": "supabase start --exclude gotrue,realtime,storage-api,imgproxy,mailpit,postgres-meta,studio,edge-runtime,logflare,vector,supavisor",
     "db:stop": "supabase stop --no-backup",
-    "db:reset": "supabase db reset --local",
+    "db:reset": "node infra/reset-local-database.mjs",
     "db:lint": "supabase db lint --local --level warning --schema platform_private,audit_private,platform_api,public_api",
     "db:test": "supabase test db --local",
     "db:test:tap": "node infra/run-pgtap-verbose.mjs",
@@ -73,6 +73,7 @@
     "supabase": "2.116.0",
     "typescript": "5.9.3",
     "typescript-eslint": "8.68.0",
-    "vitest": "4.1.11"
+    "vitest": "4.1.11",
+    "zod": "4.4.3"
   }
 }

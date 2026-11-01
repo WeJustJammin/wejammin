@@ -1,0 +1,33 @@
+psql:/w/scratch/bench2-lane/probe-func-prof.sql:3: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-func-prof.sql:5: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-func-prof.sql:85: ERROR:  function round(double precision, integer) does not exist
+LINE 1: ...s per-iter total=%s self=%s calls=%s | %s', s.op, round(s.to...
+                                                             ^
+HINT:  No function matches the given name and argument types. You might need to add explicit type casts.
+/w/scratch/bench2-lane/probe-func-prof.sql .. 
+{"created": true, "personId": "c9997a16-30f4-4704-b3c8-a88958fa9541", "contextKind": "self", "accountState": "active", "actingPartyId": "c9997a16-30f4-4704-b3c8-a88958fa9541", "bindingVersion": 1}
+{"created": true, "personId": "9c2b7b43-9882-4d8e-b2a2-9c628c1565d7", "contextKind": "self", "accountState": "active", "actingPartyId": "9c2b7b43-9882-4d8e-b2a2-9c628c1565d7", "bindingVersion": 1}
+{"created": true, "personId": "9ba5d108-1c6d-49d8-a497-9be90086c848", "contextKind": "self", "accountState": "active", "actingPartyId": "9ba5d108-1c6d-49d8-a497-9be90086c848", "bindingVersion": 1}
+{"created": true, "personId": "cf1b4401-9efc-47dc-8ea9-2f62717b1baa", "contextKind": "self", "accountState": "active", "actingPartyId": "cf1b4401-9efc-47dc-8ea9-2f62717b1baa", "bindingVersion": 1}
+{"created": true, "personId": "04325136-78ac-4c7b-b415-aba046fbbc14", "contextKind": "self", "accountState": "active", "actingPartyId": "04325136-78ac-4c7b-b415-aba046fbbc14", "bindingVersion": 1}
+{"created": true, "personId": "4bd1fcb3-3fdf-422f-ad8b-9d12faa508bb", "contextKind": "self", "accountState": "active", "actingPartyId": "4bd1fcb3-3fdf-422f-ad8b-9d12faa508bb", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+# CHAIN 1 create128 p50=214.0 p95=239.3 max=240.4 n=10
+# CHAIN 2 dry_run p50=101.6 p95=107.9 max=108.4 n=10
+# CHAIN 3 submit p50=102.9 p95=115.2 max=119.9 n=10
+# CHAIN 4 assign p50=12.0 p95=16.2 max=16.9 n=10
+# CHAIN 5 decide p50=51.5 p95=58.6 max=59.9 n=10
+# CHAIN 6 activate p50=222.8 p95=247.8 max=251.6 n=10
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/probe-func-prof.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0, 10 wallclock secs ( 0.03 usr  0.00 sys +  0.03 cusr  0.00 csys =  0.06 CPU)
+Result: FAIL

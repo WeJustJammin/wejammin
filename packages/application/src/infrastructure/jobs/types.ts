@@ -167,6 +167,8 @@ export type DispatchInput = Readonly<{
   expectedJobType?: string;
   eventJobId?: string;
   eventJobType?: string;
+  /** Private verified CMS origin identity, not current execution authority. */
+  verifiedImmutableJobOrigin?: boolean;
   canonicalJob?: unknown;
   eventPayload?: unknown;
 }>;

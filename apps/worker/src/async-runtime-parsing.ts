@@ -3,8 +3,11 @@ import {
   CONSUMER_EVENT_TYPE,
   PositiveBigintDecimalSchema,
   QueueEnvelopeSchema,
+  REVIEW_RECHECK_SOURCES,
+  ReviewRecheckSourceEnvelopeSchema,
   type ConsumerQueueEnvelope,
   type QueueEnvelope,
+  type ReviewRecheckSourceEnvelope,
 } from '@wejammin/contracts';
 import {
   type CanonicalJob,
@@ -19,10 +22,15 @@ import type { AsyncRpcClient } from './async-runtime-rpc-types';
 export type ClaimedOutbox = Readonly<{
   outboxId: string;
   leaseToken: string;
-  envelope: QueueEnvelope | ConsumerQueueEnvelope;
+  envelope: QueueEnvelope | ConsumerQueueEnvelope | ReviewRecheckSourceEnvelope;
 }>;
 
-/** The outbox event types the relay places on the queue, with their aggregate. */
+/**
+ * The outbox event types the relay places on the queue, with their aggregate.
+ * The six Slice 11 dependency-recheck source events are relayed too, but their
+ * aggregate rules live in their own envelope schema (the three Slice 12 events
+ * have no pinned aggregate yet).
+ */
 const RELAYED_AGGREGATE: Readonly<Record<string, string>> = {
   'job.requested': 'job',
   [CONSUMER_EVENT_TYPE.mfaFactorChanged]: 'mfa_factor',
@@ -97,6 +105,21 @@ export const parseLease = (
 ): JobLeaseClaimResult => {
   const row = firstRow(value);
   if (!isRecord(row)) throw new Error('Invalid job lease');
+  const hasOwn = (key: string): boolean =>
+    Object.prototype.hasOwnProperty.call(row, key);
+  if (
+    ['jobId', 'job_id'].some(
+      (key) => hasOwn(key) && row[key] !== request.jobId,
+    ) ||
+    ['leaseToken', 'lease_token'].some(
+      (key) => hasOwn(key) && row[key] !== request.leaseToken,
+    ) ||
+    ['expectedVersion', 'expected_version'].some(
+      (key) => hasOwn(key) && toVersion(row[key]) !== request.expectedVersion,
+    )
+  ) {
+    throw new Error('Invalid job lease');
+  }
   const jobId = row.jobId ?? row.job_id;
   const leaseToken = row.leaseToken ?? row.lease_token ?? request.leaseToken;
   const expectedVersion =
@@ -142,7 +165,8 @@ export const parseOutboxClaim = (value: unknown): ClaimedOutbox | null => {
     !isUuid(eventId) ||
     !isUuid(leaseToken) ||
     typeof eventType !== 'string' ||
-    RELAYED_AGGREGATE[eventType] !== aggregateType ||
+    (!Object.hasOwn(REVIEW_RECHECK_SOURCES, eventType) &&
+      RELAYED_AGGREGATE[eventType] !== aggregateType) ||
     schemaVersion !== 1 ||
     !isUuid(aggregateId) ||
     version === null ||
@@ -167,6 +191,16 @@ export const parseOutboxClaim = (value: unknown): ClaimedOutbox | null => {
       leaseToken,
       outboxId,
     };
+  }
+  if (Object.hasOwn(REVIEW_RECHECK_SOURCES, eventType)) {
+    const source = ReviewRecheckSourceEnvelopeSchema.safeParse({
+      ...fields,
+      occurredAt,
+      producer,
+    });
+    return source.success
+      ? { envelope: source.data, leaseToken, outboxId }
+      : null;
   }
   // BE00 envelope members that the outbox row does not store: the instant is the
   // row's own occurred_at and the producer is the registered owner of the

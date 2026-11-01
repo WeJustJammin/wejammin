@@ -1,0 +1,12 @@
+[b2] chunk1-final waiting for EXCLUSIVE quiet lock 07:48:40
+[b2] chunk1-final locks held 08:22:16 load=4.25 5.02 5.32 HEAD=6af4f106 dirty=18
+[b2] migrations of this lane in the tree: 20261010161000_cms_history_sealed_cursor.sql 20261010161100_cms_history_sealed_cursor_wrapper.sql 20261010162000_cms_schedule_audit_event_ids.sql 20261010162100_cms_schedule_publication_lapse_and_audit.sql 20261010162200_cms_execute_publication_schedule_conflicts.sql 20261010164000_cms_review_recheck_relay.sql 20261010164100_cms_dependency_recheck.sql 20261010165000_cms_projection_consumer_state.sql 20261010165100_cms_publication_projection_state_reads.sql 20261010165200_cms_takedown_preview_tokens.sql 20261010166000_cms_create_type_draft_single_compile.sql 20261010166100_cms_compiled_manifest_bound_scan.sql 20261010167000_cms_valid_field_input_fast_accept.sql 
+[b2] sha256 of those migrations: 50b3f3360431 c8cab571579c 25942084ac53 
+[b2] reset ok (chunk1) 08:23:22
+[b2] chunk 1 (60 files) exit=0 load_before=1.39 load_after=2.90 Files=60, Tests=2723, 101 wallclock secs ( 1.07 usr  0.19 sys +  1.93 cusr  0.73 csys =  3.92 CPU) Result: PASS 
+# activate p50=102.2ms p95=125.1ms max=154.2ms n=25
+# assign p50=11.4ms p95=13.3ms max=16.4ms n=25
+# create128 p50=161.5ms p95=203.3ms max=217.0ms n=25
+# decide p50=53.9ms p95=68.6ms max=70.1ms n=25
+# dry_run p50=98.2ms p95=118.5ms max=152.3ms n=25
+# submit p50=101.3ms p95=119.5ms max=121.2ms n=25

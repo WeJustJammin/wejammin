@@ -28,6 +28,7 @@ import {
   editorInit,
   revisionCreated,
 } from './cms-editorial-editor-fixtures.test-support';
+import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
 import { saveCmsEditorialResult } from './cms-editorial-result-handoff';
 import {
   setup,
@@ -35,6 +36,7 @@ import {
 } from './CmsEditorialEntryEditorIsland.test-support';
 
 beforeAll(enableReactAct);
+beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 beforeEach(() => {
   document.cookie = 'wj_csrf=csrf-token';

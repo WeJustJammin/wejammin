@@ -31,10 +31,13 @@ import {
   selectBy,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
+import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
 import CmsEditorialEntryCreateIsland from './CmsEditorialEntryCreateIsland';
 import { takeCmsEditorialResult } from './cms-editorial-result-handoff';
 
 beforeAll(enableReactAct);
+beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 
 const ENTRY_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132dc';
@@ -105,6 +108,7 @@ const render = (
     <CmsEditorialEntryCreateIsland
       type={selectedType()}
       fields={fields}
+      descriptors={describeCmsAuthoringFields(fields)}
       fetcher={fetcher}
       navigate={navigate}
     />,

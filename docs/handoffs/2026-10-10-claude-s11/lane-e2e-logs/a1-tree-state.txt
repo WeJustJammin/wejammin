@@ -1,0 +1,22 @@
+HEAD a3ee65ba7e778b080d85a66f1dcbe7acb0c755f0
+snapshot taken 2026-10-11T22:01:03-04:00
+-- worktree uncommitted files at snapshot time (git status --porcelain)
+ M apps/worker/src/cms-editorial/a11y-structural/max-input.test.ts
+ M docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/e2e-window.sh
+ M tests/e2e/phase-02-slice-10-entry-list-real-route.spec.ts
+ M tests/e2e/phase-02-slice-11-workflow-real-route.spec.ts
+ M tests/e2e/support/README.md
+ M tests/e2e/support/s11-real-world.ts
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/a1-tree-state.txt
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/e2e-snapshot.sh
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-report.md
+?? tests/e2e/support/s11-dst-gap.test.ts
+?? tests/e2e/support/s11-dst-gap.ts
+-- sha256 of the files this lane owns, worktree vs snapshot
+238fdbfdac6c3169  same  tests/e2e/phase-02-slice-10-entry-list-real-route.spec.ts
+5ab86772c6474891  same  tests/e2e/phase-02-slice-11-workflow-real-route.spec.ts
+e755a5bddcb89fdf  same  tests/e2e/support/s11-real-world.ts
+152584d9c1a5cd90  same  tests/e2e/support/s11-dst-gap.ts
+8c81d818a122ce81  same  tests/e2e/support/s11-dst-gap.test.ts
+782afa3f5b58986f  same  tests/e2e/support/README.md
+964595c213a5313b  same  apps/worker/src/cms-editorial/a11y-structural/max-input.test.ts

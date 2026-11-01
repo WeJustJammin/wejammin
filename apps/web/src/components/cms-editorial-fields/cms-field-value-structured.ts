@@ -1,12 +1,12 @@
+import type { JsonValue } from '@wejammin/contracts';
 import {
-  CmsUuidSchema,
-  CmsVersionSchema,
-  isObjectValueForStructure,
-  isRichTextV1,
-  validateRichTextV1,
-  richTextTotalCharacters,
-  type JsonValue,
-} from '@wejammin/contracts';
+  RICH_TEXT_NOT_CANONICAL,
+  isCmsUuid,
+  isCmsVersion,
+  isObjectValueForStructureZodFree,
+  isRichTextDocument,
+  richTextDocumentCharacters,
+} from '@wejammin/contracts/client';
 
 import type {
   CmsListDescriptor,
@@ -44,12 +44,14 @@ const richTextIssues = (
 ): CmsFieldIssue[] => {
   // The refusal carries the token PostgreSQL emits (AC-084), with the one fixed
   // copy every layer shows for it.
-  const verdict = validateRichTextV1(value);
-  if (!verdict.ok)
+  if (!isRichTextDocument(value))
     return [
-      cmsIssue(verdict.reason, CMS_EDITORIAL_REASON_COPY[verdict.reason]),
+      cmsIssue(
+        RICH_TEXT_NOT_CANONICAL,
+        CMS_EDITORIAL_REASON_COPY[RICH_TEXT_NOT_CANONICAL],
+      ),
     ];
-  const total = richTextTotalCharacters(value);
+  const total = richTextDocumentCharacters(value);
   const issues: CmsFieldIssue[] = [];
   if (constraints.minLength !== undefined && total < constraints.minLength)
     issues.push(
@@ -161,7 +163,7 @@ export const validateCmsObject = (
   // per-property copy above misses, an invalid structure never passes.
   if (
     issues.length === 0 &&
-    !isObjectValueForStructure(descriptor.structure, value)
+    !isObjectValueForStructureZodFree(descriptor.structure, value)
   )
     issues.push(
       cmsIssue(
@@ -193,7 +195,7 @@ export const validateCmsRelation = (
       issues.push(cmsIssue('invalid_uuid', 'Enter an entry id.', { index }));
       return;
     }
-    if (!CmsUuidSchema.safeParse(target.targetId).success)
+    if (!isCmsUuid(target.targetId))
       issues.push(
         cmsIssue('invalid_uuid', 'Enter the entry id as a UUID.', { index }),
       );
@@ -208,8 +210,7 @@ export const validateCmsRelation = (
     if (
       pinned !== null &&
       pinned !== undefined &&
-      (typeof pinned !== 'string' ||
-        !CmsVersionSchema.safeParse(pinned).success)
+      (typeof pinned !== 'string' || !isCmsVersion(pinned))
     )
       issues.push(
         cmsIssue(
@@ -228,7 +229,7 @@ export const validateCmsRelation = (
  * validation instead of being mistaken for the absence of a value.
  */
 export const cmsRichTextIsEmpty = (value: JsonValue): boolean =>
-  isRichTextV1(value) && richTextTotalCharacters(value) === 0;
+  isRichTextDocument(value) && richTextDocumentCharacters(value) === 0;
 
 export const cmsTextIsEmpty = (value: JsonValue): boolean =>
   typeof value === 'string' && cmsCharacterCount(value) === 0;

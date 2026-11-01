@@ -77,11 +77,12 @@ describe('cms editorial page actions module', () => {
       cancelable: true,
     });
     form.dispatchEvent(event);
-    for (let index = 0; index < 20; index += 1) await Promise.resolve();
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    // The restore command's module loads on the first restore (AC-106).
+    await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1), {
+      timeout: 10_000,
+    });
 
     expect(event.defaultPrevented).toBe(true);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
     const [url, init] = fetchMock.mock.calls[0] as unknown as [
       string,
       RequestInit,

@@ -12,7 +12,6 @@ import {
 import CmsEditorialEntryEditorIsland from './CmsEditorialEntryEditorIsland';
 import {
   TITLE,
-  editorFields,
   editorInit,
 } from './cms-editorial-editor-fixtures.test-support';
 
@@ -46,7 +45,7 @@ describe('DOM driver teardown', () => {
     document.cookie = 'wj_csrf=csrf-token';
     const { container } = mountElement(
       React.createElement(CmsEditorialEntryEditorIsland, {
-        init: editorInit({ fields: editorFields() }),
+        init: editorInit(),
         fetcher: async (input) => {
           requests.push(String(input));
           throw new Error('no request is expected');

@@ -1,21 +1,7 @@
-import { cmsEditorialAppEntryPath } from '../components/cms-editorial/cms-editorial-app-routes';
-import {
-  saveCmsEditorialResult,
-  type CmsEditorialResultSummary,
-} from '../components/cms-editorial/cms-editorial-result-handoff';
-import { submitCmsEditorialRestoreForm } from '../components/cms-editorial/cms-editorial-restore-submit';
-import {
-  forgetRestoreDraft,
-  recoverRestoreDrafts,
-  rememberRestoreDraft,
-} from './cms-editorial-restore-draft';
-import {
-  clearRestoreFailure,
-  restoreFailureOf,
-  showRestoreFailure,
-} from './cms-editorial-restore-feedback';
+import { announce, focusStorage } from './cms-editorial-page-actions-dom';
+import { recoverRestoreDrafts } from './cms-editorial-restore-draft';
+import { clearRestoreFailure } from './cms-editorial-restore-summary';
 import { installCmsEditorialRestoreReview } from './cms-editorial-restore-review';
-import { markRouteHeadingForFocus } from './route-heading-focus';
 
 /**
  * Bundled page actions for the CMS editorial surfaces. The routes carry no
@@ -24,118 +10,23 @@ import { markRouteHeadingForFocus } from './route-heading-focus';
  * create form is a React island that owns its own submit; what remains here is
  * the document-level interception of the create type selector and the CMS-07
  * restore confirmation form.
+ *
+ * The shell loads this file on every CMS route (AC-106), so the restore command
+ * itself, which carries the contract schemas of its request and answer, lives in
+ * `cms-editorial-page-actions-restore.ts` and is imported dynamically: on the
+ * first restore submit, and as soon as the restore review opens so that the
+ * confirmation is usually ready. The review's focus, Escape and Cancel handling
+ * and the recovery of a kept confirmation stay here, installed at once, because
+ * they must work before any chunk has arrived.
  */
-const announce = (
-  documentRef: Document,
-  attribute: string,
-  message: string,
-): void => {
-  const selector = `p[${attribute}]`;
-  const existing: HTMLParagraphElement | null =
-    documentRef.querySelector(selector);
-  if (existing !== null) {
-    existing.textContent = message;
-    return;
-  }
-  const created = documentRef.createElement('p') as HTMLParagraphElement;
-  created.setAttribute('role', 'status');
-  created.setAttribute(attribute, '');
-  documentRef.body.appendChild(created);
-  created.textContent = message;
-};
-
-const inFlightForms = new WeakSet<HTMLFormElement>();
-
-/**
- * Locks a form while its command runs: the form is `aria-busy`, a second submit
- * is refused, and every control is made inert EXCEPT the one that was activated
- * and the one holding focus. Disabling a focused control makes the browser drop
- * focus to <body>, so those stay enabled and are marked `aria-busy` instead.
- */
-const withFormLock = async (
-  form: HTMLFormElement,
-  submitter: HTMLElement | null,
-  action: () => Promise<void>,
-): Promise<void> => {
-  if (inFlightForms.has(form)) return;
-  inFlightForms.add(form);
-  const focused = form.ownerDocument.activeElement;
-  const controls = (
-    Array.from(
-      form.querySelectorAll('button, input, select, textarea'),
-    ) as Array<
-      | HTMLButtonElement
-      | HTMLInputElement
-      | HTMLSelectElement
-      | HTMLTextAreaElement
-    >
-  ).filter((control) => control !== submitter && control !== focused);
-  const kept = [submitter, focused].filter(
-    (control): control is HTMLElement =>
-      control !== null && form.contains(control),
-  );
-  const disabled = controls.map((control) => control.disabled);
-  form.setAttribute('aria-busy', 'true');
-  for (const control of kept) control.setAttribute('aria-busy', 'true');
-  for (const control of controls) control.disabled = true;
-  try {
-    await action();
-  } finally {
-    controls.forEach((control, index) => {
-      control.disabled = disabled[index] ?? false;
-    });
-    for (const control of kept) control.removeAttribute('aria-busy');
-    form.setAttribute('aria-busy', 'false');
-    inFlightForms.delete(form);
-  }
-};
-
-/**
- * The canonical result of a verified restore: the new draft's revision and entry
- * version, its parents (`[current draft, source]`, CMS-03B-04) and the migration
- * chain the confirmation named. Identifiers and counts only.
- */
-const restoreResultSummary = (
-  form: HTMLFormElement,
-  resource: {
-    readonly entryId: string;
-    readonly revisionNumber: string;
-    readonly entryVersion: string;
-    readonly state: string;
-    readonly parentRevisionIds: readonly string[];
-  },
-): CmsEditorialResultSummary => {
-  const field = (name: string): string | null => {
-    const control = form.elements.namedItem(name);
-    return control instanceof HTMLInputElement ? control.value : null;
-  };
-  const edges = Number(field('edgeCount'));
-  return {
-    kind: 'restored',
-    entryId: resource.entryId,
-    revisionNumber: resource.revisionNumber,
-    entryVersion: resource.entryVersion,
-    state: resource.state,
-    parentRevisionIds: [...resource.parentRevisionIds],
-    migrationChainId: field('migrationChainId'),
-    edgeCount: Number.isInteger(edges) ? edges : null,
-  };
-};
-
-const focusStorage = (documentRef: Document): Storage | null => {
-  try {
-    return documentRef.defaultView?.sessionStorage ?? null;
-  } catch {
-    return null;
-  }
-};
-
 export interface CmsEditorialPageActionsOptions {
   /** Browser navigation seam; defaults to `location.assign` on the page. */
   readonly navigate?: (path: string) => void;
   /** Removes the interceptor when aborted (tests and hot reload). */
   readonly signal?: AbortSignal;
 }
+
+const loadRestoreActions = () => import('./cms-editorial-page-actions-restore');
 
 export const installCmsEditorialPageActions = (
   documentRef: Document,
@@ -169,54 +60,37 @@ export const installCmsEditorialPageActions = (
       if (target.hasAttribute('data-cms-editorial-restore')) {
         event.preventDefault();
         clearRestoreFailure(target);
-        void withFormLock(target, event.submitter, async () => {
-          const result = await submitCmsEditorialRestoreForm({
-            form: target,
-            documentRef: documentRef,
-          });
-          if (result.status === 'created') {
-            forgetRestoreDraft(focusStorage(documentRef), target);
-            const destination = cmsEditorialAppEntryPath(
-              result.resource.entryId,
-            );
-            if (destination !== null) {
-              saveCmsEditorialResult(
-                focusStorage(documentRef),
-                restoreResultSummary(target, result.resource),
-              );
-              markRouteHeadingForFocus(focusStorage(documentRef));
-              announce(
-                documentRef,
-                'data-cms-editorial-restore-status',
-                'The restore was accepted. Loading the restored draft…',
-              );
-              navigate(destination);
-              return;
-            }
-            announce(
-              documentRef,
-              'data-cms-editorial-restore-status',
-              'The restore was accepted, but its page could not be opened. Open the entry from the entry list.',
-            );
-            return;
-          }
-          // AC-058 / FE03 :2599-:2604: the typed failure is a summary inside the
-          // confirmation, and focus goes to it. The polite status announcement is
-          // kept for the surfaces that read it.
-          const failure = restoreFailureOf(result);
-          showRestoreFailure(target, documentRef, failure);
-          announce(
+        const submitter = event.submitter;
+        void loadRestoreActions().then((restore) =>
+          restore.submitCmsEditorialRestore(
+            target,
+            submitter,
             documentRef,
-            'data-cms-editorial-restore-status',
-            `${failure.message} ${failure.recovery}`,
-          );
-          if (failure.interrupted)
-            rememberRestoreDraft(focusStorage(documentRef), target);
-          else forgetRestoreDraft(focusStorage(documentRef), target);
-        });
+            navigate,
+          ),
+        );
       }
     },
     options.signal === undefined ? undefined : { signal: options.signal },
+  );
+  // Opening the restore review is the sign of intent: fetch the restore command
+  // now (its failure is reported by the submit that really needs it).
+  // `toggle` does not bubble, so it is observed in the capture phase.
+  documentRef.addEventListener(
+    'toggle',
+    (event) => {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.hasAttribute('data-cms-editorial-restore-review') &&
+        (target as HTMLDetailsElement).open
+      )
+        loadRestoreActions().catch(() => undefined);
+    },
+    {
+      capture: true,
+      ...(options.signal === undefined ? {} : { signal: options.signal }),
+    },
   );
   installCmsEditorialRestoreReview(documentRef, options.signal);
   recoverRestoreDrafts(documentRef, focusStorage(documentRef), (message) =>

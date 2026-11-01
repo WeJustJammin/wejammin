@@ -1,0 +1,133 @@
+phase_02_slice_11_recheck_relay.sql .......... 
+ok 1 - cms.schema.activated.v1 resolves its registered producer cms.schema_registry [P2-S11-AC-113]
+ok 2 - cms.template.activated.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+not ok 3 - cms.pattern.activated.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+not ok 4 - cms.taxonomy.changed.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+ok 5 - cms.localization.changed.v1 resolves its registered producer cms.composition [P2-S11-AC-113]
+ok 6 - cms.block.lifecycle.changed.v1 resolves its registered producer cms.schema_registry [P2-S11-AC-113]
+not ok 7 - the relay claims each of the six recheck source events with its aggregate and registered producer [P2-S11-AC-113]
+ok 8 - a wrong aggregate, a key that is not a registry key, a wrong schema version and an unlisted event are never claimed [P2-S11-AC-113]
+not ok 9 - a claimed recheck source event carries its producer, its outbox instant and a first lease [P2-S11-AC-113]
+not ok 10 - claiming leases the six rows to the caller without dispatching them [P2-S11-AC-113]
+ok 11 - the four tuples relayed before the widening are still claimed [P2-S11-AC-113]
+ok 12 - the claim still returns the identifier columns, occurred_at and the registered producer [P2-S11-AC-113]
+ok 13 - the private claim is still a VOLATILE SECURITY DEFINER of the platform definer with an empty search_path [P2-S11-AC-113]
+ok 14 - only the service role executes the platform_api claim and no API role the private one [P2-S11-AC-113]
+not ok 15 - the newly registered prefixes are as immutable as the rest of the map [P2-S11-AC-113]
+phase_02_slice_11_recheck_event_resolve.sql .. 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 8 - the private resolver is a SECURITY DEFINER function of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-113]
+ok 9 - the platform_api wrapper is executable by the service role only [P2-S11-AC-113]
+ok 10 - the resolver answers jsonb [P2-S11-AC-113]
+ok 11 - cms.schema.activated.v1 names the activated schema version under the schema kind [P2-S11-AC-113]
+ok 12 - cms.template.activated.v1 names the template version under the template kind [P2-S11-AC-113]
+ok 13 - cms.pattern.activated.v1 names the pattern version under the pattern kind [P2-S11-AC-113]
+ok 14 - cms.taxonomy.changed.v1 names the taxonomy version under the taxonomy_version kind [P2-S11-AC-113]
+ok 15 - cms.block.lifecycle.changed.v1 names the block definition version under the block kind [P2-S11-AC-113]
+not ok 16 - cms.localization.changed.v1 names the SOURCE revision of the variant, not the variant revision the event carries [P2-S11-AC-113]
+not ok 17 - the locale of a localization event is compared case-insensitively [P2-S11-AC-113]
+not ok 18 - the latest version of the locale variant names its source revision [P2-S11-AC-113]
+ok 19 - the platform_api wrapper returns the resolved lookup [P2-S11-AC-113]
+ok 20 - control: the CMS RPC context set by the fixtures is restored by the wrapper [P2-S11-AC-113]
+ok 21 - an event row that does not exist is not found [P2-S11-AC-113]
+ok 22 - a null event id is INVALID_REQUEST [P2-S11-AC-113]
+ok 23 - an event of another schema version is not found [P2-S11-AC-113]
+ok 24 - an event type outside the six is not found even when its payload looks right [P2-S11-AC-113]
+ok 25 - a payload without the published identity member is not found [P2-S11-AC-113]
+ok 26 - an identity member that is not a UUID is not found [P2-S11-AC-113]
+ok 27 - an identity member that is not a string is not found [P2-S11-AC-113]
+ok 28 - a non-canonical (uppercase) UUID is not found [P2-S11-AC-113]
+ok 29 - a localization event of a revision with no locale variant is not found [P2-S11-AC-113]
+ok 30 - a localization event of another locale than the variant is not found [P2-S11-AC-113]
+ok 31 - a localization event naming another entry than the variant is not found [P2-S11-AC-113]
+ok 32 - a localization payload without entryId is not found [P2-S11-AC-113]
+ok 33 - a localization payload without revisionId is not found [P2-S11-AC-113]
+ok 34 - a localization payload without locale is not found [P2-S11-AC-113]
+ok 35 - resolving every forged event wrote no outbox, audit or variant row [P2-S11-AC-113]
+phase_02_slice_11_recheck_run.sql ............ 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - the run, the event resolver and the lineage helper are private SECURITY DEFINER functions of the CMS definer with an empty search_path and no API-role execute [P2-
+ok 10 - the two platform_api wrappers are SECURITY DEFINER functions of the CMS definer executable by the service role only [P2-S11-AC-113]
+ok 11 - the run answers jsonb { examined, invalidated, nextCursor } [P2-S11-AC-113]
+ok 12 - lineage: an exact kind stands for the identity itself [P2-S11-AC-113]
+ok 13 - a non-object request is INVALID_REQUEST [P2-S11-AC-113]
+ok 14 - a request without the cursor member is INVALID_REQUEST [P2-S11-AC-113]
+ok 15 - a kind outside the nine is INVALID_REQUEST [P2-S11-AC-113]
+ok 16 - a malformed event id is INVALID_REQUEST [P2-S11-AC-113]
+ok 17 - a non-string reference is INVALID_REQUEST [P2-S11-AC-113]
+ok 18 - a malformed cursor is INVALID_REQUEST [P2-S11-AC-113]
+ok 19 - an unknown request member (a caller-named review) is INVALID_REQUEST [P2-S11-AC-113]
+ok 20 - control: the refused requests emitted nothing [P2-S11-AC-113]
+not ok 21 - the run selects the six LIVE reviews that name the schema version and invalidates none while every manifest still holds [P2-S11-AC-113]
+not ok 22 - a review that still holds is left untouched, and a rejected or already invalidated review is not selected [P2-S11-AC-113]
+not ok 23 - a run that invalidates nothing emits no event [P2-S11-AC-113]
+ok 24 - a reference no review froze selects nothing [P2-S11-AC-113]
+ok 25 - precondition: the withdrawn block leaves the rebuilt manifest equal to the frozen one but the identity is not current [P2-S11-AC-113]
+not ok 26 - the withdrawn block invalidates the one review that froze it [P2-S11-AC-113]
+not ok 27 - the review of the withdrawn block is invalidated dependency_changed (CAS version + 1) and the review of another block is untouched [P2-S11-AC-113]
+not ok 28 - the invalidation writes one cms.entry.review-changed.v1 at the new version carrying the correlation id of the source event [P2-S11-AC-113]
+not ok 29 - the invalidation writes its audit record with the same correlation id [P2-S11-AC-113]
+not ok 30 - idempotent: a repeated run skips the review that is already invalidated [P2-S11-AC-113]
+not ok 31 - idempotent: a repeated run emits no second event [P2-S11-AC-113]
+not ok 32 - idempotent: a repeated run writes no second audit record [P2-S11-AC-113]
+ok 33 - precondition: the changed term makes the rebuilt manifest differ from the frozen one while every frozen identity is current [P2-S11-AC-113]
+not ok 34 - inequality: the changed term invalidates the review that froze it [P2-S11-AC-113]
+ok 35 - inequality: the review is invalidated dependency_changed [P2-S11-AC-113]
+ok 36 - lineage: a pattern version stands for every version of its pattern key [P2-S11-AC-113]
+ok 37 - lineage: another pattern key is not part of it [P2-S11-AC-113]
+ok 38 - lineage: a version row that does not exist stands for itself [P2-S11-AC-113]
+not ok 39 - the event of the NEW pattern version reaches the review that froze its superseded predecessor [P2-S11-AC-113]
+ok 40 - the review of the superseded pattern version is invalidated dependency_changed [P2-S11-AC-113]
+not ok 41 - one event per invalidated review so far: block, term and pattern [P2-S11-AC-113]
+ok 42 - with no outbox row behind the event id the invalidation carries a fresh correlation id [P2-S11-AC-113]
+not ok 43 - precondition: r1, r2 and r6 are the live reviews of the schema version [P2-S11-AC-113]
+not ok 44 - a run continues after the cursor: only reviews with a greater id are selected [P2-S11-AC-113]
+not ok 45 - a cursor on the last review selects nothing [P2-S11-AC-113]
+not ok 46 - a superseded schema version invalidates the live reviews after the cursor [P2-S11-AC-113]
+not ok 47 - the approved review is invalidated at its next version, the review before the cursor is untouched [P2-S11-AC-113]
+not ok 48 - the run from the start finishes what is left: the review before the old cursor [P2-S11-AC-113]
+not ok 49 - idempotent: with no live review left a run examines nothing [P2-S11-AC-113]
+ok 50 - a rejected review stays rejected and an earlier invalidation keeps its reason [P2-S11-AC-113]
+ok 51 - exactly one event per invalidated review: six invalidations, no duplicate from any repeated run [P2-S11-AC-113]
+ok 52 - the dependency rows of the invalidated reviews are retained as history [P2-S11-AC-113]
+phase_02_slice_11_recheck_cap.sql ............ 
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - precondition: 501 live reviews name the schema version in the dependency index [P2-S11-AC-113]
+ok 10 - precondition: the walk order has 501 reviews [P2-S11-AC-113]
+not ok 11 - a run handles at most 500 of the 501 live reviews and returns the 500th review id as its continuation cursor [P2-S11-AC-113]
+ok 12 - the run that continues after the cursor handles the 501st review and returns no cursor [P2-S11-AC-113]
+ok 13 - a run with exactly 500 reviews left handles all of them and returns no cursor [P2-S11-AC-113]
+not ok 14 - while every manifest holds, no review changes state or version [P2-S11-AC-113]
+not ok 15 - while every manifest holds, a walk of the whole index emits no event [P2-S11-AC-113]
+not ok 16 - a run that invalidates handles at most 500 reviews too: 500 invalidated and a cursor [P2-S11-AC-113]
+not ok 17 - exactly 500 reviews are invalidated dependency_changed at the next CAS version [P2-S11-AC-113]
+not ok 18 - the 501st review is still live after the first run [P2-S11-AC-113]
+not ok 19 - the continuation, called through the platform_api wrapper, invalidates the 501st review and returns no cursor [P2-S11-AC-113]
+ok 20 - all 501 reviews are invalidated dependency_changed [P2-S11-AC-113]
+ok 21 - one cms.entry.review-changed.v1 per invalidated review [P2-S11-AC-113]
+ok 22 - one audit record per invalidated review [P2-S11-AC-113]
+not ok 23 - idempotent: a repeated run finds no live review [P2-S11-AC-113]
+ok 24 - idempotent: the repeated run emitted nothing [P2-S11-AC-113]
+not ok 25 - idempotent: a run from a cursor in the middle finds none either [P2-S11-AC-113]
+Files=4, Tests=127, 26 wallclock secs ( 0.28 usr  0.05 sys +  0.28 cusr  0.12 csys =  0.73 CPU)
+Result: FAIL

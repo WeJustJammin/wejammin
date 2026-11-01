@@ -1,0 +1,537 @@
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:27: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:29: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:168: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:168: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:168: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:168: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:168: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:180: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:180: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:180: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:180: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:180: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:180: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:221: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:221: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:229: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:229: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:229: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:229: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:229: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:229: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:261: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:264: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:270: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:287: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:295: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:295: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:309: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql:309: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_locale_source.sql .. 
+1..32
+{"created": true, "personId": "c4b42cd8-06b4-4726-9bd4-7006be735690", "contextKind": "self", "accountState": "active", "actingPartyId": "c4b42cd8-06b4-4726-9bd4-7006be735690", "bindingVersion": 1}
+{"created": true, "personId": "ef1f16ce-7b26-4e54-9eae-fa2755c082e4", "contextKind": "self", "accountState": "active", "actingPartyId": "ef1f16ce-7b26-4e54-9eae-fa2755c082e4", "bindingVersion": 1}
+{"created": true, "personId": "d2598a4c-49bf-421b-9901-d9d296b1d659", "contextKind": "self", "accountState": "active", "actingPartyId": "d2598a4c-49bf-421b-9901-d9d296b1d659", "bindingVersion": 1}
+{"created": true, "personId": "b81f292f-eb82-4443-91cd-440bd208f16a", "contextKind": "self", "accountState": "active", "actingPartyId": "b81f292f-eb82-4443-91cd-440bd208f16a", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+{"created": true, "personId": "f64032ff-64aa-494f-8bbb-104cd83395c1", "contextKind": "self", "accountState": "active", "actingPartyId": "f64032ff-64aa-494f-8bbb-104cd83395c1", "bindingVersion": 1}
+{"created": true, "personId": "5dcb02c3-d65e-4d35-8848-89fadfc75aaf", "contextKind": "self", "accountState": "active", "actingPartyId": "5dcb02c3-d65e-4d35-8848-89fadfc75aaf", "bindingVersion": 1}
+{"created": true, "personId": "67057ed6-9e92-470c-a75a-8a86442e56e9", "contextKind": "self", "accountState": "active", "actingPartyId": "67057ed6-9e92-470c-a75a-8a86442e56e9", "bindingVersion": 1}
+{"created": true, "personId": "a0fa0bab-ed3f-4d9b-9ce8-c5aef02b84df", "contextKind": "self", "accountState": "active", "actingPartyId": "a0fa0bab-ed3f-4d9b-9ce8-c5aef02b84df", "bindingVersion": 1}
+{"created": true, "personId": "98e7ad27-41c3-4046-95bc-82198966b1be", "contextKind": "self", "accountState": "active", "actingPartyId": "98e7ad27-41c3-4046-95bc-82198966b1be", "bindingVersion": 1}
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+a9200000-0000-4000-8000-30f35951c6f9
+a9200000-0000-4000-8000-094e0bab733d
+a9200000-0000-4000-8000-58122f2c1211
+a9200000-0000-4000-8000-dc429d475751
+a9200000-0000-4000-8000-2a8aea3c1a6a
+a9200000-0000-4000-8000-da1c85a8a3b3
+ok 10 - precondition: six approved reviews of fr-FR variants, each frozen with one localeSources entry, all current [P2-S11-AC-113]
+ok 11 - the frozen identity is { locale, revisionId, hash } of the source revision [P2-S11-AC-113]
+ok 12 - the dependency index names the source revision under locale_source [P2-S11-AC-113]
+a9200000-0000-4000-8000-dee5990a29e6
+a9200000-0000-4000-8000-fd199c43b7de
+a9200000-0000-4000-8000-2cdf833d17c9
+a9200000-0000-4000-8000-280905d4e004
+a9200000-0000-4000-8000-7fec24e31c76
+a9200000-0000-4000-8000-4b65a9a33178
+ok 13 - the real producer appended one stale variant row for each edited source, none for the untouched and the same-hash ones [P2-S11-AC-113]
+ok 14 - each stale row copies the source revision and hash of the row it follows [P2-S11-AC-113]
+ok 15 - precondition: the rebuilt manifest of an edited, or edited and reverted, source equals the frozen manifest bit for bit, so only the currency of the identity can tell [P2-S11-AC-113]
+ok 16 - an edited source, and one edited then reverted to the frozen hash, make the frozen locale-source identity non-current; an untouched source and a newer revision with the same hash do not [P2-S11-AC-113]
+ok 17 - a locale source that does not exist, carries another hash or is another locale is not current; the unchanged manifest is [P2-S11-AC-113]
+ok 18 - the producer committed one cms.localization.changed.v1 for the edited variant [P2-S11-AC-113]
+ok 19 - the consumer resolves the event to the source revision the review froze, not to the variant revision [P2-S11-AC-113]
+ok 20 - control: the run examines the review of the untouched source and invalidates nothing [P2-S11-AC-113]
+ok 21 - a newer source revision with the same payload hash invalidates nothing [P2-S11-AC-113]
+ok 22 - the reviews that still hold are untouched [P2-S11-AC-113]
+ok 23 - the run invalidates the review whose frozen source changed [P2-S11-AC-113]
+ok 24 - the approved review is invalidated dependency_changed at its next version [P2-S11-AC-113]
+ok 25 - the invalidation committed one review-changed event and one audit record carrying the correlation id of the source event [P2-S11-AC-113]
+ok 26 - idempotent: a repeated run finds no live review [P2-S11-AC-113]
+ok 27 - a source reverted to the frozen hash is still invalidated: the stale marking is never lifted [P2-S11-AC-113]
+ok 28 - the review of the reverted source is invalidated dependency_changed [P2-S11-AC-113]
+ok 29 - CMS-03B-09 over an edited locale source answers the committed refusal { kind refusal, reasonCode version_set_stale, details {} } [P2-S11-AC-113]
+ok 30 - CMS-03B-09 committed the dependency_changed invalidation and appended no publication [P2-S11-AC-113]
+ok 31 - CMS-03B-07 over an edited locale source answers the committed refusal { kind refusal, reasonCode version_set_stale, details {} } [P2-S11-AC-113]
+ok 32 - CMS-03B-07 committed the dependency_changed invalidation and scheduled nothing [P2-S11-AC-113]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:12: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:13: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:14: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:129: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:133: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:136: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:136: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:140: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:140: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:166: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:168: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:173: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:189: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:194: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:199: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:234: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:255: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:257: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:280: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:306: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:307: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:308: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:309: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:310: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:328: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:329: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:343: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:352: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:363: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:369: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:369: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:375: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:375: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:378: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:393: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:561: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:563: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:565: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:567: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:575: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:580: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:581: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:584: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:588: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:592: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:594: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:598: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:633: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql:639: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_helpers_manifest.sql ....... 
+1..88
+{"created": true, "personId": "47d8e367-1928-4541-85ca-63a6c7d004f3", "contextKind": "self", "accountState": "active", "actingPartyId": "47d8e367-1928-4541-85ca-63a6c7d004f3", "bindingVersion": 1}
+{"created": true, "personId": "cd15c09a-5bc7-4d4a-bf01-0597ce54d2bd", "contextKind": "self", "accountState": "active", "actingPartyId": "cd15c09a-5bc7-4d4a-bf01-0597ce54d2bd", "bindingVersion": 1}
+{"created": true, "personId": "2bd027ba-9105-4907-8557-d4157cc5d070", "contextKind": "self", "accountState": "active", "actingPartyId": "2bd027ba-9105-4907-8557-d4157cc5d070", "bindingVersion": 1}
+{"created": true, "personId": "c8d0bebd-04ef-467a-84fd-201a76c005df", "contextKind": "self", "accountState": "active", "actingPartyId": "c8d0bebd-04ef-467a-84fd-201a76c005df", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 8 - the manifest helpers are private SECURITY DEFINER functions of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-087]
+ok 9 - builder, status and currency retain VOLATILE; bounds and the version set are STABLE [P2-S11-AC-087]
+ok 10 - the builder returns jsonb [P2-S11-AC-087]
+ok 11 - the status returns text [P2-S11-AC-090]
+ok 12 - the dependency-row projection returns (kind, ref_id) [P2-S11-AC-113]
+a9200000-0000-4000-8000-016aa11172b5
+ok 13 - schema group: version id/definition hash, the compiled artifact, the frozen rich_text.v1 validator, the real workflow policy and the activation evidence [P2-S11-AC-088]
+ok 14 - the other eight groups of a clean revision: null template, empty lists, the empty-snapshot settings and the registry checker [P2-S11-AC-088]
+ok 15 - the manifest has exactly the nine contract groups [P2-S11-AC-087]
+ok 16 - the builder is deterministic: two builds of one revision are identical [P2-S11-AC-089]
+ok 17 - dependencyHash (the JCS SHA-256 of the manifest) is stable [P2-S11-AC-089]
+ok 18 - building reuses the save-initialized owner snapshot (ordinal 1), preserving the single-row count [P2-S11-AC-092]
+ok 19 - a null revision id is a malformed helper call [P2-S11-AC-087]
+ok 20 - an absent revision is NOT_FOUND [P2-S11-AC-087]
+ok 21 - a revision whose schema carries no resolvable workflow-policy evidence (the Slice 10 article fixture) is DEPENDENCY_UNAVAILABLE, never a partial manifest [P2-S11-AC-087]
+a9200000-0000-4000-8000-c452fe69cc35
+ok 22 - template group: { id, hash } with the TemplateVersion content_hash [P2-S11-AC-088]
+ok 23 - a revision without a template has a JSON null template [P2-S11-AC-088]
+ok 24 - blocks reachable from the template slots are listed even with no composition instance (sorted by id) [P2-S11-AC-088]
+a9200000-0000-4000-8000-f57f4e075222
+ok 25 - blocks: each identity once, ascending by id, hash = the registry release_digest, a retired instance contributes nothing [P2-S11-AC-088]
+ok 26 - patterns: each PatternVersion once, ascending by id, hash = content_hash [P2-S11-AC-088]
+a9200000-0000-4000-8000-e8c19736926d
+ok 27 - an instance of a block with no registry record cannot be frozen (DEPENDENCY_UNAVAILABLE) [P2-S11-AC-088]
+a9200000-0000-4000-8000-25dd9944daff
+ok 28 - terms: distinct terms of the active assignments, ascending by id, hash = SHA-256 of the JCS { id, termKey, lifecycle, version, successorId } of the term row [P2-S11-AC-088]
+a9200000-0000-4000-8000-470dcc91889b
+a9200000-0000-4000-8000-1680d7feacfd
+true
+ok 29 - localeSources: the recorded source locale, source revision and sourceHash of the revision's LocaleVariant [P2-S11-AC-088]
+ok 30 - a source-locale revision has no localeSources entry [P2-S11-AC-088]
+a9200000-0000-4000-8000-f08e210ed99f
+a9200000-0000-4000-8000-cb8fc95aeab9
+ok 31 - relations: a pinned version wins over the current one, an unpinned target shows its current version, an unavailable omit/placeholder target is not listed while an unavailable block target is [P2-S11-AC-088]
+ok 32 - the clean manifest is within bounds (4 entries) [P2-S11-AC-087]
+ok 33 - 128 blocks + 124 relations + 4 = exactly 256 entries is within bounds [P2-S11-AC-087]
+ok 34 - 257 entries is over the bound [P2-S11-AC-087]
+ok 35 - the 128-entry cap of one group holds even under 256 entries in total [P2-S11-AC-087]
+ok 36 - the 128 relation cap holds [P2-S11-AC-087]
+ok 37 - a manifest of exactly 32768 UTF-8 bytes is within bounds [P2-S11-AC-087]
+ok 38 - a manifest of 32769 bytes is over the bound [P2-S11-AC-087]
+ok 39 - a non-object is not a manifest within bounds [P2-S11-AC-087]
+ok 40 - null is not within bounds [P2-S11-AC-087]
+a9200000-0000-4000-8000-a3234b23d51a
+ok 41 - control: 128 reachable blocks (4 + 128 = 132 entries, at the group cap) still build [P2-S11-AC-087]
+a9200000-0000-4000-8000-a37248b0efea
+ok 42 - 128 blocks + 128 relations + the singletons exceed 256 entries: dependency_manifest_too_large, no manifest [P2-S11-AC-087]
+a9200000-0000-4000-8000-efdf2a440367
+ok 43 - the revision version set carries the revision's taxonomy ids sorted bytewise [P2-S11-AC-089]
+ok 44 - cms_revision_version_set is cms_version_set_of(manifest, the revision's taxonomy ids) [P2-S11-AC-089]
+ok 45 - the built version set matches the built manifest [P2-S11-AC-089]
+ok 46 - the version set of an absent revision is NOT_FOUND [P2-S11-AC-089]
+a9200000-0000-4000-8000-0ee8849b6c78
+ok 47 - a freshly built manifest of a revision with template, blocks and patterns is current [P2-S11-AC-090]
+ok 48 - a moved settings ordinal is not current [P2-S11-AC-090]
+ok 49 - a different settings hash is not current [P2-S11-AC-090]
+ok 50 - a schema version whose definition hash differs is not current [P2-S11-AC-090]
+ok 51 - a schema artifact whose hash differs is not current [P2-S11-AC-090]
+ok 52 - a template whose digest differs is not current [P2-S11-AC-090]
+ok 53 - a pattern whose content hash differs is not current [P2-S11-AC-090]
+ok 54 - a block whose release digest differs is not current [P2-S11-AC-090]
+ok 55 - a block identity that no longer exists is not current [P2-S11-AC-090]
+ok 56 - an empty object is not a current manifest [P2-S11-AC-090]
+ok 57 - null is not a current manifest [P2-S11-AC-090]
+ok 58 - fixture: the current manifest carries a template, at least two blocks and a pattern for the ordering cases [P2-S11-AC-090]
+ok 59 - a structurally invalid manifest is never current: one case per missing group and per violated rule [P2-S11-AC-090]
+ok 60 - cms_dependency_manifest_valid rejects every one of those manifests [P2-S11-AC-090]
+ok 61 - control: a well-formed manifest (sorted, unique, populated optional groups) is still current [P2-S11-AC-090]
+ok 62 - a well-formed manifest whose localeSources name revisions that do not exist is not current [P2-S11-AC-113]
+ok 63 - control: cms_dependency_manifest_valid accepts them [P2-S11-AC-090]
+ok 64 - a schema version that is no longer active is not current [P2-S11-AC-090]
+ok 65 - control: reactivated, the manifest is current again [P2-S11-AC-090]
+ok 66 - a template version that is no longer active is not current [P2-S11-AC-090]
+ok 67 - a pattern version that is no longer active is not current [P2-S11-AC-090]
+ok 68 - a deprecated block is still current (supported or deprecated) [P2-S11-AC-090]
+ok 69 - status: a frozen manifest equal to the rebuilt one with every identity current is current [P2-S11-AC-090]
+ok 70 - status: another revision's manifest is stale [P2-S11-AC-090]
+ok 71 - status: a null frozen manifest is stale [P2-S11-AC-090]
+ok 72 - status: a malformed frozen manifest is stale [P2-S11-AC-090]
+ok 73 - status: a one-member drift (checker version) makes the frozen manifest stale [P2-S11-AC-090]
+ok 74 - status: an absent revision cannot be rebuilt, so its frozen set is stale [P2-S11-AC-090]
+ok 75 - status: a rebuilt manifest that differs from the frozen one is stale even though every frozen identity is current [P2-S11-AC-090]
+a9200000-0000-4000-8000-6bcbec7a9a1f
+ok 76 - control: the wd manifest is current [P2-S11-AC-090]
+ok 77 - a withdrawn block leaves the manifest bytes unchanged (the digest is the release digest) [P2-S11-AC-090]
+ok 78 - a withdrawn block is not current [P2-S11-AC-090]
+ok 79 - status: an unchanged manifest with a withdrawn block is stale (non-current identity) [P2-S11-AC-090]
+a9200000-0000-4000-8000-aeb4fd9a8e5e
+ok 80 - status: a revision recording a taxonomy version that is not active is stale [P2-S11-AC-090]
+ok 81 - status: with the taxonomy version active the same frozen manifest is current [P2-S11-AC-090]
+ok 82 - dependency rows: schema, template, block (instances and template slots), pattern and the settings snapshot row id, one row per identity [P2-S11-AC-113]
+a9200000-0000-4000-8000-ea3c4cf5ef47
+ok 83 - dependency rows: term, taxonomy_version (the revision's ids) and relation_target (distinct targets) kinds [P2-S11-AC-113]
+ok 84 - dependency rows: the locale_source kind names the source revision [P2-S11-AC-113]
+ok 85 - dependency rows of a malformed manifest are INVALID_REQUEST [P2-S11-AC-113]
+ok 86 - no helper creates a review row [P2-S11-AC-087]
+ok 87 - all of the above reused the owner's single settings snapshot (ordinal 1) [P2-S11-AC-092]
+ok 88 - exactly one overload of each manifest helper exists [P2-S11-AC-087]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:14: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:15: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:141: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:245: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:248: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:287: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:290: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:316: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:345: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:345: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:355: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:355: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql:366: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_run.sql ............ 
+1..52
+{"created": true, "personId": "f464b1f3-710f-4556-922d-1e1a5c3e5cfa", "contextKind": "self", "accountState": "active", "actingPartyId": "f464b1f3-710f-4556-922d-1e1a5c3e5cfa", "bindingVersion": 1}
+{"created": true, "personId": "11925f0f-3f05-44b1-8148-0ab2ee09b44c", "contextKind": "self", "accountState": "active", "actingPartyId": "11925f0f-3f05-44b1-8148-0ab2ee09b44c", "bindingVersion": 1}
+{"created": true, "personId": "c2bc2a67-7ddc-4a1c-b27a-a00e1b3c3e86", "contextKind": "self", "accountState": "active", "actingPartyId": "c2bc2a67-7ddc-4a1c-b27a-a00e1b3c3e86", "bindingVersion": 1}
+{"created": true, "personId": "1fcf1d90-297b-46a0-ac33-ca4940c19cb4", "contextKind": "self", "accountState": "active", "actingPartyId": "1fcf1d90-297b-46a0-ac33-ca4940c19cb4", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+a9200000-0000-4000-8000-e737cc29f22e
+a9200000-0000-4000-8000-2d2475f9de3a
+a9200000-0000-4000-8000-1fc775c92612
+a9200000-0000-4000-8000-387d6e9abf0f
+a9200000-0000-4000-8000-94f8fe48def3
+a9200000-0000-4000-8000-c2fce84d5b47
+a9200000-0000-4000-8000-8b6004df3050
+a9200000-0000-4000-8000-bc9316115916
+{"reviewId": "2cb3bd71-261c-4b27-a6d7-b996723dd903", "invalidated": true, "cancelledSchedules": 0, "revokedPreviewTokens": 0}
+ok 9 - the run, the event resolver and the lineage helper are private SECURITY DEFINER functions of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-113]
+ok 10 - the two platform_api wrappers are SECURITY DEFINER functions of the CMS definer executable by the service role only [P2-S11-AC-113]
+ok 11 - the run answers jsonb { examined, invalidated, nextCursor } [P2-S11-AC-113]
+ok 12 - lineage: an exact kind stands for the identity itself [P2-S11-AC-113]
+ok 13 - a non-object request is INVALID_REQUEST [P2-S11-AC-113]
+ok 14 - a request without the cursor member is INVALID_REQUEST [P2-S11-AC-113]
+ok 15 - a kind outside the nine is INVALID_REQUEST [P2-S11-AC-113]
+ok 16 - a malformed event id is INVALID_REQUEST [P2-S11-AC-113]
+ok 17 - a non-string reference is INVALID_REQUEST [P2-S11-AC-113]
+ok 18 - a malformed cursor is INVALID_REQUEST [P2-S11-AC-113]
+ok 19 - an unknown request member (a caller-named review) is INVALID_REQUEST [P2-S11-AC-113]
+ok 20 - control: the refused requests emitted nothing [P2-S11-AC-113]
+ok 21 - the run selects the six LIVE reviews that name the schema version and invalidates none while every manifest still holds [P2-S11-AC-113]
+ok 22 - a review that still holds is left untouched, and a rejected or already invalidated review is not selected [P2-S11-AC-113]
+ok 23 - a run that invalidates nothing emits no event [P2-S11-AC-113]
+ok 24 - a reference no review froze selects nothing [P2-S11-AC-113]
+ok 25 - precondition: the withdrawn block leaves the rebuilt manifest equal to the frozen one but the identity is not current [P2-S11-AC-113]
+ok 26 - the withdrawn block invalidates the one review that froze it [P2-S11-AC-113]
+ok 27 - the review of the withdrawn block is invalidated dependency_changed (CAS version + 1) and the review of another block is untouched [P2-S11-AC-113]
+ok 28 - the invalidation writes one cms.entry.review-changed.v1 at the new version carrying the correlation id of the source event [P2-S11-AC-113]
+ok 29 - the invalidation writes its audit record with the same correlation id [P2-S11-AC-113]
+ok 30 - idempotent: a repeated run skips the review that is already invalidated [P2-S11-AC-113]
+ok 31 - idempotent: a repeated run emits no second event [P2-S11-AC-113]
+ok 32 - idempotent: a repeated run writes no second audit record [P2-S11-AC-113]
+ok 33 - precondition: the changed term makes the rebuilt manifest differ from the frozen one while every frozen identity is current [P2-S11-AC-113]
+ok 34 - inequality: the changed term invalidates the review that froze it [P2-S11-AC-113]
+ok 35 - inequality: the review is invalidated dependency_changed [P2-S11-AC-113]
+ok 36 - lineage: a pattern version stands for every version of its pattern key [P2-S11-AC-113]
+ok 37 - lineage: another pattern key is not part of it [P2-S11-AC-113]
+ok 38 - lineage: a version row that does not exist stands for itself [P2-S11-AC-113]
+ok 39 - the event of the NEW pattern version reaches the review that froze its superseded predecessor [P2-S11-AC-113]
+ok 40 - the review of the superseded pattern version is invalidated dependency_changed [P2-S11-AC-113]
+ok 41 - one event per invalidated review so far: block, term and pattern [P2-S11-AC-113]
+ok 42 - with no outbox row behind the event id the invalidation carries a fresh correlation id [P2-S11-AC-113]
+ok 43 - precondition: r1, r2 and r6 are the live reviews of the schema version [P2-S11-AC-113]
+ok 44 - a run continues after the cursor: only reviews with a greater id are selected [P2-S11-AC-113]
+ok 45 - a cursor on the last review selects nothing [P2-S11-AC-113]
+ok 46 - a superseded schema version invalidates the live reviews after the cursor [P2-S11-AC-113]
+ok 47 - the approved review is invalidated at its next version, the review before the cursor is untouched [P2-S11-AC-113]
+ok 48 - the run from the start finishes what is left: the review before the old cursor [P2-S11-AC-113]
+ok 49 - idempotent: with no live review left a run examines nothing [P2-S11-AC-113]
+ok 50 - a rejected review stays rejected and an earlier invalidation keeps its reason [P2-S11-AC-113]
+ok 51 - exactly one event per invalidated review: six invalidations, no duplicate from any repeated run [P2-S11-AC-113]
+ok 52 - the dependency rows of the invalidated reviews are retained as history [P2-S11-AC-113]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql:14: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql:15: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_event_resolve.sql .. 
+1..35
+{"created": true, "personId": "1d94e8a4-0964-4d10-ae15-80d55cf8fe9d", "contextKind": "self", "accountState": "active", "actingPartyId": "1d94e8a4-0964-4d10-ae15-80d55cf8fe9d", "bindingVersion": 1}
+{"created": true, "personId": "30886524-ff4a-41f1-bacb-40829fef840b", "contextKind": "self", "accountState": "active", "actingPartyId": "30886524-ff4a-41f1-bacb-40829fef840b", "bindingVersion": 1}
+{"created": true, "personId": "2cb5ae6a-b937-413f-a60e-8b744a159395", "contextKind": "self", "accountState": "active", "actingPartyId": "2cb5ae6a-b937-413f-a60e-8b744a159395", "bindingVersion": 1}
+{"created": true, "personId": "d598a732-ba36-4368-bf07-65e8a2baa4b3", "contextKind": "self", "accountState": "active", "actingPartyId": "d598a732-ba36-4368-bf07-65e8a2baa4b3", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+a9200000-0000-4000-8000-470dcc91889b
+a9200000-0000-4000-8000-a7453e987fcb
+a9200000-0000-4000-8000-1680d7feacfd
+true
+ok 8 - the private resolver is a SECURITY DEFINER function of the CMS definer with an empty search_path and no API-role execute [P2-S11-AC-113]
+ok 9 - the platform_api wrapper is executable by the service role only [P2-S11-AC-113]
+ok 10 - the resolver answers jsonb [P2-S11-AC-113]
+ok 11 - cms.schema.activated.v1 names the activated schema version under the schema kind [P2-S11-AC-113]
+ok 12 - cms.template.activated.v1 names the template version under the template kind [P2-S11-AC-113]
+ok 13 - cms.pattern.activated.v1 names the pattern version under the pattern kind [P2-S11-AC-113]
+ok 14 - cms.taxonomy.changed.v1 names the taxonomy version under the taxonomy_version kind [P2-S11-AC-113]
+ok 15 - cms.block.lifecycle.changed.v1 names the block definition version under the block kind [P2-S11-AC-113]
+ok 16 - cms.localization.changed.v1 names the SOURCE revision of the variant, not the variant revision the event carries [P2-S11-AC-113]
+ok 17 - the locale of a localization event is compared case-insensitively [P2-S11-AC-113]
+ok 18 - the latest version of the locale variant names its source revision [P2-S11-AC-113]
+ok 19 - the platform_api wrapper returns the resolved lookup [P2-S11-AC-113]
+ok 20 - control: the CMS RPC context set by the fixtures is restored by the wrapper [P2-S11-AC-113]
+ok 21 - an event row that does not exist is not found [P2-S11-AC-113]
+ok 22 - a null event id is INVALID_REQUEST [P2-S11-AC-113]
+ok 23 - an event of another schema version is not found [P2-S11-AC-113]
+ok 24 - an event type outside the six is not found even when its payload looks right [P2-S11-AC-113]
+ok 25 - a payload without the published identity member is not found [P2-S11-AC-113]
+ok 26 - an identity member that is not a UUID is not found [P2-S11-AC-113]
+ok 27 - an identity member that is not a string is not found [P2-S11-AC-113]
+ok 28 - a non-canonical (uppercase) UUID is not found [P2-S11-AC-113]
+ok 29 - a localization event of a revision with no locale variant is not found [P2-S11-AC-113]
+ok 30 - a localization event of another locale than the variant is not found [P2-S11-AC-113]
+ok 31 - a localization event naming another entry than the variant is not found [P2-S11-AC-113]
+ok 32 - a localization payload without entryId is not found [P2-S11-AC-113]
+ok 33 - a localization payload without revisionId is not found [P2-S11-AC-113]
+ok 34 - a localization payload without locale is not found [P2-S11-AC-113]
+{"kind": "schema", "found": true, "refId": "a1130000-0000-4000-8000-0000000000a2"}
+{"kind": "template", "found": true, "refId": "a1130000-0000-4000-8000-0000000000a4"}
+{"kind": "pattern", "found": true, "refId": "a1130000-0000-4000-8000-0000000000a6"}
+{"kind": "taxonomy_version", "found": true, "refId": "a1130000-0000-4000-8000-0000000000a8"}
+{"kind": "block", "found": true, "refId": "a1130000-0000-4000-8000-0000000000a9"}
+{"kind": "locale_source", "found": true, "refId": "a9200000-0000-4000-8000-a7453e987fcb"}
+{"kind": "locale_source", "found": true, "refId": "a9200000-0000-4000-8000-a7453e987fcb"}
+{"kind": "locale_source", "found": true, "refId": "a9200000-0000-4000-8000-a7453e987fcb"}
+{"kind": "schema", "found": true, "refId": "a1130000-0000-4000-8000-0000000000b1"}
+{"found": false}
+{"found": false}
+{"found": false}
+{"found": false}
+{"found": false}
+{"found": false}
+{"found": false}
+{"found": false}
+{"found": false}
+{"found": false}
+{"found": false}
+{"found": false}
+ok 35 - resolving every forged event wrote no outbox, audit or variant row [P2-S11-AC-113]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_index.sql:15: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_index.sql:16: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_index.sql:17: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_recheck_index.sql .......... 
+1..17
+{"created": true, "personId": "5af5ce44-aae4-47f9-aa30-3564ecd40362", "contextKind": "self", "accountState": "active", "actingPartyId": "5af5ce44-aae4-47f9-aa30-3564ecd40362", "bindingVersion": 1}
+{"created": true, "personId": "fd66d9ed-fc70-4362-8a74-25611c50ee7d", "contextKind": "self", "accountState": "active", "actingPartyId": "fd66d9ed-fc70-4362-8a74-25611c50ee7d", "bindingVersion": 1}
+{"created": true, "personId": "27157a2e-32a9-450d-9178-36f4ce74702a", "contextKind": "self", "accountState": "active", "actingPartyId": "27157a2e-32a9-450d-9178-36f4ce74702a", "bindingVersion": 1}
+{"created": true, "personId": "fc12f277-1485-47e6-b05e-b09a37c65e1b", "contextKind": "self", "accountState": "active", "actingPartyId": "fc12f277-1485-47e6-b05e-b09a37c65e1b", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 8 - no API role holds any privilege on the dependency index [P2-S11-AC-113]
+ok 9 - PUBLIC holds no privilege on the dependency index [P2-S11-AC-113]
+ok 10 - the CMS definer role holds INSERT and SELECT on the index and nothing else: no UPDATE, DELETE or TRUNCATE [P2-S11-AC-113]
+ok 11 - cms_submit_review is the only function whose body inserts into the dependency index [P2-S11-AC-113]
+ok 12 - no function updates or deletes a dependency row [P2-S11-AC-113]
+ok 13 - the Worker service role cannot insert a dependency row directly [P2-S11-AC-113]
+ok 14 - a signed-in human cannot insert a dependency row directly [P2-S11-AC-113]
+false
+ok 15 - even the table owner is refused outside the CMS RPC context [P2-S11-AC-113]
+true
+a9200000-0000-4000-8000-60b56b28c74d
+a9200000-0000-4000-8000-de6c6e3e7321
+true
+ok 16 - one frozen manifest yields a dependency row of each of the nine kinds [P2-S11-AC-113]
+ok 17 - each (kind, ref_id) identity is listed once, which UNIQUE(review_id, kind, ref_id) requires [P2-S11-AC-113]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:14: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:15: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:95: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:103: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql:107: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_criteria_manifest_rls.sql .. 
+1..18
+{"created": true, "personId": "4b6f32bf-bcaf-4548-b7bb-acc81f212f72", "contextKind": "self", "accountState": "active", "actingPartyId": "4b6f32bf-bcaf-4548-b7bb-acc81f212f72", "bindingVersion": 1}
+{"created": true, "personId": "f6e61952-0c38-4d72-8e27-256d9f881ec5", "contextKind": "self", "accountState": "active", "actingPartyId": "f6e61952-0c38-4d72-8e27-256d9f881ec5", "bindingVersion": 1}
+{"created": true, "personId": "92ddf5ce-c9b6-407f-8aae-535fb4bd3ed5", "contextKind": "self", "accountState": "active", "actingPartyId": "92ddf5ce-c9b6-407f-8aae-535fb4bd3ed5", "bindingVersion": 1}
+{"created": true, "personId": "fbb0dfed-558e-4b80-8083-e26aa26643c3", "contextKind": "self", "accountState": "active", "actingPartyId": "fbb0dfed-558e-4b80-8083-e26aa26643c3", "bindingVersion": 1}
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 6 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 7 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+a9200000-0000-4000-8000-8683cdf3bd16
+ok 8 - the builder is owned by the CMS definer role, which is neither superuser nor BYPASSRLS, so every read it makes is subject to row-level security [P2-S11-AC-087]
+ok 9 - every table the builder reads has forced row-level security with a policy on the CMS RPC context [P2-S11-AC-087]
+ok 10 - control: with the CMS RPC context the builder returns the nine-group manifest of the revision [P2-S11-AC-087]
+ok 11 - without the CMS RPC context the revision is invisible under RLS: the builder answers NOT_FOUND [P2-S11-AC-087]
+ok 12 - a context other than true is no context: NOT_FOUND [P2-S11-AC-087]
+ok 13 - the context match is exact (TRUE is not true): NOT_FOUND [P2-S11-AC-087]
+ok 14 - the context is evaluated per statement: restored, the same call returns the manifest again [P2-S11-AC-087]
+ok 15 - outside the context the currency predicates see no canonical rows: the frozen manifest is stale and its identities are not current [P2-S11-AC-087]
+ok 16 - control: inside the context the same frozen manifest is current and its identities are current [P2-S11-AC-087]
+ok 17 - there is exactly one builder and its only input is the revision id: no manifest, hash or version-set value can be passed in [P2-S11-AC-087]
+ok 18 - no other function named like a manifest builder returns a manifest [P2-S11-AC-087]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_outbox_relay_poison.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_outbox_relay_poison.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_outbox_relay_poison.sql:4: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_outbox_relay_poison.sql .... 
+1..14
+ok 1 - the widened claim leases the never-relayed history oldest first, unparseable rows included [P2-S11-AC-113]
+ok 2 - a poison cms.localization.changed.v1 (invalid correlation variant) is recorded as a dead letter [P2-S11-AC-113]
+ok 3 - a poison job.requested (nil causation id) is recorded as a dead letter [P2-S11-AC-113]
+ok 4 - a poison row whose own event id is a hex UUID but not an RFC UUID is recorded too [P2-S11-AC-113]
+ok 5 - three dead letters carry the relay consumer name and the closed reason INVALID_QUEUE_PAYLOAD [P2-S11-AC-113]
+ok 6 - each dead letter keeps the identifiers of its own row and nothing else [P2-S11-AC-113]
+ok 7 - recording the same poison row again is accepted [P2-S11-AC-113]
+ok 8 - and it is idempotent: one dead letter per (consumer, event) [P2-S11-AC-113]
+ok 9 - completing each acknowledged poison claim succeeds under its own lease [P2-S11-AC-113]
+ok 10 - after the leases expire the acknowledged poison rows are gone from the claim set; the valid row and the unacknowledged control are claimed [P2-S11-AC-113]
+ok 11 - control: a poison row that is only skipped is claimed FIRST again, so skipping without acknowledging would starve every later row [P2-S11-AC-113]
+ok 12 - exactly the three acknowledged rows are finalized; the evidence stays on the outbox row, nothing is deleted [P2-S11-AC-113]
+ok 13 - no outbox row was deleted to hide the failure [P2-S11-AC-113]
+ok 14 - an aggregate type outside the table grammar is refused, which is why the Worker nulls every identifier that does not match it [P2-S11-AC-113]
+ok
+All tests successful.
+Files=7, Tests=256,  8 wallclock secs ( 0.22 usr  0.03 sys +  0.30 cusr  0.12 csys =  0.67 CPU)
+Result: PASS

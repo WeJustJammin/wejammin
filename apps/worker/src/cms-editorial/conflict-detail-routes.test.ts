@@ -235,7 +235,9 @@ describe('CMS-03B-12 protected conflict-detail route', () => {
       expect(response.status).toBe(502);
       expect(response.headers.get('etag')).toBeNull();
       const text = await response.text();
-      expect(ApiErrorSchema.parse(JSON.parse(text)).code).toBe('BAD_GATEWAY');
+      expect(ApiErrorSchema.parse(JSON.parse(text)).code).toBe(
+        'DEPENDENCY_UNAVAILABLE',
+      );
       expect(text).not.toContain('resolved');
       expect(text).not.toContain('superseded');
       expect(text).not.toContain('hidden');
@@ -262,7 +264,7 @@ describe('CMS-03B-12 protected conflict-detail route', () => {
       const response = await get(app);
       expect(response.status).toBe(502);
       expect(ApiErrorSchema.parse(await response.json()).code).toBe(
-        'BAD_GATEWAY',
+        'DEPENDENCY_UNAVAILABLE',
       );
     }
   });
@@ -278,7 +280,7 @@ describe('CMS-03B-12 protected conflict-detail route', () => {
       const response = await get(app);
       expect(response.status).toBe(502);
       expect(ApiErrorSchema.parse(await response.json()).code).toBe(
-        'BAD_GATEWAY',
+        'DEPENDENCY_UNAVAILABLE',
       );
     }
   });

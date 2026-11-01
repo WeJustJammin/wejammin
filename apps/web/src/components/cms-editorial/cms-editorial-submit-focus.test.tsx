@@ -13,6 +13,7 @@ import {
   vi,
 } from 'vitest';
 
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import { installCmsEditorialPageActions } from '../../lib/cms-editorial-page-actions-core';
 import {
   allKindFields,
@@ -28,6 +29,7 @@ import {
   mountElement,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
 import CmsEditorialConflictResolveIsland from './CmsEditorialConflictResolveIsland';
 import CmsEditorialEntryCreateIsland from './CmsEditorialEntryCreateIsland';
 import { conflictDetailBody } from './cms-editorial-conflict-fixtures.test-support';
@@ -48,6 +50,7 @@ import {
  */
 
 beforeAll(enableReactAct);
+beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 beforeEach(() => {
   document.cookie = 'wj_csrf=csrf-token';
@@ -83,6 +86,7 @@ describe('create form: Create entry stays put while the create is in flight', ()
       <CmsEditorialEntryCreateIsland
         type={selectedType()}
         fields={allKindFields()}
+        descriptors={describeCmsAuthoringFields(allKindFields())}
         fetcher={fetcher}
         navigate={vi.fn()}
       />,
@@ -141,7 +145,7 @@ describe('conflict form: Resolve conflict stays put while the resolve is in flig
           ],
         }),
       ),
-      editorFields(),
+      describeCmsAuthoringFields(editorFields()),
     );
     const view = mountElement(
       <CmsEditorialConflictResolveIsland

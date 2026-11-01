@@ -1,0 +1,292 @@
+-- Slice 11 schedule / publication RPC world (lane S11-3b).  Include AFTER, in this order:
+--   support/jwt-claims.sqlinc (before the first begin), phase_02_slice_10_rpc/000-helpers.sqlinc,
+--   phase_02_slice_10_remaining_schema/000-helpers.sqlinc, phase_02_slice_10_rpc/001-fixtures.sqlinc,
+--   phase_02_slice_11_schema/{000-helpers,001-fixture,002-row-builders}.sqlinc,
+--   phase_02_slice_11_helpers/{000-helpers,001-world,002-reviews}.sqlinc,
+--   phase_02_slice_11_rpc_review/{000-world,020-decision,030-submit}.sqlinc.
+--
+-- Adds, inside the caller's rolled-back transaction:
+--   * p11_approved(tag, author)  an entry with ONE draft revision whose payload hash is the true
+--     projection hash (r11_entry), a review frozen from the REAL dependency manifest and APPROVED by
+--     the reviewer rvA inside a now-window assignment (review version 2);
+--   * request builders for CMS-03B-07 (p11_sreq) and CMS-03B-09 (p11_preq) with healthy
+--     accessibility evidence, a verified step-up and the current review version as the operand;
+--   * the call probe (p11_call), the effect snapshot (p11_effects) and a few inspectors.
+-- Actors (from the r11 world): owner/creator (revision author), editor (submitter and cms.editor
+-- assignee), pub (cms.publisher), rvA / rvB (cms.reviewer), rvX (made a short-lived publisher by the
+-- suites that need one), outsider (member, no CMS capability), stranger (not a member).
+
+select pg_temp.h11r_member('pub', array['cms.publisher']);
+
+-- A review of a fresh entry, approved by default (p_decision reject | none: rejected | open); returns the
+-- revision id.  p_overrides replaces any review column.
+create or replace function pg_temp.p11_approved(
+  p_tag text, p_author text default 'creator', p_overrides jsonb default '{}'::jsonb,
+  p_taxonomy jsonb default '[]'::jsonb, p_decision text default 'approve'
+)
+returns uuid
+language plpgsql
+as $body$
+declare
+  revision uuid;
+  manifest jsonb;
+  policy jsonb;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  revision := pg_temp.r11_entry(p_tag, p_author, 'Title of ' || p_tag, p_taxonomy);
+  manifest := pg_temp.r11_manifest(revision);
+  policy := manifest->'schema'->'workflowPolicy';
+  perform pg_temp.h11r_review('rv-' || p_tag, jsonb_build_object(
+    'revision_id', revision,
+    'entry_id', pg_temp.h11w_uuid(p_tag || ':entry'),
+    'frozen_hash', (select revision_item.payload_hash from platform_private.cms_entry_revisions revision_item where revision_item.id = revision),
+    'dependency_manifest', manifest,
+    'dependency_hash', platform_private.cms_jcs_sha256(manifest),
+    'activation_evidence', manifest->'schema'->'activationEvidence',
+    'workflow_policy_key', policy->>'key', 'workflow_policy_version', (policy->>'version')::bigint,
+    'workflow_policy_hash', policy->>'policyHash', 'risk_class', policy->>'riskClass',
+    'required_decision_count', (policy->>'requiredDecisionCount')::integer,
+    'required_capabilities', policy->'requiredCapabilities',
+    'approval_evidence_hash', policy->>'approvalEvidenceHash',
+    'submitted_by', pg_temp.s11_id('editor')
+  ) || p_overrides);
+  perform pg_temp.r11_assign_now('rv-' || p_tag || '-asg', 'rv-' || p_tag, 'rvA');
+  -- p_decision none leaves the review open (version 1); approve / reject end it at version 2.
+  if p_decision in ('approve', 'reject') then
+    perform pg_temp.r11_decide_now('rv-' || p_tag || '-dec', 'rv-' || p_tag, 'rvA', 'rv-' || p_tag || '-asg', p_decision);
+  end if;
+  return revision;
+end;
+$body$;
+
+create or replace function pg_temp.p11_review(p_tag text)
+returns platform_private.cms_editorial_reviews
+language sql
+stable
+as $body$
+  select review.* from platform_private.cms_editorial_reviews review where review.id = pg_temp.s11_id('rv-' || p_tag)
+$body$;
+
+-- A well-formed CMS-03B-07 request for the approved review of tag p_tag: a UTC schedule p_lead from now.
+create or replace function pg_temp.p11_sreq(
+  p_tag text, p_extra jsonb default '{}'::jsonb, p_drop text[] default '{}'::text[],
+  p_evidence jsonb default null, p_lead interval default interval '3 days'
+)
+returns jsonb
+language sql
+as $body$
+  select ((
+    jsonb_build_object(
+      'revisionId', revision.id, 'action', 'publish',
+      'localDateTime', to_char(fire at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS'),
+      'timezone', 'UTC',
+      'resolvedUtc', to_char(fire at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS"Z"'),
+      'tzdbVersion', platform_private.cms_tzdb_version(), 'disambiguation', 'none', 'audience', 'public',
+      'expectedVersion', review.version::text, 'ifMatch', review.version::text,
+      'idempotencyKey', 'p11-' || replace(extensions.gen_random_uuid()::text, '-', ''),
+      'evidence', coalesce(p_evidence, pg_temp.r11_evidence(revision.id)),
+      'context', pg_temp.r11_ctx())
+    || p_extra) - p_drop)
+  from platform_private.cms_entry_revisions revision
+  join platform_private.cms_editorial_reviews review on review.id = pg_temp.s11_id('rv-' || p_tag)
+  cross join lateral (select date_trunc('second', clock_timestamp() + p_lead) as fire) at_time
+  where revision.id = pg_temp.h11w_uuid(p_tag || ':revision')
+$body$;
+
+-- A well-formed CMS-03B-09 request: the frozen hash, the version set frozen on the review and the review version.
+create or replace function pg_temp.p11_preq(
+  p_tag text, p_extra jsonb default '{}'::jsonb, p_drop text[] default '{}'::text[], p_evidence jsonb default null
+)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  review platform_private.cms_editorial_reviews := pg_temp.p11_review(p_tag);
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  return ((
+    jsonb_build_object(
+      'entryId', review.entry_id, 'revisionId', review.revision_id, 'frozenHash', review.frozen_hash,
+      'expectedVersionSet', platform_private.cms_revision_version_set(review.revision_id, review.dependency_manifest),
+      'audience', 'public',
+      'expectedVersion', review.version::text, 'ifMatch', review.version::text,
+      'idempotencyKey', 'p11-' || replace(extensions.gen_random_uuid()::text, '-', ''),
+      'evidence', coalesce(p_evidence, pg_temp.r11_evidence(review.revision_id)),
+      'context', pg_temp.r11_ctx())
+    || p_extra) - p_drop);
+end;
+$body$;
+
+create or replace function pg_temp.p11_call(
+  p_label text, p_actor text, p_function text, p_request jsonb, p_keep boolean default true
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.r11_session(p_actor);
+  perform pg_temp.r11_try(p_label,
+    format('select platform_api.%I(%L::jsonb)', p_function, p_request::text), p_keep);
+end;
+$body$;
+
+-- Table counters the "no partial effect" assertions compare before and after.
+create or replace function pg_temp.p11_effects()
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select (select count(*) from platform_private.cms_publication_schedules)::text
+    || '/' || (select coalesce(sum(version), 0) from platform_private.cms_publication_schedules)::text
+    || '/' || (select count(*) from platform_private.cms_publication_versions)::text
+    || '/' || (select count(*) from platform_private.cms_editorial_reviews)::text
+    || '/' || (select coalesce(sum(version), 0) from platform_private.cms_editorial_reviews)::text
+    || '/' || (select count(*) from platform_private.idempotency_records where operation like 'CMS-03B-%')::text
+    || '/' || (select count(*) from platform_private.outbox_events where event_type like 'cms.%')::text
+    || '/' || (select count(*) from audit_private.audit_events where action like 'cms.publication.%')::text
+$body$;
+
+-- The schedule row of a response as 'state/version/attempts/reason' or '-' when absent.
+create or replace function pg_temp.p11_schedule(p_id uuid)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select coalesce((
+    select schedule.state || '/' || schedule.version || '/' || schedule.attempt_count || '/' || coalesce(schedule.reason_code, '-')
+      from platform_private.cms_publication_schedules schedule where schedule.id = p_id), '-')
+$body$;
+
+-- The lineage head of (entry tag, locale en-US, audience) as 'action/state/version' or '-'.
+create or replace function pg_temp.p11_head(p_tag text, p_audience text default 'public')
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select coalesce((
+    select head.action || '/' || head.state || '/' || head.version
+      from platform_private.cms_publication_versions head
+     where head.entry_id = pg_temp.h11w_uuid(p_tag || ':entry')
+       and head.locale = 'en-US' and head.audience = p_audience
+     order by head.version desc limit 1), '-')
+$body$;
+
+-- The reservation of an idempotency key as 'state/status' ('-' when absent).
+create or replace function pg_temp.p11_reservation(p_key text)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select coalesce((
+    select record.state::text || '/' || coalesce(record.response_ref->>'status', '-')
+      from platform_private.idempotency_records record
+     where record.key_hash = platform_private.cms_key_hash(p_key)), '-')
+$body$;
+
+-- The request with its local time moved p_shift away from the resolved UTC (read as a UTC wall clock).
+create or replace function pg_temp.p11_shifted(p_request jsonb, p_shift interval)
+returns jsonb
+language sql
+immutable
+as $body$
+  select p_request || jsonb_build_object('localDateTime',
+    to_char(((p_request->>'resolvedUtc')::timestamptz at time zone 'UTC') + p_shift, 'YYYY-MM-DD"T"HH24:MI:SS'))
+$body$;
+
+-- A schedule row of the approved review of tag p_tag, written through the real data-model guard:
+-- p_key names it in s11_ids; by default a pending publish by `pub` that fell due one minute ago
+-- (local time = UTC).  p_overrides replaces any column.
+create or replace function pg_temp.p11_schedule_row(
+  p_key text, p_tag text, p_overrides jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql
+as $body$
+declare
+  review platform_private.cms_editorial_reviews := pg_temp.p11_review(p_tag);
+  due timestamptz := date_trunc('second', clock_timestamp()) - interval '1 minute';
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into s11_ids(key, value) values (p_key, extensions.gen_random_uuid()::text)
+  on conflict (key) do nothing;
+  execute pg_temp.s11_insert_sql('platform_private.cms_publication_schedules',
+    pg_temp.s11_schedule_row(jsonb_build_object(
+      'id', pg_temp.s11_id(p_key), 'entry_id', review.entry_id, 'revision_id', review.revision_id,
+      'review_id', review.id, 'dependency_hash', review.dependency_hash,
+      'activation_evidence_hash', platform_private.cms_activation_evidence_hash(review.id),
+      'expected_version', review.version, 'created_by', pg_temp.s11_id('pub'),
+      'local_datetime', due at time zone 'UTC', 'timezone', 'UTC', 'resolved_at_utc', due,
+      'tzdb_version', platform_private.cms_tzdb_version()) || p_overrides));
+end;
+$body$;
+
+-- Schedule state as 'state/version/attempts/reason/lease' ('lease' when a lease is held).
+create or replace function pg_temp.p11_sched(p_key text)
+returns text
+language sql
+stable
+security definer
+set search_path = ''
+as $body$
+  select coalesce((
+    select schedule.state || '/' || schedule.version || '/' || schedule.attempt_count || '/' || coalesce(schedule.reason_code, '-')
+           || '/' || case when schedule.lease_id is null then '-' else 'lease' end
+      from platform_private.cms_publication_schedules schedule where schedule.id = pg_temp.s11_id(p_key)), '-')
+$body$;
+
+-- The claim, through the probe: p_batch is the JSON number; the answer is the ClaimedSchedule array.
+create or replace function pg_temp.p11_claim(p_label text, p_batch jsonb default '25'::jsonb)
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.r11_try(p_label,
+    format('select platform_api.cms_claim_due_publication_schedules(jsonb_build_object(%L, %L::jsonb))', 'batch', p_batch::text), true);
+end;
+$body$;
+
+-- The claimed element of one schedule from a claim probe (null when absent).
+create or replace function pg_temp.p11_claimed(p_label text, p_key text)
+returns jsonb
+language sql
+stable
+as $body$
+  select item from jsonb_array_elements(coalesce(pg_temp.r11_resp(p_label), '[]'::jsonb)) item
+   where item->>'scheduleId' = pg_temp.s11_id(p_key)::text
+$body$;
+
+-- The execute request of a claimed schedule: the claim's version and lease, the healthy proof of its revision.
+create or replace function pg_temp.p11_xreq(
+  p_key text, p_extra jsonb default '{}'::jsonb, p_drop text[] default '{}'::text[], p_evidence jsonb default null
+)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  schedule platform_private.cms_publication_schedules;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select s.* into schedule from platform_private.cms_publication_schedules s where s.id = pg_temp.s11_id(p_key);
+  return ((jsonb_build_object(
+    'scheduleId', schedule.id, 'expectedVersion', schedule.version::text, 'leaseId', schedule.lease_id,
+    'evidence', coalesce(p_evidence, pg_temp.r11_evidence(schedule.revision_id))) || p_extra) - p_drop);
+end;
+$body$;
+
+create or replace function pg_temp.p11_exec(p_label text, p_request jsonb, p_keep boolean default true)
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.r11_try(p_label,
+    format('select platform_api.cms_execute_publication_schedule(%L::jsonb)', p_request::text), p_keep);
+end;
+$body$;

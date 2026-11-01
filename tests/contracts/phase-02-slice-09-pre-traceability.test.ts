@@ -3,6 +3,8 @@ import { dirname, join, relative, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
+import { S11_EVIDENCE_LEDGER } from './phase-02-slice-11-evidence-ledger';
+
 const ROOT = resolve(import.meta.dirname, '../..');
 const read = (path: string): string => readFileSync(join(ROOT, path), 'utf8');
 const PLAN = '.memory/wiki/specs/phases/phase-2.md';
@@ -351,12 +353,21 @@ describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topic
     expect(record).not.toMatch(/DEC-122 transfer \(2026-10-03\)/u);
   });
 
-  it('carries each DEC-122 receiving criterion as an open row with a source in the owner slice plan and tracker, with no Slice 09 id in its text', () => {
+  it('carries each DEC-122 receiving criterion as a plan row with a source, mirrored in the owner slice tracker and checked there only when that slice evidence ledger verifies it, with no Slice 09 id in its text', () => {
+    // A receiving criterion closes in its owner slice, never here: the tracker may tick it
+    // only on that slice's own receipt-backed ledger verdict (Slice 11 has one; 12 and 16 not yet).
+    const verified: Readonly<Record<number, ReadonlySet<string>>> = {
+      11: new Set(
+        S11_EVIDENCE_LEDGER.filter((entry) => entry.status === 'verified').map(
+          (entry) => entry.criterion,
+        ),
+      ),
+    };
     const receiving: readonly [number, number, readonly [number, RegExp][]][] =
       [
         [
           11,
-          48,
+          122,
           [
             [
               46,
@@ -426,7 +437,13 @@ describe('[P2-S09-AC-282] S10, S11, S12 and S15 already own the later-only topic
           /^\[[^\]]+\]\(/u,
         );
         const mirrored = tracker.find((candidate) => candidate.id === id);
-        expect(mirrored?.checked, `S${slice} AC${id} tracker open`).toBe(false);
+        if (mirrored?.checked === true)
+          expect(
+            verified[slice]?.has(
+              `P2-S${String(slice)}-AC-${String(id).padStart(3, '0')}`,
+            ) ?? false,
+            `S${slice} AC${id} is checked only on its owner ledger's verified verdict`,
+          ).toBe(true);
         expect(mirrored?.text, `S${slice} AC${id} mirrored`).toBe(row?.text);
       }
       expect(read(TRACKER(slice)), `S${slice} tracker header`).toMatch(

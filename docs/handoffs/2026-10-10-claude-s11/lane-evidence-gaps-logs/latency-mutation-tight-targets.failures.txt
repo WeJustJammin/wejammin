@@ -1,0 +1,10 @@
+2151:     × [CMS-03B-15] on a 128-field draft with the full preparation and 17-result preflight: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052] 1745ms
+2152:     × [CMS-03B-15] on an entry at 16 schedules, 64 publications and an open review: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052] 1304ms
+2153:     × [CMS-03B-16] at 7 of 8 decisions, 32 assignment summaries and a 128-field frozen manifest: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058] 360ms
+2154:     × [CMS-03B-17] first page at the maximum limit of 50 from 200 assigned reviews among 500: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064] 377ms
+2155:     × [CMS-03B-17] cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064] 358ms
+2160:AssertionError: expected 52.281110200000874 to be less than 40
+2172:AssertionError: expected 40.27796815000056 to be less than 40
+2184:AssertionError: expected 11.9004445500007 to be less than 9
+2196:AssertionError: expected 11.85544759999957 to be less than 9
+2208:AssertionError: expected 10.985664400001042 to be less than 9

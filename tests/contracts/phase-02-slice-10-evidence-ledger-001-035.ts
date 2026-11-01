@@ -1595,7 +1595,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-01' failure mapping through the production app and adapter CMS-03B-01 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-01' failure mapping through the production app and adapter CMS-03B-01 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },
@@ -1854,7 +1854,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-02' failure mapping through the production app and adapter CMS-03B-02 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-02' failure mapping through the production app and adapter CMS-03B-02 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
           {
             tool: 'vitest',
@@ -2835,7 +2835,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-02' failure mapping through the production app and adapter CMS-03B-02 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-02' failure mapping through the production app and adapter CMS-03B-02 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },
@@ -2933,7 +2933,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'apps/web/src/components/cms-editorial/ev-ea-conflict-recovery.test.ts',
             title:
-              'EA conflict resolution recovers from every dependency failure a 502 BAD_GATEWAY keeps every choice, shows fixed copy and the retry replays the identical request under the same key',
+              'EA conflict resolution recovers from every dependency failure a 502 DEPENDENCY_UNAVAILABLE keeps every choice, shows fixed copy and the retry replays the identical request under the same key',
           },
           {
             tool: 'vitest',
@@ -3926,7 +3926,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-03' failure mapping through the production app and adapter CMS-03B-03 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-03' failure mapping through the production app and adapter CMS-03B-03 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },
@@ -4169,7 +4169,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-04' failure mapping through the production app and adapter CMS-03B-04 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-04' failure mapping through the production app and adapter CMS-03B-04 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },
@@ -5089,7 +5089,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/integration/phase-02-slice-10-ev-ea-error-mapping.test.ts',
             title:
-              "'CMS-03B-04' failure mapping through the production app and adapter CMS-03B-04 maps a success payload that fails the declared resource contract to a non-retryable 502 BAD_GATEWAY",
+              "'CMS-03B-04' failure mapping through the production app and adapter CMS-03B-04 maps a success payload that fails the declared resource contract to a 502 DEPENDENCY_UNAVAILABLE that is not retried automatically",
           },
         ],
       },
@@ -5497,7 +5497,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S10-AC-030',
-    text: 'Enforce CMS-03B-01: changedPaths; 1–128 unique JSON Pointers, each 1–256 chars, bound to stable field/block/relation IDs; 422. Relation changes are keyed by stable field ID rather than version-specific relation-definition ID.',
+    text: 'Enforce CMS-03B-01: changedPaths; 1–128 unique JSON Pointers, each `/fields/{stableFieldId}` (lowercase UUID, 44 characters; every field kind including relation); `/blocks/...` and every other pointer is refused until a composition write path exists; 422. Relation changes are keyed by stable field ID rather than version-specific relation-definition ID.',
     clauses: [
       {
         text: 'Enforce CMS-03B-01: changedPaths',
@@ -5546,25 +5546,80 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: 'each 1–256 chars',
+        text: 'each `/fields/{stableFieldId}` (lowercase UUID, 44 characters; every field kind including relation)',
         citations: [
           {
             tool: 'vitest',
-            file: 'packages/contracts/src/cms-editorial/contracts.test.ts',
+            file: 'packages/contracts/src/cms-editorial/field-pointer.test.ts',
             title:
-              'cms editorial primitives accepts exactly the 256-character JSON Pointer grammar',
+              '[P2-S10-AC-030] command pointers are /fields/{stableFieldId} accepts the field pointer on every command',
           },
           {
             tool: 'vitest',
-            file: 'packages/contracts/src/cms-editorial/contracts.test.ts',
+            file: 'packages/contracts/src/cms-editorial/field-pointer.test.ts',
             title:
-              'cms editorial primitives bounds JSON Pointers by UTF-16 code units, matching the unflagged spec regex',
+              '[P2-S10-AC-030] command pointers are /fields/{stableFieldId} refuses "/fields/title" on CMS-03B-01, CMS-03B-02 and CMS-03B-10',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/field-pointer.test.ts',
+            title:
+              '[P2-S10-AC-030] command pointers are /fields/{stableFieldId} refuses "/fields/123E4567-E89B-42D3-A456-426614174003" on CMS-03B-01, CMS-03B-02 and CMS-03B-10',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/field-pointer.test.ts',
+            title:
+              '[P2-S10-AC-030] command pointers are /fields/{stableFieldId} refuses "/fields/123e4567-e89b-42d3-a456-426614174003/nested" on CMS-03B-01, CMS-03B-02 and CMS-03B-10',
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_10_validation_pointers.sql',
+            title:
+              'append: an unreadable relation target is pointed at its field',
           },
         ],
       },
       {
-        text: 'bound to stable field/block/relation IDs',
-        citations: [],
+        text: '`/blocks/...` and every other pointer is refused until a composition write path exists',
+        citations: [
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/field-pointer.test.ts',
+            title:
+              '[P2-S10-AC-030] command pointers are /fields/{stableFieldId} refuses "/blocks/123e4567-e89b-42d3-a456-426614174003" on CMS-03B-01, CMS-03B-02 and CMS-03B-10',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/field-pointer.test.ts',
+            title:
+              '[P2-S10-AC-030] command pointers are /fields/{stableFieldId} refuses "/blocks/hero/0" on CMS-03B-01, CMS-03B-02 and CMS-03B-10',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/field-pointer.test.ts',
+            title:
+              '[P2-S10-AC-030] command pointers are /fields/{stableFieldId} refuses "/relations/123e4567-e89b-42d3-a456-426614174003/aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa" on CMS-03B-01, CMS-03B-02 and CMS-03B-10',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/field-pointer.test.ts',
+            title:
+              '[P2-S10-AC-030] command pointers are /fields/{stableFieldId} refuses "/title" on CMS-03B-01, CMS-03B-02 and CMS-03B-10',
+          },
+          {
+            tool: 'vitest',
+            file: 'packages/contracts/src/cms-editorial/field-pointer.test.ts',
+            title:
+              '[P2-S10-AC-030] command pointers are /fields/{stableFieldId} refuses "" on CMS-03B-01, CMS-03B-02 and CMS-03B-10',
+          },
+          {
+            tool: 'vitest',
+            file: 'tests/postgrest/phase-02-slice-10-ev-ea-revision.apispec.ts',
+            title:
+              'CMS-03B-01 request validation through the real stack a /blocks changed path is a 422 with its stable pointer and code and nothing is written',
+          },
+        ],
       },
       {
         text: '422.',
@@ -5619,9 +5674,8 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'partial',
-    limitation:
-      'Pending DEC-147 forward-scope ruling. The clause "bound to stable field/block/relation IDs" is left uncited because the block part is not writable in Slice 10: a changed path is accepted only as /fields/{stableFieldId} (every field kind, a relation included) and /blocks/... is refused as a 422 until a composition write path exists (BE03b Pointers; 03c owns composition writes). The field and relation bindings and the /blocks refusal are proven by the cited tests.',
+    status: 'verified',
+    limitation: '',
   },
   {
     criterion: 'P2-S10-AC-031',

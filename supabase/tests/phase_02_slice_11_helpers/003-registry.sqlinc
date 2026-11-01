@@ -1,0 +1,96 @@
+-- Slice 11 shared-helper registry fixtures (lane S11-3s).  Include AFTER
+-- phase_02_slice_10_rpc/000-helpers, 001-fixtures and phase_02_slice_11_helpers/000-helpers,
+-- 001-world.  Seeds, under the CMS RPC context:
+--   blocks    h11.first (…0b0001, digest a…), h11.second (…0b0002, b…), h11.third (…0b0003, c…),
+--             h11.slotonly (…0b0004, d…), all supported;
+--   patterns  …0c0001 (content hash f…) and …0c0002 (e…), both active;
+--   template  …0d0001 (content hash 9…), active, compatible with the world type, whose
+--             slot `primary` allows h11.first and h11.slotonly;
+-- and defines pg_temp.h11m_block / h11m_lifecycle / h11m_instance.
+-- ---- fixtures: blocks, lifecycle, template, pattern, taxonomy -----------------
+create or replace function pg_temp.h11m_block(p_id uuid, p_key text, p_digest text, p_version integer default 1)
+returns void
+language sql
+as $body$
+  select pg_temp.h11_raw_insert('platform_private.cms_block_definition_versions', jsonb_build_object(
+    'id', p_id, 'owner_id', pg_temp.h11w_org(), 'state', 'registered', 'version', 1,
+    'block_key', p_key, 'block_version', p_version, 'props_schema_ref', 'cms/h11/' || p_key,
+    'props_schema_hash', repeat('2', 64), 'props_schema_snapshot', '{}'::jsonb,
+    'props_snapshot_hash', repeat('4', 64), 'props_snapshot_attestation', '{}'::jsonb,
+    'props_attestation_key_id', 'h11-test-key', 'props_attestation_signature_hash', repeat('5', 64),
+    'props_attestation_verified_at', clock_timestamp(), 'renderer_ref', 'cms.h11.' || p_key,
+    'allowed_children', '[]'::jsonb, 'slot_rules', '{}'::jsonb, 'data_source_permissions', '[]'::jsonb,
+    'accessibility_contract', '{}'::jsonb, 'compatibility_range', '{}'::jsonb,
+    'release_digest', p_digest, 'release_principal_id', pg_temp.h11w_uuid('principal'),
+    'release_key_id', 'h11-release-key', 'release_raw_body_hash', repeat('6', 64),
+    'release_signature_hash', repeat('7', 64), 'release_nonce_hash', repeat('8', 64),
+    'release_verified_at', clock_timestamp(),
+    'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z'))
+$body$;
+
+create or replace function pg_temp.h11m_lifecycle(p_block uuid, p_key text, p_to text, p_version integer default 1)
+returns void
+language sql
+as $body$
+  select pg_temp.h11_raw_insert('platform_private.cms_block_definition_lifecycle_events', jsonb_build_object(
+    'id', extensions.gen_random_uuid(), 'owner_id', pg_temp.h11w_org(), 'state', 'recorded', 'version', 1,
+    'block_definition_version_id', p_block, 'block_key', p_key, 'block_version', p_version,
+    'from_lifecycle', case when p_to = 'withdrawn' then 'deprecated' else 'supported' end, 'to_lifecycle', p_to, 'release_digest', repeat('3', 64),
+    'release_principal_id', pg_temp.h11w_uuid('principal'), 'release_key_id', 'h11-release-key',
+    'release_raw_body_hash', repeat('6', 64), 'release_signature_hash', repeat('7', 64),
+    'release_nonce_hash', repeat('8', 64), 'release_verified_at', clock_timestamp(),
+    'created_at', statement_timestamp(), 'updated_at', statement_timestamp()))
+$body$;
+
+select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0003', 'h11.third', repeat('c', 64));
+select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0001', 'h11.first', repeat('a', 64));
+select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0002', 'h11.second', repeat('b', 64));
+select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0004', 'h11.slotonly', repeat('d', 64));
+
+select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions', jsonb_build_object(
+  'id', 'a9200000-0000-4000-8000-0000000c0002', 'owner_id', pg_temp.h11w_org(), 'state', 'active', 'version', 1,
+  'pattern_key', 'h11-pattern-b', 'block_tree', '{"nodes":[{"blockKey":"h11.first"}]}'::jsonb,
+  'block_registry_digest', repeat('a', 64), 'content_hash', repeat('e', 64), 'owner_capability', 'cms.template_designer',
+  'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
+  'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z'));
+select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions', jsonb_build_object(
+  'id', 'a9200000-0000-4000-8000-0000000c0001', 'owner_id', pg_temp.h11w_org(), 'state', 'active', 'version', 1,
+  'pattern_key', 'h11-pattern-a', 'block_tree', '{"nodes":[{"blockKey":"h11.first"}]}'::jsonb,
+  'block_registry_digest', repeat('a', 64), 'content_hash', repeat('f', 64), 'owner_capability', 'cms.template_designer',
+  'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
+  'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z'));
+-- instance builder with an explicit pattern id (the world helper names one pattern)
+create or replace function pg_temp.h11m_instance(
+  p_tag text, p_revision uuid, p_path text, p_block text, p_pattern uuid default null,
+  p_state text default 'draft', p_block_version integer default 1
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_composition_instances(
+    id, owner_id, state, version, revision_id, path, slot_key, block_key, block_version,
+    pattern_id, pattern_version, block_registry_digest, link_mode, created_by
+  ) values (
+    pg_temp.h11w_uuid(p_tag), pg_temp.h11w_org(), p_state, 1, p_revision, p_path, 'primary',
+    p_block, p_block_version, p_pattern, case when p_pattern is null then null else 1 end,
+    repeat('a', 64), case when p_pattern is null then 'detached' else 'linked' end,
+    (select value::uuid from s10_ids where key = 'creatorAuth'));
+end;
+$body$;
+
+select pg_temp.h11_raw_insert('platform_private.cms_template_versions', jsonb_build_object(
+  'id', 'a9200000-0000-4000-8000-0000000d0001', 'owner_id', pg_temp.h11w_org(), 'state', 'active',
+  'version', 1, 'template_key', 'h11-template',
+  'compatible_type_ids', jsonb_build_array((select value from h11w_ids where key = 'typeId')),
+  'slots', jsonb_build_array(jsonb_build_object('key', 'primary', 'required', false, 'maxCount', 4,
+    'allowedBlocks', jsonb_build_array(
+      jsonb_build_object('blockKey', 'h11.first', 'blockVersion', 1),
+      jsonb_build_object('blockKey', 'h11.slotonly', 'blockVersion', 1)))),
+  'reserved_regions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+  'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public',
+  'content_hash', repeat('9', 64), 'block_registry_digest', repeat('1', 64),
+  'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
+  'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z'));
+

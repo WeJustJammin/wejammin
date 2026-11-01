@@ -38,7 +38,7 @@ describe('outcome-unknown writes (reconcile by same-key replay)', () => {
     async ({ call }) => {
       for (const [status, code] of [
         [500, 'INTERNAL_ERROR'],
-        [502, 'BAD_GATEWAY'],
+        [502, 'DEPENDENCY_UNAVAILABLE'],
         [503, 'DEPENDENCY_UNAVAILABLE'],
         [504, 'GATEWAY_TIMEOUT'],
       ] as const) {

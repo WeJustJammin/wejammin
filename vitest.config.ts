@@ -17,8 +17,14 @@ export default defineConfig({
       '@wejammin/contracts/client': workspacePath(
         './packages/contracts/src/client.ts',
       ),
+      '@wejammin/contracts/cms-editorial/validators': workspacePath(
+        './packages/contracts/src/cms-editorial/validators.ts',
+      ),
       '@wejammin/contracts/content-schema-registry/validators': workspacePath(
         './packages/contracts/src/content-schema-registry/validators.ts',
+      ),
+      '@wejammin/contracts/time-authority': workspacePath(
+        './packages/contracts/src/cms-editorial/time-authority/index.ts',
       ),
       '@wejammin/contracts': workspacePath('./packages/contracts/src/index.ts'),
       '@wejammin/observability': workspacePath('./packages/observability/src'),
@@ -47,6 +53,7 @@ export default defineConfig({
         'packages/application/src/infrastructure/security.ts',
         'packages/contracts/src/index.ts',
         'packages/contracts/src/client.ts',
+        'packages/contracts/src/cms-editorial/validators.ts',
         'packages/contracts/src/content-schema-registry/validators.ts',
         'packages/ui/src/infrastructure/navigation.ts',
         'packages/ui/src/infrastructure/presentation.ts',

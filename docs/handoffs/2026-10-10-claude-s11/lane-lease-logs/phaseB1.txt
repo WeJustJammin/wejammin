@@ -1,0 +1,5 @@
+phaseB1 start 05:14:59 HEAD=a2df2469
+prettier exit=0
+green-targets exit=1
+b1-neighbours exit=1
+phaseB1 end 05:16:37

@@ -90,9 +90,13 @@ const install = (navigate: (path: string) => void): void =>
     signal: lifetime.signal,
   });
 
-beforeEach(() => {
+beforeEach(async () => {
   lifetime = new AbortController();
   document.cookie = `wj_csrf=${CSRF_TOKEN}`;
+  // The restore command's module loads on the first restore (a dynamic import,
+  // AC-106); resetting the module registry after each test would make every
+  // test pay that load, so it is put back before the test starts.
+  await import('./cms-editorial-page-actions-restore');
 });
 
 afterEach(() => {

@@ -1,0 +1,210 @@
+-- Slice 11 read-latency benchmark world (review A, A-M9).  Include AFTER phase_02_slice_11_rpc_reads/000-world.sqlinc.
+--
+-- Builds, inside the caller's rolled-back transaction:
+--   * an ACTIVE content type `b11doc128` created by the real cms_create_type_draft RPC with 128 short_text fields,
+--     activated with the REAL seeded editorial workflow policy (the same terminal state the h11doc world reaches);
+--   * pg_temp.b11_* builders: an entry whose current draft carries 128 field values with the TRUE projection hash,
+--     assign/revoke cycles, review clones, the three read requests and the timing loop.
+-- Everything is written under the CMS RPC context exactly as a named RPC would write it.
+
+select pg_temp.s10_rpc_as(
+  'a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization')
+);
+
+create temp table b11_type_created on commit drop as
+select platform_api.cms_create_type_draft(
+  request || jsonb_build_object(
+    'typeKey', 'b11doc128', 'label', 'Bench 128-field document',
+    'idempotencyKey', 'b11-type-create-0001',
+    'fields', (select jsonb_agg(jsonb_build_object(
+        'stableFieldId', ('a9210000-0000-4000-8000-' || lpad(to_hex(g), 12, '0'))::uuid,
+        'key', 'f' || lpad(g::text, 3, '0'), 'kind', 'short_text', 'constraints', '{}'::jsonb,
+        'required', false, 'validatorKey', null, 'validatorVersion', null,
+        'defaultMode', 'none', 'localizationMode', 'none',
+        'editorConfig', jsonb_build_object('label', 'Field ' || g, 'order', g), 'lifecycle', 'active') order by g)
+      from generate_series(1, 128) g),
+    'relations', '[]'::jsonb)
+) as response
+from s10_type_request;
+
+create temp table b11_ids on commit drop as
+select 'typeId' as key, response->>'contentTypeId' as value from b11_type_created
+union all select 'versionId', response->>'id' from b11_type_created;
+
+select set_config('app.cms_rpc', 'true', true);
+create temp table b11_policy on commit drop as
+select platform_private.cms_workflow_policy_member('editorial', 1) as member;
+
+update platform_private.cms_content_type_versions
+set state = 'active', version = version + 1,
+    activation_workflow_policy_key = (select member->>'key' from b11_policy),
+    activation_workflow_policy_version = (select (member->>'version')::bigint from b11_policy),
+    activation_workflow_policy_hash = (select member->>'policyHash' from b11_policy),
+    activation_required_decision_count = (select (member->>'requiredDecisionCount')::integer from b11_policy),
+    activation_required_capabilities = (select member->'requiredCapabilities' from b11_policy),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = (select value::uuid from b11_ids where key = 'versionId');
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select value::uuid from b11_ids where key = 'typeId');
+
+create or replace function pg_temp.b11_version()
+returns uuid language sql stable as $body$
+  select value::uuid from b11_ids where key = 'versionId'
+$body$;
+
+-- An active entry (version 1) of the 128-field type with ONE draft revision carrying 128 values and the true
+-- projection hash.  The creator holds cms.author and the editor cms.editor assignments on the entry.
+create or replace function pg_temp.b11_entry(p_tag text)
+returns uuid
+language plpgsql
+as $body$
+declare
+  entry_uuid uuid := pg_temp.h11w_uuid(p_tag || ':entry');
+  revision_uuid uuid := pg_temp.h11w_uuid(p_tag || ':revision');
+  stamp timestamptz := clock_timestamp();
+  payload text;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select platform_private.cms_jcs_sha256(jsonb_object_agg(field.stable_field_id::text, to_jsonb('Value ' || field.field_key)))
+    into payload
+    from platform_private.cms_field_definition_versions field
+   where field.content_type_version_id = pg_temp.b11_version();
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle, current_draft_revision_id,
+    version, created_by, created_at, updated_at
+  ) values (
+    entry_uuid, pg_temp.h11w_org(), (select value::uuid from b11_ids where key = 'typeId'),
+    pg_temp.h11w_org(), 'active', null, 1,
+    (select value::uuid from s10_ids where key = 'creatorAuth'), stamp, stamp);
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id, template_version_id,
+    taxonomy_version_ids, parent_revision_ids, locale, payload_hash, author_person_id,
+    acting_party_id, state, version, validation_state, validation_report, created_at, updated_at
+  ) values (
+    revision_uuid, pg_temp.h11w_org(), entry_uuid, 1, pg_temp.b11_version(), null,
+    '[]'::jsonb, '[]'::jsonb, 'en-US', payload, pg_temp.s11_id('creator'),
+    pg_temp.h11w_org(), 'draft', 1, 'valid', '{}'::jsonb, stamp, stamp);
+  insert into platform_private.cms_entry_field_values(
+    owner_id, state, version, revision_id, field_id, field_definition_id, locale, value,
+    provenance, value_hash, created_at, updated_at
+  )
+  select pg_temp.h11w_org(), 'active', 1, revision_uuid, field.stable_field_id, field.id, 'en-US',
+         to_jsonb('Value ' || field.field_key), 'authored',
+         platform_private.cms_jcs_sha256(to_jsonb('Value ' || field.field_key))::char(64), stamp, stamp
+    from platform_private.cms_field_definition_versions field
+   where field.content_type_version_id = pg_temp.b11_version();
+  update platform_private.cms_content_entries
+     set current_draft_revision_id = revision_uuid where id = entry_uuid;
+  insert into platform_private.cms_entry_assignments(
+    owner_id, entry_id, assignee_person_id, capability_key, state, version, created_at, updated_at
+  ) values
+    (pg_temp.h11w_org(), entry_uuid, pg_temp.s11_id('creator'), 'cms.author', 'active', 1, stamp, stamp),
+    (pg_temp.h11w_org(), entry_uuid, pg_temp.s11_id('editor'), 'cms.editor', 'active', 1, stamp, stamp);
+  return revision_uuid;
+end;
+$body$;
+
+-- One assign-then-revoke cycle of reviewer17 on the detail review (the 20 revoked rows beyond the 16 active ones).
+create or replace function pg_temp.b11_cycle(p_n integer)
+returns void
+language plpgsql
+as $body$
+declare
+  key text := 'bd-cyc-' || p_n;
+begin
+  perform pg_temp.h11r_assign(key, 'bd', 'reviewer17',
+    jsonb_build_object('created_at', timestamptz '2026-10-02T11:00:00Z' + (p_n * interval '1 second'),
+                       'updated_at', timestamptz '2026-10-02T11:00:00Z' + (p_n * interval '1 second')));
+  perform pg_temp.h11_raw_exec('platform_private.cms_editorial_review_assignments',
+    format($q$update platform_private.cms_editorial_review_assignments
+                 set state = 'revoked', version = 2, updated_at = created_at + interval '1 minute' where id = %L$q$,
+           pg_temp.s11_id(key)));
+end;
+$body$;
+
+-- p_count invalidated clones of review p_template with deterministic RFC 4122 v4 ids (the signed cursor refuses any other
+-- id as a malformed keyset position), each newer than the last, submitted by
+-- p_submitter and (when p_assignee is not null) assigned to that person.  Clones share the template's revision and
+-- entry, so the queue joins the same rows a population of distinct reviews would.
+create or replace function pg_temp.b11_clone_reviews(p_template text, p_count integer, p_assignee text, p_submitter text)
+returns void
+language plpgsql
+as $body$
+declare
+  batch text := p_template || ':' || coalesce(p_assignee, 'hidden');
+begin
+  perform pg_temp.h11_raw_exec('platform_private.cms_editorial_reviews', format(
+    $q$insert into platform_private.cms_editorial_reviews(id, owner_id, revision_id, state, version, risk_class, frozen_hash,
+         dependency_manifest, dependency_hash, activation_evidence, workflow_policy_key, workflow_policy_version, workflow_policy_hash,
+         required_capabilities, required_decision_count, recorded_decision_count, approval_evidence_hash, submitted_by, submitted_at,
+         invalidated_reason, decided_at, entry_id, created_at, updated_at)
+       select pg_temp.h11w_uuid(%L || n), review.owner_id, review.revision_id, 'invalidated', 2, review.risk_class, review.frozen_hash,
+              review.dependency_manifest, review.dependency_hash, review.activation_evidence, review.workflow_policy_key,
+              review.workflow_policy_version, review.workflow_policy_hash, review.required_capabilities, review.required_decision_count,
+              0, review.approval_evidence_hash, %L, review.submitted_at, 'dependency_changed', null, review.entry_id, review.created_at,
+              timestamptz %L + (n * interval '1 second')
+         from platform_private.cms_editorial_reviews review, generate_series(1, %s) n
+        where review.id = %L$q$,
+    batch, pg_temp.s11_id(p_submitter),
+    case when p_assignee is null then '2026-10-08 12:30:00+00' else '2026-10-08 13:00:00+00' end,
+    p_count, pg_temp.s11_id(p_template)));
+  if p_assignee is not null then
+    perform pg_temp.h11_raw_exec('platform_private.cms_editorial_review_assignments', format(
+      $q$insert into platform_private.cms_editorial_review_assignments
+         select (jsonb_populate_record(null::platform_private.cms_editorial_review_assignments,
+                   pg_temp.s11_assignment_row(jsonb_build_object(
+                     'id', extensions.gen_random_uuid(), 'review_id', pg_temp.h11w_uuid(%L || n),
+                     'reviewer_person_id', %L::uuid,
+                     'starts_at', clock_timestamp() - interval '1 hour', 'ends_at', clock_timestamp() + interval '23 hours')))).*
+           from generate_series(1, %s) n$q$,
+      batch, pg_temp.s11_id(p_assignee), p_count));
+  end if;
+end;
+$body$;
+
+-- The three read requests.
+create or replace function pg_temp.b11_workflow_rq(p_tag text)
+returns jsonb language sql as $body$
+  select jsonb_build_object('entryId', pg_temp.h11w_uuid(p_tag || ':entry'), 'context', pg_temp.r11_ctx(),
+    'evidence', pg_temp.r11_evidence(pg_temp.h11w_uuid(p_tag || ':revision')))
+$body$;
+
+create or replace function pg_temp.b11_detail_rq(p_review text)
+returns jsonb language sql as $body$
+  select jsonb_build_object('reviewId', pg_temp.s11_id(p_review), 'context', pg_temp.r11_ctx())
+$body$;
+
+create or replace function pg_temp.b11_queue_rq(p_cursor text)
+returns jsonb language sql as $body$
+  select jsonb_build_object('limit', 50, 'context', pg_temp.r11_ctx())
+    || case when p_cursor is null then '{}'::jsonb else jsonb_build_object('cursor', p_cursor) end
+$body$;
+
+-- One row per timed call; created before the functions that read it (a SQL-language function is validated when created).
+create temp table b11_timing(op text, ms numeric) on commit drop;
+
+-- p_n timed calls of platform_api.<p_function>(p_request) as the current session actor.
+create or replace function pg_temp.b11_bench(p_op text, p_function text, p_request jsonb, p_n integer)
+returns void
+language plpgsql
+as $body$
+declare
+  started timestamptz;
+  answer jsonb;
+  i integer;
+begin
+  for i in 1..p_n loop
+    started := clock_timestamp();
+    execute format('select platform_api.%I($1)', p_function) into answer using p_request;
+    insert into b11_timing values (p_op, extract(epoch from clock_timestamp() - started) * 1000);
+  end loop;
+end;
+$body$;
+
+create or replace function pg_temp.b11_p95(p_op text)
+returns numeric language sql as $body$
+  select percentile_cont(0.95) within group (order by ms)::numeric from b11_timing where op = p_op
+$body$;

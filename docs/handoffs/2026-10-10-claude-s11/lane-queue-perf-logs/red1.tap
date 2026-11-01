@@ -1,0 +1,96 @@
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:4: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_bench128/010-fixtures.sqlinc:51: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_bench128/010-fixtures.sqlinc:59: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_bench128/010-fixtures.sqlinc:51: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_bench128/010-fixtures.sqlinc:59: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:151: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql:152: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql .. 
+{"created": true, "personId": "472b4bd6-a19a-4c8f-b468-e9427aaf5da2", "contextKind": "self", "accountState": "active", "actingPartyId": "472b4bd6-a19a-4c8f-b468-e9427aaf5da2", "bindingVersion": 1}
+{"created": true, "personId": "d83889c9-937a-43e2-8a97-c5a88f666b5f", "contextKind": "self", "accountState": "active", "actingPartyId": "d83889c9-937a-43e2-8a97-c5a88f666b5f", "bindingVersion": 1}
+{"created": true, "personId": "aa2cca65-1342-4c8b-a8c3-4e6fff6ce4e8", "contextKind": "self", "accountState": "active", "actingPartyId": "aa2cca65-1342-4c8b-a8c3-4e6fff6ce4e8", "bindingVersion": 1}
+{"created": true, "personId": "6fbe6416-fd80-446f-a775-256742f8ad59", "contextKind": "self", "accountState": "active", "actingPartyId": "6fbe6416-fd80-446f-a775-256742f8ad59", "bindingVersion": 1}
+
+a9100000-0000-4000-8000-000000000091
+s10-org-create-0001
+s10-org-create-request-0001
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+true
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+true
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+true
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+true
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+true
+{"created": true, "personId": "be0a529b-dbfc-4c7a-be06-ea29c85a9aed", "contextKind": "self", "accountState": "active", "actingPartyId": "be0a529b-dbfc-4c7a-be06-ea29c85a9aed", "bindingVersion": 1}
+{"created": true, "personId": "79bc5e24-f5a4-4fac-9dfd-912d9f41193c", "contextKind": "self", "accountState": "active", "actingPartyId": "79bc5e24-f5a4-4fac-9dfd-912d9f41193c", "bindingVersion": 1}
+{"created": true, "personId": "81c980b3-66d3-4950-839c-1b95cf4595d3", "contextKind": "self", "accountState": "active", "actingPartyId": "81c980b3-66d3-4950-839c-1b95cf4595d3", "bindingVersion": 1}
+{"created": true, "personId": "6ebf071d-7a18-44e5-b0af-5b639fc92cbd", "contextKind": "self", "accountState": "active", "actingPartyId": "6ebf071d-7a18-44e5-b0af-5b639fc92cbd", "bindingVersion": 1}
+{"created": true, "personId": "76014bfa-580f-44ad-8272-ee674ae35a0b", "contextKind": "self", "accountState": "active", "actingPartyId": "76014bfa-580f-44ad-8272-ee674ae35a0b", "bindingVersion": 1}
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+true
+bf2527f2-a71f-4c27-9f8a-310de3c3face
+a9200000-0000-4000-8000-679878a9a754
+a9200000-0000-4000-8000-e16a4a4af66c
+a9200000-0000-4000-8000-fd3a8f988adb
+a9200000-0000-4000-8000-33d173aa7abf
+ok 10 - precondition: the planner holds the stale statistics a long gate run leaves (pages but no live rows: relpages > 0, reltuples = 0) for the review, assignment and decision tables [P2-S11-AC-064]
+not ok 11 - CMS-03B-17 under stale planner statistics returns the maximum page of 50 items and a next cursor within the statement timeout [P2-S11-AC-064]
+# Failed test 11: "CMS-03B-17 under stale planner statistics returns the maximum page of 50 items and a next cursor within the statement timeout [P2-S11-AC-064]"
+not ok 12 - CMS-03B-17 cursor page under stale planner statistics returns its 50 items within the statement timeout [P2-S11-AC-064]
+# Failed test 12: "CMS-03B-17 cursor page under stale planner statistics returns its 50 items within the statement timeout [P2-S11-AC-064]"
+not ok 13 - CMS-03B-17 first page reads a bounded number of tuples from the review and assignment tables per call (under 10,000 of 503 reviews and 237 assignments; the pathological plan read 27 million) [P2-S11-AC-064]
+# Failed test 13: "CMS-03B-17 first page reads a bounded number of tuples from the review and assignment tables per call (under 10,000 of 503 reviews and 237 assignments; the pathological plan read 27 million) [P2-S11-AC-064]"
+not ok 14 - CMS-03B-17 cursor page reads a bounded number of tuples from the review and assignment tables per call (under 10,000) [P2-S11-AC-064]
+# Failed test 14: "CMS-03B-17 cursor page reads a bounded number of tuples from the review and assignment tables per call (under 10,000) [P2-S11-AC-064]"
+# queue_page1 tuples read per call: reviews max 0, assignments max 0, status timeout
+# queue_page1 p95=1000000000.0ms max=60031.3ms n=1 status=timeout
+# queue_page2 p95=1000000000.0ms max=60030.3ms n=1 status=timeout
+# review_detail p95=6.8ms max=7.3ms n=10 status=ok
+# workflow_bounds p95=20.0ms max=20.8ms n=10 status=ok
+# workflow_draft128 p95=34.8ms max=37.9ms n=10 status=ok
+ok 15 - CMS-03B-15 on a 128-field draft under stale planner statistics: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]
+ok 16 - CMS-03B-15 on an entry at 16 schedules, 64 publications and an open review under stale planner statistics: p95 under the Tier 2 target of 1,200 ms [P2-S11-AC-052]
+ok 17 - CMS-03B-16 at 7 of 8 decisions and 32 assignment summaries under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-058]
+not ok 18 - CMS-03B-17 first page at the maximum limit of 50 under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+# Failed test 18: "CMS-03B-17 first page at the maximum limit of 50 under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]"
+not ok 19 - CMS-03B-17 cursor page at the maximum limit of 50 under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]
+# Failed test 19: "CMS-03B-17 cursor page at the maximum limit of 50 under stale planner statistics: p95 under the Tier 1 target of 750 ms [P2-S11-AC-064]"
+not ok 20 - every call of the five measured reads completed within the exact 8,000 ms read deadline under stale planner statistics (50 calls) [P2-S11-AC-052]
+# Failed test 20: "every call of the five measured reads completed within the exact 8,000 ms read deadline under stale planner statistics (50 calls) [P2-S11-AC-052]"
+1..20
+# Looks like you failed 7 tests of 20
+Failed 7/20 subtests 
+
+Test Summary Report
+-------------------
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_11_reads_plan_stability.sql (Wstat: 0 Tests: 20 Failed: 7)
+  Failed tests:  11-14, 18-20
+Files=1, Tests=20, 122 wallclock secs ( 0.02 usr  0.01 sys +  0.01 cusr  0.00 csys =  0.04 CPU)
+Result: FAIL

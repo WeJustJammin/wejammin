@@ -158,10 +158,11 @@ const productionMigrationWorkerId = (environment: WorkerBindings): string =>
  * The worker receives only the validated event/job input; all state and
  * authority remain behind named server-side RPCs.
  */
-export const createProductionSchemaMigrationWorker = (
+const buildProductionSchemaMigrationWorker = (
   environment: WorkerBindings,
-  fetchImpl: typeof fetch = globalThis.fetch,
-  options: ProductionSchemaMigrationWorkerOptions = {},
+  fetchImpl: typeof fetch,
+  options: ProductionSchemaMigrationWorkerOptions,
+  executionPurpose: 'dry_run' | 'activation',
 ): SchemaMigrationWorker => {
   const validatedEnvironment = parseServerEnvironment(environment);
   const rpc = createSupabaseRpc(fetchImpl, {
@@ -186,6 +187,7 @@ export const createProductionSchemaMigrationWorker = (
   const telemetry = options.telemetry ?? productionMigrationTelemetry(logger);
   return createSchemaMigrationWorker({
     port,
+    executionPurpose,
     workerId:
       options.workerId ?? productionMigrationWorkerId(validatedEnvironment),
     ...(options.now === undefined ? {} : { now: options.now }),
@@ -201,6 +203,31 @@ export const createProductionSchemaMigrationWorker = (
     telemetry,
   });
 };
+
+export const createProductionSchemaMigrationWorker = (
+  environment: WorkerBindings,
+  fetchImpl: typeof fetch = globalThis.fetch,
+  options: ProductionSchemaMigrationWorkerOptions = {},
+): SchemaMigrationWorker =>
+  buildProductionSchemaMigrationWorker(
+    environment,
+    fetchImpl,
+    options,
+    'activation',
+  );
+
+/** Trusted pre-review preparation; purpose is not a caller-controlled option. */
+export const createProductionSchemaMigrationPreparationWorker = (
+  environment: WorkerBindings,
+  fetchImpl: typeof fetch = globalThis.fetch,
+  options: ProductionSchemaMigrationWorkerOptions = {},
+): SchemaMigrationWorker =>
+  buildProductionSchemaMigrationWorker(
+    environment,
+    fetchImpl,
+    options,
+    'dry_run',
+  );
 
 /**
  * Compose the CMS-03B editorial dependency and the four CMS-03C composition

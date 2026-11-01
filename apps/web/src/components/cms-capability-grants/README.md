@@ -22,6 +22,24 @@ CMS-03A-16 (renew), CMS-03A-17 (revoke) and the CMS-03A-18 list, per FE03
   transports (a reconciling POST over the shared registry executor, and the
   no-store JSON list read); `use-cms-capability-grants.ts` is the state hook.
 - `cms-capability-grant-labels.ts` lists the grantable registry in four groups.
+- `cms-capability-grant-console-url.ts` holds the zod-free address rules the
+  island uses; `cms-capability-grant-url.ts` re-exports them and adds the
+  server-only `parseCmsCapabilityGrantPageQuery` (static schema), which is why
+  the island never imports it.
+- `CmsCapabilityGrantCheckNotice.tsx` is the form-level alert shown when the
+  checks could not run (see Performance below).
+
+## Performance (FE03 budgets, AC261)
+
+The island ships no zod: nothing in its static import graph imports a value
+from `@wejammin/contracts` (types only). Every schema comes from the lazily
+loaded `lib/cms-contract-validators.ts`: forms run their checks through
+`withCmsValidators` (synchronous once a focus warmed the load), the list read
+and command answer load the schemas before parsing, and Back parses the address
+with `parseCmsCapabilityGrantPageQueryWith`. When the schemas cannot be fetched
+a form sends nothing and shows `GRANT_CHECK_UNAVAILABLE_COPY`; a list read is
+`degraded` (last verified rows kept, retry offered). A cold load fetches none
+of the validators chunk.
 
 ## Ownership
 

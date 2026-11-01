@@ -1,0 +1,83 @@
+{
+  "schemaVersion": 1,
+  "scope": "Corrected receiving24 and lease70 QA actual RED; producers UNRUN",
+  "baseline": "b1550cf5964d84dfa063940fa27e799cad42902b",
+  "proof": {
+    "log": ".lane-logs/parent-s11-cms-receiving24-lease70-amended-red-20261010.log",
+    "summary": [
+      "AssertionError: expected false to be true // Object.is equality",
+      "AssertionError: expected false to be true // Object.is equality",
+      "Error: Delivery ended before checkpoint gate",
+      "AssertionError: expected false to be true // Object.is equality",
+      "AssertionError: expected false to be true // Object.is equality",
+      "Error: Delivery ended before checkpoint gate",
+      "AssertionError: expected false to be true // Object.is equality",
+      "Error: Delivery ended before checkpoint gate",
+      "AssertionError: expected false to be true // Object.is equality",
+      " Test Files  3 failed (3)",
+      "      Tests  78 failed | 16 passed (94)",
+      "cmsDualAmendedFocusedExit=1",
+      "cmsDualAmendedTypesExit=0",
+      "cmsDualAmendedLintExit=0"
+    ],
+    "files": [
+      {
+        "path": "apps/worker/src/async-entrypoint-cms-origin-admission.test.ts",
+        "lines": 359,
+        "sha": "3bec11b869fa0584d663ac83cd3769fc03e1196ec43d93c0a459fdb6de004984"
+      },
+      {
+        "path": "apps/worker/src/async-entrypoint-cms-origin-admission-test-support.ts",
+        "lines": 338,
+        "sha": "a5929731dab17440a8bbc535d1ca364131087dc8acf430e71c53fd9fc97f9ae7"
+      },
+      {
+        "path": "packages/application/src/infrastructure/jobs/consumer-cms-lease-control.test.ts",
+        "lines": 394,
+        "sha": "c3ab4a4d93ddc3670ba33f6394148667c46bfbd1373edd9d9df751b0f0cb0ddb"
+      },
+      {
+        "path": "packages/application/src/infrastructure/jobs/consumer-cms-lease-control-test-support.ts",
+        "lines": 366,
+        "sha": "a597e4126eeac9bf30dfb57aaf3723797b1640dc2257bd5fbbf7c265dd13fb68"
+      },
+      {
+        "path": "apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts",
+        "lines": 376,
+        "sha": "88d40406e44139b4b98feb65f784a20272243db9b40ce6d67222622924567bf7"
+      }
+    ],
+    "all37Exact": true,
+    "drift": []
+  },
+  "receivingEquivalence": {
+    "exactThreeReplacements": true,
+    "lines": 359,
+    "sha": "3bec11b869fa0584d663ac83cd3769fc03e1196ec43d93c0a459fdb6de004984"
+  },
+  "leaseEquivalence": {
+    "oldStaticTitleCount": 21,
+    "newStaticTitleCount": 24,
+    "removed": [],
+    "changedBodies": [
+      "not_due still rereads exact version and expiry with zero heartbeat"
+    ],
+    "healthyCallbackBodyTokenExact": true,
+    "moved": [
+      {
+        "title": "keeps original token for token-blind foreign candidate metadata and respects false final CAS",
+        "from": "packages/application/src/infrastructure/jobs/consumer-cms-lease-control.test.ts",
+        "to": "apps/worker/src/production-job-effect-dispatcher-cms-lease-control.test.ts"
+      }
+    ],
+    "newTitles": [
+      "drains unawaited false heartbeat before immediate %s disposition",
+      "final expiry overrides healthy checkpoint then %s",
+      "omitted eventJobType retains verified CMS legacy one-argument dispatch"
+    ]
+  },
+  "independentReview": "All four lease gaps closed by actual bodies; no new bounded finding. Types0 confirm typed genuine cancellation harness. Historical comparison parent-attested; tokenblind leaf title unchanged but file/describe-qualified identity moved.",
+  "nextScope": "docs/handoffs/2026-10-08-phase2-codex-handoff/s11/lane-s11-native-cms-origin-receiving-green-2026-10-10.md",
+  "producerBriefReview": "Independent source-only review of application4/Worker3 origin GREEN scope: no bounded contradiction/scope finding; strict Boolean adapter preserves verifier semantics. Receiving24 alone cannot prove core privateflag nonCMS defense; those direct core and consumer controls are present in executed lease70. No stage/lease/prep/mapping/grant expansion.",
+  "acceptance": "0/122; functional RED frozen, no producer/stageauthority/public lifecycle/full validation proof"
+}

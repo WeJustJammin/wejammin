@@ -1,3 +1,5 @@
+import { CMS_EDITORIAL_INVALID_ANSWER_DETAILS } from '@wejammin/contracts';
+
 import type {
   CmsEditorialProductionError,
   CmsEditorialProductionResult,
@@ -13,12 +15,15 @@ import {
 import {
   isRecord,
   safeDetails,
+  structuredMembersFromDetailText,
   violationsFromDetailText,
 } from './cms-editorial-production-error-details';
 
 export {
   isRecord,
   safeDetails,
+  structuredMembers,
+  structuredMembersFromDetailText,
   violationsFromDetailText,
   type SafeViolation,
 } from './cms-editorial-production-error-details';
@@ -62,12 +67,13 @@ export const deadlineExceeded = (dependencyClass = 'cms_editorial') =>
     5,
   );
 
+/** BE00:172/590: a contacted dependency answered invalid data. */
 export const invalidResponse = () =>
   errorResult(
     502,
-    'BAD_GATEWAY',
+    'DEPENDENCY_UNAVAILABLE',
     'The CMS editorial dependency returned an invalid response.',
-    { dependencyClass: 'cms_editorial', retryable: false },
+    { ...CMS_EDITORIAL_INVALID_ANSWER_DETAILS },
   );
 
 export const sessionUnavailable = () => unavailable('authentication');
@@ -178,6 +184,13 @@ const mappedDetails = (
     );
     if (pointers.length > 0) details.violations = pointers;
   }
+  // Slice 11 typed refusals may carry structured members in a JSON object
+  // DETAIL; they never override the mapper-owned conflict, recovery or reason.
+  if (mapped.status === 409 || mapped.status === 422 || mapped.status === 503)
+    return {
+      ...structuredMembersFromDetailText(payload.details),
+      ...details,
+    };
   return details;
 };
 

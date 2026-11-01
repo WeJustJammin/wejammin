@@ -1,0 +1,72 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-previewM2.test.tsx (6 tests | 1 failed) 1297ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason after a definite 409 refusal and re-sends them  688ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason through an unknown outcome and re-sends them under the same key 148ms
+     ✓ [P2-S11-AC-037] has no typed input to lose, and a definite refusal leaves the same preparation to send again 129ms
+     ✓ [P2-S11-AC-037] re-sends the same request under the same key after an unknown outcome 62ms
+     ✓ [P2-S11-AC-043] keeps the audience and route after a definite 409 refusal and re-sends them 136ms
+     × [P2-S11-AC-043] keeps the audience and route through an unknown outcome and re-sends them under the same key 102ms
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-previewM1.test.tsx (6 tests | 1 failed) 1390ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason after a definite 409 refusal and re-sends them  789ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason through an unknown outcome and re-sends them under the same key 149ms
+     ✓ [P2-S11-AC-037] has no typed input to lose, and a definite refusal leaves the same preparation to send again 113ms
+     ✓ [P2-S11-AC-037] re-sends the same request under the same key after an unknown outcome 64ms
+     × [P2-S11-AC-043] keeps the audience and route after a definite 409 refusal and re-sends them 158ms
+     ✓ [P2-S11-AC-043] keeps the audience and route through an unknown outcome and re-sends them under the same key 95ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-previewM1.test.tsx > CMS-03B-08 preview form keeps its entries > [P2-S11-AC-043] keeps the audience and route after a definite 409 refusal and re-sends them
+AssertionError: expected { audience: '', route: '' } to deeply equal { audience: 'members', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "audience": "members",
+-   "route": "/music/artist/spring-2026-tour",
++   "audience": "",
++   "route": "",
+  }
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-previewM1.test.tsx:275:40
+    273|     expect(refusalKind(container)).toBe('refetch');
+    274|     expect(refetch).toHaveBeenCalledTimes(1);
+    275|     expect(previewControls(container)).toEqual(ENTERED_PREVIEW);
+       |                                        ^
+    276|     await click(buttonNamed(container, 'Create preview'));
+    277|     await flush();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-previewM2.test.tsx > CMS-03B-08 preview form keeps its entries > [P2-S11-AC-043] keeps the audience and route through an unknown outcome and re-sends them under the same key
+AssertionError: expected { audience: '', route: '' } to deeply equal { audience: 'members', …(1) }
+
+- Expected
++ Received
+
+  {
+-   "audience": "members",
+-   "route": "/music/artist/spring-2026-tour",
++   "audience": "",
++   "route": "",
+  }
+
+ ❯ apps/web/src/components/cms-editorial-workflow/zz-a2-mutant-previewM2.test.tsx:291:40
+    289|     await click(buttonNamed(container, 'Create preview'));
+    290|     await flush();
+    291|     expect(previewControls(container)).toEqual(ENTERED_PREVIEW);
+       |                                        ^
+    292|     await click(buttonNamed(container, 'Retry the same request'));
+    293|     await flush();
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  2 failed (2)
+      Tests  2 failed | 10 passed (12)
+   Start at  18:03:51
+   Duration  20.23s (transform 15.67s, setup 0ms, import 25.95s, tests 2.69s, environment 9.86s)
+

@@ -1,0 +1,161 @@
+-- Slice 11 shared-helper review builders (lane S11-3s).  Include AFTER the Slice
+-- 11 data-model prelude (phase_02_slice_11_schema/000-helpers, 001-fixture,
+-- 002-row-builders: the s11_ids registry, the shadow reviewers reviewer01..17 and
+-- the jsonb row images) and phase_02_slice_11_helpers/000-helpers.sqlinc.
+--
+-- Everything is written through the real data-model guards, in the RPC context,
+-- exactly as the named RPCs write it:
+--   pg_temp.h11r_member(person_key, caps[])  confirmed tenure + standing grants
+--   pg_temp.h11r_review(key, overrides)      an EditorialReview row (open v1 by default)
+--   pg_temp.h11r_assign(key, review, reviewer)  an active assignment (window 2026-10-01 14:00 + 24 h)
+--   pg_temp.h11r_decide(...)                 decision row, THEN the review CAS (BE03b steps 8-9)
+-- The data-model fixtures use fixed 2026-10-01 instants, so every assignment window
+-- is already over "now": decisions were recorded inside the window and still count.
+
+select set_config('app.cms_rpc', 'true', true);
+
+create or replace function pg_temp.h11r_member(p_person_key text, p_caps text[])
+returns void
+language plpgsql
+as $body$
+declare
+  person uuid := pg_temp.s11_id(p_person_key);
+  capability text;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  if not exists (
+    select 1 from identity_private.membership_tenure tenure
+    where tenure.organization_id = pg_temp.s11_id('org') and tenure.person_id = person
+  ) then
+    insert into identity_private.membership_tenure(
+      id, organization_id, person_id, state, provenance, governance_mode,
+      starts_on, accepted_at, actor_id, version
+    ) values (
+      extensions.gen_random_uuid(), pg_temp.s11_id('org'), person, 'confirmed', 'invitation',
+      'ungoverned', current_date, clock_timestamp(), pg_temp.s11_id('creator'), 1
+    );
+  end if;
+  foreach capability in array p_caps loop
+    insert into identity_private.organization_actor_grant(
+      organization_id, person_id, capability_code, valid_from, valid_through, active
+    ) values (pg_temp.s11_id('org'), person, capability, current_date, null, true)
+    on conflict (organization_id, person_id, capability_code)
+    do update set active = true, valid_from = current_date, valid_through = null;
+  end loop;
+end;
+$body$;
+
+create or replace function pg_temp.h11r_review(
+  p_key text, p_overrides jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into s11_ids(key, value) values (p_key, extensions.gen_random_uuid()::text)
+  on conflict (key) do nothing;
+  execute pg_temp.s11_insert_sql(
+    'platform_private.cms_editorial_reviews',
+    pg_temp.s11_review_row(jsonb_build_object('id', pg_temp.s11_id(p_key)) || p_overrides)
+  );
+end;
+$body$;
+
+create or replace function pg_temp.h11r_assign(
+  p_key text, p_review_key text, p_reviewer_key text, p_overrides jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into s11_ids(key, value) values (p_key, extensions.gen_random_uuid()::text)
+  on conflict (key) do nothing;
+  execute pg_temp.s11_insert_sql(
+    'platform_private.cms_editorial_review_assignments',
+    pg_temp.s11_assignment_row(jsonb_build_object(
+      'id', pg_temp.s11_id(p_key), 'review_id', pg_temp.s11_id(p_review_key),
+      'reviewer_person_id', pg_temp.s11_id(p_reviewer_key)
+    ) || p_overrides)
+  );
+end;
+$body$;
+
+-- Append the decision row, then advance the review under CAS: the approve that
+-- reaches required_decision_count leaves `open` as approved, a reject as rejected.
+create or replace function pg_temp.h11r_decide(
+  p_key text, p_review_key text, p_reviewer_key text, p_assignment_key text,
+  p_decision text, p_capability text default 'cms.reviewer'
+)
+returns void
+language plpgsql
+as $body$
+declare
+  review platform_private.cms_editorial_reviews%rowtype;
+  next_count integer;
+  next_state text;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into s11_ids(key, value) values (p_key, extensions.gen_random_uuid()::text)
+  on conflict (key) do nothing;
+  select * into review from platform_private.cms_editorial_reviews
+   where id = pg_temp.s11_id(p_review_key);
+  execute pg_temp.s11_insert_sql(
+    'platform_private.cms_editorial_decisions',
+    pg_temp.s11_decision_row(jsonb_build_object(
+      'id', pg_temp.s11_id(p_key), 'review_id', review.id,
+      'reviewer_person_id', pg_temp.s11_id(p_reviewer_key),
+      'assignment_id', pg_temp.s11_id(p_assignment_key),
+      'decision', p_decision, 'capability', p_capability,
+      'reviewed_hash', review.frozen_hash
+    ))
+  );
+  next_count := review.recorded_decision_count + 1;
+  next_state := case
+    when p_decision = 'reject' then 'rejected'
+    when next_count = review.required_decision_count then 'approved'
+    else 'open' end;
+  update platform_private.cms_editorial_reviews
+     set recorded_decision_count = next_count, state = next_state,
+         decided_at = case when next_state in ('approved', 'rejected') then clock_timestamp() end,
+         version = version + 1, updated_at = clock_timestamp()
+   where id = review.id;
+end;
+$body$;
+
+-- An APPROVED review in one call: open v1 -> one assignment -> one approve -> approved v2.
+-- p_overrides applies to the review row (revision_id/entry_id/dependency_hash...).
+create or replace function pg_temp.h11r_approved(
+  p_key text, p_revision uuid, p_entry uuid, p_reviewer_key text default 'reviewer01',
+  p_overrides jsonb default '{}'::jsonb
+)
+returns void
+language plpgsql
+as $body$
+begin
+  perform pg_temp.h11r_review(p_key, jsonb_build_object(
+    'revision_id', p_revision, 'entry_id', p_entry) || p_overrides);
+  perform pg_temp.h11r_assign(p_key || '-asg', p_key, p_reviewer_key);
+  perform pg_temp.h11r_decide(p_key || '-dec', p_key, p_reviewer_key, p_key || '-asg', 'approve', 'cms.reviewer');
+end;
+$body$;
+
+-- Insert one row with every USER trigger of the table disabled (the helper under
+-- test reads columns; the rows' guard-compliance is proven by the data-model suite).
+create or replace function pg_temp.h11r_raw_insert(p_table text, p_row jsonb)
+returns void
+language plpgsql
+as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  execute format('alter table %s disable trigger user', p_table);
+  begin
+    execute pg_temp.s11_insert_sql(p_table, p_row);
+  exception when others then
+    execute format('alter table %s enable trigger user', p_table);
+    raise;
+  end;
+  execute format('alter table %s enable trigger user', p_table);
+end;
+$body$;

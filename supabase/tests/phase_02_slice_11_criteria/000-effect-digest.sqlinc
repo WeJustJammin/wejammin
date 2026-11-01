@@ -1,0 +1,91 @@
+-- Slice 11 criteria suites: the complete durable-effect oracle (SQL twin of the real-stack
+-- `snapshotDigest` in tests/postgrest/support/phase-02-slice-11-effect.ts).
+--
+-- Include AFTER the suite prelude (it needs nothing but a connection that can read the tables).
+-- The count/version-sum oracles of the older suites (`p11_effects`, `r11_effects`, `r11r_effects`)
+-- omit tables (settings snapshots, accessibility evidence, entries, revisions) and filter the audit,
+-- outbox and idempotency tables by name, so a differently named event, a changed value at an
+-- unchanged count or a snapshot insertion escapes them.  This oracle hashes EVERY row of EVERY one
+-- of the fourteen tables a Slice 11 command or read could write, with no filter at all.
+--
+--   c11_snapshot()          jsonb { '<schema.table>': '<count>:<sha256 of the sorted whole-row JSON>' }
+--   c11_take(label)         store the current snapshot under a label
+--   c11_delta(label)        the short names of the tables that differ from the labelled snapshot,
+--                           alphabetically joined with commas ('' when nothing changed)
+--   c11_delta_excluding(label, tables)   the same without the named short names
+
+create temp table c11_snap(label text primary key, snap jsonb not null) on commit drop;
+
+create or replace function pg_temp.c11_snapshot()
+returns jsonb
+language plpgsql
+security definer
+set search_path = ''
+as $body$
+declare
+  tbl text;
+  cnt bigint;
+  sha text;
+  digest jsonb := '{}'::jsonb;
+  previous text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), '');
+begin
+  -- The oracle must not depend on the session state a command left behind: the CMS tables are forced-RLS on the
+  -- CMS RPC context, so a non-bypassing reader would otherwise see zero rows before and after (a vacuous pass).
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  foreach tbl in array array[
+    'platform_private.cms_editorial_reviews',
+    'platform_private.cms_editorial_decisions',
+    'platform_private.cms_editorial_review_assignments',
+    'platform_private.cms_editorial_review_dependencies',
+    'platform_private.cms_publication_schedules',
+    'platform_private.cms_publication_versions',
+    'platform_private.cms_preview_tokens',
+    'platform_private.cms_publication_settings_snapshots',
+    'platform_private.cms_command_accessibility_evidence',
+    'platform_private.idempotency_records',
+    'platform_private.outbox_events',
+    'audit_private.audit_events',
+    'platform_private.cms_content_entries',
+    'platform_private.cms_entry_revisions'
+  ] loop
+    execute pg_catalog.format(
+      $sql$select pg_catalog.count(*),
+                  pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
+                    coalesce(pg_catalog.string_agg(pg_catalog.to_jsonb(t)::text, E'\n'
+                      order by pg_catalog.to_jsonb(t)::text), ''), 'utf8')), 'hex')
+             from %s t$sql$, tbl)
+      into cnt, sha;
+    digest := digest || pg_catalog.jsonb_build_object(tbl, cnt::text || ':' || sha);
+  end loop;
+  perform pg_catalog.set_config('app.cms_rpc', previous, true);
+  return digest;
+end;
+$body$;
+
+create or replace function pg_temp.c11_take(p_label text)
+returns void
+language plpgsql
+as $body$
+begin
+  insert into c11_snap(label, snap) values (p_label, pg_temp.c11_snapshot())
+  on conflict (label) do update set snap = excluded.snap;
+end;
+$body$;
+
+create or replace function pg_temp.c11_delta_excluding(p_label text, p_skip text[])
+returns text
+language sql
+as $body$
+  select coalesce(string_agg(split_part(now_item.key, '.', 2), ',' order by split_part(now_item.key, '.', 2)), '')
+    from jsonb_each_text(pg_temp.c11_snapshot()) now_item
+    join c11_snap base on base.label = p_label
+   where base.snap->>now_item.key is distinct from now_item.value
+     and split_part(now_item.key, '.', 2) <> all (p_skip)
+$body$;
+
+create or replace function pg_temp.c11_delta(p_label text)
+returns text
+language sql
+as $body$
+  select pg_temp.c11_delta_excluding(p_label, array[]::text[])
+$body$;

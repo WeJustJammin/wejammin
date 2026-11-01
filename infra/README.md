@@ -6,7 +6,10 @@ Versioned Cloudflare and Supabase policy plus bounded setup, verification, and r
 
 Scripts cover database type synchronization, local database verification
 (including `run-pgtap-verbose.mjs`, the verbose-TAP pgTAP run behind
-`pnpm db:test:tap` that the evidence collector requires),
+`pnpm db:test:tap` that the evidence collector requires, and
+`reset-local-database.mjs`, which is `pnpm db:reset`: `supabase db reset --local`
+repeated up to three times when the CLI itself failed in schema initialisation or a
+service stayed unhealthy, never when a migration failed),
 staging health checks, production Cloudflare observability permission
 verification, and OpenAPI generation from the contract registry.
 Provider manifests and workflow policy remain in their respective top-level

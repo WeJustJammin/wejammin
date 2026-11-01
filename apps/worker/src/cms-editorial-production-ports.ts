@@ -1,7 +1,12 @@
 import {
+  EditorialReviewAssignmentResourceSchema,
+  EditorialReviewResourceSchema,
   EntryCreateResourceSchema,
   EntryDraftDetailResourceSchema,
   EntryRevisionResourceSchema,
+  PreviewTokenResourceSchema,
+  PublicationResourceSchema,
+  PublicationScheduleResourceSchema,
   RevisionHistoryPageSchema,
 } from '@wejammin/contracts';
 import type { EntryRevisionResource } from '@wejammin/contracts';
@@ -29,6 +34,10 @@ import {
   readRpcError,
 } from './cms-editorial-production-transport';
 import {
+  committedRefusal,
+  isWorkflowCommand,
+} from './cms-editorial-production-workflow';
+import {
   BARE_VERSION_PATTERN,
   type CmsEditorialProductionConfiguration,
   type CmsEditorialProductionOperationId,
@@ -50,6 +59,15 @@ export const CMS_EDITORIAL_PORTS = {
   'CMS-03B-12': 'getConflictDetail',
   'CMS-03B-13': 'listEntries',
   'CMS-03B-14': 'getAuthoringContext',
+  'CMS-03B-05': 'submitReview',
+  'CMS-03B-06': 'recordDecision',
+  'CMS-03B-07': 'schedulePublication',
+  'CMS-03B-08': 'mintPreview',
+  'CMS-03B-09': 'publishRevision',
+  'CMS-03B-15': 'getEntryWorkflow',
+  'CMS-03B-16': 'getEditorialReview',
+  'CMS-03B-17': 'listEditorialReviews',
+  'CMS-03B-18': 'assignEditorialReviewer',
 } as const satisfies Readonly<
   Record<CmsEditorialProductionOperationId, string>
 >;
@@ -85,6 +103,25 @@ const validateCmsEditorialResource = (
   // here. Each route re-parses the identical strict success contract before it
   // can publish, so a non-object or contract-violating payload still fails
   // closed as a 502 rather than reaching a success or concealment projection.
+  if (operationId === 'CMS-03B-05' || operationId === 'CMS-03B-06')
+    return EditorialReviewResourceSchema.safeParse(value).success;
+  if (operationId === 'CMS-03B-07')
+    return PublicationScheduleResourceSchema.safeParse(value).success;
+  if (operationId === 'CMS-03B-08')
+    return PreviewTokenResourceSchema.safeParse(value).success;
+  if (operationId === 'CMS-03B-09')
+    return PublicationResourceSchema.safeParse(value).success;
+  if (operationId === 'CMS-03B-18')
+    return EditorialReviewAssignmentResourceSchema.safeParse(value).success;
+  // CMS-03B-15, -16 and -17 are safe reads: like the Slice 10 reads they are
+  // narrowed to their JSON object envelope and the route re-parses the strict
+  // contract before publishing.
+  if (
+    operationId === 'CMS-03B-15' ||
+    operationId === 'CMS-03B-16' ||
+    operationId === 'CMS-03B-17'
+  )
+    return isRecord(value);
   if (operationId === 'CMS-03B-12') return isRecord(value);
   if (operationId === 'CMS-03B-13') return isRecord(value);
   if (operationId === 'CMS-03B-14') return isRecord(value);
@@ -158,20 +195,38 @@ export type CmsEditorialPorts = Readonly<{
 export const quoteVersion = (ifMatch: string): string =>
   BARE_VERSION_PATTERN.test(ifMatch) ? `"${ifMatch}"` : ifMatch;
 
+/**
+ * The headers every protected RPC carries: the service credential, the
+ * `platform_api` profile and the correlation identity. The caller adds nothing
+ * a browser could influence.
+ */
+export const baseRpcHeaders = (
+  configuration: CmsEditorialProductionConfiguration,
+  identity: Readonly<{
+    operationId: string;
+    requestId: string;
+    correlationId: string;
+  }>,
+): Record<string, string> => ({
+  Accept: 'application/json',
+  'Accept-Profile': 'platform_api',
+  ...supabaseRpcHeaders(configuration.secret),
+  'Content-Profile': 'platform_api',
+  'Content-Type': 'application/json',
+  'X-Operation-Id': identity.operationId,
+  'X-Request-Id': identity.requestId,
+  'X-Correlation-Id': identity.correlationId,
+});
+
 const rpcHeaders = (
   configuration: CmsEditorialProductionConfiguration,
   input: CmsEditorialPortInput,
 ): Record<string, string> => {
-  const headers: Record<string, string> = {
-    Accept: 'application/json',
-    'Accept-Profile': 'platform_api',
-    ...supabaseRpcHeaders(configuration.secret),
-    'Content-Profile': 'platform_api',
-    'Content-Type': 'application/json',
-    'X-Operation-Id': input.operationId,
-    'X-Request-Id': input.requestId,
-    'X-Correlation-Id': correlationFor(input),
-  };
+  const headers = baseRpcHeaders(configuration, {
+    operationId: input.operationId,
+    requestId: input.requestId,
+    correlationId: correlationFor(input),
+  });
   if (input.idempotencyKey !== undefined)
     headers['X-Idempotency-Key'] = input.idempotencyKey;
   if (input.ifMatch !== undefined)
@@ -236,6 +291,10 @@ export const createCmsEditorialRpcCaller = (
       if (parsed.ok && operationId === 'CMS-03B-01') {
         const conflict = committedRevisionConflict(parsed.value);
         if (conflict !== null) return conflict;
+      }
+      if (parsed.ok && isWorkflowCommand(operationId)) {
+        const refusal = committedRefusal(parsed.value);
+        if (refusal !== null) return refusal;
       }
       return parsed.ok && response.value.headers.get(REPLAY_HEADER) === 'true'
         ? { ...parsed, replayed: true as const }

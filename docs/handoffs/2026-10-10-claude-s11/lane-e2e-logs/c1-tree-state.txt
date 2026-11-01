@@ -1,0 +1,50 @@
+HEAD a3ee65ba7e778b080d85a66f1dcbe7acb0c755f0
+snapshot taken 2026-10-11T22:18:22-04:00
+-- worktree uncommitted files at snapshot time (git status --porcelain)
+ M apps/worker/src/cms-publication-schedule-sweep.test.ts
+ M apps/worker/src/cms-publication-schedule-sweep.ts
+ M docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/e2e-window.sh
+ M docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/probe/zz-lane-e2e-probe.spec.ts
+ M infra/database-races/publication-kit.mjs
+ M packages/contracts/src/cms-editorial/internal-rpc.test.ts
+ M packages/contracts/src/cms-editorial/internal-rpc.ts
+ M supabase/migrations/README.md
+ M supabase/tests/phase_02_slice_09_evidence_misc.sql
+ M supabase/tests/phase_02_slice_11_races/014-publication-execute-race.mjs
+ M supabase/tests/phase_02_slice_11_races/README.md
+ M supabase/tests/phase_02_slice_11_rls_session_scope.sql
+ M supabase/tests/phase_02_slice_11_rpc_publication/090-race-fixture.sqlinc
+ M supabase/tests/phase_02_slice_11_rpc_publication/README.md
+ M supabase/tests/phase_02_slice_11_rpc_publication_execute_refusals.sql
+ M supabase/tests/phase_02_slice_11_rpc_review_evidence_audit.sql
+ M supabase/tests/phase_02_slice_11_schedules_schema.sql
+ M supabase/tests/phase_02_slice_11_schema_posture.sql
+ M tests/e2e/phase-02-slice-10-entry-list-real-route.spec.ts
+ M tests/e2e/phase-02-slice-11-workflow-real-route.spec.ts
+ M tests/e2e/support/README.md
+ M tests/e2e/support/s11-real-world.ts
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/a1-probe-browser.txt
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/a1-probe-max-input.txt
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/a1-tree-state.txt
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/b1-probe-browser.txt
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/b1-probe-max-input.txt
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/b1-tree-state.txt
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/c1-tree-state.txt
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-logs/e2e-snapshot.sh
+?? docs/handoffs/2026-10-10-claude-s11/lane-e2e-report.md
+?? supabase/migrations/20261010170000_cms_schedule_cancel_guard.sql
+?? supabase/migrations/20261010170100_cms_schedule_cancel_executor.sql
+?? supabase/migrations/20261010170200_cms_slice11_relationship_rls.sql
+?? supabase/tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql
+?? tests/e2e/support/s11-dst-gap.test.ts
+?? tests/e2e/support/s11-dst-gap.ts
+?? tests/e2e/support/s11-status-recorder.ts
+-- sha256 of the files this lane owns, worktree vs snapshot
+238fdbfdac6c3169  same  tests/e2e/phase-02-slice-10-entry-list-real-route.spec.ts
+b838cfe9f8b31f10  same  tests/e2e/phase-02-slice-11-workflow-real-route.spec.ts
+e755a5bddcb89fdf  same  tests/e2e/support/s11-real-world.ts
+eea809306f3bff4c  same  tests/e2e/support/s11-dst-gap.ts
+a20ddc9481fb0281  same  tests/e2e/support/s11-status-recorder.ts
+8c81d818a122ce81  same  tests/e2e/support/s11-dst-gap.test.ts
+33f6b211b88fb814  same  tests/e2e/support/README.md
+546363f1b9f2310c  same  apps/worker/src/cms-editorial/a11y-structural/max-input.test.ts

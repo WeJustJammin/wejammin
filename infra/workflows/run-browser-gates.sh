@@ -4,14 +4,16 @@
 # PostgREST and the newest SQL, so the local Supabase stack must be up and on
 # this checkout's migrations. Both self-hosted runners share one stack on this
 # host, so the run holds the same lock as infra/verify-database.sh and always
-# stops the stack afterwards.
+# stops the stack afterwards. The database job usually takes the lock first and
+# holds it for its whole db:verify (41 min in run 41267061612, 25.5 min of it
+# spent with this step waiting), so the wait outlasts a full database job.
 
 set -euo pipefail
 
 lock_file="${WEJAMMIN_SUPABASE_CI_LOCK:-/tmp/wejammin-supabase-ci.lock}"
 
 exec 9>"${lock_file}"
-flock --wait 1800 9
+flock --wait 3600 9
 
 cleanup() {
   pnpm db:stop >/dev/null 2>&1 || true

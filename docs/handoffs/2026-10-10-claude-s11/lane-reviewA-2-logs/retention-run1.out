@@ -1,0 +1,43 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx (11 tests | 1 failed) 10872ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason after a definite 409 refusal and re-sends them  934ms
+     ✓ [P2-S11-AC-037] keeps the chosen decision and the typed reason through an unknown outcome and re-sends them under the same key 193ms
+     ✓ [P2-S11-AC-037] has no typed input to lose, and a definite refusal leaves the same preparation to send again 218ms
+     ✓ [P2-S11-AC-037] re-sends the same request under the same key after an unknown outcome 110ms
+     ✓ [P2-S11-AC-040] keeps the action, local time, zone and audience after a definite 409 refusal and re-sends them  2779ms
+     × [P2-S11-AC-040] keeps every entry after a 422 that names a field, and the named field is marked 2000ms
+     ✓ [P2-S11-AC-040] keeps every entry through an unknown outcome and re-sends them under the same key  2782ms
+     ✓ [P2-S11-AC-043] keeps the audience after a definite 409 refusal and re-sends it  399ms
+     ✓ [P2-S11-AC-043] keeps the audience through an unknown outcome and re-sends it under the same key  407ms
+     ✓ [P2-S11-AC-043] keeps the audience and route after a definite 409 refusal and re-sends them  499ms
+     ✓ [P2-S11-AC-043] keeps the audience and route through an unknown outcome and re-sends them under the same key  499ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx > CMS-03B-07 schedule form keeps its entries > [P2-S11-AC-040] keeps every entry after a 422 that names a field, and the named field is marked
+AssertionError: expected null to be 'true' // Object.is equality
+
+- Expected:
+"true"
+
++ Received:
+null
+
+ ❯ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx:400:7
+    398|         'aria-invalid',
+    399|       ),
+    400|     ).toBe('true');
+       |       ^
+    401|     expect(scheduleControls(container)).toEqual(ENTERED_SCHEDULE);
+    402|     await click(buttonNamed(container, 'Schedule'));
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed | 10 passed (11)
+   Start at  17:53:46
+   Duration  36.09s (transform 12.95s, setup 0ms, import 20.11s, tests 10.87s, environment 3.80s)
+

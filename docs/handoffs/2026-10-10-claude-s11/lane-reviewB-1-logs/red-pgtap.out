@@ -1,0 +1,25 @@
+[alt] waiting for lock 12:50:37
+[alt] lock acquired 12:58:02
+[alt] reset ok 13:01:13
+[alt] pg_prove exit=1  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-111155-110636.tap
+not ok 16 - an edited source, and one edited then reverted to the frozen hash, make the frozen locale-source identity non-current; an untouched source and a newer revision with the same hash do not [P2-S11-AC-113]
+not ok 17 - a locale source that does not exist, carries another hash or is another locale is not current; the unchanged manifest is [P2-S11-AC-113]
+not ok 23 - the run invalidates the review whose frozen source changed [P2-S11-AC-113]
+not ok 24 - the approved review is invalidated dependency_changed at its next version [P2-S11-AC-113]
+not ok 25 - the invalidation committed one review-changed event and one audit record carrying the correlation id of the source event [P2-S11-AC-113]
+not ok 26 - idempotent: a repeated run finds no live review [P2-S11-AC-113]
+not ok 27 - a source reverted to the frozen hash is still invalidated: the stale marking is never lifted [P2-S11-AC-113]
+not ok 28 - the review of the reverted source is invalidated dependency_changed [P2-S11-AC-113]
+not ok 29 - CMS-03B-09 over an edited locale source answers the committed refusal { kind refusal, reasonCode version_set_stale, details {} } [P2-S11-AC-113]
+not ok 30 - CMS-03B-09 committed the dependency_changed invalidation and appended no publication [P2-S11-AC-113]
+not ok 31 - CMS-03B-07 over an edited locale source answers the committed refusal { kind refusal, reasonCode version_set_stale, details {} } [P2-S11-AC-113]
+not ok 32 - CMS-03B-07 committed the dependency_changed invalidation and scheduled nothing [P2-S11-AC-113]
+Test Summary Report
+-------------------
+phase_02_slice_11_recheck_locale_source.sql (Wstat: 0 Tests: 32 Failed: 12)
+  Failed tests:  16-17, 23-32
+  Parse errors: Bad plan.  You planned 23 tests but ran 32.
+Files=2, Tests=46,  2 wallclock secs ( 0.12 usr  0.01 sys +  0.09 cusr  0.03 csys =  0.25 CPU)
+Result: FAIL
+Files=2, Tests=46,  2 wallclock secs ( 0.12 usr  0.01 sys +  0.09 cusr  0.03 csys =  0.25 CPU)
+Result: FAIL

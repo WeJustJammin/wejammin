@@ -3,8 +3,9 @@
 import * as React from 'react';
 import { act } from 'react';
 import { createRoot } from 'react-dom/client';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import CmsTemplateDesigner from './CmsTemplateDesigner';
 
 const TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
@@ -32,6 +33,11 @@ const setInput = (input: HTMLInputElement, value: string): void => {
   setter?.call(input, value);
   input.dispatchEvent(new Event('input', { bubbles: true }));
 };
+
+// The submit checks run without waiting once the lazily loaded validators are in.
+beforeAll(async () => {
+  await loadCmsValidators();
+});
 
 afterEach(() => {
   vi.unstubAllGlobals();

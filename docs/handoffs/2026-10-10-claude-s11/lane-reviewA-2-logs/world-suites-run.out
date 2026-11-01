@@ -1,0 +1,9 @@
+# bash docs/handoffs/2026-10-10-claude-s11/lanes/lane-db-alt.sh $PWD <the 42 suites that include supabase/tests/phase_02_slice_11_rpc_review/000-world.sqlinc, list in world-suites.txt> (resume 2026-10-11)
+[alt] waiting for lock 20:30:19
+[alt] lock acquired 20:53:14
+[alt] reset ok 20:54:46
+[alt] pg_prove exit=0  full TAP: /home/rob/.codex/worktrees/phase2-slice11/WeJammin/.lane-logs/alt-tap-203019-2501192.tap
+All tests successful.
+Files=42, Tests=1219, 195 wallclock secs ( 1.88 usr  0.38 sys +  4.20 cusr  2.01 csys =  8.47 CPU)
+Result: PASS
+exit=0

@@ -3,6 +3,7 @@
 import { ConflictDetailResourceSchema } from '@wejammin/contracts';
 import { describe, expect, it, vi } from 'vitest';
 
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import { fieldUuid } from '../cms-editorial-fields/cms-field-fixtures.test-support';
 import { createCmsEditorialConflictController } from './cms-editorial-conflict-controller';
 import {
@@ -44,7 +45,7 @@ const twoPaths: readonly ConflictPathOptions[] = [
 const init = (paths: readonly ConflictPathOptions[] = twoPaths) =>
   conflictInitFrom(
     ConflictDetailResourceSchema.parse(conflictDetailBody({ paths })),
-    editorFields(),
+    describeCmsAuthoringFields(editorFields()),
   );
 
 const resolved = (parents = [fieldUuid(0x701), fieldUuid(0x702)]) =>

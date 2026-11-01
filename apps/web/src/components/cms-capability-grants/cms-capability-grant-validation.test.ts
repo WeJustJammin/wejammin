@@ -1,3 +1,4 @@
+import * as validators from '@wejammin/contracts/cms-editorial/validators';
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -20,9 +21,13 @@ const valid = {
 
 describe('[DEC-119/120] grant form validation', () => {
   it('accepts a complete form and the window ends inclusively', () => {
-    expect(validateGrantFields(valid, WINDOW)).toStrictEqual({});
+    expect(validateGrantFields(validators, valid, WINDOW)).toStrictEqual({});
     expect(
-      validateGrantFields({ ...valid, validThrough: WINDOW.minDate }, WINDOW),
+      validateGrantFields(
+        validators,
+        { ...valid, validThrough: WINDOW.minDate },
+        WINDOW,
+      ),
     ).toStrictEqual({});
   });
 
@@ -73,6 +78,7 @@ describe('[DEC-119/120] grant form validation', () => {
     ['reason (257 chars)', { reason: 'x'.repeat(257) }, 'reason'],
   ])('flags %s', (_name, patch, field) => {
     const errors = validateGrantFields(
+      validators,
       { ...valid, ...patch },
       WINDOW,
     ) as Record<string, string>;
@@ -81,13 +87,21 @@ describe('[DEC-119/120] grant form validation', () => {
 
   it('accepts a 256-character reason', () => {
     expect(
-      validateGrantFields({ ...valid, reason: 'x'.repeat(256) }, WINDOW),
+      validateGrantFields(
+        validators,
+        { ...valid, reason: 'x'.repeat(256) },
+        WINDOW,
+      ),
     ).toStrictEqual({});
   });
 
   it('trims the person id before validating it', () => {
     expect(
-      validateGrantFields({ ...valid, subjectPersonId: ` ${UUID} ` }, WINDOW),
+      validateGrantFields(
+        validators,
+        { ...valid, subjectPersonId: ` ${UUID} ` },
+        WINDOW,
+      ),
     ).toStrictEqual({});
   });
 });
@@ -95,11 +109,16 @@ describe('[DEC-119/120] grant form validation', () => {
 describe('renew and revoke validation', () => {
   it('validates only term and reason for renewal', () => {
     expect(
-      validateRenewalFields({ validThrough: '2026-11-01', reason: '' }, WINDOW),
+      validateRenewalFields(
+        validators,
+        { validThrough: '2026-11-01', reason: '' },
+        WINDOW,
+      ),
     ).toStrictEqual({});
     expect(
       Object.keys(
         validateRenewalFields(
+          validators,
           { validThrough: '2027-02-01', reason: '' },
           WINDOW,
         ),
@@ -108,11 +127,13 @@ describe('renew and revoke validation', () => {
   });
 
   it('validates only the reason for revocation', () => {
-    expect(validateRevocationFields({ reason: 'x'.repeat(256) })).toStrictEqual(
-      {},
-    );
     expect(
-      Object.keys(validateRevocationFields({ reason: 'x'.repeat(257) })),
+      validateRevocationFields(validators, { reason: 'x'.repeat(256) }),
+    ).toStrictEqual({});
+    expect(
+      Object.keys(
+        validateRevocationFields(validators, { reason: 'x'.repeat(257) }),
+      ),
     ).toStrictEqual(['reason']);
   });
 });

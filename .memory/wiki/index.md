@@ -60,6 +60,7 @@
 - [[specs/audits/propagation-observability-cost-2026-08-30|Sentry Removal and Free-Only Operations Propagation Record]] — audit — spec-vault
 - [[specs/audits/propagation-option-a-2026-09-02|Slice 09 Option A propagation record]] — audit — spec-vault
 - [[specs/audits/propagation-owner-bootstrap-2026-09-10|Initial-owner propagation]] — audit — spec-vault
+- [[specs/audits/propagation-s11-owner-approvals-2026-10-09|DEC-162/163 propagation record —2026-10-09]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-08-30|Sentry Removal and Free-Only Operations Propagation Scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-02|Option A downstream propagation scan]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-09|AC265 scope propagation scan]] — audit — spec-vault
@@ -81,6 +82,7 @@
 - [[specs/audits/propagation-scan-2026-09-30-cms-revision-comparison|Propagation scan — complete CMS-07 revision comparison]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-09-30-cms-rich-text-ast|Propagation scan — approved CMS rich-text AST]] — audit — spec-vault
 - [[specs/audits/propagation-scan-2026-10-02|Propagation scan — Slice 09 activation amendment]] — audit — spec-vault
+- [[specs/audits/propagation-scan-2026-10-09|DEC-162/163 propagation scan —2026-10-09]] — audit — spec-vault
 - [[specs/audits/remediation-state|Pipeline remediation state]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1255|Infrastructure Verification Report]] — audit — spec-vault
 - [[specs/audits/verify-infrastructure-2026-09-04-1353|Infrastructure Verification Report]] — audit — spec-vault
@@ -1573,9 +1575,129 @@
 - [[specs/phases/phase-2-draft|Phase 2 planning draft — generation record]] — phase-plan — spec-vault
 - [[specs/phases/phase-2|Phase 2 — Identity, admin, CMS/settings]] — phase-plan — spec-vault
 - [[specs/vision|WeJammin — Vision]] — spec — spec-vault
+- [[knowledge/2026-10-10-slice-11-native-precision95-qa-lease-green-red|Slice 11 native precision95 QA lease GREEN RED]] — knowledge — 2026-10-10T17:43:01Z
+- [[knowledge/2026-10-10-slice-11-legacy-e7-fixtures-sql-green-api3-red|Slice 11 legacy E7 fixtures SQL GREEN API3 RED]] — knowledge — 2026-10-10T16:09:34.182Z
+- [[knowledge/2026-10-10-slice-11-e7-writer72-read29-green-full-gate|Slice 11 E7 writer72 read29 GREEN full gate]] — knowledge — 2026-10-10T15:18:29.752Z
+- [[knowledge/2026-10-10-slice-11-e7-inline-producer-first-gate|Slice 11 E7 inline producer first gate]] — knowledge — 2026-10-10T15:05:02.264Z
+- [[knowledge/2026-10-10-slice-11-e7-writer70-strengthened-red-fixture25-green-producer-gate|Slice 11 E7 writer70 strengthened RED fixture25 GREEN producer gate]] — knowledge — 2026-10-10T14:41:35.665Z
+- [[knowledge/2026-10-10-slice-11-e7-lookup54-writer68-red-causal-qa-gate|Slice 11 E7 lookup54 writer68 RED causal QA gate]] — knowledge — 2026-10-10T14:28:26.604Z
+- [[knowledge/2026-10-10-slice-11-typed-digest11-green-lookup32-initial-red-qa-amendment|Slice 11 typed digest11 GREEN lookup32 initial RED QA amendment]] — knowledge — 2026-10-10T14:00:20.965Z
+- [[knowledge/2026-10-10-slice-11-first-gate-fixtures-focus35-full-api15-red|Slice 11 first gate fixtures focus35 full API15 RED]] — knowledge — 2026-10-10T13:36:57.231Z
+- [[knowledge/2026-10-10-slice-11-queued-origin-fixture-green-full-api-gate-red|Slice 11 queued origin fixture GREEN full API gate RED]] — knowledge — 2026-10-10T12:29:52.595Z
+- [[knowledge/2026-10-10-slice-11-origin-producer-frozen-map-scope-correction|Slice 11 origin producer frozen-map scope correction]] — knowledge — 2026-10-10T11:58:59.639Z
+- [[knowledge/2026-10-10-slice-11-origin24-green-regression-seven-stale-queued-fixtures|Slice 11 origin24 GREEN regression seven stale queued fixtures]] — knowledge — 2026-10-10T11:56:06.011Z
+- [[knowledge/2026-10-10-slice-11-receiving24-lease70-red-frozen-and-private-origin-producer-scope|Slice 11 receiving24 lease70 RED frozen and private origin producer scope]] — knowledge — 2026-10-10T11:45:48.533Z
+- [[knowledge/2026-10-10-slice-11-receiving24-lease63-red-and-native-qa-correction-gate|Slice 11 receiving24 lease63 RED and native QA correction gate]] — knowledge — 2026-10-10T11:35:11.176Z
+- [[knowledge/2026-10-10-slice-11-cms-operational-lease-control-next-qa-contract|Slice 11 CMS operational lease control next QA contract]] — knowledge — 2026-10-10T11:10:52.931Z
+- [[knowledge/2026-10-10-slice-11-cms-origin-receiving-first-red-and-controlled-qa-amendment|Slice 11 CMS origin receiving first RED and controlled QA amendment]] — knowledge — 2026-10-10T11:10:52.930Z
+- [[knowledge/2026-10-10-slice-11-cms-immutable-origin-receiving-contract|Slice 11 CMS immutable-origin receiving contract]] — knowledge — 2026-10-10T10:43:40.217Z
+- [[knowledge/2026-10-10-slice-11-root-zod-api-test-dependency-repair|Slice 11 root Zod API test dependency repair]] — knowledge — 2026-10-10T10:43:40.216Z
+- [[knowledge/2026-10-10-slice-11-ac057-assignment-label-fixture-correction|Slice 11 AC057 assignment-label fixture correction]] — knowledge — 2026-10-10T09:45:38.279Z
+- [[knowledge/2026-10-10-slice-11-queued-continuation-tdd-contract|Slice 11 queued-continuation TDD contract]] — knowledge — 2026-10-10T08:53:14.351Z
+- [[knowledge/2026-10-10-slice-11-immutable-origin-admission-contract-and-native-qa-gate|Slice 11 immutable origin-admission contract and native QA gate]] — knowledge — 2026-10-10T07:04:26.677Z
+- [[knowledge/2026-10-10-slice-11-genuine-claimed-preparation-four-mutants-caught-restored78-and1462-green|Slice 11 genuine claimed preparation four mutants caught restored78 and1462 GREEN]] — knowledge — 2026-10-10T06:21:09.941Z
+- [[knowledge/2026-10-10-slice-11-hardened-genuine-claimed-preparation78-green-and-mutation-gate|Slice 11 hardened genuine claimed preparation78 GREEN and mutation gate]] — knowledge — 2026-10-10T05:55:43.850Z
+- [[knowledge/2026-10-10-slice-11-genuine-claimed-preparation-initial2-green-and-isolated-qa-hardening-gate|Slice 11 genuine claimed preparation initial2 GREEN and isolated QA hardening gate]] — knowledge — 2026-10-10T05:47:55.352Z
+- [[knowledge/2026-10-10-slice-11-private-genuine-seal-report-state-precision|Slice 11 private genuine seal report state precision]] — event — 2026-10-10T05:29:00.399Z
+- [[knowledge/2026-10-10-slice-11-private-genuine-claimed-preparation-qa-gate|Slice 11 private genuine claimed preparation QA gate]] — event — 2026-10-10T05:24:50.157Z
+- [[knowledge/2026-10-10-slice-11-claimed-entry-mutations14-caught-restored1462-green|Slice 11 claimed entry mutations14 caught restored1462 GREEN]] — event — 2026-10-10T05:18:48.366Z
+- [[knowledge/2026-10-10-2026-10-10-slice-11-claimed-entry-green1462-mechanical-extraction|2026-10-10 Slice 11 claimed entry GREEN1462 mechanical extraction]] — event — 2026-10-10T05:04:36.696Z
+- [[knowledge/2026-10-10-slice-11-claimed-entry-amended-import-red-legacy6-green-producer-gate|Slice 11 claimed entry amended import RED legacy6 GREEN producer gate]] — knowledge — 2026-10-10T04:51:54.861Z
+- [[knowledge/2026-10-10-slice-11-claimed-entry-initial-import-red-cap-legacy-qa-gate|Slice 11 claimed entry initial import RED cap legacy QA gate]] — knowledge — 2026-10-10T04:40:38.567Z
+- [[knowledge/2026-10-10-slice-11-unwired-claimed-entry-contract-qa-gate|Slice 11 unwired claimed entry contract QA gate]] — knowledge — 2026-10-10T04:31:05.682Z
+- [[knowledge/2026-10-10-slice-11-claimed-pure-mutations27-caught-restored1325-green|Slice 11 claimed pure mutations27 caught restored1325 GREEN]] — knowledge — 2026-10-10T04:14:21.125Z
+- [[knowledge/2026-10-10-slice-11-claimed-pure209-regression1325-green-mutation-gate|Slice 11 claimed pure209 regression1325 GREEN mutation gate]] — knowledge — 2026-10-10T03:59:11.775Z
+- [[knowledge/2026-10-10-slice-11-claimed-pure-first-source-input-oracle-red|Slice 11 claimed pure first source input oracle RED]] — knowledge — 2026-10-10T03:53:17.333Z
+- [[knowledge/2026-10-10-slice-11-claimed-input-binding-amended-import-red-pure-module-gate|Slice 11 claimed input binding amended import RED pure module gate]] — knowledge — 2026-10-10T03:46:05.962Z
+- [[knowledge/2026-10-10-slice-11-claimed-input-binding-initial-import-red-qa-gaps|Slice 11 claimed input binding initial import RED QA gaps]] — knowledge — 2026-10-10T03:41:09.983Z
+- [[knowledge/2026-10-10-slice-11-edge-samehash-mutations3-caught-private-binding-tdd-scope|Slice 11 edge samehash mutations3 caught private binding TDD scope]] — knowledge — 2026-10-10T03:28:12.378Z
+- [[knowledge/2026-10-10-slice-11-edge-samehash-api76-green-mutation3-gate|Slice 11 edge samehash API76 green mutation3 gate]] — knowledge — 2026-10-10T03:09:16.751Z
+- [[knowledge/2026-10-10-slice-11-sql-mutations-six-caught-one-masked-edge-qa-scope|Slice 11 SQL mutations six caught one masked edge QA scope]] — knowledge — 2026-10-10T02:51:47.475Z
+- [[knowledge/2026-10-10-slice-11-statement-clock-api69-green-mutation-gate|Slice 11 statement clock API69 GREEN mutation gate]] — knowledge — 2026-10-10T02:17:50.808Z
+- [[knowledge/2026-10-10-slice-11-claimed-sql-api69-green-one-clock-lint-gate|Slice 11 claimed SQL API69 GREEN one clock lint gate]] — knowledge — 2026-10-10T02:02:37.236Z
+- [[knowledge/2026-10-10-slice-11-api69-graph-reached-resolver-red-sql-scope|Slice 11 API69 graph reached resolver RED SQL scope]] — knowledge — 2026-10-10T01:41:52.077Z
+- [[knowledge/2026-10-10-slice-11-graph-fixture-rpc-context-first-gate-correction|Slice 11 graph fixture RPC context first gate correction]] — knowledge — 2026-10-10T01:31:40.413Z
+- [[knowledge/2026-10-10-slice-11-api69-twenty-resolver-red-one-graph-fixture-gap|Slice 11 API69 twenty resolver RED one graph fixture gap]] — knowledge — 2026-10-10T01:26:31.567Z
+- [[knowledge/2026-10-10-slice-11-provisional-sourcecount-wording-follows-dec108|Slice 11 provisional sourceCount wording follows DEC108]] — knowledge — 2026-10-10T01:14:42.434Z
+- [[knowledge/2026-10-10-slice-11-api46-red-final-restored1116-checkpoint|Slice 11 API46 RED final restored1116 checkpoint]] — event — 2026-10-10T01:08:01.788Z
+- [[knowledge/2026-10-10-slice-11-genuine-api46-red-observer206-mutation-closed|Slice 11 genuine API46 RED observer206 mutation closed]] — knowledge — 2026-10-10T01:06:10.221Z
+- [[knowledge/2026-10-10-slice-11-genuine-api46-cap-gate-observer193-member-count-gap|Slice 11 genuine API46 cap gate observer193 member count gap]] — knowledge — 2026-10-10T00:51:18.192Z
+- [[knowledge/2026-10-10-slice-11-parser31-mutations910-green-genuine-rpc-qa-scope|Slice 11 parser31 mutations910 GREEN genuine RPC QA scope]] — knowledge — 2026-10-10T00:38:26.250Z
+- [[knowledge/2026-10-10-slice-11-private-parser419-green-output-freeze-mutant-gap|Slice 11 private parser419 GREEN output freeze mutant gap]] — knowledge — 2026-10-10T00:19:48.422Z
+- [[knowledge/2026-10-10-slice-11-uuidv7-qa-green-schema419-red-private-repair|Slice 11 UUIDv7 QA GREEN schema419 RED private repair]] — knowledge — 2026-10-10T00:11:49.480Z
+- [[knowledge/2026-10-10-slice-11-schema418-red-causes-and-uuidv7-amendment-gate|Slice 11 schema418 RED causes and UUIDv7 amendment gate]] — knowledge — 2026-10-10T00:09:04.180Z
+- [[knowledge/2026-10-10-slice-11-private-claim-schema418-red-input-freezing|Slice 11 private claim schema418 RED input freezing]] — knowledge — 2026-10-10T00:05:47.255Z
+- [[knowledge/2026-10-09-slice-11-private-claim-contracts-frozen-and-disjoint-schema-qa-scope|Slice 11 private claim contracts frozen and disjoint schema QA scope]] — knowledge — 2026-10-09T23:54:30.574Z
+- [[knowledge/2026-10-09-slice-11-claim-regression491-green-and-private-resolver-contract-scope|Slice 11 claim regression491 GREEN and private resolver contract scope]] — knowledge — 2026-10-09T23:45:14.464Z
+- [[knowledge/2026-10-09-slice-11-claim-source-green-and-mutation-proof-with-legacy-fixture-gate|Slice 11 claim source GREEN and mutation proof with legacy fixture gate]] — knowledge — 2026-10-09T23:39:47.437Z
+- [[knowledge/2026-10-09-slice-11-corrected-claim-qa63-red-and-three-source-green-scopes|Slice 11 corrected claim QA63 RED and three-source GREEN scopes]] — knowledge — 2026-10-09T23:28:59.142Z
+- [[knowledge/2026-10-09-slice-11-claim-qa56-red-and-adapter-amendment-gate|Slice 11 claim QA56 RED and adapter amendment gate]] — knowledge — 2026-10-09T23:23:38.342Z
+- [[knowledge/2026-10-09-slice-11-dispatcher-receiver-mutation-proof-and-claim-seam-qa-scope|Slice 11 dispatcher receiver mutation proof and claim seam QA scope]] — knowledge — 2026-10-09T23:13:12.298Z
+- [[knowledge/2026-10-09-slice-11-production-foundation-green-and-named-purpose-mutation-proof|Slice 11 production foundation GREEN and named purpose mutation proof]] — knowledge — 2026-10-09T23:04:54.991Z
+- [[knowledge/2026-10-09-slice-11-production-qa71-red-and-authority-limits|Slice 11 production QA71 RED and authority limits]] — knowledge — 2026-10-09T22:56:01.804Z
+- [[knowledge/2026-10-09-slice-11-empty-activation-compatibility-mutation-proof|Slice 11 empty activation compatibility mutation proof]] — knowledge — 2026-10-09T22:42:56.293Z
+- [[knowledge/2026-10-09-authorized-earned-codex-reset-succeeded|Authorized earned Codex reset succeeded]] — knowledge — 2026-10-09T22:38:25.259Z
+- [[knowledge/2026-10-09-slice-11-preparation-core-green-and-empty-activation-witness-gap|Slice 11 preparation core GREEN and empty activation witness gap]] — knowledge — 2026-10-09T22:36:53.463Z
+- [[knowledge/2026-10-09-slice-11-preparation-guard49-red-and-earned-reset-permission|Slice 11 preparation guard49 RED and earned reset permission]] — knowledge — 2026-10-09T22:27:37.304Z
+- [[knowledge/2026-10-09-slice-11-dec108-source-precedence-correction|Slice 11 DEC108 source precedence correction]] — knowledge — 2026-10-09T22:01:51.050Z
+- [[knowledge/2026-10-09-slice-11-lease-green-and-dry-run-boundary-red|Slice 11 lease GREEN and dry run boundary RED]] — knowledge — 2026-10-09T21:36:55.473Z
+- [[knowledge/2026-10-09-slice-11-first-empty-bounded-green-and-next-lease-red|Slice 11 first empty bounded GREEN and next lease RED]] — event — 2026-10-09T20:55:58.478Z
+- [[knowledge/2026-10-09-slice-11-first-empty-parent-red-and-native-green-claim|Slice 11 first empty parent RED and native GREEN claim]] — event — 2026-10-09T20:33:24.778Z
+- [[knowledge/2026-10-09-slice-11-approved-dec162-163-cascade-and-native-red-claim|Slice 11 approved DEC162/163 cascade and native RED claim]] — event — 2026-10-09T20:17:27.103Z
+- [[knowledge/2026-10-09-slice-11-confirmed-first-plan-parser-red|Slice 11 confirmed first plan parser RED]] — event — 2026-10-09T18:50:17.179Z
+- [[knowledge/2026-10-09-slice-11-first-baseline-representation-question|Slice 11 first baseline representation question]] — event — 2026-10-09T18:40:56.046Z
+- [[knowledge/2026-10-09-slice-11-migration-diagnostic-exact-scope|Slice 11 migration diagnostic exact scope]] — event — 2026-10-09T18:37:58.832Z
+- [[knowledge/2026-10-09-slice-11-native-header-green-and-lifecycle-red|Slice 11 native header GREEN and lifecycle RED]] — event — 2026-10-09T18:33:13.002Z
+- [[knowledge/2026-10-09-slice-11-response-header-fresh-red|Slice 11 response header fresh RED]] — event — 2026-10-09T18:20:24.686Z
+- [[knowledge/2026-10-09-slice-11-native-api-preparation-checkpoint|Slice 11 native API preparation checkpoint]] — event — 2026-10-09T18:11:01.317Z
+- [[knowledge/2026-10-09-slice-11-native-execution-authorized|Slice 11 native execution authorized]] — event — 2026-10-09T17:24:50.549Z
+- [[knowledge/2026-10-09-slice-11-required-execution-provider-unavailable|Slice 11 required execution provider unavailable]] — event — 2026-10-09T12:25:16.715Z
+- [[knowledge/2026-10-09-slice-11-parent-recovery-and-diagnostic-controls|Slice 11 parent recovery and diagnostic controls]] — event — 2026-10-09T12:03:46.674Z
+- [[knowledge/2026-10-09-slice-11-validation-quarantine-and-corrective-review|Slice 11 validation quarantine and corrective review]] — event — 2026-10-09T10:41:34.531Z
+- [[knowledge/2026-10-09-slice-11-repository-only-api-foundation-independently-verified|Slice 11 repository-only API foundation independently verified]] — event — 2026-10-09T09:22:13.376Z
+- [[knowledge/2026-10-09-slice-11-submit-review-replay-repair-independently-verified|Slice 11 submit-review replay repair independently verified]] — event — 2026-10-09T07:02:08.202Z
+- [[knowledge/2026-10-09-slice-11-qualified-e2-fixture-repair-independently-verified|Slice 11 qualified E2 fixture repair independently verified]] — event — 2026-10-09T06:22:14.523Z
 
 ## Structured Memory
 
+- pattern: PAT-029: DOM test flush helpers must await lazy imports; probe with a deliberately slow loader (2026-10-12) — 2026-10-13T03:00:38.061Z
+- pattern: PAT-028: Closure guards must follow the ledger, never demand a claim it does not support (2026-10-12) — 2026-10-12T09:56:00.747Z
+- decision: DEC-177: P2-S11-AC-079 lists the executor cancelled (entry_unavailable) outcome (2026-10-12) — 2026-10-12T05:26:46.711Z
+- decision: DEC-176: Patterns apply to entry revisions only; template-draft wording is reworded (2026-10-12) — 2026-10-12T04:52:06.387Z
+- decision: DEC-175: A pattern placement stores one composition row per root node of the pinned pattern (2026-10-12) — 2026-10-12T04:49:08.470Z
+- decision: DEC-174: Slice 11 relationship RLS predicates bind every role except the CMS definer (2026-10-12) — 2026-10-12T03:27:19.263Z
+- decision: DEC-173: The schedule executor cancels a claimed schedule whose entry left active (supersedes DEC-158(d) for that case) (2026-10-12) — 2026-10-12T03:27:19.262Z
+- decision: DEC-172: Owner ratifies the Slice 11 criteria wording batch (2026-10-11) — 2026-10-11T21:36:40.758Z
+- decision: DEC-171: The CMS-03B-07 schedule identity key includes the private sub-microsecond remainder (2026-10-11) — 2026-10-11T21:36:40.756Z
+- decision: DEC-170: A frozen locale source is current only while its variant still serves the frozen source revision and hash (2026-10-11) — 2026-10-11T21:36:40.754Z
+- decision: DEC-147: Slice 10 forward-scope criteria are proven with the Slice 11 runtime; only defective texts are reworded (2026-10-11) — 2026-10-11T21:36:40.742Z
+- pattern: PAT-027: Confirm a file is absent before creating it (2026-10-10) — 2026-10-11T01:23:47.712Z
+- pattern: PAT-026: Run canonical gates only on a quiet host (2026-10-10) — 2026-10-11T01:23:47.711Z
+- pattern: PAT-025: Verify forward migrations against a populated database, not only fresh resets (2026-10-10) — 2026-10-11T01:23:47.710Z
+- decision: DEC-169: Slice 11 publication refusal semantics after the independent SQL review (2026-10-10) — 2026-10-11T01:23:47.709Z
+- decision: DEC-168: State-filtered revision-history cursors are sealed with encrypt-then-MAC (2026-10-10) — 2026-10-11T01:23:47.708Z
+- decision: DEC-167: projectionState is read from BE04c projection_consumer_state built in Slice 11 (supersedes DEC-158(e)) (2026-10-10) — 2026-10-11T01:23:47.707Z
+- decision: DEC-166: Dependency recheck job is a typed platform-queue message, not a jobs-table row (2026-10-10) — 2026-10-11T01:23:47.705Z
+- decision: DEC-165: Checker render plan places fields as the leading root region until a field-to-slot binding exists (2026-10-10) — 2026-10-11T01:23:47.703Z
+- decision: DEC-164: FE03 schedule precondition excludes the revision author only for publish (2026-10-10) — 2026-10-11T01:23:47.699Z
+- decision: DEC-163: Missing legacy CMS settings fail closed until authorized save — 2026-10-09T19:57:15.438Z
+- decision: DEC-162: Narrow first-empty schema baseline representation — 2026-10-09T19:57:15.435Z
+- pattern: PAT-024: pgTAP green does not prove an RPC works through PostgREST (pg-safeupdate) (2026-10-08) — 2026-10-09T01:45:20.772Z
+- decision: DEC-161: Revoking a counted approver's assignment on an open review invalidates the review with reviewer_authority_changed (2026-10-08) — 2026-10-08T18:33:30.609Z
+- decision: DEC-160: provider_unavailable is the registered unavailable reason of every non-worker preflight category (2026-10-08) — 2026-10-08T18:30:48.668Z
+- decision: DEC-159: Slice 11 Worker-SQL refusal conventions, null accessibility evidence, the quality-gate input load, the audit evidence summary and snake_case metric labels (2026-10-08) — 2026-10-08T18:27:32.889Z
+- decision: DEC-153 (pin recorded): IANA tz release 2026e is the Slice 11 CMS_TZDB_VERSION; snapshot SHA-256 862c1656e10ab81c18359393473448dcd2540d4254fa5b2c432a2989cac81c3b (2026-10-08) — 2026-10-08T13:01:12.837Z
+- decision: DEC-156: Slice 11 RPCs follow the Slice 10 single-JSON definer convention; internal CMS-03B-19/20 are granted to service_role and principal-bound at the Worker module boundary (2026-10-08) — 2026-10-08T12:28:48.751Z
+- decision: DEC-157: The BE03b global lock order governs Slice 11 decision, execution and assignment commands (2026-10-08) — 2026-10-08T12:28:48.751Z
+- decision: DEC-158: Slice 11 spec-text reconciliations (decision reason length unit, assignment reason NFC, evidence verification, execute outcomes, projection state) (2026-10-08) — 2026-10-08T12:28:48.751Z
+- decision: DEC-154: DEC-149 additive rule extends to every Slice 11 cascade obligation no criterion owned; Slice 11 floor 122 (2026-10-08) — 2026-10-08T10:54:13.221Z
+- decision: DEC-155: AC035, AC038 and AC041 wording defects stay unapplied and join the owner DEC-147 wording batch (2026-10-08) — 2026-10-08T10:54:13.221Z
+- decision: DEC-153: The pinned IANA tz release is an implementation choice; the Slice 11 contract lane pins the newest stable release and records it here (2026-10-08) — 2026-10-08T10:54:13.220Z
+- pattern: PAT-023: Never assert freshness with file modification times; CI checkouts reset them (2026-10-08) — 2026-10-08T10:35:35.642Z
+- decision: DEC-150: Accessibility preflight evidence uses the BE05c run-state vocabulary healthy|blocked|failed; BE03b amended (2026-10-08) — 2026-10-08T10:29:38.940Z
+- decision: DEC-151: FE03 already carries explicit CMS-03B-15..18 route and component rows; Slice 11 criteria bind to them (2026-10-08) — 2026-10-08T10:29:38.940Z
+- decision: DEC-152: FE03 locale runtime follows DEC-114 and DEC-138; no FE03 deferral text exists to amend (2026-10-08) — 2026-10-08T10:29:38.940Z
+- decision: DEC-149: Slice 11 depth-floor cascade for CMS-03B-15..20 is additive, six obligations per operation (2026-10-08) — 2026-10-08T10:29:38.939Z
 - pattern: PAT-022: Evidence runs must keep Playwright out of shared report directories; self-referential receipt guards need a two-step refresh (2026-10-08) — 2026-10-08T09:22:52.150Z
 - decision: DEC-148: S11/S12 plan rows name the operations the Slice 11/12 spec cascade added; full depth-floor cascade at slice start (2026-10-08) — 2026-10-08T03:21:16.062Z
 - pattern: PAT-021: Route audits and reviews to Codex, not Opus subagents (2026-10-07) — 2026-10-07T03:46:26.512Z

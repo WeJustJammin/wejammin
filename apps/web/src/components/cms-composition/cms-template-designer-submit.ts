@@ -1,11 +1,22 @@
-import {
-  ApiErrorSchema,
-  TemplateVersionRequestSchema,
-  TemplateVersionResourceSchema,
-  type ApiError,
-  type TemplateVersionRequest,
-  type TemplateVersionResource,
+import type {
+  ApiError,
+  TemplateVersionRequest,
+  TemplateVersionResource,
 } from '@wejammin/contracts';
+
+import type { CmsValidators } from '../../lib/cms-contract-validators';
+
+/**
+ * The schemas the transport uses, from the lazily loaded validators. The
+ * designer loads them before it builds the request, so a send never waits on
+ * (or fails to fetch) a schema chunk.
+ */
+export type CmsTemplateSubmitValidators = Pick<
+  CmsValidators,
+  | 'ApiErrorSchema'
+  | 'TemplateVersionRequestSchema'
+  | 'TemplateVersionResourceSchema'
+>;
 
 export type CmsTemplateSubmitResult =
   | { readonly kind: 'created'; readonly resource: TemplateVersionResource }
@@ -37,6 +48,7 @@ const ERROR_CODES: Readonly<Record<number, string>> = {
 };
 
 const readExpectedApiError = async (
+  validators: CmsTemplateSubmitValidators,
   response: Response,
 ): Promise<ApiError | null> => {
   let candidate: unknown;
@@ -45,7 +57,7 @@ const readExpectedApiError = async (
   } catch {
     return null;
   }
-  const parsed = ApiErrorSchema.safeParse(candidate);
+  const parsed = validators.ApiErrorSchema.safeParse(candidate);
   return parsed.success && parsed.data.code === ERROR_CODES[response.status]
     ? parsed.data
     : null;
@@ -53,13 +65,14 @@ const readExpectedApiError = async (
 
 /** The browser never sends authority claims; the protected Worker owns them. */
 const submitCmsTemplateVersion = async (
+  validators: CmsTemplateSubmitValidators,
   draft: TemplateVersionRequest,
   csrfToken: string,
   idempotencyKey: string,
   mode: 'create' | 'successor',
   fetcher: typeof fetch,
 ): Promise<CmsTemplateSubmitResult> => {
-  const checked = TemplateVersionRequestSchema.safeParse(draft);
+  const checked = validators.TemplateVersionRequestSchema.safeParse(draft);
   if (
     !checked.success ||
     (mode === 'create') !== (checked.data.expectedVersion === null)
@@ -86,7 +99,7 @@ const submitCmsTemplateVersion = async (
     return { kind: 'uncertain' };
   }
   if (response.status === 409 || REJECTED_STATUSES.has(response.status)) {
-    const error = await readExpectedApiError(response);
+    const error = await readExpectedApiError(validators, response);
     if (error === null) return { kind: 'uncertain' };
     if (response.status === 409) return { kind: 'conflict', status: 409 };
     if (response.status === 429) {
@@ -113,7 +126,8 @@ const submitCmsTemplateVersion = async (
   } catch {
     return { kind: 'uncertain' };
   }
-  const resource = TemplateVersionResourceSchema.safeParse(candidate);
+  const resource =
+    validators.TemplateVersionResourceSchema.safeParse(candidate);
   if (
     !resource.success ||
     resource.data.state !== 'draft' ||
@@ -130,20 +144,30 @@ const submitCmsTemplateVersion = async (
 };
 
 export const submitCmsTemplateDraft = (
-  draft: TemplateVersionRequest,
-  csrfToken: string,
-  idempotencyKey: string,
-  fetcher: typeof fetch = fetch,
-): Promise<CmsTemplateSubmitResult> =>
-  submitCmsTemplateVersion(draft, csrfToken, idempotencyKey, 'create', fetcher);
-
-export const submitCmsTemplateSuccessorDraft = (
+  validators: CmsTemplateSubmitValidators,
   draft: TemplateVersionRequest,
   csrfToken: string,
   idempotencyKey: string,
   fetcher: typeof fetch = fetch,
 ): Promise<CmsTemplateSubmitResult> =>
   submitCmsTemplateVersion(
+    validators,
+    draft,
+    csrfToken,
+    idempotencyKey,
+    'create',
+    fetcher,
+  );
+
+export const submitCmsTemplateSuccessorDraft = (
+  validators: CmsTemplateSubmitValidators,
+  draft: TemplateVersionRequest,
+  csrfToken: string,
+  idempotencyKey: string,
+  fetcher: typeof fetch = fetch,
+): Promise<CmsTemplateSubmitResult> =>
+  submitCmsTemplateVersion(
+    validators,
     draft,
     csrfToken,
     idempotencyKey,

@@ -1,0 +1,80 @@
+{
+  "schemaVersion": 1,
+  "scope": "Local AC057 assignment-label fixture chronology only; no assertion or production-policy changes",
+  "baselineCheckpoint": "7faa253d670bd9a0b5f237e414da9dfdc8a4cfa4",
+  "equivalence": {
+    "path": "supabase/tests/phase_02_slice_11_rpc_reads_review.sql",
+    "baselineSha": "3488f4947253f860031527eb9111bf0976efa3bb421218880c78a6d5aec97e5d",
+    "currentSha": "eb6aa49950a29dfe740f8b17f373a2c4d9adf800d0aa33ee99fc64ef7ebd992c",
+    "reverseWholeFileExact": true,
+    "newBlockCount": 1,
+    "physicalLines": 260,
+    "all34Exact": true,
+    "dirty": ["supabase/tests/phase_02_slice_11_rpc_reads_review.sql"]
+  },
+  "focusedControls": [
+    {
+      "control": 1,
+      "exit": 0,
+      "signal": null,
+      "activeCI": "activeCI=0",
+      "preResetExit": "0",
+      "testExit": "0",
+      "postResetExit": "0",
+      "summary": "Files=1, Tests=32,  0 wallclock secs ( 0.02 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.03 CPU)",
+      "result": "Result: PASS",
+      "failed": [],
+      "all35Exact": true,
+      "log": ".lane-logs/parent-s11-ac057-fixture-control-1-20261010.log"
+    },
+    {
+      "control": 2,
+      "exit": 0,
+      "signal": null,
+      "activeCI": "activeCI=0",
+      "preResetExit": "0",
+      "testExit": "0",
+      "postResetExit": "0",
+      "summary": "Files=1, Tests=32,  1 wallclock secs ( 0.02 usr  0.01 sys +  0.01 cusr  0.00 csys =  0.04 CPU)",
+      "result": "Result: PASS",
+      "failed": [],
+      "all35Exact": true,
+      "log": ".lane-logs/parent-s11-ac057-fixture-control-2-20261010.log"
+    }
+  ],
+  "fullGate": {
+    "log": ".lane-logs/parent-s11-queued-ac057-db-verify-validate-v2-20261010.log",
+    "reset": 0,
+    "lint": 0,
+    "sql": {
+      "files": 333,
+      "assertions": 12764,
+      "result": "PASS",
+      "wallclockSeconds": 108
+    },
+    "api": {
+      "files": {
+        "failed": 30,
+        "passed": 34,
+        "total": 64
+      },
+      "tests": {
+        "failed": 10,
+        "passed": 608,
+        "skipped": 172,
+        "total": 790
+      },
+      "durationSeconds": 926.04
+    },
+    "dbVerifyExit": 1,
+    "postResetExit": 0,
+    "races": "UNRUN",
+    "dbTypesChain": "UNRUN",
+    "validate": "UNRUN",
+    "transportTimeout": "MCP call timed out after300s; surviving owned host child recovered to final log; not a test verdict",
+    "childrenDrained": true,
+    "all35Exact": true
+  },
+  "independentReview": "Source equivalence and two focused logs: no bounded finding. Independent API source/log review confirms 21 shared lifecycle setup failures, six undeclared-zod loader failures, seven setup-blocked lifecycle cases, one workflow-settings insertion and two pagination assumptions; status-only RPC diagnostics do not prove precise SQL refusal reasons.",
+  "acceptance": "0/122; SQL/fixture proof does not clear public lifecycle, claimed-stage authority, full gates, or production"
+}

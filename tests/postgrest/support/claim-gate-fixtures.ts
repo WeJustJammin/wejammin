@@ -2,6 +2,10 @@
 import { ADMIN_FIXTURES } from './claim-gate-fixtures-admin';
 import { CMS_ACTOR_FIXTURES } from './claim-gate-fixtures-cms';
 import {
+  CMS_EDITORIAL_FIXTURES,
+  SERVICE_PRINCIPAL_FIXTURES,
+} from './claim-gate-fixtures-editorial';
+import {
   IDENTITY_FIXTURES,
   PUBLIC_FIXTURES,
 } from './claim-gate-fixtures-identity';
@@ -20,12 +24,14 @@ export type { GateFixture, Outcome } from './claim-gate-fixtures-types';
 const tables: readonly FixtureTable[] = [
   ADMIN_FIXTURES,
   CMS_ACTOR_FIXTURES,
+  CMS_EDITORIAL_FIXTURES,
   IDENTITY_FIXTURES,
   PUBLIC_FIXTURES,
   PROFILE_CLAIM_FIXTURES,
   PROFILE_SUBJECT_FIXTURES,
   WORKER_FIXTURES,
   RELEASE_PRINCIPAL_FIXTURES,
+  SERVICE_PRINCIPAL_FIXTURES,
 ];
 
 export const CLAIM_GATE_FIXTURES: FixtureTable = Object.fromEntries(

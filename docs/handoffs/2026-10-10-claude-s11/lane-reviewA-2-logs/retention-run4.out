@@ -1,0 +1,546 @@
+# cd worktree && flock -s /tmp/wejammin-quiet.lock pnpm exec vitest run apps/web/src/components/cms-editorial-workflow --reporter=verbose   (resume 2026-10-11, HEAD 0fd4bf31)
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > lazy Time authority > does not load the tz snapshot until the form is opened, then loads it once 593ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > lazy Time authority > says so and blocks sending when the snapshot cannot be loaded 88ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > lazy Time authority > suggests the browser zone when the snapshot knows it 365ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > resolution shown beside the inputs > shows the resolved instant and offset in a polite region 633ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > resolution shown beside the inputs > offers the two alternatives of a nonexistent time and applies the chosen one 952ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > resolution shown beside the inputs > offers earlier and later for an ambiguous time with both instants 1068ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > a submittable draft: panel, 17 checks, submit and preview forms 2381ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > resolution shown beside the inputs > refuses an unknown zone and a time outside the window with the stated bounds 620ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > schedule (CMS-03B-07) > refuses incomplete input without sending and focuses the summary 558ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > checks with a failed, an unavailable and an unbuilt-provider result 1336ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > an approved revision with schedules, publications and every form closed 885ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > schedule (CMS-03B-07) > sends the resolved request and states Scheduled, not published 561ms
+stderr | apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > the schedule form opened: local errors, an ambiguous time and its earlier/later choice
+An update to CmsEditorialScheduleForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > a refused submit: the alert with the failed-checks list 1236ms
+stderr | apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > the schedule form opened: local errors, an ambiguous time and its earlier/later choice
+An update to CmsEditorialScheduleForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > schedule (CMS-03B-07) > sends the chosen earlier/later disambiguation for an ambiguous time 1101ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > schedule (CMS-03B-07) > refuses to send a nonexistent time or one outside the window 801ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > schedule (CMS-03B-07) > names the server time refusals at the field 565ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > schedule (CMS-03B-07) > refetches for a changed approved candidate and renders the separation gate for a second-person rule 917ms
+stderr | apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > schedule (CMS-03B-07) > stores the scoped draft for step-up, restores it open and re-confirms under the original key
+An update to CmsEditorialScheduleForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > schedule (CMS-03B-07) > stores the scoped draft for step-up, restores it open and re-confirms under the original key 763ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.test.tsx > schedule (CMS-03B-07) > refuses to send while the read behind it is not verified 379ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > the schedule form opened: local errors, an ambiguous time and its earlier/later choice 8216ms
+stderr | apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > the publish confirmation opened, and a preview token disclosed
+An update to CmsEditorialScheduleForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > the publish confirmation opened, and a preview token disclosed
+An update to CmsEditorialScheduleForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > the publish confirmation opened, and a preview token disclosed
+An update to CmsEditorialScheduleForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+stderr | apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > the publish confirmation opened, and a preview token disclosed
+An update to CmsEditorialPublishConfirmation inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 workflow surfaces: axe > the publish confirmation opened, and a preview token disclosed 3537ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 review surfaces: axe > the review detail for an assignee: evidence, decisions and the decision form 501ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 review surfaces: axe > a refused decision: local errors, then the capability gate 1252ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx > CMS-03B-07 schedule form keeps its entries > [P2-S11-AC-040] keeps the action, local time, zone and audience after a definite 409 refusal and re-sends them 2318ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 review surfaces: axe > the owner view: assignment list, assign and revoke controls 1179ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 reviewer queue: axe > a populated page with a continuation 632ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx > CMS-03B-07 schedule form keeps its entries > [P2-S11-AC-040] keeps every entry after a 422 that names a field, and the named field is marked 1305ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-axe.test.tsx > Slice 11 reviewer queue: axe > no records and filter-miss 617ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx > CMS-03B-07 schedule form keeps its entries > [P2-S11-AC-040] keeps every entry through an unknown outcome and re-sends them under the same key 1457ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx > CMS-03B-09 publish confirmation keeps its entry > [P2-S11-AC-043] keeps the audience after a definite 409 refusal and re-sends it 294ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention-time.test.tsx > CMS-03B-09 publish confirmation keeps its entry > [P2-S11-AC-043] keeps the audience through an unknown outcome and re-sends it under the same key 207ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > schedule actions follow the server-proven publish permission > [P2-S11-AC-040] offers all four actions and defaults to Publish when the caller may publish 467ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > schedule actions follow the server-proven publish permission > [P2-S11-AC-040] withholds Publish from an author, keeps the other three and defaults to the first of them 105ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Submit for review' > [P2-S11-AC-037] Submit for review keeps focus on the activated control while its command is in flight 442ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Submit for review' > [P2-S11-AC-037] Submit for review keeps focus through an unknown outcome and a reconciling read that is not verified 135ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Submit for review' > [P2-S11-AC-037] Submit for review moves focus only to its named result heading once the canonical read has landed 298ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Record your decision' > [P2-S11-AC-037] Record your decision keeps focus on the activated control while its command is in flight 474ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Record your decision' > [P2-S11-AC-037] Record your decision keeps focus through an unknown outcome and a reconciling read that is not verified 264ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > schedule actions follow the server-proven publish permission > [P2-S11-AC-040] schedules the default non-publish action for an author without touching the select 2206ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Record your decision' > [P2-S11-AC-037] Record your decision moves focus only to its named result heading once the canonical read has landed 213ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Schedule publication' > [P2-S11-AC-040] Schedule publication keeps focus on the activated control while its command is in flight 1572ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > schedule actions follow the server-proven publish permission > [P2-S11-AC-040] schedules a chosen non-publish action for an author 1672ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > schedule actions follow the server-proven publish permission > [P2-S11-AC-040] leaves a Publish choice behind when a refetch withdraws the permission 1413ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Schedule publication' > [P2-S11-AC-040] Schedule publication keeps focus through an unknown outcome and a reconciling read that is not verified 1632ms
+stderr | apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > schedule actions follow the server-proven publish permission > [P2-S11-AC-040] does not restore a stored Publish choice for a caller who may not publish
+An update to CmsEditorialScheduleForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Schedule publication' > [P2-S11-AC-040] Schedule publication moves focus only to its named result heading once the canonical read has landed 1317ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Create a preview' > [P2-S11-AC-043] Create a preview keeps focus on the activated control while its command is in flight 116ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Create a preview' > [P2-S11-AC-043] Create a preview keeps focus through an unknown outcome and a reconciling read that is not verified 117ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Create a preview' > [P2-S11-AC-043] Create a preview moves focus only to its named result heading once the canonical read has landed 177ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Confirm publication' > [P2-S11-AC-043] Confirm publication keeps focus on the activated control while its command is in flight 148ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Confirm publication' > [P2-S11-AC-043] Confirm publication keeps focus through an unknown outcome and a reconciling read that is not verified 197ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Confirm publication' > [P2-S11-AC-043] Confirm publication moves focus only to its named result heading once the canonical read has landed 93ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Assign a reviewer' > [P2-S11-AC-072] Assign a reviewer keeps focus on the activated control while its command is in flight 99ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Assign a reviewer' > [P2-S11-AC-072] Assign a reviewer keeps focus through an unknown outcome and a reconciling read that is not verified 190ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Assign a reviewer' > [P2-S11-AC-072] Assign a reviewer moves focus only to its named result heading once the canonical read has landed 103ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Revoke an assignment' > [P2-S11-AC-072] Revoke an assignment keeps focus on the activated control while its command is in flight 41ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Revoke an assignment' > [P2-S11-AC-072] Revoke an assignment keeps focus through an unknown outcome and a reconciling read that is not verified 66ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-focus-forms.test.tsx > 'Revoke an assignment' > [P2-S11-AC-072] Revoke an assignment moves focus only to its named result heading once the canonical read has landed 55ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > schedule actions follow the server-proven publish permission > [P2-S11-AC-040] does not restore a stored Publish choice for a caller who may not publish 2404ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > the workflow island passes the proven permission to the schedule form > [P2-S11-AC-040] offers Publish when permittedNextActions includes publish 397ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > the workflow island passes the proven permission to the schedule form > [P2-S11-AC-040] keeps the schedule form for an author whose permittedNextActions has schedule but not publish 105ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.choices.test.tsx > three-segment IANA zones > [P2-S11-AC-106] resolves, shows and sends America/Argentina/Buenos_Aires 1049ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > reviewer options > loads the owner-only reviewers after mount and offers each as an option 736ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > reviewer options > says so when the reviewer list cannot be loaded or is empty 245ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > assign a reviewer (create) > refuses a missing reviewer and an expiry outside the bounds before sending 634ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > assign a reviewer (create) > sends the strict create body at the review version and refetches the review 273ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > assign a reviewer (create) > omits an empty reason and lets the owner assign another reviewer after a commit 231ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx > CMS-03B-06 decision form keeps its entries > [P2-S11-AC-037] keeps the chosen decision and the typed reason after a definite 409 refusal and re-sends them 899ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx > CMS-03B-06 decision form keeps its entries > [P2-S11-AC-037] keeps the chosen decision and the typed reason through an unknown outcome and re-sends them under the same key 316ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx > CMS-03B-05 submit form re-sends the served preparation unchanged > [P2-S11-AC-037] has no typed input to lose, and a definite refusal leaves the same preparation to send again 195ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx > CMS-03B-05 submit form re-sends the served preparation unchanged > [P2-S11-AC-037] re-sends the same request under the same key after an unknown outcome 106ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > assign a reviewer (create) > shows one fixed message for an ineligible reviewer and names the other refusals 933ms
+stderr | apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > assign a reviewer (create) > stores the scoped draft without the reviewer and restores it after step-up, asking to choose again
+An update to CmsEditorialAssignmentCreate inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx > CMS-03B-08 preview form keeps its entries > [P2-S11-AC-043] keeps the audience and route after a definite 409 refusal and re-sends them 221ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-input-retention.test.tsx > CMS-03B-08 preview form keeps its entries > [P2-S11-AC-043] keeps the audience and route through an unknown outcome and re-sends them under the same key 368ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > assign a reviewer (create) > stores the scoped draft without the reviewer and restores it after step-up, asking to choose again 560ms
+stderr | apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > revoke an assignment > shows no revoke section without an active assignment or the permission
+An update to CmsEditorialAssignmentCreate inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+An update to CmsEditorialAssignmentCreate inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > revoke an assignment > lists each active assignment by its label and revokes the one named 140ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > revoke an assignment > shows no revoke section without an active assignment or the permission 189ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > revoke an assignment > routes a revoke through step-up and asks for an explicit confirmation on return 202ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewAssignmentForm.test.tsx > revoke an assignment > refuses to send while the read behind it is not verified 48ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx > CmsEditorialWorkflowIsland focus > [P2-S11-AC-054] keeps focus where the person put it through a reconciling refetch, verified and then degraded 869ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-privacy.test.tsx > what a step-up detour and a preview mint leave behind > stores only the editable text of a decision, never a hash, manifest or person 808ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx > CmsEditorialWorkflowIsland focus > [P2-S11-AC-037] keeps focus on the refusal alert while the refetch it triggered lands 331ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx > CmsEditorialWorkflowIsland focus > [P2-S11-AC-037] keeps focus on the activated control until the read lands, then moves it to the review heading only 295ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx > CmsEditorialWorkflowIsland focus > [P2-S11-AC-043] leaves focus where the person moved it after the preview token took it, through the refetch 415ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx > CmsEditorialWorkflowIsland focus > [P2-S11-AC-043] keeps focus on Confirm publish until the read lands, then moves it to the publications heading only 452ms
+stderr | apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx > CmsEditorialWorkflowIsland focus > [P2-S11-AC-040] keeps focus on Schedule until the read lands, then moves it to the schedules heading only
+An update to CmsEditorialScheduleForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-privacy.test.tsx > what a step-up detour and a preview mint leave behind > stores no manifest or version set when a schedule and a publish are interrupted 2258ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-privacy.test.tsx > what a step-up detour and a preview mint leave behind > keeps the chosen reviewer out of the draft and every store 277ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.focus.test.tsx > CmsEditorialWorkflowIsland focus > [P2-S11-AC-040] keeps focus on Schedule until the read lands, then moves it to the schedules heading only 1861ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-privacy.test.tsx > what a step-up detour and a preview mint leave behind > never lets a minted preview token reach a store, the URL, history, the title or a log 632ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-privacy.test.tsx > what the server-rendered views print > prints no person, party or ownership identifier in the queue, detail or workflow text 211ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > offers a radio pair, a persistent reason label with a counter, and names the consequence 561ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > counts Unicode characters in the reason as the person types 66ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > refuses a missing choice and an unsafe reason inline, sending nothing, with focus on the summary 182ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx > CmsEditorialWorkflowIsland > renders the panel and, for a submittable draft, the submit and preview forms only 559ms
+stderr | apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > routes a step-up shortfall to the verification page with the draft stored and nothing replayed
+An update to CmsEditorialDecisionForm inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > sends the strict body at the review version, then refetches the review and focuses the decisions 144ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx > CmsEditorialWorkflowIsland > renders schedule, preview and publish for an approved revision from the frozen candidate 278ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > routes a step-up shortfall to the verification page with the draft stored and nothing replayed 125ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > restores the draft after step-up, waits for confirmation and resubmits under the original key once 161ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx > CmsEditorialWorkflowIsland > withholds a form whose action is not permitted and says why 126ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx > CmsEditorialWorkflowIsland > renders no preview form when neither a preparation nor a frozen candidate exists 52ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > opens a sync conflict when the review version changed while verifying 195ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > shows the degraded state when no verification method is available 191ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx > CmsEditorialWorkflowIsland > refetches the canonical workflow after a commit and moves focus to the new review region 345ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > renders the separation-of-duties gate, never a step-up route 344ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > refetches the review and states why for a closed or duplicate decision 125ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx > CmsEditorialWorkflowIsland > keeps the last verified panel and withholds every command when a read cannot be verified 496ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > keeps the entered text and offers a reconciled retry after a lost answer 131ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialDecisionForm.test.tsx > CmsEditorialDecisionForm (CMS-03B-06) > refuses to send while the read behind it is not verified 53ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx > CmsEditorialWorkflowIsland > removes the protected data when the session ends or the record is gone 353ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx > CmsEditorialWorkflowIsland > is a failed read, not a commit, that leaves the surface usable after a refusal refetch 215ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowIsland.test.tsx > CmsEditorialWorkflowIsland > uses the approved review frozen candidate for the schedule and publish forms 223ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPublishConfirmation.test.tsx > CmsEditorialPublishConfirmation (CMS-03B-09) > opens an inline confirmation naming the replacement and the checks that will re-run 326ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPublishConfirmation.test.tsx > CmsEditorialPublishConfirmation (CMS-03B-09) > refuses a missing or invalid audience inline, sending nothing 201ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPublishConfirmation.test.tsx > CmsEditorialPublishConfirmation (CMS-03B-09) > echoes the approved candidate unmodified at the review version and then refetches 144ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPublishConfirmation.test.tsx > CmsEditorialPublishConfirmation (CMS-03B-09) > never claims public visibility for a pending projection 79ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPublishConfirmation.test.tsx > CmsEditorialPublishConfirmation (CMS-03B-09) > refetches and names the changed candidate, a publication conflict or the second-person rule 381ms
+stderr | apps/web/src/components/cms-editorial-workflow/CmsEditorialPublishConfirmation.test.tsx > CmsEditorialPublishConfirmation (CMS-03B-09) > routes a step-up shortfall to verification and restores the audience open on return
+An update to CmsEditorialPublishConfirmation inside a test was not wrapped in act(...).
+
+When testing, code that causes React state updates should be wrapped into act(...):
+
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPublishConfirmation.test.tsx > CmsEditorialPublishConfirmation (CMS-03B-09) > lists the failed categories of a preflight refusal 109ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.focus.test.tsx > CmsEditorialScheduleForm focus > [P2-S11-AC-040] keeps focus on the control the person is in while the zone data loads and the resolution changes 1365ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPublishConfirmation.test.tsx > CmsEditorialPublishConfirmation (CMS-03B-09) > routes a step-up shortfall to verification and restores the audience open on return 232ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPublishConfirmation.test.tsx > CmsEditorialPublishConfirmation (CMS-03B-09) > refuses to send while the read behind it is not verified 62ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialScheduleForm.focus.test.tsx > CmsEditorialScheduleForm focus > [P2-S11-AC-040] moves focus to the local-error summary only on a refused submit, and typing afterwards does not pull it back 689ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreviewForm.test.tsx > CmsEditorialPreviewForm (CMS-03B-08) > states the locale it is bound to and asks only for an audience and a route 306ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreviewForm.test.tsx > CmsEditorialPreviewForm (CMS-03B-08) > refuses an invalid audience or route inline, sending nothing 212ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreviewForm.test.tsx > CmsEditorialPreviewForm (CMS-03B-08) > echoes the served version set unmodified at the entry version 139ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreviewForm.test.tsx > CmsEditorialPreviewForm (CMS-03B-08) > discloses the token once with its binding and expiry as text and takes focus 121ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreviewForm.test.tsx > CmsEditorialPreviewForm (CMS-03B-08) > keeps the token out of the URL, the document title and every storage area 105ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.test.tsx > CmsEditorialReviewDetailIsland > renders the review and the decision form only for an assignee who may decide 419ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreviewForm.test.tsx > CmsEditorialPreviewForm (CMS-03B-08) > copies the token on request and says so, or says how to copy by hand 175ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreviewForm.test.tsx > CmsEditorialPreviewForm (CMS-03B-08) > renders a revoked token as text and hides the token on request 125ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.test.tsx > CmsEditorialReviewDetailIsland > renders the owner assignment controls only with the assign permission 129ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.test.tsx > CmsEditorialReviewDetailIsland > says nothing about deciding once the review is no longer open 57ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreviewForm.test.tsx > CmsEditorialPreviewForm (CMS-03B-08) > refetches and states why for an expired replay or a changed candidate 231ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreviewForm.test.tsx > CmsEditorialPreviewForm (CMS-03B-08) > refuses to send while the read behind it is not verified 82ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.test.tsx > CmsEditorialReviewDetailIsland > refetches the review after a decision and moves focus to the decisions heading 496ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.test.tsx > CmsEditorialReviewDetailIsland > keeps the last verified review with the forms off when a read cannot be verified 191ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.test.tsx > CmsEditorialReviewDetailIsland > removes the review when it is gone or the session ended 219ms
+ ✓ apps/web/src/components/cms-editorial-workflow/use-cms-workflow-hooks.test.tsx > newIdempotencyKey > is a printable key of 8 to 128 characters from the platform UUID 12ms
+ ✓ apps/web/src/components/cms-editorial-workflow/use-cms-workflow-hooks.test.tsx > newIdempotencyKey > falls back to 32 hex characters from random bytes when randomUUID is missing 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/use-cms-workflow-hooks.test.tsx > useDraftFields > shows the default, then the restored overlay, then what was typed, and reset returns to the overlay 413ms
+ ✓ apps/web/src/components/cms-editorial-workflow/use-cms-workflow-hooks.test.tsx > useCanonicalResource > starts from the verified resource and replaces it only by a later verified read 154ms
+ ✓ apps/web/src/components/cms-editorial-workflow/use-cms-workflow-hooks.test.tsx > useCanonicalResource > keeps the last verified resource when a read cannot be verified and records the request id 66ms
+ ✓ apps/web/src/components/cms-editorial-workflow/use-cms-workflow-hooks.test.tsx > useCanonicalResource > removes the data for a vanished record or an ended session 61ms
+ ✓ apps/web/src/components/cms-editorial-workflow/use-cms-workflow-hooks.test.tsx > useCanonicalResource > applies only the latest of two overlapping reads 32ms
+ ✓ apps/web/src/components/cms-editorial-workflow/use-cms-workflow-hooks.test.tsx > default seams of the islands > the workflow island refetches through the first-party path with the page revision 333ms
+ ✓ apps/web/src/components/cms-editorial-workflow/use-cms-workflow-hooks.test.tsx > default seams of the islands > the review island refetches through the first-party review path 215ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx > CmsEditorialReviewDetailIsland focus > [P2-S11-AC-072] returns focus to the assignments heading after an assign commits and the review is refetched 694ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx > CmsEditorialReviewDetailIsland focus > [P2-S11-AC-072] returns focus to the assignments heading after a revoke commits and the review is refetched 155ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx > CmsEditorialReviewDetailIsland focus > [P2-S11-AC-037] keeps focus on Record approval until the read lands, then moves it to the decisions heading only 208ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetailIsland.focus.test.tsx > CmsEditorialReviewDetailIsland focus > [P2-S11-AC-060] keeps focus where the person put it through a reconciling refetch, verified and then degraded 233ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > initial state > starts idle with a printable key and nothing to show 20ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > initial state > notifies a subscriber on every change and stops after unsubscribe 7ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > commit > sends the request once with the key and hands the resource to the island 12ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > commit > commits exactly once even when the command is submitted twice at once 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > commit > shows the pending phase while the command is in flight 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > starting over > forgets a commit and begins a new command under a fresh key 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > definite refusals > rotates the key and refetches the canonical state on a stale conflict, then commits a new submit 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > definite refusals > keeps the key on a rate limit and does not refetch 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > definite refusals > shows the capability gate for a 403 and dismisses it back to idle 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > definite refusals > reports a request it never sent as an invalid request without changing the key 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > unknown outcomes > reconciles with a canonical read and then replays the identical request under the same key 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > unknown outcomes > does not accept a new submit or a retry before the reconciling read succeeded 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > unknown outcomes > ignores a retry or reconcile when nothing is unknown 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > unknown outcomes > settles a second unknown outcome the same way and a definite refusal after it rotates the key 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > step-up recovery > stores the scoped draft with the key and the version, then navigates without replaying 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > step-up recovery > still leaves for step-up when the tab cannot store a draft 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > step-up recovery > shows a degraded state with the request id when no usable method exists or the details are malformed 7ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > step-up recovery > answers a missing or expired session with a sign-in link to this exact page 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > restore after step-up > restores the values, pins the original key and waits for explicit re-confirmation 10ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > restore after step-up > opens a sync conflict when the expected version changed, and rotates the key on acknowledgement 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-controller.test.ts > restore after step-up > treats an unknown current version as a conflict and a missing draft as nothing to restore 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > names its form by a focusable heading and keeps one persistent polite status region 236ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > announces 0 46ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > announces 1 34ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > announces 2 25ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > announces 3 35ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > announces 4 29ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > announces 5 19ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > renders a refusal as an alert that takes focus, with a link to each named field 78ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > renders the capability gate copy for a 403 with no step-up link 33ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > lists only the checks that did not pass for a preflight refusal 44ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > states the degraded step-up case with the request id and no way to continue 40ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > offers a native sign-in link to the exact page when the session ended 66ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > gates the retry of an unknown outcome behind the reconciling read 69ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > opens the sync conflict after a step-up return with a changed version 20ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > withholds the commands with the stated reason when the read is not verified 15ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > puts field errors found before sending into one alert with a link to each control 22ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowCommandFrame.test.tsx > CmsWorkflowCommandFrame > shows the committed result in its slot beside the status 16ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > names the risk class and the decisions required on one confirm action 403ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > pluralises the protected policy 73ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > sends the served preparation unmodified at the entry version and then refetches 285ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > submits exactly once when the control is pressed twice 64ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > refetches and states why when the checks changed, keeping the form usable 91ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > lists the failed categories of a preflight refusal 80ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > shows a retryable degraded state for an unavailable check and reuses the key 59ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > notes failing checks without blocking, since the server alone decides 27ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewSubmitForm.test.tsx > CmsEditorialReviewSubmitForm (CMS-03B-05) > refuses to send while the read behind it is not verified 26ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowFields.test.tsx > workflow form fields > labels a text field persistently and wires hint and error to it 423ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowFields.test.tsx > workflow form fields > is not invalid and has no description without a hint or an error 24ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowFields.test.tsx > workflow form fields > marks a field invalid from the server refusal without an inline message 27ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowFields.test.tsx > workflow form fields > supports a datetime-local control and a datalist of suggestions 57ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowFields.test.tsx > workflow form fields > counts the characters of a text area politely and reports the value 41ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowFields.test.tsx > workflow form fields > renders a select and reports the chosen value 34ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsWorkflowFields.test.tsx > workflow form fields > groups radios in a fieldset with a legend and reports the choice 56ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > names one region per concern with a focusable heading each 114ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > states the derived revision state in words through one polite line 53ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > renders all 17 checks for a submittable draft and none otherwise 40ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > treats an unavailable check as a degraded check, not an error 36ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > says Not submitted when no review exists and links the review when one does 37ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > shows the closed invalidation reason of a review that no longer holds 29ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > lists schedules as scheduled, not published, with a closed reason when blocked 44ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > never presents a pending projection as public visibility 41ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > serializes no hash, manifest, version set or identifier into visible text 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialWorkflowPanel.test.tsx > CmsEditorialWorkflowPanel (FE03 Slice 11) > marks the panel as showing a last verified read when it is degraded 14ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetail.test.tsx > CmsEditorialReviewDetail (CMS-03B-16) > names its regions with focusable headings and states the review in words 129ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetail.test.tsx > CmsEditorialReviewDetail (CMS-03B-16) > shows the frozen candidate as hash text and version identities, not a manifest 12ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetail.test.tsx > CmsEditorialReviewDetail (CMS-03B-16) > lists decisions as a semantic list and shows only the caller’s own reason 35ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetail.test.tsx > CmsEditorialReviewDetail (CMS-03B-16) > shows the caller’s own assignment end and nothing about other assignments for a non-owner 12ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetail.test.tsx > CmsEditorialReviewDetail (CMS-03B-16) > lists the owner assignments by label only, under a focusable heading 21ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetail.test.tsx > CmsEditorialReviewDetail (CMS-03B-16) > explains an invalidated or decided review in words 20ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewDetail.test.tsx > CmsEditorialReviewDetail (CMS-03B-16) > offers a native link back to the queue and marks a degraded last-verified read 18ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command path > CMS-03B-05 posts to its registry path 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command path > CMS-03B-06 posts to its registry path 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command path > CMS-03B-07 posts to its registry path 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command path > CMS-03B-08 posts to its registry path 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command path > CMS-03B-09 posts to its registry path 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command path > CMS-03B-18 posts to its registry path 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command path > encodes an identifier it substitutes 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command request > CMS-03B-05 sends the strict JSON body with the CSRF token, key and strong If-Match 70ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command request > CMS-03B-06 sends the strict JSON body with the CSRF token, key and strong If-Match 16ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command request > CMS-03B-07 sends the strict JSON body with the CSRF token, key and strong If-Match 15ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command request > CMS-03B-08 sends the strict JSON body with the CSRF token, key and strong If-Match 17ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command request > CMS-03B-09 sends the strict JSON body with the CSRF token, key and strong If-Match 15ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command request > CMS-03B-18 sends the strict JSON body with the CSRF token, key and strong If-Match 13ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command request > sends nothing without a CSRF cookie, with a malformed body or with malformed headers 11ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command request > reads the CSRF token from the real document cookie by default 53ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > workflow command request > falls back to the global fetch when no fetcher is injected 8ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > committed answers > CMS-03B-05 commits only the verified strict resource 16ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > committed answers > CMS-03B-06 commits only the verified strict resource 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > committed answers > CMS-03B-07 commits only the verified strict resource 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > committed answers > CMS-03B-08 commits only the verified strict resource 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > committed answers > CMS-03B-09 commits only the verified strict resource 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > committed answers > CMS-03B-18 commits only the verified strict resource 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > committed answers > commits a revoke on its 200 answer 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > committed answers > treats a 2xx it cannot verify as an unknown outcome 52ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > unknown outcomes keep the key > is unknown after a transport loss, the outcome marker or a 5xx 44ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > unknown outcomes keep the key > is unknown after a redirect or an opaque redirect, which answer nothing 11ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > unknown outcomes keep the key > reads a request id only from a well-formed response header 11ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > unknown outcomes keep the key > treats the retryable preflight 503 as a refusal that committed nothing 15ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > 401 answers > classifies a step-up shortfall and never as a gate or a sign-in 22ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > 401 answers > classifies a missing or expired session as signed out 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > definite refusals > exposes the 403 gate token and drops one it does not know 8ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > definite refusals > exposes a 409 reason with its structured members or the version mismatch kind 13ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > definite refusals > exposes the per-category preflight list and the field violations of a 422 11ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > definite refusals > reads the wait of a 429 from the body, then the Retry-After header 10ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > definite refusals > falls back to the status for a body that is not an ApiError 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.test.ts > definite refusals > keeps the code and request id of a plain 404, 400 and 415 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > workflow command specs follow the generated registry > CMS-03B-05 names the registry path, status and guards 28ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > workflow command specs follow the generated registry > CMS-03B-06 names the registry path, status and guards 8ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > workflow command specs follow the generated registry > CMS-03B-07 names the registry path, status and guards 7ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > workflow command specs follow the generated registry > CMS-03B-08 names the registry path, status and guards 8ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > workflow command specs follow the generated registry > CMS-03B-09 names the registry path, status and guards 8ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > workflow command specs follow the generated registry > CMS-03B-18 names the registry path, status and guards 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > workflow command specs follow the generated registry > declares step-up for exactly the four unconditional-MFA commands 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > workflow command specs follow the generated registry > answers a revoke 200 without a Location where the registry says on_create 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > verifyCommandSuccess > CMS-03B-05 accepts only the exact committed answer 22ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > verifyCommandSuccess > CMS-03B-06 accepts only the exact committed answer 6ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > verifyCommandSuccess > CMS-03B-07 accepts only the exact committed answer 10ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > verifyCommandSuccess > CMS-03B-08 accepts only the exact committed answer 12ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > verifyCommandSuccess > CMS-03B-09 accepts only the exact committed answer 11ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-command-specs.test.ts > verifyCommandSuccess > CMS-03B-18 accepts only the exact committed answer 6ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-canonical-read.test.ts > readCanonicalWorkflow > reads the workflow no-store from the first-party path and returns the strict resource 111ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-canonical-read.test.ts > readCanonicalWorkflow > carries the revision id and binds the answer to it 34ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-canonical-read.test.ts > readCanonicalWorkflow > degrades on an unverifiable 200, a transport loss or a 5xx and keeps the request id 22ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-canonical-read.test.ts > readCanonicalWorkflow > classifies a signed-out session and a concealed or denied record 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-canonical-read.test.ts > readCanonicalWorkflow > falls back to the global fetch 11ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-canonical-read.test.ts > readCanonicalReview > reads the review detail and checks its identity and validator 28ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-canonical-read.test.ts > readCanonicalReview > maps the same statuses as the workflow read 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewQueue.test.tsx > CmsEditorialReviewQueue (CMS-03B-17) > names its heading as a focus target and offers the two scopes as native links 187ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewQueue.test.tsx > CmsEditorialReviewQueue (CMS-03B-17) > marks the active scope and keeps the state filter when the scope changes 31ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewQueue.test.tsx > CmsEditorialReviewQueue (CMS-03B-17) > filters with a native GET form that carries the scope and the closed state options 73ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewQueue.test.tsx > CmsEditorialReviewQueue (CMS-03B-17) > lists each review as a native link with state, risk, counts and the caller decision as text 41ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewQueue.test.tsx > CmsEditorialReviewQueue (CMS-03B-17) > says none for a review the caller has not decided and omits an absent assignment end 13ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewQueue.test.tsx > CmsEditorialReviewQueue (CMS-03B-17) > announces the count politely 65ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewQueue.test.tsx > CmsEditorialReviewQueue (CMS-03B-17) > distinguishes no records from a filter that matches nothing, each with one action 38ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewQueue.test.tsx > CmsEditorialReviewQueue (CMS-03B-17) > continues with the signed cursor in the URL and nothing else protected 22ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialReviewQueue.test.tsx > CmsEditorialReviewQueue (CMS-03B-17) > shows no entry, revision or person identifier in text 18ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreflightSummary.test.tsx > CmsEditorialPreflightSummary (FE03 Slice 11 checks) > lists all 17 categories in registry order as one semantic list 168ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreflightSummary.test.tsx > CmsEditorialPreflightSummary (FE03 Slice 11 checks) > is a level-2 region heading inside the panel and level 3 inside a refusal 41ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreflightSummary.test.tsx > CmsEditorialPreflightSummary (FE03 Slice 11 checks) > says outcome and reason in words and announces the counts politely 33ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreflightSummary.test.tsx > CmsEditorialPreflightSummary (FE03 Slice 11 checks) > names an unbuilt provider as a not-yet-available area and offers no override 37ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreflightSummary.test.tsx > CmsEditorialPreflightSummary (FE03 Slice 11 checks) > never prints an unregistered token, a provider key or a count 12ms
+ ✓ apps/web/src/components/cms-editorial-workflow/CmsEditorialPreflightSummary.test.tsx > CmsEditorialPreflightSummary (FE03 Slice 11 checks) > reads a refusal list that holds only the checks that did not pass 11ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 403 gates > renders the capability gate and never a step-up route 21ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 403 gates > names the second-person rule per operation 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 403 gates > falls back to the generic gate copy for a 403 without a token 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > shows one non-disclosing line for a concealed record 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-05 dependency_changed refetches with fixed copy 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-05 revision_not_submittable refetches with fixed copy 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-07 dependency_changed refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-09 version_set_stale refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-08 version_set_stale refetches with fixed copy 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-06 dependency_changed refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-06 review_not_open refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-06 duplicate_decision refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-06 specialist_slot_unsatisfiable refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-18 assignment_exists refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-18 assignment_limit refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-18 review_not_open refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-09 publication_conflict refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-08 preview_expired refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > CMS-03B-07 preflight_evidence_stale refetches with fixed copy 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > shows one uniform line for every ineligible reviewer without refetching 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 404 and 409 > refetches on a stale version and rotates the key on an idempotency mismatch 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 422 refusals > lists the failed and unavailable categories of a preflight refusal 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 422 refusals > maps each time-authority token to its field and fixed copy 6ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 422 refusals > keeps the stated alternatives of a nonexistent or ambiguous local time 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 422 refusals > states the accepted window of an out-of-horizon refusal from its members 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 422 refusals > links each field violation to its control and keeps an unmapped pointer in the summary 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > 422 refusals > states a plain 422 without violations as a generic field refusal 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > rate limits, dependencies and generic refusals > keeps the key and the input on a 429 and states the wait 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > rate limits, dependencies and generic refusals > presents a retryable preflight 503 as degraded and keeps the key 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > rate limits, dependencies and generic refusals > treats a 400 as an invalid request 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > rate limits, dependencies and generic refusals > treats a 415 as an invalid request 0ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > rate limits, dependencies and generic refusals > treats a 405 as an invalid request 0ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-refusal.test.ts > closed vocabulary > has fixed copy for every token any operation can publish 21ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > resolveScheduleInput > waits for a complete local time and a time zone 26ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > resolveScheduleInput > resolves an ordinary local time to one UTC instant with its offset 28ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > resolveScheduleInput > keeps seconds when the control supplies them 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > resolveScheduleInput > reports a nonexistent local time with the two alternatives the server states 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > resolveScheduleInput > reports an ambiguous local time as a fold and resolves once earlier or later is chosen 18ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > resolveScheduleInput > forgets a stale earlier/later choice for a time that happens once 7ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > resolveScheduleInput > refuses an unknown zone and a time outside the 60 second to 366 day window 10ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > three-segment IANA zones > [P2-S11-AC-106] resolves America/Argentina/Buenos_Aires to one UTC instant at UTC-03:00 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > three-segment IANA zones > [P2-S11-AC-106] reproduces the spring-forward gap of a three-segment zone with its two alternatives 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > three-segment IANA zones > [P2-S11-AC-106] reproduces the fall-back fold of a three-segment zone and resolves once earlier or later is chosen 6ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > three-segment IANA zones > [P2-S11-AC-106] offers three-segment names as suggestions and refuses a fourth segment 8ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > offsetLabel > formats a UT offset as UTC±hh:mm 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-resolution.test.ts > zoneSuggestions > lists the zones of the snapshot, bounded and sorted 7ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-labels.test.ts > closed vocabulary copy > labels all seventeen preflight categories in registry order 17ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-labels.test.ts > closed vocabulary copy > has copy for every registered reason of every provider 6ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-labels.test.ts > closed vocabulary copy > states the unbuilt-provider rule without an override 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-labels.test.ts > closed vocabulary copy > falls back to a fixed sentence for an unregistered token and never echoes it 1ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-labels.test.ts > closed vocabulary copy > labels the three outcomes as text 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-labels.test.ts > closed vocabulary copy > covers the revision, review, schedule, publication and projection states 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-labels.test.ts > closed vocabulary copy > never presents a pending projection or a scheduled item as public visibility 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-labels.test.ts > closed vocabulary copy > labels every action a permitted-actions list can carry 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-labels.test.ts > closed vocabulary copy > explains why a form is withheld when its action is not permitted 4ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reviewer-options.test.ts > loadReviewerOptions > reads the owner-only active cms.reviewer grants no-store and offers each person once 79ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reviewer-options.test.ts > loadReviewerOptions > follows the cursor to the next page and stops after five pages 39ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reviewer-options.test.ts > loadReviewerOptions > is unavailable for a denied, failed or non-strict answer 29ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reviewer-options.test.ts > loadReviewerOptions > falls back to the global fetch 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-actions.test.ts > scheduleActionChoices > [P2-S11-AC-040] offers every registry action, Publish first and the default, to a caller who may publish 45ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-actions.test.ts > scheduleActionChoices > [P2-S11-AC-040] withholds exactly Publish from an author and starts on the first remaining action 35ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-actions.test.ts > effectiveScheduleAction > [P2-S11-AC-040] keeps a choice that is still offered 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-actions.test.ts > effectiveScheduleAction > [P2-S11-AC-040] replaces a Publish choice by the default once Publish is not offered 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-schedule-actions.test.ts > effectiveScheduleAction > [P2-S11-AC-040] replaces an empty or unknown value by the default 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-expiry.test.ts > parseAssignmentExpiry > accepts a time after now and within seven days 23ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-expiry.test.ts > parseAssignmentExpiry > accepts exactly the seven-day ceiling and refuses one minute beyond 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-expiry.test.ts > parseAssignmentExpiry > is bounded by the end of the chosen reviewer’s access 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-expiry.test.ts > parseAssignmentExpiry > refuses an empty, invalid or past time with fixed copy 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-expiry.test.ts > localInputValue > formats a millisecond instant as a datetime-local value in the browser zone 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reason.test.ts > decision reason > counts Unicode characters, not UTF-16 units 20ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reason.test.ts > decision reason > accepts a safe NFC reason of one to 2000 characters 9ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reason.test.ts > decision reason > refuses "" inline with fixed copy 8ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reason.test.ts > decision reason > refuses "😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀😀" inline with fixed copy 5ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reason.test.ts > decision reason > refuses "é" inline with fixed copy 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reason.test.ts > decision reason > refuses "line\u0000break" inline with fixed copy 7ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reason.test.ts > decision reason > refuses "bidi‮flip" inline with fixed copy 3ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reason.test.ts > decision reason > refuses "a <b> {c}" inline with fixed copy 2ms
+ ✓ apps/web/src/components/cms-editorial-workflow/cms-workflow-reason.test.ts > assignment reason > is optional and bounded to 256 composed characters 9ms
+
+ Test Files  35 passed (35)
+      Tests  369 passed (369)
+   Start at  20:25:40
+   Duration  238.61s (transform 24.34s, setup 0ms, import 210.25s, tests 90.12s, environment 125.63s)
+
+exit=0

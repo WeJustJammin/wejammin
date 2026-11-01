@@ -1,0 +1,9 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+
+ Test Files  24 passed (24)
+      Tests  267 passed (267)
+   Start at  16:56:12
+   Duration  105.07s (transform 22.53s, setup 0ms, import 125.27s, tests 58.42s, environment 16ms)
+

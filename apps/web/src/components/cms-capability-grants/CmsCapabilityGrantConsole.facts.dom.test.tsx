@@ -1,6 +1,16 @@
 // @vitest-environment jsdom
 
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import {
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
 
 vi.mock('../../lib/client-binding', () => ({
   addClientBindingIdHeader: async (_input: unknown, init?: RequestInit) => init,
@@ -25,6 +35,11 @@ import {
  */
 
 let mounted: Mounted | null = null;
+
+// The form checks run synchronously once the lazily loaded validators are in.
+beforeAll(async () => {
+  await loadCmsValidators();
+});
 
 beforeEach(() => {
   Object.assign(globalThis, { IS_REACT_ACT_ENVIRONMENT: true });

@@ -1,0 +1,94 @@
+-- Committed fixture of the dependency-recheck race runner (P2-S11-AC-113, BE03b "Review invalidation / Dependency
+-- recheck"; supabase/tests/phase_02_slice_11_races/031-dependency-recheck-race.mjs).  Included by
+-- infra/database-races/recheck-kit.mjs AFTER the shared Slice 11 fragments (the h11doc world, the review builders and the
+-- block registry fixtures), inside one transaction that COMMITS: the runner drives fresh sessions against it.  The last
+-- statement is the ids document the runner reads.
+--
+-- Every review is built exactly as phase_02_slice_11_recheck_run.sql builds one (a real revision of the world type with one
+-- composed block instance, the manifest cms_build_dependency_manifest produces and the dependency rows
+-- cms_review_dependency_refs derives from it, which is what cms_submit_review writes), and every revision belongs to its
+-- own entry (a newer revision of an entry would invalidate its older live reviews as revision_superseded).  Two blocks are
+-- WITHDRAWN after their reviews are frozen: the rebuilt manifest stays equal and the frozen identity is no longer current,
+-- so each review of those blocks no longer holds and is invalidated dependency_changed by a recheck run.  The third block
+-- stays supported: its reviews hold.
+--
+--   block A  withdrawn   p1a p1b p1c open, p1d approved  (the two-run barrier scenario)
+--   block B  withdrawn   p2a .. p2h open                  (the four-run barrier scenario)
+--   block C  supported   c1 c2 open                       (control: a forged or stale job naming a block that holds)
+--
+-- Each withdrawn block has a committed cms.block.lifecycle.changed.v1 outbox row with its own correlation id, which the
+-- invalidations of a run must carry.
+
+select pg_temp.h11r_member('reviewer01', array['cms.reviewer']);
+
+select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0a01', 'race.recheck-a', repeat('1', 64));
+select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0a02', 'race.recheck-b', repeat('2', 64));
+select pg_temp.h11m_block('a9200000-0000-4000-8000-0000000b0a03', 'race.recheck-c', repeat('3', 64));
+
+-- A review of revision <tag> composing one instance of <block>, with the real frozen manifest and its dependency rows.
+create or replace function pg_temp.rr_review(p_tag text, p_block_key text)
+returns void
+language plpgsql
+as $body$
+declare
+  revision uuid;
+  entry uuid := pg_temp.h11w_uuid(p_tag || ':entry');
+  manifest jsonb;
+  stamp timestamptz := clock_timestamp();
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  revision := pg_temp.h11w_revision(p_tag);
+  perform pg_temp.h11m_instance(p_tag || ':i1', revision, '/a', p_block_key);
+  manifest := platform_private.cms_build_dependency_manifest(revision);
+  perform pg_temp.h11r_review('rr-' || p_tag, jsonb_build_object(
+    'owner_id', pg_temp.h11w_org(), 'revision_id', revision, 'entry_id', entry,
+    'frozen_hash', (select payload_hash::text from platform_private.cms_entry_revisions where id = revision),
+    'dependency_manifest', manifest, 'dependency_hash', platform_private.cms_jcs_sha256(manifest),
+    'activation_evidence', manifest->'schema'->'activationEvidence',
+    'submitted_by', pg_temp.h11w_person('creatorPerson'),
+    'submitted_at', stamp, 'created_at', stamp, 'updated_at', stamp));
+  insert into platform_private.cms_editorial_review_dependencies(
+    owner_id, state, version, review_id, kind, ref_id, created_at, updated_at)
+  select pg_temp.h11w_org(), 'active', 1, pg_temp.s11_id('rr-' || p_tag), refs.kind, refs.ref_id, stamp, stamp
+    from platform_private.cms_review_dependency_refs(revision, manifest) refs;
+end;
+$body$;
+
+select pg_temp.rr_review(t, 'race.recheck-a') from unnest(array['p1a', 'p1b', 'p1c', 'p1d']) t;
+select pg_temp.rr_review(t, 'race.recheck-b') from unnest(array['p2a', 'p2b', 'p2c', 'p2d', 'p2e', 'p2f', 'p2g', 'p2h']) t;
+select pg_temp.rr_review(t, 'race.recheck-c') from unnest(array['c1', 'c2']) t;
+
+-- p1d is approved (open v1 -> approved v2): its invalidation lands on version 3.
+select pg_temp.h11r_assign('rr-p1d-asg', 'rr-p1d', 'reviewer01');
+select pg_temp.h11r_decide('rr-p1d-dec', 'rr-p1d', 'reviewer01', 'rr-p1d-asg', 'approve');
+
+-- The frozen manifests are in; now the blocks of A and B are withdrawn (the manifest stays equal, the identity is not current).
+select pg_temp.h11m_lifecycle('a9200000-0000-4000-8000-0000000b0a01', 'race.recheck-a', 'withdrawn');
+select pg_temp.h11m_lifecycle('a9200000-0000-4000-8000-0000000b0a02', 'race.recheck-b', 'withdrawn');
+
+insert into platform_private.outbox_events(
+  id, event_type, schema_version, aggregate_type, aggregate_id, aggregate_version, correlation_id, payload)
+values
+  ('a1130000-0000-4000-8000-00000000031a', 'cms.block.lifecycle.changed.v1', 1, 'cms_block_definition_version',
+   'a9200000-0000-4000-8000-0000000b0a01', 2, 'a1130000-0000-4000-8000-0000000031c1',
+   '{"blockDefinitionVersionId":"a9200000-0000-4000-8000-0000000b0a01"}'::jsonb),
+  ('a1130000-0000-4000-8000-00000000031b', 'cms.block.lifecycle.changed.v1', 1, 'cms_block_definition_version',
+   'a9200000-0000-4000-8000-0000000b0a02', 2, 'a1130000-0000-4000-8000-0000000031c2',
+   '{"blockDefinitionVersionId":"a9200000-0000-4000-8000-0000000b0a02"}'::jsonb);
+
+select jsonb_build_object(
+  'p1', (select jsonb_agg(pg_temp.s11_id('rr-' || t) order by pg_temp.s11_id('rr-' || t)) from unnest(array['p1a', 'p1b', 'p1c', 'p1d']) t),
+  'p1Approved', pg_temp.s11_id('rr-p1d'),
+  'p2', (select jsonb_agg(pg_temp.s11_id('rr-' || t) order by pg_temp.s11_id('rr-' || t)) from unnest(array['p2a', 'p2b', 'p2c', 'p2d', 'p2e', 'p2f', 'p2g', 'p2h']) t),
+  'control', (select jsonb_agg(pg_temp.s11_id('rr-' || t) order by pg_temp.s11_id('rr-' || t)) from unnest(array['c1', 'c2']) t),
+  'blocks', jsonb_build_object(
+    'a', 'a9200000-0000-4000-8000-0000000b0a01',
+    'b', 'a9200000-0000-4000-8000-0000000b0a02',
+    'c', 'a9200000-0000-4000-8000-0000000b0a03'),
+  'events', jsonb_build_object(
+    'a', 'a1130000-0000-4000-8000-00000000031a',
+    'b', 'a1130000-0000-4000-8000-00000000031b'),
+  'correlations', jsonb_build_object(
+    'a', 'a1130000-0000-4000-8000-0000000031c1',
+    'b', 'a1130000-0000-4000-8000-0000000031c2')
+)::text;

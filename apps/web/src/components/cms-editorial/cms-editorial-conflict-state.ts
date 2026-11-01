@@ -1,9 +1,7 @@
-import {
-  fieldIdOfPointer,
-  type AuthoringContextField,
-  type ConflictDetailResource,
-  type JsonValue,
-} from '@wejammin/contracts';
+import type { ConflictDetailResource, JsonValue } from '@wejammin/contracts';
+import { fieldIdOfPointer } from '@wejammin/contracts/client';
+
+import type { CmsFieldDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
 
 /**
  * One side of one divergent field, exactly as the bounded CMS-03B-12 read gives
@@ -31,7 +29,8 @@ export interface CmsEditorialConflictResolveInit {
   readonly entryVersion: string;
   /** The common base revision number: the resolve `baseRevision`. */
   readonly baseRevision: string;
-  readonly fields: readonly AuthoringContextField[];
+  /** Decoded by the loader from the author-safe definitions (AC-106: no zod in the island). */
+  readonly descriptors: readonly CmsFieldDescriptor[];
   readonly paths: readonly CmsEditorialConflictPathView[];
 }
 
@@ -93,13 +92,13 @@ export const conflictPathViewsFrom = (
 
 export const conflictInitFrom = (
   detail: ConflictDetailResource,
-  fields: readonly AuthoringContextField[],
+  descriptors: readonly CmsFieldDescriptor[],
 ): CmsEditorialConflictResolveInit => ({
   entryId: detail.entry.id,
   conflictId: detail.conflict.id,
   entryVersion: detail.entry.version,
   baseRevision: detail.base.revisionNumber,
-  fields,
+  descriptors,
   paths: conflictPathViewsFrom(detail),
 });
 

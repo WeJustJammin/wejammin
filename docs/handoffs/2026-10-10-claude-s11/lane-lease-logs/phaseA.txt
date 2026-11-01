@@ -1,0 +1,4 @@
+phaseA start 05:13:23 HEAD=a2df2469
+red-targets exit=1
+baseline-neighbours exit=0
+phaseA end 05:14:35

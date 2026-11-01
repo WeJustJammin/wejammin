@@ -11,6 +11,13 @@ import {
   IdempotencyKeySchema,
   QuotedVersionSchema,
 } from '../request-navigation-security.ts';
+import {
+  CmsCanonicalUuidSchema,
+  allDistinctBy,
+  compareBytewise,
+  compareValidatorRefs,
+  isAscendingBy,
+} from './canonical-order.ts';
 import { Bcp47Schema } from './primitives.ts';
 import { SchemaArtifactEvidenceSchema } from './schema-evidence.ts';
 
@@ -37,33 +44,46 @@ export const CMS_DEPENDENCY_MANIFEST_MAX_BYTES = 32_768;
  */
 export const CMS_DEPENDENCY_MANIFEST_MAX_ENTRIES = 256;
 
-/** True when every key the selector derives from `items` is distinct. */
-const allDistinct = <T>(
-  items: readonly T[],
-  select: (item: T) => string,
-): boolean => new Set(items.map(select)).size === items.length;
-
 /**
  * Protected validator references (BE03a registry): a manifest or version set
- * names only a registered protected member at its registered version, and names
- * each member once.
+ * names only a registered protected member at its registered version, names
+ * each member once, and lists them ascending by (key, version), bytewise.
  */
 const ProtectedValidatorRefsSchema = z
   .array(ProtectedValidatorEvidenceSchema)
   .max(128)
   .refine(
-    (refs) => allDistinct(refs, (ref) => `${ref.key}@${ref.version}`),
+    (refs) => allDistinctBy(refs, (ref) => `${ref.key}@${ref.version}`),
     'validator_refs_must_be_unique',
+  )
+  .refine(
+    (refs) => isAscendingBy(refs, compareValidatorRefs),
+    'validator_refs_must_be_sorted',
   )
   .readonly();
 
-/** A bounded id list in which every id is named once. */
-const uniqueIdList = (max: number) =>
+/**
+ * A bounded id list in canonical form: lowercase UUIDs, each named once, in
+ * ascending bytewise order (BE03b E1: one dependency set, one serialization).
+ */
+const canonicalIdList = (max: number) =>
   z
-    .array(CmsUuidSchema)
+    .array(CmsCanonicalUuidSchema)
     .max(max)
-    .refine((ids) => allDistinct(ids, (id) => id), 'version_ids_must_be_unique')
+    .refine(
+      (ids) => allDistinctBy(ids, (id) => id),
+      'version_ids_must_be_unique',
+    )
+    .refine(
+      (ids) => isAscendingBy(ids, compareBytewise),
+      'version_ids_must_be_sorted',
+    )
     .readonly();
+
+/** A manifest group entry: a canonical lowercase UUID and its content hash. */
+const hashedEntry = z
+  .strictObject({ id: CmsCanonicalUuidSchema, hash: CmsHashSchema })
+  .readonly();
 /** BE03b `VersionSet`: the exact frozen dependency set shared by 03B-08 and 03B-09. */
 export const VersionSetSchema = z
   .strictObject({
@@ -75,9 +95,9 @@ export const VersionSetSchema = z
     activationEvidence: WorkflowPolicyEvidenceSchema,
     templateVersionId: CmsUuidSchema.nullable(),
     templateHash: CmsHashSchema.nullable(),
-    taxonomyVersionIds: uniqueIdList(64),
-    blockVersionIds: uniqueIdList(128),
-    patternVersionIds: uniqueIdList(128),
+    taxonomyVersionIds: canonicalIdList(64),
+    blockVersionIds: canonicalIdList(128),
+    patternVersionIds: canonicalIdList(128),
     settingsVersion: CmsVersionSchema,
     compilerVersion: z.string().min(1).max(32),
   })
@@ -127,30 +147,15 @@ export const DependencyManifestSchema = z
     template: z
       .strictObject({ id: CmsUuidSchema, hash: CmsHashSchema })
       .nullable(),
-    blocks: z
-      .array(
-        z.strictObject({ id: CmsUuidSchema, hash: CmsHashSchema }).readonly(),
-      )
-      .max(128)
-      .readonly(),
-    patterns: z
-      .array(
-        z.strictObject({ id: CmsUuidSchema, hash: CmsHashSchema }).readonly(),
-      )
-      .max(128)
-      .readonly(),
-    terms: z
-      .array(
-        z.strictObject({ id: CmsUuidSchema, hash: CmsHashSchema }).readonly(),
-      )
-      .max(256)
-      .readonly(),
+    blocks: z.array(hashedEntry).max(128).readonly(),
+    patterns: z.array(hashedEntry).max(128).readonly(),
+    terms: z.array(hashedEntry).max(256).readonly(),
     localeSources: z
       .array(
         z
           .strictObject({
             locale: Bcp47Schema,
-            revisionId: CmsUuidSchema,
+            revisionId: CmsCanonicalUuidSchema,
             hash: CmsHashSchema,
           })
           .readonly(),
@@ -164,8 +169,8 @@ export const DependencyManifestSchema = z
       .array(
         z
           .strictObject({
-            fieldId: CmsUuidSchema,
-            targetId: CmsUuidSchema,
+            fieldId: CmsCanonicalUuidSchema,
+            targetId: CmsCanonicalUuidSchema,
             targetVersion: CmsVersionSchema,
           })
           .readonly(),
@@ -202,29 +207,66 @@ export const DependencyManifestSchema = z
         message: 'dependency_manifest_max_entries',
       });
     // A duplicate entry could hide a missing one, so each group names every
-    // identity once.
-    for (const [group, distinct] of [
-      ['blocks', allDistinct(value.blocks, (entry) => entry.id)],
-      ['patterns', allDistinct(value.patterns, (entry) => entry.id)],
-      ['terms', allDistinct(value.terms, (entry) => entry.id)],
+    // identity once; and one dependency set has one serialization, so each
+    // group is ascending by its canonical identity (BE03b E1): the lowercase
+    // UUID, bytewise; `localeSources` by source revision id and then locale
+    // (the locale is its distinct identity) and `relations` by field id and
+    // then target id.
+    const byId = (left: { id: string }, right: { id: string }) =>
+      compareBytewise(left.id, right.id);
+    for (const [group, distinct, sorted] of [
+      [
+        'blocks',
+        allDistinctBy(value.blocks, (entry) => entry.id),
+        isAscendingBy(value.blocks, byId),
+      ],
+      [
+        'patterns',
+        allDistinctBy(value.patterns, (entry) => entry.id),
+        isAscendingBy(value.patterns, byId),
+      ],
+      [
+        'terms',
+        allDistinctBy(value.terms, (entry) => entry.id),
+        isAscendingBy(value.terms, byId),
+      ],
       [
         'localeSources',
-        allDistinct(value.localeSources, (entry) => entry.locale),
+        allDistinctBy(value.localeSources, (entry) => entry.locale),
+        isAscendingBy(
+          value.localeSources,
+          (left, right) =>
+            compareBytewise(left.revisionId, right.revisionId) ||
+            compareBytewise(left.locale, right.locale),
+        ),
       ],
       [
         'relations',
-        allDistinct(
+        allDistinctBy(
           value.relations,
           (entry) => `${entry.fieldId}:${entry.targetId}`,
         ),
+        isAscendingBy(
+          value.relations,
+          (left, right) =>
+            compareBytewise(left.fieldId, right.fieldId) ||
+            compareBytewise(left.targetId, right.targetId),
+        ),
       ],
-    ] as const)
+    ] as const) {
       if (!distinct)
         context.addIssue({
           code: 'custom',
           path: [group],
           message: 'dependency_manifest_entries_must_be_unique',
         });
+      if (!sorted)
+        context.addIssue({
+          code: 'custom',
+          path: [group],
+          message: 'dependency_manifest_entries_must_be_sorted',
+        });
+    }
   })
   .readonly();
 
@@ -293,6 +335,17 @@ const UNSAFE_REASON_CHARACTER_PATTERN =
   /[\p{Cc}\u2028\u2029\u200E\u200F\u061C\u202A-\u202E\u2066-\u2069]/u;
 
 /**
+ * The published (OpenAPI) form of the reason character rules: the same set as
+ * `UNSAFE_REASON_CHARACTER_PATTERN` (`\p{Cc}` is U+0000-001F and U+007F-009F)
+ * plus the markup delimiters, written without `\p{}` so a consumer needs no
+ * Unicode regex flag. The 1-2000 code-point length is `minLength`/`maxLength`
+ * (JSON Schema counts code points) and NFC is the `x-unicode-normalization`
+ * extension, which JSON Schema has no keyword for.
+ */
+export const CMS_DECISION_REASON_OPENAPI_PATTERN =
+  '^[^\\u0000-\\u001f\\u007f-\\u009f\\u2028\\u2029\\u200e\\u200f\\u061c\\u202a-\\u202e\\u2066-\\u2069<>{}]+$';
+
+/**
  * BE03b `EditorialDecisionRequest.reason`. The length counts Unicode
  * characters (code points, BE03a), never UTF-16 units, so 2000 emoji are
  * accepted and 2001 refused. The text must already be NFC (it is refused, never
@@ -314,7 +367,13 @@ export const DecisionReasonSchema = z
     (value) => !UNSAFE_REASON_CHARACTER_PATTERN.test(value),
     'reason_control_or_bidi_characters',
   )
-  .refine((value) => !/[<>{}]/u.test(value), 'reason_unsafe_characters');
+  .refine((value) => !/[<>{}]/u.test(value), 'reason_unsafe_characters')
+  .meta({
+    minLength: 1,
+    maxLength: CMS_DECISION_REASON_MAX_CHARACTERS,
+    pattern: CMS_DECISION_REASON_OPENAPI_PATTERN,
+    'x-unicode-normalization': 'NFC',
+  });
 
 /**
  * BE03b `EditorialDecisionRequest`: the CMS-03B-06 body. `stepUpAt` and

@@ -9,7 +9,7 @@
 **Active release denominator**: 1235 (the 279 pre-amendment active criteria plus 956 DEC-108/109/110/111/119/120 criteria; AC266 owner-deferred under DEC-101; AC209 and AC211 deferred under DEC-104; AC265 deferred to pre-release under DEC-105)  
 **Current active verification**: 1235/1235 verified; DEC-132 owner-ratifies AC261, whose 51 fresh passing receipts across ten cited marker files provide local technical proof only and no hosted claim.
 **Slice 09 implementation-completion denominator**: 1235  
-**Phase 2 implementation-completion denominator**: 3004  
+**Phase 2 implementation-completion denominator**: 3078  
 **Slice 10 implementation prerequisites**: Slice 10 implementation is unblocked by Slice 09 active completion at 1235/1235 under DEC-132. AC209, AC211, AC265, and AC266 remain separate authored gates on their declared timelines and do not gate Slice 10 implementation.
 **Authored criterion policy**: Slice 09 is **1235/1235 active**; 1239 authored Slice 09 IDs remain, with AC209, AC211, AC265, and AC266 authored and unchecked outside the active implementation denominator.
 **AC209 evidence status**: production-rollout/post-deployment evidence gate; remains authored and unchecked. Does not gate Slice 10 implementation or the initial controlled production deployment, and must pass before alerting is declared ready. The delivered 2026-09-22 alert is digest-correlated to Cloudflare's Email Routing event, but Email Sending still reports zero rows. Cloudflare case 02343626 was reopened on 2026-10-01 with a redacted configuration follow-up and awaits provider diagnosis; [provider follow-up evidence](../verification/2026-10-01-ac209-cloudflare-support-follow-up.md).  
@@ -62,19 +62,19 @@ line, digest and disposition. The delta is **956** new open criteria,
 P2-S09-AC-284 through P2-S09-AC-1239, with an authored floor of 283 + 956 = **1239**
 and an active denominator of 279 + 956 = **1235**:
 
-  - 344 BE03a operations CMS-03A-09 to CMS-03A-18
-  - 70 BE03a cross-cutting (activation, persistence, events, observability)
-  - 13 BE03c template-compatibility resolver
-  - 6 Integrated producer paths
-  - 201 BE01a/BE00/BE01c DEC-111 step-up and MFA
-  - 31 BE05b CFG-05B-06 admin MFA factor reset
-  - 109 FE03 review, dry-run and grant surfaces
-  - 50 FE01 step-up and TOTP pages
-  - 19 FE05 admin MFA reset form
-  - 1 FE00 step-up mapping
-  - 15 IA03/IA01 edge cases
-  - 8 Engineering and traceability
-  - 89 OD-4 locale configuration (BE03a, FE03, IA03)
+- 344 BE03a operations CMS-03A-09 to CMS-03A-18
+- 70 BE03a cross-cutting (activation, persistence, events, observability)
+- 13 BE03c template-compatibility resolver
+- 6 Integrated producer paths
+- 201 BE01a/BE00/BE01c DEC-111 step-up and MFA
+- 31 BE05b CFG-05B-06 admin MFA factor reset
+- 109 FE03 review, dry-run and grant surfaces
+- 50 FE01 step-up and TOTP pages
+- 19 FE05 admin MFA reset form
+- 1 FE00 step-up mapping
+- 15 IA03/IA01 edge cases
+- 8 Engineering and traceability
+- 89 OD-4 locale configuration (BE03a, FE03, IA03)
 
 The DEC-108 accounting (D4, ledger section "Accounting for checked criteria")
 reopened AC019, AC039, AC043, AC054, AC100, AC143, AC181, AC196, AC215, AC222, AC259, AC264 and AC273: the universal every-row, every-field and every-table claims
@@ -1719,7 +1719,7 @@ validate` passed **572 files** with **4,543 passed + 1 skipped / 4,544** and
 - [x] **P2-S09-AC-1203** — The draft and successor RPCs run the pure platform_api.cms_validate_locale_config function, which applies the same rules and exact messages as the locale refusal table, and compute localeConfigHash. [BE03a](../../../wiki/specs/be/03a-content-schema-registry.md) §Canonical records and fields
 - [x] **P2-S09-AC-1204** — cms_schema_reviews locale_config_hash is NOT NULL char(64) with a lowercase 64-hex CHECK and equals the candidate version's value at freeze. [BE03a](../../../wiki/specs/be/03a-content-schema-registry.md) §Canonical records and fields
 - [x] **P2-S09-AC-1205** — A BEFORE UPDATE trigger rejects any UPDATE of supported_locales, fallback_chains, locale_config_hash, source_locale and default_locale on cms_content_type_versions. [BE03a](../../../wiki/specs/be/03a-content-schema-registry.md) §Canonical records and fields
-- [x] **P2-S09-AC-1206** — The scheduled state is unreachable for content-type versions because CMS-03A-04 activates synchronously or queues migration work, and no schema-version resource, evidence record or test expects scheduled (OD-6). [BE03a](../../../wiki/specs/be/03a-content-schema-registry.md) §State machine and concurrency
+- [x] **P2-S09-AC-1206** — The scheduled state is unreachable for content-type versions because CMS-03A-04 has no schedule action and no route sets a future activation time, and no schema-version resource, evidence record or test expects scheduled (OD-6). [BE03a](../../../wiki/specs/be/03a-content-schema-registry.md) §State machine and concurrency
 - [x] **P2-S09-AC-1207** — The supported-languages tag input has the persistent label 'Add a language tag', the help 'For example en, fr-CA, zh-Hans-CN', autocomplete off, autocapitalize none and spellcheck false. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §Locale configuration fields (OD-4)
 - [x] **P2-S09-AC-1208** — Pressing Enter in the tag input activates Add and never submits the form. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §Locale configuration fields (OD-4)
 - [x] **P2-S09-AC-1209** — Supported tags render as a native list and each item has a Remove button named 'Remove {tag} from supported languages'. [FE03](../../../wiki/specs/fe/03-cms-content-modeling.md) §Locale configuration fields (OD-4)

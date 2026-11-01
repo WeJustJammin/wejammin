@@ -564,6 +564,116 @@ races are `../tests/phase_02_slice_10_races/`. Operations: `../../docs/runbooks/
 - `016200` the writers' relation-target lock takes the target entry and the caller's assignments over it only
   (`cms_lock_entry_assignments_shared`), never rescanning the caller's person, tenure and grant rows after the active version.
 
+### Slice 11 editorial workflow migrations (`20261005017000`-`20261005018100`)
+
+`018100` is the DEC-162 prerequisite repair for the private initial-scope count
+helper: valid first candidate/type-owner checks and actual persisted E/R/P/L
+census, with existing non-null source counting retained. It transfers only that
+helper to the existing restricted CMS definer, with temporary schema CREATE
+immediately revoked and no API grants. The helper's snapshot is not the final
+protected scan/seal concurrency fence; `../tests/phase_02_slice_11_first_empty_scope.sql`
+contains bounded private fixture proof, not authenticated activation evidence.
+
+Forward-only migrations for CMS-03B-05..09 (review submission, decision, schedule, preview, publication) and the
+CMS-03B-15..20 reads, reviewer assignment, preview verification and schedule execution, plus the data model under
+them. They have not been released. Every `platform_private` function stays ungranted to API roles and every
+`platform_api` wrapper is `SECURITY DEFINER` with `search_path = ''` and `EXECUTE` granted to `service_role` only
+(the definer-owned functions run as `wejammin_cms_definer`). pgTAP coverage is `../tests/phase_02_slice_11_*.sql` (fragments in
+`../tests/phase_02_slice_11_*/`); the lock and idempotency races are `../tests/phase_02_slice_11_races/`.
+Operations: `../../docs/runbooks/platform/cms-editorial.md`. Spec: `.memory/wiki/specs/be/03b-editorial-workflow-publication.md`.
+
+- `017000`-`017090` (lane S11-2, `../tests/phase_02_slice_11_schema/`): the data model reconciled to the locked BE03b
+  shapes. `017000` the `(id, entry_id)` revision key; `017010` `EditorialReview` (`entry_id`, `decided_at`, the closed
+  invalidation reasons and the CAS/transition state guard, which reads `cms_editorial_decisions` so a count-only
+  approval is refused); `017020` reviewer assignments (bounded read/decide window, sixteen-per-review limit, revoke-only
+  update); `017030` decisions (authorizing assignment, MFA window, separation of duties); `017040` the immutable
+  `ReviewDependency` index written at submission; `017050` the E7 settings snapshots (hash, gapless ordinals);
+  `017060` the seeded seventeen-category D19 preflight registry (DEC-134); `017070` publication schedules (lease,
+  retry, completion and reason rules, the transition machine); `017080` the E3 append-only publication lineage;
+  `017090` preview tokens (derived plaintext never stored, exact 15-minute expiry, CAS revocation, route CHECK fix).
+  The guard functions are owned by `wejammin_cms_definer` and no API role holds a table grant.
+- `017500`-`017595` (lane S11-3s, `../tests/phase_02_slice_11_helpers/`): the shared helpers every command calls. The
+  acting-context version, the revision reference counter, the `VersionSet` projection (E1) and the dependency-manifest
+  builder with its strict structure validator, the qualifying-approver recount (DEC-136), the derived revision state
+  (E2), the settings snapshot (E7), the preflight evaluation (D19, DEC-158(c)), the single review invalidation core with
+  its producers and preview-token revocation primitives, the lineage append (E3, lock position 7) and the SQL mirror of
+  the pinned tzdb release `2026e` (DEC-153). None is executable by an API role.
+- `017600`-`017640` (lane S11-3a, `../tests/phase_02_slice_11_rpc_review_*.sql`): review authority. `017600` shared
+  helpers (step-up instant, scopes, resources, person lock); `017610` the assignment reason bound is 256 code points,
+  not octets (DEC-158(b)); `017620` `cms_assign_editorial_reviewer` (CMS-03B-18, DEC-136/157/161);
+  `017630` `cms_record_review_decision` (CMS-03B-06, DEC-157/159); `017635` the append-only accessibility audit-summary
+  table and recorder (DEC-159(5)); `017640` `cms_submit_review` (CMS-03B-05).
+- `017700`-`017740` (lane S11-3b, `../tests/phase_02_slice_11_rpc_publication_*.sql`): publication. `017700` shared
+  publication helpers; `017710` `cms_schedule_publication` (CMS-03B-07, E8 time authority); `017720`
+  `cms_publish_revision` (CMS-03B-09, E3 lineage); `017730` `cms_claim_due_publication_schedules` and `017740`
+  `cms_execute_publication_schedule` (CMS-03B-20, the Worker `scheduled` sweep; never a browser route).
+- `017850`-`017910` (lane S11-3c, `../tests/phase_02_slice_11_rpc_preview_*.sql` and `_rpc_reads_*.sql`): preview and reads.
+  `017850` `cms_verify_preview_token` (CMS-03B-19, total and byte-identical on denial); `017860` `cms_mint_preview`
+  (CMS-03B-08); `017870` the named private `cms_revoke_preview_tokens`; `017880` `cms_get_editorial_review`
+  (CMS-03B-16); `017890` `cms_list_editorial_reviews` (CMS-03B-17, signed keyset cursor); `017900`
+  `cms_get_entry_workflow` (CMS-03B-15); `017910` `cms_load_quality_gate_input` (DEC-159(4)). Reads write no audit,
+  outbox or idempotency row.
+- `018000`-`018090` (lane S11-3d, `../tests/phase_02_slice_11_e2_*.sql`): E2 adoption. The concealment classifier, the
+  draft read, the revision history, the entry list, entry create, revision append, conflict resolution, restore and the
+  composition-instance guards take `EntryRevisionState` from `cms_revision_effective_state(s)`, and `018090` fixes the
+  physical `cms_entry_revisions.state` to the constant `draft` (no other code computes or stores a revision state).
+- `165000`-`165200` (lane preview-projection, `../tests/phase_02_slice_11_projection_state*.sql` and
+  `_preview_takedown.sql`): `165000` the BE04c `projection_consumer_state` table (private, forced RLS, RPC-only
+  writes; `projection_id` keeps no foreign key until the delivery slice creates `publication_projection`) and the
+  `cms_publication_projection_state` derivation (AC-116); `165100` the lineage append and the workflow read serve
+  `projectionState` from it instead of a literal; `165200` the service-role takedown RPC
+  `platform_api.cms_takedown_preview_tokens` over the private `cms_revoke_preview_tokens` seam (AC-118).
+
+### Slice 11 forward migrations (`20261010130000`-`20261010171000`)
+
+Forward-only amendments written after the `20261005017000`-`20261005018100` set. Functions they replace are
+MD5-pinned by these files, so later changes to those functions must also be new forward migrations.
+
+- `130000` E7 / DEC-163: settings snapshots are initialized by the existing authorized write tails
+  (`cms_create_entry`, `cms_create_revision`, `cms_resolve_conflict`, `cms_restore_revision`,
+  `cms_author_locale_variant`); reads only look up (fail closed when missing).
+- `140000` the schedule executor fences null and expired leases before any stale-evidence handling.
+- `150000`-`154000` exact CMS-03B-07 instants (BE03b:266): private sub-microsecond remainders on
+  `cms_publication_schedules` (storage; the self-check excludes planner statistics so populated tables migrate),
+  nine-digit admission, due ordering, half-even deviation rounding over exact nanoseconds, and nine-digit
+  workflow reconstruction.
+- `161000`-`161100` sealed (encrypt-then-MAC) cursors for state-filtered revision history (DEC-168).
+- `162000`-`162200` audit-event-keyed accessibility summaries, committed lapse and `version_set_stale`
+  refusals at CMS-03B-07, and executor conflict propagation without consuming retries (DEC-169).
+- `164000`-`164100` dependency recheck: the review recheck relay and the bounded, idempotent
+  `cms.review.dependency_recheck` run (AC-113, DEC-166).
+- `166000`-`166100` Slice 09 performance: `cms_create_type_draft` compiles its definition once and the compiled
+  manifest bound is one jsonpath scan (P2-S09-AC-217), with byte-for-byte parity tests.
+- `169000` (lane reviewA-1, `../tests/phase_02_slice_11_rls_session_scope.sql`): predicate RLS (BE03b "Permission, RLS and
+  grants", AC-007/013/019/025/031/119). RESTRICTIVE session-scope policies on the nine Slice 11 tables and the accessibility
+  audit summary, in addition to the CMS RPC-context gate: a published CMS session may only see and write rows of its acting
+  party and only as a live member of it; the exclusive writers (submitter, decider, schedule creator, preview minter,
+  assignment grantor) must name the session person; reviewer assignments need the owner receipt; the preflight registry is
+  writable only under the system scope. A transaction with no published session (the service paths) is admitted by the gate
+  alone. The same review changed `017620` in place (never deployed): the owner's valid `cms.editor` grant is required for a
+  revoke as well as a create (BE03b CMS-03B-18).
+- `170000`-`170100` (finisher lane, `../tests/phase_02_slice_11_rpc_publication_execute_entry_unavailable.sql`): an
+  executing schedule whose entry is no longer `active` is CANCELLED `entry_unavailable` by the executor in its own
+  transaction (BE03b "Schedule execution", CMS-03B-20, AC-083; the orchestrator ruling of 2026-10-11 supersedes DEC-158(d)
+  for this one case and closes the race of a claim that precedes the entry leaving `active`). `170000` lets the schedule
+  state guard admit `executing -> cancelled` with `entry_unavailable` only; `170100` adds `cms_schedule_cancel` /
+  `cms_schedule_cancelled_result` and changes `cms_execute_publication_schedule` by three MD5-pinned, reversible anchors
+  (the lifecycle is read under the entry row's `FOR SHARE` lock and checked before the review is re-read). Every other
+  invalidation still blocks an executing schedule `approval_invalidated`.
+- `170200` (finisher lane, `../tests/phase_02_slice_11_rls_session_scope.sql`): the relationship / assignment / capability
+  predicates on SELECT (A-M2): `<table>_session_relationship` restrictive policies so a row read directly under a verified
+  session is exactly a row the read RPCs would show it (the five review scopes, the CMS-03B-15 workflow read scopes, owner or
+  own-assignee assignments, workflow participants for settings snapshots, preview tokens never). They bind every role except
+  the CMS definer role, whose bodies decide 404 versus 403 and run the invalidation and recount cascades under any session.
+- `171000` (lane queue-perf, `../tests/phase_02_slice_11_reads_plan_stability.sql`): the CMS-03B-17 reviewer queue reader is
+  linear whatever the planner believes (AC-064). The canonical gate sat 63 minutes in one queue-page statement: the reader joined
+  `cms_editorial_reviews` twice and, once autovacuum had left `relpages > 0, reltuples = 0` behind a long run of rolled-back
+  fixtures, the planner estimated one row per table and chose review(503) x [assignment(201) x review(503)], 27 million tuples
+  and 65 s per call. The page now reads the caller's active assignment ids first (one array), probes the reviews once by id,
+  applies the keyset order and LIMIT before the four decoration joins and looks the assignment end up per page row. Two MD5-pinned,
+  reversible anchors; owner, ACL, `search_path`, comment and signature unchanged. The relationship policies of `170200` are not the
+  cause (dropped, the same statistics take 62.6 s against 65.0 s) and are untouched.
+
 ## Related links
 
 - `../tests/README.md`

@@ -60,11 +60,12 @@ describe('cms_ SQL API surface against its callers [P2-S09-AC-180]', () => {
   const internal = setOf('r8a_internal');
   const sources = callerSources();
 
-  it('enumerates 8 original, 10 amendment and 38 supporting RPCs and two internal functions', () => {
+  it('enumerates 8 original, 10 amendment and 54 supporting RPCs and two internal functions', () => {
     expect(setOf('r8a_original')).toHaveLength(8);
     expect(setOf('r8a_amendment')).toHaveLength(10);
-    expect(setOf('r8a_supporting')).toHaveLength(38);
-    expect(new Set(allowed).size).toBe(56);
+    // 38 from Slices 09 and 10 plus the 16 service-role-only Slice 11 editorial workflow RPCs.
+    expect(setOf('r8a_supporting')).toHaveLength(54);
+    expect(new Set(allowed).size).toBe(72);
     expect(internal.sort()).toEqual([
       'cms_resolve_template_compatibility',
       'cms_validate_locale_config',

@@ -6,17 +6,17 @@ import type {
 import * as React from 'react';
 
 import type { CmsFieldErrorSummaryItem } from '../cms-editorial-fields/CmsFieldErrorSummary';
-import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor';
+import type { CmsFieldDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
 import { cmsEditorialAppEntryPath } from './cms-editorial-app-routes';
 import {
   collectCmsCreateValues,
   initialCmsCreateValues,
 } from './cms-editorial-entry-create-values';
+import type { CmsEditorialEntryCreateSubmitResult } from './cms-editorial-entry-create-submit';
 import {
   READ_CSRF_COOKIE_FROM_DOCUMENT,
-  submitCmsEditorialEntryCreate,
-  type CmsEditorialEntryCreateSubmitResult,
-} from './cms-editorial-entry-create-submit';
+  newCmsEditorialIdempotencyKey,
+} from './cms-editorial-request-support';
 import { markRouteHeadingForFocus } from '../../lib/route-heading-focus';
 import { saveCmsEditorialResult } from './cms-editorial-result-handoff';
 import type { CmsFieldIssue } from '../cms-editorial-fields/cms-field-issue';
@@ -29,6 +29,8 @@ type Fetcher = (
 export interface CmsEditorialEntryCreateOptions {
   readonly type: AuthoringContextType;
   readonly fields: readonly AuthoringContextField[];
+  /** Decoded from `fields` by the page (server), so the island ships no zod (AC-106). */
+  readonly descriptors: readonly CmsFieldDescriptor[];
   readonly fetcher?: Fetcher | undefined;
   readonly navigate?: ((path: string) => void) | undefined;
 }
@@ -62,6 +64,20 @@ const sessionStorageOrNull = (): Storage | null => {
   }
 };
 
+/** The create transport chunk could not be fetched: nothing was sent, so nothing was created. */
+const CREATE_UNAVAILABLE = (
+  idempotencyKey: string,
+): CmsEditorialEntryCreateSubmitResult => ({
+  status: 'error',
+  message:
+    'The create could not be started. Nothing was created; check your connection and try again.',
+  retryable: true,
+  outcomeUnknown: false,
+  unauthenticated: false,
+  retryAfterSeconds: null,
+  idempotencyKey,
+});
+
 /**
  * The state machine behind the create island. It owns the typed field values,
  * which fields have been touched, the raw-input errors, the pending attempt
@@ -72,11 +88,7 @@ const sessionStorageOrNull = (): Storage | null => {
 export const useCmsEditorialEntryCreate = (
   options: CmsEditorialEntryCreateOptions,
 ) => {
-  const { type, fields } = options;
-  const descriptors = React.useMemo(
-    () => describeCmsAuthoringFields(fields),
-    [fields],
-  );
+  const { type, fields, descriptors } = options;
   const [values, setValues] = React.useState(() =>
     initialCmsCreateValues(fields),
   );
@@ -191,21 +203,32 @@ export const useCmsEditorialEntryCreate = (
     setStatus({ kind: 'submitting' });
     setServerFields(new Set());
     setServerMessage(null);
-    const result = await submitCmsEditorialEntryCreate({
-      prefill: {
-        contentTypeId: type.contentTypeId,
-        contentTypeVersionId: type.contentTypeVersionId,
-        locale: sendLocale,
-        schemaArtifact: type.schemaArtifact,
-        validatorRefs: type.validatorRefs,
-        workflowPolicy: type.workflowPolicy,
-        activationEvidence: type.activationEvidence,
-      },
-      values: toSend,
-      csrfToken: READ_CSRF_COOKIE_FROM_DOCUMENT(document),
-      idempotencyKey: key,
-      ...(options.fetcher === undefined ? {} : { fetcher: options.fetcher }),
-    });
+    // The create transport (and the contract schemas it validates with) loads on
+    // the first submit, never with the island (FE03 "Performance budgets and
+    // loading strategy", AC-106).
+    const submitter = await import('./cms-editorial-entry-create-submit').catch(
+      () => null,
+    );
+    const result: CmsEditorialEntryCreateSubmitResult =
+      submitter === null
+        ? CREATE_UNAVAILABLE(key ?? newCmsEditorialIdempotencyKey() ?? '')
+        : await submitter.submitCmsEditorialEntryCreate({
+            prefill: {
+              contentTypeId: type.contentTypeId,
+              contentTypeVersionId: type.contentTypeVersionId,
+              locale: sendLocale,
+              schemaArtifact: type.schemaArtifact,
+              validatorRefs: type.validatorRefs,
+              workflowPolicy: type.workflowPolicy,
+              activationEvidence: type.activationEvidence,
+            },
+            values: toSend,
+            csrfToken: READ_CSRF_COOKIE_FROM_DOCUMENT(document),
+            idempotencyKey: key,
+            ...(options.fetcher === undefined
+              ? {}
+              : { fetcher: options.fetcher }),
+          });
     // Only an attempt that may have been applied locks the form: the identical
     // request must be replayed under the same key, so nothing may change first.
     if (result.status === 'error' && result.outcomeUnknown) {

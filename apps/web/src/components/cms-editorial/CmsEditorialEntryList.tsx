@@ -102,6 +102,11 @@ export default function CmsEditorialEntryList({
               <li key={item.id}>
                 <a href={`${routePath}/${encodeURIComponent(item.entryId)}`}>
                   Entry {item.entryId}
+                </a>{' '}
+                <a
+                  href={`${routePath}/${encodeURIComponent(item.entryId)}/workflow`}
+                >
+                  Review and publish
                 </a>
                 <br />
                 Lifecycle: {item.entryLifecycle} · Draft revision{' '}

@@ -1,0 +1,22 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+      Coverage enabled with v8
+
+
+ Test Files  32 passed (32)
+      Tests  412 passed (412)
+   Start at  17:18:46
+   Duration  141.93s (transform 28.70s, setup 0ms, import 198.83s, tests 8.54s, environment 25ms)
+
+ % Coverage report from v8
+-------------------|---------|----------|---------|---------|-------------------
+File               | % Stmts | % Branch | % Funcs | % Lines | Uncovered Line #s 
+-------------------|---------|----------|---------|---------|-------------------
+-------------------|---------|----------|---------|---------|-------------------
+
+=============================== Coverage summary ===============================
+Statements   : 100% ( 362/362 )
+Branches     : 100% ( 247/247 )
+Functions    : 100% ( 56/56 )
+Lines        : 100% ( 330/330 )
+================================================================================

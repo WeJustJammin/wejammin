@@ -7,7 +7,8 @@ CMS-03B-13 entry list), `new.astro` (CMS-03B-10 create with CMS-03B-14 context),
 `[entryId].astro` (the CMS-03B-11 draft editor with CMS-03B-01 autosave),
 `[entryId]/conflicts/[conflictId].astro` (CMS-03B-12 / -02 resolution) and
 `[entryId]/revisions.astro` (CMS-03B-03 history, comparison and CMS-03B-04
-restore).
+restore) and `[entryId]/workflow.astro` (CMS-03B-15 workflow with the review,
+schedule, preview and publish commands CMS-03B-05, -07, -08 and -09).
 
 ## Ownership
 
@@ -29,6 +30,9 @@ the worker/API and `apps/web/src/server/`.
   version and your version with native radios and an explicit-value editor.
 - `[entryId]/revisions.astro` — history list, domain-grouped comparison, typed
   refusals and the inline restore review.
+- `[entryId]/workflow.astro` — the workflow panel (revision, 17 checks, review,
+  schedules, publications) and exactly the command forms `permittedNextActions`
+  allows; the draft page and every list row link here.
 - The document shell is
   `apps/web/src/components/cms-editorial/CmsEditorialDocument.astro`: processed
   Astro markup so the `route-heading-focus`, `auth-scope-sync` and

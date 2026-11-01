@@ -20,6 +20,7 @@ import {
   type TelemetryEvent,
 } from '../../../apps/worker/src/content-schema-registry';
 import { createProductionContentSchemaRegistryDependencies } from '../../../apps/worker/src/content-schema-registry/production';
+import type { ContentSchemaRegistryProductionOptions } from '../../../apps/worker/src/content-schema-registry/production-types';
 import { API_URL, workerServiceCredential } from './stack';
 
 export const CMS_TEST_ORIGIN = 'https://cms-console.example.test';
@@ -42,6 +43,7 @@ export type CmsApp = Readonly<{
       body?: unknown;
       idempotencyKey?: string;
       ifMatch?: string;
+      headers?: Readonly<Record<string, string>>;
     }>,
   ) => Promise<Readonly<{ status: number; body: Record<string, unknown> }>>;
   /** Sends one request exactly as given (the signed release routes need untouched bytes). */
@@ -63,6 +65,12 @@ export const CMS_TEST_RELEASE_ORIGIN = 'https://release-worker.example.test';
 export type CmsAppOptions = Readonly<{
   /** The Worker's CMS_RELEASE_KEY_REGISTRY (JSON); absent means no release key is trusted. */
   releaseRegistry?: string;
+  /** Opt-in: retain production's private request/session context capture. */
+  authentication?: Pick<
+    ContentSchemaRegistryProductionOptions,
+    'auth' | 'resolveCapabilities'
+  >;
+  requestHeaders?: Readonly<Record<string, string>>;
 }>;
 
 const environment = (options: CmsAppOptions): ServerEnvironment =>
@@ -124,12 +132,15 @@ export const createCmsApp = (
   const production = createProductionContentSchemaRegistryDependencies({
     environment: environment(options),
     fetchImpl: spyFetch,
+    ...options.authentication,
   });
   const dependencies: ContentSchemaRegistryDependencies = {
     ...production,
     humanOrigins: [CMS_TEST_ORIGIN],
     releaseOrigins: [CMS_TEST_RELEASE_ORIGIN],
-    resolveSession: async () => ({ ok: true as const, value: session }),
+    ...(options.authentication === undefined
+      ? { resolveSession: async () => ({ ok: true as const, value: session }) }
+      : {}),
     rateLimit: async () => ({
       ok: true as const,
       value: {
@@ -145,23 +156,27 @@ export const createCmsApp = (
   };
   const app = createContentSchemaRegistryApp(dependencies);
   return {
-    send: async (method, path, options = {}) => {
+    send: async (method, path, requestOptions = {}) => {
       const headers: Record<string, string> = {
         origin: CMS_TEST_ORIGIN,
         authorization: 'Bearer verified-session',
         'x-request-id': randomUUID(),
+        ...options.requestHeaders,
       };
       if (method === 'POST') {
         headers['content-type'] = 'application/json';
-        headers['idempotency-key'] = options.idempotencyKey ?? randomUUID();
-        if (options.ifMatch !== undefined)
-          headers['if-match'] = `"${options.ifMatch}"`;
+        headers['idempotency-key'] =
+          requestOptions.idempotencyKey ?? randomUUID();
+        if (requestOptions.ifMatch !== undefined)
+          headers['if-match'] = `"${requestOptions.ifMatch}"`;
       }
       const response = await app.request(
         new Request(`https://api.example.test${path}`, {
           method,
-          headers,
-          ...(method === 'POST' ? { body: JSON.stringify(options.body) } : {}),
+          headers: { ...headers, ...requestOptions.headers },
+          ...(method === 'POST'
+            ? { body: JSON.stringify(requestOptions.body) }
+            : {}),
         }),
       );
       return {

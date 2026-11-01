@@ -1,0 +1,1345 @@
+{
+  "schemaVersion": 1,
+  "baseline": "f346293d9eee1266d1c231e985815e0449c1cdbb",
+  "scope": "active S11 worktree only; root6.1/ultra runtime/format/Git/canonical; retained native6astra/high source authors; no precision producer released",
+  "acceptance": "0/122; Slices12-17 unstarted; external AC209/211/265/266 unchecked",
+  "files": [
+    {
+      "path": "supabase/migrations/20261010140000_cms_schedule_expired_lease_fence.sql",
+      "lines": 122,
+      "sha256": "bc0690b6f20ef3ba7746a182602985fe6b269b3245184844dda2b57e9a3b0f74"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "lines": 243,
+      "sha256": "dcee52aa0294bf20e99c5f9b5b628fd7526bf5c95736dadb08fd64ffd58a7146"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_helpers_preflight.sql",
+      "lines": 836,
+      "sha256": "42b314f6a73f9af584137fe383370aeda0f46c2f97ef514cbb285726dd1502f8"
+    },
+    {
+      "path": "tests/postgrest/support/phase-02-slice-11-schedule-support.ts",
+      "lines": 209,
+      "sha256": "f13a1cb9f4ef922bbe2ad97a2ad87e6ecf27188b4b6b6d7398d7e08caad2d53f"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-schedule-precision.apispec.ts",
+      "lines": 375,
+      "sha256": "8ec32bf9fa6a6e933a056ce4568a7876cd9e9e92e0de666e87a6180bf180d887"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-schedule-precision-authority.apispec.ts",
+      "lines": 222,
+      "sha256": "690e1cdaa792a4f1edf4f57ba8e34ae6a75fb702b55cc0345629f08fcb22970c"
+    },
+    {
+      "path": "packages/contracts/src/cms-editorial/time-authority/schedule-nanoseconds.test.ts",
+      "lines": 121,
+      "sha256": "63573dbbe17eb971beadf9f04e41b1d350a57bd3fb9736dc75f8c73c74bd84dd"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "lines": 234,
+      "sha256": "4c865c271afb73d2c0971f901bb7172b761f4daadbbd12e2050a755fa4ae0ae8"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_helpers/005-schedule-precision-expressions.sqlinc",
+      "lines": 159,
+      "sha256": "3e23392ed2a5e4109c8142ecc981230290283849bb19d0a22d4263fa782b7a31"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-schedule-precision-legacy.apispec.ts",
+      "lines": 209,
+      "sha256": "f617d16f9d8cef7a492730d8ce07d0c8d45841decbfb7ebea7bd19197e03ceb6"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-sweep-composition.apispec.ts",
+      "lines": 287,
+      "sha256": "c9458fcee8d27fe67f7530a13fd1ed81b11091e047a793ce21cd0d693230a762"
+    },
+    {
+      "path": "tests/postgrest/support/phase-02-slice-11-schedule-recovery-proof.ts",
+      "lines": 195,
+      "sha256": "9f9aa4a4dd1fb0b120e0a12c2f07e7fd8c38c74e8876e87bc2d5c0ee29617fc7"
+    }
+  ],
+  "frozenE7QA": [
+    {
+      "path": "tests/postgrest/phase-02-slice-11-assignment-refusals.apispec.ts",
+      "expectedSha256": "2a9384f0b9110729fa005bb29dc525c080180a904a76885637136bccb17df818",
+      "actualSha256": "2a9384f0b9110729fa005bb29dc525c080180a904a76885637136bccb17df818"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-preview-verifier.apispec.ts",
+      "expectedSha256": "4e57f3cd11589d69a2fb466aa2271a3e136475663b634affb1ddb5b9efcdb976",
+      "actualSha256": "4e57f3cd11589d69a2fb466aa2271a3e136475663b634affb1ddb5b9efcdb976"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-submit-contracts.apispec.ts",
+      "expectedSha256": "0dd6ea2bbd40d65ea9537f4f85f0237d14ed8910e97e1231883ce19575516d3b",
+      "actualSha256": "0dd6ea2bbd40d65ea9537f4f85f0237d14ed8910e97e1231883ce19575516d3b"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings_lookup.sql",
+      "expectedSha256": "a76b55f199bc51bf162bc5828e0459d122c94dea8cef544331eb1b9384747872",
+      "actualSha256": "a76b55f199bc51bf162bc5828e0459d122c94dea8cef544331eb1b9384747872"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/000-writer-helpers.sqlinc",
+      "expectedSha256": "8581c3686b191140f631d0adf42598c106cd647416a5e688060394409cbeb42c",
+      "actualSha256": "8581c3686b191140f631d0adf42598c106cd647416a5e688060394409cbeb42c"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/001-writer-requests.sqlinc",
+      "expectedSha256": "d6190167d5bb4197fb66d9a4635ca24fb6e1218ee5557faff839a0dd40b3899a",
+      "actualSha256": "d6190167d5bb4197fb66d9a4635ca24fb6e1218ee5557faff839a0dd40b3899a"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings_writer_tail.sql",
+      "expectedSha256": "fa080a58d0d38123b88c634d9cc5a8675d13cdaf73aa46cb9516e0cdfa5b3a9f",
+      "actualSha256": "fa080a58d0d38123b88c634d9cc5a8675d13cdaf73aa46cb9516e0cdfa5b3a9f"
+    },
+    {
+      "path": "supabase/tests/phase_02_slice_11_e7_settings/002-review-atomicity.sqlinc",
+      "expectedSha256": "50a9908336eca76d704080b9f1e6f9e081ee893f3001fa744b5396a0016b02c6",
+      "actualSha256": "50a9908336eca76d704080b9f1e6f9e081ee893f3001fa744b5396a0016b02c6"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-read-workflow-noeffects.apispec.ts",
+      "expectedSha256": "3ca9c077d4d70d886cb592bdbc0e678b0738a6a022f3df5ed47cbb4c513528a5",
+      "actualSha256": "3ca9c077d4d70d886cb592bdbc0e678b0738a6a022f3df5ed47cbb4c513528a5"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-read-workflow-scopes.apispec.ts",
+      "expectedSha256": "facc77731447d123ac7338102388d259dafe2458ff3e2fa5fa3794ce696b2b76",
+      "actualSha256": "facc77731447d123ac7338102388d259dafe2458ff3e2fa5fa3794ce696b2b76"
+    },
+    {
+      "path": "tests/postgrest/phase-02-slice-11-schedule-actions.apispec.ts",
+      "expectedSha256": "75fe6bba91670c4f6b3e008ea07719a94cb3a20f7b97ff45ffbf9dd959e9ad17",
+      "actualSha256": "75fe6bba91670c4f6b3e008ea07719a94cb3a20f7b97ff45ffbf9dd959e9ad17"
+    }
+  ],
+  "static": {
+    "contractsCheck": 0,
+    "progressCheck": 0,
+    "typeCheck": 0,
+    "purePinnedTime": {
+      "pass": 7,
+      "fail": 0,
+      "previousRed": false
+    },
+    "documentsFormat": 0,
+    "diffCheck": 0,
+    "log": ".lane-logs/parent-s11-wave8-static-final-20261010.log",
+    "logs": [
+      {
+        "path": ".lane-logs/parent-s11-lease-lookup-preflight-focus-20261010.log",
+        "sha256": "b9a4c639bb2a10c4dd516d2acbce6092d916bbd20e766b69d086c066fca6fb7b"
+      },
+      {
+        "path": ".lane-logs/parent-s11-lease-catalog-lookup-mutation-sweeps-20261010.log",
+        "sha256": "6776d61d5b28c18ebbb2487cc82f7670968b70fd05a68fa8904f088fdfe9aa0c"
+      },
+      {
+        "path": ".lane-logs/parent-s11-transport-lease-census-precision81-focus-20261010.log",
+        "sha256": "6b44d85f1ab8de604ce167a3e2fd0204eeb592df048ba765d2f41f01ee954c21"
+      },
+      {
+        "path": ".lane-logs/parent-s11-precision-extractor-repaired-red-20261010.log",
+        "sha256": "20f12c9ca0aeaf9488a484ad6d91b9ef7ee353c3f92660e25a8ee262a46e7384"
+      },
+      {
+        "path": ".lane-logs/parent-s11-precision-80-qualified-call-red-green-20261010.log",
+        "sha256": "a51191d28498c03c3f75d6f15960caed08643c6abc6012a9773831cf9cae660b"
+      },
+      {
+        "path": ".lane-logs/parent-s11-precision-qualified-chain-red-20261010.log",
+        "sha256": "50d0efdec38e69985b8b1322a10e7874a65a45624026371eac079a47f47114fa"
+      },
+      {
+        "path": ".lane-logs/parent-s11-recovery-proof-static-20261010.log",
+        "sha256": "6e1ead780dc705108f7443035c7a55a58f41bfc16a205f85d69c79b276fa4ff7"
+      },
+      {
+        "path": ".lane-logs/parent-s11-legacy-precision-qa-static-20261010.log",
+        "sha256": "06bf0bee6f009f8922cda12da188d687c74e277b8202cec5b5e91aa29640b047"
+      },
+      {
+        "path": ".lane-logs/parent-s11-transport-extractor-static-repaired-20261010.log",
+        "sha256": "191ea75573c030ec7b744c82c3225fea430d16977e6d90fb44e6fc63fd6b5e93"
+      },
+      {
+        "path": ".lane-logs/parent-s11-precision-api-pure-format-20261010.log",
+        "sha256": "4ba3040113628aad4ad372b2906d25df19cc9af4ebcf82acf51de9fc6911b4b7"
+      }
+    ],
+    "caps": "all new source <=400; API375 exceeds prefer350; inherited preflight833->836 only fingerprint/title; no unrelated restructuring"
+  },
+  "sqlUnit": {
+    "assertions": 95,
+    "pass": 71,
+    "fail": 24,
+    "validExpressions": 8,
+    "invalidExtractions": 0,
+    "original73Preserved": true,
+    "scope": "complete installed-expression arithmetic projection only; never invokes/replaces production RPC or persists rows",
+    "failures": [
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 2,
+        "newTitle": "metadata: local_datetime_submicro_ns is smallint not null default zero bounded 0..999",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 3,
+        "newTitle": "metadata: resolved_utc_submicro_ns is smallint not null default zero bounded 0..999",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 27,
+        "newTitle": "offset refusal: -12h -1ns local operand",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 32,
+        "newTitle": "offset refusal: +14h +1ns local operand",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 33,
+        "newTitle": "offset refusal: -12h -1ns resolved operand",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 38,
+        "newTitle": "offset refusal: +14h +1ns resolved operand",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 39,
+        "newTitle": "offset refusal: year9999 +14h plus1ns uses complete numeric operands",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 40,
+        "newTitle": "offset refusal: year0001 -12h minus1ns uses complete numeric operands",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 46,
+        "newTitle": "horizon refusal: maximum +1ns",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 47,
+        "newTitle": "horizon DETAIL preserves exact microseconds and only minUtc/maxUtc",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 49,
+        "newTitle": "claim due: pending T plus 1ns",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 58,
+        "newTitle": "claim_order: nanoseconds precede reversed UUID order",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 61,
+        "newTitle": "return_order: nanoseconds precede reversed UUID order",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 70,
+        "newTitle": "deviation: actual T scheduled T+.500000001 => -1",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 71,
+        "newTitle": "deviation: +1.5 minus 1ns => 1",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 82,
+        "newTitle": "deviation: -2.5 minus 1ns => -3",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 86,
+        "newTitle": "deviation: +30000001.5 minus1ns => 30000001",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 89,
+        "newTitle": "deviation: -30000000.5 minus1ns => -30000001",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 90,
+        "newTitle": "workflow resolvedUtc: .000000001",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 91,
+        "newTitle": "workflow resolvedUtc: .123456789",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 92,
+        "newTitle": "workflow resolvedUtc: .999999999 before UTC midnight",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 93,
+        "newTitle": "workflow resolvedUtc: UTC midnight plus 1ns",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 94,
+        "newTitle": "workflow resolvedUtc: equivalent +05:30 offset",
+        "result": "FAIL",
+        "change": "new assertion"
+      },
+      {
+        "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+        "index": 95,
+        "newTitle": "workflow resolvedUtc: legacy zero remainder preserves microseconds",
+        "result": "FAIL",
+        "change": "new assertion"
+      }
+    ],
+    "whitespaceRed": {
+      "assertions": 95,
+      "pass": 68,
+      "fail": 27,
+      "log": ".lane-logs/parent-s11-precision95-whitespace-qualification-red-20261010.log",
+      "sha256": "adfbdb1bafd10409f1ac3b192673ad1c27a2e05b1a9cebdea17c8155eb2740d5"
+    },
+    "lexicalGreen": {
+      "newWhitespaceWitnesses": 3,
+      "otherQualifiedAndOperandNegatives": true,
+      "groupedFromBetween": true,
+      "divNumeric": true
+    },
+    "repairHistory": [
+      "initial78:33 failures included10 invalid due-capture failures and3 unsafe-call acceptance failures; not33 producer failures",
+      "repaired78:20 precision failures58PASS; qualified keyword counterexamples witnessed then80:20FAIL60PASS",
+      "full-dotchain counterexample witnessed then81:20FAIL61PASS",
+      "92 adds compatibility/far-epoch/large-deviation matrix;24FAIL68PASS;95 whitespace old matcher27FAIL68PASS then repaired24FAIL71PASS"
+    ]
+  },
+  "full": {
+    "command": "pnpm db:verify",
+    "reset": 0,
+    "lint": 0,
+    "sql": {
+      "files": 336,
+      "assertions": 12988,
+      "pass": 12964,
+      "fail": 24,
+      "seconds": 110
+    },
+    "dbVerify": 1,
+    "api": "UNRUN: SQL first failure",
+    "races": "UNRUN",
+    "dbTypes": "UNRUN",
+    "validate": "UNRUN: conditional on dbVerify0",
+    "postReset": 0,
+    "driverExit": 1,
+    "closedAtUTC": "2026-10-10T17:43:01Z",
+    "log": ".lane-logs/parent-s11-precision95-lexical-green-fullgate-red-20261010.log",
+    "sha256": "44ff12d63aa706c9daf0f71e2ca61e8164d545c085479d411438ffda4b12a64e"
+  },
+  "focused": {
+    "sql": {
+      "settings35": "PASS",
+      "preflight157": "PASS",
+      "e7Lookup54": "PASS",
+      "writer72": "PASS",
+      "sum": 318
+    },
+    "storedLookupMutation": {
+      "test": 28,
+      "total": 35,
+      "onlyFailure": true,
+      "other34Pass": true,
+      "restoredReset": 0,
+      "restoredFullSQL": true
+    },
+    "settingsRowImageMutation": "UNRUN/unavailable under unchanged SELECT+INSERT-only CMS grants and immutable UPDATE/DELETE guard; no bypass or failed-subtransaction false proof",
+    "newPrecisionAPI": {
+      "files": 2,
+      "tests": 6,
+      "pass": 1,
+      "fail": 5,
+      "admission": "actual422 expected202; no private-column setup error",
+      "authorityEndRefusal": "PASS",
+      "privatePairImmutableRuntime": "UNRUN: admission failure"
+    },
+    "legacyAPI": {
+      "tests": 1,
+      "pass": 0,
+      "fail": 1,
+      "actualSixDigitAdmission": 202,
+      "failure": "whole stored pair expected zero remainders, actual absent-safe JSON nulls",
+      "completedReceiptReplayWorkflow": "UNREACHED after storage assertion",
+      "migrationRetention": "UNRUN"
+    },
+    "realLeaseOutcomes": {
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "secondsApprox": 842,
+      "realFiveMinuteLease": true,
+      "expiredExactTuple": "400/P0001/CONFLICT",
+      "noEffectsGroups": 14
+    },
+    "compositionBeforeProof": {
+      "tests": 3,
+      "pass": 2,
+      "fail": 1,
+      "actualAuditDelta": 5,
+      "expectedAuditDelta": 4
+    },
+    "compositionWithPermanentProof": {
+      "tests": 3,
+      "pass": 3,
+      "fail": 0,
+      "expiredCandidates": 0,
+      "genuinePositivePath": "UNRUN",
+      "recoveryRemovalMutant": "UNRUN"
+    },
+    "transportLog": ".lane-logs/parent-s11-transport-lease-census-precision81-focus-20261010.log",
+    "transportLogSha256": "6b44d85f1ab8de604ce167a3e2fd0204eeb592df048ba765d2f41f01ee954c21",
+    "qa92Log": ".lane-logs/parent-s11-final-qa92-legacy-recovery-fullgate-20261010.log",
+    "qa92LogSha256": "e82e984b0e75e6f6b2f5d9e0d750876fd1ea934ddd3e82994ac9313dc07ced07"
+  },
+  "recoveryAttribution": {
+    "scope": "temporary readonly real before/after census, removed byte-inverse exact before permanent integration",
+    "actualCandidates": 1,
+    "before": {
+      "state": "executing",
+      "attempt": 0,
+      "version": 2,
+      "leaseExpired": true,
+      "priorScheduleAudit": 1
+    },
+    "after": {
+      "state": "failed_retryable",
+      "attempt": 1,
+      "version": 3,
+      "leaseCleared": true,
+      "nextAttemptDelaySeconds": 15,
+      "newTargetAudits": 1,
+      "action": "cms.publication.schedule.retry",
+      "reason": "CMS_PUBLICATION_SCHEDULE_RETRY"
+    },
+    "limits": "observes true producer recovery; not a runtime witness for the new permanent observer or recovery-removal mutation"
+  },
+  "changedTestTitles": [
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 1,
+      "newTitle": "catalog resolves all five exact live signatures and records full metadata",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 2,
+      "newTitle": "metadata: local_datetime_submicro_ns is smallint not null default zero bounded 0..999",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 3,
+      "newTitle": "metadata: resolved_utc_submicro_ns is smallint not null default zero bounded 0..999",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 4,
+      "newTitle": "metadata: immutable schedule guard source and definition remain byte-exact",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 5,
+      "newTitle": "extraction is unique complete and SELECT-only: claim_order",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 6,
+      "newTitle": "extraction is unique complete and SELECT-only: detail",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 7,
+      "newTitle": "extraction is unique complete and SELECT-only: deviation",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 8,
+      "newTitle": "extraction is unique complete and SELECT-only: due",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 9,
+      "newTitle": "extraction is unique complete and SELECT-only: horizon",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 10,
+      "newTitle": "extraction is unique complete and SELECT-only: offset",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 11,
+      "newTitle": "extraction is unique complete and SELECT-only: return_order",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 12,
+      "newTitle": "extraction is unique complete and SELECT-only: workflow",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 13,
+      "newTitle": "lexical safety rejects operand call local_value()",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 14,
+      "newTitle": "lexical safety rejects qualified operand call pg_catalog.local_value()",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 15,
+      "newTitle": "lexical safety rejects non-ASCII identifier call é()",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 16,
+      "newTitle": "lexical safety rejects qualified syntax-keyword call pg_catalog.and()",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 17,
+      "newTitle": "lexical safety rejects qualified syntax-keyword call pg_catalog.or()",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 18,
+      "newTitle": "lexical safety rejects longer qualified call pg_catalog.abs.pg_catalog.round(0)",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 19,
+      "newTitle": "lexical safety accepts grouped EXTRACT operand without relation reads",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 20,
+      "newTitle": "lexical safety accepts grouped BETWEEN operands",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 21,
+      "newTitle": "lexical safety rejects qualified syntax-keyword call pg_catalog.from()",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 22,
+      "newTitle": "lexical safety rejects qualified syntax-keyword call pg_catalog.between()",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 23,
+      "newTitle": "lexical safety accepts reviewed pure numeric integral quotient",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 24,
+      "newTitle": "lexical safety rejects whitespace-qualified unreviewed call abs . round(0)",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 25,
+      "newTitle": "lexical safety rejects whitespace-qualified operand call local_value . abs(0)",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 26,
+      "newTitle": "lexical safety accepts whitespace-qualified reviewed pure call pg_catalog . abs(0)",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 27,
+      "newTitle": "offset refusal: -12h -1ns local operand",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 28,
+      "newTitle": "offset refusal: -12h equal local operand",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 29,
+      "newTitle": "offset refusal: -12h +1ns local operand",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 30,
+      "newTitle": "offset refusal: +14h -1ns local operand",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 31,
+      "newTitle": "offset refusal: +14h equal local operand",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 32,
+      "newTitle": "offset refusal: +14h +1ns local operand",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 33,
+      "newTitle": "offset refusal: -12h -1ns resolved operand",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 34,
+      "newTitle": "offset refusal: -12h equal resolved operand",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 35,
+      "newTitle": "offset refusal: -12h +1ns resolved operand",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 36,
+      "newTitle": "offset refusal: +14h -1ns resolved operand",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 37,
+      "newTitle": "offset refusal: +14h equal resolved operand",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 38,
+      "newTitle": "offset refusal: +14h +1ns resolved operand",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 39,
+      "newTitle": "offset refusal: year9999 +14h plus1ns uses complete numeric operands",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 40,
+      "newTitle": "offset refusal: year0001 -12h minus1ns uses complete numeric operands",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 41,
+      "newTitle": "horizon refusal: minimum -1ns",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 42,
+      "newTitle": "horizon refusal: minimum equal",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 43,
+      "newTitle": "horizon refusal: minimum +1ns",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 44,
+      "newTitle": "horizon refusal: maximum -1ns",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 45,
+      "newTitle": "horizon refusal: maximum equal",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 46,
+      "newTitle": "horizon refusal: maximum +1ns",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 47,
+      "newTitle": "horizon DETAIL preserves exact microseconds and only minUtc/maxUtc",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 48,
+      "newTitle": "claim due: pending T exact",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 49,
+      "newTitle": "claim due: pending T plus 1ns",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 50,
+      "newTitle": "claim due: pending T minus 1ns",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 51,
+      "newTitle": "claim due: retry below T ignores future original",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 52,
+      "newTitle": "claim due: retry equal T ignores future original",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 53,
+      "newTitle": "claim due: retry above T ignores past original",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 54,
+      "newTitle": "claim due: executing never claimable",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 55,
+      "newTitle": "claim due: completed never claimable",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 56,
+      "newTitle": "claim due: blocked never claimable",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 57,
+      "newTitle": "claim due: cancelled never claimable",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 58,
+      "newTitle": "claim_order: nanoseconds precede reversed UUID order",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 59,
+      "newTitle": "claim_order: equal exact instants retain UUID order",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 60,
+      "newTitle": "claim_order: timestamp component precedes opposing remainder and UUID order",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 61,
+      "newTitle": "return_order: nanoseconds precede reversed UUID order",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 62,
+      "newTitle": "return_order: equal exact instants retain UUID order",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 63,
+      "newTitle": "return_order: timestamp component precedes opposing remainder and UUID order",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 64,
+      "newTitle": "live double half ties retain captured nearest-even baseline",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 65,
+      "newTitle": "deviation: actual T+1 scheduled T+.499999999 => 1",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 66,
+      "newTitle": "deviation: actual T+1 scheduled T+.500000000 => 0",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 67,
+      "newTitle": "deviation: actual T+1 scheduled T+.500000001 => 0",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 68,
+      "newTitle": "deviation: actual T scheduled T+.499999999 => 0",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 69,
+      "newTitle": "deviation: actual T scheduled T+.500000000 => 0",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 70,
+      "newTitle": "deviation: actual T scheduled T+.500000001 => -1",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 71,
+      "newTitle": "deviation: +1.5 minus 1ns => 1",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 72,
+      "newTitle": "deviation: +1.5 exact => 2",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 73,
+      "newTitle": "deviation: +1.5 plus 1ns => 2",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 74,
+      "newTitle": "deviation: -1.5 plus 1ns => -1",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 75,
+      "newTitle": "deviation: -1.5 exact => -2",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 76,
+      "newTitle": "deviation: -1.5 minus 1ns => -2",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 77,
+      "newTitle": "deviation: +2.5 minus 1ns => 2",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 78,
+      "newTitle": "deviation: +2.5 exact => 2",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 79,
+      "newTitle": "deviation: +2.5 plus 1ns => 3",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 80,
+      "newTitle": "deviation: -2.5 plus 1ns => -2",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 81,
+      "newTitle": "deviation: -2.5 exact => -2",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 82,
+      "newTitle": "deviation: -2.5 minus 1ns => -3",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 83,
+      "newTitle": "deviation: zero => 0",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 84,
+      "newTitle": "deviation: positive whole second => 1",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 85,
+      "newTitle": "deviation: negative whole second => -1",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 86,
+      "newTitle": "deviation: +30000001.5 minus1ns => 30000001",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 87,
+      "newTitle": "deviation: +30000000.5 plus1ns => 30000001",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 88,
+      "newTitle": "deviation: -30000001.5 plus1ns => -30000001",
+      "result": "PASS",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 89,
+      "newTitle": "deviation: -30000000.5 minus1ns => -30000001",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 90,
+      "newTitle": "workflow resolvedUtc: .000000001",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 91,
+      "newTitle": "workflow resolvedUtc: .123456789",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 92,
+      "newTitle": "workflow resolvedUtc: .999999999 before UTC midnight",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 93,
+      "newTitle": "workflow resolvedUtc: UTC midnight plus 1ns",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 94,
+      "newTitle": "workflow resolvedUtc: equivalent +05:30 offset",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_schedule_precision.sql",
+      "index": 95,
+      "newTitle": "workflow resolvedUtc: legacy zero remainder preserves microseconds",
+      "result": "FAIL",
+      "change": "new assertion"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-schedule-precision.apispec.ts",
+      "newTitle": "[CMS-03B-07] nine-digit acceptance stores exact floor/remainder pairs and completed202; private pairs are immutable and exact replay preserves all fourteen groups",
+      "change": "new test body"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-schedule-precision.apispec.ts",
+      "newTitle": "[CMS-03B-15] genuine workflow read retains the accepted nine-digit instant without any durable effects",
+      "change": "new test body"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-schedule-precision.apispec.ts",
+      "newTitle": "[CMS-03B-07] fresh-key equivalent fractional and UTC-offset spellings conflict against their own accepted .123456780 identity without effects",
+      "change": "new test body"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-schedule-precision.apispec.ts",
+      "newTitle": "[CMS-03B-07][CMS-03B-15] identities one nanosecond apart coexist as two exact stored pairs and two exact workflow instants",
+      "change": "new test body"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-schedule-precision-authority.apispec.ts",
+      "newTitle": "[CMS-03B-07] actual shortPublisher grant covers its final UTC nanosecond through command and preflight with exact stored precision",
+      "change": "new test body"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-schedule-precision-authority.apispec.ts",
+      "newTitle": "[CMS-03B-07] midnight after actual shortPublisher valid_through is exact authority_ends_before_schedule with all fourteen groups unchanged",
+      "change": "new test body"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-schedule-precision-legacy.apispec.ts",
+      "newTitle": "[CMS-03B-07][CMS-03B-15] real six-digit legacy persistence stores zero remainders and completed202 receipt; exact replay and padded workflow preserve all fourteen groups",
+      "change": "new test body"
+    },
+    {
+      "file": "packages/contracts/src/cms-editorial/time-authority/schedule-nanoseconds.test.ts",
+      "newTitle": "minimum minus 1ns has exact inclusive horizon outcome and complete resolution tuple",
+      "change": "new test body",
+      "result": "PASS"
+    },
+    {
+      "file": "packages/contracts/src/cms-editorial/time-authority/schedule-nanoseconds.test.ts",
+      "newTitle": "minimum equal has exact inclusive horizon outcome and complete resolution tuple",
+      "change": "new test body",
+      "result": "PASS"
+    },
+    {
+      "file": "packages/contracts/src/cms-editorial/time-authority/schedule-nanoseconds.test.ts",
+      "newTitle": "minimum plus 1ns has exact inclusive horizon outcome and complete resolution tuple",
+      "change": "new test body",
+      "result": "PASS"
+    },
+    {
+      "file": "packages/contracts/src/cms-editorial/time-authority/schedule-nanoseconds.test.ts",
+      "newTitle": "maximum minus 1ns has exact inclusive horizon outcome and complete resolution tuple",
+      "change": "new test body",
+      "result": "PASS"
+    },
+    {
+      "file": "packages/contracts/src/cms-editorial/time-authority/schedule-nanoseconds.test.ts",
+      "newTitle": "maximum equal has exact inclusive horizon outcome and complete resolution tuple",
+      "change": "new test body",
+      "result": "PASS"
+    },
+    {
+      "file": "packages/contracts/src/cms-editorial/time-authority/schedule-nanoseconds.test.ts",
+      "newTitle": "maximum plus 1ns has exact inclusive horizon outcome and complete resolution tuple",
+      "change": "new test body",
+      "result": "PASS"
+    },
+    {
+      "file": "packages/contracts/src/cms-editorial/time-authority/schedule-nanoseconds.test.ts",
+      "newTitle": "a one-nanosecond local/resolved mismatch returns only the exact mismatch refusal",
+      "change": "new test body",
+      "result": "PASS"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_settings.sql",
+      "oldTitle": "lookup leaves no owner settings-snapshot advisory transaction lock held after the call [P2-S11-AC-092]",
+      "newTitle": "successful exact stored lookup retains no owner settings-snapshot transaction advisory lock [P2-S11-AC-092]",
+      "change": "successful stored lookup, exact version/hash and retained-lock assertion; other30 local assertions preserved",
+      "result": "PASS; actual owner xact-lock mutant fails only test28/35"
+    },
+    {
+      "file": "supabase/tests/phase_02_slice_11_helpers_preflight.sql",
+      "oldTitle": "an evaluation writes no outbox, audit, review, schedule or idempotency row (the settings snapshot excepted) [P2-S11-AC-097]",
+      "newTitle": "an evaluation writes no outbox, audit, review, schedule or idempotency row and preserves entire settings snapshot row images [P2-S11-AC-097]",
+      "change": "global unfiltered full-row settings fingerprint plus unchanged five effect counts and genuine evaluations; other156 assertions preserved",
+      "result": "PASS; legal same-count row mutation unavailable"
+    },
+    {
+      "file": "tests/postgrest/phase-02-slice-11-sweep-composition.apispec.ts",
+      "oldTitle": "[CMS-03B-20] actual ordered claim load execute operands bind all actions and late canonical lineage effects",
+      "newTitle": "[CMS-03B-20] actual ordered claim load execute operands bind all actions and late canonical lineage effects plus independently proved global expired-lease recovery",
+      "change": "before candidate capture/post exact per-candidate state, immutable SHA, prior audit images, new audit and retry-time proof; only audit delta now4+proved before count; other two test bodies unchanged",
+      "result": "PASS on zero-candidate path; genuine positive/removal mutant UNRUN"
+    }
+  ],
+  "changedTestTitleInventoryCount": 112,
+  "nonTitleChanges": [
+    "two expired/null-lease fences in guarded forward execute amendment, replay before fencing/CAS unchanged; independently awaited post-wait boundary proof remains pending",
+    "schedule resend uses actual production Supabase RPC header factory instead of Bearer-only generic callRpc; fresh POST body and exact response/refusal mapping retained",
+    "effect mismatch diagnostics name exact group and before/after/expected numeric counts",
+    "complete-expression due-CTE capture and closed call-name vocabulary; whitespace normalization only matched names, executed source bytes unchanged",
+    "new per-candidate readonly recovery observer; no lock, filter, clock override, mutation or manufactured lease",
+    "private nanosecond implementation contract; no private precision producers yet"
+  ],
+  "sourceReviews": [
+    {
+      "agent": "s11_api_foundation_refutation",
+      "scope": "transport and permanent recovery observer/integration",
+      "result": "no bounded finding; source-only"
+    },
+    {
+      "agent": "s11_native_legacy_admission_qa",
+      "scope": "SQL92 arithmetic/qualification",
+      "result": "whitespace-qualified call bypass; reproduced and repaired"
+    },
+    {
+      "agent": "s11_sql2_refutation_exact",
+      "scope": "SQL95 repaired lexical call/identifier loops",
+      "result": "no further bounded finding; source-only"
+    },
+    {
+      "agent": "s11_recovery_reference_source",
+      "scope": "forward storage metadata/legacy retention design",
+      "result": "existing guard covers both fields without source change; source-only plan"
+    }
+  ],
+  "precisionCatalogBaseline": {
+    "postgresql": "17.6 local only",
+    "doubleTies": [0, 2, 2, 0, -2, -2],
+    "numericTies": [1, 2, 3, -1, -2, -3],
+    "div": {
+      "identity": "pg_catalog.div(numeric,numeric)",
+      "language": "internal",
+      "immutable": true,
+      "securityDefiner": false,
+      "result": "numeric",
+      "negativeQuotient": -2,
+      "negativeRemainder": -1
+    },
+    "table": {
+      "acl": [
+        "postgres=arwdDxtm/postgres",
+        "wejammin_cms_definer=arw/postgres"
+      ],
+      "oid": "24095",
+      "rls": true,
+      "kind": "r",
+      "owner": "postgres",
+      "comment": null,
+      "forcedRls": true
+    },
+    "oldConstraintDefinitions": [
+      {
+        "name": "cms_publication_schedules_identity_unique",
+        "definition": "UNIQUE (entry_id, revision_id, action, local_datetime, timezone, audience)"
+      },
+      {
+        "name": "cms_publication_schedules_offset_check",
+        "definition": "CHECK ((((local_datetime - (resolved_at_utc AT TIME ZONE 'UTC'::text)) >= '-12:00:00'::interval) AND ((local_datetime - (resolved_at_utc AT TIME ZONE 'UTC'::text)) <= '14:00:00'::interval)))"
+      }
+    ],
+    "tableCatalogLog": ".lane-logs/parent-s11-precision-preproducer-table-catalog-20261010.log",
+    "tableCatalogSha256": "ee5f5abce052204e1f38b32e1ee042ed80d6db84774080d16b3beb68b596b3c4",
+    "limit": "OID/catalog-row equality only within one database installation; no cross-reset OID equality claim"
+  },
+  "limits": [
+    "no acceptance checkbox/evidence ledger closure or phase completion",
+    "SQL unit proof not parser/INSERT/branch/sample-after-waits/lock/RLS/CAS or actual-clock1ns E2E",
+    "lookup proof excludes transient/session-lock absence and per-call attribution",
+    "new API remainder-immutability loop and legacy receipt/replay/workflow assertions unreached while precision admission/storage fails",
+    "new recovery observer positive path/removal mutant not yet run",
+    "direct raw evaluator effectiveAt midnight seam remains separate/unrepaired",
+    "lease70/stage authority/prep wiring/public lifecycle producers and complete gates remain"
+  ],
+  "next": [
+    "canonical/static save and verified clean pushed checkpoint",
+    "root-only genuine six-digit row seed and before-DDL full row-image digest; no producer files before seed",
+    "four native source-only authors: five dedicated guarded forward precision migrations, no old migration/helper/grant/guard changes",
+    "root retention experiment then reset/fresh complete SQL/API/gates and mutation-sensitive proof"
+  ],
+  "accountResetPolicy": {
+    "ordinaryUsageAllowed": true,
+    "weeklyUsedPercent": 98,
+    "availableResetCredits": 0,
+    "creditsBalance": "0",
+    "resetUsed": false,
+    "purchase": false
+  }
+}

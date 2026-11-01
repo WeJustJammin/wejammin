@@ -1,7 +1,36 @@
 import { z } from 'zod';
 
 import { CMS_FIELD_KEY_PATTERN } from './field-rules.ts';
+import {
+  BLOCKS_MAX,
+  CONTROL_CHARACTER_PATTERN,
+  HTTPS_HREF_MAX_CHARACTERS,
+  HTTPS_HREF_PATTERN,
+  INTERNAL_ROUTE_MAX_CHARACTERS,
+  INTERNAL_ROUTE_PATTERN,
+  MAILTO_ADDRESS_MAX_CHARACTERS,
+  MAILTO_ADDRESS_MIN_CHARACTERS,
+  MAILTO_ADDRESS_PATTERN,
+  RICH_TEXT_FORMAT,
+  RICH_TEXT_MARKS,
+  RICH_TEXT_NOT_CANONICAL,
+  SPANS_PER_BLOCK_MAX,
+  SPAN_TEXT_MAX_CHARACTERS,
+  hasNoAdjacentMergeEquivalents,
+  hasNoDotSegment,
+  isNfc,
+  marksAreCanonical,
+  noLinkControlCharacters,
+  objectValueMatchesStructure,
+  unicodeLength,
+  utf16Bound,
+  withinCharacters,
+  type RichTextDecisions,
+  type RichTextV1Document as RichTextV1DocumentShape,
+} from './structured-values-rules.ts';
 import { isWellFormedAuthoredString } from './structured-values-text.ts';
+
+export { RICH_TEXT_MARKS };
 
 export { isWellFormedAuthoredString } from './structured-values-text.ts';
 
@@ -126,46 +155,6 @@ export const ObjectStructureSchema = z
 export type ObjectStructure = z.infer<typeof ObjectStructureSchema>;
 
 /**
- * A scalar property value is a JSON primitive: a string, a boolean or a finite
- * number. BE03a "Field kind structure": `scalar` covers the scalar field kinds,
- * none of which admits an authored JSON null as a value (an absent value is the
- * missing state; an explicit null is a field-level provenance state, never a
- * value shape), and the `required` flag is the only presence control, so a null
- * can neither satisfy a required property nor stand in for an optional one.
- * Arrays and nested objects are never valid at depth 1. Mirrors
- * `platform_private.cms_object_value_valid`.
- */
-const isScalarPropertyValue = (
-  value: unknown,
-): value is string | number | boolean =>
-  typeof value === 'string' ||
-  typeof value === 'boolean' ||
-  (typeof value === 'number' && Number.isFinite(value));
-
-/**
- * BE03b value contract for a DEC-133 depth-1 object structure. The value must
- * be a plain object whose keys are a subset of the declared properties; every
- * required property is present; a scalar property holds a JSON primitive; an
- * enum property holds a string contained in its declared set; and a rich_text
- * property holds a 'rich_text.v1' document. Unknown or nested values are
- * refused, so there is no untyped pass-through.
- */
-const unicodeCharacters = (value: string): number => Array.from(value).length;
-
-const boundedBy = (
-  constraints: Readonly<Record<string, unknown>>,
-  minMember: string,
-  maxMember: string,
-  measure: number,
-): boolean => {
-  const minimum = constraints[minMember];
-  const maximum = constraints[maxMember];
-  if (typeof minimum === 'number' && measure < minimum) return false;
-  if (typeof maximum === 'number' && measure > maximum) return false;
-  return true;
-};
-
-/**
  * The total NFC text across every span of every block, counted in Unicode
  * characters, as `platform_private.cms_rich_text_length_in_bounds` counts it
  * (03a minLength/maxLength bind the total text, never a single span).
@@ -175,111 +164,23 @@ export const richTextTotalCharacters = (document: unknown): number => {
   if (!parsed.success) return 0;
   let total = 0;
   for (const block of parsed.data.blocks)
-    for (const span of block.spans) total += unicodeCharacters(span.text);
+    for (const span of block.spans) total += unicodeLength(span.text);
   return total;
+};
+
+/** What a canonical rich_text.v1 document is, decided by the zod schema (the Worker's rules). */
+const SCHEMA_RICH_TEXT: RichTextDecisions = {
+  isDocument: (value) => isRichTextV1(value),
+  characters: (document) => richTextTotalCharacters(document),
 };
 
 export const isObjectValueForStructure = (
   structure: ObjectStructure,
   value: unknown,
-): boolean => {
-  if (typeof value !== 'object' || value === null || Array.isArray(value))
-    return false;
-  const record = value as Record<string, unknown>;
-  const keys = Object.keys(record);
-  if (keys.length > structure.properties.length) return false;
-  for (const key of keys)
-    if (!structure.properties.some((property) => property.key === key))
-      return false;
-  for (const property of structure.properties) {
-    if (!Object.hasOwn(record, property.key)) {
-      if (property.required) return false;
-      continue;
-    }
-    const propertyValue = record[property.key];
-    if (property.kind === 'rich_text') {
-      if (!isRichTextV1(propertyValue)) return false;
-      if (
-        !boundedBy(
-          property.constraints,
-          'minLength',
-          'maxLength',
-          richTextTotalCharacters(propertyValue),
-        )
-      )
-        return false;
-      continue;
-    }
-    if (property.kind === 'enum') {
-      const enumValues: unknown = property.constraints.enumValues;
-      if (typeof propertyValue !== 'string') return false;
-      if (!isWellFormedAuthoredString(propertyValue)) return false;
-      if (!Array.isArray(enumValues) || !enumValues.includes(propertyValue))
-        return false;
-      if (
-        !boundedBy(
-          property.constraints,
-          'minLength',
-          'maxLength',
-          unicodeCharacters(propertyValue),
-        )
-      )
-        return false;
-      continue;
-    }
-    if (!isScalarPropertyValue(propertyValue)) return false;
-    if (
-      typeof propertyValue === 'string' &&
-      !isWellFormedAuthoredString(propertyValue)
-    )
-      return false;
-    // A string honours minLength/maxLength and a number minimum/maximum; a
-    // boolean is constrained by neither family (DEC-144).
-    if (
-      typeof propertyValue === 'string' &&
-      !boundedBy(
-        property.constraints,
-        'minLength',
-        'maxLength',
-        unicodeCharacters(propertyValue),
-      )
-    )
-      return false;
-    if (
-      typeof propertyValue === 'number' &&
-      !boundedBy(property.constraints, 'minimum', 'maximum', propertyValue)
-    )
-      return false;
-  }
-  return true;
-};
+): boolean => objectValueMatchesStructure(structure, value, SCHEMA_RICH_TEXT);
 
 /** The only rich-text document format the registry renders. */
 export const CMS_RICH_TEXT_FORMATS = ['rich_text.v1'] as const;
-
-const RICH_TEXT_FORMAT = 'rich_text.v1';
-const SPAN_TEXT_MAX_CHARACTERS = 10_000;
-const SPANS_PER_BLOCK_MAX = 128;
-const BLOCKS_MAX = 128;
-const HTTPS_HREF_MAX_CHARACTERS = 2048;
-const INTERNAL_ROUTE_MAX_CHARACTERS = 2048;
-const MAILTO_ADDRESS_MIN_CHARACTERS = 3;
-const MAILTO_ADDRESS_MAX_CHARACTERS = 254;
-
-// The rich-text grammar intentionally matches, and below excludes, control
-// characters, so these control-character classes are deliberate.
-// eslint-disable-next-line no-control-regex
-const CONTROL_CHARACTER_PATTERN = /[\u0000-\u0009\u000B-\u001F\u007F-\u009F]/;
-const HTTPS_HREF_PATTERN = /^https:\/\/[^\s@/]+(\/[^\s]*)?$/;
-const MAILTO_ADDRESS_PATTERN = /^[^\s@]+@[^\s@]+$/;
-// An absolute normalised path: one leading slash (never protocol-relative), and
-// no C0/DEL/C1 character, query, fragment or backslash anywhere. A browser reads
-// `/\host` as `//host`, so a backslash is refused outright. The 2048-character
-// bound and the dot-segment refusal are separate refinements below.
-// eslint-disable-next-line no-control-regex
-const INTERNAL_ROUTE_PATTERN = /^\/(?!\/)[^\u0000-\u001f\u007f-\u009f?#\\]*$/;
-
-const isNfc = (value: string): boolean => value.normalize('NFC') === value;
 
 /**
  * Shared refusal text of the PostgreSQL `jsonb` parity predicate
@@ -288,50 +189,13 @@ const isNfc = (value: string): boolean => value.normalize('NFC') === value;
 const WELL_FORMED_MESSAGE =
   'must be well-formed Unicode without a NUL or lone surrogate';
 
-/**
- * Every rich_text.v1 length bound counts Unicode characters (code points), the
- * BE03a "Unicode characters" unit and the unit PostgreSQL `length()` counts in
- * `platform_private.cms_rich_text_v1_valid`, never UTF-16 code units. A code
- * point is at most two UTF-16 units, so the cheap `max(2 * bound)` string
- * bound runs first and the exact code-point count only ever sees bounded input.
- */
-const unicodeLength = (value: string): number => Array.from(value).length;
-const utf16Bound = (characters: number): number => characters * 2;
-const withinCharacters =
-  (min: number, max: number) =>
-  (value: string): boolean => {
-    const length = unicodeLength(value);
-    return length >= min && length <= max;
-  };
-
-// Link targets carry no C0, DEL or C1 control character (parity with the SQL
-// grammar). JavaScript `\s` is the whitespace class the SQL side spells out.
-// eslint-disable-next-line no-control-regex
-const LINK_CONTROL_CHARACTER_PATTERN = /[\u0000-\u001F\u007F-\u009F]/;
-const noLinkControlCharacters = (value: string): boolean =>
-  !LINK_CONTROL_CHARACTER_PATTERN.test(value);
-// A `.` or `..` path segment would let a route escape its directory.
-const DOT_SEGMENT_PATTERN = /(^|\/)\.\.?(\/|$)/;
-
-/**
- * Marks are an ordered set: bold, then italic, then code. A canonical array is
- * strictly increasing in that rank, which also makes it unique.
- */
-export const RICH_TEXT_MARKS = ['bold', 'italic', 'code'] as const;
 const MarkSchema = z.enum(RICH_TEXT_MARKS);
-const markRank = new Map<string, number>(
-  RICH_TEXT_MARKS.map((mark, index) => [mark, index]),
-);
 
 const MarksSchema = z
   .array(MarkSchema)
   .max(3)
   .refine(
-    (marks) =>
-      marks.every(
-        (mark, index) =>
-          index === 0 || markRank.get(marks[index - 1]!)! < markRank.get(mark)!,
-      ),
+    marksAreCanonical,
     'marks must be unique and in canonical bold, italic, code order',
   );
 
@@ -386,10 +250,7 @@ export const RichTextLinkSchema = z.discriminatedUnion('kind', [
         'route must be at most 2048 characters',
       )
       .regex(INTERNAL_ROUTE_PATTERN, 'route must be an internal absolute path')
-      .refine(
-        (route) => !DOT_SEGMENT_PATTERN.test(route),
-        'route must not contain dot segments',
-      )
+      .refine(hasNoDotSegment, 'route must not contain dot segments')
       .refine(isWellFormedAuthoredString, WELL_FORMED_MESSAGE),
   }),
 ]);
@@ -413,23 +274,12 @@ export const RichTextSpanSchema = z.strictObject({
   link: RichTextLinkSchema.optional(),
 });
 
-type RichTextSpan = z.infer<typeof RichTextSpanSchema>;
-
-const mergeKey = (span: RichTextSpan): string =>
-  JSON.stringify([span.marks, span.link ?? null]);
-
-const noAdjacentMergeEquivalents = (spans: readonly RichTextSpan[]): boolean =>
-  spans.every(
-    (span, index) =>
-      index === 0 || mergeKey(spans[index - 1]!) !== mergeKey(span),
-  );
-
 /** Paragraph and list items may be empty; headings and quotes may not. */
 const OptionalSpansSchema = z
   .array(RichTextSpanSchema)
   .max(SPANS_PER_BLOCK_MAX)
   .refine(
-    noAdjacentMergeEquivalents,
+    hasNoAdjacentMergeEquivalents,
     'adjacent spans with equal marks and link must be merged',
   );
 
@@ -438,7 +288,7 @@ const RequiredSpansSchema = z
   .min(1)
   .max(SPANS_PER_BLOCK_MAX)
   .refine(
-    noAdjacentMergeEquivalents,
+    hasNoAdjacentMergeEquivalents,
     'adjacent spans with equal marks and link must be merged',
   );
 
@@ -489,15 +339,25 @@ export const RichTextV1Schema = z
 export const isRichTextV1 = (value: unknown): boolean =>
   RichTextV1Schema.safeParse(value).success;
 
-/**
- * The typed reason of a refused rich_text value: the token PostgreSQL
- * `cms_rich_text_v1_valid` emits (the Worker publishes it as 422
- * `details.reasonCode`), so every layer names a refusal the same way (BE03b
- * rich_text.v1, DEC-146; AC-084).
- */
-export const RICH_TEXT_NOT_CANONICAL = 'rich_text_not_canonical' as const;
+export { RICH_TEXT_NOT_CANONICAL };
 
 export type RichTextV1Document = z.infer<typeof RichTextV1Schema>;
+
+/**
+ * Compile-time parity of the zod-free mirror (`structured-values-rules.ts`):
+ * each document type is assignable to the other, so the browser walker and this
+ * schema cannot describe different shapes. A mismatch makes `RichTextMirrorAgrees`
+ * fail to type-check; nothing of this exists at runtime.
+ */
+type AssignableBothWays<A, B> = [A] extends [B]
+  ? [B] extends [A]
+    ? true
+    : false
+  : false;
+type MustBeTrue<T extends true> = T;
+export type RichTextMirrorAgrees = MustBeTrue<
+  AssignableBothWays<RichTextV1Document, RichTextV1DocumentShape>
+>;
 
 export type RichTextV1Verdict =
   | { readonly ok: true; readonly document: RichTextV1Document }

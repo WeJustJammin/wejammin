@@ -1,0 +1,1 @@
+OLD query under poisoned stats: 63132 ms, reviews read 26704773, assignments read 101103, items 51

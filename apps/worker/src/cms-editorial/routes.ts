@@ -27,6 +27,7 @@ import {
   dependencyUnavailable,
   createRouteDeadline,
 } from './admission-deadline';
+import { INVALID_DEPENDENCY_RESPONSE } from './route-error-details';
 import { commonHeaders, errorResponse, publishedError } from './route-errors';
 import { rateCheck } from './route-execution';
 import { createRouteFinish, entryFacts } from './route-telemetry';
@@ -186,13 +187,7 @@ export const registerCmsEditorialRoutes = <E extends Env>(
     );
     if (!result.ok) return fail(result);
     const parsed = EntryRevisionResourceSchema.safeParse(result.value);
-    if (!parsed.success)
-      return fail({
-        ok: false,
-        status: 502,
-        code: 'BAD_GATEWAY',
-        message: 'The CMS editorial dependency returned invalid data.',
-      });
+    if (!parsed.success) return fail(INVALID_DEPENDENCY_RESPONSE);
     const responseBody = JSON.stringify(parsed.data);
     // The strong ETag is the committed entry aggregate version, the only valid
     // next If-Match (EntryRevisionResource.entryVersion, lane G contract).

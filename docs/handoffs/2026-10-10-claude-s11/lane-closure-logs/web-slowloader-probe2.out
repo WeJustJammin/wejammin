@@ -1,0 +1,107 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice11/WeJammin
+
+ ❯ apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.validators-unavailable.dom.test.tsx (7 tests | 1 failed) 485ms
+     × sends nothing from the grant form, says so, and sends after the connection returns 105ms
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx (4 tests | 3 failed) 90ms
+     × sends nothing, says so, keeps the values and sends once the connection returns 53ms
+     × sends nothing, says so, and keeps the unsent values 9ms
+     × reports the latest version unavailable when the schemas cannot check the read 9ms
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+Not implemented: navigation to another Document
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx > template create island without validators > sends nothing, says so, keeps the values and sends once the connection returns
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx:143:21
+    141|     resetCmsValidatorsForTest();
+    142|     await act(async () => submitForm(container));
+    143|     expect(fetcher).toHaveBeenCalledTimes(1);
+       |                     ^
+    144|     expect(container.textContent).toContain('Draft created.');
+    145|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx > template edit island without validators > sends nothing, says so, and keeps the unsent values
+AssertionError: expected "vi.fn()" to not be called at all, but actually been called 1 times
+
+Received:
+
+  1st vi.fn() call:
+
+    Array [
+      "/api/v1/cms/templates/versions",
+      Object {
+        "body": "{"templateKey":"release-note","compatibleTypeIds":["018f0c45-73fe-7dc2-9c09-68f7ecf132da"],"slots":[],"reservedRegions":["header","now","record","detail","provenance"],"bindings":{},"locale":"en-US","audience":"public","expectedVersion":null}",
+        "cache": "no-store",
+        "credentials": "same-origin",
+        "headers": Object {
+          "content-type": "application/json",
+          "idempotency-key": "draft-attempt-001",
+          "x-csrf-token": "csrf-token",
+        },
+        "method": "POST",
+        "redirect": "error",
+      },
+    ]
+
+
+Number of calls: 1
+
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx:183:25
+    181|       submitForm(container);
+    182|     });
+    183|     expect(fetcher).not.toHaveBeenCalled();
+       |                         ^
+    184|     const status = container.querySelector('.cms-template-designer-sta…
+    185|     expect(status.getAttribute('role')).toBe('alert');
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+ FAIL  apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx > template edit island without validators > reports the latest version unavailable when the schemas cannot check the read
+AssertionError: expected 'Edit template draftEditing version 2.…' to contain 'The result is unknown'
+
+Expected: "The result is unknown"
+Received: "Edit template draftEditing version 2. Your values remain in this form until you explicitly choose a newer parent version.Template definitionTemplate keyLowercase letters, numbers, and hyphens; immutable after creation.Compatible active content typesrelease_note · version 2LocaleAudienceReserved regionsThe first five regions are fixed: header, now, record, detail, provenance.Additional regions, comma separatedUse distinct lowercase region keys.SlotsSupported blocks: none available.Add slotProjection bindingsAdd bindingA saved successor is a private draft, not publication or activation.Save successor draft"
+
+ ❯ apps/web/src/components/cms-composition/CmsTemplateDesigner.validators-unavailable.test.tsx:209:35
+    207|       submitForm(container);
+    208|     });
+    209|     expect(container.textContent).toContain('The result is unknown');
+       |                                   ^
+    210|     expect(fetcher).toHaveBeenCalledTimes(1);
+    211|
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[3/4]⎯
+
+ FAIL  apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.validators-unavailable.dom.test.tsx > console checks when the validators cannot be loaded > sends nothing from the grant form, says so, and sends after the connection returns
+AssertionError: expected undefined to match object { …(2) }
+
+- Expected:
+{
+  "method": "POST",
+  "url": "/api/v1/cms/capability-grants",
+}
+
++ Received:
+undefined
+
+ ❯ apps/web/src/components/cms-capability-grants/CmsCapabilityGrantConsole.validators-unavailable.dom.test.tsx:96:22
+     94|     resetCmsValidatorsForTest();
+     95|     await submit(form);
+     96|     expect(calls[0]).toMatchObject({
+       |                      ^
+     97|       url: '/api/v1/cms/capability-grants',
+     98|       method: 'POST',
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[4/4]⎯
+
+
+ Test Files  2 failed | 320 passed (322)
+      Tests  4 failed | 3390 passed (3394)
+   Start at  13:14:38
+   Duration  175.41s (transform 8.70s, setup 0ms, import 132.63s, tests 78.31s, environment 104.25s)
+

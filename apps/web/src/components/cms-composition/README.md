@@ -27,6 +27,17 @@ content-type choices, locale, audience, and reserved regions;
 manifests; `CmsTemplateStatus.tsx` renders focusable outcome feedback.
 `cms-template-designer-form-types.ts` holds only the editable row shapes.
 
+## Lazy validators
+
+Both islands ship no zod (FE03 performance budgets, AC261): their static import
+graph has no value import of `@wejammin/contracts`. The request builders and the
+submit transport take the schemas as a `validators` parameter;
+`use-cms-template-validators.ts` obtains them for a submit (already loaded after
+the form received focus, else loaded on demand, one cold submit at a time).
+If they cannot be fetched the draft is unchecked: nothing is sent and the
+status shows `CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE`. The latest-version read
+loads them itself and is `unavailable` if they cannot be fetched.
+
 ## Ownership
 
 The Astro page at

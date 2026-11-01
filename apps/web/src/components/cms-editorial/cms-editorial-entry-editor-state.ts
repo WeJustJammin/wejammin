@@ -1,4 +1,4 @@
-import type { AuthoringContextField, JsonValue } from '@wejammin/contracts';
+import type { JsonValue } from '@wejammin/contracts';
 
 import {
   isCmsUnavailableDescriptor,
@@ -28,7 +28,12 @@ export interface CmsEditorialEntryEditorInit {
     readonly conflictId: string;
     readonly version: string;
   } | null;
-  readonly fields: readonly AuthoringContextField[];
+  /**
+   * The field descriptors the loader decoded from the author-safe definitions
+   * (CMS-03B-14). The server decodes them with the contract schemas, so the
+   * island ships no zod (AC-106).
+   */
+  readonly descriptors: readonly CmsFieldDescriptor[];
   /** Stored values by stable field id; a field with no value is absent or null. */
   readonly values: Readonly<Record<string, JsonValue | null>>;
   /** Where each field's stored value came from, as the server reported it. */

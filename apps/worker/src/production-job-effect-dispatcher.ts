@@ -1,4 +1,5 @@
 import type {
+  CmsLeaseControl,
   JobEffectInput,
   JobEffectPort,
   JobEffectResult,
@@ -18,6 +19,18 @@ export type ProductionVerificationDependencies = Readonly<{
 
 export type PlatformVerificationDependencies =
   ProductionVerificationDependencies;
+
+export type ProductionJobEffectDependencies = Readonly<{
+  verifyObject?: ProductionVerificationDependencies['verifyObject'];
+  /**
+   * Executes only the private CMS schema preparation contract. It receives the
+   * private lease control when, and only when, the consumer supplied one.
+   */
+  prepareSchemaDryRun?: (
+    input: JobEffectInput,
+    control?: CmsLeaseControl,
+  ) => Promise<JobEffectResult>;
+}>;
 
 const manualReview = (errorCode: string): JobEffectResult => ({
   errorCode,
@@ -61,23 +74,43 @@ const validResult = (value: unknown): value is JobEffectResult => {
 };
 
 /**
- * Builds the production job effect boundary. The only executable production
- * key is the internal object-verification job; provider and arbitrary job
- * names never select a credential, adapter, or network effect.
+ * Builds the production job effect boundary for exact internal verification
+ * and CMS preparation families. Provider and arbitrary job names never select
+ * a credential, adapter, or network effect. The private lease control reaches
+ * only the CMS preparation callback; an absent control leaves its arity at one
+ * and verification callbacks never see it.
  */
 export const createProductionJobEffectDispatcher =
-  (
-    dependencies?: ProductionVerificationDependencies,
-  ): JobEffectPort['execute'] =>
-  async (input): Promise<JobEffectResult> => {
-    if (!APPROVED_VERIFICATION_TYPES.has(input.job.type)) {
+  (dependencies?: ProductionJobEffectDependencies): JobEffectPort['execute'] =>
+  async (input, control): Promise<JobEffectResult> => {
+    const isPreparation = input.job.type === 'cms.schema.dry_run';
+    if (!isPreparation && !APPROVED_VERIFICATION_TYPES.has(input.job.type)) {
       return manualReview('UNSUPPORTED_JOB_TYPE');
     }
-    if (typeof dependencies?.verifyObject !== 'function') {
-      return manualReview('DEPENDENCY_UNAVAILABLE');
-    }
     try {
-      const result = await dependencies.verifyObject(input);
+      let result: JobEffectResult;
+      if (isPreparation) {
+        // BOUNDARY: production CMS preparation needs a contract that BE00 and BE03a do not state: the map from a
+        // MigrationWorkerResult outcome (completed, progress, retry, blocked, failed_*, dead_letter, ...) to the Job
+        // state, error code and `resultRef` type; where `control.checkpoint()` sits against the migration stage RPCs
+        // (the enduring SQL stage fence); and the source of the attempt number and the per-invocation budget.
+        // Sentinel: production-job-effect-dispatcher-cms-preparation.test.ts, "CMS with only object verification
+        // configured is unavailable without invoking it".
+        // Detail: docs/handoffs/2026-10-10-claude-s11/lane-reviewB-2-report.md (B-08).
+        // TRACKING: #128
+        if (typeof dependencies?.prepareSchemaDryRun !== 'function') {
+          return manualReview('DEPENDENCY_UNAVAILABLE');
+        }
+        result =
+          control === undefined
+            ? await dependencies.prepareSchemaDryRun(input)
+            : await dependencies.prepareSchemaDryRun(input, control);
+      } else {
+        if (typeof dependencies?.verifyObject !== 'function') {
+          return manualReview('DEPENDENCY_UNAVAILABLE');
+        }
+        result = await dependencies.verifyObject(input);
+      }
       return validResult(result)
         ? result
         : manualReview('DEPENDENCY_UNAVAILABLE');

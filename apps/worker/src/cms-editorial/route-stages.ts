@@ -52,10 +52,27 @@ const instrumentPorts = (
     ]),
   ) as unknown as CmsEditorialDependencies['ports'];
 
+/**
+ * The accessibility gate loads the revision through a service RPC, so a request
+ * that reached it did enter the RPC stage even if it is refused before its port.
+ */
+const instrumentGate = (
+  gate: CmsEditorialDependencies['qualityGate'],
+): Pick<CmsEditorialDependencies, 'qualityGate'> =>
+  gate === undefined
+    ? {}
+    : {
+        qualityGate: (input, signal) => {
+          mark(input.request, 'rpc');
+          return gate(input, signal);
+        },
+      };
+
 export const instrumentDependencies = (
   dependencies: CmsEditorialDependencies,
 ): CmsEditorialDependencies => ({
   ...dependencies,
+  ...instrumentGate(dependencies.qualityGate),
   ports: instrumentPorts(dependencies.ports),
   resolveSession: async (request, signal) => {
     mark(request, 'authority');

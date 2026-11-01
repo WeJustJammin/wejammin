@@ -6,6 +6,7 @@ import { afterAll, afterEach, beforeAll, describe, expect, it } from 'vitest';
 
 import * as React from '../../apps/web/node_modules/react/index.js';
 
+import { describeCmsAuthoringFields } from '../../apps/web/src/components/cms-editorial-fields/cms-field-descriptor-decode';
 import CmsEditorialEntryCreateIsland from '../../apps/web/src/components/cms-editorial/CmsEditorialEntryCreateIsland';
 import {
   disableReactAct,
@@ -55,6 +56,7 @@ const mountCreate = (fields: ReturnType<typeof allKindFields>) => {
     React.createElement(CmsEditorialEntryCreateIsland, {
       type: selectedType(),
       fields,
+      descriptors: describeCmsAuthoringFields(fields),
     }),
   );
   document.getElementById('cms-editorial-main')?.appendChild(mounted.container);

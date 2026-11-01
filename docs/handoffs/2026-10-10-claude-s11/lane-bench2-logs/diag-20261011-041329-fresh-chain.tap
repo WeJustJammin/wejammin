@@ -1,0 +1,27 @@
+psql:/w/scratch/bench2-lane/probe-chain-prof.sql:2: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-chain-prof.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench2-lane/probe-chain-prof.sql:4: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-chain-prof.sql:66: ERROR:  permission denied to set parameter "pg_stat_statements.track"
+CONTEXT:  SQL statement "SELECT pg_catalog.set_config('pg_stat_statements.track', 'all', true)"
+PL/pgSQL function pg_temp_39.cp_run(integer,boolean) line 4 at PERFORM
+/w/scratch/bench2-lane/probe-chain-prof.sql .. 
+{"created": true, "personId": "6bb6198c-1bb8-40cb-9b9c-f904f1a7790d", "contextKind": "self", "accountState": "active", "actingPartyId": "6bb6198c-1bb8-40cb-9b9c-f904f1a7790d", "bindingVersion": 1}
+{"created": true, "personId": "118915af-479c-42a3-9059-e2048941d31e", "contextKind": "self", "accountState": "active", "actingPartyId": "118915af-479c-42a3-9059-e2048941d31e", "bindingVersion": 1}
+{"created": true, "personId": "87a9da1f-c5c2-487a-ac63-e9ed65d5511b", "contextKind": "self", "accountState": "active", "actingPartyId": "87a9da1f-c5c2-487a-ac63-e9ed65d5511b", "bindingVersion": 1}
+{"created": true, "personId": "d99daa86-31c4-40c2-9867-250ccca33a4f", "contextKind": "self", "accountState": "active", "actingPartyId": "d99daa86-31c4-40c2-9867-250ccca33a4f", "bindingVersion": 1}
+{"created": true, "personId": "1f839250-a9e6-4ef9-9954-59aefcdc8fae", "contextKind": "self", "accountState": "active", "actingPartyId": "1f839250-a9e6-4ef9-9954-59aefcdc8fae", "bindingVersion": 1}
+{"created": true, "personId": "2f3c6f1d-8172-4e18-81c6-ce1e4c9d51fa", "contextKind": "self", "accountState": "active", "actingPartyId": "2f3c6f1d-8172-4e18-81c6-ce1e4c9d51fa", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/probe-chain-prof.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  3 wallclock secs ( 0.05 usr  0.02 sys +  0.03 cusr  0.01 csys =  0.11 CPU)
+Result: FAIL

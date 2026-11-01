@@ -1,4 +1,9 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
+
+import {
+  loadCmsValidators,
+  resetCmsValidatorsForTest,
+} from '../../lib/cms-contract-validators';
 
 import {
   GRANT_ID,
@@ -279,5 +284,44 @@ describe('readGrantList', () => {
       }),
     });
     expect(down.kind).toBe('degraded');
+  });
+});
+
+describe('transports when the lazily loaded validators cannot be fetched', () => {
+  const query = { limit: 25, sort: 'updatedAt', direction: 'desc' } as const;
+
+  afterEach(() => {
+    resetCmsValidatorsForTest();
+  });
+
+  it('degrades a list that cannot be checked instead of rendering it', async () => {
+    resetCmsValidatorsForTest(() => Promise.reject(new Error('offline')));
+    const result = await readGrantList({
+      query,
+      fetcher: vi.fn(async () => json(200, grantListPage())),
+    });
+    expect(result.kind).toBe('degraded');
+  });
+
+  it('reports a committed command without an unverified resource', async () => {
+    resetCmsValidatorsForTest(() => Promise.reject(new Error('offline')));
+    const result = await command(vi.fn(async () => json(201, grantResource())));
+    expect(result.outcome).toBe('success');
+    expect(result.resource).toBeNull();
+  });
+
+  it('parses again once a later load succeeds', async () => {
+    resetCmsValidatorsForTest(() => Promise.reject(new Error('offline')));
+    await readGrantList({
+      query,
+      fetcher: vi.fn(async () => json(200, grantListPage())),
+    });
+    resetCmsValidatorsForTest();
+    await loadCmsValidators();
+    const result = await readGrantList({
+      query,
+      fetcher: vi.fn(async () => json(200, grantListPage())),
+    });
+    expect(result.kind).toBe('ok');
   });
 });

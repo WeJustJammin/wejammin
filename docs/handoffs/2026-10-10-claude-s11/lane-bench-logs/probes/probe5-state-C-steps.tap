@@ -1,0 +1,51 @@
+psql:/w/scratch/bench-lane/probe5.sql:2: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench-lane/probe5.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench-lane/probe5.sql:4: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench-lane/probe5.sql:94: ERROR:  # No tests run!
+CONTEXT:  PL/pgSQL function _finish(integer,integer,integer,boolean) line 12 at RAISE
+SQL function "finish" statement 1
+/w/scratch/bench-lane/probe5.sql .. 
+{"created": true, "personId": "ae958ba1-b86d-466c-a1ed-7f06c0966fc5", "contextKind": "self", "accountState": "active", "actingPartyId": "ae958ba1-b86d-466c-a1ed-7f06c0966fc5", "bindingVersion": 1}
+{"created": true, "personId": "fe6c19d6-08fb-42ca-af60-006839463b63", "contextKind": "self", "accountState": "active", "actingPartyId": "fe6c19d6-08fb-42ca-af60-006839463b63", "bindingVersion": 1}
+{"created": true, "personId": "181b60cc-5205-4eb9-b096-e321826f90c2", "contextKind": "self", "accountState": "active", "actingPartyId": "181b60cc-5205-4eb9-b096-e321826f90c2", "bindingVersion": 1}
+{"created": true, "personId": "c2c28da6-d700-4347-9f60-dbe5e35a5288", "contextKind": "self", "accountState": "active", "actingPartyId": "c2c28da6-d700-4347-9f60-dbe5e35a5288", "bindingVersion": 1}
+{"created": true, "personId": "d4355938-d5e7-4260-aa34-8b20ba76ed67", "contextKind": "self", "accountState": "active", "actingPartyId": "d4355938-d5e7-4260-aa34-8b20ba76ed67", "bindingVersion": 1}
+{"created": true, "personId": "61b8ad65-1408-4ec0-96cb-6bbb45624ece", "contextKind": "self", "accountState": "active", "actingPartyId": "61b8ad65-1408-4ec0-96cb-6bbb45624ece", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+# 00 TOTAL (as the bench times it)                     p50=  174.1 p95=  208.0 max=  209.9
+# 01 scope member + capability + correlation           p50=    0.4 p95=    1.0 max=    1.5
+# 02 idempotency reserve                               p50=    2.1 p95=    2.4 max=    2.4
+# 03 exact_keys                                        p50=    0.1 p95=    0.2 max=    0.2
+# 04 field-less request validation                     p50=    1.3 p95=    2.1 max=    3.5
+# 05 duplicate checks                                  p50=    1.0 p95=    1.3 max=    1.6
+# 06 locale config shape + validate                    p50=    1.0 p95=    2.1 max=    4.1
+# 07 advisory lock + type-key exists                   p50=    0.1 p95=    0.4 max=    0.8
+# 08 canonical_type_definition + required validators   p50=    2.3 p95=    2.9 max=    3.1
+# 09 editor + renderer manifests                       p50=    0.7 p95=    0.9 max=    0.9
+# 10 contract ref + locale hash                        p50=    0.6 p95=    0.8 max=    0.8
+# 11 jcs of the stub document                          p50=    1.1 p95=    1.7 max=    1.9
+# 12 splice check + jcs of the field array             p50=   23.5 p95=   28.4 max=   28.4
+# 13 sha256                                            p50=    0.2 p95=    0.2 max=    0.2
+# 14 insert content_types                              p50=    0.5 p95=    0.6 max=    0.8
+# 15 insert content_type_versions                      p50=    1.6 p95=    2.6 max=    4.2
+# 16 insert schema_artifacts (manifest CHECKs)         p50=   10.5 p95=   12.4 max=   12.6
+# 17 field validation x128                             p50=   51.5 p95=   63.3 max=   63.4
+# 18 insert 128 field defs (row triggers)              p50=   67.9 p95=   78.1 max=   82.5
+# 19 relations/capabilities loops                      p50=    0.1 p95=    0.2 max=    0.2
+# 20 emit_event                                        p50=    0.6 p95=    0.7 max=    0.7
+# 21 type_version_resource                             p50=    3.4 p95=    4.2 max=    4.3
+# 22 cms_complete                                      p50=    0.5 p95=    0.6 max=    0.6
+# 24 from last stamp to RPC return                     p50=    0.7 p95=    1.0 max=    1.4
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench-lane/probe5.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  3 wallclock secs ( 0.04 usr  0.00 sys +  0.01 cusr  0.00 csys =  0.05 CPU)
+Result: FAIL

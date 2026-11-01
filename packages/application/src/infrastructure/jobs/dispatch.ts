@@ -241,13 +241,21 @@ export const decideJobDispatch = (input: DispatchInput): DispatchDecision => {
   if (terminalStates.has(canonicalState.data)) {
     return { acknowledge: true, kind: 'skip', reason: 'terminal' };
   }
-  const eventVersion = BigInt(envelope.aggregateVersion);
-  const currentVersion = BigInt(canonicalVersion.data);
-  if (eventVersion < currentVersion) {
-    return { acknowledge: true, kind: 'skip', reason: 'stale' };
-  }
-  if (eventVersion > currentVersion) {
-    return { acknowledge: false, kind: 'retry', reason: 'future_version' };
+  const canonicalFacts = readJobFacts(input.canonicalJob);
+  const verifiedCmsOrigin =
+    input.verifiedImmutableJobOrigin === true &&
+    canonicalFacts?.id === envelope.aggregateId &&
+    canonicalFacts?.type === 'cms.schema.dry_run' &&
+    input.eventJobType === 'cms.schema.dry_run';
+  if (!verifiedCmsOrigin) {
+    const eventVersion = BigInt(envelope.aggregateVersion);
+    const currentVersion = BigInt(canonicalVersion.data);
+    if (eventVersion < currentVersion) {
+      return { acknowledge: true, kind: 'skip', reason: 'stale' };
+    }
+    if (eventVersion > currentVersion) {
+      return { acknowledge: false, kind: 'retry', reason: 'future_version' };
+    }
   }
   if (!input.restoreFenceOpen) {
     return { acknowledge: false, kind: 'retry', reason: 'restore_fenced' };

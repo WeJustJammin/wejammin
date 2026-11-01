@@ -7,6 +7,10 @@
 --   s10k_list(label, request)   calls platform_private.cms_list_entries and captures it
 --   s10k_ids(label)     the entry ids of a captured page, in order
 --   s10k_seed(...)      one seeded entry + revision (+ the creator's assignment)
+-- The physical revision state is the constant `draft` (BE03b E2, Slice 11): a seed that
+-- needs another browser-visible state passes it as p_derived_state and the helper attaches
+-- the committed evidence that derives it (phase_02_slice_11_e2/000-derived-evidence.sqlinc,
+-- included by the suite BEFORE this fragment).
 
 -- Work counter: tuples the entry table served to this transaction so far.
 create or replace function pg_temp.s10k_entry_reads()
@@ -61,11 +65,11 @@ $body$;
 -- ---------------------------------------------------------------- fixture ----
 -- Authorized entries of the creator, newest first by updated_at:
 --   K1 (newest), K2, K3 author assignment | K4 editor assignment | K5 revoked assignment
---   K6 archived | K7 approved-state revision | the 001 entry 301 (oldest)
+--   K6 archived | K7 derived-approved revision (an approved review) | the 001 entry 301 (oldest)
 -- plus the hidden population created below.
 create or replace function pg_temp.s10k_seed(
   p_entry uuid, p_revision uuid, p_updated timestamptz, p_capability text,
-  p_assignment_state text, p_lifecycle text, p_revision_state text
+  p_assignment_state text, p_lifecycle text, p_derived_state text default 'draft'
 )
 returns void
 language plpgsql
@@ -89,7 +93,7 @@ begin
   select p_revision, org.value::uuid, p_entry, 1, version_row.value::uuid,
          null, '[]'::jsonb, '[]'::jsonb, 'en-US',
          platform_private.cms_jcs_sha256('{}'::jsonb)::char(64),
-         person.value::uuid, org.value::uuid, p_revision_state, 1, 'valid', '{}'::jsonb,
+         person.value::uuid, org.value::uuid, 'draft', 1, 'valid', '{}'::jsonb,
          p_updated, p_updated
   from s10_ids org, s10_ids version_row, s10_ids person
   where org.key = 'organization' and version_row.key = 'draftVersionId'
@@ -103,6 +107,7 @@ begin
     from s10_ids org, s10_ids person
     where org.key = 'organization' and person.key = 'creatorPerson';
   end if;
+  perform pg_temp.e2_evidence(p_revision, p_derived_state);
 end;
 $body$;
 

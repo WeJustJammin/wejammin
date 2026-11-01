@@ -1,0 +1,45 @@
+# Slice 11 browser assertion audit — 2026-10-09
+
+Independent static review by `/root/s11_sql2_refutation_exact`, verified `gpt-6.1-sol` / `ultra`, after pushed checkpoint `8b114e15`. No scripts, tests, database, Docker, network or writes by the reviewer. Parent records the result. Production editorial transport is exercised by the real-route harness, but browser obligations remain partial; no runtime success or acceptance promotion.
+
+## Harness boundary
+
+Real suite: `tests/e2e/phase-02-slice-11-workflow-real-route.spec.ts:28`. Launcher builds web (`support/run-s09-real-servers.mjs:255`); web delegates requests to built Astro Worker (`apps/web/content-schema-registry-web.mjs:16`); API harness registers the production Worker composition (`support/content-schema-registry-api.ts:348`, `support/s11-real-editorial.ts:111`) and actual PostgREST. Signed local claims supply auth/session/capability, rate limiting always allows, and membership/grants/terminal schema activation are seeded. This is not real Auth/MFA/activation acceptance.
+
+`support/s11-real-flow.ts:53` uses first-party API requests, not browser controls; `support/s10-real-api.ts:144` entry creation also calls a real route. The separate `phase-02-slice-11-workflow-routes.spec.ts:4` intentionally has no editorial service/database and default configuration uses Astro dev. It cannot substitute for the production-built real-route suite.
+
+Normative sources: FE03 `.memory/wiki/specs/fe/03-cms-content-modeling.md:2673` (role journeys, protected decisions, invalidation/recovery, owner assignment UI, keyboard/zoom/privacy), `:2760` (read/binding), `:1175` (DEC-111 recovery), and binding DEC-149–161.
+
+## Assertion bodies
+
+Anchors refer to literal test titles in `phase-02-slice-11-workflow-real-route.spec.ts` before the browser repair.
+
+| Operation | Present proof                                                                                                                        | Missing families                                                                                                                                     |
+| --------- | ------------------------------------------------------------------------------------------------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 05        | S11-RR-05:120 clicks submit, checks success copy and canonical workflow open.                                                        | Exact served revision/hash/manifest/entry CAS/key, refusal/preflight recovery, canonical effect multiplicity.                                        |
+| 06        | S11-RR-06:169 checks step-up return path, restored decision/reason, unchanged state/version before confirmation, approved afterward. | Same key/operands, exact-once rows/audit/event, changed-version SyncConflict, draft retirement, reject/protected/specialist/separation/invalidation. |
+| 07        | S11-RR-07:253 checks gap copy then scheduled copy.                                                                                   | Canonical schedule and no-publication proof, approved-review CAS/time/tzdb operands, fold/horizon/authority bounds, step-up/refusals.                |
+| 08        | No real-route browser case.                                                                                                          | Entire preview journey: served version set/entry CAS, expiry/binding/copy/replay, token privacy.                                                     |
+| 09        | S11-RR-09:228 checks pending-publication copy and no public-live claims.                                                             | Canonical lineage/projection/effects, frozen hash/version set/review CAS, separation/stale dependency/committed refusal, step-up return.             |
+| 15        | Workflow page supplies author operands and selected state assertions.                                                                | Three reader scopes, preparation eligibility, all17 checks/degradation, action gating, headers and protected-content privacy.                        |
+| 16        | Detail provides decision UI.                                                                                                         | Own/other reason redaction, owner-only assignments, concealment versus visible-unassigned denial, scope/expiry/revocation.                           |
+| 17        | No real-service queue journey.                                                                                                       | Assigned/submitted scope/filter/empty states, non-vacuous pagination, cursor recovery, concealed-row exclusion.                                      |
+| 18        | S11-RR-18:134 is API-helper401/409/201 and unchanged review version.                                                                 | Owner create/revoke UI wholly absent, options/expiry/NFC, identifiers discarded on step-up/reconfirmation, DEC-161 counted-approver revocation.      |
+
+The step-up case fulfills `/step-up` with placeholder HTML and manually signs a new local session (`:191`), proving navigation/restoration, not the MFA ceremony. Preserve this boundary and the external release gates. Titles such as “commits once”, “pending publication” and “commits as scheduled” need actual canonical assertions. Keep titles when strengthening; any renaming changes receipt identity. Hardcoded March2027 schedule dates are time-sensitive.
+
+## Concrete privacy issue and missing candidate-label source
+
+`apps/web/src/components/cms-editorial-workflow/CmsEditorialAssignmentCreate.tsx:185–188` renders reviewer person UUID as option text. FE03:1498 prohibits reviewer/grantor identifiers rendered; FE03:598 confines the chosen person ID to island-local state and forbids URL/prop dump/telemetry/log disclosure; FE03:2673 adds storage/privacy proof.
+
+The local option has only `personId` and `endsAt` (`cms-workflow-reviewer-options.ts:17–21,72–75`), derived from strict owner grant resources (`packages/contracts/src/content-schema-registry/resources-grants.ts:28–40`), which have no label. Existing `reviewerLabel` (`cms-editorial/review-read.ts:70–77`, SQL `20261005017880_cms_get_editorial_review.sql:201`) is a post-assignment ordinal pseudonym, not a pre-create person lookup. Membership resources have no label; no inspected authorized alias/person mapping supplies one. The raw-ID rendering is a concrete defect independent of that absence. Do not silently add personal-name disclosure or repurpose an authoritative assignment label as a candidate identity.
+
+## Execution prerequisites
+
+- Finish repository-only API foundation and required operation-family expansion, then checkpoint/push and explicitly transfer sole shared DB slot. No historical patched-stack receipt.
+- Initial browser scope: real-route spec plus focused S11 evidence/trace helpers and browser helper/support README. Split/register files to preserve the400-line limit. Production fixes need focused fresh RED and explicit additional scope. No PostgREST/migration/contract/Worker edits in a browser-only scope.
+- Bootstrap owner/org reused at `tests/postgrest/support/stack.ts:294–301`; fresh actors/types/drafts do not prove isolated owner organizations. Parent source follow-up found an intentional singleton receipt (`supabase/migrations/20260910020135_initial_cms_owner_bootstrap.sql:3–4`) and current second-initialization refusal (`20261003110100_jwt_claim_source_authority_gates.sql:360`); owner scopes require that receipt (`20261005017600_cms_editorial_review_support.sql:115–121`). Do not fabricate extra receipts, weaken singleton/authorization guards or blindly substitute the isolated-owner helper that has no receipt. Current real-route config already uses `fullyParallel:false`, workers1 and retries0 (`playwright.s09-real.config.ts:24–27`); keep this serial boundary, fresh non-owner actors/records and explicit shared-owner limits. A distinct foreign organization can prove concealment, not a second canonical CMS owner.
+- Chromium PR baseline, production build/preview, accessible locators, no fixed sleeps, zero retries for acceptance. The project Playwright skill requires preserved failure evidence, but `playwright.s09-real.config.ts:65–66` disables traces and `support/s10-real-browser.ts:38–43` drops `net::ERR_`. Add scoped privacy-safe traces/screenshots/console/network/correlation evidence without changing performance-suite tracing globally; never store tokens/manifests/person identifiers as new logs or telemetry.
+- Follow DEC-158 pending projection, DEC-159 committed refusal/null/read-only, DEC-160 unavailable reasons and DEC-161 revocation exception. “Assignment never advances review” is not universal.
+
+All operation-family gaps, privacy repair and runtime verification remain open. Parent must inspect and independently verify implementation before ledger closure.

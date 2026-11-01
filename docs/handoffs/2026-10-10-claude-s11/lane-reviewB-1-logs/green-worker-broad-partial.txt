@@ -1,0 +1,1 @@
+broad apps/worker run (excluding cms-publication-schedule-sweep*), stopped by me at 263 of 647 files to relieve the host: 263 files passed, 0 failed (30 MB telemetry log deleted)

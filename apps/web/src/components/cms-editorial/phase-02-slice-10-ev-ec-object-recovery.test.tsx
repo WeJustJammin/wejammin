@@ -29,6 +29,8 @@ import {
   mountElement,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
+import { preloadCmsEditorialTransports } from './cms-editorial-lazy-transports.test-support';
 import CmsEditorialEntryCreateIsland from './CmsEditorialEntryCreateIsland';
 import {
   ENTRY_ID,
@@ -54,6 +56,7 @@ import {
  */
 
 beforeAll(enableReactAct);
+beforeAll(preloadCmsEditorialTransports);
 afterAll(disableReactAct);
 
 const META = fieldUuid(2);
@@ -150,6 +153,7 @@ describe('EC-081 the object editor after a typed refusal on create', () => {
       <CmsEditorialEntryCreateIsland
         type={selectedType()}
         fields={fields()}
+        descriptors={describeCmsAuthoringFields(fields())}
         fetcher={fetcher as unknown as typeof fetch}
         navigate={navigate}
       />,
@@ -223,6 +227,7 @@ describe('EC-081 the object editor after a typed refusal on create', () => {
       <CmsEditorialEntryCreateIsland
         type={selectedType()}
         fields={fields()}
+        descriptors={describeCmsAuthoringFields(fields())}
         fetcher={fetcher as unknown as typeof fetch}
       />,
     );
@@ -249,7 +254,7 @@ describe('EC-081 the object editor after a typed refusal on create', () => {
 describe('EC-081 the object editor on the edit surface', () => {
   const init = () =>
     editorInit({
-      fields: fields(),
+      descriptors: describeCmsAuthoringFields(fields()),
       values: {
         [TITLE]: 'Release notes',
         [META]: { headline: 'Original', tone: 'formal' },

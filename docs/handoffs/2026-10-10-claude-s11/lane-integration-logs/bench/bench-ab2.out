@@ -1,0 +1,97 @@
+[bench] waiting supabase-ci lock 21:42:45
+[bench] acquired 21:42:45
+[bench] reset ok 21:44:26
+[bench] quiet lock held exclusively 21:45:36 load=1.87 2.82 3.42
+[bench] run 1 load_before=1.87 2.82 3.42
+[bench] run 1 exit=1 load_after=2.22 2.82 3.40
+# activate p50=216.0ms p95=293.9ms max=400.2ms n=25
+# assign p50=11.6ms p95=15.0ms max=24.2ms n=25
+# create128 p50=285.5ms p95=401.1ms max=525.1ms n=25
+# decide p50=54.2ms p95=74.9ms max=83.7ms n=25
+# dry_run p50=102.8ms p95=141.4ms max=149.5ms n=25
+# submit p50=104.1ms p95=131.8ms max=156.7ms n=25
+# create128: 128-field create RPC p95=401.1ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL
+[bench] run 2 load_before=2.22 2.82 3.40
+[bench] run 2 exit=1 load_after=2.56 2.85 3.40
+# activate p50=226.2ms p95=311.7ms max=344.8ms n=25
+# assign p50=12.0ms p95=16.9ms max=21.3ms n=25
+# create128 p50=301.5ms p95=358.0ms max=501.6ms n=25
+# decide p50=58.5ms p95=73.2ms max=83.5ms n=25
+# dry_run p50=103.5ms p95=147.9ms max=160.7ms n=25
+# submit p50=105.6ms p95=132.3ms max=158.9ms n=25
+# create128: 128-field create RPC p95=358.0ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 3 - activate on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL
+[bench] run 3 load_before=2.56 2.85 3.40
+[bench] run 3 exit=1 load_after=2.71 2.86 3.39
+# activate p50=206.0ms p95=269.0ms max=277.5ms n=25
+# assign p50=10.8ms p95=13.1ms max=23.8ms n=25
+# create128 p50=283.0ms p95=369.9ms max=439.2ms n=25
+# decide p50=53.8ms p95=64.0ms max=82.8ms n=25
+# dry_run p50=99.9ms p95=129.1ms max=152.3ms n=25
+# submit p50=101.6ms p95=114.3ms max=147.9ms n=25
+# create128: 128-field create RPC p95=369.9ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL
+[bench] run 4 load_before=2.71 2.86 3.39
+[bench] run 4 exit=1 load_after=2.58 2.82 3.36
+# activate p50=207.2ms p95=239.0ms max=301.1ms n=25
+# assign p50=11.4ms p95=14.0ms max=24.1ms n=25
+# create128 p50=266.5ms p95=376.5ms max=400.2ms n=25
+# decide p50=53.9ms p95=75.1ms max=81.2ms n=25
+# dry_run p50=97.9ms p95=134.9ms max=155.9ms n=25
+# submit p50=99.9ms p95=122.9ms max=148.0ms n=25
+# create128: 128-field create RPC p95=376.5ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL
+[bench] waiting supabase-ci lock 21:47:10
+[bench] acquired 21:47:10
+[bench] reset ok 21:48:59
+[bench] quiet lock held exclusively 21:50:39 load=1.84 3.01 3.38
+[bench] run 1 load_before=1.84 3.01 3.38
+[bench] run 1 exit=1 load_after=1.81 2.93 3.35
+# activate p50=205.8ms p95=263.1ms max=270.1ms n=25
+# assign p50=10.4ms p95=15.4ms max=18.7ms n=25
+# create128 p50=277.7ms p95=336.3ms max=339.1ms n=25
+# decide p50=52.7ms p95=62.9ms max=77.5ms n=25
+# dry_run p50=93.5ms p95=124.0ms max=129.5ms n=25
+# submit p50=94.6ms p95=124.2ms max=128.8ms n=25
+# create128: 128-field create RPC p95=336.3ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL
+[bench] run 2 load_before=1.81 2.93 3.35
+[bench] run 2 exit=1 load_after=1.80 2.84 3.31
+# activate p50=214.8ms p95=254.5ms max=296.3ms n=25
+# assign p50=11.3ms p95=14.2ms max=24.9ms n=25
+# create128 p50=298.6ms p95=350.1ms max=447.2ms n=25
+# decide p50=55.9ms p95=77.7ms max=86.1ms n=25
+# dry_run p50=106.5ms p95=136.5ms max=160.2ms n=25
+# submit p50=104.7ms p95=137.0ms max=155.3ms n=25
+# create128: 128-field create RPC p95=350.1ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL
+[bench] run 3 load_before=1.80 2.84 3.31
+[bench] run 3 exit=1 load_after=2.01 2.81 3.29
+# activate p50=212.4ms p95=245.0ms max=268.0ms n=25
+# assign p50=10.4ms p95=13.6ms max=21.5ms n=25
+# create128 p50=288.5ms p95=334.9ms max=358.1ms n=25
+# decide p50=52.9ms p95=66.8ms max=72.6ms n=25
+# dry_run p50=101.0ms p95=127.3ms max=155.2ms n=25
+# submit p50=100.9ms p95=127.1ms max=134.5ms n=25
+# create128: 128-field create RPC p95=334.9ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL
+[bench] run 4 load_before=2.01 2.81 3.29
+[bench] run 4 exit=1 load_after=2.43 2.85 3.28
+# activate p50=229.5ms p95=253.4ms max=262.6ms n=25
+# assign p50=11.5ms p95=16.4ms max=19.6ms n=25
+# create128 p50=286.8ms p95=337.0ms max=427.4ms n=25
+# decide p50=58.6ms p95=73.2ms max=77.5ms n=25
+# dry_run p50=108.3ms p95=130.8ms max=143.2ms n=25
+# submit p50=108.8ms p95=120.0ms max=129.4ms n=25
+# create128: 128-field create RPC p95=337.0ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget 
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+Result: FAIL

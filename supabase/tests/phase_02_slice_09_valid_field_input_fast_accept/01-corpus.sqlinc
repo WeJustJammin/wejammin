@@ -1,0 +1,100 @@
+-- Corpus of the fast-accept equivalence suite: field-definition inputs for platform_private.cms_valid_field_input.
+-- fi_dim lists, per top-level member of a field definition, an ordered list of variants; variant 1 is the base
+-- (valid) value.  The corpus is (a) the base, (b) every variant alone on the base (one-factor-at-a-time),
+-- (c) a deterministic mixture of variants (fixed seed) and (d) inputs that are not objects.  Nothing is
+-- expected of a case here: the suite compares the current function with the verbatim previous body on all of them.
+create temp table fi_dim(dim text not null, ord integer not null, v jsonb, absent boolean not null default false, primary key (dim, ord)) on commit drop;
+create temp table fi_cases(n serial primary key, label text not null, value jsonb) on commit drop;
+
+-- Adds the variants of one member in order; the literal '@absent' removes the member.
+create or replace function pg_temp.fi_dim(p_dim text, p_items text[]) returns void language plpgsql as $body$
+declare i integer;
+begin
+  for i in 1..cardinality(p_items) loop
+    if p_items[i] = '@absent' then insert into fi_dim values (p_dim, i, null, true);
+    else insert into fi_dim values (p_dim, i, p_items[i]::jsonb, false); end if;
+  end loop;
+end $body$;
+
+create or replace function pg_temp.fi_apply(p_base jsonb, p_dim text, p_v jsonb, p_absent boolean) returns jsonb language sql as $body$
+  select case when p_absent then p_base - p_dim else jsonb_set(p_base, array[p_dim], p_v, true) end $body$;
+
+select pg_temp.fi_dim('stableFieldId', array[
+  '"a9f10000-0000-4000-8000-000000000001"', '"a9f10000-0000-4000-8000-000000000002"',
+  '"a9f10000-0000-0000-8000-000000000001"', '"a9f10000-0000-1000-8000-000000000001"', '"a9f10000-0000-8000-8000-000000000001"', '"a9f10000-0000-9000-8000-000000000001"',
+  '"a9f10000-0000-4000-7000-000000000001"', '"a9f10000-0000-4000-9000-000000000001"', '"a9f10000-0000-4000-a000-000000000001"', '"a9f10000-0000-4000-b000-000000000001"',
+  '"a9f10000-0000-4000-c000-000000000001"', '"A9F10000-0000-4000-8000-000000000001"', '"a9f10000-0000-4000-8000-00000000001"', '"a9f10000-0000-4000-8000-0000000000011"',
+  '"{a9f10000-0000-4000-8000-000000000001}"', '"a9f10000000040008000000000000001"', '" a9f10000-0000-4000-8000-000000000001"', '"a9f10000-0000-4000-8000-00000000000g"',
+  '"a9f10000-0000-4000-8000-000000000001\n"', 'null', '5', 'true', '""', '[]', '@absent']);
+select pg_temp.fi_dim('key', array[
+  '"title"', '"f001"', '"a1"', '"ab"', '"a"', '"1abc"', '"Title"', '"has-dash"', '"x_y9"', '"_x"', '"ab\n"', to_jsonb(rpad('a', 64, 'b'))::text, to_jsonb(rpad('a', 65, 'b'))::text,
+  '""', 'null', '5', 'true', '["a"]', '{"a":1}', '"ä"', '"user"', '"USER"', '"Users"', '"settings"', '"menu"', '"title2"', '@absent']);
+select pg_temp.fi_dim('kind', array[
+  '"short_text"', '"long_text"', '"rich_text"', '"boolean"', '"integer"', '"decimal"', '"date"', '"datetime"', '"enum"', '"taxonomy"', '"relation"', '"media"', '"object"', '"list"',
+  '"unknown"', '"SHORT_TEXT"', '""', 'null', '5', 'true', '["short_text"]', '@absent']);
+select pg_temp.fi_dim('constraints', array[
+  '{}', 'null', '[]', '"x"', '5', '{"minLength":5}', '{"minLength":0}', '{"maxLength":100000}', '{"maxLength":100001}', '{"maxLength":99999}', '{"minLength":5,"maxLength":3}',
+  '{"minLength":3,"maxLength":3}', '{"minLength":"5"}', '{"minLength":-1}', '{"minLength":5.5}', '{"minLength":5.0}', '{"minLength":1e2}', '{"minLength":100000,"maxLength":100000}',
+  '{"minLength":100001}', '{"minLength":null}', '{"maxLength":true}', '{"minimum":1,"maximum":0}', '{"minimum":1,"maximum":1}', '{"minimum":-5.5,"maximum":1e3}', '{"minimum":"x"}',
+  '{"minimum":null}', '{"maximum":true}', '{"minimum":1.50,"maximum":1.5}', '{"minimum":-1e-7}', '{"unknown":1}', '{"minLength":2,"unknown":1}', '{"enumValues":["a","b"]}',
+  '{"enumValues":[]}', '{"enumValues":"a"}', '{"itemKind":"short_text"}', '{"itemKind":"list"}', '{"itemKind":"nope"}', '{"itemKind":null}', '{"objectStructure":{}}',
+  '{"minLength":1,"maxLength":9,"minimum":0,"maximum":9}', '{"minLength":{"a":1}}', '{"minimum":[1]}', '{"maxLength":"5"}', '{"maxLength":"100"}',
+  '{"minLength":"5","maxLength":"3"}', '{"minimum":"5"}', '{"maximum":"x"}', '{"maxLength":null}', '{"maxLength":5.5}', '{"maxLength":-1}', '{"maxLength":1e5}',
+  ('{"minimum":1' || repeat('0', 9000) || '}'), ('{"minimum":1' || repeat('0', 7000) || ',"maximum":1' || repeat('0', 7000) || '}'),
+  ('{"minimum":1' || repeat('0', 3000) || ',"maximum":1' || repeat('0', 3000) || '}'), '@absent']);
+select pg_temp.fi_dim('required', array['true', 'false', 'null', '"true"', '1', '[]', '@absent']);
+select pg_temp.fi_dim('validatorKey', array['null', '"rich_text.v1"', '"other.v1"', '"Bad Key"', '""', '5', 'true', '@absent']);
+select pg_temp.fi_dim('validatorVersion', array['null', '1', '"1"', '2', '0', '-1', '1.5', '@absent']);
+select pg_temp.fi_dim('defaultMode', array['"none"', '"inherited"', '"literal"', '"bogus"', 'null', '5', '""', '@absent']);
+select pg_temp.fi_dim('defaultValue', array['@absent', 'null', '"x"', '5', '{"a":1}', '[]', 'true']);
+select pg_temp.fi_dim('localizationMode', array['"none"', '"localized"', '"no_fallback"', '"bogus"', 'null', '""', '@absent']);
+select pg_temp.fi_dim('lifecycle', array['"active"', '"deprecated"', '"retired"', '"bogus"', 'null', '""', '@absent']);
+select pg_temp.fi_dim('zz', array['@absent', '1', 'null', '"x"']);
+select pg_temp.fi_dim('editorConfig', array[
+  '{"label":"Title","order":1}', '{"label":"X","order":0}', '{"label":"X","order":10000}', '{"label":"X","order":10001}', '{"label":"X","order":99999}', '{"label":"X","order":-1}',
+  '{"label":"X","order":1.5}', '{"label":"X","order":1.0}', '{"label":"X","order":1e2}', '{"label":"X","order":"1"}', '{"label":"X","order":null}', '{"label":"X","order":true}',
+  '{"label":"X","order":99999999999}', '{"label":"","order":1}', '{"label":" ","order":1}', '{"label":null,"order":1}', '{"label":5,"order":1}', '{"label":["a"],"order":1}',
+  '{"order":1}', '{"label":"X"}', '{"label":"X","order":1,"extra":1}', '{"label":"X","order":1,"helpText":"help"}', '{"label":"X","order":1,"helpText":""}',
+  '{"label":"X","order":1,"helpText":5}', '{"label":"X","order":1,"helpText":null}', '{}', '[]', 'null', '"x"', '5',
+  jsonb_build_object('label', rpad('a', 120, 'a'), 'order', 1)::text, jsonb_build_object('label', rpad('a', 121, 'a'), 'order', 1)::text,
+  jsonb_build_object('label', repeat(E'é', 61), 'order', 1)::text, jsonb_build_object('label', repeat(E'é', 121), 'order', 1)::text,
+  jsonb_build_object('label', 'X', 'order', 1, 'helpText', rpad('h', 500, 'h'))::text, jsonb_build_object('label', 'X', 'order', 1, 'helpText', rpad('h', 501, 'h'))::text,
+  jsonb_build_object('label', 'X', 'order', 1, 'helpText', repeat(E'é', 300))::text, jsonb_build_object('label', 'X', 'order', 1, 'helpText', repeat(E'é', 501))::text,
+  '{"label":"Zeichen äöü 日本語 😀","order":7}', '@absent']);
+-- Every word cms_reserved_key refuses, read from the function itself, as a key in three spellings.
+insert into fi_dim select 'key', 1000 + row_number() over (order by w.word, s.k), to_jsonb(case s.k when 1 then w.word when 2 then upper(w.word) else initcap(w.word) end), false
+from (select m[1] as word from regexp_matches(pg_get_functiondef('platform_private.cms_reserved_key(text)'::regprocedure), '''([a-z_]+)''', 'g') m) w
+cross join (values (1), (2), (3)) s(k);
+
+-- (a) the base and (b) every variant alone.
+insert into fi_cases(label, value)
+select 'base', jsonb_object_agg(d.dim, d.v) from fi_dim d where d.ord = 1 and not d.absent;
+insert into fi_cases(label, value)
+select d.dim || '#' || d.ord, pg_temp.fi_apply((select jsonb_object_agg(b.dim, b.v) from fi_dim b where b.ord = 1 and not b.absent), d.dim, d.v, d.absent)
+from fi_dim d where d.ord > 1 order by d.dim, d.ord;
+
+-- (c) deterministic mixtures: every member keeps its base value with probability 0.85 (the reserved-word spellings, ord >= 1000, are used one at a time only), else takes a random variant.
+create or replace function pg_temp.fi_mix(p_count integer) returns void language plpgsql as $body$
+declare i integer; d record; v record; doc jsonb; pick integer; total integer;
+begin
+  perform setseed(0.4242);
+  for i in 1..p_count loop
+    doc := (select jsonb_object_agg(b.dim, b.v) from fi_dim b where b.ord = 1 and not b.absent);
+    for d in select distinct dim from fi_dim order by dim loop
+      if random() < 0.15 then
+        select count(*) into total from fi_dim where dim = d.dim and ord > 1 and ord < 1000;
+        pick := 1 + floor(random() * total)::integer;
+        select x.* into v from (select f.*, row_number() over (order by f.ord) rn from fi_dim f where f.dim = d.dim and f.ord > 1 and f.ord < 1000) x where x.rn = pick;
+        doc := pg_temp.fi_apply(doc, d.dim, v.v, v.absent);
+      end if;
+    end loop;
+    insert into fi_cases(label, value) values ('mix#' || i, doc);
+  end loop;
+end $body$;
+select pg_temp.fi_mix(3000);
+
+-- (d) values that are not field objects.
+insert into fi_cases(label, value) values
+  ('not an object: SQL NULL', null), ('not an object: JSON null', 'null'), ('not an object: array', '[]'), ('not an object: string', '"x"'),
+  ('not an object: number', '5'), ('not an object: boolean', 'true'), ('empty object', '{}'),
+  ('array of the base', jsonb_build_array((select value from fi_cases where label = 'base')));

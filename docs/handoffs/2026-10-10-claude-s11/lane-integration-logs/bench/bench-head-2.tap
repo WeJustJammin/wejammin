@@ -1,0 +1,47 @@
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_bench128.sql .. 
+{"created": true, "personId": "1d73f0cc-4347-4046-87f2-79f2e5a4f324", "contextKind": "self", "accountState": "active", "actingPartyId": "1d73f0cc-4347-4046-87f2-79f2e5a4f324", "bindingVersion": 1}
+{"created": true, "personId": "768747f8-ae6e-4b04-9907-106bc0d8c7d9", "contextKind": "self", "accountState": "active", "actingPartyId": "768747f8-ae6e-4b04-9907-106bc0d8c7d9", "bindingVersion": 1}
+{"created": true, "personId": "5ac92aa8-1c47-4bd4-9680-0d1a697f9e00", "contextKind": "self", "accountState": "active", "actingPartyId": "5ac92aa8-1c47-4bd4-9680-0d1a697f9e00", "bindingVersion": 1}
+{"created": true, "personId": "a4932597-39fd-43da-afff-d5b0ca0fb72a", "contextKind": "self", "accountState": "active", "actingPartyId": "a4932597-39fd-43da-afff-d5b0ca0fb72a", "bindingVersion": 1}
+{"created": true, "personId": "d8b6feb3-183b-4089-b99c-88681452e78c", "contextKind": "self", "accountState": "active", "actingPartyId": "d8b6feb3-183b-4089-b99c-88681452e78c", "bindingVersion": 1}
+{"created": true, "personId": "660eec4a-26e9-4ab7-b032-658aa98cbf1f", "contextKind": "self", "accountState": "active", "actingPartyId": "660eec4a-26e9-4ab7-b032-658aa98cbf1f", "bindingVersion": 1}
+a9d10000-0000-4000-8000-000000000091
+s09d-other-org-create
+s09d-other-org-create-request
+OK
+ok 1 - fixture: twenty-five 128-field definitions were created, reviewed and activated through the real producers [P2-S09-AC-217]
+ok 2 - each activated definition carries exactly 128 fields [P2-S09-AC-217]
+# activate p50=219.2ms p95=294.0ms max=307.2ms n=25
+# assign p50=11.3ms p95=13.9ms max=30.9ms n=25
+# create128 p50=305.9ms p95=404.2ms max=419.7ms n=25
+# decide p50=56.9ms p95=76.5ms max=87.4ms n=25
+# dry_run p50=108.2ms p95=145.1ms max=169.0ms n=25
+# submit p50=105.1ms p95=144.9ms max=148.8ms n=25
+ok 3 - activate on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 4 - assign on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+not ok 5 - create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+# Failed test 5: "create128 on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]"
+ok 6 - decide on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 7 - dry_run on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 8 - submit on a 128-field definition: RPC p95 under the 300 ms budget [P2-S09-AC-217]
+ok 9 - create128: the p95 is taken over at least twenty samples (n=25) [P2-S09-AC-217]
+# create128: 128-field create RPC p95=404.2ms against the non-normative 200 ms margin target; the binding gate is the 300 ms protected-RPC p95 budget [P2-S09-AC-217]
+ok 10 - activate: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 11 - assign: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 12 - create128: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 13 - decide: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 14 - dry_run: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+ok 15 - submit: the worst sample is under the 1,200 ms Tier 2 command budget [P2-S09-AC-217]
+1..15
+# Looks like you failed 1 test of 15
+Failed 1/15 subtests 
+
+Test Summary Report
+-------------------
+/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_bench128.sql (Wstat: 0 Tests: 15 Failed: 1)
+  Failed test:  5
+Files=1, Tests=15, 23 wallclock secs ( 0.06 usr  0.01 sys +  0.04 cusr  0.01 csys =  0.12 CPU)
+Result: FAIL
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_bench128.sql:2: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_bench128.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice11/WeJammin/supabase/tests/phase_02_slice_09_evidence_bench128.sql:4: WARNING:  there is no transaction in progress

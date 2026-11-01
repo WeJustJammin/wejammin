@@ -1,0 +1,22 @@
+psql:/w/scratch/bench2-lane/probe-prof.sql:3: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench2-lane/probe-prof.sql:4: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench2-lane/probe-prof.sql:5: WARNING:  there is no transaction in progress
+psql:/w/supabase/tests/phase_02_slice_09_dec108/01-actors.sqlinc:56: ERROR:  BOOTSTRAP_OPERATOR_REQUIRED
+CONTEXT:  PL/pgSQL function platform_private.initialize_cms_owner(uuid,uuid,text,timestamp with time zone,uuid,boolean) line 13 at RAISE
+/w/scratch/bench2-lane/probe-prof.sql .. 
+{"created": true, "personId": "87e35cf5-a03f-4407-b60a-f3d0e91f2976", "contextKind": "self", "accountState": "active", "actingPartyId": "87e35cf5-a03f-4407-b60a-f3d0e91f2976", "bindingVersion": 1}
+{"created": true, "personId": "0958e84c-ee17-464a-8f90-6cff566cbd02", "contextKind": "self", "accountState": "active", "actingPartyId": "0958e84c-ee17-464a-8f90-6cff566cbd02", "bindingVersion": 1}
+{"created": true, "personId": "ffec04b4-9c56-4bcc-a31e-a61059446661", "contextKind": "self", "accountState": "active", "actingPartyId": "ffec04b4-9c56-4bcc-a31e-a61059446661", "bindingVersion": 1}
+{"created": true, "personId": "0caee19b-92d6-492d-9c1e-acc2b5e2c926", "contextKind": "self", "accountState": "active", "actingPartyId": "0caee19b-92d6-492d-9c1e-acc2b5e2c926", "bindingVersion": 1}
+{"created": true, "personId": "a547a992-a536-419b-88d5-1432b898df3c", "contextKind": "self", "accountState": "active", "actingPartyId": "a547a992-a536-419b-88d5-1432b898df3c", "bindingVersion": 1}
+{"created": true, "personId": "c0fff993-fb56-487c-beba-3f5c9b0dd68f", "contextKind": "self", "accountState": "active", "actingPartyId": "c0fff993-fb56-487c-beba-3f5c9b0dd68f", "bindingVersion": 1}
+Dubious, test returned 3 (wstat 768, 0x300)
+No subtests run 
+
+Test Summary Report
+-------------------
+/w/scratch/bench2-lane/probe-prof.sql (Wstat: 768 (exited 3) Tests: 0 Failed: 0)
+  Non-zero exit status: 3
+  Parse errors: No plan found in TAP output
+Files=1, Tests=0,  0 wallclock secs ( 0.04 usr  0.01 sys +  0.03 cusr  0.00 csys =  0.08 CPU)
+Result: FAIL

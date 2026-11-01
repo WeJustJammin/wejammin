@@ -1,0 +1,52 @@
+256 (old bound): nodes=256 json bytes=111008
+  parse #1: 14.2 ms
+  run   #1: 55.0 ms
+  gate  #1 (incl JSON roundtrip): 29.9 ms
+  gate state=healthy
+  parse #2: 5.7 ms
+  run   #2: 19.3 ms
+  gate  #2 (incl JSON roundtrip): 39.9 ms
+  gate state=healthy
+  parse #3: 5.8 ms
+  run   #3: 14.7 ms
+  gate  #3 (incl JSON roundtrip): 20.2 ms
+  gate state=healthy
+4096 fields only (128x32): nodes=4096 json bytes=1769830
+  parse #1: 107.9 ms
+  run   #1: 224.4 ms
+  gate  #1 (incl JSON roundtrip): 265.9 ms
+  gate state=healthy
+  parse #2: 90.8 ms
+  run   #2: 168.5 ms
+  gate  #2 (incl JSON roundtrip): 258.9 ms
+  gate state=healthy
+  parse #3: 78.4 ms
+  run   #3: 178.7 ms
+  gate  #3 (incl JSON roundtrip): 263.6 ms
+  gate state=healthy
+4096 minimal fields: nodes=4096 json bytes=766310
+  parse #1: 38.9 ms
+  run   #1: 38.3 ms
+  gate  #1 (incl JSON roundtrip): 128.4 ms
+  gate state=healthy
+  parse #2: 48.7 ms
+  run   #2: 30.9 ms
+  gate  #2 (incl JSON roundtrip): 72.7 ms
+  gate state=healthy
+  parse #3: 37.4 ms
+  run   #3: 27.5 ms
+  gate  #3 (incl JSON roundtrip): 67.8 ms
+  gate state=healthy
+4096 + 8192 blocks: nodes=12288 json bytes=4324627
+  parse #1: 212.5 ms
+  run   #1: 319.0 ms
+  gate  #1 (incl JSON roundtrip): 483.4 ms
+  gate state=healthy
+  parse #2: 186.5 ms
+  run   #2: 224.7 ms
+  gate  #2 (incl JSON roundtrip): 451.6 ms
+  gate state=healthy
+  parse #3: 176.9 ms
+  run   #3: 173.8 ms
+  gate  #3 (incl JSON roundtrip): 321.3 ms
+  gate state=healthy

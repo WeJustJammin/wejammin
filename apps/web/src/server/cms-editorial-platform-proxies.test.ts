@@ -235,7 +235,7 @@ describe('cms-editorial create proxy (CMS-03B-10)', () => {
       ),
     );
     expect(response.status).toBe(502);
-    expect(await errorCode(response)).toBe('BAD_GATEWAY');
+    expect(await errorCode(response)).toBe('DEPENDENCY_UNAVAILABLE');
   });
 
   it('collapses an oversize upstream error instead of buffering it', async () => {

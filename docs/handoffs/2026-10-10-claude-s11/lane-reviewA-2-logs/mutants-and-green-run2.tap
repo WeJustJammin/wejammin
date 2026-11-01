@@ -1,0 +1,677 @@
+supabase/tests/phase_02_slice_11_effect_oracle.sql ...................... 
+1..23
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - the observation reports a call that returned and wrote (the wrapper and the real command) and none for a silent call or for the two calls that raised, including a write that was raised away [P2-S11-AC-015]
+ok 11 - a decision that returned names exactly the tables it wrote: audit, decision, review, reservation and outbox [P2-S11-AC-015]
+ok 12 - a write that is raised away in the same call shows no change and the call state is P0001 [P2-S11-AC-015]
+ok 13 - the no-effect check is false for a call that wrote and returned, even when it is listed with a silent one [P2-S11-AC-015]
+ok 14 - the no-effect check is true for a silent call, a write raised away and a real STEP_UP_REQUIRED refusal [P2-S11-AC-015]
+ok 15 - a probe made before the watch was armed, or never made, is unclean for the no-effect check and is counted unobserved [P2-S11-AC-015]
+ok 16 - control: the previous end-of-file digest equals its start value after the same rolled-back probes - it could not see the committed decision [P2-S11-AC-015]
+ok 17 - arming a watch with an empty digest is refused [P2-S11-AC-015]
+ok 18 - control: the real command succeeded, so the watch observed the same write the wrapper produced [P2-S11-AC-015]
+ok 19 - a battery holding a probe made before the watch was armed is not clean, however its writers are declared [P2-S11-AC-015]
+ok 20 - when every probe was observed and the probes that returned and wrote are exactly the declared controls, the battery is clean, in whatever order they are declared [P2-S11-AC-015]
+ok 21 - a refusal that wrote and returned (the wrapper) and was not declared makes the battery unclean, and the verdict names it [P2-S11-AC-015]
+ok 22 - declaring a control that did not write (the silent call) also fails: the declared set must be exact [P2-S11-AC-015]
+ok 23 - a battery with no probe at all is not clean [P2-S11-AC-015]
+supabase/tests/phase_02_slice_11_rpc_review_assign_refusals.sql ......... 
+1..25
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 7 - control: the five review fixtures are open v1, open v2, approved, rejected and invalidated
+ok 8 - a non-member, a member without any scope on the review, a caller acting in another party and an absent review are one indistinguishable NOT_FOUND [P2-S11-AC-069]
+ok 9 - a submitter, a publisher and an assigned reviewer can read the review but are not the receipt-derived owner: 403 capability_missing for create and revoke [P2-S11-AC-069]
+ok 10 - an owner without a valid cms.editor grant is refused both a create and a revoke: 403 capability_missing (BE03b CMS-03B-18, review of finding A-B1) [P2-S11-AC-069]
+ok 11 - an owner whose cms.editor grant has lapsed (its valid_through day passed) is refused both a create and a revoke: 403 capability_missing [P2-S11-AC-069]
+ok 12 - an owner whose membership tenure has ended no longer holds the owner scope: the review is concealed NOT_FOUND for create and revoke [P2-S11-AC-069]
+ok 13 - an approved, rejected or invalidated review accepts no assignment change: review_not_open [P2-S11-AC-071]
+ok 14 - a stale review version is VERSION_MISMATCH carrying the expected and current versions [P2-S11-AC-071]
+ok 15 - If-Match must equal expectedVersion (INVALID_REQUEST) and both must be positive decimals (VALIDATION_FAILED at the member) [P2-S11-AC-068]
+ok 16 - an absent, non-member, ungranted, publisher-only, submitter, revision-author, banned, shadow, lapsed, deactivated or ended-tenure reviewer is one byte-identical reviewer_not_eligible [P2-S11-AC-069]
+ok 17 - control: the same request for an eligible reviewer succeeds (so the eleven refusals are about the reviewer) [P2-S11-AC-069]
+ok 18 - a second assignment of a reviewer who holds an active row is assignment_exists, even when that row is expired but not revoked [P2-S11-AC-071]
+ok 19 - the seventeenth active assignment of a review is assignment_limit [P2-S11-AC-071]
+ok 20 - expired assignments are inert: fifteen unexpired plus two expired rows leave room for a sixteenth [P2-S11-AC-071]
+ok 21 - the expiry must be after now, within seven days, and not after the reviewer grant day end or the owner cms.editor grant day end (the end itself is allowed) [P2-S11-AC-068]
+ok 22 - an unknown key (a caller-supplied owner), a missing member, the other action's members, an unknown action, a malformed review id and a missing or short idempotency key are INVALID_REQUEST [P2-S11-AC-068]
+ok 23 - a non-UUID reviewer or assignment id and an expiry that is not an offset ISO instant are VALIDATION_FAILED at their member pointer [P2-S11-AC-068]
+ok 24 - every refusal above changed none of the fourteen durable tables (whole-row digests of assignment, review, decision, reservation, audit record, outbox event and the rest), observed inside its own call before the probe rolled back; only the five successful controls wrote [P2-S11-AC-071]
+not ok 25 - control: the observation sees a write - an accepted assignment changes the assignment, review, reservation, event and audit tables inside its probe [P2-S11-AC-071]
+# Failed test 25: "control: the observation sees a write - an accepted assignment changes the assignment, review, reservation, event and audit tables inside its probe [P2-S11-AC-071]"
+#         have: audit_events,cms_editorial_review_assignments,idempotency_records,outbox_events
+#         want: audit_events,cms_editorial_review_assignments,cms_editorial_reviews,idempotency_records,outbox_events
+# Looks like you failed 1 test of 25
+supabase/tests/phase_02_slice_11_rpc_review_decision_refusals.sql ....... 
+1..26
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - control: the six review fixtures are in the intended states
+ok 11 - a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]
+ok 12 - control: a proof 590 s old is accepted [P2-S11-AC-108]
+ok 13 - a non-member, a scope-less member, an absent review, another acting party and a reviewer whose assignment was revoked are one indistinguishable NOT_FOUND [P2-S11-AC-013]
+ok 14 - a readable review without an EFFECTIVE assignment (window over, not started, submitter, publisher, owner) is 403 capability_missing [P2-S11-AC-013]
+ok 15 - an approved, rejected or invalidated review is review_not_open, and the state is evaluated before the CAS operand [P2-S11-AC-108]
+ok 16 - a stale review version is VERSION_MISMATCH with the expected and current versions [P2-S11-AC-014]
+ok 17 - If-Match must equal expectedVersion (INVALID_REQUEST) and be a positive decimal (VALIDATION_FAILED) [P2-S11-AC-012]
+ok 18 - the review submitter and the revision author are 403 separation_of_duties even with an effective assignment [P2-S11-AC-108]
+ok 19 - a second decision by the same human is 409 duplicate_decision [P2-S11-AC-108]
+ok 20 - a lapsed or deactivated standing cms.reviewer grant is 403 capability_missing; an ended membership leaves no scope at all (404) [P2-S11-AC-108]
+ok 21 - control: with the grants restored the same decision succeeds [P2-S11-AC-108]
+ok 22 - an unknown decision, an empty, over-long, non-NFC, control, separator, bidi, markup or brace reason, and a non-string reason are VALIDATION_FAILED at their pointer [P2-S11-AC-012]
+ok 23 - the reason bound is 2000 Unicode code points: 2000 emoji (8000 octets) are accepted (DEC-158(a)) [P2-S11-AC-012]
+ok 24 - a caller capability or stepUpAt is an unknown key, and a missing reason or malformed review id is INVALID_REQUEST [P2-S11-AC-012]
+ok 25 - every refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot and the rest), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]
+ok 26 - control: the observation sees a write - an accepted decision changes the decision, review, reservation, event and audit tables inside its probe [P2-S11-AC-015]
+supabase/tests/phase_02_slice_11_rpc_review_submit_refusals.sql ......... 
+1..25
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - control: three revisions are under an open, approved and rejected review (derived state submitted, approved, rejected)
+ok 11 - a caller riskClass or owner, a missing member, a malformed id and an If-Match that disagrees with the entry version are INVALID_REQUEST [P2-S11-AC-006]
+ok 12 - a non-lowercase-hex hash, a non-object or over-bound manifest and a non-decimal version are VALIDATION_FAILED at their pointer [P2-S11-AC-006]
+ok 13 - a non-member, an absent entry, another acting party, a revision of another entry and an absent revision are one indistinguishable NOT_FOUND [P2-S11-AC-007]
+ok 14 - a visible entry with no assignment is 403 capability_missing [P2-S11-AC-007]
+ok 15 - a stale entry version is VERSION_MISMATCH with the expected and current versions [P2-S11-AC-008]
+ok 16 - a superseded revision and a revision under an open, approved or rejected review are 409 revision_not_submittable [P2-S11-AC-005]
+ok 17 - a frozen hash that is not the stored payload hash is VALIDATION_FAILED at /frozenHash [P2-S11-AC-005]
+ok 18 - a submitted manifest that differs from the rebuilt one in any member is 409 dependency_changed carrying only the CURRENT dependencyHash [P2-S11-AC-005]
+ok 19 - a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]
+ok 20 - absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight (DEC-159: the Worker adds retryable) [P2-S11-AC-097]
+ok 21 - a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]
+ok 22 - evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]
+ok 23 - an archived entry fails the revocation category (entry_unavailable) [P2-S11-AC-096]
+ok 24 - a deactivated cms.author grant revokes the creator's assignments (DEC-143) and the submit is 403 capability_missing [P2-S11-AC-007]
+ok 25 - every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]
+supabase/tests/phase_02_slice_11_rpc_publication_schedule_refusals.sql .. 
+1..41
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - control: approved, rejected, open and invalidated reviews exist, sr-dep has a stale frozen manifest and sr-main a current one
+ok 11 - an unknown key (entryId, riskClass), a missing member, a malformed revision id, If-Match disagreeing with expectedVersion and a non-object proof are INVALID_REQUEST [P2-S11-AC-018]
+ok 12 - every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: action, a real local date and time without offset or leap second at most nine fraction digits, the zone grammar, an offset instant, the tzdb tag, disambiguation, the audience grammar, expectedVersion and If-Match [P2-S11-AC-018]
+ok 13 - several invalid fields are reported together, in request order, and nothing else is echoed [P2-S11-AC-018]
+ok 14 - a stale, future-dated (beyond the 30 s skew), unverified or absent proof is STEP_UP_REQUIRED, even for a caller who could not see the target [P2-S11-AC-047]
+ok 15 - a non-member, a member with no scope on the entry and an absent revision are the same byte-identical NOT_FOUND [P2-S11-AC-019]
+ok 16 - a visible target without the owner-party cms.publisher grant is 403 capability_missing: the entry assignee, the assigned reviewer and the owner [P2-S11-AC-019]
+ok 17 - the human who authored the revision cannot schedule its publish (E11) [P2-S11-AC-107]
+ok 18 - a stale approved-review version is 409 VERSION_MISMATCH carrying only the expected and current versions [P2-S11-AC-020]
+ok 19 - an invalidation advances the review version, so a command against an invalidated approval is VERSION_MISMATCH [P2-S11-AC-020]
+ok 20 - a revision whose latest review is invalidated, rejected or open, or that was never reviewed, cannot be scheduled: CONFLICT [P2-S11-AC-038]
+ok 21 - a tzdbVersion other than the pinned one is 422 tzdb_version_mismatch carrying the pinned value [P2-S11-AC-104]
+ok 22 - a schedule under 60 s ahead, in the past or over 366 days ahead is 422 schedule_out_of_horizon with the minUtc and maxUtc window [P2-S11-AC-105]
+ok 23 - a local time more than 14 h after or 12 h before the resolved UTC (no real zone offset) is 422 resolved_utc_mismatch [P2-S11-AC-105]
+ok 24 - a cms.publisher grant that ends before the resolved UTC day is 422 authority_ends_before_schedule [P2-S11-AC-107]
+ok 25 - a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]
+ok 26 - absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight [P2-S11-AC-097]
+ok 27 - a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]
+ok 28 - evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]
+ok 29 - every refusal above raised and changed none of the fourteen durable tables (whole-row digests of schedule, review, lineage row, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-018]
+ok 30 - the refused time rules scheduled nothing [P2-S11-AC-105]
+ok 31 - the bounds are inclusive: 90 s ahead, just under 366 days ahead, a local time exactly 14 h after and exactly 12 h before the resolved UTC are accepted [P2-S11-AC-105]
+ok 32 - a grant that still covers the resolved UTC day (here: tomorrow) schedules [P2-S11-AC-107]
+ok 33 - a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-021]
+ok 34 - the invalidation committed with the reason dependency_changed (review invalidated at version 3, one review-changed event) and no schedule exists [P2-S11-AC-111]
+ok 35 - the reservation is completed with the typed refusal (status 409) [P2-S11-AC-020]
+ok 36 - an exact replay returns the same committed refusal [P2-S11-AC-020]
+ok 37 - a fresh attempt against the invalidated approval is VERSION_MISMATCH [P2-S11-AC-020]
+ok 38 - a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]
+ok 39 - the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command scheduled nothing [P2-S11-AC-096]
+ok 40 - the reservation is completed with the committed refusal (status 422), so the same key replays it [P2-S11-AC-096]
+ok 41 - an exact replay returns the same committed refusal with no further effect [P2-S11-AC-096]
+supabase/tests/phase_02_slice_11_rpc_publication_publish_refusals.sql ... 
+1..36
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - control: approved, rejected, open and invalidated reviews exist, pr-dep has a stale frozen manifest and pr-main a current one
+ok 11 - an unknown key (action), a missing member, malformed ids, If-Match disagreeing with expectedVersion and a non-object proof are INVALID_REQUEST [P2-S11-AC-030]
+ok 12 - every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: frozenHash, the version set shape, the audience grammar, expectedVersion and If-Match [P2-S11-AC-030]
+ok 13 - several invalid fields are reported together, in request order [P2-S11-AC-030]
+ok 14 - a stale, future-dated (beyond the 30 s skew), unverified or absent proof is STEP_UP_REQUIRED, even for a caller who could not see the target [P2-S11-AC-048]
+ok 15 - a non-member, a member with no scope, an absent revision and a revision of another entry are the same byte-identical NOT_FOUND [P2-S11-AC-031]
+ok 16 - a visible target without the owner-party cms.publisher grant is 403 capability_missing: the entry assignee, the assigned reviewer and the owner [P2-S11-AC-031]
+ok 17 - the human who authored the revision cannot publish it (E11) [P2-S11-AC-107]
+ok 18 - a stale approved-review version is 409 VERSION_MISMATCH carrying only the expected and current versions [P2-S11-AC-032]
+ok 19 - an invalidation advances the review version, so a command against an invalidated approval is VERSION_MISMATCH [P2-S11-AC-032]
+ok 20 - a revision whose latest review is invalidated, rejected or open, or that was never reviewed, cannot be published: CONFLICT [P2-S11-AC-033]
+ok 21 - a frozenHash that is not the approved review's frozen hash is 422 at /frozenHash [P2-S11-AC-030]
+ok 22 - an expectedVersionSet that is not exactly the version set frozen on the approved review (schema, settings or taxonomy member) is 409 version_set_stale [P2-S11-AC-033]
+ok 23 - a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]
+ok 24 - absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight [P2-S11-AC-097]
+ok 25 - a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]
+ok 26 - evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]
+ok 27 - every refusal above raised and changed none of the fourteen durable tables (whole-row digests of lineage row, review, schedule, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-030]
+ok 28 - a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-033]
+ok 29 - the invalidation committed with the reason dependency_changed (review invalidated at version 3, one review-changed event) and no publication row or event exists [P2-S11-AC-111]
+ok 30 - the reservation is completed with the typed refusal (status 409) [P2-S11-AC-032]
+ok 31 - an exact replay returns the same committed refusal [P2-S11-AC-032]
+ok 32 - a fresh attempt against the invalidated approval is VERSION_MISMATCH [P2-S11-AC-032]
+ok 33 - a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]
+ok 34 - the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command published nothing [P2-S11-AC-096]
+ok 35 - the reservation is completed with the committed refusal (status 422), so the same key replays it [P2-S11-AC-096]
+ok 36 - an exact replay returns the same committed refusal with no further effect [P2-S11-AC-096]
+supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql .......... 
+1..28
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - a missing, unknown (evidence, owner, capability) or malformed member, a non-uuid id and a disagreeing If-Match/expectedVersion are INVALID_REQUEST [P2-S11-AC-024]
+ok 11 - a zero, non-decimal, non-string or over-int64 expectedVersion is VALIDATION_FAILED at /expectedVersion [P2-S11-AC-024]
+ok 12 - a zero or non-decimal ifMatch is VALIDATION_FAILED at /ifMatch [P2-S11-AC-024]
+ok 13 - a malformed locale (one letter, underscore, 36 characters, non-string) is VALIDATION_FAILED at /locale [P2-S11-AC-024]
+ok 14 - an audience outside ^[a-z0-9_-]{1,48}$ (case, padding, empty, 49 characters, space) is VALIDATION_FAILED at /audience, matched as submitted [P2-S11-AC-024]
+ok 15 - a route that is empty, relative, a URL, protocol-relative, carries a query, fragment, backslash, control character, dot or empty segment, percent-encoded dot/slash/backslash, or exceeds 2,048 characters is VALIDATION_FAILED at /route [P2-S11-AC-024]
+ok 16 - valid routes mint: the root, a directory path with a trailing slash, non-ASCII code points, other percent escapes and exactly 2,048 characters [P2-S11-AC-024]
+ok 17 - a version set that is not an object, lacks a member or carries an unknown one is VALIDATION_FAILED at /versionSet [P2-S11-AC-024]
+ok 18 - a non-member, an absent entry, a revision of another entry, an absent revision, another acting party and an archived or held entry are the one concealed NOT_FOUND with no detail [P2-S11-AC-025]
+ok 19 - a member with no scope, an unassigned reviewer, a reviewer assigned to another revision, a revoked reviewer assignment, a revoked entry assignment and a lapsed standing grant are 403 capability_missing with no detail [P2-S11-AC-025]
+ok 20 - control: before its assignment is revoked the same reviewer does mint on the revision of its review (so the revoked-assignment refusal above is about the revocation) [P2-S11-AC-025]
+ok 21 - a stale entry If-Match is VERSION_MISMATCH carrying the expected and current versions only [P2-S11-AC-026]
+ok 22 - the entry-version check runs before the version-set check (a stale CAS wins over a stale set) [P2-S11-AC-026]
+ok 23 - a version set that differs from the one recomputed from canonical state (schema hash, block ids, template, settings version) is 409 version_set_stale [P2-S11-AC-089]
+ok 24 - control: the exact recomputed version set at the current entry version mints [P2-S11-AC-089]
+ok 25 - without an active Vault signing key a scoped caller gets DEPENDENCY_UNAVAILABLE (nothing is minted) while a caller without scope still gets only the 403 [P2-S11-AC-027]
+ok 26 - every refusal above changed none of the fourteen durable tables (whole-row digests of token, reservation, audit record, event, settings snapshot and the rest), observed inside its own call before the probe rolled back; only the seven successful controls wrote [P2-S11-AC-027]
+not ok 27 - control: the observation sees a write - a minted preview changes the token, settings snapshot, reservation, event and audit tables inside its probe [P2-S11-AC-027]
+# Failed test 27: "control: the observation sees a write - a minted preview changes the token, settings snapshot, reservation, event and audit tables inside its probe [P2-S11-AC-027]"
+#         have: audit_events,cms_preview_tokens,idempotency_records
+#         want: audit_events,cms_preview_tokens,cms_publication_settings_snapshots,idempotency_records,outbox_events
+ok 28 - the Idempotency-Key of a refused command is not consumed: the corrected request under the same key mints [P2-S11-AC-026]
+# Looks like you failed 1 test of 28
+supabase/tests/zz_a2_mutant_assign.sql .................................. 
+1..25
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 7 - control: the five review fixtures are open v1, open v2, approved, rejected and invalidated
+not ok 8 - a non-member, a member without any scope on the review, a caller acting in another party and an absent review are one indistinguishable NOT_FOUND [P2-S11-AC-069]
+# Failed test 8: "a non-member, a member without any scope on the review, a caller acting in another party and an absent review are one indistinguishable NOT_FOUND [P2-S11-AC-069]"
+#         have: 1:00000:
+#         want: 1:P0001:NOT_FOUND
+not ok 9 - a submitter, a publisher and an assigned reviewer can read the review but are not the receipt-derived owner: 403 capability_missing for create and revoke [P2-S11-AC-069]
+# Failed test 9: "a submitter, a publisher and an assigned reviewer can read the review but are not the receipt-derived owner: 403 capability_missing for create and revoke [P2-S11-AC-069]"
+#         have: h-publisher=00000:|null;h-reviewer=00000:|null;h-submitter=00000:|null;h-submitter-revoke=00000:|null
+#         want: h-publisher=P0001:capability_missing|null;h-reviewer=P0001:capability_missing|null;h-submitter=P0001:capability_missing|null;h-submitter-revoke=P0001:capability_missing|null
+not ok 10 - an owner without a valid cms.editor grant is refused both a create and a revoke: 403 capability_missing (BE03b CMS-03B-18, review of finding A-B1) [P2-S11-AC-069]
+# Failed test 10: "an owner without a valid cms.editor grant is refused both a create and a revoke: 403 capability_missing (BE03b CMS-03B-18, review of finding A-B1) [P2-S11-AC-069]"
+#         have: 00000:|00000:
+#         want: P0001:capability_missing|P0001:capability_missing
+not ok 11 - an owner whose cms.editor grant has lapsed (its valid_through day passed) is refused both a create and a revoke: 403 capability_missing [P2-S11-AC-069]
+# Failed test 11: "an owner whose cms.editor grant has lapsed (its valid_through day passed) is refused both a create and a revoke: 403 capability_missing [P2-S11-AC-069]"
+#         have: 00000:|00000:
+#         want: P0001:capability_missing|P0001:capability_missing
+not ok 12 - an owner whose membership tenure has ended no longer holds the owner scope: the review is concealed NOT_FOUND for create and revoke [P2-S11-AC-069]
+# Failed test 12: "an owner whose membership tenure has ended no longer holds the owner scope: the review is concealed NOT_FOUND for create and revoke [P2-S11-AC-069]"
+#         have: 00000:|00000:
+#         want: P0001:NOT_FOUND|P0001:NOT_FOUND
+not ok 13 - an approved, rejected or invalidated review accepts no assignment change: review_not_open [P2-S11-AC-071]
+# Failed test 13: "an approved, rejected or invalidated review accepts no assignment change: review_not_open [P2-S11-AC-071]"
+#         have: s-approved=00000:;s-approved-revoke=00000:;s-invalid=00000:;s-rejected=00000:
+#         want: s-approved=P0001:review_not_open;s-approved-revoke=P0001:review_not_open;s-invalid=P0001:review_not_open;s-rejected=P0001:review_not_open
+not ok 14 - a stale review version is VERSION_MISMATCH carrying the expected and current versions [P2-S11-AC-071]
+# Failed test 14: "a stale review version is VERSION_MISMATCH carrying the expected and current versions [P2-S11-AC-071]"
+not ok 15 - If-Match must equal expectedVersion (INVALID_REQUEST) and both must be positive decimals (VALIDATION_FAILED at the member) [P2-S11-AC-068]
+# Failed test 15: "If-Match must equal expectedVersion (INVALID_REQUEST) and both must be positive decimals (VALIDATION_FAILED at the member) [P2-S11-AC-068]"
+#         have: s-ifmatch=00000:;s-version-text=00000:;s-version-zero=00000:
+#         want: s-ifmatch=P0001:INVALID_REQUEST;s-version-text=P0001:VALIDATION_FAILED["/expectedVersion"];s-version-zero=P0001:VALIDATION_FAILED["/ifMatch"]
+not ok 16 - an absent, non-member, ungranted, publisher-only, submitter, revision-author, banned, shadow, lapsed, deactivated or ended-tenure reviewer is one byte-identical reviewer_not_eligible [P2-S11-AC-069]
+# Failed test 16: "an absent, non-member, ungranted, publisher-only, submitter, revision-author, banned, shadow, lapsed, deactivated or ended-tenure reviewer is one byte-identical reviewer_not_eligible [P2-S11-AC-069]"
+#         have: 1:00000::11
+#         want: 1:P0001:reviewer_not_eligible:11
+ok 17 - control: the same request for an eligible reviewer succeeds (so the eleven refusals are about the reviewer) [P2-S11-AC-069]
+not ok 18 - a second assignment of a reviewer who holds an active row is assignment_exists, even when that row is expired but not revoked [P2-S11-AC-071]
+# Failed test 18: "a second assignment of a reviewer who holds an active row is assignment_exists, even when that row is expired but not revoked [P2-S11-AC-071]"
+#         have: 00000:|00000:
+#         want: P0001:assignment_exists|P0001:assignment_exists
+not ok 19 - the seventeenth active assignment of a review is assignment_limit [P2-S11-AC-071]
+# Failed test 19: "the seventeenth active assignment of a review is assignment_limit [P2-S11-AC-071]"
+#         have: 00000:
+#         want: P0001:assignment_limit
+ok 20 - expired assignments are inert: fifteen unexpired plus two expired rows leave room for a sixteenth [P2-S11-AC-071]
+not ok 21 - the expiry must be after now, within seven days, and not after the reviewer grant day end or the owner cms.editor grant day end (the end itself is allowed) [P2-S11-AC-068]
+# Failed test 21: "the expiry must be after now, within seven days, and not after the reviewer grant day end or the owner cms.editor grant day end (the end itself is allowed) [P2-S11-AC-068]"
+#         have: x-grantor-edge=00000:;x-grantor-over=00000:;x-now=00000:;x-past=00000:;x-reviewer-edge=00000:;x-reviewer-over=00000:;x-seven-ok=00000:;x-seven-over=00000:
+#         want: x-grantor-edge=00000:;x-grantor-over=P0001:expiry_out_of_bounds["/expiresAt"];x-now=P0001:expiry_out_of_bounds["/expiresAt"];x-past=P0001:expiry_out_of_bounds["/expiresAt"];x-reviewer-edge=00000:;x-reviewer-over=P0001:expiry_out_of_bounds["/expiresAt"];x-seven-ok=00000:;x-seven-over=P0001:expiry_out_of_bounds["/expiresAt"]
+not ok 22 - an unknown key (a caller-supplied owner), a missing member, the other action's members, an unknown action, a malformed review id and a missing or short idempotency key are INVALID_REQUEST [P2-S11-AC-068]
+# Failed test 22: "an unknown key (a caller-supplied owner), a missing member, the other action's members, an unknown action, a malformed review id and a missing or short idempotency key are INVALID_REQUEST [P2-S11-AC-068]"
+#         have: m-bad-action=00000:;m-bad-review=00000:;m-no-expiry=00000:;m-no-key=00000:;m-no-reviewer=00000:;m-revoke-with-create-fields=00000:;m-short-key=00000:;m-unknown-key=00000:
+#         want: m-bad-action=P0001:INVALID_REQUEST;m-bad-review=P0001:INVALID_REQUEST;m-no-expiry=P0001:INVALID_REQUEST;m-no-key=P0001:INVALID_REQUEST;m-no-reviewer=P0001:INVALID_REQUEST;m-revoke-with-create-fields=P0001:INVALID_REQUEST;m-short-key=P0001:INVALID_REQUEST;m-unknown-key=P0001:INVALID_REQUEST
+not ok 23 - a non-UUID reviewer or assignment id and an expiry that is not an offset ISO instant are VALIDATION_FAILED at their member pointer [P2-S11-AC-068]
+# Failed test 23: "a non-UUID reviewer or assignment id and an expiry that is not an offset ISO instant are VALIDATION_FAILED at their member pointer [P2-S11-AC-068]"
+#         have: m-assignment-uuid=00000:;m-expiry-no-offset=00000:;m-expiry-text=00000:;m-reviewer-uuid=00000:
+#         want: m-assignment-uuid=P0001:VALIDATION_FAILED["/assignmentId"];m-expiry-no-offset=P0001:VALIDATION_FAILED["/expiresAt"];m-expiry-text=P0001:VALIDATION_FAILED["/expiresAt"];m-reviewer-uuid=P0001:VALIDATION_FAILED["/reviewerPersonId"]
+not ok 24 - every refusal above changed none of the fourteen durable tables (whole-row digests of assignment, review, decision, reservation, audit record, outbox event and the rest), observed inside its own call before the probe rolled back; only the five successful controls wrote [P2-S11-AC-071]
+# Failed test 24: "every refusal above changed none of the fourteen durable tables (whole-row digests of assignment, review, decision, reservation, audit record, outbox event and the rest), observed inside its own call before the probe rolled back; only the five successful controls wrote [P2-S11-AC-071]"
+#         have: raised=0;raised_writers=;returned_writers=d-exists,d-exists-expired,e-absent,e-author,e-banned,e-control,e-deactivated,e-ended-tenure,e-lapsed,e-no-grant,e-publisher-only,e-shadow,e-stranger,e-submitter,h-absent,h-outsider,h-owner-ended-tenure,h-owner-ended-tenure-revoke,h-owner-lapsed-editor,h-owner-lapsed-editor-revoke,h-owner-no-editor,h-owner-no-editor-revoke,h-publisher,h-reviewer,h-stranger,h-stranger-own-party,h-submitter,h-submitter-revoke,l-expired-free,l-full,m-assignment-uuid,m-bad-action,m-bad-review,m-expiry-no-offset,m-expiry-text,m-no-expiry,m-no-key,m-no-reviewer,m-reviewer-uuid,m-revoke-with-create-fields,m-short-key,m-unknown-key,s-approved,s-approved-revoke,s-ifmatch,s-invalid,s-rejected,s-stale,s-version-text,s-version-zero,x-grantor-edge,x-grantor-over,x-now,x-past,x-reviewer-edge,x-reviewer-over,x-seven-ok,x-seven-over;returned_silent=;unobserved=0
+#         want: clean
+not ok 25 - control: the observation sees a write - an accepted assignment changes the assignment, review, reservation, event and audit tables inside its probe [P2-S11-AC-071]
+# Failed test 25: "control: the observation sees a write - an accepted assignment changes the assignment, review, reservation, event and audit tables inside its probe [P2-S11-AC-071]"
+#         have: audit_events,cms_editorial_review_assignments,idempotency_records,outbox_events
+#         want: audit_events,cms_editorial_review_assignments,cms_editorial_reviews,idempotency_records,outbox_events
+# Looks like you failed 16 tests of 25
+supabase/tests/zz_a2_mutant_decision.sql ................................ 
+1..26
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - control: the six review fixtures are in the intended states
+not ok 11 - a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]
+# Failed test 11: "a stale, future, unverified or absent proof is STEP_UP_REQUIRED, ahead of concealment [P2-S11-AC-108]"
+#         have: 1:00000:
+#         want: 1:P0001:STEP_UP_REQUIRED
+ok 12 - control: a proof 590 s old is accepted [P2-S11-AC-108]
+not ok 13 - a non-member, a scope-less member, an absent review, another acting party and a reviewer whose assignment was revoked are one indistinguishable NOT_FOUND [P2-S11-AC-013]
+# Failed test 13: "a non-member, a scope-less member, an absent review, another acting party and a reviewer whose assignment was revoked are one indistinguishable NOT_FOUND [P2-S11-AC-013]"
+#         have: 1:00000:
+#         want: 1:P0001:NOT_FOUND
+not ok 14 - a readable review without an EFFECTIVE assignment (window over, not started, submitter, publisher, owner) is 403 capability_missing [P2-S11-AC-013]
+# Failed test 14: "a readable review without an EFFECTIVE assignment (window over, not started, submitter, publisher, owner) is 403 capability_missing [P2-S11-AC-013]"
+#         have: f-expired=00000:|null;f-not-started=00000:|null;f-owner=00000:|null;f-publisher=00000:|null;f-submitter-no-assignment=00000:|null
+#         want: f-expired=P0001:capability_missing|null;f-not-started=P0001:capability_missing|null;f-owner=P0001:capability_missing|null;f-publisher=P0001:capability_missing|null;f-submitter-no-assignment=P0001:capability_missing|null
+not ok 15 - an approved, rejected or invalidated review is review_not_open, and the state is evaluated before the CAS operand [P2-S11-AC-108]
+# Failed test 15: "an approved, rejected or invalidated review is review_not_open, and the state is evaluated before the CAS operand [P2-S11-AC-108]"
+#         have: s-approved=00000:;s-invalid=00000:;s-rejected=00000:
+#         want: s-approved=P0001:review_not_open;s-invalid=P0001:review_not_open;s-rejected=P0001:review_not_open
+not ok 16 - a stale review version is VERSION_MISMATCH with the expected and current versions [P2-S11-AC-014]
+# Failed test 16: "a stale review version is VERSION_MISMATCH with the expected and current versions [P2-S11-AC-014]"
+not ok 17 - If-Match must equal expectedVersion (INVALID_REQUEST) and be a positive decimal (VALIDATION_FAILED) [P2-S11-AC-012]
+# Failed test 17: "If-Match must equal expectedVersion (INVALID_REQUEST) and be a positive decimal (VALIDATION_FAILED) [P2-S11-AC-012]"
+#         have: NULL
+#         want: P0001:INVALID_REQUEST|P0001:VALIDATION_FAILED["/expectedVersion"]
+not ok 18 - the review submitter and the revision author are 403 separation_of_duties even with an effective assignment [P2-S11-AC-108]
+# Failed test 18: "the review submitter and the revision author are 403 separation_of_duties even with an effective assignment [P2-S11-AC-108]"
+#         have: 00000:|00000:
+#         want: P0001:separation_of_duties|P0001:separation_of_duties
+not ok 19 - a second decision by the same human is 409 duplicate_decision [P2-S11-AC-108]
+# Failed test 19: "a second decision by the same human is 409 duplicate_decision [P2-S11-AC-108]"
+#         have: 00000:
+#         want: P0001:duplicate_decision
+not ok 20 - a lapsed or deactivated standing cms.reviewer grant is 403 capability_missing; an ended membership leaves no scope at all (404) [P2-S11-AC-108]
+# Failed test 20: "a lapsed or deactivated standing cms.reviewer grant is 403 capability_missing; an ended membership leaves no scope at all (404) [P2-S11-AC-108]"
+#         have: 00000:|00000:|00000:
+#         want: P0001:capability_missing|P0001:capability_missing|P0001:NOT_FOUND
+ok 21 - control: with the grants restored the same decision succeeds [P2-S11-AC-108]
+not ok 22 - an unknown decision, an empty, over-long, non-NFC, control, separator, bidi, markup or brace reason, and a non-string reason are VALIDATION_FAILED at their pointer [P2-S11-AC-012]
+# Failed test 22: "an unknown decision, an empty, over-long, non-NFC, control, separator, bidi, markup or brace reason, and a non-string reason are VALIDATION_FAILED at their pointer [P2-S11-AC-012]"
+#         have: v-bidi=00000:;v-brace=00000:;v-control=00000:;v-decision=00000:;v-decision-null=00000:;v-empty=00000:;v-lineseparator=00000:;v-long=00000:;v-markup=00000:;v-nfd=00000:;v-number=00000:
+#         want: v-bidi=P0001:VALIDATION_FAILED["/reason"];v-brace=P0001:VALIDATION_FAILED["/reason"];v-control=P0001:VALIDATION_FAILED["/reason"];v-decision=P0001:VALIDATION_FAILED["/decision"];v-decision-null=P0001:VALIDATION_FAILED["/decision"];v-empty=P0001:VALIDATION_FAILED["/reason"];v-lineseparator=P0001:VALIDATION_FAILED["/reason"];v-long=P0001:VALIDATION_FAILED["/reason"];v-markup=P0001:VALIDATION_FAILED["/reason"];v-nfd=P0001:VALIDATION_FAILED["/reason"];v-number=P0001:VALIDATION_FAILED["/reason"]
+ok 23 - the reason bound is 2000 Unicode code points: 2000 emoji (8000 octets) are accepted (DEC-158(a)) [P2-S11-AC-012]
+not ok 24 - a caller capability or stepUpAt is an unknown key, and a missing reason or malformed review id is INVALID_REQUEST [P2-S11-AC-012]
+# Failed test 24: "a caller capability or stepUpAt is an unknown key, and a missing reason or malformed review id is INVALID_REQUEST [P2-S11-AC-012]"
+#         have: v-capability=00000:;v-missing-reason=00000:;v-review-key=00000:;v-stepup-key=00000:
+#         want: v-capability=P0001:INVALID_REQUEST;v-missing-reason=P0001:INVALID_REQUEST;v-review-key=P0001:INVALID_REQUEST;v-stepup-key=P0001:INVALID_REQUEST
+not ok 25 - every refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot and the rest), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]
+# Failed test 25: "every refusal above changed none of the fourteen durable tables (whole-row digests of decision, review, assignment, dependency, reservation, audit record, outbox event, snapshot and the rest), observed inside its own call before the probe rolled back; only the three successful controls wrote [P2-S11-AC-015]"
+#         have: raised=0;raised_writers=;returned_writers=cap-control,cap-lapsed,cap-off,cap-tenure,dup,f-expired,f-not-started,f-owner,f-publisher,f-submitter-no-assignment,h-absent,h-other-party,h-outsider,h-revoked,h-stranger,s-approved,s-ifmatch,s-invalid,s-rejected,s-stale,s-version,sod-author,sod-submitter,su-absent,su-future,su-hidden,su-ok-edge,su-stale,su-unverified,v-2000-emoji,v-bidi,v-brace,v-capability,v-control,v-decision,v-decision-null,v-empty,v-lineseparator,v-long,v-markup,v-missing-reason,v-nfd,v-number,v-review-key,v-stepup-key;returned_silent=;unobserved=0
+#         want: clean
+ok 26 - control: the observation sees a write - an accepted decision changes the decision, review, reservation, event and audit tables inside its probe [P2-S11-AC-015]
+# Looks like you failed 12 tests of 26
+supabase/tests/zz_a2_mutant_submit.sql .................................. 
+1..25
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - control: three revisions are under an open, approved and rejected review (derived state submitted, approved, rejected)
+not ok 11 - a caller riskClass or owner, a missing member, a malformed id and an If-Match that disagrees with the entry version are INVALID_REQUEST [P2-S11-AC-006]
+# Failed test 11: "a caller riskClass or owner, a missing member, a malformed id and an If-Match that disagrees with the entry version are INVALID_REQUEST [P2-S11-AC-006]"
+#         have: m-entry=00000:;m-ifmatch=00000:;m-no-hash=00000:;m-no-manifest=00000:;m-owner-key=00000:;m-revision=00000:;m-risk=00000:
+#         want: m-entry=P0001:INVALID_REQUEST;m-ifmatch=P0001:INVALID_REQUEST;m-no-hash=P0001:INVALID_REQUEST;m-no-manifest=P0001:INVALID_REQUEST;m-owner-key=P0001:INVALID_REQUEST;m-revision=P0001:INVALID_REQUEST;m-risk=P0001:INVALID_REQUEST
+not ok 12 - a non-lowercase-hex hash, a non-object or over-bound manifest and a non-decimal version are VALIDATION_FAILED at their pointer [P2-S11-AC-006]
+# Failed test 12: "a non-lowercase-hex hash, a non-object or over-bound manifest and a non-decimal version are VALIDATION_FAILED at their pointer [P2-S11-AC-006]"
+#         have: m-hash-format=00000:;m-manifest-big=00000:;m-manifest-type=00000:;m-version=00000:
+#         want: m-hash-format=P0001:VALIDATION_FAILED["/frozenHash"];m-manifest-big=P0001:VALIDATION_FAILED["/dependencyManifest"];m-manifest-type=P0001:VALIDATION_FAILED["/dependencyManifest"];m-version=P0001:VALIDATION_FAILED["/expectedVersion"]
+not ok 13 - a non-member, an absent entry, another acting party, a revision of another entry and an absent revision are one indistinguishable NOT_FOUND [P2-S11-AC-007]
+# Failed test 13: "a non-member, an absent entry, another acting party, a revision of another entry and an absent revision are one indistinguishable NOT_FOUND [P2-S11-AC-007]"
+#         have: 1:00000:
+#         want: 1:P0001:NOT_FOUND
+not ok 14 - a visible entry with no assignment is 403 capability_missing [P2-S11-AC-007]
+# Failed test 14: "a visible entry with no assignment is 403 capability_missing [P2-S11-AC-007]"
+#         have: f-outsider=00000:|null;f-publisher=00000:|null;f-reviewer=00000:|null
+#         want: f-outsider=P0001:capability_missing|null;f-publisher=P0001:capability_missing|null;f-reviewer=P0001:capability_missing|null
+not ok 15 - a stale entry version is VERSION_MISMATCH with the expected and current versions [P2-S11-AC-008]
+# Failed test 15: "a stale entry version is VERSION_MISMATCH with the expected and current versions [P2-S11-AC-008]"
+not ok 16 - a superseded revision and a revision under an open, approved or rejected review are 409 revision_not_submittable [P2-S11-AC-005]
+# Failed test 16: "a superseded revision and a revision under an open, approved or rejected review are 409 revision_not_submittable [P2-S11-AC-005]"
+#         have: n-approved=00000:;n-live=00000:;n-old=00000:;n-rejected=00000:
+#         want: n-approved=P0001:revision_not_submittable;n-live=P0001:revision_not_submittable;n-old=P0001:revision_not_submittable;n-rejected=P0001:revision_not_submittable
+not ok 17 - a frozen hash that is not the stored payload hash is VALIDATION_FAILED at /frozenHash [P2-S11-AC-005]
+# Failed test 17: "a frozen hash that is not the stored payload hash is VALIDATION_FAILED at /frozenHash [P2-S11-AC-005]"
+#         have: NULL
+#         want: P0001:VALIDATION_FAILED["/frozenHash"]
+not ok 18 - a submitted manifest that differs from the rebuilt one in any member is 409 dependency_changed carrying only the CURRENT dependencyHash [P2-S11-AC-005]
+# Failed test 18: "a submitted manifest that differs from the rebuilt one in any member is 409 dependency_changed carrying only the CURRENT dependencyHash [P2-S11-AC-005]"
+not ok 19 - a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]
+# Failed test 19: "a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]"
+not ok 20 - absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight (DEC-159: the Worker adds retryable) [P2-S11-AC-097]
+# Failed test 20: "absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight (DEC-159: the Worker adds retryable) [P2-S11-AC-097]"
+not ok 21 - a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]
+# Failed test 21: "a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]"
+not ok 22 - evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]
+# Failed test 22: "evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]"
+not ok 23 - an archived entry fails the revocation category (entry_unavailable) [P2-S11-AC-096]
+# Failed test 23: "an archived entry fails the revocation category (entry_unavailable) [P2-S11-AC-096]"
+not ok 24 - a deactivated cms.author grant revokes the creator's assignments (DEC-143) and the submit is 403 capability_missing [P2-S11-AC-007]
+# Failed test 24: "a deactivated cms.author grant revokes the creator's assignments (DEC-143) and the submit is 403 capability_missing [P2-S11-AC-007]"
+#         have: 00000:|null
+#         want: P0001:capability_missing|null
+not ok 25 - every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]
+# Failed test 25: "every refusal above raised and changed none of the fourteen durable tables (whole-row digests of review, dependency row, reservation, settings snapshot, evidence, audit record, outbox event and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-009]"
+#         have: raised=0;raised_writers=;returned_writers=d-checker,d-extra,d-settings,e-bound,e-provider,e-stale,f-lapsed-author,f-outsider,f-publisher,f-reviewer,h-absent,h-absent-revision,h-foreign-revision,h-party,h-stranger,m-entry,m-hash-format,m-ifmatch,m-manifest-big,m-manifest-type,m-no-hash,m-no-manifest,m-owner-key,m-revision,m-risk,m-version,n-approved,n-live,n-old,n-rejected,p-archived,p-blocked-run,p-failed,p-failed-run,p-no-evidence,v-stale,x-hash;returned_silent=;unobserved=0
+#         want: clean
+# Looks like you failed 15 tests of 25
+supabase/tests/zz_a2_mutant_schedule.sql ................................ 
+1..41
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - control: approved, rejected, open and invalidated reviews exist, sr-dep has a stale frozen manifest and sr-main a current one
+not ok 11 - an unknown key (entryId, riskClass), a missing member, a malformed revision id, If-Match disagreeing with expectedVersion and a non-object proof are INVALID_REQUEST [P2-S11-AC-018]
+# Failed test 11: "an unknown key (entryId, riskClass), a missing member, a malformed revision id, If-Match disagreeing with expectedVersion and a non-object proof are INVALID_REQUEST [P2-S11-AC-018]"
+#         have: 00000:|00000:|00000:|00000:|00000:|00000:
+#         want: P0001:INVALID_REQUEST|P0001:INVALID_REQUEST|P0001:INVALID_REQUEST|P0001:INVALID_REQUEST|P0001:INVALID_REQUEST|P0001:INVALID_REQUEST
+not ok 12 - every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: action, a real local date and time without offset or leap second at most nine fraction digits, the zone grammar, an offset instant, the tzdb tag, disambiguation, the audience grammar, expectedVersion and If-Match [P2-S11-AC-018]
+# Failed test 12: "every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: action, a real local date and time without offset or leap second at most nine fraction digits, the zone grammar, an offset instant, the tzdb tag, disambiguation, the audience grammar, expectedVersion and If-Match [P2-S11-AC-018]"
+#         have: v-action=00000:;v-audience=00000:;v-audience-long=00000:;v-disambiguation=00000:;v-ifmatch=00000:;v-local-day=00000:;v-local-fraction=00000:;v-local-offset=00000:;v-local-second=00000:;v-tzdb=00000:;v-utc-offset=00000:;v-version=00000:;v-zone=00000:
+#         want: v-action=P0001:VALIDATION_FAILED["/action"];v-audience=P0001:VALIDATION_FAILED["/audience"];v-audience-long=P0001:VALIDATION_FAILED["/audience"];v-disambiguation=P0001:VALIDATION_FAILED["/disambiguation"];v-ifmatch=P0001:VALIDATION_FAILED["/ifMatch"];v-local-day=P0001:VALIDATION_FAILED["/localDateTime"];v-local-fraction=P0001:VALIDATION_FAILED["/localDateTime"];v-local-offset=P0001:VALIDATION_FAILED["/localDateTime"];v-local-second=P0001:VALIDATION_FAILED["/localDateTime"];v-tzdb=P0001:VALIDATION_FAILED["/tzdbVersion"];v-utc-offset=P0001:VALIDATION_FAILED["/resolvedUtc"];v-version=P0001:VALIDATION_FAILED["/expectedVersion", "/ifMatch"];v-zone=P0001:VALIDATION_FAILED["/timezone"]
+not ok 13 - several invalid fields are reported together, in request order, and nothing else is echoed [P2-S11-AC-018]
+# Failed test 13: "several invalid fields are reported together, in request order, and nothing else is echoed [P2-S11-AC-018]"
+#         have: NULL
+#         want: ["/action", "/timezone", "/audience"]
+not ok 14 - a stale, future-dated (beyond the 30 s skew), unverified or absent proof is STEP_UP_REQUIRED, even for a caller who could not see the target [P2-S11-AC-047]
+# Failed test 14: "a stale, future-dated (beyond the 30 s skew), unverified or absent proof is STEP_UP_REQUIRED, even for a caller who could not see the target [P2-S11-AC-047]"
+#         have: 00000:|00000:|00000:|00000:|00000:
+#         want: P0001:STEP_UP_REQUIRED|P0001:STEP_UP_REQUIRED|P0001:STEP_UP_REQUIRED|P0001:STEP_UP_REQUIRED|P0001:STEP_UP_REQUIRED
+not ok 15 - a non-member, a member with no scope on the entry and an absent revision are the same byte-identical NOT_FOUND [P2-S11-AC-019]
+# Failed test 15: "a non-member, a member with no scope on the entry and an absent revision are the same byte-identical NOT_FOUND [P2-S11-AC-019]"
+not ok 16 - a visible target without the owner-party cms.publisher grant is 403 capability_missing: the entry assignee, the assigned reviewer and the owner [P2-S11-AC-019]
+# Failed test 16: "a visible target without the owner-party cms.publisher grant is 403 capability_missing: the entry assignee, the assigned reviewer and the owner [P2-S11-AC-019]"
+#         have: 00000:|00000:|00000:
+#         want: P0001:capability_missing|P0001:capability_missing|P0001:capability_missing
+not ok 17 - the human who authored the revision cannot schedule its publish (E11) [P2-S11-AC-107]
+# Failed test 17: "the human who authored the revision cannot schedule its publish (E11) [P2-S11-AC-107]"
+#         have: 00000:
+#         want: P0001:separation_of_duties
+not ok 18 - a stale approved-review version is 409 VERSION_MISMATCH carrying only the expected and current versions [P2-S11-AC-020]
+# Failed test 18: "a stale approved-review version is 409 VERSION_MISMATCH carrying only the expected and current versions [P2-S11-AC-020]"
+not ok 19 - an invalidation advances the review version, so a command against an invalidated approval is VERSION_MISMATCH [P2-S11-AC-020]
+# Failed test 19: "an invalidation advances the review version, so a command against an invalidated approval is VERSION_MISMATCH [P2-S11-AC-020]"
+not ok 20 - a revision whose latest review is invalidated, rejected or open, or that was never reviewed, cannot be scheduled: CONFLICT [P2-S11-AC-038]
+# Failed test 20: "a revision whose latest review is invalidated, rejected or open, or that was never reviewed, cannot be scheduled: CONFLICT [P2-S11-AC-038]"
+#         have: 00000:|00000:|00000:|00000:
+#         want: P0001:CONFLICT|P0001:CONFLICT|P0001:CONFLICT|P0001:CONFLICT
+not ok 21 - a tzdbVersion other than the pinned one is 422 tzdb_version_mismatch carrying the pinned value [P2-S11-AC-104]
+# Failed test 21: "a tzdbVersion other than the pinned one is 422 tzdb_version_mismatch carrying the pinned value [P2-S11-AC-104]"
+not ok 22 - a schedule under 60 s ahead, in the past or over 366 days ahead is 422 schedule_out_of_horizon with the minUtc and maxUtc window [P2-S11-AC-105]
+# Failed test 22: "a schedule under 60 s ahead, in the past or over 366 days ahead is 422 schedule_out_of_horizon with the minUtc and maxUtc window [P2-S11-AC-105]"
+not ok 23 - a local time more than 14 h after or 12 h before the resolved UTC (no real zone offset) is 422 resolved_utc_mismatch [P2-S11-AC-105]
+# Failed test 23: "a local time more than 14 h after or 12 h before the resolved UTC (no real zone offset) is 422 resolved_utc_mismatch [P2-S11-AC-105]"
+#         have: 00000:|00000:
+#         want: P0001:resolved_utc_mismatch|P0001:resolved_utc_mismatch
+not ok 24 - a cms.publisher grant that ends before the resolved UTC day is 422 authority_ends_before_schedule [P2-S11-AC-107]
+# Failed test 24: "a cms.publisher grant that ends before the resolved UTC day is 422 authority_ends_before_schedule [P2-S11-AC-107]"
+#         have: 00000:
+#         want: P0001:authority_ends_before_schedule
+not ok 25 - a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]
+# Failed test 25: "a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]"
+not ok 26 - absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight [P2-S11-AC-097]
+# Failed test 26: "absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight [P2-S11-AC-097]"
+not ok 27 - a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]
+# Failed test 27: "a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]"
+not ok 28 - evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]
+# Failed test 28: "evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]"
+not ok 29 - every refusal above raised and changed none of the fourteen durable tables (whole-row digests of schedule, review, lineage row, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-018]
+# Failed test 29: "every refusal above raised and changed none of the fourteen durable tables (whole-row digests of schedule, review, lineage row, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-018]"
+#         have: raised=0;raised_writers=;returned_writers=c-absent,c-editor,c-outsider,c-owner,c-reviewer,c-separation,c-stranger,e-bound,e-far,e-minus13,e-past,e-plus15,e-provider,e-soon,e-stale,e-tzdb,g-ends,p-blocked-run,p-failed,p-failed-run,p-no-evidence,r-invalidated,r-invalidated-stale,r-none,r-open,r-rejected,r-stale,t-absent,t-future,t-hidden,t-stale,t-unverified,v-action,v-audience,v-audience-long,v-disambiguation,v-ifmatch,v-local-day,v-local-fraction,v-local-offset,v-local-second,v-many,v-tzdb,v-utc-offset,v-version,v-zone,x-agree,x-audience-missing,x-entry,x-evidence,x-revision,x-risk;returned_silent=;unobserved=0
+#         want: clean
+ok 30 - the refused time rules scheduled nothing [P2-S11-AC-105]
+ok 31 - the bounds are inclusive: 90 s ahead, just under 366 days ahead, a local time exactly 14 h after and exactly 12 h before the resolved UTC are accepted [P2-S11-AC-105]
+ok 32 - a grant that still covers the resolved UTC day (here: tomorrow) schedules [P2-S11-AC-107]
+ok 33 - a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-021]
+ok 34 - the invalidation committed with the reason dependency_changed (review invalidated at version 3, one review-changed event) and no schedule exists [P2-S11-AC-111]
+ok 35 - the reservation is completed with the typed refusal (status 409) [P2-S11-AC-020]
+ok 36 - an exact replay returns the same committed refusal [P2-S11-AC-020]
+not ok 37 - a fresh attempt against the invalidated approval is VERSION_MISMATCH [P2-S11-AC-020]
+# Failed test 37: "a fresh attempt against the invalidated approval is VERSION_MISMATCH [P2-S11-AC-020]"
+#         have: 00000:
+#         want: P0001:VERSION_MISMATCH
+ok 38 - a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]
+ok 39 - the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command scheduled nothing [P2-S11-AC-096]
+ok 40 - the reservation is completed with the committed refusal (status 422), so the same key replays it [P2-S11-AC-096]
+ok 41 - an exact replay returns the same committed refusal with no further effect [P2-S11-AC-096]
+# Looks like you failed 20 tests of 41
+supabase/tests/zz_a2_mutant_publish.sql ................................. 
+1..36
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+ok 10 - control: approved, rejected, open and invalidated reviews exist, pr-dep has a stale frozen manifest and pr-main a current one
+not ok 11 - an unknown key (action), a missing member, malformed ids, If-Match disagreeing with expectedVersion and a non-object proof are INVALID_REQUEST [P2-S11-AC-030]
+# Failed test 11: "an unknown key (action), a missing member, malformed ids, If-Match disagreeing with expectedVersion and a non-object proof are INVALID_REQUEST [P2-S11-AC-030]"
+#         have: 00000:|00000:|00000:|00000:|00000:|00000:|00000:
+#         want: P0001:INVALID_REQUEST|P0001:INVALID_REQUEST|P0001:INVALID_REQUEST|P0001:INVALID_REQUEST|P0001:INVALID_REQUEST|P0001:INVALID_REQUEST|P0001:INVALID_REQUEST
+not ok 12 - every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: frozenHash, the version set shape, the audience grammar, expectedVersion and If-Match [P2-S11-AC-030]
+# Failed test 12: "every invalid field is VALIDATION_FAILED at its RFC 6901 pointer: frozenHash, the version set shape, the audience grammar, expectedVersion and If-Match [P2-S11-AC-030]"
+#         have: v-audience=00000:;v-hash=00000:;v-ifmatch=00000:;v-set=00000:;v-set-type=00000:;v-version=00000:
+#         want: v-audience=P0001:VALIDATION_FAILED["/audience"];v-hash=P0001:VALIDATION_FAILED["/frozenHash"];v-ifmatch=P0001:VALIDATION_FAILED["/ifMatch"];v-set=P0001:VALIDATION_FAILED["/expectedVersionSet"];v-set-type=P0001:VALIDATION_FAILED["/expectedVersionSet"];v-version=P0001:VALIDATION_FAILED["/expectedVersion", "/ifMatch"]
+not ok 13 - several invalid fields are reported together, in request order [P2-S11-AC-030]
+# Failed test 13: "several invalid fields are reported together, in request order [P2-S11-AC-030]"
+#         have: NULL
+#         want: ["/frozenHash", "/audience"]
+not ok 14 - a stale, future-dated (beyond the 30 s skew), unverified or absent proof is STEP_UP_REQUIRED, even for a caller who could not see the target [P2-S11-AC-048]
+# Failed test 14: "a stale, future-dated (beyond the 30 s skew), unverified or absent proof is STEP_UP_REQUIRED, even for a caller who could not see the target [P2-S11-AC-048]"
+#         have: 00000:|00000:|00000:|00000:|00000:
+#         want: P0001:STEP_UP_REQUIRED|P0001:STEP_UP_REQUIRED|P0001:STEP_UP_REQUIRED|P0001:STEP_UP_REQUIRED|P0001:STEP_UP_REQUIRED
+not ok 15 - a non-member, a member with no scope, an absent revision and a revision of another entry are the same byte-identical NOT_FOUND [P2-S11-AC-031]
+# Failed test 15: "a non-member, a member with no scope, an absent revision and a revision of another entry are the same byte-identical NOT_FOUND [P2-S11-AC-031]"
+not ok 16 - a visible target without the owner-party cms.publisher grant is 403 capability_missing: the entry assignee, the assigned reviewer and the owner [P2-S11-AC-031]
+# Failed test 16: "a visible target without the owner-party cms.publisher grant is 403 capability_missing: the entry assignee, the assigned reviewer and the owner [P2-S11-AC-031]"
+#         have: 00000:|00000:|00000:
+#         want: P0001:capability_missing|P0001:capability_missing|P0001:capability_missing
+not ok 17 - the human who authored the revision cannot publish it (E11) [P2-S11-AC-107]
+# Failed test 17: "the human who authored the revision cannot publish it (E11) [P2-S11-AC-107]"
+#         have: 00000:
+#         want: P0001:separation_of_duties
+not ok 18 - a stale approved-review version is 409 VERSION_MISMATCH carrying only the expected and current versions [P2-S11-AC-032]
+# Failed test 18: "a stale approved-review version is 409 VERSION_MISMATCH carrying only the expected and current versions [P2-S11-AC-032]"
+not ok 19 - an invalidation advances the review version, so a command against an invalidated approval is VERSION_MISMATCH [P2-S11-AC-032]
+# Failed test 19: "an invalidation advances the review version, so a command against an invalidated approval is VERSION_MISMATCH [P2-S11-AC-032]"
+not ok 20 - a revision whose latest review is invalidated, rejected or open, or that was never reviewed, cannot be published: CONFLICT [P2-S11-AC-033]
+# Failed test 20: "a revision whose latest review is invalidated, rejected or open, or that was never reviewed, cannot be published: CONFLICT [P2-S11-AC-033]"
+#         have: 00000:|00000:|00000:|00000:
+#         want: P0001:CONFLICT|P0001:CONFLICT|P0001:CONFLICT|P0001:CONFLICT
+not ok 21 - a frozenHash that is not the approved review's frozen hash is 422 at /frozenHash [P2-S11-AC-030]
+# Failed test 21: "a frozenHash that is not the approved review's frozen hash is 422 at /frozenHash [P2-S11-AC-030]"
+not ok 22 - an expectedVersionSet that is not exactly the version set frozen on the approved review (schema, settings or taxonomy member) is 409 version_set_stale [P2-S11-AC-033]
+# Failed test 22: "an expectedVersionSet that is not exactly the version set frozen on the approved review (schema, settings or taxonomy member) is 409 version_set_stale [P2-S11-AC-033]"
+#         have: 00000:|00000:|00000:
+#         want: P0001:version_set_stale|P0001:version_set_stale|P0001:version_set_stale
+not ok 23 - a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]
+# Failed test 23: "a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]"
+not ok 24 - absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight [P2-S11-AC-097]
+# Failed test 24: "absent evidence and a failed checker run make accessibility unavailable: 503 DEPENDENCY_UNAVAILABLE with dependencyClass preflight [P2-S11-AC-097]"
+not ok 25 - a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]
+# Failed test 25: "a blocked checker run is a failed accessibility category (blocking_finding): 422 preflight_failed [P2-S11-AC-101]"
+not ok 26 - evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]
+# Failed test 26: "evidence older than 60 s or from another provider version is 409 preflight_evidence_stale; evidence bound to other rows is 409 dependency_changed with the current hash [P2-S11-AC-102]"
+not ok 27 - every refusal above raised and changed none of the fourteen durable tables (whole-row digests of lineage row, review, schedule, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-030]
+# Failed test 27: "every refusal above raised and changed none of the fourteen durable tables (whole-row digests of lineage row, review, schedule, reservation, event, audit record, snapshot and the rest), observed inside its own call before the probe rolled back [P2-S11-AC-030]"
+#         have: raised=0;raised_writers=;returned_writers=c-absent,c-editor,c-foreign-entry,c-outsider,c-owner,c-reviewer,c-separation,c-stranger,e-bound,e-provider,e-stale,h-mismatch,p-blocked-run,p-failed,p-failed-run,p-no-evidence,r-invalidated,r-invalidated-stale,r-none,r-open,r-rejected,r-stale,s-schema,s-settings,s-taxonomy,t-absent,t-future,t-hidden,t-stale,t-unverified,v-audience,v-hash,v-ifmatch,v-many,v-set,v-set-type,v-version,x-action,x-agree,x-audience-missing,x-entry,x-evidence,x-revision,x-set-missing;returned_silent=;unobserved=0
+#         want: clean
+ok 28 - a stale frozen manifest returns the committed-refusal envelope {kind, reasonCode version_set_stale, details {}} (BE03b E1: the command answers 409 version_set_stale) [P2-S11-AC-033]
+ok 29 - the invalidation committed with the reason dependency_changed (review invalidated at version 3, one review-changed event) and no publication row or event exists [P2-S11-AC-111]
+ok 30 - the reservation is completed with the typed refusal (status 409) [P2-S11-AC-032]
+ok 31 - an exact replay returns the same committed refusal [P2-S11-AC-032]
+not ok 32 - a fresh attempt against the invalidated approval is VERSION_MISMATCH [P2-S11-AC-032]
+# Failed test 32: "a fresh attempt against the invalidated approval is VERSION_MISMATCH [P2-S11-AC-032]"
+#         have: 00000:
+#         want: P0001:VERSION_MISMATCH
+ok 33 - a counted approver whose standing cms.reviewer grant lapsed is found lazily by the revocation category: the command answers the COMMITTED refusal {kind, preflight_failed, details.preflight: 17 entries incl. revocation failed reviewer_authority_changed}, not a rollback [P2-S11-AC-096]
+ok 34 - the reviewer-authority invalidation COMMITTED: the review is invalidated reviewer_authority_changed at version 3 with its one review-changed event, its pending schedule is cancelled approval_invalidated and the refused command published nothing [P2-S11-AC-096]
+ok 35 - the reservation is completed with the committed refusal (status 422), so the same key replays it [P2-S11-AC-096]
+ok 36 - an exact replay returns the same committed refusal with no further effect [P2-S11-AC-096]
+# Looks like you failed 18 tests of 36
+supabase/tests/zz_a2_mutant_mint.sql .................................... 
+1..28
+ok 1 - CMS-03B-10 closed capability registry admits cms.author and cms.editor at version 1
+ok 2 - P2-S10-RPC fixture content type draft is created with a schema artifact hash
+ok 3 - P2-S10-RPC fixture schema version is active and compiled with activation evidence
+ok 4 - P2-S10-RPC fixture draft entry seeds one revision, two assignments and a value
+ok 5 - S11 fixture: two entries, three revisions with two distinct authors and seventeen reviewer persons exist
+ok 6 - h11 world: the h11doc type compiles with nine fields (title, taxonomy, media, rich_text, object, no_fallback, three relations)
+ok 7 - h11 world: the production editorial workflow-policy evidence function answers for the h11doc version (no stub)
+ok 8 - h11 world: the builders resolve stable field ids and create an entry with a draft revision
+ok 9 - R11 world: nine real actors, the receipt-derived owner and the standing reviewer, specialist and publisher grants exist
+not ok 10 - a missing, unknown (evidence, owner, capability) or malformed member, a non-uuid id and a disagreeing If-Match/expectedVersion are INVALID_REQUEST [P2-S11-AC-024]
+# Failed test 10: "a missing, unknown (evidence, owner, capability) or malformed member, a non-uuid id and a disagreeing If-Match/expectedVersion are INVALID_REQUEST [P2-S11-AC-024]"
+#         have: st-capability=00000: st-disagree=00000: st-entry-bad=00000: st-entry-type=00000: st-entry-upper=00000: st-evidence=00000: st-no-key=00000: st-no-route=00000: st-no-set=00000: st-no-version=00000: st-null-request=00000: st-owner=00000: st-revision-bad=00000:
+#         want: 
+not ok 11 - a zero, non-decimal, non-string or over-int64 expectedVersion is VALIDATION_FAILED at /expectedVersion [P2-S11-AC-024]
+# Failed test 11: "a zero, non-decimal, non-string or over-int64 expectedVersion is VALIDATION_FAILED at /expectedVersion [P2-S11-AC-024]"
+#         have: vf-ver-0=00000: vf-ver-big=00000: vf-ver-number=00000: vf-ver-text=00000:
+#         want: 
+not ok 12 - a zero or non-decimal ifMatch is VALIDATION_FAILED at /ifMatch [P2-S11-AC-024]
+# Failed test 12: "a zero or non-decimal ifMatch is VALIDATION_FAILED at /ifMatch [P2-S11-AC-024]"
+#         have: vf-if-0=00000: vf-if-text=00000:
+#         want: 
+not ok 13 - a malformed locale (one letter, underscore, 36 characters, non-string) is VALIDATION_FAILED at /locale [P2-S11-AC-024]
+# Failed test 13: "a malformed locale (one letter, underscore, 36 characters, non-string) is VALIDATION_FAILED at /locale [P2-S11-AC-024]"
+#         have: vf-loc-1=00000: vf-loc-2=00000: vf-loc-3=00000: vf-loc-4=00000:
+#         want: 
+not ok 14 - an audience outside ^[a-z0-9_-]{1,48}$ (case, padding, empty, 49 characters, space) is VALIDATION_FAILED at /audience, matched as submitted [P2-S11-AC-024]
+# Failed test 14: "an audience outside ^[a-z0-9_-]{1,48}$ (case, padding, empty, 49 characters, space) is VALIDATION_FAILED at /audience, matched as submitted [P2-S11-AC-024]"
+#         have: vf-aud-1=00000: vf-aud-2=00000: vf-aud-3=00000: vf-aud-4=00000: vf-aud-5=00000:
+#         want: 
+not ok 15 - a route that is empty, relative, a URL, protocol-relative, carries a query, fragment, backslash, control character, dot or empty segment, percent-encoded dot/slash/backslash, or exceeds 2,048 characters is VALIDATION_FAILED at /route [P2-S11-AC-024]
+# Failed test 15: "a route that is empty, relative, a URL, protocol-relative, carries a query, fragment, backslash, control character, dot or empty segment, percent-encoded dot/slash/backslash, or exceeds 2,048 characters is VALIDATION_FAILED at /route [P2-S11-AC-024]"
+#         have: vf-route-absolute-url=00000: vf-route-backslash=00000: vf-route-c1=00000: vf-route-del=00000: vf-route-dot=00000: vf-route-dotdot=00000: vf-route-empty=00000: vf-route-empty-interior=00000: vf-route-fragment=00000: vf-route-newline=00000: vf-route-no-slash=00000: vf-route-nul-like-c0=00000: vf-route-pct-backslash=00000: vf-route-pct-dot=00000: vf-route-pct-dot-upper=00000: vf-route-pct-slash=00000: vf-route-protocol-relative=00000: vf-route-query=00000: vf-route-tab=00000: vf-route-too-long=00000: vf-route-trailing-dotdot=00000: vf-route-type=00000:
+#         want: 
+ok 16 - valid routes mint: the root, a directory path with a trailing slash, non-ASCII code points, other percent escapes and exactly 2,048 characters [P2-S11-AC-024]
+not ok 17 - a version set that is not an object, lacks a member or carries an unknown one is VALIDATION_FAILED at /versionSet [P2-S11-AC-024]
+# Failed test 17: "a version set that is not an object, lacks a member or carries an unknown one is VALIDATION_FAILED at /versionSet [P2-S11-AC-024]"
+#         have: vf-set-array=00000: vf-set-extra=00000: vf-set-missing=00000: vf-set-null=00000:
+#         want: 
+not ok 18 - a non-member, an absent entry, a revision of another entry, an absent revision, another acting party and an archived or held entry are the one concealed NOT_FOUND with no detail [P2-S11-AC-025]
+# Failed test 18: "a non-member, an absent entry, a revision of another entry, an absent revision, another acting party and an archived or held entry are the one concealed NOT_FOUND with no detail [P2-S11-AC-025]"
+#         have: nf-absent=00000: nf-absent-revision=00000: nf-archived=00000: nf-held=00000: nf-other-entry-revision=00000: nf-other-party=00000: nf-stranger=00000:
+#         want: 
+not ok 19 - a member with no scope, an unassigned reviewer, a reviewer assigned to another revision, a revoked reviewer assignment, a revoked entry assignment and a lapsed standing grant are 403 capability_missing with no detail [P2-S11-AC-025]
+# Failed test 19: "a member with no scope, an unassigned reviewer, a reviewer assigned to another revision, a revoked reviewer assignment, a revoked entry assignment and a lapsed standing grant are 403 capability_missing with no detail [P2-S11-AC-025]"
+#         have: cap-editor-revoked=00000: cap-grant-lapsed=00000: cap-outsider=00000: cap-reviewer-revoked=00000: cap-reviewer-sibling=00000: cap-reviewer-unassigned=00000:
+#         want: 
+ok 20 - control: before its assignment is revoked the same reviewer does mint on the revision of its review (so the revoked-assignment refusal above is about the revocation) [P2-S11-AC-025]
+not ok 21 - a stale entry If-Match is VERSION_MISMATCH carrying the expected and current versions only [P2-S11-AC-026]
+# Failed test 21: "a stale entry If-Match is VERSION_MISMATCH carrying the expected and current versions only [P2-S11-AC-026]"
+not ok 22 - the entry-version check runs before the version-set check (a stale CAS wins over a stale set) [P2-S11-AC-026]
+# Failed test 22: "the entry-version check runs before the version-set check (a stale CAS wins over a stale set) [P2-S11-AC-026]"
+#         have: 00000:
+#         want: P0001:VERSION_MISMATCH
+not ok 23 - a version set that differs from the one recomputed from canonical state (schema hash, block ids, template, settings version) is 409 version_set_stale [P2-S11-AC-089]
+# Failed test 23: "a version set that differs from the one recomputed from canonical state (schema hash, block ids, template, settings version) is 409 version_set_stale [P2-S11-AC-089]"
+#         have: set-block=00000: set-hash=00000: set-settings=00000: set-template=00000:
+#         want: 
+ok 24 - control: the exact recomputed version set at the current entry version mints [P2-S11-AC-089]
+not ok 25 - without an active Vault signing key a scoped caller gets DEPENDENCY_UNAVAILABLE (nothing is minted) while a caller without scope still gets only the 403 [P2-S11-AC-027]
+# Failed test 25: "without an active Vault signing key a scoped caller gets DEPENDENCY_UNAVAILABLE (nothing is minted) while a caller without scope still gets only the 403 [P2-S11-AC-027]"
+not ok 26 - every refusal above changed none of the fourteen durable tables (whole-row digests of token, reservation, audit record, event, settings snapshot and the rest), observed inside its own call before the probe rolled back; only the seven successful controls wrote [P2-S11-AC-027]
+# Failed test 26: "every refusal above changed none of the fourteen durable tables (whole-row digests of token, reservation, audit record, event, settings snapshot and the rest), observed inside its own call before the probe rolled back; only the seven successful controls wrote [P2-S11-AC-027]"
+#         have: raised=0;raised_writers=;returned_writers=cap-editor-revoked,cap-grant-lapsed,cap-reviewer-own,cap-reviewer-revoked,cap-reviewer-sibling,cas-stale,cas-stale-first,exact-set,key-missing,key-noscope,ok-route-dir,ok-route-max,ok-route-pct,ok-route-root,ok-route-unicode,set-block,set-hash,set-settings,set-template;returned_silent=cap-outsider,cap-reviewer-unassigned,nf-absent,nf-absent-revision,nf-archived,nf-held,nf-other-entry-revision,nf-other-party,nf-stranger,st-capability,st-disagree,st-entry-bad,st-entry-type,st-entry-upper,st-evidence,st-no-key,st-no-route,st-no-set,st-no-version,st-null-request,st-owner,st-revision-bad,vf-aud-1,vf-aud-2,vf-aud-3,vf-aud-4,vf-aud-5,vf-if-0,vf-if-text,vf-loc-1,vf-loc-2,vf-loc-3,vf-loc-4,vf-route-absolute-url,vf-route-backslash,vf-route-c1,vf-route-del,vf-route-dot,vf-route-dotdot,vf-route-empty,vf-route-empty-interior,vf-route-fragment,vf-route-newline,vf-route-no-slash,vf-route-nul-like-c0,vf-route-pct-backslash,vf-route-pct-dot,vf-route-pct-dot-upper,vf-route-pct-slash,vf-route-protocol-relative,vf-route-query,vf-route-tab,vf-route-too-long,vf-route-trailing-dotdot,vf-route-type,vf-set-array,vf-set-extra,vf-set-missing,vf-set-null,vf-ver-0,vf-ver-big,vf-ver-number,vf-ver-text;unobserved=0
+#         want: clean
+not ok 27 - control: the observation sees a write - a minted preview changes the token, settings snapshot, reservation, event and audit tables inside its probe [P2-S11-AC-027]
+# Failed test 27: "control: the observation sees a write - a minted preview changes the token, settings snapshot, reservation, event and audit tables inside its probe [P2-S11-AC-027]"
+#         have: audit_events,cms_preview_tokens,idempotency_records
+#         want: audit_events,cms_preview_tokens,cms_publication_settings_snapshots,idempotency_records,outbox_events
+not ok 28 - the Idempotency-Key of a refused command is not consumed: the corrected request under the same key mints [P2-S11-AC-026]
+# Failed test 28: "the Idempotency-Key of a refused command is not consumed: the corrected request under the same key mints [P2-S11-AC-026]"
+# Looks like you failed 16 tests of 28
+Test Summary Report
+supabase/tests/phase_02_slice_11_rpc_review_assign_refusals.sql       (Wstat: 0 Tests: 25 Failed: 1)
+  Failed test:  25
+supabase/tests/phase_02_slice_11_rpc_preview_mint_refusals.sql        (Wstat: 0 Tests: 28 Failed: 1)
+  Failed test:  27
+supabase/tests/zz_a2_mutant_assign.sql                                (Wstat: 0 Tests: 25 Failed: 16)
+  Failed tests:  8-16, 18-19, 21-25
+supabase/tests/zz_a2_mutant_decision.sql                              (Wstat: 0 Tests: 26 Failed: 12)
+  Failed tests:  11, 13-20, 22, 24-25
+supabase/tests/zz_a2_mutant_submit.sql                                (Wstat: 0 Tests: 25 Failed: 15)
+  Failed tests:  11-25
+supabase/tests/zz_a2_mutant_schedule.sql                              (Wstat: 0 Tests: 41 Failed: 20)
+  Failed tests:  11-29, 37
+supabase/tests/zz_a2_mutant_publish.sql                               (Wstat: 0 Tests: 36 Failed: 18)
+  Failed tests:  11-27, 32
+supabase/tests/zz_a2_mutant_mint.sql                                  (Wstat: 0 Tests: 28 Failed: 16)
+  Failed tests:  10-15, 17-19, 21-23, 25-28
+Files=13, Tests=385, 110 wallclock secs ( 0.95 usr  0.19 sys +  1.67 cusr  0.79 csys =  3.60 CPU)
+Result: FAIL

@@ -1,0 +1,32 @@
+psql:/w/scratch/bench-lane/q5_bytes_off_by_one.sql:2: WARNING:  there is no transaction in progress
+psql:/w/scratch/bench-lane/q5_bytes_off_by_one.sql:3: NOTICE:  extension "pgtap" already exists, skipping
+psql:/w/scratch/bench-lane/q5_bytes_off_by_one.sql:4: WARNING:  there is no transaction in progress
+/w/scratch/bench-lane/q5_bytes_off_by_one.sql .. 
+ok 1 - the manifest bound keeps its owner, language, volatility, strictness, search_path and ACL (definer-only EXECUTE) [P2-S09-AC-217]
+ok 2 - the manifest bound is the jsonpath body, not the previous cms_json_bounded wrapper [P2-S09-AC-217]
+ok 3 - fixture: the reference is cms_json_bounded exactly as 20261003130100 installed it, and this migration leaves it alone [P2-S09-AC-217]
+ok 4 - both artifact manifest CHECK constraints still call the manifest bound [P2-S09-AC-217]
+not ok 5 - the manifest bound equals cms_json_bounded(doc, 524288, 12, 128, 128) on every boundary and generated document [P2-S09-AC-217]
+# Failed test 5: "the manifest bound equals cms_json_bounded(doc, 524288, 12, 128, 128) on every boundary and generated document [P2-S09-AC-217]"
+#         have: byte bound one over
+#         want: NULL
+not ok 6 - every boundary document gets the answer the bounds dictate (depth 12 levels, 128 keys, 128 elements, 524288 bytes) [P2-S09-AC-217]
+# Failed test 6: "every boundary document gets the answer the bounds dictate (depth 12 levels, 128 keys, 128 elements, 524288 bytes) [P2-S09-AC-217]"
+#         have: byte bound one over
+#         want: NULL
+ok 7 - the generated corpus has documents inside every bound [P2-S09-AC-217]
+ok 8 - the generated corpus has documents outside a bound, so the equality is not between two constants [P2-S09-AC-217]
+ok 9 - no document answers NULL [P2-S09-AC-217]
+ok 10 - STRICT: a NULL manifest answers NULL exactly as before (the NOT NULL column keeps that unreachable) [P2-S09-AC-217]
+true
+ok 11 - a manifest nested past 12 levels is refused by cms_schema_artifacts_editor_manifest_check [P2-S09-AC-217]
+1..11
+# Looks like you failed 2 tests of 11
+Failed 2/11 subtests 
+
+Test Summary Report
+-------------------
+/w/scratch/bench-lane/q5_bytes_off_by_one.sql (Wstat: 0 Tests: 11 Failed: 2)
+  Failed tests:  5-6
+Files=1, Tests=11,  3 wallclock secs ( 0.08 usr  0.02 sys +  0.03 cusr  0.01 csys =  0.14 CPU)
+Result: FAIL

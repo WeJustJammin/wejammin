@@ -55,3 +55,20 @@ export class AsyncRpcManualReviewError extends AsyncRpcTransportError {
     this.name = 'AsyncRpcManualReviewError';
   }
 }
+
+/**
+ * A client-class (4xx) refusal that the database raised as
+ * `RAISE EXCEPTION '<token>' USING ERRCODE = 'P0001'` and PostgREST answered as
+ * `{ code: 'P0001', message: '<token>' }`. It is still an `http_error`
+ * dependency failure, so every caller that does not look at it behaves exactly
+ * as before; a caller that owns the token's meaning (for example the
+ * publication sweep, which recomputes a stale accessibility proof) can read
+ * `refusal`. Only an identifier-shaped token of at most 64 characters is ever
+ * carried: free text, other SQLSTATEs and the rest of the body never are.
+ */
+export class AsyncRpcRefusalError extends AsyncRpcDependencyError {
+  constructor(readonly refusal: string) {
+    super('http_error');
+    this.name = 'AsyncRpcRefusalError';
+  }
+}

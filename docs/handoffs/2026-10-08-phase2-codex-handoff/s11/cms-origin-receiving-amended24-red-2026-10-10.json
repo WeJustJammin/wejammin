@@ -1,0 +1,48 @@
+{
+  "schemaVersion": 1,
+  "scope": "Amended receiving QA; runtime source still frozen/producer UNRUN",
+  "baseline": "680119107f81908917b47fc0f2ea27f3d490ff02",
+  "proof": {
+    "driverExit": 0,
+    "log": ".lane-logs/parent-s11-cms-origin-receiving-amended24-red-20261010.log",
+    "summary": [
+      "activeCI=0",
+      " ❯ apps/worker/src/async-entrypoint-cms-origin-admission.test.ts (24 tests | 18 failed) 59ms",
+      "     × retries receiver-owned cancellation while an origin refusal is deferred without ACK or writes 1ms",
+      "⎯⎯⎯⎯⎯⎯ Failed Tests 18 ⎯⎯⎯⎯⎯⎯⎯",
+      " FAIL  apps/worker/src/async-entrypoint-cms-origin-admission.test.ts > immutable CMS origin in actual generic receiving composition > retries receiver-owned cancellation while an origin refusal is deferred without ACK or writes",
+      " Test Files  1 failed (1)",
+      "      Tests  18 failed | 6 passed (24)",
+      "   Duration  1.87s (transform 1.13s, setup 0ms, import 1.71s, tests 59ms, environment 0ms)",
+      "cmsOriginAmendedFocusedExit=1"
+    ],
+    "files": [
+      {
+        "path": "apps/worker/src/async-entrypoint-cms-origin-admission.test.ts",
+        "lines": 359,
+        "sha": "d478fc4f39a9643c86fbfc68c6722d8c49fb3748d9e1f98217f494e0471596d2"
+      },
+      {
+        "path": "apps/worker/src/async-entrypoint-cms-origin-admission-test-support.ts",
+        "lines": 338,
+        "sha": "a5929731dab17440a8bbc535d1ca364131087dc8acf430e71c53fd9fc97f9ae7"
+      }
+    ],
+    "oldDeclarationCount": 24,
+    "allOldDeclarationsTokenExact": true,
+    "mismatched": [],
+    "allOriginalCaseStatementsOrderedTokenExact": true,
+    "oldCaseStatements": 11,
+    "newCaseStatements": 12,
+    "all37Exact": true,
+    "drift": []
+  },
+  "independentReview": {
+    "sourceLog": "Actual receiver controller/signal cancellation harness statically sound, false after deferred abort, full no-effects/write/ACK history, early-completion guard and finally restore. Acyclic359/338 hard400 caps; target350 missed9 for spec. Actual24/18failed6passed; no loader/setup failure. Post-abort runtime proof awaits producer GREEN.",
+    "historicalEquivalence": "Parent TypeScript scanner: all24 original declarations token-exact, all11 original case statements ordered-token-exact; native preformat byte-equivalence attestation. Reviewer historical comparison parent-attested.",
+    "additionalGap": "Receiving nonCMS tests do not inject private true flag; wrongsecondtype binds out before version predicate. Separate direct decideJobDispatch two-row trueflag/nonCMSstale/future controls authorized in concurrent leaseQA applicationfile.",
+    "signalOracleExtension": "Permitted optional expectation unused; original support check remains exact."
+  },
+  "subsequentGateLimitation": "Combined lease gate found typecheckExit2: receiving globalThis.AbortController at202/300/355 and derived controller this at207. Runtime24 RED is not accepted QA; typed native-controller interception correction required. Lease63 execute54failed9passed; applicationQA404 exceeds hard400. No producer authorized.",
+  "acceptance": "0/122; controlled RED only; native QA corrections required, producer/enduringstageSQL/HB/mapping/prepwiring/public lifecycle/full gates remain open"
+}

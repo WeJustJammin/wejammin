@@ -1,6 +1,6 @@
 import * as React from 'react';
-import { GrantableCmsCapabilitySchema } from '@wejammin/contracts';
 
+import { withCmsValidators } from '../../lib/cms-contract-validators';
 import {
   readGrantList,
   runGrantCommand,
@@ -23,8 +23,8 @@ import {
 import {
   CMS_CAPABILITY_GRANT_DEFAULT_QUERY,
   cmsCapabilityGrantConsoleUrl,
-  parseCmsCapabilityGrantPageQuery,
-} from './cms-capability-grant-url';
+  parseCmsCapabilityGrantPageQueryWith,
+} from './cms-capability-grant-console-url';
 import type {
   CmsCapabilityGrantConsoleProps,
   CmsCapabilityGrantListPage,
@@ -179,15 +179,34 @@ export const useCmsCapabilityGrants = (
   // and the list is re-read from the server.
   React.useEffect(() => {
     const onPopState = (): void => {
-      const restored = parseCmsCapabilityGrantPageQuery(
-        new URL(window.location.href),
+      const address = new URL(window.location.href);
+      // The address is parsed with the lazily loaded list-query schema. If it
+      // cannot be fetched the address is unverified: the list degrades like any
+      // unverifiable answer (last verified rows kept, retry offered).
+      withCmsValidators(
+        (validators) => {
+          const restored = parseCmsCapabilityGrantPageQueryWith(
+            validators,
+            address,
+          );
+          setQuery(restored);
+          void refetch(restored, person);
+        },
+        () =>
+          setList((previous) =>
+            listStateFor(
+              { kind: 'degraded' },
+              previous,
+              query,
+              person,
+              props.requestId,
+            ),
+          ),
       );
-      setQuery(restored);
-      void refetch(restored, person);
     };
     window.addEventListener('popstate', onPopState);
     return () => window.removeEventListener('popstate', onPopState);
-  }, [person, refetch]);
+  }, [person, query, props.requestId, refetch]);
 
   const applyQuery = React.useCallback(
     (next: CmsCapabilityGrantQueryState, mode: 'push' | 'replace'): void => {
@@ -286,14 +305,20 @@ export const useCmsCapabilityGrants = (
     void refetch(CMS_CAPABILITY_GRANT_DEFAULT_QUERY, '');
   };
   /** The 409 helper: filter the list to the capability just attempted. */
-  const showAttemptedCapability = (): void => {
-    const parsed = GrantableCmsCapabilitySchema.safeParse(attempted.current);
-    if (parsed.success)
-      applyQuery(
-        { ...query, cursor: undefined, capability: parsed.data },
-        'push',
-      );
-  };
+  const showAttemptedCapability = (): void =>
+    withCmsValidators(
+      (validators) => {
+        const parsed = validators.GrantableCmsCapabilitySchema.safeParse(
+          attempted.current,
+        );
+        if (parsed.success)
+          applyQuery(
+            { ...query, cursor: undefined, capability: parsed.data },
+            'push',
+          );
+      },
+      () => setNotice(COMMAND_COPY.filterUnavailable),
+    );
   /** Prefill the grant form from a revoked row already held in memory. */
   const grantAgain = (grant: CmsCapabilityGrantResource): void =>
     setPrefill((previous) => ({

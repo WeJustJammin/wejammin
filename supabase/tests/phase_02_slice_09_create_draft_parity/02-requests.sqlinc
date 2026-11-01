@@ -1,0 +1,161 @@
+-- The fixed request corpus of the CMS-03A-01 parity suite.  Every stable field id, key and idempotency
+-- key is derived from the case name, so the previous and the current function receive byte-identical
+-- requests.  `expect` is the outcome both must produce: 'OK', or a pattern the error message must match.
+
+create or replace function pg_temp.parity_field(
+  p_case text, p_n integer, p_kind text default 'short_text', p_extra jsonb default '{}'::jsonb
+) returns jsonb language sql as $body$
+  select jsonb_build_object(
+    'stableFieldId', pg_temp.parity_uuid('parity:' || p_case || ':' || p_n), 'key', 'f' || lpad(p_n::text, 3, '0'),
+    'kind', p_kind, 'constraints', '{}'::jsonb, 'required', p_n = 1, 'validatorKey', null, 'validatorVersion', null,
+    'defaultMode', 'none', 'localizationMode', 'none',
+    'editorConfig', jsonb_build_object('label', 'Field ' || p_n, 'order', p_n), 'lifecycle', 'active') || p_extra
+$body$;
+
+create or replace function pg_temp.parity_fields(p_case text, p_count integer) returns jsonb language sql as $body$
+  select coalesce(jsonb_agg(pg_temp.parity_field(p_case, g)), '[]'::jsonb) from generate_series(1, p_count) g
+$body$;
+
+create or replace function pg_temp.parity_base(p_case text, p_fields jsonb) returns jsonb language sql as $body$
+  select jsonb_build_object('typeKey', 'parity_' || p_case, 'label', 'Parity ' || p_case,
+    'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US', 'defaultLocale', 'en-US',
+    'supportedLocales', '["en-US"]'::jsonb, 'fallbackChains', '{}'::jsonb, 'workflowKey', 'editorial',
+    'workflowVersion', '1', 'defaultTemplateVersionId', null, 'fields', p_fields, 'relations', '[]'::jsonb,
+    'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb, 'idempotencyKey', 'parity-' || p_case)
+$body$;
+
+-- Fields whose constraints weigh about 2.3 KB each: 128 of them push the editor manifest past the 512 KiB
+-- compiled-artifact bound, which the artifact insert refuses with a check violation.
+create or replace function pg_temp.parity_heavy_fields(p_case text, p_count integer, p_bogus_at integer default 0)
+returns jsonb language sql as $body$
+  select jsonb_agg(pg_temp.parity_field(p_case, g,
+    case when g = p_bogus_at then 'bogus' else 'enum' end,
+    jsonb_build_object('constraints', jsonb_build_object('enumValues', (
+      select jsonb_agg(left(repeat(md5(g || ':' || v), 5), 150)) from generate_series(1, 15) v)))))
+  from generate_series(1, p_count) g
+$body$;
+
+create temp table parity_cases(
+  n integer primary key, name text unique not null, request jsonb not null,
+  prior jsonb not null default '[]'::jsonb, calls integer not null default 1, expect text not null
+) on commit drop;
+
+create or replace function pg_temp.parity_add(
+  p_name text, p_request jsonb, p_expect text default 'OK',
+  p_prior jsonb default '[]'::jsonb, p_calls integer default 1
+) returns void language sql as $body$
+  insert into parity_cases(n, name, request, prior, calls, expect)
+  values ((select coalesce(max(n), 0) + 1 from parity_cases), p_name, p_request, p_prior, p_calls, p_expect)
+$body$;
+
+-- ---- accepted definitions ----------------------------------------------------------------------------
+-- The AC-217 benchmark shape: 128 short-text fields.
+select pg_temp.parity_add('bench128', pg_temp.parity_base('bench128', pg_temp.parity_fields('bench128', 128)));
+select pg_temp.parity_add('one_field', pg_temp.parity_base('one_field', pg_temp.parity_fields('one_field', 1)));
+select pg_temp.parity_add('no_fields', pg_temp.parity_base('no_fields', '[]'::jsonb));
+-- One field of every kind, with constraints; the object structure carries a rich_text property, so the
+-- editor manifest freezes the protected validator.
+select pg_temp.parity_add('every_kind', pg_temp.parity_base('every_kind', jsonb_build_array(
+  pg_temp.parity_field('every_kind', 1, 'short_text', '{"constraints":{"minLength":1,"maxLength":80}}'),
+  pg_temp.parity_field('every_kind', 2, 'long_text', '{"constraints":{"maxLength":5000}}'),
+  pg_temp.parity_field('every_kind', 3, 'rich_text'),
+  pg_temp.parity_field('every_kind', 4, 'boolean'),
+  pg_temp.parity_field('every_kind', 5, 'integer', '{"constraints":{"minimum":0,"maximum":100}}'),
+  pg_temp.parity_field('every_kind', 6, 'decimal', '{"constraints":{"minimum":-1.5,"maximum":99.25}}'),
+  pg_temp.parity_field('every_kind', 7, 'date'),
+  pg_temp.parity_field('every_kind', 8, 'datetime'),
+  pg_temp.parity_field('every_kind', 9, 'enum', '{"constraints":{"enumValues":["draft","live","archived"]}}'),
+  pg_temp.parity_field('every_kind', 10, 'taxonomy'),
+  pg_temp.parity_field('every_kind', 11, 'relation'),
+  pg_temp.parity_field('every_kind', 12, 'media'),
+  pg_temp.parity_field('every_kind', 13, 'object', jsonb_build_object('constraints', jsonb_build_object('objectStructure',
+    jsonb_build_object('properties', jsonb_build_array(
+      jsonb_build_object('key', 'title', 'kind', 'scalar', 'required', true, 'constraints', '{}'::jsonb),
+      jsonb_build_object('key', 'status', 'kind', 'enum', 'required', false, 'constraints', '{"enumValues":["draft","live"]}'::jsonb),
+      jsonb_build_object('key', 'body', 'kind', 'rich_text', 'required', false, 'constraints', '{}'::jsonb)))))),
+  pg_temp.parity_field('every_kind', 14, 'list', '{"constraints":{"itemKind":"short_text"}}')))
+  || jsonb_build_object('relations', jsonb_build_array(jsonb_build_object(
+    'fieldId', pg_temp.parity_uuid('parity:every_kind:11'), 'targetKind', 'domain', 'targetType', 'profile',
+    'projectionKey', 'profile.summary', 'cardinality', 'many', 'min', 0, 'max', 3, 'ordered', false,
+    'onUnavailable', 'placeholder'))));
+-- The explicit protected-validator pair on a rich_text field.
+select pg_temp.parity_add('rich_text_pair', pg_temp.parity_base('rich_text_pair', jsonb_build_array(
+  pg_temp.parity_field('rich_text_pair', 1, 'rich_text', '{"validatorKey":"rich_text.v1","validatorVersion":"1"}'))));
+-- Locale configuration: three locales, ordered chains, localized and no-fallback fields.
+select pg_temp.parity_add('locales', pg_temp.parity_base('locales', jsonb_build_array(
+  pg_temp.parity_field('locales', 1, 'short_text', '{"localizationMode":"localized"}'),
+  pg_temp.parity_field('locales', 2, 'long_text', '{"localizationMode":"no_fallback"}'),
+  pg_temp.parity_field('locales', 3)))
+  || '{"supportedLocales":["pt-BR","en-US","fr-FR"],"fallbackChains":{"pt-BR":["fr-FR","en-US"],"fr-FR":["en-US"]}}'::jsonb);
+select pg_temp.parity_add('other_locales', pg_temp.parity_base('other_locales', pg_temp.parity_fields('other_locales', 2))
+  || '{"sourceLocale":"fr-FR","defaultLocale":"en-US","supportedLocales":["fr-FR","en-US"],"fallbackChains":{"fr-FR":["en-US"]}}'::jsonb);
+-- Defaults: literal values, an explicit JSON null literal, inherited.
+select pg_temp.parity_add('defaults', pg_temp.parity_base('defaults', jsonb_build_array(
+  pg_temp.parity_field('defaults', 1, 'short_text', '{"defaultMode":"literal","defaultValue":"hello"}'),
+  pg_temp.parity_field('defaults', 2, 'boolean', '{"defaultMode":"literal","defaultValue":true}'),
+  pg_temp.parity_field('defaults', 3, 'integer', '{"defaultMode":"literal","defaultValue":5}'),
+  pg_temp.parity_field('defaults', 4, 'short_text', '{"defaultMode":"literal","defaultValue":null}'),
+  pg_temp.parity_field('defaults', 5, 'short_text', '{"defaultMode":"inherited"}'))));
+select pg_temp.parity_add('lifecycles', pg_temp.parity_base('lifecycles', jsonb_build_array(
+  pg_temp.parity_field('lifecycles', 1), pg_temp.parity_field('lifecycles', 2, 'short_text', '{"lifecycle":"deprecated"}'),
+  pg_temp.parity_field('lifecycles', 3, 'short_text', '{"lifecycle":"retired"}'))));
+-- Fields listed in descending id order: the canonical definition sorts them.
+select pg_temp.parity_add('unordered', pg_temp.parity_base('unordered', (
+  select jsonb_agg(pg_temp.parity_field('unordered', g) order by g desc) from generate_series(1, 9) g)));
+-- NFD label (stored NFC), supplementary-plane and accented characters, help text.
+select pg_temp.parity_add('unicode', pg_temp.parity_base('unicode', jsonb_build_array(
+  pg_temp.parity_field('unicode', 1, 'short_text', jsonb_build_object('editorConfig', jsonb_build_object(
+    'label', E'Café \U0001F600 Über', 'helpText', E'Café "quoted" \\ back\\slash', 'order', 1))),
+  pg_temp.parity_field('unicode', 2)))
+  || jsonb_build_object('label', E'Café ligne \U0001F600'));
+-- The text the artifact hash splices the field array into appears in the request.  Inside the fields it is
+-- harmless (the fields are not part of the stub that is searched); in the type label it makes the splice
+-- slot ambiguous, so the hash takes the direct serialisation of the whole document.
+select pg_temp.parity_add('slot_text_in_fields', pg_temp.parity_base('slot_text_in_fields', jsonb_build_array(
+  pg_temp.parity_field('slot_text_in_fields', 1, 'short_text', jsonb_build_object('editorConfig',
+    jsonb_build_object('label', '#cms-canonical-fields#', 'helpText', '"#cms-canonical-fields#"', 'order', 1))),
+  pg_temp.parity_field('slot_text_in_fields', 2))));
+select pg_temp.parity_add('slot_collision', pg_temp.parity_base('slot_collision', pg_temp.parity_fields('slot_collision', 3))
+  || '{"label":"#cms-canonical-fields#"}'::jsonb);
+select pg_temp.parity_add('capability_bindings', pg_temp.parity_base('capability_bindings', pg_temp.parity_fields('capability_bindings', 2))
+  || '{"capabilityBindings":[{"capabilityKey":"cms.content.article","capabilityVersion":"1"},{"capabilityKey":"cms.article.card","capabilityVersion":"1"}]}'::jsonb);
+select pg_temp.parity_add('heavy_constraints', pg_temp.parity_base('heavy_constraints', pg_temp.parity_heavy_fields('heavy_constraints', 40)));
+-- An idempotent replay: the second identical call answers the stored response and writes nothing.
+select pg_temp.parity_add('replay', pg_temp.parity_base('replay', pg_temp.parity_fields('replay', 3)), 'OK', '[]'::jsonb, 2);
+
+-- ---- refused definitions (nothing may be written; the refusal must be the same one) -----------------------
+select pg_temp.parity_add('oversize_manifest', pg_temp.parity_base('oversize_manifest', pg_temp.parity_heavy_fields('oversize_manifest', 128)),
+  '%violates check constraint "cms_schema_artifacts_editor_manifest_check"');
+-- The artifact insert (23514) precedes the field validation (422): the precedence must not move.
+select pg_temp.parity_add('oversize_and_invalid', pg_temp.parity_base('oversize_and_invalid', pg_temp.parity_heavy_fields('oversize_and_invalid', 128, 3)),
+  '%violates check constraint "cms_schema_artifacts_editor_manifest_check"');
+select pg_temp.parity_add('invalid_kind', pg_temp.parity_base('invalid_kind', jsonb_build_array(
+  pg_temp.parity_field('invalid_kind', 1), pg_temp.parity_field('invalid_kind', 2, 'bogus'), pg_temp.parity_field('invalid_kind', 3))),
+  'VALIDATION_FAILED');
+select pg_temp.parity_add('invalid_default', pg_temp.parity_base('invalid_default', jsonb_build_array(
+  pg_temp.parity_field('invalid_default', 1, 'integer', '{"defaultMode":"literal","defaultValue":"x"}'))), 'VALIDATION_FAILED');
+select pg_temp.parity_add('duplicate_field_id', pg_temp.parity_base('duplicate_field_id', jsonb_build_array(
+  pg_temp.parity_field('duplicate_field_id', 1), pg_temp.parity_field('duplicate_field_id', 1, 'short_text', '{"key":"f002"}'))),
+  'VALIDATION_FAILED');
+select pg_temp.parity_add('duplicate_field_key', pg_temp.parity_base('duplicate_field_key', jsonb_build_array(
+  pg_temp.parity_field('duplicate_field_key', 1), pg_temp.parity_field('duplicate_field_key', 2, 'short_text', '{"key":"f001"}'))),
+  'VALIDATION_FAILED');
+select pg_temp.parity_add('relation_on_scalar', pg_temp.parity_base('relation_on_scalar', pg_temp.parity_fields('relation_on_scalar', 2))
+  || jsonb_build_object('relations', jsonb_build_array(jsonb_build_object(
+    'fieldId', pg_temp.parity_uuid('parity:relation_on_scalar:1'), 'targetKind', 'domain', 'targetType', 'profile',
+    'projectionKey', 'profile.summary', 'cardinality', 'many', 'min', 0, 'max', 3, 'ordered', false,
+    'onUnavailable', 'placeholder'))), 'VALIDATION_FAILED');
+select pg_temp.parity_add('unregistered_capability', pg_temp.parity_base('unregistered_capability', pg_temp.parity_fields('unregistered_capability', 1))
+  || '{"capabilityBindings":[{"capabilityKey":"cms.unknown.thing","capabilityVersion":"1"}]}'::jsonb, 'VALIDATION_FAILED');
+select pg_temp.parity_add('template_binding', pg_temp.parity_base('template_binding', pg_temp.parity_fields('template_binding', 1))
+  || jsonb_build_object('templateBindings', jsonb_build_array(jsonb_build_object('templateVersionId', pg_temp.parity_uuid('parity:template')))),
+  'VALIDATION_FAILED');
+select pg_temp.parity_add('locale_not_supported', pg_temp.parity_base('locale_not_supported', pg_temp.parity_fields('locale_not_supported', 1))
+  || '{"supportedLocales":["fr-FR"],"fallbackChains":{}}'::jsonb, 'VALIDATION_FAILED');
+select pg_temp.parity_add('unknown_member', pg_temp.parity_base('unknown_member', pg_temp.parity_fields('unknown_member', 1))
+  || '{"surprise":true}'::jsonb, 'INVALID_REQUEST');
+-- The type key already exists (created through the public function before the call under test).
+select pg_temp.parity_add('key_conflict',
+  pg_temp.parity_base('key_conflict', pg_temp.parity_fields('key_conflict', 2)) || '{"idempotencyKey":"parity-key-conflict-second"}'::jsonb,
+  'CONFLICT',
+  jsonb_build_array(pg_temp.parity_base('key_conflict', pg_temp.parity_fields('key_conflict_first', 1))));

@@ -10,7 +10,11 @@ authoring-context read. Every one of those events carries
 `platform.on_call`, and alert class `cms_editorial_tier1` (reads) or
 `cms_editorial_tier2` (commands).
 
-This runbook covers the nine Slice 10 operations. The wiki runbook
+This runbook covers the nine Slice 10 operations. The Slice 11 review,
+scheduling, preview and publication operations, the schedule executor, the
+dependency recheck job, the outbox relay's poison rows and the sealed
+state-filtered history cursor are in [CMS editorial publication](./cms-publication.md).
+The wiki runbook
 [`.memory/wiki/operations/runbooks/cms-editorial.md`](../../../.memory/wiki/operations/runbooks/cms-editorial.md)
 keeps the wider BE03b contract (review, scheduling, preview, publication);
 use it for those. Local verification is not hosted acceptance: no Slice 10
@@ -42,9 +46,10 @@ An editor's unsent local values stay in that browser; do not ask for them.
   thresholds (`.memory/wiki/specs/be/03b-editorial-workflow-publication.md:2080`)
   are the intended alert contract; confirm a provider-side rule exists before
   treating silence as health.
-- The Worker emits no `cms_conflict_one_open_violation_total`, `cms_review_*`,
-  schedule, preview, publication, outbox or queue metric for these operations
-  (review, schedule, preview and publication belong to Slice 11 and later).
+- The Worker emits no `cms_conflict_one_open_violation_total`, outbox or queue
+  metric for these nine operations. The review, schedule, preview and
+  publication metrics belong to Slice 11 and are listed in
+  [CMS editorial publication](./cms-publication.md#observability).
 - Hosted composition, key rotation and drills are unverified. A missing signed
   cursor key, workflow-policy projection or protected-validator freeze fails
   closed with a typed 503 and no payload.
@@ -175,7 +180,7 @@ authorizes editing data.
 | `migration_chain_mismatch`, `migration_chain_unavailable`, `migration_chain_incomplete`, `template_incompatible` | 409 `conflict: INVALID_TRANSITION`, `refresh`, `reasonCode`     | Restore chain failure; see the restore section.                                                                                                                                                         | See the restore section.                                                                                                                                                        |
 | `RATE_LIMITED`                                                                                                   | 429 with `Retry-After` (60 s for the database cap)              | A per-user or per-party bucket, the Worker pre-filter, or the database cap of three concurrent writes per actor.                                                                                        | Wait. A sustained rate without an editor surge is a runaway client: find it by `actorClass` and `rate_class`, not by identity.                                                  |
 | `DEPENDENCY_UNAVAILABLE`                                                                                         | 503, `details.dependencyClass`, `retryable`, `Retry-After` 5 s  | A required dependency is missing: signing key, workflow-policy evidence, activation evidence, compiled artifact, protected-validator freeze, exactly one active schema version, or the database itself. | Not caller-fixable. Identify the class below, restore the dependency through its owner, then retry.                                                                             |
-| 502 `BAD_GATEWAY`, 504 `GATEWAY_TIMEOUT`                                                                         | `dependencyClass: cms_editorial`                                | The database answer failed the strict response contract, or the 8 s / 15 s deadline passed.                                                                                                             | 502 is a contract drift between SQL and contracts: escalate, do not retry. 504: the write may have committed, so reconcile before any retry.                                    |
+| 502 `DEPENDENCY_UNAVAILABLE`, 504 `GATEWAY_TIMEOUT`                                                              | `dependencyClass: cms_editorial`                                | The database answer failed the strict response contract, or the 8 s / 15 s deadline passed.                                                                                                             | 502 is a contract drift between SQL and contracts: escalate, do not retry. 504: the write may have committed, so reconcile before any retry.                                    |
 | `INTERNAL_ERROR` and any unregistered plain `P0001`                                                              | scrubbed 500, `details: {}`                                     | A database invariant failed or the database raised a token this table does not know.                                                                                                                    | Escalate with request and correlation IDs. Never reword it as a caller error.                                                                                                   |
 
 Concealment: absent, hidden and cross-tenant targets return one empty-detail 404;
@@ -209,6 +214,17 @@ most 24 hours) opened and sealed by
 `cms_signed_cursor_seal_page` (`20261005010400_cms_revision_comparison_domains.sql`).
 The two cursor kinds sign under separate domains (`cms-03b-03`, `cms-03b-13`) but
 share one per-environment key.
+
+A CMS-03B-03 history request that names a `state` filter does not use that
+envelope. Its cursor can sit after a concealed revision, so it is sealed
+(encrypt-then-MAC, DEC-168; `20261010161000_cms_history_sealed_cursor.sql`): a
+fixed 273 bytes and 364 characters, first byte `0x01`, encrypted under a fresh
+nonce and authenticated before it is decrypted. The encryption and MAC keys are
+derived from the same Vault secrets below, so provisioning, rotation and the
+24-hour retired-key grace are unchanged. A malformed (wrong-length) sealed cursor
+is `400 INVALID_REQUEST`; a wrong key, tag, domain, payload or expiry, or a cursor
+replayed with another state, limit or locale, is `409 CONFLICT`. The unfiltered
+history and the CMS-03B-13 list keep the signed envelope.
 
 Secret names, exactly:
 
@@ -378,7 +394,7 @@ None of these is hosted acceptance, and a green run does not clear an incident.
 ## Escalation and stop conditions
 
 Escalate through `platform.on_call` with identifiers only. Stop automatic recovery
-and escalate at once for: any published `INTERNAL_ERROR` or `BAD_GATEWAY` burst,
+and escalate at once for: any published `INTERNAL_ERROR` burst or 502 `DEPENDENCY_UNAVAILABLE` burst,
 a field value, token, cursor, key or entry ID in a log or response, a 404/403 that
 discloses existence, a duplicated entry or revision after a replay, a committed
 write without its audit row or outbox event, an editor able to write after losing

@@ -20,16 +20,20 @@ const SSR_READ =
   'server-rendered read of an identity or context resource: 401 redirects to sign-in, no step-up policy';
 
 const stepUpAware: readonly string[] = [
+  'components/cms-editorial-workflow/cms-workflow-command-transport.ts',
   'components/content-schema-registry/content-schema-registry-runtime.ts',
   'components/content-schema-registry/content-schema-registry-step-up-classify.ts',
   'components/identity-authority/step-up-mfa/mfa-failure-view.ts',
   'components/platform-configuration/admin-mfa-reset/admin-mfa-reset-failure.ts',
   'components/profile-ownership/profile-ownership-command-transport.ts',
   'components/step-up-required.ts',
+  'server/cms-workflow-platform-errors.ts',
   'server/content-schema-registry-platform-error-details.ts',
 ];
 
 const exempt: Readonly<Record<string, string>> = {
+  'components/cms-editorial-workflow/cms-workflow-canonical-read.ts':
+    WORKER_READ,
   'components/cms-capability-grants/cms-capability-grant-client.ts':
     'list GET (stepUp none); grant mutations route step-up in cms-capability-grant-commands.ts',
   'components/cms-composition/CmsTemplateStatus.tsx': NO_STEP_UP_ROW,
