@@ -17,6 +17,7 @@ import {
   standardMutationSteps,
   type HttpState,
 } from '../be00-order.test-support';
+import { headersBeforeAuthorization } from '../be00-header-order.test-support';
 
 const taxonomyId = 'd1200000-0000-4000-8000-000000000001';
 const termId = 'd1200000-0000-4000-8000-000000000002';
@@ -666,19 +667,21 @@ describe('BE00 middleware order on the CMS taxonomy term action route', () => {
         'idempotency-key': 'taxonomy-action-0001',
         'if-match': '"1"',
       }),
-    steps: standardMutationSteps(
-      httpAdapter({
-        codes: {
-          forbidden: 'TAXONOMY_FORBIDDEN',
-          badRequest: 'INVALID_REQUEST',
-          unauthenticated: 'UNAUTHENTICATED',
-          validation: 'TAXONOMY_VALIDATION_FAILED',
-          rateLimited: 'RATE_LIMITED',
-        },
-        oversize: { status: 400, code: 'INVALID_REQUEST' },
-        badPath: '/api/v1/cms/taxonomies/not-a-uuid/terms/actions',
-        badBody: {},
-      }),
+    steps: headersBeforeAuthorization(
+      standardMutationSteps(
+        httpAdapter({
+          codes: {
+            forbidden: 'TAXONOMY_FORBIDDEN',
+            badRequest: 'INVALID_REQUEST',
+            unauthenticated: 'UNAUTHENTICATED',
+            validation: 'TAXONOMY_VALIDATION_FAILED',
+            rateLimited: 'RATE_LIMITED',
+          },
+          oversize: { status: 400, code: 'INVALID_REQUEST' },
+          badPath: '/api/v1/cms/taxonomies/not-a-uuid/terms/actions',
+          badBody: {},
+        }),
+      ),
     ),
     send: (state) =>
       Promise.resolve(

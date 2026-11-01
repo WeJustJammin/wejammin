@@ -4,8 +4,10 @@
 --
 -- Restore (CMS-03B-04): a source revision that pins a taxonomy version must find that version
 -- again for the owning tenant.  An unresolvable or foreign pin refuses the restore with the typed
--- migration_chain_incomplete and the restore of a resolvable pin carries the pinned taxonomy
--- version ids onto the new draft unchanged.
+-- migration_chain_incomplete.  A resolvable pin lets the restore proceed, but the new draft
+-- records only the current active version of each vocabulary with a carried term assignment
+-- (BE03c Receiving obligations item 3, DEC-240): a pinned version whose vocabulary the source
+-- holds no assignment for is not carried.
 --
 -- The compare-side counterpart (an unresolvable recorded taxonomy version) is the open
 -- EVIDENCE GAP EA-AC002 recorded in phase_02_slice_10_ev_ea_gaps.sql; this file stays green.
@@ -105,8 +107,8 @@ select is(
 );
 select is(
   pg_temp.s10_probe_response('restore-taxonomy-resolvable')->'resource'->'taxonomyVersionIds',
-  jsonb_build_array('a9140000-0000-4000-8000-0000000000f3'),
-  'the restored draft records exactly the taxonomy version ids of its source revision'
+  '[]'::jsonb,
+  'the restored draft records no taxonomy version id of a vocabulary its source holds no assignment for: the pin resolves, the restore proceeds and DEC-240 does not carry it'
 );
 select is(
   pg_temp.s10_probe_response('restore-taxonomy-resolvable')->'resource'->>'schemaVersionId',

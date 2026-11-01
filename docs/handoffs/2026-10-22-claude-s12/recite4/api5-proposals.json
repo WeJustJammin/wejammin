@@ -1,0 +1,228 @@
+[
+ {
+  "criterion": "P2-S12-AC-001",
+  "clauses": [
+   {
+    "index": 3,
+    "text": "and accessibility contracts in templates.",
+    "add": [],
+    "staleExisting": [],
+    "gap": "BOUNDARY (no test, spec silent): BE03c defines the template block-registry digest as the JCS array of {blockKey,blockVersion,releaseDigest,propsSchemaHash,rendererRef,lifecycle} (lines 320-324) which does not contain the block accessibility manifest, and the only template accessibility text is the handoff test (lines 1828-1830: stable JSON Pointer paths, reserved profile/provenance regions content cannot hide or reorder; already cited under clause 0). No spec line states what a template must preserve of a placed block's accessibility contract, so any assertion would invent behaviour. Needed first: an owner-ratified spec line (e.g. whether template create refuses or re-digests a placed block whose accessibility manifest differs), then the pgTAP in template_authority.sql and a template.test.ts case the inventory names."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clause): \"and accessibility contracts in templates.\": no spec line defines what a template preserves of a placed block's accessibility contract (BE03c 320-324 digest tuple excludes it; 1828-1830 gives only stable pointer paths and reserved regions, cited under clause 0), so no test can assert it without inventing behaviour."
+ },
+ {
+  "criterion": "P2-S12-AC-211",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "again before publish",
+    "add": [],
+    "staleExisting": [],
+    "gap": "BOUNDARY (code cannot reach the state; spec names no token): the publication-time pattern recheck is the provider cms.pattern.active_digest with the closed failed-reason vocabulary pattern_not_active, nested_pattern_not_active, pattern_digest_changed, pattern_block_rules_violated (BE03c 1585) and the AC text itself says the live nested-pin active/compatibility recheck is that provider's nested_pattern_not_active, 'not a new transport status'; no spec line gives a publication token for pattern_depth_exceeded / pattern_nodes_exceeded / pattern_cycle. A stored pattern version is immutable after insert (cms_pattern_versions_lifecycle_guard 20261014020200: every definition column frozen, only state/updated_at move), its nested pins are exact (patternId,patternVersion) rows that must pre-exist and be active at save (20261014020400:187-232), so the depth, node count and lineage-cycle outcome of a stored forest cannot change between save and publish and no producer can store an over-bound or cyclic forest; only a forged row could, which the lane rules forbid. The nested-pin half is cited under clause 0 (PC-N03-live-publish etc.). Existing placement-side re-proofs, report for root: supabase/tests/phase_02_slice_12_pattern_placement/065-defensive.sqlinc titles 'a nested reference to a lineage already on the chain is refused pattern_cycle at /patternId (409) [BE03c 1612]', 'a forest nested 129 levels deep is refused pattern_depth_exceeded at /patternId (422) [BE03c 1612]', 'a forest of 513 block roots is refused pattern_nodes_exceeded at /patternId (422) [BE03c 1612, DEC-175]' (placement re-proves cycle/depth/nodes under its own locks through the real expander and plan functions with synthesized input). Needed from the owner/spec: say whether 'again before publish' for depth/nodes/cycle means the placement re-proof (then these three are the evidence) or a provider reason (then name the token)."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clause): \"again before publish\": the publication provider's closed reason vocabulary (BE03c 1585) has no token for depth, node-count or cycle and stored pattern versions are immutable, so the state a publish-time recheck would refuse cannot be produced; the nested-pin recheck is cited under clause 0 and the placement-side re-proofs are pattern_placement/065-defensive.sqlinc. The spec must say which of these is the 'again before publish' evidence."
+ },
+ {
+  "criterion": "P2-S12-AC-010",
+  "clauses": [
+   {
+    "index": 2,
+    "text": "and complete the declared happy path",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts",
+      "title": "CMS-03C-02 pattern placement happy path through the real stack [P2-S12-AC-010] an assigned author placing an active compatible pattern on the current draft revision is a 201 { items } of CompositionInstanceResource rows, a strong entry ETag, the committed rows and one audit record",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts:103,106,123,143 - expect(status).toBe(201); PatternPlacementResourceSchema.parse(body) with Object.keys(body)==['items']; etag === quoted committed entry version (entry version + 1, read from cms_content_entries); psql count of audit_private.audit_events action 'cms.composition.pattern.insert' target_id = first item id === 1; committed rows == response ids in position order. UNRUN by the author: apispecs run only under root's PostgREST runner.",
+      "descriptionLine": 95
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts",
+      "title": "CMS-03C-02 pattern placement happy path through the real stack [P2-S12-AC-010] a nested pattern reference expands into its block roots: the 201 carries one row per expanded root at consecutive positions under the reference key chain",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts:164,165,182 - 201, four expanded rows /nested1/root1../nested2/root2 at positions 0..3 pinned to the placed pattern, committed rows equal, ETag = entry version. UNRUN by the author.",
+      "descriptionLine": 157
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified-after-root-run",
+  "proposedLimitation": null,
+  "note": "Only valid once root's PostgREST runner shows both tests green; until then the clause stays uncited."
+ },
+ {
+  "criterion": "P2-S12-AC-016",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "and complete the declared happy path",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "tests/postgrest/phase-02-slice-12-taxonomy-term-action.apispec.ts",
+      "title": "CMS-03C-03 term action happy path through the real stack [P2-S12-AC-016] a taxonomy curator creating a term in the active flat vocabulary is a 200 with the closed TaxonomyTermResource, the quoted term version as ETag, the committed term and labels, one audit record and one taxonomy event",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/postgrest/phase-02-slice-12-taxonomy-term-action.apispec.ts:107,109,119,147,152 - expect(status).toBe(200); TaxonomyTermResourceSchema.parse(body) (strict, 11 members) with lifecycle active, version '1', null parent/successor; etag === '\"1\"'; psql reads of the committed cms_terms row, two cms_term_labels, one audit event cms.taxonomy.term.create and one cms.taxonomy.changed.v1 outbox event for the term id. UNRUN by the author: apispecs run only under root's PostgREST runner.",
+      "descriptionLine": 83
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified-after-root-run",
+  "proposedLimitation": null,
+  "note": "Only valid once root's PostgREST runner shows the test green; until then the clause stays uncited."
+ },
+ {
+  "criterion": "P2-S12-AC-238",
+  "clauses": [
+   {
+    "index": 3,
+    "text": "and satisfy the existing graph compatibility rule (DEC-199).",
+    "add": [
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-direct-submit [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:108 - s12pc_check(label,'...','nested_pattern_not_active',false,...) over a real placed pin whose nested version is active, same owner, but lists fewer types than the parent (direct edge); helper supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:150 is(pattern results, [failed, nested_pattern_not_active, count 1]). ALT run 3: 215 ok, 0 not ok.",
+      "descriptionLine": 108
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-direct-submit [P2-S12-AC-238]: actual revision-aware frozen status",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:108; helper supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:133 is(status,'stale') - the frozen status wrapper proves the provider first (20261016044300:29). ALT run 3.",
+      "descriptionLine": 108
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-direct-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:108 - s12pc_check(label,'...','nested_pattern_not_active',false,...) over a real placed pin whose nested version is active, same owner, but lists fewer types than the parent (direct edge); helper supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:150 is(pattern results, [failed, nested_pattern_not_active, count 1]). ALT run 3: 215 ok, 0 not ok.",
+      "descriptionLine": 108
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-direct-publish [P2-S12-AC-238]: actual revision-aware frozen status",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:108; helper supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:133 is(status,'stale') - the frozen status wrapper proves the provider first (20261016044300:29). ALT run 3.",
+      "descriptionLine": 108
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-recursive-submit [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:113 - s12pc_check(label,'...','nested_pattern_not_active',false,...) over a real placed pin whose nested version is active, same owner, but lists fewer types than the parent (recursive edge); helper supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:150 is(pattern results, [failed, nested_pattern_not_active, count 1]). ALT run 3: 215 ok, 0 not ok.",
+      "descriptionLine": 113
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-recursive-submit [P2-S12-AC-238]: actual revision-aware frozen status",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:113; helper supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:133 is(status,'stale') - the frozen status wrapper proves the provider first (20261016044300:29). ALT run 3.",
+      "descriptionLine": 113
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-recursive-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:113 - s12pc_check(label,'...','nested_pattern_not_active',false,...) over a real placed pin whose nested version is active, same owner, but lists fewer types than the parent (recursive edge); helper supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:150 is(pattern results, [failed, nested_pattern_not_active, count 1]). ALT run 3: 215 ok, 0 not ok.",
+      "descriptionLine": 113
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-recursive-publish [P2-S12-AC-238]: actual revision-aware frozen status",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:113; helper supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:133 is(status,'stale') - the frozen status wrapper proves the provider first (20261016044300:29). ALT run 3.",
+      "descriptionLine": 113
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-control-submit [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:98 - control: compatible nested version passes (outcome passed, count 0), so the failing cases differ only by the type set. ALT run 3.",
+      "descriptionLine": 98
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-control-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:98 - control: compatible nested version passes (outcome passed, count 0), so the failing cases differ only by the type set. ALT run 3.",
+      "descriptionLine": 98
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-rawcopy-control-submit [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:103 - control: compatible nested version passes (outcome passed, count 0), so the failing cases differ only by the type set. ALT run 3.",
+      "descriptionLine": 103
+     },
+     {
+      "tool": "pgtap",
+      "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+      "title": "A238-rawcopy-control-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+      "project": null,
+      "identitySource": "static",
+      "computed": true,
+      "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:103 - control: compatible nested version passes (outcome passed, count 0), so the failing cases differ only by the type set. ALT run 3.",
+      "descriptionLine": 103
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified-if-technique-accepted",
+  "proposedLimitation": null,
+  "note": "The state is built by a direct DRAFT copy with one patched member (compatible_type_ids) taken through the real governed chain and real CMS-03C-02 placement (precedent gaps_pattern_governed AC-200 (2b)); root must accept the technique. The same-owner half is not separately constructible."
+ }
+]

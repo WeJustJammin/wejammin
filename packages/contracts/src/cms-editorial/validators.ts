@@ -18,6 +18,10 @@
  * hydration come from `client.ts` instead.
  */
 export { ApiErrorSchema, JsonValueSchema } from '../api-error.ts';
+export {
+  RelatedContentRuleReadSchema,
+  relatedRuleReadAnswersEntry,
+} from '../cms-composition/related-content.ts';
 export { TemplateVersionDetailSchema } from '../cms-composition/template-detail.ts';
 export {
   CmsTemplateKeySchema,

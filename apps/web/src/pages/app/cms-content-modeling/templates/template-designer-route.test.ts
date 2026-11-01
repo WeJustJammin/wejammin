@@ -37,7 +37,7 @@ describe('CMS-11 protected template designer page', () => {
 
   it('redirects an expired session and never turns denial/degradation into a form', () => {
     expect(source).toContain('selector.status === 401');
-    expect(source).toContain('Astro.redirect');
+    expect(source).toContain('cmsRedirectResponse');
     expect(source).toContain(
       'Astro.response.status = selector.ok ? 502 : selector.status',
     );

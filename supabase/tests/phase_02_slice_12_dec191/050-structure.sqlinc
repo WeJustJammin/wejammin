@@ -1,0 +1,53 @@
+-- DEC-191 structure: the two private read helpers, the unchanged attributes of the two patched producers, no new lock, role control.
+select ok(
+  (select count(*) = 2 from unnest(array[
+     'platform_private.cms_governed_definition_version(text, uuid)',
+     'platform_private.cms_governed_review_schedule(uuid)']) f where to_regprocedure(f) is not null)
+  and (select bool_and(proc.prosecdef and proc.proconfig = array['search_path=""'] and pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer')
+         from pg_proc proc where proc.oid in (
+           to_regprocedure('platform_private.cms_governed_definition_version(text, uuid)'),
+           to_regprocedure('platform_private.cms_governed_review_schedule(uuid)'))),
+  'the two DEC-191 private helpers exist, are SECURITY DEFINER with an empty search_path and are owned by the CMS definer [P2-S12-AC-082]');
+select ok(
+  (select bool_and(not has_function_privilege(r.role_name, proc.oid, 'EXECUTE'))
+     from unnest(array['public', 'anon', 'authenticated', 'service_role']) r(role_name)
+     cross join (select to_regprocedure(f) as oid from unnest(array[
+       'platform_private.cms_governed_definition_version(text, uuid)',
+       'platform_private.cms_governed_review_schedule(uuid)']) f) proc
+    where proc.oid is not null),
+  'no API role (public, anon, authenticated, service_role) can execute either private helper [P2-S12-AC-082]');
+select ok(
+  (select proc.provolatile = 's' from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_governed_review_schedule(uuid)'))
+  and (select proc.provolatile = 's' from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_governed_definition_version(text, uuid)')),
+  'both helpers are STABLE, so the detail read keeps its one statement and one snapshot (CMS-03C-10) [P2-S12-AC-088]');
+select ok(
+  pg_temp.s12gb_takes_row_locks('platform_private.cms_governed_definition_version(text, uuid)') is false
+  and pg_temp.s12gb_takes_row_locks('platform_private.cms_governed_review_schedule(uuid)') is false,
+  'neither helper takes a row lock: DEC-191 adds no lock position and no write path (BE03c 1336-1348) [P2-S12-AC-087]');
+select ok(
+  (select count(*) = 3 from regexp_matches(pg_temp.s12gb_prosrc('platform_private.cms_activate_governed_subject(jsonb)'), '''supersededVersion''', 'g'))
+  and strpos(pg_temp.s12gb_prosrc('platform_private.cms_activate_governed_subject(jsonb)'), 'cms_governed_definition_version') > 0
+  and (select count(*) = 1 from regexp_matches(pg_temp.s12gb_prosrc('platform_private.cms_get_governed_review(jsonb)'), '''activationSchedule''', 'g'))
+  and strpos(pg_temp.s12gb_prosrc('platform_private.cms_get_governed_review(jsonb)'), 'cms_governed_review_schedule') > 0,
+  'the activation producer names supersededVersion in its three answers and the detail read names activationSchedule once, each through its helper [P2-S12-AC-082]');
+select ok(
+  pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)') is not null
+  and strpos(pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)'), 'cms_governed_lock_lineage_active') = 0
+  and pg_temp.s12gb_takes_row_locks('platform_private.cms_get_governed_review(jsonb)') is false,
+  'still no row-locking lineage read after the advisory lock, and the detail read still takes no row lock [P2-S12-AC-087]');
+select ok(
+  (select bool_and(proc.prosecdef and proc.proconfig = array['search_path=""'] and pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer'
+                   and proc.prorettype = 'jsonb'::regtype)
+     from pg_proc proc where proc.oid in (
+       to_regprocedure('platform_private.cms_activate_governed_subject(jsonb)'),
+       to_regprocedure('platform_private.cms_get_governed_review(jsonb)'),
+       to_regprocedure('platform_api.cms_activate_governed_subject(jsonb)'),
+       to_regprocedure('platform_api.cms_get_governed_review(jsonb)')))
+  and has_function_privilege('service_role', 'platform_api.cms_activate_governed_subject(jsonb)', 'EXECUTE')
+  and has_function_privilege('service_role', 'platform_api.cms_get_governed_review(jsonb)', 'EXECUTE')
+  and not has_function_privilege('service_role', 'platform_private.cms_activate_governed_subject(jsonb)', 'EXECUTE')
+  and not has_function_privilege('service_role', 'platform_private.cms_get_governed_review(jsonb)', 'EXECUTE')
+  and not has_function_privilege('public', 'platform_api.cms_get_governed_review(jsonb)', 'EXECUTE'),
+  'the patched producers and their wrappers keep owner, SECURITY DEFINER, search_path and the service_role-only ACL [P2-S12-AC-091]');
+select ok((select count(*) >= 60 and bool_and(rpc_user = 'service_role' and before_user = after_user) from s12ga_rcpt),
+  'role control: every command and read of this suite really executed as service_role and restored the session role [P2-S12-AC-091]');

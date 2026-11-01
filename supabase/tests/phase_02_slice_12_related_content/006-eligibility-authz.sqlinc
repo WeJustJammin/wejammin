@@ -1,0 +1,127 @@
+-- CMS-03C-05 target eligibility and source authorization (BE03c 163, 1304, 1381, 1491, 1510; tracker
+-- P2-S12-AC-036, AC-060, AC-062, AC-227): the one uniform 422 related_target_ineligible at /pins/{n} or
+-- /exclusions/{n} for an absent, hidden, inactive, other-owner or self target; 404 for a hidden source;
+-- 403 capability_missing for a visible source without edit.
+
+-- Fixture state changes (hand-written under the CMS RPC context, see pg_temp.r12_lifecycle):
+select pg_temp.r12_lifecycle('x6', 'archived');
+select pg_temp.r12_lifecycle('x7', 'held');
+select pg_temp.r12_foreign_owner('xo');
+
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+                          (select value::uuid from s10_ids where key = 'organization'));
+
+create or replace function pg_temp.r12_e(p_pins text[], p_excl text[], p_key text default 'r12-srcE-elig-0001')
+returns jsonb
+language sql
+as $body$
+  select pg_temp.r12_curate(pg_temp.r12_req('srcE', p_pins, p_excl, null, p_key))
+$body$;
+
+create temp table r12_e_before on commit drop as
+select (select count(*)::integer from audit_private.audit_events where action = 'cms.related_content.curate') as audits,
+       (select count(*)::integer from platform_private.idempotency_records where operation = 'CMS-03C-05') as receipts;
+
+-- Six kinds of ineligible pin at index 1 (after the eligible c1): the answers are identical.
+create temp table r12_e_pins on commit drop as
+select kind, pg_temp.r12_curate(
+         pg_temp.r12_req('srcE', array['c1'], array[]::text[], null, 'r12-srcE-elig-' || kind)
+         || jsonb_build_object('pins', jsonb_build_array(pg_temp.r12_id('c1'), target))) as answer
+  from (values
+    ('absent',   extensions.gen_random_uuid()),
+    ('self',     pg_temp.r12_id('srcE')),
+    ('archived', pg_temp.r12_id('x6')),
+    ('held',     pg_temp.r12_id('x7')),
+    ('hidden',   pg_temp.r12_id('c6')),
+    ('foreign',  pg_temp.r12_id('xo'))
+  ) pin(kind, target);
+
+select is((select count(*)::integer from r12_e_pins where answer->>'__error' = 'related_target_ineligible'), 6,
+  'an absent, self, archived, held, unassigned (hidden) and other-owner pin each give related_target_ineligible [P2-S12-AC-227]');
+select is((select count(distinct answer)::integer from r12_e_pins), 1,
+  'the six refusals are byte-identical: a write is never an existence oracle [P2-S12-AC-227]');
+select is((select answer->'__detail' from r12_e_pins where kind = 'absent'), '["/pins/1"]'::jsonb, 'the refusal names the offending pin by index [P2-S12-AC-227]');
+select is((select answer->>'__state' from r12_e_pins where kind = 'absent'), 'P0001', 'it is a typed refusal [P2-S12-AC-227]');
+
+-- Exclusions: existing and readable, lifecycle not constrained.
+create temp table r12_e_excl on commit drop as
+select kind, pg_temp.r12_curate(
+         pg_temp.r12_req('srcE', array[]::text[], array[]::text[], null, 'r12-srcE-excl-' || kind)
+         || jsonb_build_object('exclusions', jsonb_build_array(target))) as answer
+  from (values
+    ('absent',  extensions.gen_random_uuid()),
+    ('hidden',  pg_temp.r12_id('c6')),
+    ('foreign', pg_temp.r12_id('xo'))
+  ) excl(kind, target);
+select is((select count(distinct answer)::integer from r12_e_excl), 1, 'an absent, hidden or other-owner exclusion gives one identical refusal [P2-S12-AC-227]');
+select is((select answer->>'__error' || (answer->'__detail')::text from r12_e_excl where kind = 'absent'), 'related_target_ineligible["/exclusions/0"]',
+  'it is related_target_ineligible at /exclusions/0 [P2-S12-AC-227]');
+select is(pg_temp.r12_history('srcE'), '', 'nothing of the refused pins and exclusions was written [P2-S12-AC-062]');
+select is(pg_temp.r12_version('srcE'), 1::bigint, 'nothing advanced the source entry [P2-S12-AC-062]');
+
+-- Several offenders in one request: every offending pointer, pins before exclusions, in index order.
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcE', array['c1'], array[]::text[], null, 'r12-srcE-elig-multi')
+            || jsonb_build_object('pins', jsonb_build_array(pg_temp.r12_id('c6'), pg_temp.r12_id('c1'), pg_temp.r12_id('x6')),
+                                  'exclusions', jsonb_build_array(pg_temp.r12_id('c2'), pg_temp.r12_id('xo')))) -> '__detail',
+  '["/pins/0","/pins/2","/exclusions/1"]'::jsonb, 'every offending pointer is named, pins first [P2-S12-AC-227]');
+
+-- Accepted: an archived or held entry the caller is assigned to MAY be excluded (its lifecycle is unconstrained);
+-- unpublished, other-locale and other-audience active entries MAY be pinned (eligibility is not publication).
+create temp table r12_e_ok on commit drop as
+select pg_temp.r12_e(array['x2', 'x3', 'x4', 'x5', 'c1'], array['x6', 'x7', 'c2'], 'r12-srcE-elig-ok') as answer;
+select ok(not ((select answer from r12_e_ok) ? '__error'),
+  'unpublished, other-locale, members-only and draft-only active entries are pin-eligible; archived and held entries are exclusion-eligible (got '
+  || coalesce((select answer::text from r12_e_ok), 'null') || ') [P2-S12-AC-227]');
+select is(pg_temp.r12_names((select answer->'pins' from r12_e_ok)) || '|' || pg_temp.r12_names((select answer->'exclusions' from r12_e_ok)),
+  'x2,x3,x4,x5,c1|x6,x7,c2', 'the answer lists them in request order [P2-S12-AC-228]');
+select is((select (answer->>'eligibleCount')::integer from r12_e_ok), 5,
+  'eligibleCount counts the five eligible pins (the source has no publication, so no derived) [P2-S12-AC-230]');
+
+-- Source authorization.
+create or replace function pg_temp.r12_as(p_auth text, p_party uuid default null)
+returns void
+language sql
+as $body$
+  select pg_temp.s10_rpc_as(p_auth::uuid, coalesce(p_party, (select value::uuid from s10_ids where key = 'organization')))
+$body$;
+
+select pg_temp.r12_as('a9100000-0000-4000-8000-000000000004');   -- stranger: not a member of the owner organization
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcC', array['c1'], array[]::text[], null, 'r12-srcC-authz-stranger'))->>'__error', 'NOT_FOUND',
+  'a caller outside the owning organization sees the source as absent [P2-S12-AC-060]');
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcC', array['c1'], array[]::text[], null, 'r12-srcC-authz-stranger2') || jsonb_build_object('entryId', extensions.gen_random_uuid()))->>'__error', 'NOT_FOUND',
+  'and an absent source gives the same answer [P2-S12-AC-060]');
+select pg_temp.r12_as('a9100000-0000-4000-8000-000000000003');   -- outsider: member, no CMS grant
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcC', array['c1'], array[]::text[], null, 'r12-srcC-authz-outsider'))->>'__error', 'capability_missing',
+  'a member without a CMS author or editor grant sees the source but may not edit it: capability_missing (403) [P2-S12-AC-060]');
+select pg_temp.r12_as('a9100000-0000-4000-8000-000000000002');   -- editor: editor grant, assigned to srcE2 only
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcC', array['c1'], array[]::text[], null, 'r12-srcC-authz-editor-unassigned'))->>'__error', 'capability_missing',
+  'a granted editor with no assignment on the source is refused capability_missing [P2-S12-AC-060]');
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcE2', array[]::text[], array[]::text[], null, 'r12-srcE2-authz-editor')) ? '__error'),
+  'an assigned editor may curate the source (author or editor, BE03c 163) [P2-S12-AC-060]');
+select pg_temp.r12_as('a9100000-0000-4000-8000-000000000001');   -- creator again
+
+-- Authorization precedes target checks: a caller who may not edit the source learns nothing about its targets.
+select pg_temp.r12_as('a9100000-0000-4000-8000-000000000003');
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcC', array['c6'], array[]::text[], null, 'r12-srcC-authz-order'))->>'__error', 'capability_missing',
+  'a caller without edit authority is refused capability_missing even when a pin is ineligible [P2-S12-AC-060]');
+
+-- Creator again: a revoked assignment, a foreign-owner source, an archived source, no session.
+select pg_temp.r12_as('a9100000-0000-4000-8000-000000000001');
+select pg_temp.r12_safe('revoke srcC assignment', format('select pg_temp.h11_raw_exec(%L, %L)', 'platform_private.cms_entry_assignments',
+  format($$update platform_private.cms_entry_assignments set state = 'revoked' where entry_id = %L$$, pg_temp.r12_id('srcC'))));
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcC', array['c1'], array[]::text[], null, 'r12-srcC-authz-revoked'))->>'__error', 'capability_missing',
+  'a revoked entry assignment removes the right to edit the source [P2-S12-AC-060]');
+select is(pg_temp.r12_curate(pg_temp.r12_req('xo', array['c1'], array[]::text[], null, 'r12-xo-authz-foreign'))->>'__error', 'NOT_FOUND',
+  'a source owned by another party is hidden: NOT_FOUND [P2-S12-AC-060]');
+select pg_temp.r12_lifecycle('srcD', 'archived');
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcD', array['c1'], array[]::text[], null, 'r12-srcD-authz-archived'))->>'__error', 'INVALID_TRANSITION',
+  'an archived source cannot be curated (409 conflict) [P2-S12-AC-062]');
+select pg_temp.s10_rpc_clear_actor();
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcC', array['c1'], array[]::text[], null, 'r12-srcC-authz-nosession'))->>'__error', 'UNAUTHENTICATED',
+  'a request with no verified session is UNAUTHENTICATED [P2-S12-AC-062]');
+select pg_temp.r12_as('a9100000-0000-4000-8000-000000000001');
+
+select is((select count(*)::integer from audit_private.audit_events where action = 'cms.related_content.curate') - (select audits from r12_e_before),
+  2, 'only the two successful curations of this fragment wrote audit records; every refusal wrote none [P2-S12-AC-062]');
+select is((select count(*)::integer from platform_private.idempotency_records where operation = 'CMS-03C-05') - (select receipts from r12_e_before),
+  2, 'and only those two left an idempotency receipt [P2-S12-AC-062]');

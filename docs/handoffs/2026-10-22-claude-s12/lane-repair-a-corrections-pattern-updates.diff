@@ -1,0 +1,233 @@
+--- a/pattern_updates/000-oracles.sqlinc
++++ b/pattern_updates/000-oracles.sqlinc
+@@ -1,6 +1,10 @@
+ -- CMS-03C-15 oracles.  The row contentHash is the D5 block comparison hash of cms_compare_revisions (blockKey, blockVersion,
+ -- blockRegistryDigest, mode, patternRef, props, bindings; position is NOT an input, 20261005010400:877-891), assembled here from first
+ -- principles: an RFC 8785 text with every object's keys in bytewise (= UTF-16 for ASCII) order, hashed with SHA-256 over its UTF-8 bytes.
++-- DEC-193 (BE03b receiving obligations 2026-10-15; BE03c Linked update): the D5 block side hash covers the canonical detached content of a row
++-- that carries a nonnull `detached_tree` as one more member `detachedTree`, and such a row's pattern pin is provenance only, so its
++-- `patternRef` is null in the hashed image; a row with a NULL tree keeps the seven-member image (dec193_consumers/010-comparison.sqlinc builds
++-- the same image independently).
+ 
+ create or replace function pg_temp.s12puc_jcs(p_value jsonb) returns text language plpgsql immutable as $body$
+ declare answer text;
+@@ -27,9 +31,10 @@
+     'contentHash', encode(extensions.digest(convert_to(pg_temp.s12puc_jcs(jsonb_build_object(
+       'bindings', p_row.bindings, 'blockKey', p_row.block_key, 'blockRegistryDigest', btrim(p_row.block_registry_digest::text),
+       'blockVersion', p_row.block_version, 'mode', p_row.link_mode,
+-      'patternRef', case when p_row.pattern_id is null then null
++      'patternRef', case when p_row.pattern_id is null or p_row.detached_tree is not null then null
+         else jsonb_build_object('patternId', p_row.pattern_id, 'patternVersion', p_row.pattern_version) end,
+-      'props', p_row.props)), 'UTF8'), 'sha256'), 'hex'),
++      'props', p_row.props) || case when p_row.detached_tree is null then '{}'::jsonb
++        else jsonb_build_object('detachedTree', p_row.detached_tree) end), 'UTF8'), 'sha256'), 'hex'),
+     'createdAt', to_char(p_row.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+     'updatedAt', to_char(p_row.updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+     'state', p_row.state, 'revisionId', p_row.revision_id, 'path', p_row.path, 'position', p_row.position,
+@@ -38,14 +43,24 @@
+     'linkMode', p_row.link_mode, 'conflictState', case p_row.link_mode when 'linked' then 'none' else null end)
+ $body$;
+ 
++-- A detached local block tree (cms.detached_tree.v1, BE03c Canonical records and fields): preorder nodes, index 0 the sole root, each node's
++-- parent index, its key segment relative to its parent, the block identity of the test world and its exact effective props.
++create or replace function pg_temp.s12puc_tnode(p_parent integer, p_segment text, p_title text) returns jsonb language sql immutable as $body$
++  select jsonb_build_object('parent', p_parent, 'keySegments', jsonb_build_array(p_segment), 'blockKey', 's12pd.block', 'blockVersion', 1,
++    'props', jsonb_build_object('title', p_title)) $body$;
++create or replace function pg_temp.s12puc_tree(p_nodes jsonb[]) returns jsonb language sql immutable as $body$
++  select jsonb_build_object('format', 'cms.detached_tree.v1', 'nodes', to_jsonb(p_nodes)) $body$;
++
+ -- The head (greatest version) composition row of a path in a captured image of the composition store.
+ create or replace function pg_temp.s12puc_image_head(p_rows jsonb, p_revision uuid, p_path text) returns jsonb language sql stable as $body$
+   select e from jsonb_array_elements(p_rows) e where e->>'revision_id' = p_revision::text and e->>'path' = p_path
+    order by (e->>'version')::bigint desc limit 1 $body$;
+ 
+ -- A successful update.  p_paths are the instance paths in REQUEST order; p_expect[i] is the expected appended row of path i:
+--- { state, linkMode, patternVersion, props [, blockKey, blockVersion, digest] } (patternVersion null for a detach: the pin is kept; the block
+--- identity defaults to the prior row's and the digest to the one-block pattern digest).  The appended row carries the next
++-- { state, linkMode, patternVersion, props [, blockKey, blockVersion, digest, tree] } (patternVersion null for a detach: the pin is kept; the block
++-- identity defaults to the prior row's and the digest to the one-block pattern digest).  `tree` is the expected `detached_tree` of the row (a
++-- detach, or an accept that kept `yours` on a structure or removed-root collision); without it the row carries no detached tree.  A `retired`
++-- row asserts no props: the retirement fixes visibility and the pin, not a tombstone-props representation (dec193_resolution/020).  The appended row carries the next
+ -- version of its path, the position of the row it follows, the server digest, the entry CAS and the ETag.
+ create or replace function pg_temp.s12puc_check(p_label text, p_tag text, p_paths text[], p_expect jsonb, p_action text default 'accept')
+ returns setof text
+@@ -76,7 +91,11 @@
+     return next extensions.is(stored.state || '/' || stored.link_mode || '/' || stored.pattern_version::text,
+       (expect->>'state') || '/' || (expect->>'linkMode') || '/' || coalesce(expect->>'patternVersion', prior->>'pattern_version'),
+       p_label || ' [' || p_paths[i] || ']: state, link mode and pinned pattern version');
+-    return next extensions.is(stored.props, expect->'props', p_label || ' [' || p_paths[i] || ']: the stored props');
++    if expect->>'state' <> 'retired' then
++      return next extensions.is(stored.props, expect->'props', p_label || ' [' || p_paths[i] || ']: the stored props');
++    end if;
++    return next extensions.is(coalesce(stored.detached_tree, 'null'::jsonb), coalesce(expect->'tree', 'null'::jsonb),
++      p_label || ' [' || p_paths[i] || ']: the detached local block tree (null unless the row materialized the resolved or pinned tree) [DEC-193]');
+     return next extensions.ok(stored.position = (prior->>'position')::integer and stored.revision_id = (prior->>'revision_id')::uuid
+         and stored.slot_key = prior->>'slot_key' and stored.path = prior->>'path' and stored.pattern_id = (prior->>'pattern_id')::uuid
+         and stored.bindings = prior->'bindings' and stored.owner_id = (prior->>'owner_id')::uuid,
+--- a/pattern_updates/010-accept.sqlinc
++++ b/pattern_updates/010-accept.sqlinc
+@@ -49,18 +49,24 @@
+ select is((select state || ':' || version::text from platform_private.cms_composition_instances where id = :'pending_row'::uuid), 'pending_diff:2',
+   'the pending_diff row itself is untouched; the accept appended version 3');
+ 
+--- a root the new version removed: adopting the removal retires the row; `yours` keeps it
++-- a root the new version removed (DEC-193): the removal of the instance's own block root is always a `removed_root` collision, so an accept
++-- needs an explicit choice (a missing choice is 422); `theirs` retires the row (still pinned to the version whose forest has the root, never
++-- to the target), `yours` appends a detached copy carrying the resolved tree.  BE03c Linked update (diff, accept, detach).
+ select pg_temp.s12pu_update('u-rm1-keep', pg_temp.s12pu_update_request('rm1', 'accept', jsonb_build_array(pg_temp.s12pu_target('rm1', '/keep')), 's12pu-rm1k-0001', 2));
+ select * from pg_temp.s12puc_check('u-rm1-keep', 'rm1', array['/keep'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+-select pg_temp.s12pu_update('u-rm1-gone', pg_temp.s12pu_update_request('rm1', 'accept', jsonb_build_array(pg_temp.s12pu_target('rm1', '/gone')), 's12pu-rm1g-0001', 2));
+-select * from pg_temp.s12puc_check('u-rm1-gone', 'rm1', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'retired', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
++select * from pg_temp.s12pu_refused('u-rm1-gone-nochoice', 'platform_api.cms_apply_pattern_update',
++  pg_temp.s12pu_update_request('rm1', 'accept', jsonb_build_array(pg_temp.s12pu_target('rm1', '/gone')), 's12pu-rm1g-0001', 2),
++  'VALIDATION_FAILED', '["/instances/0/choices"]'::jsonb);
++select pg_temp.s12pu_update('u-rm1-gone', pg_temp.s12pu_update_request('rm1', 'accept', jsonb_build_array(
++  pg_temp.s12pu_target('rm1', '/gone', '[{"path":"/gone","choice":"theirs"}]'::jsonb)), 's12pu-rm1g-0002', 2));
++select * from pg_temp.s12puc_check('u-rm1-gone', 'rm1', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'retired', 'linkMode', 'linked', 'patternVersion', '1')));
+ select pg_temp.s12pu_update('u-rm2', pg_temp.s12pu_update_request('rm2', 'accept', jsonb_build_array(
+   pg_temp.s12pu_target('rm2', '/gone', '[{"path":"/gone","choice":"theirs"}]'::jsonb)), 's12pu-rm2-0001', 2));
+-select * from pg_temp.s12puc_check('u-rm2', 'rm2', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'retired', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
++select * from pg_temp.s12puc_check('u-rm2', 'rm2', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'retired', 'linkMode', 'linked', 'patternVersion', '1')));
+ select pg_temp.s12pu_update('u-rm4', pg_temp.s12pu_update_request('rm4', 'accept', jsonb_build_array(
+   pg_temp.s12pu_target('rm4', '/gone', '[{"path":"/gone","choice":"yours"}]'::jsonb)), 's12pu-rm4-0001', 2));
+-select * from pg_temp.s12puc_check('u-rm4', 'rm4', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2',
+-  'props', '{"/gone":{"title":"G99"}}'::jsonb)));
++select * from pg_temp.s12puc_check('u-rm4', 'rm4', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', '1',
++  'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'gone', 'G99')]))));
+ 
+ -- chains through a nested pattern reference whose pinned nested version is superseded
+ select pg_temp.s12pu_update('u-nest1', pg_temp.s12pu_update_request('nest1', 'accept', jsonb_build_array(pg_temp.s12pu_target('nest1', '/shared/leaf')), 's12pu-nest1-0001', 2));
+--- a/pattern_updates/020-detach.sqlinc
++++ b/pattern_updates/020-detach.sqlinc
+@@ -1,9 +1,11 @@
+--- CMS-03C-15 detach: a `detached` row that materializes the instance's current effective content (the pinned tree plus its overrides) as local
+--- props, keeps the pin and the position, and stops receiving updates.  The effective value of a node path is the override when one exists, else
+--- the pinned node's props.  BE03c 1367, 400, 1476; AC-118, AC-120, AC-121.
++-- CMS-03C-15 detach (DEC-193): a `detached` row that materializes the instance's current effective content (the full subtree of its root in the
++-- pinned version plus its overrides) as a detached local block tree in `detached_tree`, with props {}, keeps the pin as provenance and the
++-- position, and stops receiving updates.  The effective value of a node is the override when one exists, else the pinned node's props.  Detach
++-- admits any linked pattern-origin row (a retired or a superseded newest head too) and has no key-count refusal.  BE03c Linked update (diff,
++-- accept, detach), 400, 1476; AC-118, AC-120, AC-121.
+ select pg_temp.s12pu_update('d-ap7', pg_temp.s12pu_update_request('ap7', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap7', '/hero')), 's12pu-ap7-0001'));
+ select * from pg_temp.s12puc_check('d-ap7', 'ap7', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null,
+-  'props', '{"/hero":{"title":"H1"},"/hero/title":{"title":"MINE"},"/hero/note":{"title":"N1"}}'::jsonb)), 'detach');
++  'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H1'), pg_temp.s12puc_tnode(0, 'title', 'MINE'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+ select is((select pattern_version from platform_private.cms_composition_instances where id = (pg_temp.s12pu_body('d-ap7')->'items'->0->>'id')::uuid), 1::bigint,
+   'the detached row keeps the pattern version it was pinned to (its origin)');
+ select pg_temp.s12pu_diff_head('d-ap7-after', 'ap7', '/hero');
+@@ -21,7 +23,7 @@
+ select pg_temp.s12pu_pending('ap8', '/hero', 2) as pending_row \gset
+ select pg_temp.s12pu_update('d-ap8', pg_temp.s12pu_update_request('ap8', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap8', '/hero')), 's12pu-ap8-0001'));
+ select * from pg_temp.s12puc_check('d-ap8', 'ap8', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null,
+-  'props', '{"/hero":{"title":"H1"},"/hero/title":{"title":"T1"},"/hero/note":{"title":"N1"}}'::jsonb)), 'detach');
++  'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H1'), pg_temp.s12puc_tnode(0, 'title', 'T1'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+ 
+ -- an instance that is already detached cannot be detached or accepted
+ select * from pg_temp.s12pu_refused('d-ap9-detach', 'platform_api.cms_apply_pattern_update',
+@@ -31,16 +33,18 @@
+   pg_temp.s12pu_update_request('ap9', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap9', '/hero')), 's12pu-ap9-0002', 2),
+   'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+ 
+--- A RETIRED head: BE03c 1476 and AC-120 say detach takes "any linked" instance, but the detach row is an `active` row that materializes the pinned
+--- tree.  A retired row is one whose root the target version no longer has (the author adopted the removal), so detaching it would resurrect a
+--- block the pattern author deleted and the pinned tree has no such root to materialize.  The spec does not say what that detach means: SPEC
+--- CONFLICT, owner ruling pending (report: Owner decisions pending).  This assertion pins the CURRENT behaviour, a refusal, so a ruling must change it.
+-select * from pg_temp.s12pu_refused('d-retired', 'platform_api.cms_apply_pattern_update',
+-  pg_temp.s12pu_update_request('rm1', 'detach', jsonb_build_array(pg_temp.s12pu_target('rm1', '/gone')), 's12pu-rm1-gone-detach'),
+-  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+-
+--- the materialization is bounded by the table (128 keys): a root with 156 nodes cannot be materialized
+-select * from pg_temp.s12pu_refused('d-wide', 'platform_api.cms_apply_pattern_update',
+-  pg_temp.s12pu_update_request('wid2', 'detach', jsonb_build_array(pg_temp.s12pu_target('wid2', '/wide')), 's12pu-wid2-0001'),
+-  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
++-- A RETIRED head (DEC-193, BE03c Linked update: "the newest version of its path may still be detached"): rm1 /gone was retired by the accept of
++-- 010-accept (u-rm1-gone).  Its detach appends an `active` detached row pinned (as provenance) to the version whose forest has the root and
++-- materializes that pinned tree; it does not resurrect the target and it is not an error.
++select pg_temp.s12pu_update('d-retired', pg_temp.s12pu_update_request('rm1', 'detach', jsonb_build_array(pg_temp.s12pu_target('rm1', '/gone')), 's12pu-rm1-gone-detach'));
++select * from pg_temp.s12puc_check('d-retired', 'rm1', array['/gone'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached',
++  'patternVersion', null, 'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'gone', 'G1')]))), 'detach');
+ 
++-- no key-count bound (DEC-193): a root with 156 nodes (the root, 5 children and 150 grandchildren) is materialized in full, in preorder
++select pg_temp.s12pu_update('d-wide', pg_temp.s12pu_update_request('wid2', 'detach', jsonb_build_array(pg_temp.s12pu_target('wid2', '/wide')), 's12pu-wid2-0001'));
++select * from pg_temp.s12puc_check('d-wide', 'wid2', array['/wide'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached',
++  'patternVersion', null, 'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree((select array_agg(node order by ord) from (
++    select 0 as ord, pg_temp.s12puc_tnode(null, 'wide', 'n1') as node
++    union all select 1 + (c - 1) * 31, pg_temp.s12puc_tnode(0, 'c' || c, 'n1') from generate_series(1, 5) c
++    union all select 1 + (c - 1) * 31 + g, pg_temp.s12puc_tnode(1 + (c - 1) * 31, 'g' || g, 'n1')
++      from generate_series(1, 5) c, generate_series(1, 30) g) preorder)))), 'detach');
+--- a/pattern_updates/050-bulk.sqlinc
++++ b/pattern_updates/050-bulk.sqlinc
+@@ -21,9 +21,10 @@
+ select pg_temp.s12pu_update('k-ap4-detach', pg_temp.s12pu_update_request('ap4', 'detach', jsonb_build_array(
+   pg_temp.s12pu_target('ap4', '/cta'), pg_temp.s12pu_target('ap4', '/hero')), 's12pu-ap4-0001'));
+ select * from pg_temp.s12puc_check('k-ap4-detach', 'ap4', array['/cta', '/hero'], jsonb_build_array(
+-  jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null, 'props', '{"/cta":{"title":"C1"}}'::jsonb),
+-  jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null,
+-    'props', '{"/hero":{"title":"H1"},"/hero/title":{"title":"MINE"},"/hero/note":{"title":"N1"}}'::jsonb)), 'detach');
++  jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null, 'props', '{}'::jsonb,
++    'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'cta', 'C1')])),
++  jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null, 'props', '{}'::jsonb,
++    'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H1'), pg_temp.s12puc_tnode(0, 'title', 'MINE'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+ 
+ -- DEC-181: a placement of 39 rows (31 roots and the 8 roots of a nested reference) is answered in successive requests --------------------------
+ create or replace function pg_temp.s12puc_first32() returns text[] language sql stable as $body$
+--- a/pattern_updates/070-adoption.sqlinc
++++ b/pattern_updates/070-adoption.sqlinc
+@@ -11,13 +11,22 @@
+   '/roota=s12pd.block@1/' || pg_temp.s12puc_digest(array[1]) || ',/rootb=s12pd.block@1/' || pg_temp.s12puc_digest(array[1]),
+   'setup: both roots of the placement are pinned to block version 1 and its digest before the update');
+ 
+-select pg_temp.s12pu_update('u-bv1', pg_temp.s12pu_update_request('bv1', 'accept', jsonb_build_array(
+-  pg_temp.s12pu_target('bv1', '/roota'), pg_temp.s12pu_target('bv1', '/rootb')), 's12pu-bv1-0001', 2));
+--- roota changes block version AND props (A1 -> A2); rootb changes ONLY its block version (props equal): both adopt block version 2 and the
+--- digest of the target tree (which names block version 2 alone)
+-select * from pg_temp.s12puc_check('u-bv1', 'bv1', array['/roota', '/rootb'], jsonb_build_array(
++-- A changed block identity is a `structure` collision (DEC-193): a bulk accept of both roots is refused 409 diff_has_collisions, never adopted
++-- silently, and each root is then answered by its own single-instance request with an explicit `theirs` choice (choices are accepted only for a
++-- single-instance request).  roota changes block version AND props (A1 -> A2); rootb changes ONLY its block version (props equal): both adopt block
++-- version 2 and the digest of the target tree (which names block version 2 alone)
++select * from pg_temp.s12pu_refused('u-bv1-bulk-structure', 'platform_api.cms_apply_pattern_update',
++  pg_temp.s12pu_update_request('bv1', 'accept', jsonb_build_array(
++    pg_temp.s12pu_target('bv1', '/roota'), pg_temp.s12pu_target('bv1', '/rootb')), 's12pu-bv1-0003', 2),
++  'diff_has_collisions', '["/instances/0/instanceId"]'::jsonb);
++select pg_temp.s12pu_update('u-bv1a', pg_temp.s12pu_update_request('bv1', 'accept', jsonb_build_array(
++  pg_temp.s12pu_target('bv1', '/roota', '[{"path":"/roota","choice":"theirs"}]'::jsonb)), 's12pu-bv1-0001', 2));
++select * from pg_temp.s12puc_check('u-bv1a', 'bv1', array['/roota'], jsonb_build_array(
+   jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb,
+-    'blockKey', 's12pd.block', 'blockVersion', '2', 'digest', pg_temp.s12puc_digest(array[2])),
++    'blockKey', 's12pd.block', 'blockVersion', '2', 'digest', pg_temp.s12puc_digest(array[2]))));
++select pg_temp.s12pu_update('u-bv1b', pg_temp.s12pu_update_request('bv1', 'accept', jsonb_build_array(
++  pg_temp.s12pu_target('bv1', '/rootb', '[{"path":"/rootb","choice":"theirs"}]'::jsonb)), 's12pu-bv1-0002', 2));
++select * from pg_temp.s12puc_check('u-bv1b', 'bv1', array['/rootb'], jsonb_build_array(
+   jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb,
+     'blockKey', 's12pd.block', 'blockVersion', '2', 'digest', pg_temp.s12puc_digest(array[2]))));
+ select is((select string_agg(path || '=' || block_key || '@' || block_version::text || '/' || btrim(block_registry_digest::text) || '/p' || pattern_version::text,
+--- a/pattern_updates/075-eligibility.sqlinc
++++ b/pattern_updates/075-eligibility.sqlinc
+@@ -4,7 +4,7 @@
+ -- detach of a linked draft-state head is admitted: the appended row is an active detached row materializing the pinned tree
+ select pg_temp.s12pu_update('e-dr1-detach', pg_temp.s12pu_update_request('dr1', 'detach', jsonb_build_array(pg_temp.s12pu_target('dr1', '/hero')), 's12pu-dr1-0001'));
+ select * from pg_temp.s12puc_check('e-dr1-detach', 'dr1', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached',
+-  'patternVersion', null, 'props', '{"/hero":{"title":"H2"},"/hero/title":{"title":"T2"},"/hero/note":{"title":"N1"}}'::jsonb)), 'detach');
++  'patternVersion', null, 'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H2'), pg_temp.s12puc_tnode(0, 'title', 'T2'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+ -- accept of the same kind of head is NOT admitted: the spec names only pending_diff and active for accept
+ select * from pg_temp.s12pu_refused('e-dr2-accept', 'platform_api.cms_apply_pattern_update',
+   pg_temp.s12pu_update_request('dr2', 'accept', jsonb_build_array(pg_temp.s12pu_target('dr2', '/hero')), 's12pu-dr2-0001', 2),
+@@ -14,11 +14,12 @@
+   pg_temp.s12pu_update_request('dr1', 'detach', jsonb_build_array(pg_temp.s12pu_target('dr1', '/hero')), 's12pu-dr1-0002'),
+   'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+ 
+--- detach admits only the linked states a producer writes (draft, active, pending_diff; BE03c 1512 "any linked"): a head in the derived,
+--- history-only `superseded` state is refused for detach and for accept (labelled fixture sp1, 020-world-adoption).  [AC-120] (fix pass 2, R1)
+-select * from pg_temp.s12pu_refused('e-sp1-detach', 'platform_api.cms_apply_pattern_update',
+-  pg_temp.s12pu_update_request('sp1', 'detach', jsonb_build_array(pg_temp.s12pu_target('sp1', '/hero')), 's12pu-sp1-0001'),
+-  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
++-- detach admits any linked pattern-origin row that is the newest version of its path (DEC-193, BE03c Linked update): a head in the derived,
++-- history-only `superseded` state (labelled fixture sp1, 020-world-adoption) is detached too, materializing its pinned tree, while accept still
++-- refuses it (accept admits a linked `active` or `pending_diff` row).  [AC-120] (fix pass 2, R1; DEC-193)
++select pg_temp.s12pu_update('e-sp1-detach', pg_temp.s12pu_update_request('sp1', 'detach', jsonb_build_array(pg_temp.s12pu_target('sp1', '/hero')), 's12pu-sp1-0001'));
++select * from pg_temp.s12puc_check('e-sp1-detach', 'sp1', array['/hero'], jsonb_build_array(jsonb_build_object('state', 'active', 'linkMode', 'detached',
++  'patternVersion', null, 'props', '{}'::jsonb, 'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H2'), pg_temp.s12puc_tnode(0, 'title', 'T2'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+ select * from pg_temp.s12pu_refused('e-sp1-accept', 'platform_api.cms_apply_pattern_update',
+   pg_temp.s12pu_update_request('sp1', 'accept', jsonb_build_array(pg_temp.s12pu_target('sp1', '/hero')), 's12pu-sp1-0002', 2),
+   'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);

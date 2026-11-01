@@ -1,0 +1,79 @@
+-- Helpers of the claude_s12_gaps_db2 governed suites.  pg_temp only; every governed row is written by a named producer under the
+-- real service_role.  Included after the s12ga_ / s12gb_ / s12gr_ worlds.
+
+-- One direct statement as the test administrator inside (or outside) the CMS RPC context.  Returns '<sqlstate>:<message>' of the
+-- refusal, or '00000:' when the statement ran; either way the statement's effect is rolled back (a savepoint-style probe), so a
+-- probe that unexpectedly succeeds cannot corrupt the later assertions.
+create or replace function pg_temp.g2_try(p_sql text, p_rpc boolean default true) returns text
+language plpgsql as $body$
+declare prior text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), '');
+begin
+  perform pg_catalog.set_config('app.cms_rpc', case when p_rpc then 'true' else '' end, true);
+  begin
+    execute p_sql;
+    raise exception 'g2 probe ran' using errcode = 'G2OK0';
+  exception when others then
+    perform pg_catalog.set_config('app.cms_rpc', prior, true);
+    if sqlstate = 'G2OK0' then return '00000:'; end if;
+    return sqlstate || ':' || sqlerrm;
+  end;
+end;
+$body$;
+
+-- INSERT ... SELECT of a copy of one governed review row with a fresh id and a jsonb patch over its columns.
+create or replace function pg_temp.g2_copy_review(p_review uuid, p_patch jsonb default '{}'::jsonb) returns text
+language sql stable as $body$
+  select pg_catalog.format($f$insert into platform_private.cms_governed_reviews
+      select (pg_catalog.jsonb_populate_record(null::platform_private.cms_governed_reviews,
+        pg_catalog.to_jsonb(r) || %L::jsonb)).*
+        from platform_private.cms_governed_reviews r where r.id = %L$f$,
+    (pg_catalog.jsonb_build_object('id', extensions.gen_random_uuid()) || p_patch)::text, p_review)
+$body$;
+
+-- INSERT of a decision row for a review and reviewer with a throw-away assignment id.  The BEFORE INSERT guard answers
+-- separation_of_duties before it ever looks the assignment up, so a reviewer who is neither the submitter nor the creator reaches the
+-- foreign key (23503) instead.
+create or replace function pg_temp.g2_decision_insert(p_review uuid, p_reviewer uuid) returns text
+language sql stable as $body$
+  select pg_catalog.format($f$insert into platform_private.cms_governed_review_decisions(
+        owner_id, review_id, reviewer_person_id, assignment_id, assignment_version, capability, decision, reason,
+        comment_hash, reviewed_hash, step_up_at)
+      select r.owner_id, r.id, %L::uuid, extensions.gen_random_uuid(), 1, 'cms.reviewer', 'approve', 'probe',
+             pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to('probe', 'UTF8')), 'hex'), r.subject_hash,
+             pg_catalog.clock_timestamp()
+        from platform_private.cms_governed_reviews r where r.id = %L$f$, p_reviewer, p_review)
+$body$;
+
+-- The set of SQLSTATEs that three API roles get from one statement (all three must be the permission denial 42501).
+create or replace function pg_temp.g2_denied_states(p_calls text[]) returns text[]
+language sql volatile as $body$
+  select coalesce(pg_catalog.array_agg(distinct pg_temp.s12ga_denied(r.rolname, c.call)), array[]::text[])
+    from (values ('anon'), ('authenticated'), ('service_role')) r(rolname)
+   cross join pg_catalog.unnest(p_calls) c(call)
+$body$;
+
+-- The functions whose source updates a template, pattern or taxonomy version row.
+create or replace function pg_temp.g2_writers_of_versions() returns text[] language sql stable as $body$
+  select coalesce(pg_catalog.array_agg(n.nspname || '.' || p.proname order by n.nspname, p.proname), array[]::text[])
+    from pg_catalog.pg_proc p join pg_catalog.pg_namespace n on n.oid = p.pronamespace
+   where n.nspname in ('platform_private', 'platform_api') and p.prokind = 'f'
+     and p.prosrc ~* 'update\s+platform_private\.cms_(template|pattern|taxonomy)_versions\M'
+$body$;
+
+-- A direct statement run inside the CMS RPC context WITHOUT rolling a success back (g2_try rolls every outcome back): a refused
+-- statement leaves nothing behind (its sub-transaction aborts), an accepted one PERSISTS, so a guard that fails to refuse shows up
+-- in every later governed step as well.  Returns sqlstate:message, or 00000: when it ran.
+create or replace function pg_temp.g2_persist(p_sql text) returns text language plpgsql as $body$
+declare prior text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), '');
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  begin
+    execute p_sql;
+    perform pg_catalog.set_config('app.cms_rpc', prior, true);
+    return '00000:';
+  exception when others then
+    perform pg_catalog.set_config('app.cms_rpc', prior, true);
+    return sqlstate || ':' || sqlerrm;
+  end;
+end;
+$body$;

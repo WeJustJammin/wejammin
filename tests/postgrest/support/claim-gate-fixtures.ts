@@ -1,10 +1,12 @@
 /** Every manifest entry's valid request, merged from the per-family modules. */
 import { ADMIN_FIXTURES } from './claim-gate-fixtures-admin';
 import { CMS_ACTOR_FIXTURES } from './claim-gate-fixtures-cms';
+import { CMS_COMPOSITION_FIXTURES } from './claim-gate-fixtures-composition';
 import {
   CMS_EDITORIAL_FIXTURES,
   SERVICE_PRINCIPAL_FIXTURES,
 } from './claim-gate-fixtures-editorial';
+import { CMS_GOVERNED_FIXTURES } from './claim-gate-fixtures-governed';
 import {
   IDENTITY_FIXTURES,
   PUBLIC_FIXTURES,
@@ -25,6 +27,8 @@ const tables: readonly FixtureTable[] = [
   ADMIN_FIXTURES,
   CMS_ACTOR_FIXTURES,
   CMS_EDITORIAL_FIXTURES,
+  CMS_GOVERNED_FIXTURES,
+  CMS_COMPOSITION_FIXTURES,
   IDENTITY_FIXTURES,
   PUBLIC_FIXTURES,
   PROFILE_CLAIM_FIXTURES,

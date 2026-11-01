@@ -185,7 +185,7 @@ select ok(
     and (select bool_and(pg_temp.r11_keys(entry) = 'category,outcome,reasonCode')
            from jsonb_array_elements(pg_temp.r11_detail('p-failed')::jsonb->'preflight') entry)
     and (pg_temp.r11_detail('p-failed')::jsonb->'preflight') @>
-        '[{"category":"taxonomy","outcome":"failed","reasonCode":"provider_unbuilt_reference"}]'::jsonb
+        '[{"category":"taxonomy","outcome":"failed","reasonCode":"taxonomy_version_not_active"}]'::jsonb
     and (select count(*) from jsonb_array_elements(pg_temp.r11_detail('p-failed')::jsonb->'preflight') entry
           where entry->>'outcome' = 'passed') = 16,
   'a failed category refuses 422 preflight_failed; the DETAIL lists all 17 {category, outcome, reasonCode} entries and nothing else [P2-S11-AC-097]');

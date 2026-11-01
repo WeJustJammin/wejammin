@@ -1,0 +1,71 @@
+-- CMS-03C-13 authority and concealment (BE03c 175, 1266, 1474): a verified human holding cms.author or cms.editor in the owner
+-- party; the content type must be in the caller's owner scope.  Order: session, concealment of the party, capability (403), content
+-- type (404).  A selector read needs the capability, not an entry assignment.  [P2-S12-AC-107, AC-108, AC-110, AC-261]
+
+select pg_temp.s12ps_sel('a-owner');
+select pg_temp.s12ps_sel('a-designer2', '{}'::jsonb, array[]::text[], 'designer2');
+select is(pg_temp.s12pu_oc('a-owner') || '/' || pg_temp.s12pu_oc('a-designer2'), 'ok/ok',
+  'any holder of cms.author reads the selector: the capability in the owner party is the authority, no entry assignment is needed [AC-108]');
+select is(pg_temp.s12pu_body('a-designer2'), pg_temp.s12pu_body('a-owner'), 'two authors see the same list [AC-108]');
+
+-- a reviewer, then a designer, then an editor ------------------------------------------------------------------------------------------
+select pg_temp.s12ps_sel('a-rev1-none', '{}'::jsonb, array[]::text[], 'rev1');
+select is(pg_temp.s12pu_oc('a-rev1-none'), 'P0001:capability_missing', 'a human with cms.reviewer only is 403 capability_missing [AC-108]');
+
+-- BE00 order (BE03c 175: session, acting context, STRICT VALIDATION, then capability/ownership): a malformed query from a caller who may not read the
+-- list, or whose content type does not exist, is the 400/422 validation refusal, never 403/404.  Concealment is unchanged: a well-formed request still
+-- answers 403/404 exactly as above.  [AC-107, AC-108]
+create temp table s12ps_order(label text primary key, actor text not null, patch jsonb not null, expected text not null) on commit drop;
+insert into s12ps_order values
+  ('o-nocap-type',       'rev1',  '{"contentTypeId":"not-a-uuid"}',                                  'P0001:INVALID_REQUEST'),
+  ('o-nocap-type-null',  'rev1',  '{"contentTypeId":null}',                                          'P0001:INVALID_REQUEST'),
+  ('o-nocap-limit',      'rev1',  '{"limit":0}',                                                     'P0001:VALIDATION_FAILED#["/limit"]'),
+  ('o-nocap-limit-text', 'rev1',  '{"limit":"5"}',                                                   'P0001:VALIDATION_FAILED#["/limit"]'),
+  ('o-nocap-cursor',     'rev1',  '{"cursor":"!!not a cursor!!"}',                                   'P0001:INVALID_REQUEST'),
+  ('o-nocap-cursor-num', 'rev1',  '{"cursor":7}',                                                    'P0001:INVALID_REQUEST'),
+  ('o-other-type',       'other', '{"contentTypeId":"not-a-uuid"}',                                  'P0001:INVALID_REQUEST'),
+  ('o-other-limit',      'other', '{"limit":51}',                                                    'P0001:VALIDATION_FAILED#["/limit"]'),
+  ('o-absent-limit',     'owner', '{"contentTypeId":"a9120000-0000-4000-8000-0000000000bb","limit":0}', 'P0001:VALIDATION_FAILED#["/limit"]'),
+  ('o-absent-cursor',    'owner', '{"contentTypeId":"a9120000-0000-4000-8000-0000000000bb","cursor":7}', 'P0001:INVALID_REQUEST'),
+  ('o-nocap-wellformed', 'rev1',  '{}',                                                              'P0001:capability_missing'),
+  ('o-absent-wellformed','owner', '{"contentTypeId":"a9120000-0000-4000-8000-0000000000bb"}',        'P0001:NOT_FOUND');
+select pg_temp.s12ps_sel('v-' || label, patch, array[]::text[], actor) from s12ps_order order by label;
+select is(pg_temp.s12pu_oc('v-' || o.label), o.expected, 'validation precedes authority: ' || o.label || ' [AC-107, AC-108]') from s12ps_order o order by o.label;
+select pg_temp.s12pu_call('v-o-anon-bad', 'platform_api.cms_list_pattern_selector',
+  pg_temp.s12ps_request('{"contentTypeId":"not-a-uuid"}'::jsonb) || jsonb_build_object('context', '{}'::jsonb), 'anonymous');
+select is(pg_temp.s12pu_oc('v-o-anon-bad'), 'P0001:UNAUTHENTICATED', 'authentication still precedes validation: an anonymous malformed request is 401 [AC-110]');
+select ok((select bool_and(before_rows = after_rows) from s12pu_out where label like 'v-o-%'), 'ordering refusals changed no store [AC-110]');
+select is(pg_temp.s09d_grant_via_rpc('rev1', 'cms.template_designer'), 'OK', 'setup: rev1 receives a real cms.template_designer grant');
+select pg_temp.s12ps_sel('a-rev1-designer', '{}'::jsonb, array[]::text[], 'rev1');
+select is(pg_temp.s12pu_oc('a-rev1-designer'), 'P0001:capability_missing',
+  'the designer capability that DEFINES patterns does not let a human select them: only author or editor does [AC-108]');
+select is(pg_temp.s09d_grant_via_rpc('rev1', 'cms.editor'), 'OK', 'setup: rev1 receives a real cms.editor grant');
+select pg_temp.s12ps_sel('a-rev1-editor', '{}'::jsonb, array[]::text[], 'rev1');
+select ok(pg_temp.s12pu_oc('a-rev1-editor') = 'ok' and pg_temp.s12pu_body('a-rev1-editor') = pg_temp.s12pu_body('a-owner'),
+  'cms.editor suffices and sees the same list [AC-108]');
+select ok(pg_temp.s12pu_unchanged('a-rev1-none') and pg_temp.s12pu_unchanged('a-rev1-designer'), 'a capability refusal changed no store [AC-110]');
+
+-- concealment -----------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12ps_sel('a-other', '{}'::jsonb, array[]::text[], 'other');
+select is(pg_temp.s12pu_oc('a-other'), 'P0001:capability_missing',
+  'a human of ANOTHER organization holds no capability in its own party: the owner''s list is never reachable [AC-108]');
+select pg_temp.s12pu_call('a-anon', 'platform_api.cms_list_pattern_selector', pg_temp.s12ps_request() || jsonb_build_object('context', '{}'::jsonb),
+  'anonymous');
+select is(pg_temp.s12pu_oc('a-anon'), 'P0001:UNAUTHENTICATED', 'a request without a verified human context is 401 UNAUTHENTICATED [AC-110]');
+select pg_temp.s12ps_sel('a-absent-type', jsonb_build_object('contentTypeId', 'a9120000-0000-4000-8000-0000000000bb'));
+select is(pg_temp.s12pu_oc('a-absent-type'), 'P0001:NOT_FOUND', 'an absent content type is 404 [AC-107]');
+
+-- privileges ------------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12ps_sel('acl-anon', '{}'::jsonb, array[]::text[], 'owner', 1, 'anon');
+select pg_temp.s12ps_sel('acl-authenticated', '{}'::jsonb, array[]::text[], 'owner', 1, 'authenticated');
+select is(pg_temp.s12pu_state('acl-anon') || '/' || pg_temp.s12pu_state('acl-authenticated'), '42501/42501',
+  'the real anon and authenticated database roles cannot execute the transport [AC-261]');
+select ok((select bool_and(before_rows = after_rows and call_role = requested_role) from s12pu_out where label like 'acl-%'),
+  'the ACL probes really ran as those roles and wrote nothing');
+
+-- authority is re-proved on every call: a revoked author is refused ------------------------------------------------------------------
+select is(pg_temp.s09d_revoke_via_rpc('designer2', 'cms.author'), 'OK', 'setup: the real revoke command ends designer2''s author grant');
+select pg_temp.s12ps_sel('a-revoked', '{}'::jsonb, array[]::text[], 'designer2');
+select is(pg_temp.s12pu_oc('a-revoked'), 'P0001:capability_missing', 'a revoked author is refused on the next call [AC-108]');
+select ok((select bool_and(call_role = 'service_role' and role_restored) from s12pu_out where requested_role = 'service_role'),
+  'every selector call ran under the real service_role and restored the prior role setting');

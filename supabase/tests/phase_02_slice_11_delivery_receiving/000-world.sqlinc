@@ -1,0 +1,65 @@
+-- Existing legitimate CMS world, used read-only as fixture builders. No guards
+-- are disabled: publication A/B/C pass real revision, review and lineage guards.
+\ir ../phase_02_slice_10_rpc/000-helpers.sqlinc
+\ir ../phase_02_slice_10_remaining_schema/000-helpers.sqlinc
+\ir ../phase_02_slice_10_rpc/001-fixtures.sqlinc
+\ir ../phase_02_slice_11_schema/000-helpers.sqlinc
+\ir ../phase_02_slice_11_schema/001-fixture.sqlinc
+\ir ../phase_02_slice_11_schema/002-row-builders.sqlinc
+\ir ../phase_02_slice_11_helpers/000-helpers.sqlinc
+\ir ../phase_02_slice_11_helpers/001-world.sqlinc
+\ir ../phase_02_slice_11_helpers/002-reviews.sqlinc
+select pg_temp.h11r_member('reviewer01',array['cms.reviewer']);
+\ir ../phase_02_slice_11_helpers/004-lineage.sqlinc
+
+create temp table dr_publications(label text primary key,id uuid not null,publication_hash text not null) on commit drop;
+create temp table dr_fixture_results(label text primary key,result jsonb not null) on commit drop;
+do $$
+declare k text; r jsonb;
+begin
+  foreach k in array array['a','b','c'] loop
+    begin
+      perform pg_temp.h11w_revision('dec197-' || k);
+      perform pg_temp.h11l_review('dec197-' || k);
+      r := platform_private.cms_append_publication_lineage(pg_temp.h11l_publish('dec197-' || k));
+      insert into dr_publications
+      select k,p.id,p.publication_hash::text from platform_private.cms_publication_versions p
+      where p.id=(r->>'publicationVersionId')::uuid;
+      insert into dr_fixture_results values(k,r);
+    exception when others then
+      insert into dr_fixture_results values(k,jsonb_build_object('error',sqlstate || ':' || sqlerrm));
+    end;
+  end loop;
+end;
+$$;
+select is((select count(*)::integer from dr_publications),3,
+  'DR-W01 three labelled publication VERSION rows pass real lineage guards [DEC-197]');
+select ok((select bool_and(r.result->>'publicationHash'=p.publication_hash)
+  from dr_fixture_results r join dr_publications p using(label)),
+  'DR-W02 frozen hash values are the immutable stored publication_hash returned by the real append [DEC-197]');
+
+-- RFC8785 keys are sorted by cms_jcs; UUID ordering is canonical lowercase text.
+-- This entire labelled set is this fixture's frozen compilation input. Hex-only
+-- row validation is not evidence that a future compiler included the full set.
+create temp table dr_frozen(key text primary key,value text not null) on commit drop;
+insert into dr_frozen
+select 'json',platform_private.cms_jcs(jsonb_build_object('publicationVersions',
+  jsonb_agg(jsonb_build_object('publicationVersionId',id::text,'publicationHash',publication_hash)
+    order by id::text))) from dr_publications;
+insert into dr_frozen
+select 'hash',encode(extensions.digest(convert_to(value,'utf8'),'sha256'),'hex') from dr_frozen where key='json';
+select is((select value from dr_frozen where key='hash'),
+  platform_private.cms_jcs_sha256(jsonb_build_object('publicationVersions',
+    (select jsonb_agg(jsonb_build_object('publicationVersionId',id::text,'publicationHash',publication_hash)
+      order by id::text) from dr_publications))),
+  'DR-W03 independently hashed canonical UTF8 agrees with JCS SHA256 for the real frozen set [DEC-197]');
+
+select set_config('app.cms_rpc','true',true);
+select is(pg_temp.dr_result(pg_temp.dr_manifest_sql('manifest-a'),true)->>'state','00000',
+  'DR-W04 admin positive: insert a complete ready manifest before ACL/RLS probes [DEC-197]');
+select is(pg_temp.dr_result(pg_temp.dr_manifest_sql('manifest-b'),true)->>'state','00000',
+  'DR-W05 admin positive: second legitimate manifest reserves another global ordinal [DEC-197]');
+select is(pg_temp.dr_result(pg_temp.dr_projection_sql('projection-a','a','manifest-a'),true)->>'state','00000',
+  'DR-W06 admin positive: full thirteen-column projection A receives publication A [DEC-197]');
+select is(pg_temp.dr_result(pg_temp.dr_projection_sql('projection-b','b','manifest-b'),true)->>'state','00000',
+  'DR-W07 admin positive: full projection B receives the distinct real publication B [DEC-197]');

@@ -1,0 +1,126 @@
+{
+  "version": 1,
+  "approvalRef": ".memory/pipeline/progress/verification/2026-10-21-native-postflight-owner-approval.json",
+  "approvalSha256": "612116b1a3de9ab52e1af5ec49691c6c1c748ff7bd185161a15de5ec0a713803",
+  "result": "OBSERVED_METADATA_ONLY",
+  "window": {
+    "startedAt": "2026-10-21T17:38:14.222Z",
+    "endedAt": "2026-10-21T17:38:14.253Z"
+  },
+  "runtime": "Node v22.23.1 UID 1000",
+  "terminalExit": 0,
+  "liveSessionRetained": false,
+  "privilegeOrOtherActions": false,
+  "rawReport": {
+    "localPath": ".lane-logs/s12-native-postflight-20261021.json",
+    "sha256": "3becb1998138a31e1196b3b6d8f78f45d3999e85d073aae16e492abdd28b29f5",
+    "bytes": 115491,
+    "mode": "0600",
+    "uid": 1000,
+    "kind": "canonical regular non-symlink",
+    "gitIgnored": true,
+    "writeFsyncClose": "genuine success"
+  },
+  "counters": {
+    "numericProcEntries": 446,
+    "uidExcluded": 259,
+    "uid1000IdentitiesRead": 183,
+    "directoryFilterENOENT": 4,
+    "directoryFilterENOENTNote": "directory-filter ENOENT only; their UID was not classified and is not claimed",
+    "identityBracketsStable": 183,
+    "unstableIdentities": 0,
+    "readableExeLinks": 179,
+    "readableCwdLinks": 179,
+    "reconciliation": "446 = 259 UID-excluded + 183 UID-1000 read + 4 directory-filter ENOENT"
+  },
+  "knownFour": [
+    {
+      "pid": 712,
+      "ppid": 1,
+      "group": 712,
+      "session": 712,
+      "startTime": "567",
+      "uid": 1000,
+      "exe": "EACCES",
+      "cwd": "EACCES"
+    },
+    {
+      "pid": 723,
+      "ppid": 712,
+      "group": 712,
+      "session": 712,
+      "startTime": "569",
+      "uid": 1000,
+      "exe": "EACCES",
+      "cwd": "EACCES"
+    },
+    {
+      "pid": 4377,
+      "ppid": 4335,
+      "group": 4377,
+      "session": 4377,
+      "startTime": "2069",
+      "uid": 1000,
+      "exe": "EACCES",
+      "cwd": "EACCES"
+    },
+    {
+      "pid": 4630,
+      "ppid": 4579,
+      "group": 4630,
+      "session": 4630,
+      "startTime": "2087",
+      "uid": 1000,
+      "exe": "EACCES",
+      "cwd": "EACCES"
+    }
+  ],
+  "knownFourNote": "Both links returned EACCES for the same four known PIDs; their six-field identities are unchanged from the completed fixed-eight-read record.",
+  "lockFiles": {
+    "paths": [
+      "/tmp/wejammin-supabase-ci.lock",
+      "/tmp/wejammin-quiet.lock",
+      "/tmp/wejammin-altdb.lock",
+      "/tmp/wejammin-reset.lock"
+    ],
+    "observed": "ENOENT in both the BEFORE and AFTER frames",
+    "procLocksBytesEach": 7318,
+    "truncationOrParserError": false,
+    "matchingRows": 0,
+    "matchingRowsNote": "Zero matching /proc/locks rows does not prove these locks are unheld, because no named inodes exist.",
+    "frames": "UNKNOWN"
+  },
+  "lockSourceCitations": [
+    {
+      "file": "infra/database-upgrades/native-tracing/receiving-lease-owner-ledger.h",
+      "lines": "136-144",
+      "fact": "opens the lock O_RDWR|O_NOFOLLOW|O_CLOEXEC without O_CREAT"
+    },
+    {
+      "file": "infra/database-upgrades/native-tracing/receiving-bootstrap-profile.h",
+      "lines": "83-85",
+      "fact": "locks UID/GID 1000 mode 0100644"
+    },
+    {
+      "file": "infra/database-upgrades/native-tracing/receiving-bootstrap-locks.h",
+      "symbol": "rb_lock_check",
+      "lines": "121-127",
+      "fact": "validates named/held identity/mode/owner"
+    },
+    { "attribution": "citations supplied by ROOT owner review" }
+  ],
+  "nativePr01PreflightClear": false,
+  "grantStatus": "The original eight-read grant is exhausted; the new one-window approval is now consumed and closed, with no renewal or fallback.",
+  "nextNeed": "Owner direction on the missing mandatory coordination files and the current metadata uncertainty",
+  "inferencesNotMade": [
+    "reboot",
+    "cleanup cause",
+    "lock unheld",
+    "role/ownership/service/container mapping",
+    "native quiescence",
+    "global actor absence",
+    "host path canonicality"
+  ],
+  "diagnosticOnly": true,
+  "nativeOrDatabaseAcceptance": false
+}

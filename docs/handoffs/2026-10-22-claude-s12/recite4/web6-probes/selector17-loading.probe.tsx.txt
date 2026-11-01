@@ -1,0 +1,24 @@
+// @vitest-environment jsdom
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
+import { disableReactAct, enableReactAct } from './cms-editor-dom.test-support';
+import {
+  ENTRY_LOCALE, ENTRY_TYPE_KEY, LOADING_PATTERN, advanceTimers, deferred,
+  mountConnectedTaxonomy, noticeMatches, recordingFetcher, servedPage, settle,
+} from './cms-taxonomy-connected-fixtures.test-support';
+beforeAll(enableReactAct);
+afterAll(disableReactAct);
+afterEach(() => { vi.useRealTimers(); document.body.replaceChildren(); });
+describe('probe', () => {
+  it('FE03 1042: no loading state before 250 ms, a skeleton at 250 ms', async () => {
+    vi.useFakeTimers();
+    const pending = deferred<Response>();
+    const fd = recordingFetcher([pending.promise]);
+    const mounted = mountConnectedTaxonomy({ context: { typeKey: ENTRY_TYPE_KEY, locale: ENTRY_LOCALE, fetcher: fd.fetcher } });
+    await settle();
+    await advanceTimers(249);
+    expect(noticeMatches(mounted.container, LOADING_PATTERN)).toBe(false);
+    await advanceTimers(1);
+    expect(noticeMatches(mounted.container, LOADING_PATTERN)).toBe(true);
+    await settle(() => pending.resolve(servedPage()));
+  });
+});

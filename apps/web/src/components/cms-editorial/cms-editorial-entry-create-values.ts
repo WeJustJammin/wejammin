@@ -8,15 +8,14 @@ import {
 } from '../cms-editorial-fields/cms-field-value';
 
 /**
- * A field can be authored through CMS-03B-10 only when it has a producer:
- * taxonomy and media have none yet, an unreadable definition is unsupported,
- * and a relation is written by the revision route after the entry exists
- * (BE03b: the create request carries no relations).
+ * A field can be authored through CMS-03B-10 only when it has a producer: media
+ * has none yet, an unreadable definition is unsupported, and a relation is
+ * written by the revision route after the entry exists (BE03b: the create
+ * request carries no relations).
  */
 export const isCmsCreateAuthorable = (
   descriptor: CmsFieldDescriptor,
 ): boolean =>
-  descriptor.kind !== 'taxonomy' &&
   descriptor.kind !== 'media' &&
   descriptor.kind !== 'unsupported' &&
   descriptor.kind !== 'relation';

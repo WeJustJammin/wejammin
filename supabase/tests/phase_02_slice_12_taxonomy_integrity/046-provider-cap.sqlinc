@@ -1,0 +1,20 @@
+-- The provider caps blockingCount at 1000 (PreflightResult.blockingCount is 0..1000), like the pattern provider.  1001 assignments to
+-- merged terms (labelled forgery: the producers cap a field at 128 terms) must report exactly 1000.  Include after 045-provider-context.sqlinc.
+
+select set_config('app.cms_rpc', 'true', true);
+select pg_temp.ti_term('capsurv', pg_temp.ti_org(), 'hv1', 'hv1', 'capsurv');
+select pg_temp.h11_raw_exec('platform_private.cms_terms', format(
+  'insert into platform_private.cms_terms(id, owner_id, lifecycle, version, taxonomy_version_id, term_key, created_by, taxonomy_id, successor_id)
+   select (''a9300000-0000-4000-8000-'' || lpad(i::text, 12, ''0''))::uuid, %L::uuid, ''merged'', 1, %L::uuid, ''cap'' || i, %L::uuid, %L::uuid, %L::uuid
+     from generate_series(1, 1001) i',
+  pg_temp.ti_org(), pg_temp.ti_uuid('hv1'), pg_temp.ti_creator(), pg_temp.ti_uuid('hv1'), pg_temp.ti_uuid('capsurv')));
+create temp table ti_cap on commit drop as select pg_temp.ti_h_create('cap', array[]::text[]) as id;
+select pg_temp.h11_raw_exec('platform_private.cms_term_assignments', format(
+  'insert into platform_private.cms_term_assignments(owner_id, state, version, revision_id, field_definition_id, term_id, taxonomy_version_id, position, provenance, created_by)
+   select %L::uuid, ''active'', 1, %L::uuid, %L::uuid, (''a9300000-0000-4000-8000-'' || lpad(i::text, 12, ''0''))::uuid, %L::uuid, i %% 128, ''authored'', %L::uuid
+     from generate_series(1, 1001) i',
+  pg_temp.ti_org(), (select id from ti_cap), pg_temp.h11w_fdef('tags'), pg_temp.ti_uuid('hv1'), pg_temp.ti_creator()));
+select is((select count(*)::integer from platform_private.cms_term_assignments where revision_id = (select id from ti_cap)), 1001,
+  'fixture: 1001 active assignments to merged terms');
+select is(pg_temp.ti_gate((select id from ti_cap)), 'failed/term_merged_unconverged/1000',
+  'blockingCount is capped at 1000 although 1001 assignments are offenders (the PreflightResult bound) [P2-S12-AC-239]');

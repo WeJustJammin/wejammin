@@ -1,0 +1,111 @@
+-- The fan-out window (BE03c: fanoutRows counts cms_locale_variants rows in state `stale` whose created_at lies in
+-- the closed-open window; staleFieldsAppended sums jsonb_array_length(stale_field_ids) over those rows; author
+-- `draft` rows are never counted).  The fixture is built by the real writers, then the row instants are pinned.
+
+select pg_temp.l208_as('creatorAuth');
+select set_config('app.cms_rpc', 'true', true);
+
+-- ---- three translated locales, authored by the real CMS-03C-04 command -----------------------------------
+create temp table l208_fr on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('fr-FR', pg_temp.l12r_field_list(jsonb_build_object(
+  'title', 'Titre FR', 'summary', 'Resume FR', 'legal', 'Mentions FR')), 'l208-fr-0001')) as response;
+select set_config('app.cms_rpc', 'true', true);
+create temp table l208_de on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('de-DE', jsonb_build_array(
+  jsonb_build_object('fieldId', pg_temp.l12r_fid('title'), 'value', null),
+  jsonb_build_object('fieldId', pg_temp.l12r_fid('summary'), 'value', 'Zusammenfassung'),
+  jsonb_build_object('fieldId', pg_temp.l12r_fid('legal'), 'value', 'Rechtliches')), 'l208-de-0001')) as response;
+select set_config('app.cms_rpc', 'true', true);
+create temp table l208_ca on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('fr-CA', pg_temp.l12r_field_list(jsonb_build_object(
+  'title', 'Titre CA', 'legal', 'Mentions CA')), 'l208-ca-0001')) as response;
+select set_config('app.cms_rpc', 'true', true);
+
+select is((select count(*)::integer from l208_fr, l208_de, l208_ca
+            where not (l208_fr.response ? '__error' or l208_de.response ? '__error' or l208_ca.response ? '__error')
+              and l208_fr.response->>'state' = 'draft' and l208_de.response->>'state' = 'draft'
+              and l208_ca.response->>'state' = 'draft'), 1,
+  'control: fr-FR, de-DE and fr-CA variants are authored as drafts through the real command');
+select is((select count(*)::integer from platform_private.cms_locale_variants
+            where entry_id = pg_temp.l12_entry() and state = 'stale'), 0,
+  'control: no stale row exists before the source change');
+
+-- Before any stale row exists the read counts nothing (the actual instants, the window of the transaction minute).
+select is(pg_temp.l208_read(date_trunc('minute', now())::text, (date_trunc('minute', now()) + interval '1 minute')::text),
+  '{"fanoutRows":0,"staleFieldsAppended":0,"staleLegalFields":0}'::jsonb,
+  'with only author drafts and no stale row all three numbers are 0 [P2-S12-AC-052]');
+
+-- ---- the source change: the fan-out appends one stale row per dependent locale ------------------------------
+select pg_temp.l12_source_edit(pg_temp.l12r_values(
+  'Changed source title', 'Source summary', 'Changed source legal', 'Source terms', 'source-slug'));
+select set_config('app.cms_rpc', 'true', true);
+
+select is((select count(*)::integer from platform_private.cms_locale_variants
+            where entry_id = pg_temp.l12_entry() and state = 'stale'), 3,
+  'control: the source change appended one stale row for each of the three dependent locales');
+select is(pg_temp.l12_stored_stale('fr-FR')::text, (select jsonb_agg(f order by f)::text from unnest(array[
+  pg_temp.l12r_fid('title')::text, pg_temp.l12r_fid('legal')::text]) f),
+  'control: fr-FR stores exactly the two changed translated fields (title, legal) as stale');
+select is(pg_temp.l12_stored_stale('de-DE')::text, (select jsonb_agg(f order by f)::text from unnest(array[
+  pg_temp.l12r_fid('title')::text, pg_temp.l12r_fid('legal')::text]) f),
+  'control: de-DE stores title and legal as stale (an explicit-null title is still a stored value row)');
+select is(pg_temp.l12_stored_stale('fr-CA')::text, (select jsonb_agg(f order by f)::text from unnest(array[
+  pg_temp.l12r_fid('title')::text, pg_temp.l12r_fid('legal')::text]) f),
+  'control: fr-CA stores title and legal as stale');
+
+-- ---- pin the instants (triggers skipped: each fan-out stamps its rows with one clock_timestamp() taken at entry) --
+--   fr-FR stale 12:00:00 (the closed start), de-DE stale 12:00:59.999999 (last instant inside),
+--   fr-CA stale 12:01:00 (the open end of the first window; a legacy row with no stale ids),
+--   every author draft row 12:00:30 (inside the first window, never counted).
+set local session_replication_role = replica;
+update platform_private.cms_locale_variants
+   set created_at = '2026-10-22 12:00:00+00', updated_at = '2026-10-22 12:00:00+00'
+ where entry_id = pg_temp.l12_entry() and state = 'stale' and locale = 'fr-FR';
+update platform_private.cms_locale_variants
+   set created_at = '2026-10-22 12:00:59.999999+00', updated_at = '2026-10-22 12:00:59.999999+00'
+ where entry_id = pg_temp.l12_entry() and state = 'stale' and locale = 'de-DE';
+update platform_private.cms_locale_variants
+   set created_at = '2026-10-22 12:01:00+00', updated_at = '2026-10-22 12:01:00+00', stale_field_ids = '[]'::jsonb
+ where entry_id = pg_temp.l12_entry() and state = 'stale' and locale = 'fr-CA';
+update platform_private.cms_locale_variants
+   set created_at = '2026-10-22 12:00:30+00', updated_at = '2026-10-22 12:00:30+00'
+ where entry_id = pg_temp.l12_entry() and state = 'draft';
+set local session_replication_role = origin;
+select set_config('app.cms_rpc', 'true', true);
+
+select is((select count(*)::integer from platform_private.cms_locale_variants
+            where entry_id = pg_temp.l12_entry()
+              and ((state = 'stale' and created_at in ('2026-10-22 12:00:00+00', '2026-10-22 12:00:59.999999+00', '2026-10-22 12:01:00+00'))
+                or (state = 'draft' and created_at = '2026-10-22 12:00:30+00'))), 6,
+  'control: the three stale rows and the three author drafts carry the pinned instants');
+
+create temp table l208_before on commit drop as select pg_temp.l208_evidence() as value;
+
+-- ---- the window [12:00:00, 12:01:00) -------------------------------------------------------------------------------
+create temp table l208_w0 on commit drop as select pg_temp.l208_read('2026-10-22 12:00:00+00', '2026-10-22 12:01:00+00') as answer;
+select is((select answer from l208_w0), '{"fanoutRows":2,"staleFieldsAppended":4,"staleLegalFields":2}'::jsonb,
+  'the window counts the closed start (fr-FR, 12:00:00) and the last inside instant (de-DE): 2 rows, 2+2 fields; not the open end, not drafts [P2-S12-AC-052]');
+select is((select answer->'fanoutRows' from l208_w0), '2'::jsonb,
+  'a row stamped exactly at the closed start is inside and a row stamped exactly at the open end is outside [P2-S12-AC-052]');
+select is(pg_temp.l208_read('2026-10-22 11:59:00+00', '2026-10-22 12:00:00+00')->'fanoutRows', '0'::jsonb,
+  'the window ending at 12:00:00 excludes the row stamped 12:00:00 (open end) [P2-S12-AC-052]');
+select is(pg_temp.l208_read('2026-10-22 11:59:00+00', '2026-10-22 12:00:00+00')->'staleFieldsAppended', '0'::jsonb,
+  'and appends no field to that window [P2-S12-AC-052]');
+select is((pg_temp.l208_read('2026-10-22 12:01:00+00', '2026-10-22 12:02:00+00') - 'staleLegalFields'),
+  '{"fanoutRows":1,"staleFieldsAppended":0}'::jsonb,
+  'the next window starts closed at 12:01:00: the legacy fr-CA row with stale_field_ids = [] counts 1 row and 0 fields [P2-S12-AC-052]');
+select is(pg_temp.l208_read('2026-10-22 12:02:00+00', '2026-10-22 12:03:00+00') - 'staleLegalFields',
+  '{"fanoutRows":0,"staleFieldsAppended":0}'::jsonb, 'a later window with no stale row counts nothing [P2-S12-AC-052]');
+select is(pg_temp.l208_read('2026-10-22 14:00:00+02', '2026-10-22 14:01:00+02') - 'staleLegalFields',
+  '{"fanoutRows":2,"staleFieldsAppended":4}'::jsonb, 'the same minute written with a +02 offset reads the same rows [P2-S12-AC-052]');
+
+-- Author draft rows (state draft) are never counted, even when they sit inside the window and hold values.
+select is((select count(*)::integer from platform_private.cms_locale_variants
+            where entry_id = pg_temp.l12_entry() and state = 'draft' and created_at = '2026-10-22 12:00:30+00'), 3,
+  'control: three author draft rows lie inside the first window');
+select is((select answer->>'fanoutRows' from l208_w0)::integer, 2,
+  'the three drafts inside the window are not fan-out rows: 2, not 5 [P2-S12-AC-052]');
+
+-- The counters are append history: a later revalidation does not rewrite what a past minute recorded (checked in 004).
+select is(pg_temp.l208_evidence(), (select value from l208_before),
+  'reading windows moved no variant, revision, value, audit, receipt, outbox or entry version [P2-S12-AC-052]');

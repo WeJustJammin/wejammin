@@ -1,0 +1,111 @@
+-- CMS-03C-21 is recomputed at every call and never stored (BE03c 190, 1385; tracker P2-S12-AC-155 ..
+-- AC-157), reads nothing it must not return, and breaks ties deterministically.
+
+-- Read-only: three projections left every table the command writes untouched.
+create temp table r12_ro_before on commit drop as
+select (select count(*)::integer from platform_private.cms_related_content_rules) as rules,
+       (select count(*)::integer from audit_private.audit_events) as audits,
+       (select count(*)::integer from platform_private.outbox_events) as outbox,
+       (select count(*)::integer from platform_private.idempotency_records) as receipts,
+       (select count(*)::integer from platform_private.cms_content_entries) as entries,
+       (select count(*)::integer from platform_private.cms_publication_versions) as publications;
+select pg_temp.r12_targets(pg_temp.r12_id('srcP'));
+select pg_temp.r12_targets(pg_temp.r12_id('srcP2'));
+select pg_temp.r12_targets(pg_temp.r12_id('srcP3'));
+select is((select row(rules, audits, outbox, receipts, entries, publications)::text from r12_ro_before),
+  (select row((select count(*)::integer from platform_private.cms_related_content_rules),
+              (select count(*)::integer from audit_private.audit_events),
+              (select count(*)::integer from platform_private.outbox_events),
+              (select count(*)::integer from platform_private.idempotency_records),
+              (select count(*)::integer from platform_private.cms_content_entries),
+              (select count(*)::integer from platform_private.cms_publication_versions))::text),
+  'three projections wrote no rule, audit, outbox, idempotency, entry or publication row [P2-S12-AC-156]');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP'))), pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP'))),
+  'the projection is deterministic: the same inputs give the same list [P2-S12-AC-156]');
+
+-- Argument validation: a typed INVALID_REQUEST, never an empty success for garbage.
+select is(pg_temp.r12_call($$select platform_private.cms_related_content_public_targets(null, 'en-US', 'public')$$)->>'__error', 'INVALID_REQUEST', 'a null source is invalid [P2-S12-AC-153]');
+select is(pg_temp.r12_targets(pg_temp.r12_id('srcP'), 'not a locale', 'public')->>'__error', 'INVALID_REQUEST', 'a malformed locale is invalid [P2-S12-AC-153]');
+select is(pg_temp.r12_targets(pg_temp.r12_id('srcP'), 'en-US', 'Bad Audience')->>'__error', 'INVALID_REQUEST', 'a malformed audience is invalid [P2-S12-AC-153]');
+select is(pg_temp.r12_targets(pg_temp.r12_id('srcP'), 'en-US', null)->>'__error', 'INVALID_REQUEST', 'a null audience is invalid [P2-S12-AC-153]');
+
+-- An emptied rule set projects nothing.
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcB', array['c1'], array[]::text[], pg_temp.r12_rule('same-type-recent', 5), 'r12-srcB-proj-0001')) ? '__error'), 'fixture: srcB curated');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcB'))), 'c1,xo,x7,x6,srcm,srcp',
+  'before revocation: pin c1, then the five most recent candidates: maxCandidates bounds the derived candidates only, the pin does not count against it (BE03c 1383) [P2-S12-AC-154]');
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcB', array[]::text[], array[]::text[], null, 'r12-srcB-proj-0002')) ? '__error'), 'fixture: srcB emptied');
+select is(pg_temp.r12_targets(pg_temp.r12_id('srcB')), '[]'::jsonb, 'a revoked rule set projects nothing; its history stays private [P2-S12-AC-157]');
+
+-- ---------------------------------------------------------------------------
+-- Recomputation: a target that becomes unpublished or private disappears, a newly published one appears.
+-- srcP pins [x2, c3, x3, x4, c1, x5, x6, c5]; srcP3 excludes c3 and derives same-type-recent (128).
+-- ---------------------------------------------------------------------------
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP'))), 'c3,c1,x6,c5', 'before: the four publicly eligible pins [P2-S12-AC-157]');
+select pg_temp.r12_lifecycle('x6', 'archived');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP'))), 'c3,c1,c5', 'an archived entry disappears from the pins at the next call [P2-S12-AC-157]');
+select pg_temp.r12_foreign_owner('c1');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP'))), 'c3,c5', 'an entry now owned by another party disappears: a recommendation never crosses owners [P2-S12-AC-155]');
+select pg_temp.r12_unpublish('c3');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP'))), 'c5', 'an unpublished entry (tombstone head) disappears [P2-S12-AC-157]');
+select pg_temp.r12_publish('x5');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP'))), 'x5,c5',
+  'a pinned entry published after the pin appears at its pin position: nothing was stored at write time [P2-S12-AC-156]');
+select pg_temp.r12_lifecycle('x7', 'held');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP3'))), 'x5,xo,srcm,srcp,c7,c6,c4,c2',
+  'the derived list follows: the archived x6, held x7, foreign-owned c1 and unpublished c3 are gone, the newly published x5 leads (exclusion of c3 still wins) [P2-S12-AC-157]');
+select ok(pg_temp.r12_valid(pg_temp.r12_targets(pg_temp.r12_id('srcP3'))), 'the recomputed list still satisfies the contract [P2-S12-AC-157]');
+-- The editorial explanation stays private: the rule history is untouched by the disappearance.
+select is(pg_temp.r12_stored('srcP'), 'pin:c1:4:active:1,pin:c3:1:active:1,pin:c5:7:active:1,pin:x2:0:active:1,pin:x3:2:active:1,pin:x4:3:active:1,pin:x5:5:active:1,pin:x6:6:active:1',
+  'the stored pins are untouched by their targets leaving the public list (editorial history stays private) [P2-S12-AC-157]');
+
+-- ---------------------------------------------------------------------------
+-- Ties: equal head created_at falls back to entry id ascending.  The producer stamps clock_timestamp(), so a
+-- tie is made by equalizing the instants of two producer-created heads (hand-written, trigger-paused UPDATE of
+-- created_at / updated_at only; evidence columns are untouched).
+-- ---------------------------------------------------------------------------
+create or replace function pg_temp.r12_equalize(p_tag text, p_to_tag text)
+returns void
+language plpgsql
+as $body$
+declare
+  target_instant timestamptz;
+begin
+  -- The instant is read first, in its own statement: ALTER TABLE ... DISABLE TRIGGER (inside h11_raw_exec)
+  -- is refused with 55006 while an enclosing query still holds the table open.
+  select head.created_at into target_instant
+    from platform_private.cms_publication_versions head
+   where head.entry_id = pg_temp.r12_id(p_to_tag) and head.locale = 'en-US' and head.audience = 'public'
+   order by head.version desc
+   limit 1;
+  perform pg_temp.r12_safe('equalize ' || p_tag, format('select pg_temp.h11_raw_exec(%L, %L)',
+    'platform_private.cms_publication_versions', format(
+    $$update platform_private.cms_publication_versions set created_at = %L, updated_at = %L
+       where entry_id = %L and locale = 'en-US' and audience = 'public'$$,
+    target_instant, target_instant, pg_temp.r12_id(p_tag))));
+end;
+$body$;
+create or replace function pg_temp.r12_id_order(p_a text, p_b text)
+returns text
+language sql
+stable
+as $body$
+  select string_agg(value, ',' order by id) from pg_temp.r12_tags where value in (p_a, p_b)
+$body$;
+
+-- Candidates left eligible at this point: c2 c4 c6 c7 srcp srcm xo x5 (+ the article c5).  Make c6 tie with c5
+-- and c4 tie with c7.
+select pg_temp.r12_equalize('c6', 'c5');
+select pg_temp.r12_equalize('c4', 'c7');
+select is((select coalesce(string_agg(step || ' ' || err::text, '; '), '') from pg_temp.r12_world_errors where step like 'equalize%'), '',
+  'tie fixtures: the head instants of c6/c5 and c4/c7 were equalized [P2-S12-AC-231]');
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcT', array[]::text[], array[]::text[], pg_temp.r12_rule('shared-terms', 128), 'r12-srcT-tie-0001')) ? '__error'),
+  'fixture: srcT derives shared-terms (draft terms term1, term2)');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcT'))),
+  'srcp,' || pg_temp.r12_id_order('c5', 'c6') || ',c2,x5,xo,srcm,' || pg_temp.r12_id_order('c7', 'c4'),
+  'shared-terms: srcp (newest, two shared), then the tied c5/c6 by entry id ascending, then c2 (one shared), then the zero-share group x5 xo srcm and the tied c7/c4 by entry id ascending [P2-S12-AC-231]');
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcT', array[]::text[], array[]::text[], pg_temp.r12_rule('same-type-recent', 128), 'r12-srcT-tie-0002')) ? '__error'),
+  'fixture: srcT switches to same-type-recent');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcT'))),
+  'x5,xo,srcm,srcp,' || pg_temp.r12_id_order('c7', 'c4') || ',c6,c2',
+  'same-type-recent: head created_at desc with the tied c7/c4 by entry id ascending; the article c5 is outside the type [P2-S12-AC-232]');
+select ok(pg_temp.r12_valid(pg_temp.r12_targets(pg_temp.r12_id('srcT'))), 'the tied projection satisfies the list contract [P2-S12-AC-232]');

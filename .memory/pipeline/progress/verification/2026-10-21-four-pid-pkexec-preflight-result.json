@@ -1,0 +1,135 @@
+{
+  "version": 1,
+  "approvalRef": ".memory/pipeline/progress/verification/2026-10-21-four-pid-pkexec-owner-approval.json",
+  "approvalId": "2026-10-21-four-pid-pkexec-readonly",
+  "result": "STOPPED_PROCESS_IDENTITY_MISMATCH",
+  "preflightAt": "2026-10-21T07:28:26.656Z",
+  "postflightAt": "2026-10-21T07:31:45.131Z",
+  "metadataAndBinaryPinsStable": true,
+  "bracketNote": "The fixed-target metadata-only recheck at postflightAt used the same preflight code and the same pinned Node; all four observations and all three binary metadata/hash pins were byte-equivalent to the first snapshot. Both tool handles were terminal exit 0.",
+  "targets": [
+    {
+      "pid": 729,
+      "expected": {
+        "pid": 729,
+        "ppid": 1,
+        "group": 729,
+        "session": 729,
+        "startTime": "677",
+        "uid": 1000
+      },
+      "observed": "ENOENT",
+      "match": false
+    },
+    {
+      "pid": 739,
+      "expected": {
+        "pid": 739,
+        "ppid": 729,
+        "group": 729,
+        "session": 729,
+        "startTime": "679",
+        "uid": 1000
+      },
+      "observed": {
+        "pid": 739,
+        "ppid": 712,
+        "group": 739,
+        "session": 739,
+        "startTime": "578",
+        "uid": 1000
+      },
+      "match": false
+    },
+    {
+      "pid": 2519,
+      "expected": {
+        "pid": 2519,
+        "ppid": 2480,
+        "group": 2519,
+        "session": 2519,
+        "startTime": "1317",
+        "uid": 1000
+      },
+      "observed": {
+        "pid": 2519,
+        "ppid": 712,
+        "group": 2476,
+        "session": 2476,
+        "startTime": "1840",
+        "uid": 1000
+      },
+      "match": false
+    },
+    {
+      "pid": 2566,
+      "expected": {
+        "pid": 2566,
+        "ppid": 2542,
+        "group": 2566,
+        "session": 2566,
+        "startTime": "1322",
+        "uid": 1000
+      },
+      "observed": {
+        "pid": 2566,
+        "ppid": 712,
+        "group": 2430,
+        "session": 2430,
+        "startTime": "1842",
+        "uid": 1000
+      },
+      "match": false
+    }
+  ],
+  "allExpectedInstancesMismatchOrAbsent": true,
+  "privilegeInvocations": 0,
+  "exeReads": 0,
+  "pkexecInvocations": 0,
+  "consumptionClaimCreated": false,
+  "scopeApplicableToObservedProcesses": false,
+  "diagnosticOnly": true,
+  "nativeOrDatabaseAcceptance": false,
+  "observedOnly": "fixed-target stat and directory UID plus binary metadata/hash",
+  "notObserved": [
+    "privileged executable-link read",
+    "/proc/PID/exe read",
+    "command line",
+    "environment",
+    "secrets",
+    "signals"
+  ],
+  "rebootInference": false,
+  "rebootInferenceNote": "Start-time and ancestry changes are source-based; a reboot is not inferred and current process executables are not classified",
+  "binaries": [
+    {
+      "path": "/usr/bin/pkexec",
+      "device": 37,
+      "inode": 139723,
+      "uid": 0,
+      "mode": 35309,
+      "size": 26720,
+      "sha256": "72cd770659617b11f0872bfac159cdd5e41b0e44bbc01f9d3cd88d18e89861cd"
+    },
+    {
+      "path": "/usr/bin/readlink",
+      "device": 37,
+      "inode": 9129108,
+      "uid": 0,
+      "mode": 33261,
+      "size": 76088,
+      "sha256": "092f87a1632ad9102757d676c85150556b71cc377642f2d55f04c9df9af63aa1"
+    },
+    {
+      "path": "/home/rob/.cache/chrome-gate-runtime/node-v22.23.1-linux-x64/bin/node",
+      "device": 52,
+      "inode": 77902051,
+      "uid": 1000,
+      "mode": 33261,
+      "size": 124835376,
+      "sha256": "93956de2e59480474a7b46571da1651180b1a050cdf32641ebec4ce6e478e068"
+    }
+  ],
+  "nextStep": "Owner direction for a fresh UNPRIVILEGED metadata-only preflight (stat, UID, exe and cwd links; no command line, environment, secrets, signals or mutations) before proposing any new fixed privileged scope",
+  "consumptionRecordCreated": false
+}

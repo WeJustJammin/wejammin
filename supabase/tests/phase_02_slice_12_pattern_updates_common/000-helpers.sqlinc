@@ -1,0 +1,206 @@
+-- Slice 12 lane pattern-updates: shared helpers of the CMS-03C-13 selector, CMS-03C-14 update-diff and CMS-03C-15 pattern-update
+-- suites.  Include after phase_02_slice_09_dec108/00-helpers, 01-actors, 02-chain, phase_02_slice_09_p240/01-block,
+-- phase_02_slice_12_pattern_definition/000-fixtures, 010-oracles and phase_02_slice_12_pattern_placement/000-fixtures, 010-oracles.
+-- The placement helpers (s12pl_entry, s12pl_request, s12pl_run, s12pl_pattern, s12pl_review ...) mint entries, place patterns through the
+-- real CMS-03C-02 producer and create/activate patterns through CMS-03C-12 and the governed chain; nothing here forges an active row.
+
+create temp table s12pu_out(label text primary key, request jsonb, response jsonb, state text, message text, detail text,
+  headers text, before_rows jsonb, after_rows jsonb, requested_role text, call_role text, role_restored boolean,
+  rpc_before text, rpc_after text) on commit drop;
+
+-- One RPC call as the named actor and database role: SQLSTATE, message, DETAIL, the response and the `response.headers` the transport
+-- published, with a full before/after image of every store a pattern or composition write touches, and the value of the RPC-context flag
+-- `app.cms_rpc` just before and just after the call (PAT-031: a wrapper restores the caller's value).  Every call starts with the flag
+-- cleared, as a PostgREST request does; p_flag, when given, is the caller's value of the flag for this one call (a known sentinel), and the
+-- harness clears it again afterwards.
+create or replace function pg_temp.s12pu_call(
+  p_label text, p_function text, p_request jsonb, p_actor text default 'owner', p_role text default 'service_role', p_flag text default null)
+returns void
+language plpgsql as $body$
+declare before_rows jsonb; answer jsonb; code text := '00000'; msg text; details text; header_text text;
+  prior_role text := current_setting('role'); prior_user text := current_user; invoked_as text; restored boolean;
+  flag_before text; flag_after text;
+begin
+  if p_function not in ('platform_api.cms_list_pattern_selector', 'platform_api.cms_get_instance_update_diff',
+                        'platform_api.cms_apply_pattern_update') then
+    raise exception 'unknown pattern-updates function %', p_function;
+  end if;
+  if p_role not in ('service_role', 'anon', 'authenticated') then raise exception 'unknown database role %', p_role; end if;
+  perform pg_temp.s09d_session(p_actor, p_role);
+  if p_actor = 'anonymous' then
+    perform pg_temp.set_jwt_claim('sub', '', true);
+    perform set_config('app.auth_user_id', '', true);
+    perform set_config('app.actor_auth_user_id', '', true);
+    perform set_config('app.actor_person_id', '', true);
+    perform set_config('app.acting_party_id', '', true);
+    perform set_config('app.acting_context_id', '', true);
+  end if;
+  perform set_config('response.headers', '', true);
+  before_rows := pg_temp.s12pl_snapshot();
+  begin
+    perform set_config('role', p_role, true);
+    invoked_as := current_user;
+    if invoked_as is distinct from p_role then raise exception 'pattern-updates test effective role mismatch'; end if;
+    if p_flag is not null then perform set_config('app.cms_rpc', p_flag, true); end if;
+    flag_before := coalesce(current_setting('app.cms_rpc', true), '');
+    begin
+      execute format('select %s($1)', p_function) into answer using p_request;
+    exception when others then
+      get stacked diagnostics code = returned_sqlstate, msg = message_text, details = pg_exception_detail;
+      answer := null;
+    end;
+    flag_after := coalesce(current_setting('app.cms_rpc', true), '');
+    perform set_config('role', prior_role, true);
+  exception when others then
+    perform set_config('role', prior_role, true);
+    raise;
+  end;
+  header_text := nullif(current_setting('response.headers', true), '');
+  restored := current_user::text = prior_user and current_setting('role') = prior_role;
+  if restored is not true then raise exception 'pattern-updates test role restoration failed'; end if;
+  if p_flag is not null then perform set_config('app.cms_rpc', '', true); end if;
+  insert into s12pu_out values (p_label, p_request, answer, code, msg, details, header_text, before_rows,
+    pg_temp.s12pl_snapshot(), p_role, invoked_as, restored, flag_before, flag_after)
+  on conflict (label) do update set request = excluded.request, response = excluded.response, state = excluded.state,
+    message = excluded.message, detail = excluded.detail, headers = excluded.headers, before_rows = excluded.before_rows,
+    after_rows = excluded.after_rows, rpc_before = excluded.rpc_before, rpc_after = excluded.rpc_after;
+end;
+$body$;
+create or replace function pg_temp.s12pu_state(p_label text) returns text language sql stable as $body$
+  select coalesce((select state from s12pu_out where label = p_label), 'UNRUN') $body$;
+create or replace function pg_temp.s12pu_body(p_label text) returns jsonb language sql stable as $body$
+  select response from s12pu_out where label = p_label $body$;
+create or replace function pg_temp.s12pu_unchanged(p_label text) returns boolean language sql stable as $body$
+  select coalesce((select before_rows = after_rows from s12pu_out where label = p_label), false) $body$;
+-- outcome text 'ok' or 'SQLSTATE:message' (+ '#' + DETAIL when present), the form the table-driven cases compare.
+create or replace function pg_temp.s12pu_oc(p_label text) returns text language sql stable as $body$
+  select case when state = '00000' then 'ok' else state || ':' || coalesce(message, '') || coalesce('#' || nullif(detail, ''), '') end
+    from s12pu_out where label = p_label $body$;
+
+-- A refusal: SQLSTATE P0001, the exact message token, the exact DETAIL JSON when given, and NO effect on any captured store.
+create or replace function pg_temp.s12pu_refused(
+  p_label text, p_function text, p_request jsonb, p_token text, p_detail jsonb default null,
+  p_actor text default 'owner', p_role text default 'service_role')
+returns setof text
+language plpgsql as $body$
+begin
+  perform pg_temp.s12pu_call(p_label, p_function, p_request, p_actor, p_role);
+  return next extensions.is(pg_temp.s12pu_state(p_label), 'P0001', p_label || ': SQLSTATE is the application refusal');
+  return next extensions.is((select message from s12pu_out where label = p_label), p_token, p_label || ': exact SQL message token ' || p_token);
+  if p_detail is not null then
+    return next extensions.is((select case when detail ~ '^[\[{]' then detail::jsonb end from s12pu_out where label = p_label), p_detail,
+      p_label || ': exact DETAIL pointer or members');
+  end if;
+  return next extensions.ok(pg_temp.s12pu_unchanged(p_label), p_label || ': the refusal preserves every captured full row of every store');
+end;
+$body$;
+
+-- ---------------------------------------------------------------------------------------------------------------- composition rows --
+-- The head (greatest version) row of a path of a tag's revision; the instance an author addresses.
+create or replace function pg_temp.s12pu_head(p_tag text, p_path text) returns uuid language sql stable as $body$
+  select id from platform_private.cms_composition_instances
+   where revision_id = pg_temp.s12pl_rev(p_tag) and path = p_path order by version desc limit 1 $body$;
+create or replace function pg_temp.s12pu_hv(p_tag text, p_path text) returns text language sql stable as $body$
+  select version::text from platform_private.cms_composition_instances
+   where revision_id = pg_temp.s12pl_rev(p_tag) and path = p_path order by version desc limit 1 $body$;
+create or replace function pg_temp.s12pu_row(p_id uuid) returns jsonb language sql stable as $body$
+  select to_jsonb(r) from platform_private.cms_composition_instances r where r.id = p_id $body$;
+-- Every version row of a path, oldest first.
+create or replace function pg_temp.s12pu_chain(p_tag text, p_path text) returns jsonb language sql stable as $body$
+  select coalesce(jsonb_agg(to_jsonb(r) order by r.version), '[]'::jsonb) from platform_private.cms_composition_instances r
+   where r.revision_id = pg_temp.s12pl_rev(p_tag) and r.path = p_path $body$;
+
+-- Places a pattern (label) on a fresh entry through the real CMS-03C-02 producer; one TAP line.
+create or replace function pg_temp.s12pu_place(
+  p_tag text, p_pattern text, p_overrides jsonb default '{}'::jsonb, p_link text default 'linked', p_slot text default '/',
+  p_templated boolean default false, p_type_ordinal integer default 1)
+returns setof text
+language plpgsql as $body$
+begin
+  if p_templated then perform pg_temp.s12pl_tentry(p_tag, 'owner', 's12pu-template');
+  else perform pg_temp.s12pl_entry(p_tag, null, 'owner', p_type_ordinal); end if;
+  perform pg_temp.s12pl_run('place:' || p_tag, pg_temp.s12pl_request(p_tag, p_pattern, p_slot, p_overrides, 's12pu-place-' || p_tag, p_link));
+  return next extensions.is(pg_temp.s12pl_state('place:' || p_tag), '00000', 'setup: ' || p_tag || ' places ' || p_pattern || ' through CMS-03C-02');
+  if pg_temp.s12pl_state('place:' || p_tag) <> '00000' then
+    return next extensions.diag(coalesce((select message || ' ' || coalesce(detail, '') from s12pl_out where label = 'place:' || p_tag), ''));
+  end if;
+end;
+$body$;
+
+-- ------------------------------------------------------------------------------------------------------------------ request builders --
+create or replace function pg_temp.s12pu_diff_request(p_instance uuid, p_actor text default 'owner') returns jsonb
+language sql volatile as $body$
+  select jsonb_build_object('instanceId', p_instance, 'context', pg_temp.s09d_context(p_actor, true),
+    'correlationId', 'a9120000-0000-4000-8000-00000000c0d1') $body$;
+create or replace function pg_temp.s12pu_diff(p_label text, p_instance uuid, p_actor text default 'owner', p_role text default 'service_role')
+returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12pu_call(p_label, 'platform_api.cms_get_instance_update_diff', pg_temp.s12pu_diff_request(p_instance, p_actor), p_actor, p_role);
+end;
+$body$;
+create or replace function pg_temp.s12pu_diff_head(p_label text, p_tag text, p_path text, p_actor text default 'owner')
+returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12pu_diff(p_label, pg_temp.s12pu_head(p_tag, p_path), p_actor);
+end;
+$body$;
+
+-- One instance entry of a CMS-03C-15 request: the instance's own version is its CAS operand (decimal string).
+create or replace function pg_temp.s12pu_target(p_tag text, p_path text, p_choices jsonb default null) returns jsonb
+language sql stable as $body$
+  select jsonb_build_object('instanceId', pg_temp.s12pu_head(p_tag, p_path), 'expectedVersion', pg_temp.s12pu_hv(p_tag, p_path))
+    || case when p_choices is null then '{}'::jsonb else jsonb_build_object('choices', p_choices) end $body$;
+-- The CMS-03C-15 request exactly as the Worker adapter builds it: the body members, the transport idempotencyKey and ifMatch (the
+-- unquoted entry aggregate version), the server context and the correlation.
+create or replace function pg_temp.s12pu_update_request(
+  p_tag text, p_action text, p_instances jsonb, p_idem text, p_target integer default null, p_expected text default null,
+  p_actor text default 'owner')
+returns jsonb language sql volatile as $body$
+  select jsonb_build_object('action', p_action, 'instances', p_instances,
+    'expectedVersion', coalesce(p_expected, pg_temp.s12pl_version(p_tag)), 'ifMatch', coalesce(p_expected, pg_temp.s12pl_version(p_tag)),
+    'idempotencyKey', p_idem, 'correlationId', 'a9120000-0000-4000-8000-00000000c0d2',
+    'context', pg_temp.s09d_context(p_actor, true))
+    || case when p_target is null then '{}'::jsonb else jsonb_build_object('targetPatternVersion', p_target) end $body$;
+create or replace function pg_temp.s12pu_update(p_label text, p_request jsonb, p_actor text default 'owner', p_role text default 'service_role')
+returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12pu_call(p_label, 'platform_api.cms_apply_pattern_update', p_request, p_actor, p_role);
+end;
+$body$;
+
+-- The JSON props of a stored row, and an independent oracle for the pinned value of a node: the props of the node at a key chain
+-- in a stored pattern version row (a chain is the slash-joined node keys from the root; nested pattern references are not nodes).
+create or replace function pg_temp.s12pu_props(p_id uuid) returns jsonb language sql stable as $body$
+  select props from platform_private.cms_composition_instances where id = p_id $body$;
+create or replace function pg_temp.s12pu_pattern_row(p_label text) returns jsonb language sql stable as $body$
+  select to_jsonb(v) from platform_private.cms_pattern_versions v
+   where v.pattern_id = (pg_temp.s12pd_body(p_label)->>'patternId')::uuid and v.version = (pg_temp.s12pd_body(p_label)->>'patternVersion')::integer $body$;
+
+-- A `pending_diff` row exactly as the linked-update scan appends it (BE03c 1367, AC-212): a copy of the head row at the next version,
+-- state pending_diff, pinned to the UNCHANGED version, carrying pending_pattern_version and the same position.  The scan job is not part
+-- of this lane, so no producer exists: this guarded direct insert under app.cms_rpc is the labelled fixture of its output.  Before the
+-- column exists (RED) the unknown key is ignored and the row is inserted without it.
+create or replace function pg_temp.s12pu_pending(p_tag text, p_path text, p_pending integer default 2) returns uuid
+language plpgsql as $body$
+declare head_row platform_private.cms_composition_instances; row_id uuid := extensions.gen_random_uuid(); stamp timestamptz := clock_timestamp();
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select * into head_row from platform_private.cms_composition_instances
+   where revision_id = pg_temp.s12pl_rev(p_tag) and path = p_path order by version desc limit 1;
+  insert into platform_private.cms_composition_instances
+  select (jsonb_populate_record(null::platform_private.cms_composition_instances, to_jsonb(head_row)
+    || jsonb_build_object('id', row_id, 'state', 'pending_diff', 'version', head_row.version + 1, 'pending_pattern_version', p_pending,
+      'created_at', stamp, 'updated_at', stamp))).*;
+  return row_id;
+end;
+$body$;
+-- Additional edit authority on a tag's entry: an active CMS entry assignment, as the placement helper writes one.
+create or replace function pg_temp.s12pu_assign(p_tag text, p_actor text, p_capability text default 'cms.author') returns void
+language plpgsql as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_entry_assignments(owner_id, entry_id, assignee_person_id, capability_key, state, version, created_at, updated_at)
+  values (pg_temp.s09d_id('ownerOrg'), pg_temp.s12pl_entry_id(p_tag), (select person_id from s09d_actor where key = p_actor), p_capability,
+    'active', 1, timestamptz '2026-10-08T12:00:00Z', timestamptz '2026-10-08T12:00:00Z');
+end;
+$body$;

@@ -1,0 +1,21 @@
+-- A term outlives the vocabulary version it was created under (BE03c "the terms belong to the vocabulary, not to a version"): the
+-- stored composite foreign key (term_id, taxonomy_version_id, owner_id) pins an assignment row to the term's own write-version, while
+-- the revision records the vocabulary's CURRENT active version id (BE03b taxonomy encoding; P2-S12-AC-246).
+
+select pg_temp.ti_version('vs1', pg_temp.ti_org(), 'ti-successor', 1, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('succ', pg_temp.ti_org(), 'vs1', 'vs1', 'succ');
+select pg_temp.ti_version_to('vs1', 'superseded');
+select pg_temp.ti_version('vs2', pg_temp.ti_org(), 'ti-successor', 2, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb, 'vs1', 'vs1');
+
+select pg_temp.ti_create('s_c', jsonb_build_object('title', 'Successor', 'tags', pg_temp.ti_terms(array['succ'])));
+select is(pg_temp.ti_out('s_c') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('s_c')), '00000:/succ:active:1:0',
+  'a term created under a superseded vocabulary version is assignable while the successor version lists the type and the field [P2-S12-AC-246]');
+select is((select taxonomy_version_id from platform_private.cms_term_assignments where revision_id = pg_temp.ti_rev('s_c')),
+  pg_temp.ti_uuid('vs1'),
+  'the assignment row names the term''s write-version (the stored foreign key) [P2-S12-AC-246]');
+select is(pg_temp.ti_revision_ids(pg_temp.ti_rev('s_c')), jsonb_build_array(pg_temp.ti_uuid('vs2')),
+  'while the revision records the vocabulary''s current active version id [P2-S12-AC-246]');
+select pg_temp.ti_append('s_a', pg_temp.ti_entry('s_c'), jsonb_build_object('title', 'Successor b'), '1', '1');
+select is(pg_temp.ti_out('s_a') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('s_a')) || '/' || pg_temp.ti_revision_ids(pg_temp.ti_rev('s_a'))::text,
+  '00000:/succ:active:1:0/["' || pg_temp.ti_uuid('vs2') || '"]',
+  'an unrelated append carries the assignment and records the current active version id [P2-S12-AC-246]');

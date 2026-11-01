@@ -1,0 +1,81 @@
+-- Independent safe-registry tuple/JCS oracle. Fixture keys/values are ASCII and
+-- versions are integers, so the exact JCS text is assembled here without calling
+-- cms_jcs_sha256, a closure/digest helper, the diff, or the resolver.
+-- Caller supplies literal deduplicated refs in bytewise-key/numeric-version order.
+create or replace function pg_temp.s12rs_digest(p_refs jsonb) returns text
+language sql immutable as $body$
+  select encode(extensions.digest(convert_to('[' || coalesce(string_agg(
+    '{"blockKey":' || to_json(ref->>'blockKey')::text || ',"blockVersion":' || (ref->>'blockVersion') ||
+    ',"lifecycle":"supported","propsSchemaHash":"' || repeat('a',64) ||
+    '","releaseDigest":"' || repeat('e',64) || '","rendererRef":"cms/renderers/hero/1"}',
+    ',' order by ord), '') || ']', 'UTF8'), 'sha256'),'hex')
+  from jsonb_array_elements(p_refs) with ordinality r(ref,ord)
+$body$;
+create temp table s12rs_digests(label text primary key, refs jsonb, digest text) on commit drop;
+insert into s12rs_digests(label,refs) values
+  ('local','[{"blockKey":"s12pd.block","blockVersion":1},{"blockKey":"s12rs.root","blockVersion":1}]'),
+  ('target','[{"blockKey":"s12pd.wide","blockVersion":1},{"blockKey":"s12rs.root","blockVersion":2}]'),
+  ('resolved','[{"blockKey":"s12pd.wide","blockVersion":1},{"blockKey":"s12rs.root","blockVersion":1}]'),
+  ('block1','[{"blockKey":"s12pd.block","blockVersion":1}]'),
+  ('main-panel','[{"blockKey":"s12pd.block","blockVersion":1},{"blockKey":"s12pd.block","blockVersion":2}]'),
+  ('main-target','[{"blockKey":"s12pd.block","blockVersion":1},{"blockKey":"s12pd.block","blockVersion":2},{"blockKey":"s12pd.wide","blockVersion":1}]');
+update s12rs_digests set digest=pg_temp.s12rs_digest(refs);
+select ok((select count(distinct digest)=3 from s12rs_digests where label in ('local','target','resolved')),
+  'RESOLVE-DIGEST-01 control: independently enumerated B/T/resolved reachable block sets have three different hashes');
+select isnt((select digest from s12rs_digests where label='main-target'),
+  (select digest from s12rs_digests where label='main-panel'),
+  'RESOLVE-DIGEST-01 linked control: unrelated /badge contributes a distinct whole-target tuple absent from /panel');
+select is(pg_temp.s12pd_body('s12rs-main2')->>'blockRegistryDigest',
+  (select digest from s12rs_digests where label='main-target'),
+  'RESOLVE-DIGEST-01 prerequisite: governed whole target really includes the independently listed /badge tuple');
+select is(pg_temp.s12pd_body('s12rs-dg1')->>'blockRegistryDigest',
+  (select digest from s12rs_digests where label='local'),
+  'RESOLVE-DIGEST-02 prerequisite: real v1 registration/definition matches the literal B tuple hash');
+select is(pg_temp.s12pd_body('s12rs-dg2')->>'blockRegistryDigest',
+  (select digest from s12rs_digests where label='target'),
+  'RESOLVE-DIGEST-03 prerequisite: real v2 definition matches the different literal T tuple hash');
+select pg_temp.s12pu_update('rs-api-digest',pg_temp.s12pu_update_request('rs-digest','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-digest','/digest','[{"path":"/digest/child","choice":"theirs"},{"path":"/digest","choice":"yours"}]')),
+  's12rs-digest-0001',2));
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_check('rs-api-digest','rs-digest','/digest',
+  'active','detached',1,'{}',yours_tree,'s12rs.root',1) check_line where name='digest';
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('rs-digest','/digest'))->>'block_registry_digest',
+  (select digest from s12rs_digests where label='resolved'),
+  'RESOLVE-DIGEST-04: detached digest enumerates the selected reachable root-v1 / wide-v1 pair only');
+select isnt(pg_temp.s12pu_row(pg_temp.s12pu_head('rs-digest','/digest'))->>'block_registry_digest',
+  (select digest from s12rs_digests where label='local'),
+  'RESOLVE-DIGEST-05: do not copy the old pin/L registry digest after an explicit descendant theirs');
+select isnt(pg_temp.s12pu_row(pg_temp.s12pu_head('rs-digest','/digest'))->>'block_registry_digest',
+  (select digest from s12rs_digests where label='target'),
+  'RESOLVE-DIGEST-06: do not copy the target forest digest after an explicit ancestor yours');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('rs-theirs','/panel'))->>'block_registry_digest',
+  (select digest from s12rs_digests where label='main-target'),
+  'RESOLVE-DIGEST-07: ordinary linked acceptance retains the existing whole target-pattern digest convention');
+select isnt(pg_temp.s12pu_row(pg_temp.s12pu_head('rs-theirs','/panel'))->>'block_registry_digest',
+  (select digest from s12rs_digests where label='main-panel'),
+  'RESOLVE-DIGEST-07: linked digest is not narrowed to the selected /panel subtree');
+select check_line.* from (values ('rs-none'),('rs-null'),('rs-equal')) tags(tag)
+cross join lateral (select extensions.is(pg_temp.s12pu_row(pg_temp.s12pu_head(tag,'/panel'))->>'block_registry_digest',
+  (select digest from s12rs_digests where label='main-target'),
+  'RESOLVE-DIGEST-07 '||tag||': effective props choices do not alter the linked target registry tuple set') as tap) check_line;
+select check_line.* from (values ('rs-yours'),('rs-reverse'),('rs-rm-y'),('rs-retired'),('rs-copy')) tags(tag)
+cross join lateral (select extensions.is(pg_temp.s12pu_row(pg_temp.s12pu_head(tag,
+  case when tag in ('rs-rm-y','rs-retired') then '/gone' else '/panel' end))->>'block_registry_digest',
+  (select digest from s12rs_digests where label='block1'),
+  'RESOLVE-DIGEST-08 '||tag||': duplicate reachable block refs contribute one safe-registry tuple') as tap) check_line;
+
+-- Same selected content/pin/mode, different row ids and timestamps: same D5 hash.
+-- Ordinary detach differs ONLY in its effective tree: the D5 hash must differ,
+-- without inventing the receiving lane's internal canonical-hash representation.
+select is(pg_temp.s12pu_body('rs-api-yours')#>>'{items,0,contentHash}',
+  pg_temp.s12pu_body('rs-api-reverse')#>>'{items,0,contentHash}',
+  'RESOLVE-HASH-01: permutation-equivalent detached trees have identical content hashes');
+select isnt(pg_temp.s12pu_body('rs-api-yours')#>>'{items,0,contentHash}',
+  pg_temp.s12pu_body('rs-api-copy')#>>'{items,0,contentHash}',
+  'RESOLVE-HASH-02: selected hybrid and unchanged L share provenance but not effective-content hash');
+select pg_temp.s12pu_update('rs-api-digest-replay',(select request from s12pu_out where label='rs-api-digest'));
+select is(pg_temp.s12pu_oc('rs-api-digest-replay'),'ok','RESOLVE-REPLAY-01: same idempotency input replays after CAS advanced');
+select is(pg_temp.s12pu_body('rs-api-digest-replay'),pg_temp.s12pu_body('rs-api-digest'),
+  'RESOLVE-REPLAY-02: exact already-selected public result is replayed');
+select ok(pg_temp.s12pu_unchanged('rs-api-digest-replay'),
+  'RESOLVE-REPLAY-03: replay appends no duplicate snapshot/audit/outbox/idempotency/version effects');

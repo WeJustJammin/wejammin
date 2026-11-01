@@ -1,0 +1,140 @@
+// @vitest-environment jsdom
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import {
+  buttonNamed,
+  click,
+  disableReactAct,
+  enableReactAct,
+} from '../cms-editorial-fields/cms-editor-dom.test-support';
+import {
+  answerHeld,
+  heldReply,
+  expectPendingLabel,
+  resultHeading,
+  resultRegion,
+  resultText,
+  disabledBesides,
+} from './composition-command-states.test-support';
+import {
+  ENTRY,
+  PLACE,
+  UPDATE,
+  diffPath,
+  entryDetail,
+  json,
+  mountPage,
+  refusal,
+  settle,
+} from './composition-page.test-support';
+import {
+  diffOf,
+  entryFacts,
+  id,
+  plainPath,
+  propsPath,
+  removedPath,
+  row,
+  structurePath,
+} from './composition.test-support';
+import { UNKNOWN_OUTCOME_MESSAGE } from './composition-copy';
+
+/*
+ * P2-S12-AC-271, `commandState` of FE03 "Slice 12 definition governance states", for CMS-03C-15 on one instance
+ * (accept, detach) and for the DEC-193 Place of the blocks a newer version adds (CMS-03C-02 `roots`), driven through the
+ * update diff of the composition page over a scripted wire.
+ */
+beforeAll(enableReactAct);
+afterAll(disableReactAct);
+
+const pending = (n: number) => row(n, { state: 'pending_diff', version: '3' });
+const diff = diffOf(1, [
+  propsPath('/a'),
+  removedPath('/b'),
+  structurePath('/c'),
+]);
+const withRoots = diffOf(1, [plainPath('/a')], {
+  targetPatternVersion: 3,
+  newRoots: [
+    { rootPath: '/extra', blockKey: 'profile.header', blockVersion: 1 },
+  ],
+});
+const read = (value = diff) => json(value, 200, `"${value.instance.version}"`);
+const updated = (version = '10', rowVersion = '4') =>
+  json(
+    {
+      items: [
+        row(1, {
+          version: rowVersion,
+          patternVersion: 2,
+          linkMode: 'detached',
+          state: 'active',
+        }),
+      ],
+    },
+    200,
+    `"${version}"`,
+  );
+const updatedLinked = (version: string) =>
+  json(
+    { items: [row(1, { version: '4', patternVersion: 2, state: 'active' })] },
+    200,
+    `"${version}"`,
+  );
+const radio = (container: HTMLElement, path: string, value: string) =>
+  container.querySelector<HTMLInputElement>(
+    `input[name="choice-${path}"][value="${value}"]`,
+  ) as HTMLInputElement;
+const accept = (container: HTMLElement) =>
+  buttonNamed(container, 'Accept update');
+const detach = (container: HTMLElement) =>
+  buttonNamed(container, 'Detach as a local copy');
+const open = async (page: ReturnType<typeof mountPage>) => {
+  await click(buttonNamed(page.container, 'Review update for /main/row-1'));
+  await settle();
+};
+const answerAll = async (container: HTMLElement) => {
+  await click(radio(container, '/a', 'yours'));
+  await click(radio(container, '/b', 'theirs'));
+  await click(radio(container, '/c', 'yours'));
+};
+const accepting = async (page: ReturnType<typeof mountPage>) => {
+  await open(page);
+  await answerAll(page.container);
+  await click(accept(page.container));
+  await settle();
+};
+const script = (update: Array<Response | (() => Response)>, more = {}) => ({
+  [diffPath(id(1))]: [read(), read(), read()],
+  [UPDATE]: update,
+  ...more,
+});
+const mount = (update: Array<Response | (() => Response)>, more = {}) =>
+  mountPage(script(update, more), { instances: [pending(1)] });
+
+describe('probe C4/C5/C7 update diff', () => {
+  it('C4 only the commit controls are disabled while pending', async () => {
+    const held = heldReply();
+    const page = mount([held.reply]);
+    await accepting(page);
+    expectPendingLabel(page.container, 'Accepting the update…');
+    expect(
+      disabledBesides(page.container, accept(page.container), detach(page.container)),
+    ).toEqual([]);
+  });
+
+  it('C5 the entry or list is refetched after success', async () => {
+    const page = mount([updatedLinked('10')], { [ENTRY]: [entryDetail('10')] });
+    await accepting(page);
+    expect(resultHeading(page.container)).toBe('Update applied');
+    expect(page.calls.filter((call) => call.path.startsWith('/api/v1/cms/entries/'))).toHaveLength(1);
+  });
+
+  it('C7 an unknown outcome is pending and reconciles by refetching the entry before any retry', async () => {
+    const page = mount([refusal(502, 'DEPENDENCY_UNAVAILABLE', { retryable: true })], {
+      [ENTRY]: [entryDetail('9')],
+    });
+    await accepting(page);
+    expect(page.calls.filter((call) => call.path.startsWith('/api/v1/cms/entries/'))).toHaveLength(1);
+  });
+});

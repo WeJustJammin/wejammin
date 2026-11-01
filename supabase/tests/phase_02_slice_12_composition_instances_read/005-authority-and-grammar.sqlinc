@@ -1,0 +1,65 @@
+-- cmsCompositionInstancesRead authority, concealment and request grammar (DEC-206; BE03c route registry, validation row, error matrix, authority
+-- row): an assigned CMS author or editor on the entry; a hidden or absent entry is 404 (uniform); a visible entry without edit is 403
+-- capability_missing; a malformed path value or cursor is 400 BEFORE any 404/403; no verified human context is 401.  [AC-269, AC-261]
+
+select pg_temp.s12ci_read('a-owner', 'ord1');
+select is(pg_temp.s12ci_state('a-owner'), '00000', 'control: the assigned author reads the list');
+select * from pg_temp.s12ci_refused('a-no-edit', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1'), null, 'designer2'), 'capability_missing', 'designer2');
+select * from pg_temp.s12ci_refused('a-hidden', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1'), null, 'other'), 'NOT_FOUND', 'other');
+select * from pg_temp.s12ci_refused('a-absent', pg_temp.s12ci_request('a9120000-0000-4000-8000-0000000000cc'), 'NOT_FOUND');
+select ok((select a.message = b.message and a.detail is not distinct from b.detail and a.state = b.state from s12ci_out a, s12ci_out b
+    where a.label = 'a-hidden' and b.label = 'a-absent'), 'a hidden entry and an absent one are the same uniform 404 [AC-269]');
+select pg_temp.s12ci_call('a-anon', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1')) || jsonb_build_object('context', '{}'::jsonb), 'anonymous');
+select is(pg_temp.s12ci_state('a-anon') || ':' || (select message from s12ci_out where label = 'a-anon'), 'P0001:UNAUTHENTICATED',
+  'a request without a verified human context is 401 UNAUTHENTICATED');
+-- Once assigned on the entry, a second author reads the same list; once the grant ends, the capability is re-proved on every call.
+select pg_temp.s12pu_assign('ord1', 'designer2', 'cms.author');
+select pg_temp.s12ci_read('a-assigned', 'ord1', null, 'designer2');
+select is(pg_temp.s12ci_body('a-assigned'), pg_temp.s12ci_body('a-owner'), 'once assigned on the entry, a second author reads the same page');
+-- Cross-context reuse (BE00 collection rules): a validly signed cursor issued to one principal is 400 for another who may read the same entry.
+select pg_temp.s12ci_read('x-owner-1', 'ord1', null, 'owner', 'service_role', 2);
+select * from pg_temp.s12ci_refused('x-other-actor', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1'), pg_temp.s12ci_next('x-owner-1'), 'designer2', 2), 'INVALID_REQUEST', 'designer2');
+select pg_temp.s12ci_read('x-owner-2', 'ord1', pg_temp.s12ci_next('x-owner-1'), 'owner', 'service_role', 2);
+select is(pg_temp.s12ci_paths('x-owner-2'), to_jsonb(array['/bb', '/ba']), 'control: the principal the cursor was issued to continues with it');
+select is(pg_temp.s09d_revoke_via_rpc('designer2', 'cms.author'), 'OK', 'setup: the real revoke command ends designer2''s author grant');
+select * from pg_temp.s12ci_refused('a-revoked', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1'), null, 'designer2'), 'capability_missing', 'designer2');
+
+-- Request grammar: every malformed value is 400 INVALID_REQUEST with no DETAIL pointer.
+select * from pg_temp.s12ci_refused('g-extra', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1')) || jsonb_build_object('offset', 5), 'INVALID_REQUEST');
+-- `limit` is an integer 1-50 (BE03c 1188, 409): everything else is 400 INVALID_REQUEST (the error matrix has no 422 for this read).
+select r.* from (values ('zero', '0'::jsonb), ('negative', '-1'::jsonb), ('over', '51'::jsonb), ('hundred', '100'::jsonb), ('fraction', '2.5'::jsonb),
+               ('text', '"5"'::jsonb), ('boolean', 'true'::jsonb), ('null', 'null'::jsonb), ('object', '{}'::jsonb)) c(label, value),
+  lateral pg_temp.s12ci_refused('g-limit-' || c.label, pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1')) || jsonb_build_object('limit', c.value), 'INVALID_REQUEST') r;
+select pg_temp.s12ci_read('g-limit-min', 'ord1', null, 'owner', 'service_role', 1);
+select pg_temp.s12ci_read('g-limit-max', 'ord1', null, 'owner', 'service_role', 50);
+select is(jsonb_array_length(pg_temp.s12ci_body('g-limit-min')->'items') || '/' || jsonb_array_length(pg_temp.s12ci_body('g-limit-max')->'items'), '1/6', 'limit 1 and limit 50 are accepted');
+-- V1-04: a JSON number with scale that is a whole number in range is the integer it names (BE03c 409: `limit` 1-50 integer), not an unmapped cast error.
+select pg_temp.s12ci_call('g-limit-scaled', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1')) || jsonb_build_object('limit', '10.0'::jsonb));
+select is(pg_temp.s12ci_state('g-limit-scaled') || ':' || jsonb_array_length(coalesce(pg_temp.s12ci_body('g-limit-scaled')->'items', '[]'::jsonb)),
+  '00000:10', 'limit 10.0 is accepted as a page of 10 [AC-269]');
+-- Validation precedes concealment: a malformed limit from a caller with no access is 400, never 403 or 404.
+select * from pg_temp.s12ci_refused('g-hidden-bad-limit', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1'), null, 'other', 0), 'INVALID_REQUEST', 'other');
+select * from pg_temp.s12ci_refused('g-noedit-bad-limit', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1'), null, 'designer2', 51), 'INVALID_REQUEST', 'designer2');
+select * from pg_temp.s12ci_refused('g-extra-revision', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1')) || jsonb_build_object('revisionId', pg_temp.s12pl_rev('ord1')), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('g-missing', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1')) - 'entryId', 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('g-bad-id', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1')) || jsonb_build_object('entryId', 'not-a-uuid'), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('g-number-id', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1')) || jsonb_build_object('entryId', 5), 'INVALID_REQUEST');
+select * from pg_temp.s12ci_refused('g-null-id', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1')) || jsonb_build_object('entryId', null), 'INVALID_REQUEST');
+select pg_temp.s12ci_call('g-array', '[]'::jsonb);
+select is(pg_temp.s12ci_state('g-array') || ':' || (select message from s12ci_out where label = 'g-array'), 'P0001:INVALID_REQUEST', 'a non-object body is INVALID_REQUEST');
+-- Validation precedes concealment (BE00): a malformed value from a caller with no access is 400, never 403 or 404.
+select * from pg_temp.s12ci_refused('g-hidden-bad-id', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1'), null, 'other') || jsonb_build_object('entryId', 'not-a-uuid'), 'INVALID_REQUEST', 'other');
+select * from pg_temp.s12ci_refused('g-noedit-bad-cursor', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('ord1'), 'not base64!!', 'designer2'), 'INVALID_REQUEST', 'designer2');
+-- A well-formed cursor bound to another entry is judged after authority: a caller without access gets the access answer.
+select * from pg_temp.s12ci_refused('g-hidden-foreign-cursor', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'), pg_temp.s12ci_next('pg1'), 'other'), 'NOT_FOUND', 'other');
+select * from pg_temp.s12ci_refused('g-noedit-foreign-cursor', pg_temp.s12ci_request(pg_temp.s12pl_entry_id('big1'), pg_temp.s12ci_next('pg1'), 'designer2'), 'capability_missing', 'designer2');
+
+-- Every call ran as the real service_role with the prior role restored, and a read leaves no trace.
+select ok((select bool_and(call_role = 'service_role' and role_restored) from s12ci_out where requested_role = 'service_role'),
+  'every read ran under the real service_role and restored the prior role setting');
+select pg_temp.s12ci_evidence() as evidence_before \gset
+select pg_temp.s12ci_read('z-1', 'ord1');
+select pg_temp.s12ci_read('z-2', 'heads1');
+select pg_temp.s12ci_read('z-3', 'big1');
+select is(pg_temp.s12ci_evidence(), :'evidence_before', 'a burst of reads leaves no composition, audit, idempotency, outbox or entry-version trace');
+select ok((select bool_and(pg_temp.s12ci_unchanged(label)) from s12ci_out where state = '00000' and label !~ '^(pg|walk)'), 'every successful read left every captured full row of every store unchanged');

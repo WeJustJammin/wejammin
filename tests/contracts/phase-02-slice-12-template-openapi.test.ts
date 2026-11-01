@@ -75,6 +75,10 @@ describe('Slice 12 CMS-03C-01 canonical OpenAPI authority', () => {
     ).toEqual({
       $ref: '#/components/schemas/TemplateVersionDetail',
     });
+    // BE03c contract matrix: "unsupported media if sent" (415 UNSUPPORTED_MEDIA_TYPE).
+    expect(
+      operation?.responses['415']?.content?.['application/json']?.schema,
+    ).toEqual({ $ref: '#/components/schemas/ApiError' });
   });
   it('registers a separate protected, no-store CMS-11 context read', () => {
     const route = platformRegistrySet.routes.find(
@@ -101,6 +105,10 @@ describe('Slice 12 CMS-03C-01 canonical OpenAPI authority', () => {
     expect(
       operation?.responses['200']?.content?.['application/json']?.schema,
     ).toEqual({ $ref: '#/components/schemas/TemplateDesignerContext' });
+    // BE03c contract matrix: "unsupported media if sent" (415 UNSUPPORTED_MEDIA_TYPE).
+    expect(
+      operation?.responses['415']?.content?.['application/json']?.schema,
+    ).toEqual({ $ref: '#/components/schemas/ApiError' });
   });
   it('registers the served template version route with conditional revision control', () => {
     const route = platformRegistrySet.routes.find(

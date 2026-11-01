@@ -1,0 +1,212 @@
+{
+  "version": 1,
+  "result": "COMPLETED_OPERATIONAL_RECOVERY",
+  "approvalRef": ".memory/pipeline/progress/verification/2026-10-21-native-lock-recovery-owner-approval.json",
+  "approvalSha256": "bd691128db16c1e2835c9f3accd4f5b76bee8035f9af880033f6a4891aa435d7",
+  "operatorConsumptionRef": ".memory/pipeline/progress/verification/2026-10-21-native-lock-recovery-operator-consumption.json",
+  "operatorConsumptionSha256": "a8b1be019ae728362fe1a2bae8889bf384c044b758756fb8a75ef5cbda05a298",
+  "consumptionState": "consumed and closed; not a new lease and not new authority",
+  "privilegedBatch": {
+    "formerSession": "15549",
+    "terminal": true,
+    "exitCode": 0,
+    "liveHandle": false,
+    "pkexecInvocations": 1,
+    "readlinkInvocations": 1,
+    "targetLinkReads": 8,
+    "retriesOrSubstitutionsOrSignals": false,
+    "command": "/usr/bin/pkexec /usr/bin/readlink -- (ordered eight literal /proc/PID/{exe,cwd} paths)",
+    "orderedOutputs": [
+      "/usr/lib/systemd/systemd",
+      "/",
+      "/usr/lib/systemd/systemd-executor",
+      "/",
+      "/bin/postgrest",
+      "/",
+      "/bin/postgrest",
+      "/"
+    ],
+    "orderedOutputOrder": "712 exe, 712 cwd, 723 exe, 723 cwd, 4377 exe, 4377 cwd, 4630 exe, 4630 cwd",
+    "exactBatchExitTime": "not separately recorded; terminal observed between the before and after fences"
+  },
+  "targets": [
+    {
+      "pid": 712,
+      "ppid": 1,
+      "group": 712,
+      "session": 712,
+      "startTime": "567",
+      "uid": 1000
+    },
+    {
+      "pid": 723,
+      "ppid": 712,
+      "group": 712,
+      "session": 712,
+      "startTime": "569",
+      "uid": 1000
+    },
+    {
+      "pid": 4377,
+      "ppid": 4335,
+      "group": 4377,
+      "session": 4377,
+      "startTime": "2069",
+      "uid": 1000
+    },
+    {
+      "pid": 4630,
+      "ppid": 4579,
+      "group": 4630,
+      "session": 4630,
+      "startTime": "2087",
+      "uid": 1000
+    }
+  ],
+  "binaries": [
+    {
+      "path": "/usr/bin/pkexec",
+      "device": 37,
+      "inode": 139723,
+      "uid": 0,
+      "mode": 35309,
+      "size": 26720,
+      "sha256": "72cd770659617b11f0872bfac159cdd5e41b0e44bbc01f9d3cd88d18e89861cd"
+    },
+    {
+      "path": "/usr/bin/readlink",
+      "device": 37,
+      "inode": 9129108,
+      "uid": 0,
+      "mode": 33261,
+      "size": 76088,
+      "sha256": "092f87a1632ad9102757d676c85150556b71cc377642f2d55f04c9df9af63aa1"
+    },
+    {
+      "path": "/home/rob/.cache/chrome-gate-runtime/node-v22.23.1-linux-x64/bin/node",
+      "device": 52,
+      "inode": 77902051,
+      "uid": 1000,
+      "mode": 33261,
+      "size": 124835376,
+      "sha256": "93956de2e59480474a7b46571da1651180b1a050cdf32641ebec4ce6e478e068"
+    }
+  ],
+  "transportPinRefs": "The /usr/bin/env and /bin/sh (-> /usr/bin/bash) pins are the existing fixed-eight-read transport pins; not re-invented here.",
+  "pinsSource": "Four six-field tuples and three binaries from the immutable owner approval; transport pins from the existing fixed-eight records.",
+  "fences": {
+    "before": "2026-10-21T18:10:54.420Z",
+    "after": "2026-10-21T19:13:43.240Z",
+    "allFourTupleAndFivePinUnchanged": true
+  },
+  "preflight": {
+    "startedAt": "2026-10-21T18:10:12.918Z",
+    "endedAt": "2026-10-21T18:10:12.957Z",
+    "terminal": 0,
+    "rawPath": ".lane-logs/s12-native-lock-recovery-preflight-20261021.json",
+    "rawSha256": "b133b8021f0ac53129b2d6cda411fb72d2be5a795c2b9448bec4965bb50bfd8c",
+    "rawBytes": 117561,
+    "numericProcEntries": 442,
+    "uidExcluded": 255,
+    "uid1000Identities": 186,
+    "dirFilterENOENT": 1,
+    "dirFilterENOENTNote": "UID not classified",
+    "identityBracketsStable": 186,
+    "readableExeLinks": 182,
+    "readableCwdLinks": 182,
+    "knownOpaqueEACCES": 4,
+    "knownOpaqueEACCESNote": "the four known opaque PIDs denied both links with EACCES and kept their exact tuples",
+    "readablePinnedNativeCandidateExcludingActualInspector": 0,
+    "lockPathsENOENTBothFrames": true
+  },
+  "lockCreation": {
+    "executedExactlyOnce": true,
+    "startedAt": "2026-10-21T19:15:33.264Z",
+    "endedAt": "2026-10-21T19:15:33.266Z",
+    "runtime": "Node v22.23.1 UID/GID 1000",
+    "terminal": 0,
+    "complete": "4/4",
+    "finalMismatch": 0,
+    "errors": 0,
+    "createdFreshExclusive": true,
+    "empty": true,
+    "regular": true,
+    "mode": "0644",
+    "uid": 1000,
+    "gid": 1000,
+    "device": 54,
+    "files": [
+      { "path": "/tmp/wejammin-supabase-ci.lock", "inode": 109668 },
+      { "path": "/tmp/wejammin-quiet.lock", "inode": 109669 },
+      { "path": "/tmp/wejammin-altdb.lock", "inode": 109670 },
+      { "path": "/tmp/wejammin-reset.lock", "inode": 109671 }
+    ],
+    "heldNamedCanonicalFinalMatches": true,
+    "existingFilesOverwrittenOrRemoved": false,
+    "partialFailure": false,
+    "rawPath": ".lane-logs/s12-native-lock-recovery-create-20261021.json",
+    "rawSha256": "4a5a1e2bef1f86d02f0552cde461a7aad53b62586a8b058f0757d8ab9511c28b",
+    "rawBytes": 4724
+  },
+  "postflight": {
+    "startedAt": "2026-10-21T19:16:25.768Z",
+    "endedAt": "2026-10-21T19:16:25.797Z",
+    "terminal": 0,
+    "runtime": "Node v22.23.1 UID 1000",
+    "rawPath": ".lane-logs/s12-native-lock-recovery-postflight-20261021.json",
+    "rawSha256": "f36cd7ff4bc9175d5c2fc6eb338aeb96191c296bc5b6f69998467de7c2e3615b",
+    "rawBytes": 119127,
+    "numericProcEntries": 444,
+    "uidExcluded": 255,
+    "uid1000Identities": 189,
+    "filterErrors": 0,
+    "identityBracketsStable": 189,
+    "readableExeLinks": 185,
+    "readableCwdLinks": 185,
+    "knownOpaqueEACCES": 4,
+    "knownOpaqueEACCESNote": "the same four opaque PIDs denied both links with EACCES and kept their exact tuples",
+    "additionalUnknownProcessRow": false,
+    "readablePinnedNativeCandidateExceptActualInspector": 0,
+    "lockFrames": {
+      "status": "COMPLETE",
+      "sameFourCreatedInodes": true,
+      "ownerAndModeAndSizeZero": true,
+      "kernelBytesEach": 7318,
+      "truncationOrParserError": false,
+      "retainedMatchingRows": 0
+    }
+  },
+  "rawReports": [
+    {
+      "role": "preflight",
+      "path": ".lane-logs/s12-native-lock-recovery-preflight-20261021.json",
+      "sha256": "b133b8021f0ac53129b2d6cda411fb72d2be5a795c2b9448bec4965bb50bfd8c",
+      "bytes": 117561
+    },
+    {
+      "role": "create",
+      "path": ".lane-logs/s12-native-lock-recovery-create-20261021.json",
+      "sha256": "4a5a1e2bef1f86d02f0552cde461a7aad53b62586a8b058f0757d8ab9511c28b",
+      "bytes": 4724
+    },
+    {
+      "role": "postflight",
+      "path": ".lane-logs/s12-native-lock-recovery-postflight-20261021.json",
+      "sha256": "f36cd7ff4bc9175d5c2fc6eb338aeb96191c296bc5b6f69998467de7c2e3615b",
+      "bytes": 119127
+    }
+  ],
+  "rawReportsCommon": "All three are canonical regular files, UID 1000, mode 0600, with full actual write/fsync/close and verified SHA-256.",
+  "independentChecks": "ROOT program-checked all created held+named+final identities and both post frames; every known four-tuple remained stable and matched the fresh privileged tuple.",
+  "unchanged": {
+    "sourceFiles": 9,
+    "priorJsonRecords": 14
+  },
+  "scope": "Operational recovery only; diagnostic, not native/Database/criterion/Phase acceptance, not a workflow lease or authority, and no global or continuous absence or service/container/namespace/ownership mapping from image paths",
+  "formalGates": "PR01 and remaining gates unrun",
+  "grantStatus": "Fully consumed and closed; no automatic renewal",
+  "noFurtherPermission": "No additional privilege, proc window or lock creation is permitted by this record",
+  "uiRegression": "92/92 is separate and not part of this native result",
+  "diagnosticOnly": true,
+  "nativeOrDatabaseAcceptance": false
+}

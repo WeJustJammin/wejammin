@@ -1,0 +1,40 @@
+-- The block's signed schema admits 65 optional string properties. Therefore
+-- the 64/65 pair isolates the PATTERN props cap, not an unknown-prop refusal.
+create temp table s12pd_props_schema on commit drop as
+select jsonb_build_object('schemaVersion','1','additionalProperties',false,
+  'fields',jsonb_agg(jsonb_build_object('name','field' || n,'kind','string',
+    'required',false,'constraints','{}'::jsonb) order by n)) as snapshot
+from generate_series(1,65) n;
+select pg_temp.p_register('s12pd:props-block',pg_temp.p_block_request('s12pd.props',1,
+  jsonb_build_object('propsSchemaSnapshot',snapshot,
+    'propsSnapshotHash',platform_private.cms_jcs_sha256(snapshot)))) from s12pd_props_schema;
+select is(pg_temp.s09d_outcome('s12pd:props-block'),'OK',
+  'setup: signed registry snapshot admits all 65 property names');
+create or replace function pg_temp.s12pd_props(p_count integer) returns jsonb
+language sql immutable as $body$
+  select jsonb_object_agg('field' || n,'Value ' || n) from generate_series(1,p_count) n
+$body$;
+create or replace function pg_temp.s12pd_props_block(p_count integer) returns jsonb
+language sql immutable as $body$
+  select pg_temp.s12pd_block('props','[]'::jsonb,pg_temp.s12pd_props(p_count))
+    || jsonb_build_object('blockKey','s12pd.props')
+$body$;
+select pg_temp.s12pd_run('props-64',pg_temp.s12pd_request('s12pd-props-max',
+  jsonb_build_array(pg_temp.s12pd_props_block(64)),null,'s12pd-props-max'));
+select is(pg_temp.s12pd_state('props-64'),'00000','64 schema-valid props accepted [P2-S12-AC-101]');
+select is(pg_temp.s12pd_row('props-64')#>'{block_tree,0,props}',pg_temp.s12pd_props(64),
+  'all 64 props persist without truncation [P2-S12-AC-101]');
+select * from pg_temp.s12pd_refused('props-65',pg_temp.s12pd_request('s12pd-props-over',
+  jsonb_build_array(pg_temp.s12pd_props_block(65)),null,'s12pd-props-over'),'VALIDATION_FAILED');
+
+-- Input order is props then block; the digest oracle is block then props.
+select pg_temp.s12pd_run('digest-sort',pg_temp.s12pd_request('s12pd-digest-sort',
+  jsonb_build_array(pg_temp.s12pd_props_block(1),pg_temp.s12pd_block()),null,'s12pd-digest-sort'));
+select is(pg_temp.s12pd_state('digest-sort'),'00000','mixed registry forest accepted [P2-S12-AC-193]');
+select is(pg_temp.s12pd_body('digest-sort')->>'blockRegistryDigest',
+  platform_private.cms_jcs_sha256(jsonb_build_array(
+    jsonb_build_object('blockKey','s12pd.block','blockVersion',1,'releaseDigest',repeat('e',64),
+      'propsSchemaHash',repeat('a',64),'rendererRef','cms/renderers/hero/1','lifecycle','supported'),
+    jsonb_build_object('blockKey','s12pd.props','blockVersion',1,'releaseDigest',repeat('e',64),
+      'propsSchemaHash',repeat('a',64),'rendererRef','cms/renderers/hero/1','lifecycle','supported'))),
+  'digest sorts reachable safe tuples by block key independent of forest order [P2-S12-AC-193]');

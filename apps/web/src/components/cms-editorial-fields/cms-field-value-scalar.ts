@@ -129,26 +129,7 @@ export const validateCmsScalarValue = (
   return lengthIssues(value, constraints);
 };
 
-const pad = (value: number, width = 2): string =>
-  String(value).padStart(width, '0');
-
-/**
- * The `datetime-local` control shows the instant in the author's local time.
- * An unparsable stored value renders as an empty control, never as a guess.
- */
-export const cmsDatetimeToLocalInput = (value: string): string => {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) return '';
-  return `${pad(date.getFullYear(), 4)}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-};
-
-/**
- * A control value is local wall-clock time; the stored value is the UTC
- * instant (`Z`), which satisfies the datetime encoding and never drifts.
- */
-export const cmsLocalInputToDatetime = (local: string): string | null => {
-  if (!/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2})?$/u.test(local)) return null;
-  const date = new Date(local);
-  if (Number.isNaN(date.getTime())) return null;
-  return date.toISOString().replace('.000Z', 'Z');
-};
+export {
+  cmsDatetimeToLocalInput,
+  cmsLocalInputToDatetime,
+} from './cms-field-basics';

@@ -102,6 +102,30 @@ export const CLAIM_GATED_API_FUNCTIONS: Readonly<Record<string, ClaimGate>> = {
   cms_submit_review: 'service-role',
   cms_template_context: 'service-role',
   cms_template_latest: 'service-role',
+  // Slice 12 BE03c governed review / taxonomy / pattern / composition operations: every wrapper is
+  // EXECUTE-granted to service_role only (the Worker), so each is a 'service-role' gate.
+  cms_act_taxonomy_term: 'service-role', // CMS-03C-03 term action
+  cms_activate_governed_subject: 'service-role', // CMS-03C-09 governed activation (DEC-157, DEC-190)
+  cms_apply_pattern_update: 'service-role', // CMS-03C-15 pattern update accept/detach (DEC-181, DEC-193)
+  cms_assign_governed_reviewer: 'service-role', // CMS-03C-08 governed reviewer assignment (DEC-158)
+  cms_create_pattern_version: 'service-role', // CMS-03C-12 pattern version (DEC-186, DEC-188)
+  cms_create_taxonomy_version: 'service-role', // CMS-03C-16 taxonomy version (DEC-188)
+  cms_curate_related_content: 'service-role', // CMS-03C-05 related-content curation (DEC-195)
+  cms_get_governed_review: 'service-role', // CMS-03C-10 governed review read
+  cms_get_instance_update_diff: 'service-role', // CMS-03C-14 instance update diff (DEC-193)
+  cms_get_locale_variant: 'service-role', // cmsLocaleVariantRead (DEC-205)
+  cms_get_related_content: 'service-role', // cmsRelatedContentRead (DEC-195)
+  cms_insert_pattern_instance: 'service-role', // CMS-03C-02 pattern placement (DEC-175, DEC-193)
+  cms_list_composition_instances: 'service-role', // cmsCompositionInstancesRead (DEC-206)
+  cms_list_governed_reviews: 'service-role', // CMS-03C-11 governed review queue (DEC-140)
+  cms_list_pattern_nestable: 'service-role', // cmsPatternNestableRead (DEC-196, DEC-232)
+  cms_list_pattern_selector: 'service-role', // CMS-03C-13 pattern selector
+  cms_list_taxonomy_selector: 'service-role', // CMS-03C-17 taxonomy selector
+  cms_list_taxonomy_terms: 'service-role', // cmsTaxonomyTermsRead (DEC-140)
+  cms_list_taxonomy_versions: 'service-role', // cmsTaxonomyVersionsRead
+  cms_pattern_latest: 'service-role', // cmsPatternLatestRead
+  cms_record_governed_decision: 'service-role', // CMS-03C-07 governed decision (DEC-159)
+  cms_submit_governed_review: 'service-role', // CMS-03C-06 governed submit (DEC-188)
   cms_verify_schema_migration: 'service-role',
   identity_alias_create: 'authenticated-subject',
   identity_alias_patch: 'authenticated-subject',
@@ -231,6 +255,29 @@ const FAMILY_MEMBERS: Readonly<Record<ActorFamily, readonly string[]>> = {
     'cms_list_editorial_reviews',
     'cms_mint_preview',
     'cms_submit_review',
+    // Slice 12 BE03c operations (cfg_actor via cms_actor, service_role only).
+    'cms_act_taxonomy_term',
+    'cms_activate_governed_subject',
+    'cms_apply_pattern_update',
+    'cms_assign_governed_reviewer',
+    'cms_create_pattern_version',
+    'cms_create_taxonomy_version',
+    'cms_curate_related_content',
+    'cms_get_governed_review',
+    'cms_get_instance_update_diff',
+    'cms_get_locale_variant',
+    'cms_get_related_content',
+    'cms_insert_pattern_instance',
+    'cms_list_composition_instances',
+    'cms_list_governed_reviews',
+    'cms_list_pattern_nestable',
+    'cms_list_pattern_selector',
+    'cms_list_taxonomy_selector',
+    'cms_list_taxonomy_terms',
+    'cms_list_taxonomy_versions',
+    'cms_pattern_latest',
+    'cms_record_governed_decision',
+    'cms_submit_governed_review',
   ],
   'identity-auth-user': [
     'identity_alias_create',

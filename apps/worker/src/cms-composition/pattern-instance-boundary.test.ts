@@ -19,7 +19,7 @@ const body = {
   overrides: {},
   expectedVersion: '1',
 } as const;
-const resource: CompositionInstanceResource = {
+const row: CompositionInstanceResource = {
   id: 'd5000000-0000-4000-8000-000000000013',
   version: '1',
   contentHash: 'a'.repeat(64),
@@ -27,7 +27,8 @@ const resource: CompositionInstanceResource = {
   updatedAt: '2026-09-28T14:00:00.000Z',
   state: 'draft',
   revisionId,
-  path: '/primary',
+  path: '/primary/header',
+  position: 0,
   blockKey: 'profile.header',
   blockVersion: 1,
   patternId,
@@ -36,6 +37,8 @@ const resource: CompositionInstanceResource = {
   linkMode: 'linked',
   conflictState: 'none',
 };
+const placement = { items: [row] };
+const entryEtag = '"7"';
 const session = {
   userId: 'd5000000-0000-4000-8000-000000000014',
   actingPartyId: 'd5000000-0000-4000-8000-000000000015',
@@ -71,7 +74,7 @@ const deps = (
       resetAt: 2,
     },
   }),
-  insertPattern: async () => ({ ok: true, value: resource }),
+  insertPattern: async () => ({ ok: true, value: placement, etag: entryEtag }),
   telemetry: () => undefined,
   ...overrides,
 });
@@ -241,7 +244,8 @@ describe('CMS-03C-02 Worker failure and availability boundaries', () => {
       [
         async () => ({
           ok: true,
-          value: { ...resource, patternId: revisionId },
+          value: { items: [{ ...row, patternId: revisionId }] },
+          etag: entryEtag,
         }),
         502,
       ],

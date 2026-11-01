@@ -1,0 +1,28 @@
+-- The lag fixture itself (002-lapse-helpers): it lapses exactly the named authority, leaves every other person alone, and puts the
+-- function back byte for byte.  Runs first, on a real grant of the world, before any governed review depends on it.
+select ok(platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x02'), 'cms.reviewer')
+    and platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x05'), 'cms.reviewer'),
+  'fixture control: x02 and x05 hold cms.reviewer in the owner organization before the lapse [P2-S12-AC-204]');
+create temp table s12fr_fx(label text primary key, source_md5 text not null, acl text, owner_name text not null) on commit drop;
+insert into s12fr_fx
+select 'before', md5(proc.prosrc), proc.proacl::text, pg_get_userbyid(proc.proowner)
+  from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_person_holds_capability(uuid, uuid, text)');
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x02'), 'cms.reviewer');
+select ok(not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x02'), 'cms.reviewer')
+    and platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x05'), 'cms.reviewer')
+    and not exists (select 1 from identity_private.organization_actor_grant actor_grant
+                     where actor_grant.person_id = pg_temp.s12ga_person('x02') and actor_grant.capability_code = 'cms.reviewer'
+                       and (not actor_grant.active or actor_grant.valid_through < current_date)),
+  'the lapse removes the standing authority of x02 only: x05 still holds cms.reviewer and the grant row of x02 is unchanged and active [P2-S12-AC-204]');
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x05'), 'cms.reviewer');
+select ok(not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x02'), 'cms.reviewer')
+    and not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x05'), 'cms.reviewer'),
+  'a second lapse in the same section adds to the first [P2-S12-AC-204]');
+select pg_temp.s12fr_restore();
+select ok(platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x02'), 'cms.reviewer')
+    and platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x05'), 'cms.reviewer')
+    and (select md5(proc.prosrc) = fx.source_md5 and proc.proacl::text is not distinct from fx.acl
+                and pg_get_userbyid(proc.proowner) = fx.owner_name
+           from pg_proc proc, s12fr_fx fx
+          where fx.label = 'before' and proc.oid = to_regprocedure('platform_private.cms_person_holds_capability(uuid, uuid, text)')),
+  'after the restore both hold again and the function is back byte for byte, owner and ACL unchanged [P2-S12-AC-204]');

@@ -1,5 +1,5 @@
 import {
-  AuthoringContextResourceSchema,
+  AuthoringContextReadSchema,
   CmsUuidSchema,
   EntryDraftDetailResourceSchema,
 } from '@wejammin/contracts';
@@ -7,6 +7,10 @@ import {
 import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import { draftValuesFromDetail } from '../cms-editorial/cms-editorial-draft-values';
 import type { CmsEditorialEntryEditorInit } from '../cms-editorial/cms-editorial-entry-editor-state';
+import {
+  localeVariantLinks,
+  type LocaleVariantLink,
+} from '../cms-locale/locale-variant-links';
 import {
   cmsEditorialNoticeFor,
   cmsEditorialUnverifiedNotice,
@@ -24,7 +28,12 @@ export interface CmsEditorialEntryFacts {
 }
 
 export type CmsEditorialEntryEditPageView =
-  | { readonly kind: 'editor'; readonly init: CmsEditorialEntryEditorInit }
+  | {
+      readonly kind: 'editor';
+      readonly init: CmsEditorialEntryEditorInit;
+      /** One link per supported language of the draft's schema version except the source (FE03 :1073). */
+      readonly translateLinks: readonly LocaleVariantLink[];
+    }
   | {
       readonly kind: 'unavailable';
       readonly facts: CmsEditorialEntryFacts;
@@ -135,20 +144,35 @@ export const loadEntryEditPage = async (input: {
   } catch {
     return failure(cmsEditorialUnverifiedNotice('Edit entry'));
   }
-  const parsed = AuthoringContextResourceSchema.safeParse(definitionsBody);
+  // The projection was requested for THIS draft's schema version, so it must be
+  // the combined read: a non-null selection of that exact version and only then
+  // its fields. The shared schema proves the pairing; the guard is for the type.
+  const parsed = AuthoringContextReadSchema.safeParse({
+    query: { contentTypeVersionId: detail.schemaVersionId },
+    resource: definitionsBody,
+  });
   if (!parsed.success)
     return failure(cmsEditorialUnverifiedNotice('Edit entry'));
+  const selected = parsed.data.resource.selectedType;
+  if (selected === null)
+    return failure(cmsEditorialUnverifiedNotice('Edit entry'));
 
-  const descriptors = describeCmsAuthoringFields(parsed.data.fields);
+  const descriptors = describeCmsAuthoringFields(parsed.data.resource.fields);
   const projected = draftValuesFromDetail(detail, descriptors);
   return view(200, {
     kind: 'editor',
+    translateLinks: localeVariantLinks(
+      input.entryId,
+      selected.supportedLocales,
+      selected.sourceLocale,
+    ),
     init: {
       entryId: input.entryId,
       entryVersion: detail.entry.version,
       baseRevision: detail.revisionNumber,
       locale: detail.locale,
       schemaVersionId: detail.schemaVersionId,
+      typeKey: selected.typeKey,
       lifecycle: detail.lifecycle,
       state: detail.state,
       validationState: detail.validationState,

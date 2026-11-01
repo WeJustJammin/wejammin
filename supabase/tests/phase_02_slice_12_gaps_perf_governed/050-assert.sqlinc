@@ -1,0 +1,33 @@
+-- Perf world, part 5: the measurements against the clause targets.
+select diag(op || ' n=' || count(*) || ' p50=' || round((percentile_cont(0.5) within group (order by ms))::numeric, 1) || 'ms p95='
+            || round((percentile_cont(0.95) within group (order by ms))::numeric, 1) || 'ms max=' || round(max(ms), 1) || 'ms')
+  from g12p_timing where op !~ '^shape' group by op order by op;
+
+select ok(pg_temp.g12p_all_ok('submit', 110) and pg_temp.g12p_p95('submit') < 1200,
+  'CMS-03C-06 submit over 110 real submissions: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-067]');
+select ok(pg_temp.g12p_all_ok('assign_create', 146) and pg_temp.g12p_p95('assign_create') < 1200,
+  'CMS-03C-08 assignment create over 146 real creations (up to the limit of 16 active): every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-079]');
+select ok(pg_temp.g12p_all_ok('assign_revoke', 20) and pg_temp.g12p_p95('assign_revoke') < 1200,
+  'CMS-03C-08 assignment revoke over 20 real revocations on a 16-active review: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-079]');
+select ok(pg_temp.g12p_all_ok('decision', 50) and pg_temp.g12p_p95('decision') < 1200,
+  'CMS-03C-07 decision over 50 real approvals including the protected two-slot review: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-073]');
+select ok(pg_temp.g12p_all_ok('activate', 24) and pg_temp.g12p_p95('activate') < 1200,
+  'CMS-03C-09 activate over 24 real activations: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-085]');
+select ok(pg_temp.g12p_all_ok('schedule', 24) and pg_temp.g12p_p95('schedule') < 1200,
+  'CMS-03C-09 schedule over 24 real scheduled acceptances: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-085]');
+select ok(pg_temp.g12p_all_ok('retire', 24) and pg_temp.g12p_p95('retire') < 1200,
+  'CMS-03C-09 retire over 24 real retirements: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-085]');
+select ok(pg_temp.g12p_all_ok('detail_owner', 30) and pg_temp.g12p_p95('detail_owner') < 750,
+  'CMS-03C-10 detail of the owner at 36 assignment rows (32 summarized), 2 decisions and a 2-type policy basis: p95 under the Tier 1 target of 750 ms [P2-S12-AC-091]');
+select ok(pg_temp.g12p_all_ok('detail_reviewer', 30) and pg_temp.g12p_p95('detail_reviewer') < 750,
+  'CMS-03C-10 detail of an assigned reviewer (no assignment summaries): p95 under the Tier 1 target of 750 ms [P2-S12-AC-091]');
+select ok(pg_temp.g12p_all_ok('queue_page1', 30) and pg_temp.g12p_p95('queue_page1') < 750,
+  'CMS-03C-11 first page at the maximum limit of 50 from 111 assigned reviews: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]');
+select ok(pg_temp.g12p_all_ok('queue_cursor_page', 30) and pg_temp.g12p_p95('queue_cursor_page') < 750,
+  'CMS-03C-11 cursor page at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]');
+select ok(pg_temp.g12p_all_ok('queue_owned', 30) and pg_temp.g12p_p95('queue_owned') < 750,
+  'CMS-03C-11 first page of the owned scope at the maximum limit of 50: p95 under the Tier 1 target of 750 ms [P2-S12-AC-097]');
+select ok((select max(ms) from g12p_timing) < 8000,
+  'the worst sample of every governed call is under the 8,000 ms read deadline and the 15,000 ms write deadline [P2-S12-AC-097]');
+select ok(pg_temp.g12p_all_service_role(),
+  'every measured governed call ran under the real service_role transport role, the only role that may execute a platform_api command [P2-S12-AC-067]');

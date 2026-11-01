@@ -1,0 +1,154 @@
+-- cmsLocaleVariantRead answers (DEC-205; BE03c `LocaleVariantRead`, CMS-03C-20 consumers; tracker P2-S12-AC-058,
+-- AC-234, AC-152, AC-051, AC-052).  Result strings read 'mode/outcome/provenance/resolvedFromLocale/stale/blocking/reasonCode'.
+-- Caller: the entry creator (cms.author + cms.editor grants and the entry assignment of cms_create_entry).
+
+select pg_temp.l205_as('creatorAuth');
+select set_config('app.cms_rpc', 'true', true);
+
+create temp table l205_before on commit drop as select pg_temp.l205_evidence() as value;
+
+-- ---- no variant yet: untranslated ------------------------------------------------------------
+create temp table l205_fr0 on commit drop as select pg_temp.l205_read('fr-FR') as answer;
+select ok(not (select answer ? '__error' from l205_fr0),
+  'control: the creator reads a supported locale with no variant [P2-S12-AC-058]');
+select is((select array_agg(key order by key) from l205_fr0, jsonb_object_keys(answer) key),
+  array['activeFallbackChain','fields','locale','resolutions','variant'],
+  'the answer has exactly the five LocaleVariantRead members and no etag, owner or source text member [P2-S12-AC-058]');
+select is((select answer->>'locale' from l205_fr0), 'fr-FR', 'the answer names the locale read [P2-S12-AC-058]');
+select is((select answer->'variant' from l205_fr0), 'null'::jsonb,
+  'a locale with no variant answers an explicit null variant, shown as untranslated [P2-S12-AC-234]');
+select is((select answer->'fields' from l205_fr0), '[]'::jsonb, 'and no stored value [P2-S12-AC-058]');
+select is((select answer->'activeFallbackChain' from l205_fr0), '["en-US"]'::jsonb,
+  'the active fallback order of fr-FR is the active version chain [P2-S12-AC-058]');
+select is((select jsonb_array_length(answer->'resolutions') from l205_fr0), 5,
+  'every localizable field resolves (three localized, two no_fallback) and the none field does not [P2-S12-AC-152]');
+select ok(not (select answer ? '__error' from l205_fr0) and pg_temp.l205_res((select answer from l205_fr0), 'slug') is null,
+  'the none field slug is not listed (and the read itself answered) [P2-S12-AC-152]');
+select is(pg_temp.l205_res((select answer from l205_fr0), 'title'), 'localized/resolved/localized_fallback/en-US/false/false/-',
+  'an untranslated localized field resolves through the chain and records the source locale [P2-S12-AC-058]');
+select is(pg_temp.l205_res((select answer from l205_fr0), 'nick'), 'localized/missing/missing/-/false/false/-',
+  'a localized field with no value anywhere is missing and does not block [P2-S12-AC-058]');
+select is(pg_temp.l205_res((select answer from l205_fr0), 'legal'), 'no_fallback/missing/missing/-/false/true/no_fallback_missing',
+  'a no_fallback field never borrows the default locale value: missing and blocking [P2-S12-AC-051]');
+select is((select answer->'resolutions' from l205_fr0), pg_temp.l205_resolver('fr-FR'),
+  'the resolutions are exactly the CMS-03C-20 resolver output for every localizable field, ascending by field id [P2-S12-AC-152]');
+select ok((select answer::text !~ 'Source (title|summary|legal|terms)' and not answer ? '__error' from l205_fr0),
+  'no source-locale text appears anywhere in the answer [P2-S12-AC-051]');
+
+-- ---- chains and the default locale -------------------------------------------------------------
+select is(pg_temp.l205_read('fr-CA')->'activeFallbackChain', '["fr-FR","en-US"]'::jsonb,
+  'the fallback order keeps the version order: fr-CA walks fr-FR before en-US [P2-S12-AC-058]');
+select is(pg_temp.l205_read('de-DE')->'activeFallbackChain', '["en-US"]'::jsonb, 'de-DE chains to en-US [P2-S12-AC-058]');
+select is(pg_temp.l205_read('en-US')->'activeFallbackChain', '[]'::jsonb,
+  'the default locale has an empty fallback order (AC-233) [P2-S12-AC-058]');
+select is(pg_temp.l205_read('en-US')->'variant', 'null'::jsonb, 'the default locale has no variant [P2-S12-AC-234]');
+select is(pg_temp.l205_read('en-US')->'fields', '[]'::jsonb, 'and so no stored value to list [P2-S12-AC-058]');
+select is(pg_temp.l205_read('en-US')->'resolutions', pg_temp.l205_resolver('en-US'),
+  'the default locale resolutions equal the resolver [P2-S12-AC-152]');
+select is(pg_temp.l205_read('fr-CA')->'resolutions', pg_temp.l205_resolver('fr-CA'),
+  'fr-CA resolutions equal the resolver [P2-S12-AC-152]');
+
+-- ---- a draft variant ------------------------------------------------------------------------
+create temp table l12r_fr on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('fr-FR', pg_temp.l12r_field_list(jsonb_build_object(
+  'title', 'Titre FR', 'summary', 'Resume FR', 'legal', 'Mentions FR')), 'l205-fr-0001')) as response;
+select set_config('app.cms_rpc', 'true', true);
+select is((select response->>'state' from l12r_fr), 'draft', 'control: the fr-FR variant is authored through the real CMS-03C-04 command');
+create temp table l205_fr1 on commit drop as select pg_temp.l205_read('fr-FR') as answer;
+select is((select answer->'variant' from l205_fr1), (select response from l12r_fr),
+  'the variant is exactly the resource CMS-03C-04 answered when it wrote it: id, version, hash, instants, revision, chain, no_fallback ids, no stale ids [P2-S12-AC-058]');
+select is((select answer->'variant'->>'state' from l205_fr1), platform_private.cms_locale_variant_state(pg_temp.l12_entry(), 'fr-FR'),
+  'the variant state is the derived LocaleVariantState (D12) [P2-S12-AC-234]');
+select is((select jsonb_array_length(answer->'fields') from l205_fr1), 3, 'the stored values are the three fields written [P2-S12-AC-058]');
+select is(pg_temp.l205_value((select answer from l205_fr1), 'title'), '"Titre FR"'::jsonb, 'the stored title is returned verbatim [P2-S12-AC-058]');
+select is(pg_temp.l205_value((select answer from l205_fr1), 'summary'), '"Resume FR"'::jsonb, 'the stored summary is returned verbatim [P2-S12-AC-058]');
+select is(pg_temp.l205_value((select answer from l205_fr1), 'legal'), '"Mentions FR"'::jsonb, 'the stored no_fallback value is returned verbatim [P2-S12-AC-058]');
+select ok(not (select answer ? '__error' from l205_fr1) and pg_temp.l205_value((select answer from l205_fr1), 'terms') is null and pg_temp.l205_value((select answer from l205_fr1), 'nick') is null,
+  'a field the translator never wrote is not listed: no inherited or invented value [P2-S12-AC-058]');
+select is((select (select jsonb_agg(item->>'fieldId' order by item->>'fieldId') from jsonb_array_elements(answer->'fields') item)
+             = (select jsonb_agg(item->>'fieldId') from jsonb_array_elements(answer->'fields') item)
+             from l205_fr1), true, 'the stored values are ascending by field id [P2-S12-AC-058]');
+select is(pg_temp.l205_res((select answer from l205_fr1), 'title'), 'localized/resolved/authored/-/false/false/-',
+  'a translated field resolves to its own authored value [P2-S12-AC-058]');
+select is(pg_temp.l205_res((select answer from l205_fr1), 'legal'), 'no_fallback/resolved/authored/-/false/false/-',
+  'a written no_fallback field is resolved and not blocking [P2-S12-AC-051]');
+select is(pg_temp.l205_res((select answer from l205_fr1), 'terms'), 'no_fallback/missing/missing/-/false/true/no_fallback_missing',
+  'the unwritten no_fallback field still blocks and never shows the en-US text [P2-S12-AC-051]');
+select is((select answer->'resolutions' from l205_fr1), pg_temp.l205_resolver('fr-FR'),
+  'the resolutions still equal the resolver after the write [P2-S12-AC-152]');
+select ok(not (select answer ? '__error' from l205_fr1) and pg_temp.l205_read('fr-FR') = (select answer from l205_fr1), 'two reads of unchanged state are byte-identical [P2-S12-AC-058]');
+select is(pg_temp.l205_read('fr-CA')->'variant', 'null'::jsonb, 'another locale of the same entry still has no variant [P2-S12-AC-234]');
+select is(pg_temp.l205_read('fr-CA')->'fields', '[]'::jsonb, 'and lists none of the fr-FR values [P2-S12-AC-051]');
+select is(pg_temp.l205_res(pg_temp.l205_read('fr-CA'), 'legal'), 'no_fallback/missing/missing/-/false/true/no_fallback_missing',
+  'fr-CA does not borrow the fr-FR no_fallback text although fr-FR is in its chain [P2-S12-AC-051]');
+select ok(not (pg_temp.l205_read('fr-CA') ? '__error') and pg_temp.l205_read('fr-CA')::text !~ '(Titre FR|Resume FR|Mentions FR)', 'and no fr-FR text appears in the fr-CA answer [P2-S12-AC-051]');
+select is(pg_temp.l205_res(pg_temp.l205_read('fr-CA'), 'summary'), 'localized/resolved/localized_fallback/fr-FR/false/false/-',
+  'a localized field takes the chain member before the default locale and names it [P2-S12-AC-058]');
+
+-- ---- an explicit null value ------------------------------------------------------------------
+create temp table l205_de on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('de-DE', jsonb_build_array(
+  jsonb_build_object('fieldId', pg_temp.l12r_fid('title'), 'value', null),
+  jsonb_build_object('fieldId', pg_temp.l12r_fid('summary'), 'value', 'Zusammenfassung'),
+  jsonb_build_object('fieldId', pg_temp.l12r_fid('legal'), 'value', 'Rechtliches')), 'l205-de-0001')) as response;
+select set_config('app.cms_rpc', 'true', true);
+select is((select response->>'state' from l205_de), 'draft', 'control: the de-DE variant with an explicit null title is authored');
+create temp table l205_de1 on commit drop as select pg_temp.l205_read('de-DE') as answer;
+select is(pg_temp.l205_value((select answer from l205_de1), 'title'), 'null'::jsonb,
+  'an explicit null is listed as a JSON null, distinct from an unlisted field [P2-S12-AC-058]');
+select is(pg_temp.l205_res((select answer from l205_de1), 'title'), 'localized/resolved/localized_fallback/en-US/false/false/-',
+  'a null value is no value: the resolution falls through the chain exactly as the resolver does [P2-S12-AC-152]');
+select is((select answer->'resolutions' from l205_de1), pg_temp.l205_resolver('de-DE'), 'and the whole set equals the resolver [P2-S12-AC-152]');
+
+-- ---- source change: stale ---------------------------------------------------------------------
+select pg_temp.l12_source_edit(pg_temp.l12r_values(
+  'Changed source title', 'Source summary', 'Changed source legal', 'Source terms', 'source-slug'));
+select set_config('app.cms_rpc', 'true', true);
+create temp table l205_fr2 on commit drop as select pg_temp.l205_read('fr-FR') as answer;
+select is((select answer->'variant'->>'state' from l205_fr2), 'stale', 'a source change shows the variant stale [P2-S12-AC-234]');
+select is((select answer->'variant'->>'version' from l205_fr2), '2', 'the stale row is the next version of the locale [P2-S12-AC-235]');
+select is((select answer->'variant'->>'state' from l205_fr2), platform_private.cms_locale_variant_state(pg_temp.l12_entry(), 'fr-FR'),
+  'and equals the derived state function [P2-S12-AC-234]');
+select is((select (select jsonb_agg(item order by item) from jsonb_array_elements_text(answer->'variant'->'staleFieldIds') item) from l205_fr2),
+  pg_temp.l12_stored_stale('fr-FR'), 'staleFieldIds lists exactly the stored stale fields [P2-S12-AC-235]');
+select is((select jsonb_array_length(answer->'variant'->'staleFieldIds') from l205_fr2), 2,
+  'exactly the two changed translated fields (title and legal) are stale, not the unchanged summary [P2-S12-AC-235]');
+select is(pg_temp.l205_res((select answer from l205_fr2), 'title'), 'localized/resolved/authored/-/true/false/-',
+  'a stale localized field keeps its translation, is flagged stale and does not block [P2-S12-AC-052]');
+select is(pg_temp.l205_res((select answer from l205_fr2), 'legal'), 'no_fallback/resolved/authored/-/true/true/no_fallback_stale',
+  'a stale no_fallback field blocks with no_fallback_stale [P2-S12-AC-052]');
+select is(pg_temp.l205_res((select answer from l205_fr2), 'summary'), 'localized/resolved/authored/-/false/false/-',
+  'an unchanged translated field is not stale [P2-S12-AC-052]');
+select is(pg_temp.l205_value((select answer from l205_fr2), 'title'), '"Titre FR"'::jsonb,
+  'the stale variant still lists the stored translation, never the new source text [P2-S12-AC-051]');
+select is((select answer->'resolutions' from l205_fr2), pg_temp.l205_resolver('fr-FR'), 'stale resolutions equal the resolver [P2-S12-AC-152]');
+
+-- ---- explicit revalidation ------------------------------------------------------------------
+create temp table l205_fr3w on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('fr-FR', pg_temp.l12r_field_list(jsonb_build_object(
+  'title', 'Titre FR 2', 'summary', 'Resume FR', 'legal', 'Mentions FR 2', 'terms', 'Conditions FR')), 'l205-fr-0002')) as response;
+select set_config('app.cms_rpc', 'true', true);
+create temp table l205_fr3 on commit drop as select pg_temp.l205_read('fr-FR') as answer;
+select is((select answer->'variant' from l205_fr3), (select response from l205_fr3w),
+  'after revalidation the variant is the new draft resource, without stale ids [P2-S12-AC-235]');
+select is((select answer->'variant'->>'version' from l205_fr3), '3', 'the revalidation is version 3 of the locale [P2-S12-AC-235]');
+select is(pg_temp.l205_value((select answer from l205_fr3), 'terms'), '"Conditions FR"'::jsonb, 'the new stored value is listed [P2-S12-AC-058]');
+select is(pg_temp.l205_value((select answer from l205_fr3), 'title'), '"Titre FR 2"'::jsonb, 'and the replaced value is the current revision value [P2-S12-AC-058]');
+select is(pg_temp.l205_res((select answer from l205_fr3), 'legal'), 'no_fallback/resolved/authored/-/false/false/-', 'no field is stale after revalidation [P2-S12-AC-052]');
+select is((select answer->'resolutions' from l205_fr3), pg_temp.l205_resolver('fr-FR'), 'revalidated resolutions equal the resolver [P2-S12-AC-152]');
+
+-- ---- the read writes nothing ------------------------------------------------------------------
+create temp table l205_mid on commit drop as select pg_temp.l205_evidence() as value;
+select pg_temp.l205_read('fr-FR'); select pg_temp.l205_read('de-DE'); select pg_temp.l205_read('fr-CA'); select pg_temp.l205_read('en-US');
+select ok(not (pg_temp.l205_read('fr-FR') ? '__error'), 'control: the reads of the evidence check answer');
+select is(pg_temp.l205_evidence(), (select value from l205_mid),
+  'reads leave variants, revisions, values, audit, idempotency, outbox and entry versions unchanged [P2-S12-AC-057]');
+select isnt((select value from l205_before), (select value from l205_mid), 'control: the evidence counter does move when something is written');
+
+-- ---- the answer parses as the contract (schema keys of the resource) -----------------------------
+select is((select array_agg(key order by key) from l205_fr3, jsonb_object_keys(answer->'variant') key),
+  array['contentHash','createdAt','entryId','fallbackChain','id','locale','noFallbackFieldIds','revisionId','sourceRevisionId','staleFieldIds','state','updatedAt','version'],
+  'the variant has exactly the LocaleVariantResource members [P2-S12-AC-058]');
+select is((select array_agg(key order by key) from l205_fr3, jsonb_array_elements(answer->'resolutions') item, jsonb_object_keys(item) key where item->>'fieldId' = pg_temp.l12r_fid('title')::text),
+  array['blocking','fieldId','locale','mode','outcome','provenance','reasonCode','resolvedFromLocale','stale'],
+  'a resolution has exactly the nine LocaleFieldResolution members [P2-S12-AC-152]');

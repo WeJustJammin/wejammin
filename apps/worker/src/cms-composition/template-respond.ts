@@ -1,5 +1,11 @@
+import { noteRefusal } from './observability-facts';
+import {
+  forbiddenDetails,
+  type CapabilityOperationId,
+} from './capability-details';
+import { conflictReasonDetails } from './conflict-details';
 import { mediaTypeDetails } from './media-type-details';
-import { ApiErrorSchema } from '@wejammin/contracts';
+import { ApiErrorSchema, CMS_KEY_RESERVED_REASON } from '@wejammin/contracts';
 
 import {
   ERROR_CODES,
@@ -18,12 +24,14 @@ const VIOLATION_CODES = new Set([
   'audience_invalid',
   'compatible_type_duplicate',
   'template_slot_duplicate',
+  CMS_KEY_RESERVED_REASON,
 ]);
 
 /** Detail projection never forwards SQL/provider prose, resource names, or content. */
 const safeDetails = (
   status: Status,
   source: unknown,
+  operationId: CapabilityOperationId,
 ): Record<string, unknown> => {
   if (status === 415) return mediaTypeDetails(source);
   if (status === 401) return { recoveryAction: 'reauthenticate' };
@@ -32,34 +40,36 @@ const safeDetails = (
   const details = source as Readonly<Record<string, unknown>>;
   if (status === 400 || status === 422) {
     if (!Array.isArray(details.violations)) return {};
-    return {
-      violations: details.violations.slice(0, 50).flatMap((candidate) => {
-        if (
-          typeof candidate !== 'object' ||
-          candidate === null ||
-          Array.isArray(candidate)
-        )
-          return [];
-        const value = candidate as Readonly<Record<string, unknown>>;
-        return [
-          {
-            path:
-              typeof value.path === 'string' ? value.path.slice(0, 256) : '/',
-            code:
-              typeof value.code === 'string' && VIOLATION_CODES.has(value.code)
-                ? value.code
-                : 'invalid',
-            message: 'The value is invalid.',
-          },
-        ];
-      }),
-    };
+    const violations = details.violations.slice(0, 50).flatMap((candidate) => {
+      if (
+        typeof candidate !== 'object' ||
+        candidate === null ||
+        Array.isArray(candidate)
+      )
+        return [];
+      const value = candidate as Readonly<Record<string, unknown>>;
+      return [
+        {
+          path: typeof value.path === 'string' ? value.path.slice(0, 256) : '/',
+          code:
+            typeof value.code === 'string' && VIOLATION_CODES.has(value.code)
+              ? value.code
+              : 'invalid',
+          message: 'The value is invalid.',
+        },
+      ];
+    });
+    // BE03c E13: a reserved key carries the typed reasonCode beside its pointer.
+    return status === 422 &&
+      violations.some(({ code }) => code === CMS_KEY_RESERVED_REASON)
+      ? { reasonCode: CMS_KEY_RESERVED_REASON, violations }
+      : { violations };
   }
-  if (status === 403)
-    return details.reasonCode === 'CAPABILITY_REQUIRED'
-      ? { reasonCode: 'CAPABILITY_REQUIRED' }
-      : {};
+  if (status === 403) return forbiddenDetails(operationId, details);
   if (status === 409) {
+    // BE03c 1273 / DEC-186: a typed 409 reason names itself and nothing else.
+    const reason = conflictReasonDetails(operationId, details);
+    if (reason !== null) return { ...reason };
     const output: Record<string, unknown> = {};
     for (const key of ['expectedVersion', 'currentVersion'] as const)
       if (
@@ -84,7 +94,8 @@ const safeDetails = (
     return output;
   }
   if (status === 502 || status === 503 || status === 504)
-    return { dependencyClass: 'cms_composition', retryable: status !== 502 };
+    // BE00 172: the DEPENDENCY_UNAVAILABLE member is `retryable: true` on 502, 503 and 504.
+    return { dependencyClass: 'cms_composition', retryable: true };
   return {};
 };
 
@@ -112,10 +123,11 @@ export const errorResponse = (
   requestId: string,
   error: CmsTemplateError,
   additionalHeaders?: Headers,
+  operationId: CapabilityOperationId = 'CMS-03C-01',
 ): Response => {
   const status = statusOf(error.status);
   const code = ERROR_CODES[status];
-  const details = safeDetails(status, error.details);
+  const details = safeDetails(status, error.details, operationId);
   const headers = commonHeaders(request, dependencies, requestId);
   headers.set('content-type', 'application/json; charset=UTF-8');
   const retryAfter = error.retryAfterSeconds;
@@ -140,5 +152,7 @@ export const errorResponse = (
     requestId,
     details,
   });
+  // BE03c Observability: the published refusal, reduced to its catalog code and closed members.
+  noteRefusal(request, status, details, code);
   return new Response(JSON.stringify(payload), { status, headers });
 };

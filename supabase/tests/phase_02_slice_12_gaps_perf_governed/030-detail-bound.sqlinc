@@ -1,0 +1,52 @@
+-- Perf world, part 3: the CMS-03C-10 detail at its bounded size (BE03c GovernedReviewDetailResource: decisions <= 8,
+-- owner-only assignments <= 32 summaries, policyBasis <= 64).  One PROTECTED review (typeA + protectedType, two required
+-- decisions: the policy slot, then the base slot) with 16 active assignments (designer2, rev1, rev2 and the thirteen pool
+-- reviewers x01..x13, the limit of 16) and 20 revoked cycles of one reviewer, so 36 stored assignment rows return the 32
+-- summary cap; then the two real approvals.  Every row is written by the named command.  The bound of 8 decisions is not
+-- producible by any command (the seeded policies require at most two), so the detail is measured at two decisions.
+select ok(pg_temp.s12ga_pool(13) = 13, 'fixture: thirteen pool reviewers hold real cms.reviewer grants [P2-S12-AC-091]');
+select pg_temp.s12ga_open('dtl', 'owner', array['typeA', 'protectedType'], 'owner');
+
+do $bench$
+declare v_review uuid := pg_temp.s12ga_review('dtl'); v_who text; v_version text; v_cycle integer;
+begin
+  foreach v_who in array array['designer2', 'rev1', 'rev2', 'x01', 'x02', 'x03', 'x04', 'x05', 'x06', 'x07', 'x08', 'x09', 'x10', 'x11', 'x12', 'x13'] loop
+    v_version := pg_temp.s12ga_rver(v_review);
+    perform pg_temp.g12p_call('assign_create', 'platform_api.cms_assign_governed_reviewer', 'owner', jsonb_build_object(
+      'reviewId', v_review, 'action', 'create', 'expectedVersion', v_version, 'ifMatch', v_version,
+      'reviewerPersonId', pg_temp.s12ga_person(v_who),
+      'expiresAt', pg_temp.s12ga_iso(clock_timestamp() + interval '20 hours'),
+      'idempotencyKey', 's12gp-dtl-assign-' || v_who), pg_temp.g12pg_w('owner'));
+  end loop;
+  for v_cycle in 1..20 loop
+    v_version := pg_temp.s12ga_rver(v_review);
+    perform pg_temp.g12p_call('assign_revoke', 'platform_api.cms_assign_governed_reviewer', 'owner', jsonb_build_object(
+      'reviewId', v_review, 'action', 'revoke', 'expectedVersion', v_version, 'ifMatch', v_version,
+      'assignmentId', pg_temp.s12ga_aid(v_review, 'x13'), 'idempotencyKey', 's12gp-dtl-revoke-' || v_cycle), pg_temp.g12pg_w('owner'));
+    perform pg_temp.g12p_call('assign_create', 'platform_api.cms_assign_governed_reviewer', 'owner', jsonb_build_object(
+      'reviewId', v_review, 'action', 'create', 'expectedVersion', v_version, 'ifMatch', v_version,
+      'reviewerPersonId', pg_temp.s12ga_person('x13'),
+      'expiresAt', pg_temp.s12ga_iso(clock_timestamp() + interval '20 hours'),
+      'idempotencyKey', 's12gp-dtl-recreate-' || v_cycle), pg_temp.g12pg_w('owner'));
+  end loop;
+  perform pg_temp.g12pg_require('assign_revoke', 20);
+  perform pg_temp.g12pg_require('assign_create', 146);
+  v_version := pg_temp.s12ga_rver(v_review);
+  perform pg_temp.g12p_call('decision', 'platform_api.cms_record_governed_decision', 'designer2', jsonb_build_object(
+    'reviewId', v_review, 'decision', 'approve', 'reason', 'The disclosure policy is met.',
+    'expectedVersion', v_version, 'ifMatch', v_version, 'idempotencyKey', 's12gp-dtl-decide-policy'), pg_temp.g12pg_w('designer2'));
+  v_version := pg_temp.s12ga_rver(v_review);
+  perform pg_temp.g12p_call('decision', 'platform_api.cms_record_governed_decision', 'rev1', jsonb_build_object(
+    'reviewId', v_review, 'decision', 'approve', 'reason', 'Reviewed against the frozen policy basis.',
+    'expectedVersion', v_version, 'ifMatch', v_version, 'idempotencyKey', 's12gp-dtl-decide-base'), pg_temp.g12pg_w('rev1'));
+  perform pg_temp.g12pg_require('decision', 50);
+end;
+$bench$;
+
+select is(
+  (select count(*)::integer || '/' || count(*) filter (where state = 'active')::integer || '/' || count(*) filter (where state = 'revoked')::integer
+     from platform_private.cms_governed_review_assignments where review_id = pg_temp.s12ga_review('dtl')),
+  '36/16/20', 'fixture: the detail review has 36 stored assignment rows, 16 active and 20 revoked [P2-S12-AC-091]');
+select ok((select state = 'approved' and risk_class = 'protected' and recorded_decision_count = 2
+             from platform_private.cms_governed_reviews where id = pg_temp.s12ga_review('dtl')),
+  'fixture: the detail review is a protected review approved by its two real decisions [P2-S12-AC-091]');

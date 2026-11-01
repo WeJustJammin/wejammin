@@ -1,0 +1,136 @@
+-- Replay witnesses for supabase/migrations-wip/governed-fix3/20261014100000_cms_governed_digest_pattern_compat.sql
+-- (each `do $amend$` block below is a byte-identical copy of that migration's DO block; the migration is applied
+-- once by the reset, so only a replay can show the two properties a forward patch must have):
+--   1. idempotent: against the already-patched body the block changes nothing (body and every other pg_proc
+--      attribute identical);
+--   2. fail loud: against a body that carries neither the anchor nor the replacement it raises SQLSTATE 55000
+--      instead of silently leaving the defect in place.
+-- The second replay runs inside a subtransaction that an exception rolls back, so the function the rest of the
+-- suite sees is untouched.  If the migration is edited, regenerate this file (its two copies are extracted by script).
+create temp table fix3_replay(label text primary key, src text, attrs text) on commit drop;
+create or replace function pg_temp.fix3_digest_snapshot(p_label text) returns void language sql as $body$
+  insert into fix3_replay
+  select p_label, proc.prosrc, (to_jsonb(proc) - 'prosrc')::text
+    from pg_catalog.pg_proc proc
+   where proc.oid = 'platform_private.cms_governed_current_digest(text,uuid,jsonb)'::regprocedure
+$body$;
+select pg_temp.fix3_digest_snapshot('before');
+do $amend$
+declare
+  target_identity constant text := 'platform_private.cms_governed_current_digest(text, uuid, jsonb)';
+  anchor constant text := $a1$    end loop;
+    return platform_private.cms_jcs_sha256(tuples);$a1$;
+  replacement constant text := $r1$    end loop;
+    if not platform_private.cms_pattern_blocks_compatible(
+         p_owner_id, p_subject->'blockTree', coalesce(p_subject->'typeIds', '[]'::pg_catalog.jsonb)) then
+      raise exception 'VALIDATION_FAILED' using errcode = 'P0001', detail = '["/blockTree"]';
+    end if;
+    return platform_private.cms_jcs_sha256(tuples);$r1$;
+  live pg_catalog.pg_proc%rowtype;
+  patched text;
+  before_attrs text;
+  after_attrs text;
+  occurrences integer;
+begin
+  select proc.* into live from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if not found then
+    raise exception '% is missing', target_identity using errcode = '55000';
+  end if;
+  if live.prolang <> (select lang.oid from pg_catalog.pg_language lang where lang.lanname = 'plpgsql')
+     or live.prorettype <> 'text'::pg_catalog.regtype or not live.prosecdef then
+    raise exception '% does not have the expected shape', target_identity using errcode = '55000';
+  end if;
+  occurrences := (pg_catalog.length(live.prosrc) - pg_catalog.length(pg_catalog.replace(live.prosrc, anchor, '')))
+                 / pg_catalog.length(anchor);
+  if occurrences = 1 then
+    patched := pg_catalog.replace(live.prosrc, anchor, replacement);
+  elsif occurrences = 0 and pg_catalog.strpos(live.prosrc, replacement) > 0 then
+    return; -- already applied
+  else
+    raise exception '% patch anchor occurs % times', target_identity, occurrences using errcode = '55000';
+  end if;
+  before_attrs := (pg_catalog.to_jsonb(live) - 'prosrc')::text;
+  execute pg_catalog.format(
+    'create or replace function platform_private.cms_governed_current_digest(p_kind text, p_owner_id uuid, p_subject jsonb) '
+    || 'returns text language plpgsql volatile security definer set search_path = %L as %L',
+    '', patched);
+  select (pg_catalog.to_jsonb(proc) - 'prosrc')::text into after_attrs
+    from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if after_attrs is distinct from before_attrs then
+    raise exception '%: owner, ACL, security, volatility or config changed', target_identity using errcode = '55000';
+  end if;
+end;
+$amend$;
+select pg_temp.fix3_digest_snapshot('after');
+select ok((select b.src = a.src from fix3_replay b join fix3_replay a on a.label = 'after' where b.label = 'before'),
+  'replay: the patch is idempotent, the already-patched body is byte-identical [BE03c digest invariants]');
+select ok((select b.attrs = a.attrs from fix3_replay b join fix3_replay a on a.label = 'after' where b.label = 'before'),
+  'replay: owner, ACL, security, volatility and config are unchanged by the replay [BE03c digest invariants]');
+
+create or replace function pg_temp.fix3_replay_unanchored() returns text language plpgsql as $body$
+declare outcome text := 'NO RAISE';
+begin
+  begin
+    execute 'create or replace function platform_private.cms_governed_current_digest(p_kind text, p_owner_id uuid, p_subject jsonb) '
+         || 'returns text language plpgsql volatile security definer set search_path = '''' as $f$ begin return null; end; $f$';
+    execute $replay$
+do $amend$
+declare
+  target_identity constant text := 'platform_private.cms_governed_current_digest(text, uuid, jsonb)';
+  anchor constant text := $a1$    end loop;
+    return platform_private.cms_jcs_sha256(tuples);$a1$;
+  replacement constant text := $r1$    end loop;
+    if not platform_private.cms_pattern_blocks_compatible(
+         p_owner_id, p_subject->'blockTree', coalesce(p_subject->'typeIds', '[]'::pg_catalog.jsonb)) then
+      raise exception 'VALIDATION_FAILED' using errcode = 'P0001', detail = '["/blockTree"]';
+    end if;
+    return platform_private.cms_jcs_sha256(tuples);$r1$;
+  live pg_catalog.pg_proc%rowtype;
+  patched text;
+  before_attrs text;
+  after_attrs text;
+  occurrences integer;
+begin
+  select proc.* into live from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if not found then
+    raise exception '% is missing', target_identity using errcode = '55000';
+  end if;
+  if live.prolang <> (select lang.oid from pg_catalog.pg_language lang where lang.lanname = 'plpgsql')
+     or live.prorettype <> 'text'::pg_catalog.regtype or not live.prosecdef then
+    raise exception '% does not have the expected shape', target_identity using errcode = '55000';
+  end if;
+  occurrences := (pg_catalog.length(live.prosrc) - pg_catalog.length(pg_catalog.replace(live.prosrc, anchor, '')))
+                 / pg_catalog.length(anchor);
+  if occurrences = 1 then
+    patched := pg_catalog.replace(live.prosrc, anchor, replacement);
+  elsif occurrences = 0 and pg_catalog.strpos(live.prosrc, replacement) > 0 then
+    return; -- already applied
+  else
+    raise exception '% patch anchor occurs % times', target_identity, occurrences using errcode = '55000';
+  end if;
+  before_attrs := (pg_catalog.to_jsonb(live) - 'prosrc')::text;
+  execute pg_catalog.format(
+    'create or replace function platform_private.cms_governed_current_digest(p_kind text, p_owner_id uuid, p_subject jsonb) '
+    || 'returns text language plpgsql volatile security definer set search_path = %L as %L',
+    '', patched);
+  select (pg_catalog.to_jsonb(proc) - 'prosrc')::text into after_attrs
+    from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if after_attrs is distinct from before_attrs then
+    raise exception '%: owner, ACL, security, volatility or config changed', target_identity using errcode = '55000';
+  end if;
+end;
+$amend$;
+$replay$;
+  exception when others then
+    outcome := 'RAISED ' || sqlstate;
+    -- the exception rolls this subtransaction back, restoring the real function
+  end;
+  return outcome;
+end;
+$body$;
+select is(pg_temp.fix3_replay_unanchored(), 'RAISED 55000',
+  'replay: a body without the anchor or the replacement is refused with 55000 [BE03c digest invariants]');
+select ok((select proc.prosrc = (select src from fix3_replay where label = 'before')
+             from pg_catalog.pg_proc proc
+            where proc.oid = 'platform_private.cms_governed_current_digest(text,uuid,jsonb)'::regprocedure),
+  'replay: the refused patch rolled back, the live digest function is unchanged by the refused replay [BE03c digest invariants]');

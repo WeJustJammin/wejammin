@@ -1,0 +1,39 @@
+-- DEC-191 / CMS-03C-10 activationSchedule for the one blocked reason 040 cannot reach quickly: retries_exhausted, through the real
+-- CMS-03C-19 ladder (15 s, 60 s, 300 s, then blocked).  One real schedule, the labelled negative policy-evidence fault of the schedule suite
+-- for the whole ladder, real waits (about 7.5 minutes), no clock forgery, no trigger toggle.
+create temp table d191_setup(key text primary key, outcome text not null) on commit drop;
+insert into d191_setup(key, outcome) values ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1));
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key = 'rev1';
+select pg_temp.s12gb_approved('xl');
+create temp table d191_clock(started timestamptz not null) on commit drop;
+insert into d191_clock(started) values (clock_timestamp());
+select pg_temp.s12gb_act('sch-xl', 'owner', pg_temp.s12ga_review('xl'), 'schedule', p_after => interval '62 seconds');
+select ok(pg_temp.s12ga_out('sch-xl') = 'ok' and (select outcome = 'OK' from d191_setup where key = 'rev1:reviewer'),
+  'fixture: one real pending schedule was accepted by the real CMS-03C-09 producer [P2-S12-AC-152]');
+
+select pg_sleep(greatest(0, 66 - extract(epoch from (clock_timestamp() - (select started from d191_clock)))));
+select pg_temp.s12gb_claim('c0');
+select pg_temp.s12gb_fault_on();
+select pg_temp.s12gb_exec('f1', pg_temp.s12gb_sid('xl'), '2', (pg_temp.s12gb_claimed('c0', 'xl')->>'leaseId')::uuid);
+select pg_sleep(16);
+select pg_temp.s12gb_claim('c1');
+select pg_temp.s12gb_exec('f2', pg_temp.s12gb_sid('xl'), '2', (pg_temp.s12gb_claimed('c1', 'xl')->>'leaseId')::uuid);
+select pg_sleep(61);
+select pg_temp.s12gb_claim('c2');
+select pg_temp.s12gb_exec('f3', pg_temp.s12gb_sid('xl'), '2', (pg_temp.s12gb_claimed('c2', 'xl')->>'leaseId')::uuid);
+select pg_temp.s12ga_get('g-xl-retry', 'owner', pg_temp.s12ga_review('xl'));
+select ok(pg_temp.s12gb_sbody('f1')->>'outcome' = 'failed_retryable' and pg_temp.s12gb_sbody('f2')->>'outcome' = 'failed_retryable'
+    and pg_temp.s12gb_sbody('f3')->>'outcome' = 'failed_retryable'
+    and (select attempt_count = 3 from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('xl'))
+    and pg_temp.s12ga_body('g-xl-retry')->'activationSchedule' = '{"state": "failed_retryable", "reasonCode": null}'::jsonb,
+  'after three failures (15 s, 60 s, 300 s steps pending) the detail shows { state failed_retryable, reasonCode null } [P2-S12-AC-152]');
+select pg_sleep(301);
+select pg_temp.s12gb_claim('c3');
+select pg_temp.s12gb_exec('f4', pg_temp.s12gb_sid('xl'), '2', (pg_temp.s12gb_claimed('c3', 'xl')->>'leaseId')::uuid);
+select is(pg_temp.s12gb_fault_off()::text, 'true', 'control: the policy-evidence resolver is restored byte for byte after the fault [P2-S12-AC-152]');
+select pg_temp.s12ga_get('g-xl', 'owner', pg_temp.s12ga_review('xl'));
+select ok(pg_temp.s12gb_sbody('f4')->>'outcome' = 'blocked' and pg_temp.s12gb_sbody('f4')->>'reasonCode' = 'retries_exhausted'
+    and pg_temp.s12ga_body('g-xl')->'activationSchedule' = '{"state": "blocked", "reasonCode": "retries_exhausted"}'::jsonb
+    and pg_temp.s12ga_keys(pg_temp.s12ga_body('g-xl')->'activationSchedule') = 'reasonCode,state',
+  'the exhausted ladder shows { state blocked, reasonCode retries_exhausted } on the review detail [P2-S12-AC-152]');
+select 'EVIDENCE g-xl ' || coalesce(pg_temp.s12ga_body('g-xl')::text, 'null');

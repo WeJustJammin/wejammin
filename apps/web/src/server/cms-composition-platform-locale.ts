@@ -9,6 +9,11 @@ import {
   LocaleVariantResourceSchema,
 } from '@wejammin/contracts';
 
+import { forbiddenDetails } from './cms-composition-platform-capability';
+import {
+  compositionDependencyDetails,
+  isCompositionDependencyStatus,
+} from './cms-composition-platform-dependency';
 import {
   cmsEditorialBoundedRequestJson,
   cmsEditorialBoundedResponseJson,
@@ -33,18 +38,22 @@ const LOCALE_CODES = {
   422: 'LOCALE_VALIDATION_FAILED',
   429: 'RATE_LIMITED',
   500: 'INTERNAL_ERROR',
-  502: 'DEPENDENCY_INVALID_RESPONSE',
+  502: 'DEPENDENCY_UNAVAILABLE',
   503: 'DEPENDENCY_UNAVAILABLE',
-  504: 'DEPENDENCY_DEADLINE_EXCEEDED',
+  504: 'DEPENDENCY_UNAVAILABLE',
 } as const;
+/** The 409 reason of a request that would create the 33rd locale variant of an entry (BE03c 392, D12). */
+const LOCALE_LIMIT_REACHED = 'locale_limit_reached';
 type LocaleStatus = keyof typeof LOCALE_CODES;
 const isLocaleStatus = (status: number): status is LocaleStatus =>
   Object.hasOwn(LOCALE_CODES, status);
 
-const localeError = (
+export const localeError = (
   request: Request,
   status: LocaleStatus,
-  details: Record<string, unknown> = {},
+  details: Record<string, unknown> = isCompositionDependencyStatus(status)
+    ? { ...compositionDependencyDetails() }
+    : {},
   requestId = createRequestId(request.headers.get('x-request-id') ?? undefined),
   retryAfterSeconds?: number,
 ): Response => {
@@ -77,15 +86,15 @@ const safeErrorDetails = (
   value: Record<string, unknown>,
 ): Record<string, unknown> => {
   if (status === 401) return { recoveryAction: 'reauthenticate' };
-  if (status === 403)
-    return value.reasonCode === 'CAPABILITY_REQUIRED'
-      ? { reasonCode: 'CAPABILITY_REQUIRED' }
-      : {};
+  if (status === 403) return forbiddenDetails('CMS-03C-04', value);
   if (status === 409) {
     const details: Record<string, unknown> = {};
     for (const key of ['expectedVersion', 'currentVersion'] as const)
       if (CmsVersionSchema.safeParse(value[key]).success)
         details[key] = value[key];
+    // D12 (BE03c 392): the 33rd-locale refusal keeps its one machine reason and nothing else of the details.
+    if (value.reasonCode === LOCALE_LIMIT_REACHED)
+      details.reasonCode = LOCALE_LIMIT_REACHED;
     // OD-4: the active chain accompanies only the exact mismatch reason.
     const mismatch = LocaleFallbackChainMismatchDetailsSchema.safeParse({
       reasonCode: value.reasonCode,
@@ -110,12 +119,12 @@ const safeErrorDetails = (
     if (resetAt !== null) details.resetAt = resetAt;
     return details;
   }
-  if (status === 502 || status === 503 || status === 504)
-    return { dependencyClass: 'cms_composition', retryable: status !== 502 };
+  if (isCompositionDependencyStatus(status))
+    return { ...compositionDependencyDetails() };
   return {};
 };
 
-const forwardedLocaleError = async (
+export const forwardedLocaleError = async (
   request: Request,
   upstream: Response,
 ): Promise<Response> => {

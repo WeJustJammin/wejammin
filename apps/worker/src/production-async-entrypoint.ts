@@ -5,8 +5,11 @@ import {
   type AsyncWorkerBindings,
 } from './async-entrypoint';
 import { createAsyncJobDependencies } from './async-runtime';
+import { createProductionGovernedRecheckProcessor } from './cms-composition/governed-recheck/production';
+import { createProductionLinkedScanProcessor } from './cms-composition/linked-scan/production';
 import { createProductionReviewRecheckProcessor } from './cms-editorial/review-recheck/production';
 import { createSupabaseRpc, parseBoolean } from './async-runtime-support';
+import { createTaxonomyMergeConvergeEffect } from './cms-taxonomy-merge-converge-effect';
 import { CmsSchemaDryRunOriginRequestSchema } from './content-schema-registry/schema-dry-run-origin-request';
 import { createCmsSchemaDryRunOriginVerifier } from './content-schema-registry/schema-dry-run-origin-verifier';
 import { createProductionOperationalAlertDependencies } from './content-schema-registry/operational-alert-production';
@@ -22,6 +25,7 @@ import {
   createProductionJobEffectDispatcher,
   type ProductionVerificationDependencies,
 } from './production-job-effect-dispatcher';
+import { createProductionClaimedPreparationEffect } from './production-schema-migration-preparation-claimed';
 import {
   createProductionSchemaMigrationWorker,
   migrationQueueOutcome,
@@ -38,7 +42,17 @@ export const createProductionAsyncEntrypoint = (
   (() => {
     const originRpc = createSupabaseRpc(fetchImpl);
     const dependencies = createAsyncJobDependencies({
-      effect: createProductionJobEffectDispatcher(verification),
+      // The CMS preparation callback is composed per Worker environment object (#128, DEC-183, DEC-184); the
+      // dispatcher hands it the delivery context and never lets it answer `pending_manual_review`.
+      effect: createProductionJobEffectDispatcher({
+        ...verification,
+        // The fenced taxonomy merge convergence (BE03c 1334): the dispatcher hands it the delivery context only.
+        convergeTaxonomyMerge: createTaxonomyMergeConvergeEffect(fetchImpl),
+        prepareSchemaDryRun: createProductionClaimedPreparationEffect(
+          fetchImpl,
+          migrationOptions,
+        ),
+      }),
       fetch: fetchImpl,
       verifyCmsSchemaDryRunOrigin: ({ env, envelope, signal }) =>
         createCmsSchemaDryRunOriginVerifier({
@@ -66,7 +80,7 @@ export const createProductionAsyncEntrypoint = (
     const eventConsumers = new WeakMap<object, ProductionEventConsumers>();
     const reviewRechecks = new WeakMap<
       object,
-      ReturnType<typeof createProductionReviewRecheckProcessor>
+      ReturnType<typeof createProductionLinkedScanProcessor>
     >();
     const consumersFor = (
       env: AsyncWorkerBindings,
@@ -84,15 +98,28 @@ export const createProductionAsyncEntrypoint = (
     };
     const recheckFor = (
       env: AsyncWorkerBindings,
-    ): ReturnType<typeof createProductionReviewRecheckProcessor> => {
+    ): ReturnType<typeof createProductionLinkedScanProcessor> => {
       let processor = reviewRechecks.get(env);
       if (processor === undefined) {
-        processor = createProductionReviewRecheckProcessor(
-          env,
-          fetchImpl,
+        const recheckOptions =
           eventConsumerOptions?.logger === undefined
             ? {}
-            : { logger: eventConsumerOptions.logger },
+            : { logger: eventConsumerOptions.logger };
+        // The Slice 12 linked-update scan producer and job run in front of the governed recheck, which runs in front of the Slice 11 editorial recheck.
+        processor = createProductionLinkedScanProcessor(
+          env,
+          fetchImpl,
+          recheckOptions,
+          createProductionGovernedRecheckProcessor(
+            env,
+            fetchImpl,
+            recheckOptions,
+            createProductionReviewRecheckProcessor(
+              env,
+              fetchImpl,
+              recheckOptions,
+            ),
+          ),
         );
         reviewRechecks.set(env, processor);
       }
@@ -112,6 +139,8 @@ export const createProductionAsyncEntrypoint = (
         }),
       observeReconcilingAge: ({ env }) =>
         consumersFor(env).reconcilingAge.observe(),
+      observeCmsLocaleActivity: ({ controller, env }) =>
+        consumersFor(env).localeObservability.observe(controller.scheduledTime),
       processSchemaMigration: async ({ env, event, message }) => {
         let worker = workers.get(env);
         if (worker === undefined) {

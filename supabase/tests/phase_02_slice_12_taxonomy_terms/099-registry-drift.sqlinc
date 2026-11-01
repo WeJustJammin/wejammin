@@ -1,0 +1,31 @@
+-- DEC-135 defensive refusal: a vocabulary declared a domain whose provider was built when it was activated; if the registry's CURRENT row
+-- of that domain says `unbuilt` (an owning shard withdrew its provider), create, rename and alias are refused `canonical_source_unavailable`
+-- with `details.domain`, and a merge or deprecate (which introduce no new string) still work.  BE03c 1375, 1306, 1498; tracker P2-S12-AC-140.
+-- The registry is immutable and append-only: the drift is a NEWER registry row inserted by the test administrator inside this rolled-back
+-- transaction (the way an owning shard registers a provider, in reverse).  This block is LAST because the row cannot be removed.
+select pg_temp.s12tt_act('d-create-fresh', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'drift-a');
+select pg_temp.s12tt_act('d-create-fresh-2', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'drift-b');
+select pg_temp.s12tt_act('d-create-fresh-3', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'drift-c');
+select ok(pg_temp.s12tt_oc('d-create-fresh') = 'ok' and pg_temp.s12tt_oc('d-create-fresh-2') = 'ok' and pg_temp.s12tt_oc('d-create-fresh-3') = 'ok',
+  'fixture: three vh terms exist before the provider is withdrawn');
+select set_config('app.cms_rpc', 'true', true);
+insert into platform_private.cms_canonical_domain_registry(owner_id, version, domain, provider_state, provider_key, provider_version)
+values ('0d6a0d6a-0000-4000-8000-000000000135', 2, 'role', 'unbuilt', null, null);
+select is((select provider_state from platform_private.cms_canonical_domain_current('role')), 'unbuilt', 'fixture: the current registry row of role is now unbuilt');
+select pg_temp.s12tt_mark('before-drift');
+select pg_temp.s12tt_act('d-create', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'drift-new');
+select pg_temp.s12tt_act('d-rename', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'drift-a');
+select pg_temp.s12tt_act('d-alias', 'owner', pg_temp.s12tt_lineage('vh'), 'alias', 'drift-a', '{"aliases":["calm"]}'::jsonb);
+select is(array[pg_temp.s12ga_out('d-create'), pg_temp.s12ga_out('d-rename'), pg_temp.s12ga_out('d-alias')],
+  array_fill('P0001:canonical_source_unavailable'::text, array[3]),
+  'create, rename and alias are refused canonical_source_unavailable when a declared domain has no built provider [P2-S12-AC-140]');
+select ok(pg_temp.s12ga_det('d-create')::jsonb = '{"domain":"role"}'::jsonb and pg_temp.s12ga_det('d-rename')::jsonb = '{"domain":"role"}'::jsonb
+    and pg_temp.s12ga_det('d-alias')::jsonb = '{"domain":"role"}'::jsonb,
+  'each refusal carries exactly details.domain naming the unbuilt declared domain [P2-S12-AC-140]');
+select ok(pg_temp.s12tt_same('before-drift'), 'the refusals wrote nothing [P2-S12-AC-140]');
+select pg_temp.s12tt_act('d-undeclared', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'drift-undeclared');
+select pg_temp.s12tt_act('d-deprecate', 'owner', pg_temp.s12tt_lineage('vh'), 'deprecate', 'drift-b');
+select pg_temp.s12tt_act('d-merge', 'owner', pg_temp.s12tt_lineage('vh'), 'merge', 'drift-c', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'drift-a')));
+select ok(pg_temp.s12tt_oc('d-undeclared') = 'ok' and pg_temp.s12tt_oc('d-deprecate') = 'ok' and pg_temp.s12tt_oc('d-merge') = 'ok',
+  'a vocabulary that declares no domain, a deprecate and a merge are unaffected by the withdrawn provider [P2-S12-AC-140]');

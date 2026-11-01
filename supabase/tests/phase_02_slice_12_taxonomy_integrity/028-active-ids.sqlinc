@@ -1,0 +1,167 @@
+-- "The new revision's taxonomy_version_ids are the active version ids of the vocabularies of its terms" (BE03b Value encodings by field
+-- kind, taxonomy; BE03c DEC-141 items 3 and 5; P2-S12-AC-244, AC-246) on EVERY writer and across more than one vocabulary, and the
+-- fail-closed branches of the restore term plan.  Each fixture records the OLD version id on the source revision, then supersedes the
+-- vocabulary, so a writer that copies the source's ids, or records the term's write-version, is distinguishable from one that records the
+-- vocabulary's current active version.  Include after 027-successor.sqlinc.
+
+create or replace function pg_temp.ti_sorted_ids(p_tags text[]) returns jsonb language sql stable as $body$
+  select coalesce(jsonb_agg(x order by x::text collate "C"), '[]'::jsonb) from unnest(p_tags) t(x) $body$;
+create or replace function pg_temp.ti_resolve_for(p_label text, p_entry text, p_base text, p_expected text, p_choices jsonb)
+returns void language sql as $body$
+  select pg_temp.ti_call(p_label, 'select platform_api.cms_resolve_conflict(' || quote_literal(
+    (select jsonb_build_object('entryId', conflict.entry_id, 'conflictId', conflict.id, 'baseRevision', p_base,
+       'choices', p_choices, 'expectedVersion', p_expected, 'ifMatch', p_expected, 'idempotencyKey', 's12ti-resolve-' || p_label,
+       'context', jsonb_build_object('actingPartyId', (select value from s10_ids where key = 'organization'),
+         'actingContextId', 'a9100000-0000-4000-8000-000000000094',
+         'correlationId', 'a9100000-0000-4000-8000-000000000095'))
+       from platform_private.cms_conflict_records conflict where conflict.entry_id = p_entry::uuid and conflict.state = 'open')::text) || '::jsonb)') $body$;
+
+-- ---- resolve records the CURRENT active version, not theirs' --------------------------------------------------------
+select pg_temp.ti_version('vt1', pg_temp.ti_org(), 'ti-t', 1, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('tt', pg_temp.ti_org(), 'vt1', 'vt1', 'tt');
+select pg_temp.ti_create('v_c', jsonb_build_object('title', 'Cur', 'tags', pg_temp.ti_terms(array['tt'])));
+select pg_temp.ti_append('v_theirs', pg_temp.ti_entry('v_c'), jsonb_build_object('title', 'Th'), '1', '1');
+select pg_temp.ti_version_to('vt1', 'superseded');
+select pg_temp.ti_version('vt2', pg_temp.ti_org(), 'ti-t', 2, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb, 'vt1', 'vt1');
+select pg_temp.ti_append('v_yours', pg_temp.ti_entry('v_c'), jsonb_build_object('title', 'Yo'), '1', '2');
+select is(pg_temp.ti_revision_ids(pg_temp.ti_rev('v_theirs')), jsonb_build_array(pg_temp.ti_uuid('vt1')),
+  'fixture: the current draft (theirs) records the superseded version id; the competing edit is a durable conflict ' || coalesce((select response->>'kind' from ti_calls where label = 'v_yours'), '-'));
+select pg_temp.ti_resolve_for('v_res', pg_temp.ti_entry('v_c'), '1', '2',
+  jsonb_build_array(jsonb_build_object('path', '/fields/' || pg_temp.s10g_fid('title'), 'choice', 'explicit', 'value', '"Resolved"'::jsonb)));
+select is(pg_temp.ti_out('v_res') || '/' || pg_temp.ti_assignments(pg_temp.ti_rev('v_res')) || '/' || pg_temp.ti_revision_ids(pg_temp.ti_rev('v_res'))::text,
+  '00000:/tt:active:1:0/["' || pg_temp.ti_uuid('vt2') || '"]',
+  'cms_resolve_conflict records the vocabulary''s CURRENT active version id (not theirs'' superseded one) and carries the assignment [P2-S12-AC-246]');
+select is((select taxonomy_version_id from platform_private.cms_term_assignments where revision_id = pg_temp.ti_rev('v_res')),
+  pg_temp.ti_uuid('vt1'), 'while the assignment row names the term''s write-version (DEC-229) [P2-S12-AC-246]');
+select is(response->'taxonomyVersionIds', jsonb_build_array(pg_temp.ti_uuid('vt2')),
+  'and the response reports the stored ids [P2-S12-AC-246]') from ti_calls where label = 'v_res';
+
+-- ---- restore records the CURRENT active version, not the source's ---------------------------------------------------
+select pg_temp.ti_version('vu1', pg_temp.ti_org(), 'ti-u', 1, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('tu', pg_temp.ti_org(), 'vu1', 'vu1', 'tu');
+select pg_temp.ti_create('v_r', jsonb_build_object('title', 'Restore ids', 'tags', pg_temp.ti_terms(array['tu'])));
+select pg_temp.ti_append('v_ra', pg_temp.ti_entry('v_r'), jsonb_build_object('title', 'Restore ids b'), '1', '1');
+select pg_temp.ti_version_to('vu1', 'superseded');
+select pg_temp.ti_version('vu2', pg_temp.ti_org(), 'ti-u', 2, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb, 'vu1', 'vu1');
+select pg_temp.ti_restore('v_rr', pg_temp.ti_entry('v_r'), pg_temp.ti_rev('v_r'));
+select is(pg_temp.ti_revision_ids(pg_temp.ti_rev('v_r')), jsonb_build_array(pg_temp.ti_uuid('vu1')), 'fixture: the source recorded the superseded version id');
+select is(pg_temp.ti_out('v_rr') || '/' || pg_temp.ti_assignments(pg_temp.ti_restored('v_rr')) || '/' || pg_temp.ti_revision_ids(pg_temp.ti_restored('v_rr'))::text,
+  '00000:/tu:active:1:0/["' || pg_temp.ti_uuid('vu2') || '"]',
+  'cms_restore_revision records the vocabulary''s CURRENT active version id, not the one the source recorded [P2-S12-AC-244]');
+select is((select taxonomy_version_id from platform_private.cms_term_assignments where revision_id = pg_temp.ti_restored('v_rr')),
+  pg_temp.ti_uuid('vu1'), 'while the carried assignment row names the term''s write-version (DEC-229) [P2-S12-AC-244]');
+select is(response->'resource'->'taxonomyVersionIds', jsonb_build_array(pg_temp.ti_uuid('vu2')),
+  'and the restore response reports the stored ids [P2-S12-AC-244]') from ti_calls where label = 'v_rr';
+
+-- ---- a revision spanning two vocabularies records both ids, distinct and sorted bytewise ----------------------------
+select pg_temp.ti_version('vm1', pg_temp.ti_org(), 'ti-m-a', 1, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_version('vm2', pg_temp.ti_org(), 'ti-m-b', 1, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('ma', pg_temp.ti_org(), 'vm1', 'vm1', 'ma');
+select pg_temp.ti_term('mb', pg_temp.ti_org(), 'vm2', 'vm2', 'mb');
+select pg_temp.ti_term('ma2', pg_temp.ti_org(), 'vm1', 'vm1', 'ma2');
+-- the term of the byte-greater version id comes first, so the plan order is the REVERSE of the sorted order
+create temp table ti_two on commit drop as
+select case when pg_temp.ti_uuid('vm1')::text collate "C" > pg_temp.ti_uuid('vm2')::text collate "C" then array['ma', 'mb', 'ma2'] else array['mb', 'ma', 'ma2'] end as tags;
+select pg_temp.ti_create('m_c', jsonb_build_object('title', 'Two vocabularies', 'tags', (select pg_temp.ti_terms(tags) from ti_two)));
+select is(pg_temp.ti_out('m_c') || '/' || pg_temp.ti_revision_ids(pg_temp.ti_rev('m_c'))::text,
+  '00000:/' || pg_temp.ti_sorted_ids(array[pg_temp.ti_uuid('vm1')::text, pg_temp.ti_uuid('vm2')::text])::text,
+  'a revision of terms from two vocabularies (three terms, the first two vocabularies'' terms interleaved) records both active version ids once each, ascending bytewise [P2-S12-AC-246]');
+select is((select count(*)::integer from platform_private.cms_term_assignments where revision_id = pg_temp.ti_rev('m_c')), 3,
+  'and persists one assignment per term [P2-S12-AC-246]');
+select pg_temp.ti_append('m_a', pg_temp.ti_entry('m_c'), jsonb_build_object('title', 'Two vocabularies b'), '1', '1');
+select is(pg_temp.ti_revision_ids(pg_temp.ti_rev('m_a')), pg_temp.ti_revision_ids(pg_temp.ti_rev('m_c')),
+  'an unrelated append carries both vocabularies'' ids, still sorted and distinct [P2-S12-AC-246]');
+select pg_temp.ti_version_to('vm1', 'superseded');
+select pg_temp.ti_version('vm1b', pg_temp.ti_org(), 'ti-m-a', 2, 'active', '["s10gallery"]'::jsonb, '["tags"]'::jsonb, 'vm1', 'vm1');
+select pg_temp.ti_restore('m_rr', pg_temp.ti_entry('m_c'), pg_temp.ti_rev('m_c'));
+select is(pg_temp.ti_out('m_rr') || '/' || pg_temp.ti_revision_ids(pg_temp.ti_restored('m_rr'))::text,
+  '00000:/' || pg_temp.ti_sorted_ids(array[pg_temp.ti_uuid('vm1b')::text, pg_temp.ti_uuid('vm2')::text])::text,
+  'a restore of that revision records the CURRENT active ids of both vocabularies, once each and sorted [P2-S12-AC-244]');
+select is((select count(*)::integer from platform_private.cms_term_assignments where revision_id = pg_temp.ti_restored('m_rr')), 3,
+  'and carries one assignment per term [P2-S12-AC-244]');
+
+-- ---- the fail-closed branches of the restore term plan ---------------------------------------------------------------
+create or replace function pg_temp.ti_forge_on_field(p_revision uuid, p_term text, p_field_key text, p_position integer) returns void language plpgsql as $body$
+begin
+  perform pg_temp.h11_raw_exec('platform_private.cms_term_assignments', format(
+    'insert into platform_private.cms_term_assignments(owner_id, state, version, revision_id, field_definition_id, term_id, taxonomy_version_id, position, provenance, created_by)
+     select term.owner_id, ''active'', 1, %L::uuid, %L::uuid, term.id, term.taxonomy_version_id, %s, ''authored'', %L::uuid
+       from platform_private.cms_terms term where term.id = %L::uuid',
+    p_revision,
+    (select field.id from platform_private.cms_field_definition_versions field
+      where field.stable_field_id = pg_temp.s10g_fid(p_field_key)::uuid
+        and field.content_type_version_id = (select value::uuid from s10g_ids where key = 'versionId')),
+    p_position, pg_temp.ti_creator(), pg_temp.ti_uuid(p_term)));
+end;
+$body$;
+create or replace function pg_temp.ti_restore_noop(p_label text, p_entry text, p_revision uuid) returns void language plpgsql as $body$
+begin
+  insert into ti_rc(label, before_counts) values (p_label, pg_temp.ti_counts());
+  perform pg_temp.ti_restore(p_label, p_entry, p_revision);
+  update ti_rc set after_counts = pg_temp.ti_counts() where label = p_label;
+end;
+$body$;
+
+-- (a) a source assignment on a field that is no longer an active taxonomy field of the target schema
+select pg_temp.ti_create('rb_f', jsonb_build_object('title', 'No taxonomy field'));
+select pg_temp.ti_append('rb_fa', pg_temp.ti_entry('rb_f'), jsonb_build_object('title', 'No taxonomy field b'), '1', '1');
+select pg_temp.ti_forge_on_field(pg_temp.ti_rev('rb_f'), 'alpha', 'title', 0);
+select pg_temp.ti_restore_noop('rb_f_r', pg_temp.ti_entry('rb_f'), pg_temp.ti_rev('rb_f'));
+select is(pg_temp.ti_out('rb_f_r'), 'P0001:migration_chain_incomplete',
+  'an assignment on a field that is not an active taxonomy field of the target schema fails the restore migration_chain_incomplete [P2-S12-AC-244]');
+-- (b) a non-empty taxonomy value that no source assignment vouches for
+select pg_temp.ti_create('rb_v', jsonb_build_object('title', 'Value without assignment', 'tags', pg_temp.ti_terms(array['alpha'])));
+select pg_temp.ti_append('rb_va', pg_temp.ti_entry('rb_v'), jsonb_build_object('title', 'Value without assignment b'), '1', '1');
+select pg_temp.h11_raw_exec('platform_private.cms_term_assignments',
+  format('delete from platform_private.cms_term_assignments where revision_id = %L::uuid', pg_temp.ti_rev('rb_v')));
+select pg_temp.ti_restore_noop('rb_v_r', pg_temp.ti_entry('rb_v'), pg_temp.ti_rev('rb_v'));
+select is(pg_temp.ti_out('rb_v_r'), 'P0001:migration_chain_incomplete',
+  'a non-empty taxonomy value with no source assignment fails the restore migration_chain_incomplete (nothing vouches for its terms) [P2-S12-AC-244]');
+-- (c) a merged term with no surviving successor
+select pg_temp.ti_term('orphan', pg_temp.ti_org(), 'vg1', 'vg1', 'orphan');
+select pg_temp.ti_create('rb_s', jsonb_build_object('title', 'Orphan', 'tags', pg_temp.ti_terms(array['orphan'])));
+select pg_temp.ti_append('rb_sa', pg_temp.ti_entry('rb_s'), jsonb_build_object('title', 'Orphan b'), '1', '1');
+select pg_temp.ti_term_to('orphan', 'merged');
+select pg_temp.ti_restore_noop('rb_s_r', pg_temp.ti_entry('rb_s'), pg_temp.ti_rev('rb_s'));
+select is(pg_temp.ti_out('rb_s_r'), 'P0001:migration_chain_incomplete',
+  'a merged term with no successor fails the restore migration_chain_incomplete [P2-S12-AC-244]');
+-- (d) the chain cap: 64 merged hops resolve, 65 do not (forged chains: the producers refuse to merge a term that already has inbound redirects)
+create or replace function pg_temp.ti_chain(p_prefix text, p_merged integer) returns void language plpgsql as $body$
+begin
+  for i in 0 .. p_merged loop
+    perform pg_temp.ti_term(p_prefix || i, pg_temp.ti_org(), 'vg1', 'vg1', p_prefix || i);
+  end loop;
+end;
+$body$;
+select pg_temp.ti_chain('ha', 64);
+select pg_temp.ti_chain('hb', 65);
+select pg_temp.ti_create('rb_ha', jsonb_build_object('title', 'Chain 64', 'tags', pg_temp.ti_terms(array['ha0'])));
+select pg_temp.ti_append('rb_haa', pg_temp.ti_entry('rb_ha'), jsonb_build_object('title', 'Chain 64 b'), '1', '1');
+select pg_temp.ti_create('rb_hb', jsonb_build_object('title', 'Chain 65', 'tags', pg_temp.ti_terms(array['hb0'])));
+select pg_temp.ti_append('rb_hba', pg_temp.ti_entry('rb_hb'), jsonb_build_object('title', 'Chain 65 b'), '1', '1');
+select pg_temp.h11_raw_exec('platform_private.cms_terms',
+  format('update platform_private.cms_terms set lifecycle = ''merged'', successor_id = %L::uuid where id = %L::uuid', pg_temp.ti_uuid('ha' || (i + 1)), pg_temp.ti_uuid('ha' || i)))
+from generate_series(0, 63) i;
+select pg_temp.h11_raw_exec('platform_private.cms_terms',
+  format('update platform_private.cms_terms set lifecycle = ''merged'', successor_id = %L::uuid where id = %L::uuid', pg_temp.ti_uuid('hb' || (i + 1)), pg_temp.ti_uuid('hb' || i)))
+from generate_series(0, 64) i;
+select pg_temp.ti_restore_noop('rb_ha_r', pg_temp.ti_entry('rb_ha'), pg_temp.ti_rev('rb_ha'));
+select pg_temp.ti_restore_noop('rb_hb_r', pg_temp.ti_entry('rb_hb'), pg_temp.ti_rev('rb_hb'));
+select is(pg_temp.ti_out('rb_ha_r') || '/' || pg_temp.ti_assignments(pg_temp.ti_restored('rb_ha_r')), '00000:/ha64:active:1:0',
+  'a chain of 64 merged terms is followed to its terminal survivor [P2-S12-AC-244]');
+select is(pg_temp.ti_out('rb_hb_r'), 'P0001:migration_chain_incomplete',
+  'a chain of 65 merged terms exceeds the cap and fails the restore migration_chain_incomplete [P2-S12-AC-244]');
+select is((select count(*)::integer from ti_rc where label in ('rb_f_r', 'rb_v_r', 'rb_s_r', 'rb_hb_r') and before_counts = after_counts), 4,
+  'the four refused restores committed nothing [P2-S12-AC-244]');
+
+-- ---- the lock helper rechecks the authored terms under the lock (BE03c Slice 12 lock order, position 6) -------------
+select pg_temp.s10_rpc_as((select value::uuid from s10_ids where key = 'creatorAuth'), pg_temp.ti_org());
+select is(pg_temp.h11_text(format($q$select platform_private.cms_lock_term_plan(%L::uuid, %L::uuid, null::uuid, %L::jsonb, array[%L]::text[])::text$q$,
+  pg_temp.ti_org(), (select value from s10g_ids where key = 'versionId'),
+  jsonb_build_object(pg_temp.s10g_fid('tags'), pg_temp.ti_terms(array['alpha'])), pg_temp.s10g_fid('tags'))),
+  '', 'cms_lock_term_plan locks an assignable authored term and returns (void) [P2-S12-AC-276]');
+select is(pg_temp.h11_text(format($q$select platform_private.cms_lock_term_plan(%L::uuid, %L::uuid, null::uuid, %L::jsonb, array[%L]::text[])::text$q$,
+  pg_temp.ti_org(), (select value from s10g_ids where key = 'versionId'),
+  jsonb_build_object(pg_temp.s10g_fid('tags'), pg_temp.ti_terms(array['omega'])), pg_temp.s10g_fid('tags'))),
+  'ERR:P0001:term_unavailable',
+  'and refuses with term_unavailable a term that stopped being assignable between the check and the lock [P2-S12-AC-276]');

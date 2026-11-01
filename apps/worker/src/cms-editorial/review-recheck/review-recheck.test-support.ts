@@ -29,7 +29,7 @@ export const AGGREGATE_FOR: Readonly<
   'cms.template.activated.v1': 'cms_template_version',
   'cms.pattern.activated.v1': 'cms_pattern_version',
   'cms.taxonomy.changed.v1': 'cms_taxonomy_version',
-  'cms.localization.changed.v1': 'cms_content_entry',
+  'cms.localization.changed.v1': 'cms_locale_variant',
   'cms.block.lifecycle.changed.v1': 'cms_block_definition_version',
 };
 

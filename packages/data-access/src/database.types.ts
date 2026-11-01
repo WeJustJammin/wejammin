@@ -699,6 +699,11 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_act_taxonomy_term: { Args: { p_request: Json }; Returns: Json }
+      cms_activate_governed_subject: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_activate_schema: { Args: { p_request: Json }; Returns: Json }
       cms_activate_schema_migration: {
         Args: { p_request: Json }
@@ -706,10 +711,12 @@ export type Database = {
       }
       cms_add_field_definition: { Args: { p_request: Json }; Returns: Json }
       cms_advance_block_lifecycle: { Args: { p_request: Json }; Returns: Json }
+      cms_apply_pattern_update: { Args: { p_request: Json }; Returns: Json }
       cms_assign_editorial_reviewer: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_assign_governed_reviewer: { Args: { p_request: Json }; Returns: Json }
       cms_assign_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_author_locale_variant: { Args: { p_request: Json }; Returns: Json }
       cms_begin_schema_migration_verification: {
@@ -719,6 +726,10 @@ export type Database = {
       cms_bind_relation: { Args: { p_request: Json }; Returns: Json }
       cms_capability_grant_read_current: {
         Args: { p_grant_id: string }
+        Returns: Json
+      }
+      cms_claim_due_governed_activations: {
+        Args: { p_request: Json }
         Returns: Json
       }
       cms_claim_due_publication_schedules: {
@@ -743,9 +754,12 @@ export type Database = {
         Returns: Json
       }
       cms_create_entry: { Args: { p_request: Json }; Returns: Json }
+      cms_create_pattern_version: { Args: { p_request: Json }; Returns: Json }
       cms_create_revision: { Args: { p_request: Json }; Returns: Json }
       cms_create_schema_successor: { Args: { p_request: Json }; Returns: Json }
+      cms_create_taxonomy_version: { Args: { p_request: Json }; Returns: Json }
       cms_create_type_draft: { Args: { p_request: Json }; Returns: Json }
+      cms_curate_related_content: { Args: { p_request: Json }; Returns: Json }
       cms_dead_letter_schema_migration_event: {
         Args: { p_request: Json }
         Returns: Json
@@ -757,6 +771,10 @@ export type Database = {
         Returns: Json
       }
       cms_dependency_recheck_run: { Args: { p_request: Json }; Returns: Json }
+      cms_execute_governed_activation: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_execute_publication_schedule: {
         Args: { p_request: Json }
         Returns: Json
@@ -778,6 +796,9 @@ export type Database = {
       }
       cms_get_entry_draft: { Args: { p_request: Json }; Returns: Json }
       cms_get_entry_workflow: { Args: { p_request: Json }; Returns: Json }
+      cms_get_governed_review: { Args: { p_request: Json }; Returns: Json }
+      cms_get_instance_update_diff: { Args: { p_request: Json }; Returns: Json }
+      cms_get_locale_variant: { Args: { p_request: Json }; Returns: Json }
       cms_get_operational_alert_exercise_eligibility: {
         Args: { p_request: Json }
         Returns: Json
@@ -786,23 +807,48 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_get_related_content: { Args: { p_request: Json }; Returns: Json }
       cms_get_schema_migration_plan: {
         Args: { p_request: Json }
         Returns: Json
       }
       cms_get_schema_review: { Args: { p_request: Json }; Returns: Json }
+      cms_governed_recheck_resolve_event: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
       cms_grant_capability: { Args: { p_request: Json }; Returns: Json }
       cms_heartbeat_schema_migration_lease: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_insert_pattern_instance: { Args: { p_request: Json }; Returns: Json }
+      cms_linked_scan_resolve_event: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
       cms_list_capability_grants: { Args: { p_request: Json }; Returns: Json }
+      cms_list_composition_instances: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
       cms_list_editorial_reviews: { Args: { p_request: Json }; Returns: Json }
       cms_list_entries: { Args: { p_request: Json }; Returns: Json }
+      cms_list_governed_reviews: { Args: { p_request: Json }; Returns: Json }
+      cms_list_pattern_nestable: { Args: { p_request: Json }; Returns: Json }
+      cms_list_pattern_selector: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
+      cms_list_taxonomy_selector: { Args: { p_request: Json }; Returns: Json }
+      cms_list_taxonomy_terms: { Args: { p_request: Json }; Returns: Json }
+      cms_list_taxonomy_versions: { Args: { p_request: Json }; Returns: Json }
       cms_load_quality_gate_input: { Args: { p_request: Json }; Returns: Json }
+      cms_locale_observability_read: {
+        Args: { p_window_end: string; p_window_start: string }
+        Returns: Json
+      }
       cms_mint_preview: { Args: { p_request: Json }; Returns: Json }
+      cms_pattern_latest: { Args: { p_request: Json }; Returns: Json }
       cms_process_schema_migration_batch: {
         Args: { p_request: Json }
         Returns: Json
@@ -816,10 +862,13 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_recheck_governed_reviews: { Args: { p_request: Json }; Returns: Json }
       cms_reconcile_schema_activation: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_reconcile_taxonomy_merge_converge: { Args: never; Returns: Json }
+      cms_record_governed_decision: { Args: { p_request: Json }; Returns: Json }
       cms_record_review_decision: { Args: { p_request: Json }; Returns: Json }
       cms_register_block: { Args: { p_request: Json }; Returns: Json }
       cms_release_schema_migration_event: {
@@ -838,8 +887,17 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_run_taxonomy_merge_converge: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
+      cms_scan_linked_pattern_updates: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_schedule_publication: { Args: { p_request: Json }; Returns: Json }
       cms_start_schema_dry_run: { Args: { p_request: Json }; Returns: Json }
+      cms_submit_governed_review: { Args: { p_request: Json }; Returns: Json }
       cms_submit_review: { Args: { p_request: Json }; Returns: Json }
       cms_submit_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_sweep_expired_review_authority: {
@@ -4235,6 +4293,45 @@ export type Database = {
         }
         Relationships: []
       }
+      cms_canonical_domain_registry: {
+        Row: {
+          created_at: string
+          domain: string
+          id: string
+          owner_id: string
+          provider_key: string | null
+          provider_state: string
+          provider_version: number | null
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          domain: string
+          id?: string
+          owner_id: string
+          provider_key?: string | null
+          provider_state: string
+          provider_version?: number | null
+          state?: string
+          updated_at?: string
+          version: number
+        }
+        Update: {
+          created_at?: string
+          domain?: string
+          id?: string
+          owner_id?: string
+          provider_key?: string | null
+          provider_state?: string
+          provider_version?: number | null
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: []
+      }
       cms_capability_grant_events: {
         Row: {
           action: string
@@ -4471,8 +4568,10 @@ export type Database = {
           block_key: string
           block_registry_digest: string
           block_version: number
+          carried_from_id: string | null
           created_at: string
           created_by: string
+          detached_tree: Json | null
           id: string
           link_mode: string
           owner_id: string
@@ -4480,6 +4579,8 @@ export type Database = {
           path: string
           pattern_id: string | null
           pattern_version: number | null
+          pending_pattern_version: number | null
+          position: number
           props: Json
           revision_id: string
           slot_key: string
@@ -4492,8 +4593,10 @@ export type Database = {
           block_key: string
           block_registry_digest: string
           block_version: number
+          carried_from_id?: string | null
           created_at?: string
           created_by: string
+          detached_tree?: Json | null
           id?: string
           link_mode: string
           owner_id: string
@@ -4501,6 +4604,8 @@ export type Database = {
           path: string
           pattern_id?: string | null
           pattern_version?: number | null
+          pending_pattern_version?: number | null
+          position: number
           props?: Json
           revision_id: string
           slot_key: string
@@ -4513,8 +4618,10 @@ export type Database = {
           block_key?: string
           block_registry_digest?: string
           block_version?: number
+          carried_from_id?: string | null
           created_at?: string
           created_by?: string
+          detached_tree?: Json | null
           id?: string
           link_mode?: string
           owner_id?: string
@@ -4522,6 +4629,8 @@ export type Database = {
           path?: string
           pattern_id?: string | null
           pattern_version?: number | null
+          pending_pattern_version?: number | null
+          position?: number
           props?: Json
           revision_id?: string
           slot_key?: string
@@ -4530,6 +4639,13 @@ export type Database = {
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "cms_composition_instances_carried_from_owner_fkey"
+            columns: ["carried_from_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_composition_instances"
+            referencedColumns: ["id", "owner_id"]
+          },
           {
             foreignKeyName: "cms_composition_instances_owner_id_fkey"
             columns: ["owner_id"]
@@ -4563,14 +4679,7 @@ export type Database = {
             columns: ["pattern_id", "pattern_version", "owner_id"]
             isOneToOne: false
             referencedRelation: "cms_pattern_versions"
-            referencedColumns: ["id", "version", "owner_id"]
-          },
-          {
-            foreignKeyName: "cms_composition_instances_pattern_version_fkey"
-            columns: ["pattern_id", "pattern_version"]
-            isOneToOne: false
-            referencedRelation: "cms_pattern_versions"
-            referencedColumns: ["id", "version"]
+            referencedColumns: ["pattern_id", "version", "owner_id"]
           },
           {
             foreignKeyName: "cms_composition_instances_revision_id_fkey"
@@ -5957,6 +6066,505 @@ export type Database = {
           },
         ]
       }
+      cms_governed_activation_schedules: {
+        Row: {
+          actual_at_utc: string | null
+          attempt_count: number
+          created_at: string
+          created_by: string
+          deviation_seconds: number | null
+          disambiguation: string
+          expected_version: number
+          id: string
+          lease_id: string | null
+          lease_until: string | null
+          local_datetime: string
+          next_attempt_at: string | null
+          owner_id: string
+          reason_code: string | null
+          resolved_at_utc: string
+          review_id: string
+          state: string
+          subject_id: string
+          subject_kind: string
+          timezone: string
+          tzdb_version: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          actual_at_utc?: string | null
+          attempt_count?: number
+          created_at?: string
+          created_by: string
+          deviation_seconds?: number | null
+          disambiguation: string
+          expected_version: number
+          id?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          local_datetime: string
+          next_attempt_at?: string | null
+          owner_id: string
+          reason_code?: string | null
+          resolved_at_utc: string
+          review_id: string
+          state?: string
+          subject_id: string
+          subject_kind: string
+          timezone: string
+          tzdb_version: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          actual_at_utc?: string | null
+          attempt_count?: number
+          created_at?: string
+          created_by?: string
+          deviation_seconds?: number | null
+          disambiguation?: string
+          expected_version?: number
+          id?: string
+          lease_id?: string | null
+          lease_until?: string | null
+          local_datetime?: string
+          next_attempt_at?: string | null
+          owner_id?: string
+          reason_code?: string | null
+          resolved_at_utc?: string
+          review_id?: string
+          state?: string
+          subject_id?: string
+          subject_kind?: string
+          timezone?: string
+          tzdb_version?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_governed_activation_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_activation_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_activation_schedules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_activation_schedules_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_governed_activation_schedules_review_owner_fkey"
+            columns: ["review_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_governed_reviews"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      cms_governed_review_assignments: {
+        Row: {
+          actions: string[]
+          capability_key: string
+          created_at: string
+          ends_at: string
+          grantor_person_id: string
+          id: string
+          owner_id: string
+          reason: string | null
+          review_id: string
+          reviewer_person_id: string
+          starts_at: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          actions: string[]
+          capability_key: string
+          created_at?: string
+          ends_at: string
+          grantor_person_id: string
+          id?: string
+          owner_id: string
+          reason?: string | null
+          review_id: string
+          reviewer_person_id: string
+          starts_at: string
+          state: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          actions?: string[]
+          capability_key?: string
+          created_at?: string
+          ends_at?: string
+          grantor_person_id?: string
+          id?: string
+          owner_id?: string
+          reason?: string | null
+          review_id?: string
+          reviewer_person_id?: string
+          starts_at?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_governed_review_assignments_grantor_person_id_fkey"
+            columns: ["grantor_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_assignments_grantor_person_id_fkey"
+            columns: ["grantor_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_assignments_grantor_person_id_fkey"
+            columns: ["grantor_person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_assignments_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "cms_governed_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_assignments_review_owner_fkey"
+            columns: ["review_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_governed_reviews"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_assignments_reviewer_person_id_fkey"
+            columns: ["reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_assignments_reviewer_person_id_fkey"
+            columns: ["reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_assignments_reviewer_person_id_fkey"
+            columns: ["reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+        ]
+      }
+      cms_governed_review_decisions: {
+        Row: {
+          acting_party_id: string | null
+          assignment_id: string
+          assignment_version: number
+          capability: string
+          comment_hash: string
+          created_at: string
+          decided_at: string
+          decision: string
+          id: string
+          owner_id: string
+          reason: string
+          review_id: string
+          reviewed_hash: string
+          reviewer_person_id: string
+          state: string
+          step_up_at: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          acting_party_id?: string | null
+          assignment_id: string
+          assignment_version: number
+          capability: string
+          comment_hash: string
+          created_at?: string
+          decided_at?: string
+          decision: string
+          id?: string
+          owner_id: string
+          reason: string
+          review_id: string
+          reviewed_hash: string
+          reviewer_person_id: string
+          state?: string
+          step_up_at: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          acting_party_id?: string | null
+          assignment_id?: string
+          assignment_version?: number
+          capability?: string
+          comment_hash?: string
+          created_at?: string
+          decided_at?: string
+          decision?: string
+          id?: string
+          owner_id?: string
+          reason?: string
+          review_id?: string
+          reviewed_hash?: string
+          reviewer_person_id?: string
+          state?: string
+          step_up_at?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_governed_review_decisions_acting_party_id_fkey"
+            columns: ["acting_party_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_decisions_assignment_fkey"
+            columns: ["assignment_id", "review_id", "reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "cms_governed_review_assignments"
+            referencedColumns: ["id", "review_id", "reviewer_person_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_decisions_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "cms_governed_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_decisions_review_owner_fkey"
+            columns: ["review_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_governed_reviews"
+            referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_decisions_reviewer_person_id_fkey"
+            columns: ["reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_decisions_reviewer_person_id_fkey"
+            columns: ["reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_decisions_reviewer_person_id_fkey"
+            columns: ["reviewer_person_id"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+        ]
+      }
+      cms_governed_review_dependencies: {
+        Row: {
+          created_at: string
+          id: string
+          kind: string
+          owner_id: string
+          ref_id: string
+          review_id: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          kind: string
+          owner_id: string
+          ref_id: string
+          review_id: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          kind?: string
+          owner_id?: string
+          ref_id?: string
+          review_id?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_governed_review_dependencies_review_id_fkey"
+            columns: ["review_id"]
+            isOneToOne: false
+            referencedRelation: "cms_governed_reviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_governed_review_dependencies_review_owner_fkey"
+            columns: ["review_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_governed_reviews"
+            referencedColumns: ["id", "owner_id"]
+          },
+        ]
+      }
+      cms_governed_reviews: {
+        Row: {
+          activated_at: string | null
+          approval_evidence_hash: string
+          block_registry_digest: string | null
+          created_at: string
+          decided_at: string | null
+          id: string
+          invalidated_reason: string | null
+          lineage_id: string
+          owner_id: string
+          policy_basis: Json
+          policy_basis_hash: string
+          recorded_decision_count: number
+          required_capabilities: Json
+          required_decision_count: number
+          risk_class: string
+          state: string
+          subject_hash: string
+          subject_id: string
+          subject_key: string
+          subject_kind: string
+          subject_version: number
+          submitted_at: string
+          submitted_by: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          activated_at?: string | null
+          approval_evidence_hash: string
+          block_registry_digest?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          invalidated_reason?: string | null
+          lineage_id: string
+          owner_id: string
+          policy_basis: Json
+          policy_basis_hash: string
+          recorded_decision_count?: number
+          required_capabilities: Json
+          required_decision_count: number
+          risk_class: string
+          state?: string
+          subject_hash: string
+          subject_id: string
+          subject_key: string
+          subject_kind: string
+          subject_version: number
+          submitted_at?: string
+          submitted_by: string
+          updated_at?: string
+          version?: number
+        }
+        Update: {
+          activated_at?: string | null
+          approval_evidence_hash?: string
+          block_registry_digest?: string | null
+          created_at?: string
+          decided_at?: string | null
+          id?: string
+          invalidated_reason?: string | null
+          lineage_id?: string
+          owner_id?: string
+          policy_basis?: Json
+          policy_basis_hash?: string
+          recorded_decision_count?: number
+          required_capabilities?: Json
+          required_decision_count?: number
+          risk_class?: string
+          state?: string
+          subject_hash?: string
+          subject_id?: string
+          subject_key?: string
+          subject_kind?: string
+          subject_version?: number
+          submitted_at?: string
+          submitted_by?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cms_governed_reviews_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_governed_reviews_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "identity_public_person_projection"
+            referencedColumns: ["party_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_reviews_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "identity_self_projection"
+            referencedColumns: ["person_id"]
+          },
+          {
+            foreignKeyName: "cms_governed_reviews_submitted_by_fkey"
+            columns: ["submitted_by"]
+            isOneToOne: false
+            referencedRelation: "person_party"
+            referencedColumns: ["party_id"]
+          },
+        ]
+      }
       cms_locale_variants: {
         Row: {
           approval_evidence: Json | null
@@ -5964,6 +6572,7 @@ export type Database = {
           created_by: string
           entry_id: string
           fallback_chain: Json
+          field_source_hashes: Json
           id: string
           locale: string
           no_fallback_field_ids: Json
@@ -5972,6 +6581,7 @@ export type Database = {
           source_hash: string
           source_locale: string
           source_revision_id: string
+          stale_field_ids: Json
           state: string
           updated_at: string
           version: number
@@ -5982,6 +6592,7 @@ export type Database = {
           created_by: string
           entry_id: string
           fallback_chain?: Json
+          field_source_hashes?: Json
           id?: string
           locale: string
           no_fallback_field_ids?: Json
@@ -5990,6 +6601,7 @@ export type Database = {
           source_hash: string
           source_locale: string
           source_revision_id: string
+          stale_field_ids?: Json
           state?: string
           updated_at?: string
           version: number
@@ -6000,6 +6612,7 @@ export type Database = {
           created_by?: string
           entry_id?: string
           fallback_chain?: Json
+          field_source_hashes?: Json
           id?: string
           locale?: string
           no_fallback_field_ids?: Json
@@ -6008,6 +6621,7 @@ export type Database = {
           source_hash?: string
           source_locale?: string
           source_revision_id?: string
+          stale_field_ids?: Json
           state?: string
           updated_at?: string
           version?: number
@@ -6195,44 +6809,65 @@ export type Database = {
       }
       cms_pattern_versions: {
         Row: {
+          activated_at: string | null
           block_registry_digest: string
           block_tree: Json
+          compatible_type_ids: Json
           content_hash: string
           created_at: string
           created_by: string
           id: string
+          lifecycle_version: number
+          node_count: number
           owner_capability: string
           owner_id: string
+          pattern_id: string
           pattern_key: string
+          retired_at: string | null
           state: string
+          supersedes_id: string | null
           updated_at: string
           version: number
         }
         Insert: {
+          activated_at?: string | null
           block_registry_digest: string
           block_tree: Json
+          compatible_type_ids: Json
           content_hash: string
           created_at?: string
           created_by: string
           id?: string
+          lifecycle_version?: number
+          node_count: number
           owner_capability: string
           owner_id: string
+          pattern_id: string
           pattern_key: string
+          retired_at?: string | null
           state?: string
+          supersedes_id?: string | null
           updated_at?: string
           version: number
         }
         Update: {
+          activated_at?: string | null
           block_registry_digest?: string
           block_tree?: Json
+          compatible_type_ids?: Json
           content_hash?: string
           created_at?: string
           created_by?: string
           id?: string
+          lifecycle_version?: number
+          node_count?: number
           owner_capability?: string
           owner_id?: string
+          pattern_id?: string
           pattern_key?: string
+          retired_at?: string | null
           state?: string
+          supersedes_id?: string | null
           updated_at?: string
           version?: number
         }
@@ -6242,6 +6877,13 @@ export type Database = {
             columns: ["owner_id"]
             isOneToOne: false
             referencedRelation: "party"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "cms_pattern_versions_supersedes_id_fkey"
+            columns: ["supersedes_id"]
+            isOneToOne: false
+            referencedRelation: "cms_pattern_versions"
             referencedColumns: ["id"]
           },
         ]
@@ -6792,6 +7434,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          max_candidates: number | null
           mode: string
           owner_id: string
           position: number | null
@@ -6808,6 +7451,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          max_candidates?: number | null
           mode: string
           owner_id: string
           position?: number | null
@@ -6824,6 +7468,7 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          max_candidates?: number | null
           mode?: string
           owner_id?: string
           position?: number | null
@@ -7738,51 +8383,76 @@ export type Database = {
       }
       cms_taxonomy_versions: {
         Row: {
+          activated_at: string | null
           allowlisted_field_keys: Json
           allowlisted_type_keys: Json
+          canonical_overlap_domains: Json
           content_hash: string
           created_at: string
           created_by: string
           id: string
+          lifecycle_version: number
           owner_capability: string
           owner_id: string
+          retired_at: string | null
           shape: string
           state: string
+          supersedes_id: string | null
+          taxonomy_id: string
           taxonomy_key: string
           updated_at: string
           version: number
         }
         Insert: {
+          activated_at?: string | null
           allowlisted_field_keys: Json
           allowlisted_type_keys: Json
+          canonical_overlap_domains?: Json
           content_hash: string
           created_at?: string
           created_by: string
           id?: string
+          lifecycle_version?: number
           owner_capability: string
           owner_id: string
+          retired_at?: string | null
           shape: string
           state?: string
+          supersedes_id?: string | null
+          taxonomy_id: string
           taxonomy_key: string
           updated_at?: string
           version: number
         }
         Update: {
+          activated_at?: string | null
           allowlisted_field_keys?: Json
           allowlisted_type_keys?: Json
+          canonical_overlap_domains?: Json
           content_hash?: string
           created_at?: string
           created_by?: string
           id?: string
+          lifecycle_version?: number
           owner_capability?: string
           owner_id?: string
+          retired_at?: string | null
           shape?: string
           state?: string
+          supersedes_id?: string | null
+          taxonomy_id?: string
           taxonomy_key?: string
           updated_at?: string
           version?: number
         }
         Relationships: [
+          {
+            foreignKeyName: "cms_taxonomy_versions_lineage_owner_fkey"
+            columns: ["taxonomy_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_taxonomy_versions"
+            referencedColumns: ["id", "owner_id"]
+          },
           {
             foreignKeyName: "cms_taxonomy_versions_owner_id_fkey"
             columns: ["owner_id"]
@@ -7790,10 +8460,18 @@ export type Database = {
             referencedRelation: "party"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "cms_taxonomy_versions_supersedes_owner_fkey"
+            columns: ["supersedes_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_taxonomy_versions"
+            referencedColumns: ["id", "owner_id"]
+          },
         ]
       }
       cms_template_versions: {
         Row: {
+          activated_at: string | null
           audience: string
           bindings: Json
           block_registry_digest: string
@@ -7802,17 +8480,21 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          lifecycle_version: number
           locale: string
           owner_id: string
           reserved_regions: Json
+          retired_at: string | null
           slots: Json
           state: string
           supersedes_id: string | null
+          template_id: string
           template_key: string
           updated_at: string
           version: number
         }
         Insert: {
+          activated_at?: string | null
           audience: string
           bindings: Json
           block_registry_digest: string
@@ -7821,17 +8503,21 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          lifecycle_version?: number
           locale: string
           owner_id: string
           reserved_regions: Json
+          retired_at?: string | null
           slots: Json
           state?: string
           supersedes_id?: string | null
+          template_id: string
           template_key: string
           updated_at?: string
           version: number
         }
         Update: {
+          activated_at?: string | null
           audience?: string
           bindings?: Json
           block_registry_digest?: string
@@ -7840,12 +8526,15 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          lifecycle_version?: number
           locale?: string
           owner_id?: string
           reserved_regions?: Json
+          retired_at?: string | null
           slots?: Json
           state?: string
           supersedes_id?: string | null
+          template_id?: string
           template_key?: string
           updated_at?: string
           version?: number
@@ -8042,6 +8731,7 @@ export type Database = {
           owner_id: string
           parent_term_id: string | null
           successor_id: string | null
+          taxonomy_id: string
           taxonomy_version_id: string
           term_key: string
           updated_at: string
@@ -8056,6 +8746,7 @@ export type Database = {
           owner_id: string
           parent_term_id?: string | null
           successor_id?: string | null
+          taxonomy_id: string
           taxonomy_version_id: string
           term_key: string
           updated_at?: string
@@ -8070,6 +8761,7 @@ export type Database = {
           owner_id?: string
           parent_term_id?: string | null
           successor_id?: string | null
+          taxonomy_id?: string
           taxonomy_version_id?: string
           term_key?: string
           updated_at?: string
@@ -8085,10 +8777,10 @@ export type Database = {
           },
           {
             foreignKeyName: "cms_terms_parent_taxonomy_owner_fkey"
-            columns: ["parent_term_id", "taxonomy_version_id", "owner_id"]
+            columns: ["parent_term_id", "taxonomy_id", "owner_id"]
             isOneToOne: false
             referencedRelation: "cms_terms"
-            referencedColumns: ["id", "taxonomy_version_id", "owner_id"]
+            referencedColumns: ["id", "taxonomy_id", "owner_id"]
           },
           {
             foreignKeyName: "cms_terms_parent_term_id_fkey"
@@ -8106,10 +8798,10 @@ export type Database = {
           },
           {
             foreignKeyName: "cms_terms_successor_taxonomy_owner_fkey"
-            columns: ["successor_id", "taxonomy_version_id", "owner_id"]
+            columns: ["successor_id", "taxonomy_id", "owner_id"]
             isOneToOne: false
             referencedRelation: "cms_terms"
-            referencedColumns: ["id", "taxonomy_version_id", "owner_id"]
+            referencedColumns: ["id", "taxonomy_id", "owner_id"]
           },
           {
             foreignKeyName: "cms_terms_taxonomy_owner_fkey"
@@ -8117,6 +8809,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "cms_taxonomy_versions"
             referencedColumns: ["id", "owner_id"]
+          },
+          {
+            foreignKeyName: "cms_terms_version_lineage_fkey"
+            columns: ["taxonomy_version_id", "taxonomy_id", "owner_id"]
+            isOneToOne: false
+            referencedRelation: "cms_taxonomy_versions"
+            referencedColumns: ["id", "taxonomy_id", "owner_id"]
           },
         ]
       }
@@ -8845,11 +9544,25 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "projection_consumer_state_projection_fk"
+            columns: ["projection_id"]
+            isOneToOne: false
+            referencedRelation: "publication_projection"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "projection_consumer_state_publication_fk"
             columns: ["publication_id"]
             isOneToOne: false
             referencedRelation: "cms_publication_versions"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "projection_consumer_state_publication_projection_fk"
+            columns: ["publication_id", "projection_id"]
+            isOneToOne: false
+            referencedRelation: "publication_projection"
+            referencedColumns: ["publication_id", "id"]
           },
         ]
       }
@@ -8950,6 +9663,69 @@ export type Database = {
           version?: number
         }
         Relationships: []
+      }
+      publication_projection: {
+        Row: {
+          audience: string
+          created_at: string
+          discovery_hash: string
+          id: string
+          locale: string
+          publication_id: string
+          render_hash: string
+          render_payload: Json
+          required_refs: Json
+          route_manifest_id: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Insert: {
+          audience: string
+          created_at: string
+          discovery_hash: string
+          id?: string
+          locale: string
+          publication_id: string
+          render_hash: string
+          render_payload: Json
+          required_refs: Json
+          route_manifest_id: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        Update: {
+          audience?: string
+          created_at?: string
+          discovery_hash?: string
+          id?: string
+          locale?: string
+          publication_id?: string
+          render_hash?: string
+          render_payload?: Json
+          required_refs?: Json
+          route_manifest_id?: string
+          state?: string
+          updated_at?: string
+          version?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "publication_projection_manifest_fk"
+            columns: ["route_manifest_id"]
+            isOneToOne: false
+            referencedRelation: "route_manifest_version"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "publication_projection_publication_fk"
+            columns: ["publication_id"]
+            isOneToOne: false
+            referencedRelation: "cms_publication_versions"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       recovery_verification_evidence: {
         Row: {
@@ -9152,6 +9928,59 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "person_party"
             referencedColumns: ["party_id"]
+          },
+        ]
+      }
+      route_manifest_version: {
+        Row: {
+          activated_at: string | null
+          generated_at: string
+          id: string
+          publication_set_hash: string
+          state: string
+          version_no: number
+        }
+        Insert: {
+          activated_at?: string | null
+          generated_at: string
+          id?: string
+          publication_set_hash: string
+          state: string
+          version_no?: number
+        }
+        Update: {
+          activated_at?: string | null
+          generated_at?: string
+          id?: string
+          publication_set_hash?: string
+          state?: string
+          version_no?: number
+        }
+        Relationships: []
+      }
+      taxonomy_merge_recoveries: {
+        Row: {
+          failed_job_id: string
+          recovery_job_id: string
+          requested_at: string
+        }
+        Insert: {
+          failed_job_id: string
+          recovery_job_id: string
+          requested_at?: string
+        }
+        Update: {
+          failed_job_id?: string
+          recovery_job_id?: string
+          requested_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "taxonomy_merge_recoveries_failed_job_id_fkey"
+            columns: ["failed_job_id"]
+            isOneToOne: true
+            referencedRelation: "jobs"
+            referencedColumns: ["id"]
           },
         ]
       }
@@ -9925,6 +10754,7 @@ export type Database = {
         Args: { p_actor_id: string }
         Returns: undefined
       }
+      cms_act_taxonomy_term: { Args: { p_request: Json }; Returns: Json }
       cms_acting_context_version: {
         Args: { p_acting_party_id: string; p_person_id: string }
         Returns: string
@@ -9932,6 +10762,10 @@ export type Database = {
       cms_acting_party: {
         Args: { p_actor_id: string; p_request: Json }
         Returns: string
+      }
+      cms_activate_governed_subject: {
+        Args: { p_request: Json }
+        Returns: Json
       }
       cms_activate_schema: { Args: { p_request: Json }; Returns: Json }
       cms_activation_evidence_hash: {
@@ -9974,6 +10808,7 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_apply_pattern_update: { Args: { p_request: Json }; Returns: Json }
       cms_artifact_contract_ref: {
         Args: { p_type_key: string; p_version_no: number }
         Returns: string
@@ -9982,6 +10817,7 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_assign_governed_reviewer: { Args: { p_request: Json }; Returns: Json }
       cms_assign_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_author_locale_variant: { Args: { p_request: Json }; Returns: Json }
       cms_authored_value_kind_supported: {
@@ -10018,9 +10854,18 @@ export type Database = {
         Args: { p_current_key?: string; p_key: string }
         Returns: boolean
       }
+      cms_block_range_covers: {
+        Args: { p_compiler_version: string; p_range: Json }
+        Returns: boolean
+      }
       cms_block_reference_valid: {
         Args: { p_reference: Json }
         Returns: boolean
+      }
+      cms_block_rules_registry: { Args: { p_nodes: Json }; Returns: Json }
+      cms_block_rules_violation: {
+        Args: { p_nodes: Json; p_rules: Json }
+        Returns: Json
       }
       cms_build_dependency_manifest: {
         Args: { p_revision_id: string }
@@ -10032,6 +10877,29 @@ export type Database = {
       }
       cms_candidate_definition_request: {
         Args: { p_version_id: string }
+        Returns: Json
+      }
+      cms_canonical_domain_current: {
+        Args: { p_domain: string }
+        Returns: {
+          provider_key: string
+          provider_state: string
+          provider_version: number
+          registry_id: string
+        }[]
+      }
+      cms_canonical_domains_valid: {
+        Args: { p_domains: Json }
+        Returns: boolean
+      }
+      cms_canonical_role_facets: {
+        Args: { p_keys: string[] }
+        Returns: {
+          facet_code: string
+        }[]
+      }
+      cms_canonical_taxonomy_match: {
+        Args: { p_candidates: Json; p_domain: string }
         Returns: Json
       }
       cms_canonical_type_definition: {
@@ -10072,6 +10940,10 @@ export type Database = {
       cms_capability_registry_valid: {
         Args: { p_key: string; p_version?: number }
         Returns: boolean
+      }
+      cms_claim_due_governed_activations: {
+        Args: { p_request: Json }
+        Returns: Json
       }
       cms_claim_due_publication_schedules: {
         Args: { p_request: Json }
@@ -10118,6 +10990,10 @@ export type Database = {
         Args: { p_version: string }
         Returns: boolean
       }
+      cms_compiler_version_rank: {
+        Args: { p_version: string }
+        Returns: number[]
+      }
       cms_complete: {
         Args: {
           p_reservation_id: string
@@ -10131,11 +11007,48 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_composition_effective_nodes: {
+        Args: {
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+        }
+        Returns: {
+          block_key: string
+          block_version: number
+          effective_props: Json
+          node_index: number
+        }[]
+      }
+      cms_composition_instance_content: {
+        Args: {
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+        }
+        Returns: Json
+      }
+      cms_composition_instance_resource: {
+        Args: {
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+        }
+        Returns: Json
+      }
+      cms_composition_instance_resource_hashed: {
+        Args: {
+          p_content_hash: string
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+        }
+        Returns: Json
+      }
+      cms_converge_taxonomy_merge: {
+        Args: { p_batch: number; p_retired_term_id: string }
+        Returns: Json
+      }
       cms_correlation: { Args: { p_request: Json }; Returns: string }
       cms_create_entry: { Args: { p_request: Json }; Returns: Json }
+      cms_create_pattern_version: { Args: { p_request: Json }; Returns: Json }
       cms_create_revision: { Args: { p_request: Json }; Returns: Json }
       cms_create_schema_successor: { Args: { p_request: Json }; Returns: Json }
+      cms_create_taxonomy_version: { Args: { p_request: Json }; Returns: Json }
       cms_create_type_draft: { Args: { p_request: Json }; Returns: Json }
+      cms_curate_related_content: { Args: { p_request: Json }; Returns: Json }
       cms_data_source_registry_valid: {
         Args: { p_key: string }
         Returns: boolean
@@ -10174,6 +11087,20 @@ export type Database = {
         Args: { p_source_id: string; p_target_id: string }
         Returns: string
       }
+      cms_detached_tree_block_rules: {
+        Args: { p_rules?: Json; p_tree: Json }
+        Returns: Json
+      }
+      cms_detached_tree_registry: {
+        Args: {
+          p_content_type_id: string
+          p_overrides?: Json
+          p_owner_id: string
+          p_tree: Json
+        }
+        Returns: string
+      }
+      cms_detached_tree_valid: { Args: { p_tree: Json }; Returns: boolean }
       cms_draft_content_hash: {
         Args: { p_locale: string; p_revision_id: string }
         Returns: string
@@ -10295,6 +11222,15 @@ export type Database = {
         }
         Returns: Json
       }
+      cms_entry_default_template_gate: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_content_type_version_id: string
+          p_template_version_id: string
+        }
+        Returns: string
+      }
       cms_entry_list_epoch: {
         Args: { p_entry_count: number; p_entry_xor: number }
         Returns: string
@@ -10307,6 +11243,10 @@ export type Database = {
       cms_exact_keys: {
         Args: { p_allowed: string[]; p_required: string[]; p_value: Json }
         Returns: boolean
+      }
+      cms_execute_governed_activation: {
+        Args: { p_request: Json }
+        Returns: Json
       }
       cms_execute_publication_schedule: {
         Args: { p_request: Json }
@@ -10338,11 +11278,283 @@ export type Database = {
       }
       cms_get_entry_draft: { Args: { p_request: Json }; Returns: Json }
       cms_get_entry_workflow: { Args: { p_request: Json }; Returns: Json }
+      cms_get_governed_review: { Args: { p_request: Json }; Returns: Json }
+      cms_get_instance_update_diff: { Args: { p_request: Json }; Returns: Json }
+      cms_get_locale_variant: { Args: { p_request: Json }; Returns: Json }
+      cms_get_related_content: { Args: { p_request: Json }; Returns: Json }
       cms_get_schema_migration_plan: {
         Args: { p_request: Json }
         Returns: Json
       }
       cms_get_schema_review: { Args: { p_request: Json }; Returns: Json }
+      cms_governed_activate_subject: {
+        Args: { p_at: string; p_kind: string; p_subject_id: string }
+        Returns: number
+      }
+      cms_governed_activation_request: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
+      cms_governed_activation_verdict: {
+        Args: { p_review_id: string }
+        Returns: string
+      }
+      cms_governed_apply_activation: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_at: string
+          p_correlation_id: string
+          p_review_id: string
+        }
+        Returns: Json
+      }
+      cms_governed_apply_retirement: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_at: string
+          p_correlation_id: string
+          p_review_id: string
+        }
+        Returns: Json
+      }
+      cms_governed_assignment_resource: {
+        Args: { p_assignment_id: string }
+        Returns: Json
+      }
+      cms_governed_block_scheduled_subject: {
+        Args: { p_kind: string; p_subject_id: string }
+        Returns: undefined
+      }
+      cms_governed_bound_versions: {
+        Args: { p_kind: string; p_owner_id: string; p_subject: Json }
+        Returns: {
+          content_type_id: string
+          label: string
+          version_id: string
+        }[]
+      }
+      cms_governed_cas_operand: { Args: { p_request: Json }; Returns: number }
+      cms_governed_current_digest: {
+        Args: { p_kind: string; p_owner_id: string; p_subject: Json }
+        Returns: string
+      }
+      cms_governed_definition_version: {
+        Args: { p_id: string; p_kind: string }
+        Returns: number
+      }
+      cms_governed_dependency_refs: {
+        Args: { p_kind: string; p_owner_id: string; p_subject: Json }
+        Returns: {
+          dependency_kind: string
+          dependency_ref: string
+        }[]
+      }
+      cms_governed_first_unbuilt_domain: {
+        Args: { p_subject: Json }
+        Returns: string
+      }
+      cms_governed_frozen_status: {
+        Args: { p_review_id: string }
+        Returns: string
+      }
+      cms_governed_invalidate_approved_review: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_reason: string
+          p_review_id: string
+        }
+        Returns: undefined
+      }
+      cms_governed_invalidate_open_review: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_reason: string
+          p_review_id: string
+        }
+        Returns: undefined
+      }
+      cms_governed_invalidate_review_if_live: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_reason: string
+          p_review_id: string
+        }
+        Returns: boolean
+      }
+      cms_governed_lifecycle_update: {
+        Args: { p_new: Json; p_old: Json }
+        Returns: boolean
+      }
+      cms_governed_lineage_lock_key: {
+        Args: { p_kind: string; p_lineage_id: string }
+        Returns: number
+      }
+      cms_governed_lock_graph: {
+        Args: { p_kind: string; p_owner_id: string; p_subject: Json }
+        Returns: undefined
+      }
+      cms_governed_lock_lineage_active: {
+        Args: { p_except_id: string; p_kind: string; p_lineage_id: string }
+        Returns: string
+      }
+      cms_governed_move_subject: {
+        Args: { p_kind: string; p_subject_id: string; p_to_state: string }
+        Returns: undefined
+      }
+      cms_governed_next_actions: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_review_id: string
+          p_scopes: string[]
+        }
+        Returns: string[]
+      }
+      cms_governed_owner_capability: {
+        Args: { p_subject_kind: string }
+        Returns: string
+      }
+      cms_governed_pattern_closure: {
+        Args: { p_depth?: number; p_owner_id: string; p_tree: Json }
+        Returns: {
+          block_key: string
+          block_version: number
+          item_kind: string
+          nested_id: string
+          nested_state: string
+        }[]
+      }
+      cms_governed_pattern_row: {
+        Args: { p_lineage_id: string; p_owner_id: string; p_version: number }
+        Returns: Json
+      }
+      cms_governed_policy_basis: {
+        Args: { p_kind: string; p_owner_id: string; p_subject: Json }
+        Returns: Json
+      }
+      cms_governed_read_lineage_active: {
+        Args: { p_except_id: string; p_kind: string; p_lineage_id: string }
+        Returns: string
+      }
+      cms_governed_recheck_event_ref: {
+        Args: { p_event_id: string }
+        Returns: Json
+      }
+      cms_governed_recheck_verdict: {
+        Args: { p_review_id: string }
+        Returns: string
+      }
+      cms_governed_retire_subject: {
+        Args: { p_at: string; p_kind: string; p_subject_id: string }
+        Returns: Json
+      }
+      cms_governed_review_distinct_approvals: {
+        Args: { p_review_id: string }
+        Returns: number
+      }
+      cms_governed_review_qualifying_decisions: {
+        Args: { p_review_id: string }
+        Returns: {
+          assignment_id: string
+          capability: string
+          decision_id: string
+          reviewer_person_id: string
+        }[]
+      }
+      cms_governed_review_resource: {
+        Args: { p_review_id: string }
+        Returns: Json
+      }
+      cms_governed_review_schedule: {
+        Args: { p_review_id: string }
+        Returns: Json
+      }
+      cms_governed_review_scopes: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_review_id: string
+        }
+        Returns: string[]
+      }
+      cms_governed_schedule_block: {
+        Args: {
+          p_correlation_id: string
+          p_expected_version: number
+          p_reason_code: string
+          p_schedule_id: string
+        }
+        Returns: undefined
+      }
+      cms_governed_schedule_blocked_result: {
+        Args: {
+          p_correlation_id: string
+          p_reason: string
+          p_schedule: Database["platform_private"]["Tables"]["cms_governed_activation_schedules"]["Row"]
+        }
+        Returns: Json
+      }
+      cms_governed_schedule_record_failure: {
+        Args: {
+          p_correlation_id: string
+          p_expected_version: number
+          p_schedule_id: string
+        }
+        Returns: string
+      }
+      cms_governed_schedule_result: {
+        Args: {
+          p_actual: string
+          p_deviation: number
+          p_outcome: string
+          p_reason: string
+          p_schedule_id: string
+        }
+        Returns: Json
+      }
+      cms_governed_schedule_retry_result: {
+        Args: {
+          p_correlation_id: string
+          p_schedule: Database["platform_private"]["Tables"]["cms_governed_activation_schedules"]["Row"]
+        }
+        Returns: Json
+      }
+      cms_governed_subject_resolve: {
+        Args: { p_id: string; p_kind: string; p_lock?: boolean }
+        Returns: Json
+      }
+      cms_governed_supersede_lineage: {
+        Args: { p_except_id: string; p_kind: string; p_lineage_id: string }
+        Returns: string
+      }
+      cms_governed_take_lineage_advisory: {
+        Args: { p_kind: string; p_lineage_id: string }
+        Returns: undefined
+      }
+      cms_governed_transition_legal: {
+        Args: { p_from: string; p_to: string }
+        Returns: boolean
+      }
+      cms_governed_tree_blocks: {
+        Args: { p_tree: Json }
+        Returns: {
+          block_key: string
+          block_version: number
+        }[]
+      }
+      cms_governed_tree_nodes: { Args: { p_tree: Json }; Returns: Json }
+      cms_governed_try_lock_subject: {
+        Args: { p_kind: string; p_subject_id: string }
+        Returns: boolean
+      }
       cms_grant_capability: { Args: { p_request: Json }; Returns: Json }
       cms_grant_owner: {
         Args: { p_acting_party_id: string; p_actor_id: string }
@@ -10372,6 +11584,7 @@ export type Database = {
         Args: { p_ids: string[] }
         Returns: boolean
       }
+      cms_insert_pattern_instance: { Args: { p_request: Json }; Returns: Json }
       cms_invalidate_activation_reviews: {
         Args: { p_candidate_id: string }
         Returns: number
@@ -10383,6 +11596,10 @@ export type Database = {
       cms_invalidate_editorial_review: {
         Args: { p_request: Json }
         Returns: Json
+      }
+      cms_invalidate_governed_reviews_for_person: {
+        Args: { p_capability: string; p_person_id: string }
+        Returns: number
       }
       cms_invalidate_reviews_for_person: {
         Args: { p_capability: string; p_person_id: string }
@@ -10408,7 +11625,17 @@ export type Database = {
         Args: { p_audience: string; p_entry_id: string; p_locale: string }
         Returns: Json
       }
+      cms_linked_scan_event_ref: { Args: { p_event_id: string }; Returns: Json }
+      cms_linked_scan_request: { Args: { p_request: Json }; Returns: Json }
       cms_list_capability_grants: { Args: { p_request: Json }; Returns: Json }
+      cms_list_composition_instances: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
+      cms_list_composition_instances_signed: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_list_content_types: { Args: { p_request: Json }; Returns: Json }
       cms_list_editorial_reviews: { Args: { p_request: Json }; Returns: Json }
       cms_list_editorial_reviews_signed: {
@@ -10417,6 +11644,11 @@ export type Database = {
       }
       cms_list_entries: { Args: { p_request: Json }; Returns: Json }
       cms_list_entries_signed: { Args: { p_request: Json }; Returns: Json }
+      cms_list_governed_reviews: { Args: { p_request: Json }; Returns: Json }
+      cms_list_governed_reviews_signed: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_list_item_kind_valid: {
         Args: { p_item_kind: string }
         Returns: boolean
@@ -10425,9 +11657,34 @@ export type Database = {
         Args: { p_constraints: Json; p_item: Json; p_item_kind: string }
         Returns: boolean
       }
+      cms_list_pattern_nestable: { Args: { p_request: Json }; Returns: Json }
+      cms_list_pattern_nestable_signed: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
+      cms_list_pattern_selector: { Args: { p_request: Json }; Returns: Json }
+      cms_list_pattern_selector_signed: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
       cms_list_revisions: { Args: { p_request: Json }; Returns: Json }
       cms_list_revisions_signed: { Args: { p_request: Json }; Returns: Json }
+      cms_list_taxonomy_selector: { Args: { p_request: Json }; Returns: Json }
+      cms_list_taxonomy_selector_signed: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
+      cms_list_taxonomy_terms: { Args: { p_request: Json }; Returns: Json }
+      cms_list_taxonomy_terms_signed: {
+        Args: { p_request: Json }
+        Returns: Json
+      }
+      cms_list_taxonomy_versions: { Args: { p_request: Json }; Returns: Json }
       cms_load_quality_gate_input: { Args: { p_request: Json }; Returns: Json }
+      cms_locale_aggregate_id: {
+        Args: { p_entry_id: string; p_locale: string }
+        Returns: string
+      }
       cms_locale_canonical_valid: { Args: { p_tag: string }; Returns: boolean }
       cms_locale_config_hash: {
         Args: {
@@ -10451,7 +11708,47 @@ export type Database = {
         }
         Returns: Json
       }
+      cms_locale_hashes_valid: { Args: { p_hashes: Json }; Returns: boolean }
+      cms_locale_no_fallback_gate: {
+        Args: { p_phase: string; p_revision_id: string }
+        Returns: {
+          blocking_count: number
+          outcome: string
+          reason_code: string
+        }[]
+      }
+      cms_locale_observability_read: {
+        Args: { p_window_end: string; p_window_start: string }
+        Returns: Json
+      }
+      cms_locale_resolutions: {
+        Args: {
+          p_entry_id: string
+          p_field_ids: string[]
+          p_locale: string
+          p_own_revision_id: string
+          p_schema_version_id: string
+        }
+        Returns: {
+          field_id: string
+          resolution: Json
+        }[]
+      }
       cms_locale_sorted: { Args: { p_supported: Json }; Returns: Json }
+      cms_locale_source_field_hash: {
+        Args: { p_field_id: string; p_revision_id: string }
+        Returns: string
+      }
+      cms_locale_stale_fields: {
+        Args: { p_entry_id: string; p_locale: string }
+        Returns: Json
+      }
+      cms_locale_stale_ids_valid: { Args: { p_ids: Json }; Returns: boolean }
+      cms_locale_stale_legal_field_count: { Args: never; Returns: number }
+      cms_locale_variant_state: {
+        Args: { p_entry_id: string; p_locale: string }
+        Returns: string
+      }
       cms_locale_violation_detail: { Args: { p_issues: Json }; Returns: string }
       cms_localization_fanout: {
         Args: {
@@ -10481,6 +11778,10 @@ export type Database = {
         Args: { p_candidate_id: string }
         Returns: undefined
       }
+      cms_lock_default_template_shared: {
+        Args: { p_owner_id: string; p_template_version_id: string }
+        Returns: undefined
+      }
       cms_lock_entry_assignments_shared: {
         Args: {
           p_acting_party_id: string
@@ -10501,6 +11802,14 @@ export type Database = {
         Args: { p_entry_ids: string[] }
         Returns: undefined
       }
+      cms_lock_governed_authority: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_capability: string
+        }
+        Returns: undefined
+      }
       cms_lock_person_authority: {
         Args: {
           p_capabilities: string[]
@@ -10517,8 +11826,22 @@ export type Database = {
         }
         Returns: undefined
       }
+      cms_lock_revision_pattern_dependencies: {
+        Args: { p_revision_id: string }
+        Returns: undefined
+      }
       cms_lock_schema_version_shared: {
         Args: { p_version_id: string }
+        Returns: undefined
+      }
+      cms_lock_term_plan: {
+        Args: {
+          p_changed: string[]
+          p_owner_id: string
+          p_schema_version_id: string
+          p_source_revision_id: string
+          p_values: Json
+        }
         Returns: undefined
       }
       cms_manifest_hashed_entries_valid: {
@@ -10658,6 +11981,7 @@ export type Database = {
         Returns: string
       }
       cms_mint_preview: { Args: { p_request: Json }; Returns: Json }
+      cms_name_uuid: { Args: { p_name: string }; Returns: string }
       cms_object_property_constraints_valid: {
         Args: { p_constraints: Json; p_kind: string }
         Returns: boolean
@@ -10670,7 +11994,291 @@ export type Database = {
         Args: { p_structure: Json; p_value: Json }
         Returns: boolean
       }
+      cms_pattern_active_digest: {
+        Args: { p_manifest: Json; p_revision_id: string }
+        Returns: {
+          blocking_count: number
+          outcome: string
+          reason_code: string
+        }[]
+      }
+      cms_pattern_block_rules_enforce_plan: {
+        Args: { p_plan: Json; p_pointer: string }
+        Returns: undefined
+      }
+      cms_pattern_block_rules_enforce_save: {
+        Args: { p_forest: Json; p_owner_id: string; p_visited: string[] }
+        Returns: undefined
+      }
+      cms_pattern_block_rules_forest: {
+        Args: { p_forest: Json; p_owner_id: string; p_visited: string[] }
+        Returns: Json
+      }
+      cms_pattern_blocks_compatible: {
+        Args: { p_owner_id: string; p_tree: Json; p_type_ids: Json }
+        Returns: boolean
+      }
+      cms_pattern_chain_offender: {
+        Args: { p_owner_id: string; p_tree: Json }
+        Returns: string
+      }
+      cms_pattern_count_offender: {
+        Args: { p_owner_id: string; p_tree: Json }
+        Returns: string
+      }
+      cms_pattern_cycle_offender: {
+        Args: { p_lineage_id: string; p_owner_id: string; p_tree: Json }
+        Returns: string
+      }
+      cms_pattern_depth_offender: { Args: { p_tree: Json }; Returns: string }
+      cms_pattern_diff_delta: {
+        Args: {
+          p_base_nodes: Json
+          p_overrides: Json
+          p_root_chain: string
+          p_target_nodes: Json
+        }
+        Returns: Json
+      }
+      cms_pattern_diff_plan: {
+        Args: {
+          p_content_type_id: string
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+        }
+        Returns: Json
+      }
+      cms_pattern_forest_check: { Args: { p_tree: Json }; Returns: string }
+      cms_pattern_forest_nodes: {
+        Args: { p_tree: Json }
+        Returns: {
+          node: Json
+          node_level: number
+          node_path: number[]
+        }[]
+      }
+      cms_pattern_forest_pointer: {
+        Args: { p_base: string; p_chain: string; p_forest: Json }
+        Returns: string
+      }
+      cms_pattern_forest_rules_violated: {
+        Args: { p_forest: Json; p_lineage: string; p_owner_id: string }
+        Returns: boolean
+      }
+      cms_pattern_latest: { Args: { p_request: Json }; Returns: Json }
+      cms_pattern_live_pin_reason: {
+        Args: {
+          p_expected_content_hash: string
+          p_owner_id: string
+          p_pattern_id: string
+          p_pattern_version: number
+        }
+        Returns: string
+      }
+      cms_pattern_nested_closure: {
+        Args: { p_owner_id: string; p_tree: Json }
+        Returns: {
+          nested_depth: number
+          nested_pattern_id: string
+          nested_row_id: string
+          nested_version: number
+        }[]
+      }
+      cms_pattern_node_pointer: { Args: { p_path: number[] }; Returns: string }
+      cms_pattern_node_shape_valid: { Args: { p_node: Json }; Returns: boolean }
+      cms_pattern_placement_check: {
+        Args: { p_request: Json }
+        Returns: string
+      }
+      cms_pattern_placement_nodes: {
+        Args: {
+          p_depth?: number
+          p_forest: Json
+          p_owner_id: string
+          p_prefix?: string
+          p_root_chain?: string
+          p_visited: string[]
+        }
+        Returns: {
+          is_root: boolean
+          node: Json
+          node_chain: string
+          root_chain: string
+        }[]
+      }
+      cms_pattern_placement_path_allocation: {
+        Args: {
+          p_nodes: Json
+          p_revision_id: string
+          p_slot_key: string
+          p_slot_path: string
+        }
+        Returns: Json
+      }
+      cms_pattern_placement_plan: {
+        Args: {
+          p_overrides: Json
+          p_owner_id: string
+          p_pattern: Database["platform_private"]["Tables"]["cms_pattern_versions"]["Row"]
+          p_slot_path: string
+        }
+        Returns: Json
+      }
+      cms_pattern_placement_selected_plan: {
+        Args: {
+          p_overrides: Json
+          p_owner_id: string
+          p_pattern: Database["platform_private"]["Tables"]["cms_pattern_versions"]["Row"]
+          p_roots?: Json
+          p_slot_path: string
+        }
+        Returns: Json
+      }
+      cms_pattern_props_valid: {
+        Args: { p_props: Json; p_snapshot: Json }
+        Returns: boolean
+      }
+      cms_pattern_refs: {
+        Args: { p_tree: Json }
+        Returns: {
+          ref_pattern_id: string
+          ref_pattern_version: number
+        }[]
+      }
+      cms_pattern_registry_digest: {
+        Args: { p_owner_id: string; p_tree: Json }
+        Returns: string
+      }
+      cms_pattern_registry_digest_readonly: {
+        Args: { p_owner_id: string; p_tree: Json }
+        Returns: string
+      }
+      cms_pattern_resource: { Args: { p_id: string }; Returns: Json }
+      cms_pattern_root_snapshot: {
+        Args: {
+          p_pattern: Database["platform_private"]["Tables"]["cms_pattern_versions"]["Row"]
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+          p_strict: boolean
+        }
+        Returns: Json
+      }
+      cms_pattern_snapshot_expanded: { Args: { p_tree: Json }; Returns: Json }
       cms_pattern_tree_keys_valid: { Args: { p_tree: Json }; Returns: boolean }
+      cms_pattern_type_ids_valid: { Args: { p_ids: Json }; Returns: boolean }
+      cms_pattern_update_check: {
+        Args: { p_request: Json }
+        Returns: undefined
+      }
+      cms_pattern_update_next_row: {
+        Args: {
+          p_action: string
+          p_actor: string
+          p_choices: Json
+          p_digest: string
+          p_head: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+          p_now: string
+          p_plan: Json
+        }
+        Returns: {
+          bindings: Json
+          block_key: string
+          block_registry_digest: string
+          block_version: number
+          carried_from_id: string | null
+          created_at: string
+          created_by: string
+          detached_tree: Json | null
+          id: string
+          link_mode: string
+          owner_id: string
+          parent_instance_id: string | null
+          path: string
+          pattern_id: string | null
+          pattern_version: number | null
+          pending_pattern_version: number | null
+          position: number
+          props: Json
+          revision_id: string
+          slot_key: string
+          state: string
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cms_composition_instances"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
+      cms_pattern_update_nodes: {
+        Args: {
+          p_depth?: number
+          p_forest: Json
+          p_owner_id: string
+          p_prefix?: string
+          p_root_chain?: string
+          p_strict: boolean
+          p_visited: string[]
+        }
+        Returns: {
+          is_root: boolean
+          node: Json
+          node_chain: string
+          root_chain: string
+        }[]
+      }
+      cms_pattern_update_plan: {
+        Args: {
+          p_content_type_id: string
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+          p_strict: boolean
+        }
+        Returns: Json
+      }
+      cms_pattern_update_resolve: {
+        Args: {
+          p_base: Json
+          p_choices: Json
+          p_overrides: Json
+          p_target: Json
+        }
+        Returns: Json
+      }
+      cms_pattern_update_target: {
+        Args: {
+          p_above: number
+          p_content_type_id: string
+          p_lineage_id: string
+          p_owner_id: string
+        }
+        Returns: {
+          activated_at: string | null
+          block_registry_digest: string
+          block_tree: Json
+          compatible_type_ids: Json
+          content_hash: string
+          created_at: string
+          created_by: string
+          id: string
+          lifecycle_version: number
+          node_count: number
+          owner_capability: string
+          owner_id: string
+          pattern_id: string
+          pattern_key: string
+          retired_at: string | null
+          state: string
+          supersedes_id: string | null
+          updated_at: string
+          version: number
+        }
+        SetofOptions: {
+          from: "*"
+          to: "cms_pattern_versions"
+          isOneToOne: true
+          isSetofReturn: false
+        }
+      }
       cms_persisted_dry_run_report_valid: {
         Args: {
           p_classification: string
@@ -10884,10 +12492,12 @@ export type Database = {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_recheck_governed_reviews: { Args: { p_request: Json }; Returns: Json }
       cms_reconcile_schema_activation: {
         Args: { p_request: Json }
         Returns: Json
       }
+      cms_reconcile_taxonomy_merge_converge: { Args: never; Returns: Json }
       cms_record_audit: {
         Args: {
           p_acting_party_id: string
@@ -10925,11 +12535,82 @@ export type Database = {
         }
         Returns: string
       }
+      cms_record_governed_decision: { Args: { p_request: Json }; Returns: Json }
       cms_record_review_decision: { Args: { p_request: Json }; Returns: Json }
+      cms_record_term_assignments: {
+        Args: {
+          p_actor_id: string
+          p_changed: string[]
+          p_owner_id: string
+          p_revision_id: string
+          p_schema_version_id: string
+          p_source_revision_id: string
+          p_values: Json
+        }
+        Returns: number
+      }
       cms_register_block: { Args: { p_request: Json }; Returns: Json }
       cms_register_block_at: {
         Args: { p_now_at: string; p_request: Json }
         Returns: Json
+      }
+      cms_related_content_pointers: { Args: { p_request: Json }; Returns: Json }
+      cms_related_content_public_targets: {
+        Args: {
+          p_audience: string
+          p_locale: string
+          p_source_entry_id: string
+        }
+        Returns: Json
+      }
+      cms_related_derived_candidates: {
+        Args: {
+          p_audience: string
+          p_excluded: string[]
+          p_locale: string
+          p_max: number
+          p_pinned: string[]
+          p_rule_key: string
+          p_source_entry_id: string
+        }
+        Returns: {
+          entry_id: string
+          rank: number
+        }[]
+      }
+      cms_related_eligible_count: {
+        Args: {
+          p_entry_id: string
+          p_exclusions: string[]
+          p_pins: string[]
+          p_rule_bound: number
+          p_rule_key: string
+        }
+        Returns: number
+      }
+      cms_related_publish_head_revision: {
+        Args: { p_audience: string; p_entry_id: string; p_locale: string }
+        Returns: string
+      }
+      cms_related_rule_pointers: { Args: { p_rule: Json }; Returns: Json }
+      cms_related_rule_reason: { Args: { p_key: string }; Returns: string }
+      cms_related_rule_valid: {
+        Args: { p_key: string; p_version: number }
+        Returns: boolean
+      }
+      cms_related_rules_replace: {
+        Args: {
+          p_actor_id: string
+          p_entry_id: string
+          p_exclusions: string[]
+          p_owner_id: string
+          p_pins: string[]
+          p_rule_bound: number
+          p_rule_key: string
+          p_rule_version: number
+          p_snapshot: string
+        }
+        Returns: undefined
       }
       cms_relation_target_visible: {
         Args: {
@@ -10979,6 +12660,15 @@ export type Database = {
       cms_renderer_registry_valid: { Args: { p_ref: string }; Returns: boolean }
       cms_renew_capability_grant: { Args: { p_request: Json }; Returns: Json }
       cms_request_hash: { Args: { p_request: Json }; Returns: string }
+      cms_request_taxonomy_merge_converge: {
+        Args: {
+          p_acting_party_id: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_retired_term_id: string
+        }
+        Returns: Json
+      }
       cms_require_capability: {
         Args: {
           p_acting_party_id: string
@@ -11023,10 +12713,24 @@ export type Database = {
         Args: { p_acting_party_id: string; p_actor_id: string }
         Returns: undefined
       }
-      cms_require_value_source_available: {
-        Args: { p_field_id: string; p_schema_version_id: string; p_value: Json }
-        Returns: undefined
-      }
+      cms_require_value_source_available:
+        | {
+            Args: {
+              p_field_id: string
+              p_schema_version_id: string
+              p_value: Json
+            }
+            Returns: undefined
+          }
+        | {
+            Args: {
+              p_field_id: string
+              p_schema_version_id: string
+              p_source_revision_id: string
+              p_value: Json
+            }
+            Returns: undefined
+          }
       cms_required_protected_validators: {
         Args: { p_definition: Json }
         Returns: Json
@@ -11085,6 +12789,10 @@ export type Database = {
         Returns: string
       }
       cms_resolve_conflict: { Args: { p_request: Json }; Returns: Json }
+      cms_resolve_locale_field: {
+        Args: { p_entry_id: string; p_field_id: string; p_locale: string }
+        Returns: Json
+      }
       cms_resolve_relation_targets: {
         Args: {
           p_acting_party_id: string
@@ -11098,6 +12806,10 @@ export type Database = {
       }
       cms_resolve_review_policy: {
         Args: { p_version_id: string }
+        Returns: Json
+      }
+      cms_resolve_taxonomy_version: {
+        Args: { p_taxonomy_version_id: string }
         Returns: Json
       }
       cms_resolve_template_compatibility: {
@@ -11124,6 +12836,96 @@ export type Database = {
         Args: { p_plan_ids: Json; p_revision_id: string }
         Returns: Json
       }
+      cms_restore_composition_copy: {
+        Args: {
+          p_block_ids: string[]
+          p_heads: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"][]
+          p_pattern_ids: string[]
+          p_snapshot_time: string
+          p_source_revision_id: string
+          p_target_revision_id: string
+        }
+        Returns: undefined
+      }
+      cms_restore_composition_heads: {
+        Args: { p_source_revision_id: string }
+        Returns: {
+          bindings: Json
+          block_key: string
+          block_registry_digest: string
+          block_version: number
+          carried_from_id: string | null
+          created_at: string
+          created_by: string
+          detached_tree: Json | null
+          id: string
+          link_mode: string
+          owner_id: string
+          parent_instance_id: string | null
+          path: string
+          pattern_id: string | null
+          pattern_version: number | null
+          pending_pattern_version: number | null
+          position: number
+          props: Json
+          revision_id: string
+          slot_key: string
+          state: string
+          updated_at: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cms_composition_instances"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cms_restore_composition_plan: {
+        Args: { p_source_revision_id: string }
+        Returns: {
+          block_ids: string[]
+          heads: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"][]
+          pattern_ids: string[]
+        }[]
+      }
+      cms_restore_composition_refs: {
+        Args: {
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+        }
+        Returns: {
+          kind: string
+          ref_id: string
+        }[]
+      }
+      cms_restore_composition_registry: {
+        Args: {
+          p_block_ids: string[]
+          p_content_type_id: string
+          p_pattern_ids: string[]
+          p_row: Database["platform_private"]["Tables"]["cms_composition_instances"]["Row"]
+        }
+        Returns: string
+      }
+      cms_restore_lock_term_plan: {
+        Args: {
+          p_owner_id: string
+          p_plan: Json
+          p_source_revision_id: string
+          p_target_version_id: string
+          p_values: Json
+        }
+        Returns: undefined
+      }
+      cms_restore_record_term_assignments: {
+        Args: {
+          p_actor_id: string
+          p_owner_id: string
+          p_plan: Json
+          p_revision_id: string
+        }
+        Returns: number
+      }
       cms_restore_relations_resolvable: {
         Args: {
           p_entry_id: string
@@ -11141,6 +12943,15 @@ export type Database = {
           p_value: Json
         }
         Returns: boolean
+      }
+      cms_restore_term_plan: {
+        Args: {
+          p_owner_id: string
+          p_source_revision_id: string
+          p_target_version_id: string
+          p_values: Json
+        }
+        Returns: Json
       }
       cms_restore_translate_values: {
         Args: {
@@ -11231,6 +13042,14 @@ export type Database = {
         Args: { p_author_person_id: string; p_entry_id: string }
         Returns: string
       }
+      cms_revision_composition_carry: {
+        Args: {
+          p_snapshot_time: string
+          p_source_revision_id: string
+          p_target_revision_id: string
+        }
+        Returns: undefined
+      }
       cms_revision_content_hash: {
         Args: {
           p_locale: string
@@ -11239,6 +13058,40 @@ export type Database = {
           p_schema_version_id: string
         }
         Returns: string
+      }
+      cms_revision_effective_composition: {
+        Args: { p_revision_id: string }
+        Returns: {
+          bindings: Json
+          block_key: string
+          block_registry_digest: string
+          block_version: number
+          carried_from_id: string | null
+          created_at: string
+          created_by: string
+          detached_tree: Json | null
+          id: string
+          link_mode: string
+          owner_id: string
+          parent_instance_id: string | null
+          path: string
+          pattern_id: string | null
+          pattern_version: number | null
+          pending_pattern_version: number | null
+          position: number
+          props: Json
+          revision_id: string
+          slot_key: string
+          state: string
+          updated_at: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cms_composition_instances"
+          isOneToOne: false
+          isSetofReturn: true
+        }
       }
       cms_revision_effective_state: {
         Args: { p_revision_id: string }
@@ -11259,6 +13112,10 @@ export type Database = {
           p_schema_version_id: string
         }
         Returns: Json
+      }
+      cms_revision_manifest_identities_current: {
+        Args: { p_manifest: Json; p_revision_id: string }
+        Returns: boolean
       }
       cms_revision_page_disposition:
         | {
@@ -11330,6 +13187,15 @@ export type Database = {
         Returns: Json
       }
       cms_rpc_context_valid: { Args: never; Returns: boolean }
+      cms_run_taxonomy_merge_converge: {
+        Args: {
+          p_batch: number
+          p_job_id: string
+          p_lease_token: string
+          p_version: number
+        }
+        Returns: Json
+      }
       cms_s11_assignment_readable: {
         Args: { p_reviewer_person_id: string; p_state: string }
         Returns: boolean
@@ -11347,6 +13213,10 @@ export type Database = {
       cms_s11_workflow_readable: {
         Args: { p_entry_id: string; p_revision_id: string }
         Returns: boolean
+      }
+      cms_scan_linked_pattern_updates: {
+        Args: { p_request: Json }
+        Returns: Json
       }
       cms_schedule_block:
         | {
@@ -11592,6 +13462,7 @@ export type Database = {
         Returns: number
       }
       cms_start_schema_dry_run: { Args: { p_request: Json }; Returns: Json }
+      cms_submit_governed_review: { Args: { p_request: Json }; Returns: Json }
       cms_submit_review: { Args: { p_request: Json }; Returns: Json }
       cms_submit_schema_review: { Args: { p_request: Json }; Returns: Json }
       cms_successor_template_gate: {
@@ -11608,6 +13479,74 @@ export type Database = {
       cms_sweep_expired_review_authority: {
         Args: { p_batch: number }
         Returns: Json
+      }
+      cms_taxonomy_assignment_integrity: {
+        Args: { p_revision_id: string }
+        Returns: {
+          blocking_count: number
+          outcome: string
+          reason_code: string
+        }[]
+      }
+      cms_taxonomy_merge_enqueue_lock: {
+        Args: { p_acting_party_id: string }
+        Returns: undefined
+      }
+      cms_taxonomy_merge_work: {
+        Args: { p_owner_id: string; p_term_id: string }
+        Returns: {
+          created_at: string
+          created_by: string
+          field_definition_id: string
+          id: string
+          owner_id: string
+          position: number
+          provenance: string
+          revision_id: string
+          state: string
+          taxonomy_version_id: string
+          term_id: string
+          updated_at: string
+          version: number
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "cms_term_assignments"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
+      cms_taxonomy_plan_version_ids: {
+        Args: {
+          p_changed: string[]
+          p_owner_id: string
+          p_schema_version_id: string
+          p_source_revision_id: string
+          p_values: Json
+        }
+        Returns: Json
+      }
+      cms_taxonomy_value_plan: {
+        Args: {
+          p_changed: string[]
+          p_owner_id: string
+          p_schema_version_id: string
+          p_source_revision_id: string
+          p_values: Json
+        }
+        Returns: {
+          active_version_id: string
+          field_definition_id: string
+          is_changed: boolean
+          provenance: string
+          taxonomy_version_id: string
+          term_id: string
+          term_position: number
+        }[]
+      }
+      cms_taxonomy_version_resolves: {
+        Args: { p_taxonomy_version_id: string }
+        Returns: boolean
       }
       cms_template_binding_compatible: {
         Args: {
@@ -11632,6 +13571,73 @@ export type Database = {
         Returns: boolean
       }
       cms_template_registry_valid: { Args: { p_id: string }; Returns: boolean }
+      cms_term_action_values: { Args: { p_request: Json }; Returns: undefined }
+      cms_term_alias_union: {
+        Args: { p_existing: Json; p_new: Json }
+        Returns: Json
+      }
+      cms_term_apply_merge: {
+        Args: {
+          p_active_version_id: string
+          p_actor_id: string
+          p_correlation_id: string
+          p_party_id: string
+          p_request: Json
+        }
+        Returns: string
+      }
+      cms_term_apply_write: {
+        Args: {
+          p_active_version_id: string
+          p_actor_id: string
+          p_party_id: string
+          p_request: Json
+        }
+        Returns: string
+      }
+      cms_term_assignable: {
+        Args: {
+          p_field_key: string
+          p_owner_id: string
+          p_term_id: string
+          p_type_key: string
+        }
+        Returns: boolean
+      }
+      cms_term_existing_deprecated: {
+        Args: {
+          p_field_id: string
+          p_owner_id: string
+          p_source_revision_id: string
+          p_term_id: string
+        }
+        Returns: boolean
+      }
+      cms_term_locale_canonical: { Args: { p_locale: string }; Returns: string }
+      cms_term_overlap_check: {
+        Args: { p_candidates: string[]; p_domains: Json }
+        Returns: undefined
+      }
+      cms_term_parent_check: {
+        Args: {
+          p_parent: string
+          p_party_id: string
+          p_shape: string
+          p_taxonomy_id: string
+          p_term_id: string
+        }
+        Returns: undefined
+      }
+      cms_term_resource: { Args: { p_term_id: string }; Returns: Json }
+      cms_term_write_labels: {
+        Args: {
+          p_actor_id: string
+          p_labels: Json
+          p_owner_id: string
+          p_term_id: string
+        }
+        Returns: undefined
+      }
       cms_text_is_executable: { Args: { p_text: string }; Returns: boolean }
       cms_touch_edit_presence: { Args: { p_request: Json }; Returns: Json }
       cms_transform_registry_digest: {
@@ -11659,6 +13665,10 @@ export type Database = {
         Returns: Json
       }
       cms_tzdb_version: { Args: never; Returns: string }
+      cms_uuid_v5: {
+        Args: { p_name: string; p_namespace: string }
+        Returns: string
+      }
       cms_valid_base64: { Args: { p_value: string }; Returns: boolean }
       cms_valid_block_request: { Args: { p_request: Json }; Returns: boolean }
       cms_valid_field_input: {

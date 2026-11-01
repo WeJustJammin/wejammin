@@ -1,0 +1,100 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import CmsGovernedTaxonomyPanel from '../../../../components/cms-governed-review/CmsGovernedTaxonomyPanel';
+import { createCmsGovernedPageReads } from '../../../../components/cms-governed-review/governed-review-page-reads';
+import { loadGovernedSubjectReview } from '../../../../components/cms-governed-review/load-governed-subject-review';
+import CmsTaxonomyVersionDesigner from '../../../../components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner';
+import '../../../../components/cms-taxonomy-designer/cms-taxonomy.css';
+import { createTaxonomyPageReads } from '../../../../components/cms-taxonomy-pages/taxonomy-page-reads';
+import {
+  loadTaxonomyPage,
+  taxonomyReviewHref,
+} from '../../../../components/cms-taxonomy-pages/load-taxonomy-page';
+import CmsTaxonomyTermForm from '../../../../components/cms-taxonomy-terms/CmsTaxonomyTermForm';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (Astro.request.method !== 'GET') {
+  return new Response('Method not allowed', {
+    status: 405,
+    headers: { allow: 'GET', 'cache-control': 'no-store' },
+  });
+}
+
+/*
+ * Protected vocabulary page for a saved lineage (cmsTaxonomyVersionsRead + cmsTaxonomyTermsRead):
+ * the version designer, the bounded definition-review panel (CMS-03C-06) and the term form
+ * (CMS-03C-03). A malformed id or term-list query is a 400 before any protected read; a
+ * concealed or absent vocabulary is the disclosure-safe 404; a stale term cursor restarts
+ * from the first page. The islands are given only the facts they render.
+ */
+const outcome = await loadTaxonomyPage({
+  request: Astro.request,
+  taxonomyId: Astro.params.taxonomyId ?? '',
+  reads: createTaxonomyPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+// FE03 :877, :1066: the panel shows the version's review summary and links to the review itself.
+const panelReview =
+  outcome.kind === 'view' && outcome.view.panel !== null
+    ? await loadGovernedSubjectReview({
+        request: Astro.request,
+        reads: createCmsGovernedPageReads(env.PLATFORM_API),
+        subject: {
+          kind: 'taxonomy_version',
+          key: outcome.view.panel.taxonomyKey,
+          version: outcome.view.panel.taxonomyVersion,
+        },
+      })
+    : null;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Govern a vocabulary and its terms."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <>
+        <CmsTaxonomyVersionDesigner
+          latest={outcome.view.latest}
+          versions={outcome.view.versions}
+          csrfToken={outcome.view.csrfToken}
+          client:load
+        />
+        {outcome.view.panel !== null ? (
+          <CmsGovernedTaxonomyPanel
+            detail={outcome.view.panel}
+            review={panelReview}
+            client:load
+          />
+        ) : null}
+        {outcome.view.vocabulary !== null && outcome.view.terms !== null ? (
+          <CmsTaxonomyTermForm
+            vocabulary={outcome.view.vocabulary}
+            terms={outcome.view.terms}
+            query={outcome.view.query}
+            basePath={outcome.view.basePath}
+            reviewHref={taxonomyReviewHref(panelReview)}
+            csrfToken={outcome.view.csrfToken}
+            client:load
+          />
+        ) : null}
+      </>
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

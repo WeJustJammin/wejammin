@@ -1,0 +1,91 @@
+-- cmsRelatedContentRead authority and request validation (DEC-195; BE03c authority row `as CMS-03C-05`, error matrix):
+-- only an assigned CMS author or editor who can edit the source reads its rule; a visible source without edit is
+-- capability_missing (403), a hidden or absent source NOT_FOUND (404), no session UNAUTHENTICATED (401), a malformed
+-- path or an extra member INVALID_REQUEST (400) BEFORE any authority or existence answer.
+
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000001');
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcC', array['c1'], array['c2'], null, 'r195-srcC-write-0001')) ? '__error'),
+  'control: the creator writes a rule on srcC');
+
+-- The assigned editor writes and reads (editor grant + assignment on srcE2 only).
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000002');
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcE2', array[]::text[], array[]::text[], pg_temp.r12_rule('same-type-recent', 3), 'r195-srcE2-write-0001')) ? '__error'),
+  'control: the assigned editor writes a derived-only rule on srcE2 (the editor is assigned to no target entry, so it can pin none)');
+select is(pg_temp.r195_read('srcE2') -> 'rule' -> 'derivedRule', '{"key":"same-type-recent","version":"1"}'::jsonb,
+  'an assigned editor reads the rule of the source it is assigned to (author or editor, BE03c authority row) [P2-S12-AC-060]');
+select is(pg_temp.r195_read('srcC') ->> '__error', 'capability_missing',
+  'a granted editor with no assignment on the source gets capability_missing even though the source is visible [P2-S12-AC-060]');
+select is(pg_temp.r195_read('srcC') ->> '__state', 'P0001', 'it is a typed refusal [P2-S12-AC-060]');
+select ok(not (pg_temp.r195_read('srcC') ? 'rule'), 'and the refusal carries no rule member: a caller without edit learns nothing of the rule [P2-S12-AC-060]');
+
+-- A member of the owning organization with no CMS grant.
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000003');
+select is(pg_temp.r195_read('srcC') ->> '__error', 'capability_missing',
+  'a member of the owning organization without a CMS author or editor grant is refused capability_missing [P2-S12-AC-060]');
+
+-- Not a member of the owning organization at all: the source does not exist for them.
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000004');
+select is(pg_temp.r195_read('srcC') ->> '__error', 'NOT_FOUND', 'a caller outside the owning organization sees the source as absent [P2-S12-AC-060]');
+
+-- Parity with CMS-03C-05 for every caller: the same refusal for the same source.
+create or replace function pg_temp.r195_pair(p_auth text, p_tag text, p_key text)
+returns text
+language plpgsql
+as $body$
+declare
+  write_answer jsonb;
+  read_answer jsonb;
+begin
+  perform pg_temp.r195_as(p_auth);
+  read_answer := pg_temp.r195_read(p_tag);
+  write_answer := pg_temp.r12_curate(pg_temp.r12_req(p_tag, array[]::text[], array[]::text[], null, p_key));
+  return coalesce(read_answer ->> '__error', 'OK') || '/' || coalesce(write_answer ->> '__error', 'OK');
+end;
+$body$;
+select is(pg_temp.r195_pair('a9100000-0000-4000-8000-000000000003', 'srcT', 'r195-pair-outsider'), 'capability_missing/capability_missing',
+  'outsider: the read refuses exactly as the write [P2-S12-AC-060]');
+select is(pg_temp.r195_pair('a9100000-0000-4000-8000-000000000002', 'srcT', 'r195-pair-editor'), 'capability_missing/capability_missing',
+  'unassigned editor: the read refuses exactly as the write [P2-S12-AC-060]');
+select is(pg_temp.r195_pair('a9100000-0000-4000-8000-000000000004', 'srcT', 'r195-pair-stranger'), 'NOT_FOUND/NOT_FOUND',
+  'stranger: the read refuses exactly as the write [P2-S12-AC-060]');
+select is(pg_temp.r195_pair('a9100000-0000-4000-8000-000000000001', 'srcT', 'r195-pair-creator'), 'OK/OK',
+  'creator: both succeed [P2-S12-AC-060]');
+
+-- Hidden and absent look the same, whoever asks.
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000001');
+select pg_temp.r12_foreign_owner('xo');
+select is(pg_temp.r195_read('xo') ->> '__error', 'NOT_FOUND', 'a source owned by another party is hidden: NOT_FOUND [P2-S12-AC-060]');
+select is(pg_temp.r195_read_id(extensions.gen_random_uuid()::text) ->> '__error', 'NOT_FOUND', 'an absent source is NOT_FOUND [P2-S12-AC-060]');
+create temp table r195_absent on commit drop as select pg_temp.r195_read_id('00000000-0000-4000-8000-0000000000aa') as answer;
+select is(pg_temp.r195_read('xo'), (select answer from r195_absent),
+  'a hidden source and an absent one are byte-identical answers: the read is no existence oracle [P2-S12-AC-060]');
+
+-- A revoked assignment removes the right to read, rule and all.
+select ok(not (pg_temp.r195_read('srcC') ? '__error'), 'control: the creator reads srcC while assigned');
+select pg_temp.r12_safe('revoke srcC assignment', format('select pg_temp.h11_raw_exec(%L, %L)', 'platform_private.cms_entry_assignments',
+  format($$update platform_private.cms_entry_assignments set state = 'revoked' where entry_id = %L$$, pg_temp.r12_id('srcC'))));
+select is(pg_temp.r195_read('srcC') ->> '__error', 'capability_missing', 'a revoked entry assignment removes the right to read the rule [P2-S12-AC-060]');
+select ok(not (pg_temp.r195_read('srcC') ? 'rule'), 'and nothing of the rule leaks in the refusal [P2-S12-AC-060]');
+
+-- Validation before authority and existence.
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000003');
+select is(pg_temp.r195_read_id('not-a-uuid') ->> '__error', 'INVALID_REQUEST', 'a malformed path id is INVALID_REQUEST for a caller who would be refused 403 [P2-S12-AC-062]');
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000004');
+select is(pg_temp.r195_read_id('not-a-uuid') ->> '__error', 'INVALID_REQUEST', 'and for a caller who would see 404 [P2-S12-AC-062]');
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000001');
+select is(pg_temp.r195_read_raw('{}'::jsonb) ->> '__error', 'INVALID_REQUEST', 'a request without entryId is INVALID_REQUEST [P2-S12-AC-062]');
+select is(pg_temp.r195_read_raw(jsonb_build_object('entryId', pg_temp.r12_id('srcR'), 'cursor', 'x')) ->> '__error', 'INVALID_REQUEST',
+  'an extra member (the route is strict: no query key) is INVALID_REQUEST [P2-S12-AC-062]');
+select is(pg_temp.r195_read_raw(jsonb_build_object('entryId', pg_temp.r12_id('srcR'), 'pins', '[]'::jsonb)) ->> '__error', 'INVALID_REQUEST',
+  'a rule member is INVALID_REQUEST [P2-S12-AC-062]');
+select is(pg_temp.r195_read_raw('[]'::jsonb) ->> '__error', 'INVALID_REQUEST', 'a non-object body is INVALID_REQUEST [P2-S12-AC-062]');
+select is(pg_temp.r195_read_raw('"x"'::jsonb) ->> '__error', 'INVALID_REQUEST', 'a scalar body is INVALID_REQUEST [P2-S12-AC-062]');
+select is(pg_temp.r195_read_raw(jsonb_build_object('entryId', 5)) ->> '__error', 'INVALID_REQUEST', 'a numeric entryId is INVALID_REQUEST [P2-S12-AC-062]');
+select is(pg_temp.r195_read_raw(jsonb_build_object('entryId', null)) ->> '__error', 'INVALID_REQUEST', 'a null entryId is INVALID_REQUEST [P2-S12-AC-062]');
+select ok(not (pg_temp.r195_read_raw(jsonb_build_object('entryId', pg_temp.r12_id('srcR'), 'correlationId', extensions.gen_random_uuid())) ? '__error'),
+  'the server-added correlationId member is allowed [P2-S12-AC-062]');
+
+-- No session.
+select pg_temp.s10_rpc_clear_actor();
+select is(pg_temp.r195_read('srcR') ->> '__error', 'UNAUTHENTICATED', 'a request with no verified session is UNAUTHENTICATED [P2-S12-AC-062]');
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000001');

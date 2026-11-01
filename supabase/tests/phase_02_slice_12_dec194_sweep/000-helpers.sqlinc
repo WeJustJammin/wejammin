@@ -1,0 +1,378 @@
+-- Helpers of the DEC-194 sweep suite.  Include AFTER taxonomy_terms/000-world and 010-setup (the s12tt_* and s12ga_* helpers).  Everything
+-- here is pg_temp and dies with the rolled-back transaction.
+-- Labelled fixture forgeries (nothing else is forged):
+--   s12dc_job     a BE00 job of the type cms.taxonomy.merge_converge accepted through the real platform_private.accept_job_with_outbox, the way an
+--                 earlier merge command or continuation would have requested it (the failed and live history the sweep reads).
+--   s12dc_elapse  "time passes": created_at and updated_at of the type's job rows shift back together, so their order is kept.  The sweep reads
+--                 clock_timestamp(), so this is equivalent to waiting; no state, result or error column is touched.
+
+create temp table s12dc_ids(key text primary key, value uuid not null) on commit drop;
+create or replace function pg_temp.s12dc_id(p_key text) returns uuid language sql stable as $body$
+  select value from s12dc_ids where key = p_key $body$;
+create or replace function pg_temp.s12dc_corr(p_n integer) returns uuid language sql immutable as $body$
+  select ('a9194000-0000-4000-8000-' || lpad(p_n::text, 12, '0'))::uuid $body$;
+
+-- One sweep call under the real service_role with the RPC context CLEARED (the wrapper must set what it needs) or pre-set to p_flag.
+create temp table s12dc_rcpt(ordinal serial primary key, label text not null, body jsonb, state text not null, message text, detail text,
+                             rpc_user text, flag_after text) on commit drop;
+create or replace function pg_temp.s12dc_sweep(p_label text, p_flag text default '') returns void language plpgsql security invoker as $body$
+declare
+  v_role text := current_setting('role'); v_rpc_user text; v_response jsonb; v_state text := '00000'; v_message text; v_detail text; v_flag text;
+begin
+  perform set_config('app.cms_rpc', p_flag, true);
+  execute 'set local role service_role';
+  v_rpc_user := current_user;
+  begin
+    execute 'select platform_api.cms_reconcile_taxonomy_merge_converge()' into v_response;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_message = message_text, v_detail = pg_exception_detail;
+  end;
+  v_flag := current_setting('app.cms_rpc', true);
+  perform set_config('role', v_role, true);
+  insert into s12dc_rcpt(label, body, state, message, detail, rpc_user, flag_after)
+  values (p_label, v_response, v_state, v_message, v_detail, v_rpc_user, v_flag);
+end;
+$body$;
+-- 'ok:<answer>' or '<sqlstate>:<message>' of the latest receipt of a label.
+create or replace function pg_temp.s12dc_out(p_label text) returns text language sql stable as $body$
+  select case when state = '00000' then 'ok:' || body::text else state || ':' || message end
+    from s12dc_rcpt where label = p_label order by ordinal desc limit 1 $body$;
+create or replace function pg_temp.s12dc_flag(p_label text) returns text language sql stable as $body$
+  select flag_after from s12dc_rcpt where label = p_label order by ordinal desc limit 1 $body$;
+
+-- The statement run as an API role: its sqlstate ('00000' when it ran).
+create or replace function pg_temp.s12dc_state_as(p_role text, p_sql text) returns text language plpgsql as $body$
+declare v_role text := current_setting('role'); v_state text := '00000';
+begin
+  execute format('set local role %I', p_role);
+  begin
+    execute p_sql;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate;
+  end;
+  perform set_config('role', v_role, true);
+  return v_state;
+end;
+$body$;
+
+-- A queued job of the type bound to the actor and acting party (labelled fixture, see the header).
+create or replace function pg_temp.s12dc_job(p_tag text, p_actor text, p_party uuid, p_corr integer) returns uuid language plpgsql as $body$
+declare v_job uuid;
+begin
+  select accepted.job_id into v_job
+    from platform_private.accept_job_with_outbox(pg_temp.s12ga_auth(p_actor), p_party, 'cms.taxonomy.merge_converge', pg_temp.s12dc_corr(p_corr),
+           extensions.digest('s12dc-job:' || p_tag, 'sha256'), extensions.digest('s12dc-job-request:' || p_tag, 'sha256'),
+           clock_timestamp() + interval '7 days') accepted;
+  insert into s12dc_ids(key, value) values ('job:' || p_tag, v_job);
+  return v_job;
+end;
+$body$;
+-- The real BE00 path through a job: claim (platform_api.claim_job) then one outcome (platform_api.apply_job_outcome).
+create or replace function pg_temp.s12dc_settle(p_tag text, p_job uuid, p_state text, p_error text) returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12tt_claim('dc-' || p_tag, p_job, 1);
+  if not pg_temp.s12tt_outcome('dc-' || p_tag, p_state, null, p_error) then
+    raise exception 's12dc fixture: apply_job_outcome did not apply % for %', p_state, p_tag;
+  end if;
+end;
+$body$;
+create or replace function pg_temp.s12dc_elapse(p_minutes integer) returns void language sql as $body$
+  update platform_private.jobs set created_at = created_at - make_interval(mins => p_minutes), updated_at = updated_at - make_interval(mins => p_minutes)
+   where job_type = 'cms.taxonomy.merge_converge' $body$;
+
+-- The job the sweep requested for a failed job: found through the idempotency record the producer reserved under the key namespace
+-- derived from that failed job's id (BE03c: "an idempotency key derived from the failed Job's id").
+create or replace function pg_temp.s12dc_key_job(p_failed uuid) returns uuid language sql stable as $body$
+  select (record.response_ref->>'jobRef')::uuid
+    from platform_private.idempotency_records record join platform_private.jobs failed on failed.id = p_failed
+   where record.operation = 'cms.taxonomy.merge_converge' and record.actor_id = failed.actor_id
+     and record.key_hash = extensions.digest('cms.taxonomy.merge_converge.reconcile:' || p_failed::text, 'sha256') $body$;
+
+-- What a sweep may change: the four counted stores, and a digest of the stores it must never touch.
+create or replace function pg_temp.s12dc_stores() returns text language sql stable as $body$
+  select md5(
+    (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.cms_terms r) ||
+    (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.cms_term_labels r) ||
+    (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.cms_term_assignments r) ||
+    (select coalesce(string_agg(to_jsonb(r)::text, '|' order by r.id), '') from platform_private.cms_taxonomy_versions r)) $body$;
+create temp table s12dc_marks(label text primary key, jobs bigint not null, outbox bigint not null, audit bigint not null, idem bigint not null,
+                              stores text not null) on commit drop;
+create or replace function pg_temp.s12dc_mark(p_label text) returns void language sql as $body$
+  insert into s12dc_marks
+  select p_label, (select count(*) from platform_private.jobs), (select count(*) from platform_private.outbox_events),
+         (select count(*) from audit_private.audit_events), (select count(*) from platform_private.idempotency_records), pg_temp.s12dc_stores()
+  on conflict (label) do update set jobs = excluded.jobs, outbox = excluded.outbox, audit = excluded.audit, idem = excluded.idem, stores = excluded.stores $body$;
+-- 'jobs +n, outbox +n, audit +n, idempotency +n, stores same|changed' since the mark.
+create or replace function pg_temp.s12dc_delta(p_label text) returns text language sql stable as $body$
+  select format('jobs +%s, outbox +%s, audit +%s, idempotency +%s, stores %s',
+           (select count(*) from platform_private.jobs) - mark.jobs, (select count(*) from platform_private.outbox_events) - mark.outbox,
+           (select count(*) from audit_private.audit_events) - mark.audit, (select count(*) from platform_private.idempotency_records) - mark.idem,
+           case when pg_temp.s12dc_stores() = mark.stores then 'same' else 'changed' end)
+    from s12dc_marks mark where mark.label = p_label $body$;
+
+-- The facts that make a refusal attributable to one guard.
+create or replace function pg_temp.s12dc_live(p_party uuid) returns integer language sql stable as $body$
+  select count(*)::integer from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge' and acting_party_id = p_party and state in ('queued', 'running') $body$;
+create or replace function pg_temp.s12dc_idle_minutes(p_party uuid) returns integer language sql stable as $body$
+  select floor(extract(epoch from (clock_timestamp() - max(updated_at))) / 60)::integer from platform_private.jobs
+   where job_type = 'cms.taxonomy.merge_converge' and acting_party_id = p_party $body$;
+-- Consecutive failed jobs of the party from the newest backwards.
+create or replace function pg_temp.s12dc_streak(p_party uuid) returns integer language sql stable as $body$
+  select count(*)::integer from (
+    select state, row_number() over (order by created_at desc, id desc) rn from platform_private.jobs
+     where job_type = 'cms.taxonomy.merge_converge' and acting_party_id = p_party) ordered
+   where ordered.rn < coalesce((select min(inner_rank.rn) from (
+     select state, row_number() over (order by created_at desc, id desc) rn from platform_private.jobs
+      where job_type = 'cms.taxonomy.merge_converge' and acting_party_id = p_party) inner_rank where inner_rank.state <> 'failed'),
+     (select count(*) + 1 from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge' and acting_party_id = p_party)) $body$;
+create or replace function pg_temp.s12dc_rcpt_body(p_label text) returns jsonb language sql stable as $body$
+  select body from s12dc_rcpt where label = p_label order by ordinal desc limit 1 $body$;
+
+-- ============================================================================
+-- DEC-194 durable recovery association witnesses (independent review: expiring
+-- dedup and the post-acceptance marker insert).  Everything below is additive;
+-- no helper or assertion above this line is changed.  Labelled fixture
+-- forgeries added here: one BE00 outcome carrying a result payload (the real
+-- apply_job_outcome demands a non-null result for `succeeded`), and the
+-- dynamic accessors of the private association table
+-- platform_private.taxonomy_merge_recoveries (DEC-212), which return a sentinel
+-- if that table were ever absent so the suite reports meaningful TAP failures
+-- instead of aborting the file.
+-- ============================================================================
+
+-- One real BE00 claim and outcome that carries a result payload.
+create or replace function pg_temp.s12dc_settle_result(p_label text, p_job uuid, p_state text, p_result jsonb, p_error text) returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12tt_claim('dc-' || p_label, p_job, 1);
+  if not pg_temp.s12tt_outcome('dc-' || p_label, p_state, p_result, p_error) then
+    raise exception 's12dc fixture: apply_job_outcome did not apply % for %', p_state, p_label;
+  end if;
+end;
+$body$;
+
+-- The jobs of the type held by one acting party.
+create or replace function pg_temp.s12dc_party_jobs(p_party uuid) returns bigint language sql stable as $body$
+  select count(*) from platform_private.jobs job
+   where job.job_type = 'cms.taxonomy.merge_converge' and job.acting_party_id = p_party $body$;
+create temp table s12dc_party_marks(label text primary key, jobs bigint not null) on commit drop;
+create or replace function pg_temp.s12dc_party_mark(p_label text, p_party uuid) returns void language sql as $body$
+  insert into s12dc_party_marks(label, jobs) values (p_label, pg_temp.s12dc_party_jobs(p_party))
+  on conflict (label) do update set jobs = excluded.jobs $body$;
+create or replace function pg_temp.s12dc_party_same(p_label text, p_party uuid) returns boolean language sql stable as $body$
+  select pg_temp.s12dc_party_jobs(p_party) = (select jobs from s12dc_party_marks where label = p_label) $body$;
+
+-- One column of a job row as text (diagnostics for the exact conjunct that fails).
+create or replace function pg_temp.s12dc_job_col(p_job uuid, p_col text) returns text language plpgsql volatile as $body$
+declare v_value text;
+begin
+  execute format('select (job.%I)::text from platform_private.jobs job where job.id = $1', p_col) into v_value using p_job;
+  return v_value;
+end;
+$body$;
+
+-- The failed head the recovery sweep would select for a party: its LATEST failed job of the type (created_at desc, id desc), exactly the
+-- ORDER BY / DISTINCT ON of platform_private.cms_reconcile_taxonomy_merge_converge.
+create or replace function pg_temp.s12dc_failed_head(p_party uuid) returns uuid language sql stable as $body$
+  select job.id from platform_private.jobs job
+   where job.job_type = 'cms.taxonomy.merge_converge' and job.acting_party_id = p_party and job.state = 'failed'
+   order by job.created_at desc, job.id desc limit 1 $body$;
+
+-- The recovery Job R of a history: a REAL BE00 job accepted bound to the FAILED Job's own actor, acting party and correlation (the same
+-- binding the sweep's own request carries, D4), under its own labelled key.  Recorded as 'job:<tag>'.
+create or replace function pg_temp.s12dc_accept_for(p_tag text, p_failed uuid) returns uuid language plpgsql as $body$
+declare v_actor uuid; v_party uuid; v_corr uuid; v_job uuid;
+begin
+  select job.actor_id, job.acting_party_id, job.correlation_id into v_actor, v_party, v_corr
+    from platform_private.jobs job where job.id = p_failed;
+  if v_actor is null then raise exception 's12dc fixture: the failed job % does not exist', p_failed; end if;
+  select accepted.job_id into v_job
+    from platform_private.accept_job_with_outbox(v_actor, v_party, 'cms.taxonomy.merge_converge', v_corr,
+           extensions.digest('s12dc-recovery:' || p_tag, 'sha256'), extensions.digest('s12dc-recovery-request:' || p_tag, 'sha256'),
+           clock_timestamp() + interval '7 days') accepted;
+  insert into s12dc_ids(key, value) values ('job:' || p_tag, v_job) on conflict (key) do update set value = excluded.value;
+  return v_job;
+end;
+$body$;
+
+-- A content digest of every counted store (full rows, not counts), so a refused call cannot hide an effect swap.
+create or replace function pg_temp.s12dc_full() returns text language sql stable as $body$
+  select md5(
+    (select coalesce(string_agg(to_jsonb(row_value)::text, '|' order by row_value.id), '') from platform_private.jobs row_value) ||
+    (select coalesce(string_agg(to_jsonb(row_value)::text, '|' order by row_value.id), '') from platform_private.outbox_events row_value) ||
+    (select coalesce(string_agg(to_jsonb(row_value)::text, '|' order by row_value.id), '') from audit_private.audit_events row_value) ||
+    (select coalesce(string_agg(to_jsonb(row_value)::text, '|' order by row_value.id), '') from platform_private.idempotency_records row_value))
+  $body$;
+create temp table s12dc_fulls(label text primary key, digest text not null) on commit drop;
+create or replace function pg_temp.s12dc_full_mark(p_label text) returns void language sql as $body$
+  insert into s12dc_fulls(label, digest) values (p_label, pg_temp.s12dc_full())
+  on conflict (label) do update set digest = excluded.digest $body$;
+create or replace function pg_temp.s12dc_full_same(p_label text) returns boolean language sql stable as $body$
+  select pg_temp.s12dc_full() = (select digest from s12dc_fulls where label = p_label) $body$;
+
+-- The durable association of the DEC-194 review: one row per failed job naming the recovery job it already produced.  Every access is
+-- dynamic and guarded, so an absent table makes the suite emit a TAP failure instead of an SQL abort.
+create or replace function pg_temp.s12dc_assoc_table() returns boolean language sql stable as $body$
+  select to_regclass('platform_private.taxonomy_merge_recoveries') is not null $body$;
+create or replace function pg_temp.s12dc_assoc_job(p_failed uuid) returns uuid language plpgsql volatile as $body$
+declare v_job uuid;
+begin
+  if not pg_temp.s12dc_assoc_table() then return null; end if;
+  execute 'select recovery_job_id from platform_private.taxonomy_merge_recoveries where failed_job_id = $1'
+    into v_job using p_failed;
+  return v_job;
+exception when others then
+  return null;
+end;
+$body$;
+create or replace function pg_temp.s12dc_assoc_rows() returns bigint language plpgsql volatile as $body$
+declare v_count bigint;
+begin
+  if not pg_temp.s12dc_assoc_table() then return -1; end if;
+  execute 'select count(*) from platform_private.taxonomy_merge_recoveries' into v_count;
+  return v_count;
+exception when others then
+  return -1;
+end;
+$body$;
+create or replace function pg_temp.s12dc_assoc_names_only(p_failed uuid, p_job uuid) returns boolean language plpgsql volatile as $body$
+declare v_other integer;
+begin
+  if not pg_temp.s12dc_assoc_table() then return false; end if;
+  execute 'select count(*) from platform_private.taxonomy_merge_recoveries where failed_job_id = $1 and recovery_job_id <> $2'
+    into v_other using p_failed, p_job;
+  return v_other = 0 and pg_temp.s12dc_assoc_job(p_failed) = p_job;
+exception when others then
+  return false;
+end;
+$body$;
+create or replace function pg_temp.s12dc_assoc_digest() returns text language plpgsql volatile as $body$
+declare v_digest text;
+begin
+  if not pg_temp.s12dc_assoc_table() then return 'absent'; end if;
+  execute $query$select coalesce(md5(string_agg(to_jsonb(row_value)::text, '|' order by row_value.failed_job_id)), '')
+                   from platform_private.taxonomy_merge_recoveries row_value$query$ into v_digest;
+  return v_digest;
+exception when others then
+  return 'unreadable';
+end;
+$body$;
+create temp table s12dc_assoc_marks(label text primary key, digest text not null) on commit drop;
+create or replace function pg_temp.s12dc_assoc_mark(p_label text) returns void language sql as $body$
+  insert into s12dc_assoc_marks(label, digest) values (p_label, pg_temp.s12dc_assoc_digest())
+  on conflict (label) do update set digest = excluded.digest $body$;
+create or replace function pg_temp.s12dc_assoc_same(p_label text) returns boolean language sql stable as $body$
+  select pg_temp.s12dc_assoc_digest() = (select digest from s12dc_assoc_marks where label = p_label) $body$;
+
+-- The definition shape (columns and constraints) of the association table, so the fault below can prove it restored it exactly.
+create or replace function pg_temp.s12dc_assoc_shape() returns text language plpgsql volatile as $body$
+declare v_shape text;
+begin
+  if not pg_temp.s12dc_assoc_table() then return 'absent'; end if;
+  execute $query$
+    select md5(
+      coalesce((select string_agg(att.attname || ':' || att.atttypid::text || ':' || att.attnotnull::text, '|' order by att.attname)
+                  from pg_attribute att
+                 where att.attrelid = 'platform_private.taxonomy_merge_recoveries'::regclass
+                   and att.attnum > 0 and not att.attisdropped), '')
+      || coalesce((select string_agg(con.conname || ':' || pg_get_constraintdef(con.oid), '|' order by con.conname)
+                     from pg_constraint con
+                    where con.conrelid = 'platform_private.taxonomy_merge_recoveries'::regclass), ''))$query$
+    into v_shape;
+  return v_shape;
+exception when others then
+  return 'unreadable';
+end;
+$body$;
+
+-- The transaction-local marker-insert fault of the atomicity witness: ONE always-violating CHECK constraint on the association table, added
+-- NOT VALID so existing rows are untouched and only the next insert is rejected.  The test-admin installs it and removes it again; the
+-- table definition is captured first and must be restored byte for byte.  No production trigger, guard or fixture is disabled.
+-- Both helpers RETURN their outcome instead of raising, so the absence of the table produces a TAP failure rather than an abort.
+create temp table s12dc_fault(saved text not null) on commit drop;
+create or replace function pg_temp.s12dc_marker_fault_on() returns boolean language plpgsql as $body$
+begin
+  if current_user <> 'postgres' or not pg_temp.s12dc_assoc_table() then return false; end if;
+  insert into s12dc_fault(saved) values (pg_temp.s12dc_assoc_shape());
+  execute 'alter table platform_private.taxonomy_merge_recoveries
+             add constraint s12dc_marker_fault check (false) not valid';
+  return pg_temp.s12dc_fault_present();
+end;
+$body$;
+create or replace function pg_temp.s12dc_marker_fault_off() returns boolean language plpgsql as $body$
+declare v_saved text := (select saved from s12dc_fault);
+begin
+  if not pg_temp.s12dc_assoc_table() then return false; end if;
+  execute 'alter table platform_private.taxonomy_merge_recoveries drop constraint if exists s12dc_marker_fault';
+  return pg_temp.s12dc_assoc_shape() = v_saved;
+end;
+$body$;
+create or replace function pg_temp.s12dc_fault_present() returns boolean language plpgsql volatile as $body$
+declare v_present boolean;
+begin
+  if not pg_temp.s12dc_assoc_table() then return false; end if;
+  execute $query$select exists (select 1 from pg_constraint con
+                                 where con.conrelid = 'platform_private.taxonomy_merge_recoveries'::regclass
+                                   and con.conname = 's12dc_marker_fault')$query$ into v_present;
+  return v_present;
+exception when others then
+  return false;
+end;
+$body$;
+
+-- Cancels every queued job of the type through the real BE00 claim/outcome path (a cancelled job is neither live nor a failed generation).
+create or replace function pg_temp.s12dc_cancel_live() returns integer language plpgsql as $body$
+declare v_live record; v_count integer := 0;
+begin
+  for v_live in select job.id from platform_private.jobs job
+                where job.job_type = 'cms.taxonomy.merge_converge' and job.state = 'queued'
+                order by job.id
+  loop
+    perform pg_temp.s12tt_claim('dc-live-' || v_live.id::text, v_live.id, 1);
+    if not pg_temp.s12tt_outcome('dc-live-' || v_live.id::text, 'cancelled', null, 'S12DC_CANCELLED') then
+      raise exception 's12dc fixture: a queued job of the type could not be cancelled';
+    end if;
+    v_count := v_count + 1;
+  end loop;
+  return v_count;
+end;
+$body$;
+
+-- One call of the REAL audited TTL expiry sweep under the real service_role; the receipt is 'ok:<answer>' or '<sqlstate>:<message>'.
+create temp table s12dc_expiries(label text primary key, body jsonb, state text not null, message text) on commit drop;
+create or replace function pg_temp.s12dc_expire(p_label text, p_limit integer, p_correlation_id uuid) returns void language plpgsql security invoker as $body$
+declare
+  v_role text := current_setting('role'); v_body jsonb; v_state text := '00000'; v_message text;
+begin
+  execute 'set local role service_role';
+  begin
+    execute 'select platform_api.idempotency_expiry_sweep($1, $2)' into v_body using p_limit, p_correlation_id;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_message = message_text;
+  end;
+  perform set_config('role', v_role, true);
+  insert into s12dc_expiries(label, body, state, message) values (p_label, v_body, v_state, v_message)
+  on conflict (label) do update set body = excluded.body, state = excluded.state, message = excluded.message;
+end;
+$body$;
+create or replace function pg_temp.s12dc_expire_out(p_label text) returns text language sql stable as $body$
+  select case when state = '00000' then 'ok:' || body::text else state || ':' || message end
+    from s12dc_expiries where label = p_label $body$;
+create or replace function pg_temp.s12dc_expire_deleted(p_label text) returns integer language sql stable as $body$
+  select coalesce((body->>'deletedCount')::integer, -1) from s12dc_expiries where label = p_label $body$;
+
+-- The COMPLETED receipt under the failed Job's derived key, already past its expires_at: the way phase_02_slice_03_idempotency_expiry.sql:56-70
+-- seeds an expired receipt.  expires_at is immutable (guard_idempotency, 20260912020000), so this is inserted, never updated; no guard is disabled.
+create or replace function pg_temp.s12dc_expired_receipt(p_failed uuid, p_job uuid) returns void language plpgsql as $body$
+declare v_actor uuid; v_party uuid;
+begin
+  select job.actor_id, job.acting_party_id into v_actor, v_party from platform_private.jobs job where job.id = p_failed;
+  insert into platform_private.idempotency_records(
+    actor_id, operation, key_hash, request_hash, state, response_ref, created_at, expires_at)
+  values (
+    v_actor, 'cms.taxonomy.merge_converge',
+    extensions.digest('cms.taxonomy.merge_converge.reconcile:' || p_failed::text, 'sha256'),
+    extensions.digest('cms.taxonomy.merge_converge.reconcile:' || v_party::text || ':' || p_failed::text, 'sha256'),
+    'completed', jsonb_build_object('status', 202, 'jobRef', p_job::text, 'resourceRef', format('/api/v1/jobs/%s', p_job)),
+    clock_timestamp() - interval '40 days', clock_timestamp() - interval '8 days');
+end;
+$body$;

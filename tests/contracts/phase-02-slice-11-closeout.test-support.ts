@@ -108,15 +108,12 @@ export const TRACKED_BOUNDARIES: readonly TrackedBoundary[] = [
     issue: 127,
     file: 'supabase/migrations/20261010165000_cms_projection_consumer_state.sql',
     sentinel: 'supabase/tests/phase_02_slice_11_projection_state.sql',
-    sentinelTitle: 'BOUNDARY sentinel: projection_id has no foreign key yet',
-  },
-  {
-    issue: 128,
-    file: 'apps/worker/src/production-job-effect-dispatcher.ts',
-    sentinel:
-      'apps/worker/src/production-job-effect-dispatcher-cms-preparation.test.ts',
+    // DEC-197 (decisions.md "Replace the #127 sentinel only after the real FK exists"): the
+    // promoted migration keeps its historical, immutable BOUNDARY comment; the pgTAP file now
+    // proves the real validated FK (supabase/migrations/20261016030000_delivery_receiving_contracts.sql) instead of the old
+    // missing-FK sentinel, so the tracked identity is the first DEC197-PS test, which names #127.
     sentinelTitle:
-      'CMS with only object verification configured is unavailable without invoking it',
+      'DEC197-PS-F01 direct projection FK is validated, ordered, immediate and restrictive with a valid parent key',
   },
 ];
 

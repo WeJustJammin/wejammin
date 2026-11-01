@@ -19,7 +19,7 @@ import {
   disableReactAct,
   enableReactAct,
   flush,
-  mountElement,
+  mountWithIntent,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
 import {
@@ -125,7 +125,7 @@ describe('what a step-up detour and a preview mint leave behind', () => {
   it('stores only the editable text of a decision, never a hash, manifest or person', async () => {
     const spies = watchConsole();
     const env = environment([stepUp()]);
-    const { container } = mountElement(
+    const { container } = mountWithIntent(
       <CmsEditorialReviewDetailIsland
         init={{
           review: reviewDetailFixture(),
@@ -163,7 +163,7 @@ describe('what a step-up detour and a preview mint leave behind', () => {
     const spies = watchConsole();
     const env = environment([stepUp(), stepUp()]);
     const workflow = approvedWorkflowFixture();
-    const { container } = mountElement(
+    const { container } = mountWithIntent(
       <CmsEditorialWorkflowIsland
         init={{
           workflow,
@@ -214,7 +214,7 @@ describe('what a step-up detour and a preview mint leave behind', () => {
     const review = reviewDetailFixture({
       permittedNextActions: ['assign_reviewer'],
     });
-    const { container } = mountElement(
+    const { container } = mountWithIntent(
       <CmsEditorialReviewDetailIsland
         init={{ review, reviewId: REVIEW_ID, verifiedAt: INSTANT }}
         readReview={async () => ({ kind: 'ok', resource: review })}
@@ -253,7 +253,7 @@ describe('what a step-up detour and a preview mint leave behind', () => {
     const testCase = COMMAND_CASES['CMS-03B-08'];
     const env = environment([jsonResponse(201, testCase.resource, {})]);
     const workflow = workflowFixture({ permittedNextActions: ['preview'] });
-    const { container } = mountElement(
+    const { container } = mountWithIntent(
       <CmsEditorialWorkflowIsland
         init={{
           workflow,

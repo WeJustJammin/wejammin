@@ -15247,10 +15247,10 @@ export const S09_AMENDMENT_EVIDENCE: readonly S09AmendmentEvidenceEntry[] = [
     criterion: 'P2-S09-AC-1166',
     layer: 'contracts+worker+db',
     command:
-      'pnpm exec vitest run apps/worker/src/cms-composition-production-locale.test.ts apps/worker/src/cms-composition/locale-routes.test.ts packages/contracts/src/cms-composition/locale-variant.test.ts packages/contracts/src/content-schema-registry/phase-02-slice-09-be03a-contract-evidence.test.ts; pnpm db:test',
+      'pnpm exec vitest run apps/worker/src/cms-composition-production-locale.test.ts apps/worker/src/cms-composition/locale-routes-binding-and-order.test.ts packages/contracts/src/cms-composition/locale-variant.test.ts packages/contracts/src/content-schema-registry/phase-02-slice-09-be03a-contract-evidence.test.ts; pnpm db:test',
     testFiles: [
       'apps/worker/src/cms-composition-production-locale.test.ts',
-      'apps/worker/src/cms-composition/locale-routes.test.ts',
+      'apps/worker/src/cms-composition/locale-routes-binding-and-order.test.ts',
       'packages/contracts/src/cms-composition/locale-variant.test.ts',
       'packages/contracts/src/content-schema-registry/phase-02-slice-09-be03a-contract-evidence.test.ts',
       'supabase/tests/phase_02_slice_12_locale_author_rpc.sql',

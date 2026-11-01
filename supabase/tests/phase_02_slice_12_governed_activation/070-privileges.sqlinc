@@ -1,0 +1,44 @@
+-- CMS-03C-09 privilege boundary and role control, then the evidence rows the contract-parse check reads from the TAP stream.
+select is(
+  (select string_agg(r || '=' || pg_temp.s12ga_denied(r, 'select platform_api.cms_activate_governed_subject(''{}''::jsonb)'),
+                     ';' order by r collate "C") from unnest(array['anon', 'authenticated']) r),
+  'anon=42501;authenticated=42501',
+  'anon and authenticated may not execute the platform API activation RPC [P2-S12-AC-082]');
+select is(pg_temp.s12ga_denied('service_role', 'select platform_private.cms_activate_governed_subject(''{}''::jsonb)'), '42501',
+  'service_role may not execute the private implementation, only the platform API wrapper [P2-S12-AC-082]');
+select ok(has_function_privilege('service_role', 'platform_api.cms_activate_governed_subject(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_api.cms_activate_governed_subject(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_private.cms_activate_governed_subject(jsonb)', 'EXECUTE')
+    and (select proc.prosecdef and proc.proconfig = array['search_path=""']
+           and pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer'
+           from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_activate_governed_subject(jsonb)'))
+    and (select proc.prosecdef and proc.proconfig = array['search_path=""']
+           and pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer'
+           from pg_proc proc where proc.oid = to_regprocedure('platform_api.cms_activate_governed_subject(jsonb)')),
+  'the wrapper is service_role only; both functions are SECURITY DEFINER, empty search_path and owned by the CMS definer [P2-S12-AC-082]');
+select ok(
+  (select bool_and(not has_function_privilege(r.role_name, proc.oid, 'EXECUTE'))
+     from unnest(array['public', 'anon', 'authenticated', 'service_role']) r(role_name)
+     cross join (select to_regprocedure(f) as oid from unnest(array[
+       'platform_private.cms_governed_activate_subject(text, uuid, timestamptz)',
+       'platform_private.cms_governed_supersede_lineage(text, uuid, uuid)',
+       'platform_private.cms_governed_invalidate_approved_review(uuid, text, uuid, uuid, uuid)']) f) proc
+    where proc.oid is not null)
+  and (select count(*) = 3 from unnest(array[
+       'platform_private.cms_governed_activate_subject(text, uuid, timestamptz)',
+       'platform_private.cms_governed_supersede_lineage(text, uuid, uuid)',
+       'platform_private.cms_governed_invalidate_approved_review(uuid, text, uuid, uuid, uuid)']) f
+       where to_regprocedure(f) is not null),
+  'the three private activation helpers exist and no API role can execute them [P2-S12-AC-082]');
+select ok((select count(*) >= 60 and bool_and(rpc_user = 'service_role' and before_user = after_user) from s12ga_rcpt),
+  'role control: every command of this suite really executed as service_role and restored the session role [P2-S12-AC-082]');
+
+-- Evidence emission (no assertion): the response bodies the contract-parse check reads from the TAP stream.
+select 'EVIDENCE a1 ' || coalesce(pg_temp.s12ga_kept('a1')::text, 'null');
+select 'EVIDENCE s1 ' || coalesce(pg_temp.s12ga_kept('s1')::text, 'null');
+select 'EVIDENCE l2 ' || coalesce(pg_temp.s12ga_body('l2')::text, 'null');
+select 'EVIDENCE p1 ' || coalesce(pg_temp.s12ga_body('p1')::text, 'null');
+select 'EVIDENCE c9 ' || coalesce(pg_temp.s12ga_body('c9')::text, 'null');
+select 'EVIDENCE d1 ' || coalesce(pg_temp.s12ga_kept('d1')::text, 'null');
+select 'EVIDENCE rt1 ' || coalesce(pg_temp.s12ga_kept('rt1')::text, 'null');
+select 'EVIDENCE rt-tx ' || coalesce(pg_temp.s12ga_body('rt-tx')::text, 'null');

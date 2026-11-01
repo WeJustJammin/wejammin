@@ -1,0 +1,56 @@
+-- CMS-03C-12 at the 512-node bound (BE03c 1363: <= 512 nodes after expansion, depth <= 8, 1-32 roots).  24 new lineages with a flat
+-- 512-node forest (32 roots x 16), 24 with 32 references to an active 16-root pattern (512 nodes after expansion), and 24 successors
+-- (expectedVersion = the parent's) of the flat lineages.  Every call is timed; every call must succeed.
+do $bench$
+declare v_i integer; v_label text; v_base text;
+begin
+  for v_i in 1..24 loop
+    v_label := pg_temp.g12pp_create('pat_create_512', 'gp-flat-' || lpad(v_i::text, 2, '0'), pg_temp.g12pp_forest512());
+    insert into s12pl_ids(key, value) values ('flat' || v_i, v_label);
+  end loop;
+  perform pg_temp.g12pp_require('pat_create_512', 24);
+  -- the active 16-root pattern the nested forests reference
+  v_base := pg_temp.g12pp_define_active('gp-base16', pg_temp.s12pd_forest(16));
+  insert into s12pl_ids(key, value) values ('base16', v_base);
+  for v_i in 1..24 loop
+    v_label := pg_temp.g12pp_create('pat_create_nested512', 'gp-nest-' || lpad(v_i::text, 2, '0'), pg_temp.g12pp_refs(v_base, 32));
+    insert into s12pl_ids(key, value) values ('nest' || v_i, v_label);
+  end loop;
+  perform pg_temp.g12pp_require('pat_create_nested512', 24);
+  for v_i in 1..24 loop
+    perform pg_temp.g12pp_create('pat_create_succ512', 'gp-flat-' || lpad(v_i::text, 2, '0'), pg_temp.g12pp_forest512(), '1');
+  end loop;
+  perform pg_temp.g12pp_require('pat_create_succ512', 24);
+end;
+$bench$;
+select ok((select bool_and((g12p_rcpt.body->>'nodeCount')::integer = 512)
+             from g12p_rcpt where label like 'pat_create_512#%' or label like 'pat_create_nested512#%'),
+  'fixture: every measured save stored exactly 512 expanded nodes (the 32 x 16 flat forest and the 32 references x 16 roots) [P2-S12-AC-279]');
+select ok((select count(*) = 24 and bool_and(body->>'patternVersion' = '2' and body->>'state' = 'draft')
+             from g12p_rcpt where label like 'pat_create_succ512#%'),
+  'fixture: the 24 successors are definition 2 drafts of their lineages [P2-S12-AC-103]');
+
+-- The population the selector pages over, and the patterns the placement, diff and update measurements pin.
+do $bench$
+declare v_i integer; v_label text;
+begin
+  for v_i in 1..60 loop
+    perform pg_temp.g12pp_define_active('gp-sel-' || lpad(v_i::text, 2, '0'), jsonb_build_array(
+      pg_temp.s12pd_block('only', '[]'::jsonb, jsonb_build_object('title', 'selector ' || v_i))));
+  end loop;
+  -- 512 rows: the first nested lineage, activated; 32 rows: a 32-root forest.
+  perform pg_temp.g12pp_activate((select value from s12pl_ids where key = 'nest1'));
+  insert into s12pl_ids(key, value) values ('p32', pg_temp.g12pp_define_active('gp-p32', pg_temp.s12pd_forest(32)));
+  -- CMS-03C-15: a 32-root pattern with distinct props, version 1 (v2 is activated after every placement, below)
+  insert into s12pl_ids(key, value) values ('u1', pg_temp.g12pp_define_active('gp-u1', (
+    select jsonb_agg(pg_temp.s12pd_block('root' || n, '[]'::jsonb, jsonb_build_object('title', 'U1-' || n)) order by n)
+      from generate_series(1, 32) n)));
+  -- CMS-03C-14: one root with 127 descendants (5 children, 122 grandchildren: 128 node paths, the bound), 200-character values
+  insert into s12pl_ids(key, value) values ('w1', pg_temp.g12pp_define_active('gp-w1', pg_temp.g12pp_wide('n1', 'a')));
+end;
+$bench$;
+select is((select count(*)::integer from platform_private.cms_pattern_versions
+            where owner_id = pg_temp.s09d_id('ownerOrg') and state = 'active' and pattern_key like 'gp-sel-%'), 60,
+  'fixture: 60 real active selector patterns exist [P2-S12-AC-109]');
+select is((select (body->>'nodeCount')::integer from g12p_rcpt where label = (select value from s12pl_ids where key = 'w1')), 128,
+  'fixture: the update-diff pattern stores 128 nodes: one root and 127 descendants [P2-S12-AC-115]');

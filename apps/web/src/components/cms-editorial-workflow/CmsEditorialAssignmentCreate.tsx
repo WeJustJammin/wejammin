@@ -3,11 +3,8 @@ import * as React from 'react';
 import CmsWorkflowCommandFrame, {
   type WorkflowLocalError,
 } from './CmsWorkflowCommandFrame';
-import {
-  WorkflowSelect,
-  WorkflowTextArea,
-  WorkflowTextField,
-} from './CmsWorkflowFields';
+import CmsReviewerChoice from './CmsReviewerChoice';
+import { WorkflowTextArea, WorkflowTextField } from './CmsWorkflowFields';
 import { REVIEW_DETAIL_HEADING_IDS } from './CmsEditorialReviewDetail';
 import { WORKFLOW_COMMAND_SPECS } from './cms-workflow-command-specs';
 import { parseAssignmentExpiry } from './cms-workflow-expiry';
@@ -23,6 +20,7 @@ import {
 import type { ReviewerOptionsResult } from './cms-workflow-reviewer-options';
 import { withCmsValidators } from '../../lib/cms-contract-validators';
 import { useDraftFields } from './use-cms-workflow-draft-fields';
+import { useReviewerOptions } from './use-reviewer-options';
 import {
   useWorkflowCommand,
   type WorkflowCommandEnvironment,
@@ -56,8 +54,11 @@ export default function CmsEditorialAssignmentCreate({
   now,
   loadOptions,
 }: CmsEditorialAssignmentCreateProps): React.ReactElement {
-  const [reviewers, setReviewers] =
-    React.useState<ReviewerOptionsResult | null>(null);
+  const { reviewers, retry } = useReviewerOptions(
+    loadOptions,
+    true,
+    'review-assignment',
+  );
   const [personId, setPersonId] = React.useState('');
   const [localErrors, setLocalErrors] = React.useState<
     readonly WorkflowLocalError[]
@@ -72,15 +73,6 @@ export default function CmsEditorialAssignmentCreate({
     },
     ...(environment === undefined ? {} : { environment }),
   });
-  React.useEffect(() => {
-    let current = true;
-    void loadOptions().then((result) => {
-      if (current) setReviewers(result);
-    });
-    return () => {
-      current = false;
-    };
-  }, [loadOptions]);
   React.useEffect(() => {
     controller.restore(version);
   }, [controller, version]);
@@ -159,6 +151,7 @@ export default function CmsEditorialAssignmentCreate({
   return (
     <CmsWorkflowCommandFrame
       headingId="assignment-create-title"
+      lazyRegion="review-assignment"
       title="Assign a reviewer"
       state={state}
       controller={controller}
@@ -174,35 +167,18 @@ export default function CmsEditorialAssignmentCreate({
       localErrors={localErrors}
       disabledReason={disabledReason}
     >
-      {reviewers === null ? <p>Loading reviewers…</p> : null}
-      {reviewers?.kind === 'unavailable' ? (
-        <p>Reviewer choices could not be loaded. Reload the page.</p>
-      ) : null}
-      {reviewers?.kind === 'ok' && reviewers.options.length === 0 ? (
-        <p>
-          No reviewer has an active cms.reviewer grant.{' '}
-          <a href="/app/cms-content-modeling/capability-grants">Grant access</a>
-        </p>
-      ) : null}
       {state.restoredValues !== null && personId === '' ? (
         <p>Choose the reviewer again.</p>
       ) : null}
       <form onSubmit={submit}>
-        <WorkflowSelect
+        <CmsReviewerChoice
           id="assignment-reviewer"
           label="Reviewer"
           value={personId}
+          reviewers={reviewers}
+          retry={retry}
           error={errorOf('assignment-reviewer')}
           invalid={named.includes('reviewerPersonId')}
-          options={[
-            { value: '', label: 'Choose a reviewer' },
-            ...(reviewers?.kind === 'ok' ? reviewers.options : []).map(
-              (option) => ({
-                value: option.personId,
-                label: `${option.personId} (access ends ${option.endsAt})`,
-              }),
-            ),
-          ]}
           onChange={setPersonId}
         />
         <WorkflowTextField

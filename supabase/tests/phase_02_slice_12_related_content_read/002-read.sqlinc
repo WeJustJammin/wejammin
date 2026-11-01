@@ -1,0 +1,110 @@
+-- cmsRelatedContentRead answers (DEC-195; BE03c cmsRelatedContentRead authority row, RelatedContentRuleRead,
+-- changelog 2026-10-15): the source entry's CURRENT ACTIVE rule exactly as CMS-03C-05 returns it, or { rule: null }.
+-- The caller is the creator (cms.author + cms.editor grants, author assignments on the sources).
+
+select pg_temp.r195_as('a9100000-0000-4000-8000-000000000001');
+select set_config('app.correlation_id', 'a9200000-0000-4000-8000-0000000000e6', true);
+
+-- No rule yet.
+select is(pg_temp.r195_read('srcR'), '{"rule": null}'::jsonb,
+  'an editable source with no rule answers exactly { rule: null } [P2-S12-AC-062]');
+
+-- First write, then read: the read is the write answer.
+create temp table r195_w1 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcR', array['c3', 'c1'], array['c4'], null, 'r195-srcR-write-0001')) as answer;
+select ok(not ((select answer from r195_w1) ? '__error'),
+  'control: the CMS-03C-05 write succeeds (got ' || coalesce((select answer::text from r195_w1), 'null') || ')');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.r195_read('srcR')) k), array['rule'],
+  'the read answers exactly one member, rule [P2-S12-AC-062]');
+select is(pg_temp.r195_read('srcR') -> 'rule', (select answer from r195_w1),
+  'the read returns exactly the resource the last CMS-03C-05 write returned (id, version, hash, instants, pins, exclusions, rule, count) [P2-S12-AC-062]');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.r195_read('srcR') -> 'rule') k),
+  array['contentHash', 'createdAt', 'derivedRule', 'eligibleCount', 'exclusions', 'id', 'pins', 'sourceEntryId', 'state', 'updatedAt', 'version'],
+  'the rule is exactly the RelatedContentResource members, no maxCandidates and no actor [P2-S12-AC-062]');
+select is(pg_temp.r12_names(pg_temp.r195_read('srcR') -> 'rule' -> 'pins'), 'c3,c1',
+  'pins come back in stored position order, not sorted [P2-S12-AC-062]');
+select is(pg_temp.r195_read('srcR') -> 'rule' ->> 'version', pg_temp.r12_version('srcR')::text,
+  'the resource version is the current entry aggregate version, the next If-Match operand [P2-S12-AC-062]');
+select is(pg_temp.r195_read('srcR') -> 'rule' ->> 'contentHash',
+  pg_temp.h11_sha256('{"derivedRule":null,"exclusions":["' || pg_temp.r12_id('c4') || '"],"pins":["' || pg_temp.r12_id('c3') || '","' || pg_temp.r12_id('c1') || '"]}'),
+  'contentHash is the same JCS SHA-256 recipe as the write [P2-S12-AC-062]');
+select is(pg_temp.r195_read('srcV'), '{"rule": null}'::jsonb,
+  'another source entry is unaffected by srcR''s rule [P2-S12-AC-062]');
+
+-- A derived rule on a published source: eligibleCount includes derived candidates, recomputed as the write does.
+create temp table r195_w2 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcp', array['c1'], array['c4'], pg_temp.r12_rule('shared-terms', 8), 'r195-srcp-write-0001')) as answer;
+select ok(not ((select answer from r195_w2) ? '__error'), 'control: the published source accepts a pin, an exclusion and a derived rule');
+select is(pg_temp.r195_read('srcp') -> 'rule', (select answer from r195_w2),
+  'a rule with a derived member reads back as the write answered it [P2-S12-AC-062]');
+select is(pg_temp.r195_read('srcp') -> 'rule' -> 'derivedRule', '{"key":"shared-terms","version":"1"}'::jsonb,
+  'the derived rule answers key and version only [P2-S12-AC-062]');
+select ok((pg_temp.r195_read('srcp') -> 'rule' ->> 'eligibleCount')::integer > 1,
+  'eligibleCount counts the pin and the derived candidates of the published source [P2-S12-AC-230]');
+
+-- Whole-set replacement: only the CURRENT active rows are returned; revoked pins and exclusions never appear.
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcV', array['c1', 'c2', 'c3'], array['c4'], null, 'r195-srcV-write-0001')) ? '__error'), 'control: first srcV write');
+create temp table r195_w3 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcV', array['c3', 'c1'], array[]::text[], null, 'r195-srcV-write-0002')) as answer;
+select ok(not ((select answer from r195_w3) ? '__error'), 'control: replacement write');
+select is(pg_temp.r195_read('srcV') -> 'rule', (select answer from r195_w3),
+  'after a replacement the read is the replacement answer [P2-S12-AC-062]');
+select is(pg_temp.r12_names(pg_temp.r195_read('srcV') -> 'rule' -> 'pins'), 'c3,c1',
+  'a pin that moved and one that was removed leave only the current pins in the new order [P2-S12-AC-062]');
+select is(pg_temp.r195_read('srcV') -> 'rule' -> 'exclusions', '[]'::jsonb, 'a removed exclusion is gone from the read [P2-S12-AC-062]');
+select ok((select count(*) from platform_private.cms_related_content_rules where source_entry_id = pg_temp.r12_id('srcV') and state = 'revoked') >= 3,
+  'control: the revoked history stays in the append-only table while the read ignores it');
+
+-- Exclusions are a set, stored without order: the read orders them by id; pins keep their positions.
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcB', array['c3', 'c1'], array['c4', 'c2'], null, 'r195-srcB-write-0001')) ? '__error'), 'control: srcB write');
+select is(pg_temp.r195_read('srcB') -> 'rule' -> 'exclusions',
+  (select to_jsonb(array_agg(x order by x)) from unnest(array[pg_temp.r12_id('c4'), pg_temp.r12_id('c2')]) x),
+  'exclusions are returned in ascending id order, deterministic because the table keeps no exclusion order [P2-S12-AC-062]');
+select is(pg_temp.r12_names(pg_temp.r195_read('srcB') -> 'rule' -> 'pins'), 'c3,c1', 'while the pins keep their positions [P2-S12-AC-062]');
+select ok(pg_temp.r195_read('srcB') ? 'rule' and pg_temp.r195_read('srcB') = pg_temp.r195_read('srcB'), 'two reads of unchanged state are identical rule answers [P2-S12-AC-062]');
+
+-- A derived-only rule, and a changed bound (maxCandidates is stored and part of the hash even though the resource omits it).
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcA', array[]::text[], array[]::text[], pg_temp.r12_rule('same-type-recent', 5), 'r195-srcA-write-0001')) ? '__error'), 'control: derived-only write');
+create temp table r195_a1 on commit drop as select pg_temp.r195_read('srcA') as answer;
+select is((select answer -> 'rule' ->> 'state' from r195_a1), 'active', 'a rule set that holds only a derived rule is active [P2-S12-AC-062]');
+select is((select answer -> 'rule' -> 'pins' from r195_a1) || (select answer -> 'rule' -> 'exclusions' from r195_a1), '[]'::jsonb, 'with no pins and no exclusions [P2-S12-AC-062]');
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcA', array[]::text[], array[]::text[], pg_temp.r12_rule('same-type-recent', 6), 'r195-srcA-write-0002')) ? '__error'), 'control: bound changed');
+select isnt(pg_temp.r195_read('srcA') -> 'rule' ->> 'contentHash', (select answer -> 'rule' ->> 'contentHash' from r195_a1),
+  'changing only maxCandidates changes the content hash: the bound is read from the stored row [P2-S12-AC-062]');
+select is(pg_temp.r195_read('srcA') -> 'rule' -> 'derivedRule', '{"key":"same-type-recent","version":"1"}'::jsonb, 'and the resource still names key and version only [P2-S12-AC-062]');
+
+-- Revoked rule => null. A partial revocation keeps the rest.
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcZ', array['c1'], array['c2'], pg_temp.r12_rule('shared-terms', 4), 'r195-srcZ-write-0001')) ? '__error'), 'control: srcZ first write');
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcZ', array[]::text[], array['c2'], null, 'r195-srcZ-write-0002')) ? '__error'), 'control: pins and rule removed');
+create temp table r195_z2 on commit drop as select pg_temp.r195_read('srcZ') as answer;
+select is(pg_temp.r12_names((select answer -> 'rule' -> 'pins' from r195_z2)) || '|' || pg_temp.r12_names((select answer -> 'rule' -> 'exclusions' from r195_z2)), '|c2',
+  'after removing the pin and the rule only the exclusion remains [P2-S12-AC-062]');
+select is((select answer -> 'rule' -> 'derivedRule' from r195_z2), 'null'::jsonb, 'and the revoked derived rule is a JSON null member [P2-S12-AC-062]');
+create temp table r195_z3 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcZ', array[]::text[], array[]::text[], null, 'r195-srcZ-write-0003')) as answer;
+select is((select answer ->> 'state' from r195_z3), 'revoked', 'control: the write that revokes everything answers a revoked resource');
+select is(pg_temp.r195_read('srcZ'), '{"rule": null}'::jsonb, 'a fully revoked rule reads as { rule: null }, never a revoked resource [P2-S12-AC-062]');
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcZ', array['c3'], array[]::text[], null, 'r195-srcZ-write-0004')) ? '__error'), 'control: a rule can be created again');
+select is(pg_temp.r12_names(pg_temp.r195_read('srcZ') -> 'rule' -> 'pins'), 'c3', 'and then reads back with the new pin only [P2-S12-AC-062]');
+
+-- Stored as written: a pin whose target is later archived, and a target the caller can no longer read, are returned unchanged.
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcK', array['x5', 'c7'], array['c3'], null, 'r195-srcK-write-0001')) ? '__error'), 'control: srcK write');
+select pg_temp.r12_lifecycle('x5', 'archived');
+select pg_temp.r12_safe('revoke c7 assignment', format('select pg_temp.h11_raw_exec(%L, %L)', 'platform_private.cms_entry_assignments',
+  format($$update platform_private.cms_entry_assignments set state = 'revoked' where entry_id = %L$$, pg_temp.r12_id('c7'))));
+select is(pg_temp.r12_names(pg_temp.r195_read('srcK') -> 'rule' -> 'pins'), 'x5,c7',
+  'an archived pin target and a pin target the caller can no longer read are returned as stored: the form labels them, the read never filters or projects [P2-S12-AC-062]');
+select is(pg_temp.r12_names(pg_temp.r195_read('srcK') -> 'rule' -> 'exclusions'), 'c3', 'exclusions likewise [P2-S12-AC-062]');
+
+-- An archived source with an authorized editor still reads (the write refuses with INVALID_TRANSITION; a read has no such answer).
+select ok(not (pg_temp.r12_curate(pg_temp.r12_req('srcD', array['c1'], array[]::text[], null, 'r195-srcD-write-0001')) ? '__error'), 'control: srcD write');
+select pg_temp.r12_lifecycle('srcD', 'archived');
+select is(pg_temp.r12_names(pg_temp.r195_read('srcD') -> 'rule' -> 'pins'), 'c1', 'the rule of an archived source is still readable by its editor [P2-S12-AC-062]');
+
+-- A read changes nothing: rules, audit, idempotency receipts, outbox, entry versions.
+create temp table r195_before on commit drop as select pg_temp.r195_evidence() as evidence;
+select ok((pg_temp.r195_read('srcR') ? 'rule') and (pg_temp.r195_read('srcZ') ? 'rule') and (pg_temp.r195_read('srcA') ? 'rule'), 'control: the three reads before the evidence check answer rules');
+select pg_temp.r195_read_id(extensions.gen_random_uuid()::text);
+select pg_temp.r195_read_id('not-a-uuid');
+select is(pg_temp.r195_evidence(), (select evidence from r195_before),
+  'reads and refused reads write no rule row, audit record, idempotency receipt or outbox event and advance no entry version [P2-S12-AC-062]');

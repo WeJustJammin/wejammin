@@ -1,0 +1,49 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-assignment.test.tsx (2 tests | 2 failed) 238ms
+     × D2 create success clears the typed draft 131ms
+     × D3 the missing assign_reviewer entry is named by a reason 37ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-governed-review/zz-web6-probe-assignment.test.tsx > probe D2/D3 assignment > D2 create success clears the typed draft
+AssertionError: expected '2026-10-09T08:00' to be '' // Object.is equality
+
+- Expected
++ Received
+
++ 2026-10-09T08:00
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-assignment.test.tsx:145:45
+    143|     await flush();
+    144|     expect(statusOf(assigning.container)).toContain('Reviewer assigned…
+    145|     expect(ends(assigning.container).value).toBe('');
+       |                                             ^
+    146|     expect(why(assigning.container).value).toBe('');
+    147|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+
+ FAIL  apps/web/src/components/cms-governed-review/zz-web6-probe-assignment.test.tsx > probe D2/D3 assignment > D3 the missing assign_reviewer entry is named by a reason
+AssertionError: expected 'Back to definition reviewsTemplate pr…' to contain 'Only the owner of this version can as…'
+
+Expected: "Only the owner of this version can assign a reviewer while the review is open."
+Received: "Back to definition reviewsTemplate profile-header, version 2State: Open · Subject: In review · Risk class: Ordinary0 of 1 decisions recorded. Qualifying approvals: 0.Submitted 2026-10-08T12:00:00Z.Frozen versionSubject hash: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaBlock registry digest: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaReview policyPolicy basis hash: bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbProfile · editorial.default, version 1Required reviewer slots: cms.reviewer.DecisionsNo decisions recorded yet.ActionsRecord your decisionDecisionApproveRejectReason0 of 2000 charactersRecord decision"
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-assignment.test.tsx:163:43
+    161|     );
+    162|     await flush();
+    163|     expect(mounted.container.textContent).toContain(
+       |                                           ^
+    164|       'Only the owner of this version can assign a reviewer while the …
+    165|     );
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  01:09:19
+   Duration  5.28s (transform 2.88s, setup 0ms, import 3.90s, tests 238ms, environment 938ms)
+

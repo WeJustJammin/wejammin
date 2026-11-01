@@ -1,0 +1,103 @@
+-- CMS-03C-01 digest refusals, driven through the named RPC platform_api.cms_define_template.
+-- pg_temp.s12td_try captures SQLSTATE, message and DETAIL (the Slice 10 helper keeps no DETAIL).
+create temp table s12td_capture(state text, message text, detail text, response jsonb) on commit drop;
+create or replace function pg_temp.s12td_try(p_request jsonb) returns void language plpgsql as $body$
+declare
+  v_response jsonb;
+  v_state text;
+  v_message text;
+  v_detail text;
+begin
+  begin
+    v_response := platform_api.cms_define_template(p_request);
+    delete from s12td_capture;
+    insert into s12td_capture values ('00000', null, null, v_response);
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_message = message_text, v_detail = pg_exception_detail;
+    delete from s12td_capture;
+    insert into s12td_capture values (v_state, v_message, nullif(v_detail, ''), null);
+  end;
+end;
+$body$;
+
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization'));
+
+create or replace function pg_temp.s12td_request(p_key text, p_idempotency text) returns jsonb language sql stable as $body$
+  select jsonb_build_object(
+    'templateKey', p_key,
+    'compatibleTypeIds', jsonb_build_array((select value from s10_ids where key = 'typeId')),
+    'slots', '[]'::jsonb,
+    'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+    'bindings', '{}'::jsonb,
+    'locale', 'en-US',
+    'audience', 'public',
+    'expectedVersion', null,
+    'idempotencyKey', p_idempotency,
+    'context', jsonb_build_object(
+      'actingPartyId', (select value from s10_ids where key = 'organization'),
+      'actingContextId', 'a9120000-0000-4000-8000-000000000011',
+      'correlationId', 'a9120000-0000-4000-8000-000000000012'))
+$body$;
+-- sha256 of the canonical JSON [] : the server-derived digest of a template with no reachable block.
+create or replace function pg_temp.s12td_empty_digest() returns text language sql stable as $body$
+  select pg_catalog.encode(extensions.digest('[]'::bytea, 'sha256'), 'hex')
+$body$;
+
+-- ----------------------------------------------- a well-formed digest that differs: typed 409-class token, DETAIL
+select pg_temp.s12td_try(pg_temp.s12td_request('s12td-mismatch', 's12td-mismatch-0001')
+  || jsonb_build_object('blockRegistryDigest', repeat('f', 64)));
+select is((select state from s12td_capture), 'P0001', 'mismatching digest: SQLSTATE P0001 [BE03c 323-327]');
+select is((select message from s12td_capture), 'block_registry_digest_mismatch',
+  'mismatching digest: the closed token block_registry_digest_mismatch, not the generic CONFLICT [BE03c 1273, DEC-186]');
+select is((select detail from s12td_capture), '["/blockRegistryDigest"]',
+  'mismatching digest: DETAIL is the one-pointer JSON array /blockRegistryDigest, the pattern producers'' convention');
+select is((select count(*)::integer from platform_private.cms_template_versions where template_key = 's12td-mismatch'), 0,
+  'mismatching digest writes nothing [BE03c 323-327]');
+
+-- The refusal rolled its reservation back: the same idempotency key with the matching digest creates the draft.
+select pg_temp.s12td_try(pg_temp.s12td_request('s12td-mismatch', 's12td-mismatch-0001')
+  || jsonb_build_object('blockRegistryDigest', pg_temp.s12td_empty_digest()));
+select is((select state from s12td_capture), '00000', 'matching digest after a refusal: the same idempotency key is accepted');
+select is((select response->>'blockRegistryDigest' from s12td_capture), pg_temp.s12td_empty_digest(),
+  'matching digest after a refusal: the response carries the recomputed digest');
+
+-- An absent digest is not an expectation: it is accepted and the server derives it.
+select pg_temp.s12td_try(pg_temp.s12td_request('s12td-absent', 's12td-absent-0001'));
+select is((select state from s12td_capture), '00000', 'absent digest: accepted, the server derives it');
+
+-- ------------------------------------------- malformed digests are not well-formed: VALIDATION_FAILED, no typed token
+create or replace function pg_temp.s12td_malformed(p_label text, p_value jsonb) returns text language plpgsql as $body$
+begin
+  perform pg_temp.s12td_try(pg_temp.s12td_request('s12td-bad-' || p_label, 's12td-bad-' || p_label || '-0001')
+    || jsonb_build_object('blockRegistryDigest', p_value));
+  return (select state || ' ' || coalesce(message, 'ok') from s12td_capture);
+end;
+$body$;
+select is(pg_temp.s12td_malformed(label, value), 'P0001 VALIDATION_FAILED',
+  'malformed digest (' || label || '): VALIDATION_FAILED, never the mismatch token [BE03c 323-327, 373]')
+from (values ('text', to_jsonb('not-a-digest'::text)), ('upper', to_jsonb(repeat('F', 64))),
+  ('short', to_jsonb(repeat('f', 63))), ('long', to_jsonb(repeat('f', 65))),
+  ('number', to_jsonb(5)), ('null', 'null'::jsonb), ('empty', to_jsonb(''::text))) as cases(label, value);
+
+-- ------------------------------------------------ the other conflicts keep the generic token (version conflicts)
+select pg_temp.s12td_try(pg_temp.s12td_request('s12td-mismatch', 's12td-taken-0001'));
+select is((select message from s12td_capture), 'CONFLICT', 'a taken first-version key is still the generic CONFLICT');
+select is((select detail from s12td_capture), null, 'a taken first-version key still carries no DETAIL');
+select pg_temp.s12td_try(pg_temp.s12td_request('s12td-mismatch', 's12td-stale-0001')
+  || jsonb_build_object('expectedVersion', '7', 'ifMatch', '7'));
+select is((select message from s12td_capture), 'CONFLICT', 'a stale expectedVersion is still the generic CONFLICT');
+-- a digest mismatch is judged on the digest alone: the matching digest on a stale expectedVersion is still CONFLICT
+select pg_temp.s12td_try(pg_temp.s12td_request('s12td-mismatch', 's12td-stale-0002')
+  || jsonb_build_object('expectedVersion', '7', 'ifMatch', '7', 'blockRegistryDigest', pg_temp.s12td_empty_digest()));
+select is((select message from s12td_capture), 'CONFLICT', 'matching digest on a stale expectedVersion is the generic CONFLICT');
+
+-- --------------------------------------------- authority precedes the digest: no registry oracle for the unauthorized
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000003'::uuid,
+  (select value::uuid from s10_ids where key = 'organization'));
+select pg_temp.s12td_try(pg_temp.s12td_request('s12td-forbidden', 's12td-forbidden-0001')
+  || jsonb_build_object('blockRegistryDigest', repeat('f', 64)));
+select is((select message from s12td_capture), 'FORBIDDEN',
+  'a member without the designer grant gets FORBIDDEN for a mismatching digest, never the digest token');
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+  (select value::uuid from s10_ids where key = 'organization'));

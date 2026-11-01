@@ -1,5 +1,29 @@
+import {
+  CMS_SLICE_12_OPERATION_REASONS,
+  CmsSlice12ReasonCodeSchema,
+  cmsSlice12ReasonStatus,
+} from '@wejammin/contracts';
+
 import { mediaTypeDetails } from './media-type-details';
 import type { CmsRelatedContentStatus } from './related-content-types';
+
+/**
+ * BE03c 1304: a refusal carries exactly one lowercase reason token from the closed Slice 12 list, on the one
+ * status that list gives it, and only if CMS-03C-05 may raise it. Anything else is dropped, never repaired.
+ */
+const typedReason = (
+  status: CmsRelatedContentStatus,
+  details: Readonly<Record<string, unknown>>,
+): string | null => {
+  const parsed = CmsSlice12ReasonCodeSchema.safeParse(details.reasonCode);
+  return parsed.success &&
+    cmsSlice12ReasonStatus(parsed.data) === status &&
+    (
+      CMS_SLICE_12_OPERATION_REASONS['CMS-03C-05'] as readonly string[]
+    ).includes(parsed.data)
+    ? parsed.data
+    : null;
+};
 
 export const safeDetails = (
   status: CmsRelatedContentStatus,
@@ -11,8 +35,10 @@ export const safeDetails = (
     return {};
   const details = source as Readonly<Record<string, unknown>>;
   if (status === 400 || status === 422) {
+    const reason = status === 422 ? typedReason(status, details) : null;
     const raw = details.violations;
-    if (!Array.isArray(raw)) return {};
+    if (!Array.isArray(raw))
+      return reason === null ? {} : { reasonCode: reason };
     const violations = raw.slice(0, 16).flatMap((item) => {
       if (typeof item !== 'object' || item === null || Array.isArray(item))
         return [];
@@ -33,12 +59,15 @@ export const safeDetails = (
         },
       ];
     });
-    return violations.length > 0 ? { violations } : {};
+    return {
+      ...(reason === null ? {} : { reasonCode: reason }),
+      ...(violations.length > 0 ? { violations } : {}),
+    };
   }
-  if (status === 403)
-    return details.reasonCode === 'CAPABILITY_REQUIRED'
-      ? { reasonCode: 'CAPABILITY_REQUIRED' }
-      : {};
+  if (status === 403) {
+    const reason = typedReason(status, details);
+    return reason === null ? {} : { reasonCode: reason };
+  }
   if (status === 409) {
     const result: Record<string, unknown> = {};
     for (const key of ['expectedVersion', 'currentVersion'] as const)
@@ -61,6 +90,6 @@ export const safeDetails = (
     return result;
   }
   if (status === 502 || status === 503 || status === 504)
-    return { dependencyClass: 'cms_composition', retryable: status !== 502 };
+    return { dependencyClass: 'cms_composition', retryable: true };
   return {};
 };

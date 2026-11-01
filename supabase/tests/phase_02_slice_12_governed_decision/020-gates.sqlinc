@@ -1,0 +1,95 @@
+-- CMS-03C-07 gates on the still-open R1 and R9: step-up first, structure, concealment, the effective-assignment gates
+-- and the review CAS.  Every refusal must leave the covered stores identical and reserve nothing.
+select pg_temp.s12ga_mark('r1:gates', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_mark('r9:gates', pg_temp.s12ga_review('r9'));
+
+-- ---------------------------------------------------------------- step-up before anything --
+select pg_temp.s12ga_decide('su-none', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  '{}'::jsonb, array[]::text[], pg_temp.s12ga_ctx('rev1', interval '1 minute', false));
+select pg_temp.s12ga_decide('su-stale', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  '{}'::jsonb, array[]::text[], pg_temp.s12ga_ctx('rev1', interval '11 minutes'));
+select pg_temp.s12ga_decide('su-future', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  '{}'::jsonb, array[]::text[], pg_temp.s12ga_ctx('rev1', interval '-2 minutes'));
+select pg_temp.s12ga_rpc('su-absent', 'platform_api.cms_record_governed_decision', 'rev1',
+  jsonb_build_object('reviewId', 'a12a0000-0000-4000-8000-0000000000e1', 'decision', 'approve', 'reason', 'Reviewed.',
+    'expectedVersion', '1', 'ifMatch', '1', 'idempotencyKey', 's12ga-su-absent'),
+  pg_temp.s12ga_ctx('rev1', interval '11 minutes'));
+select pg_temp.s12ga_decide('su-stranger', 'designer2', pg_temp.s12ga_review('r9'), 'approve', 'Reviewed.',
+  '{}'::jsonb, array[]::text[], pg_temp.s12ga_ctx('designer2', interval '11 minutes'));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['su-none', 'su-stale', 'su-future', 'su-absent', 'su-stranger']) l),
+  'su-absent=P0001:STEP_UP_REQUIRED;su-future=P0001:STEP_UP_REQUIRED;su-none=P0001:STEP_UP_REQUIRED;'
+    || 'su-stale=P0001:STEP_UP_REQUIRED;su-stranger=P0001:STEP_UP_REQUIRED',
+  'a missing, stale (11 min) or future (+2 min) step-up is STEP_UP_REQUIRED before concealment, assignment or capability [P2-S12-AC-072]');
+select ok((select count(*) from platform_private.idempotency_records
+            where operation = 'CMS-03C-07' and key_hash in (
+              select platform_private.cms_key_hash('s12ga-' || l)
+                from unnest(array['su-none', 'su-stale', 'su-future', 'su-absent', 'su-stranger']) l)) = 0
+    and pg_temp.s12ga_same('r1:gates', pg_temp.s12ga_review('r1'))
+    and pg_temp.s12ga_same('r9:gates', pg_temp.s12ga_review('r9')),
+  'the step-up refusal reserves no idempotency record and changes no state [P2-S12-AC-074]');
+
+-- ------------------------------------------------------------------------------- structure --
+select pg_temp.s12ga_decide('st-capability', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  jsonb_build_object('capability', 'cms.reviewer'));
+select pg_temp.s12ga_decide('st-stepup', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  jsonb_build_object('stepUpAt', '2026-10-14T00:00:00Z'));
+select pg_temp.s12ga_decide('st-review', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  jsonb_build_object('reviewId', 'not-a-uuid'));
+select pg_temp.s12ga_decide('st-ifmatch', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  jsonb_build_object('ifMatch', '2'));
+select pg_temp.s12ga_decide('st-nokey', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  '{}'::jsonb, array['idempotencyKey']);
+select pg_temp.s12ga_decide('st-expected', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  jsonb_build_object('expectedVersion', 'abc'));
+select pg_temp.s12ga_decide('st-decision', 'rev1', pg_temp.s12ga_review('r1'), 'maybe');
+select pg_temp.s12ga_decide('st-empty', 'rev1', pg_temp.s12ga_review('r1'), 'approve', '');
+select pg_temp.s12ga_decide('st-long', 'rev1', pg_temp.s12ga_review('r1'), 'approve', repeat('x', 2001));
+select pg_temp.s12ga_decide('st-nfc', 'rev1', pg_temp.s12ga_review('r1'), 'approve', E'é');
+select pg_temp.s12ga_decide('st-control', 'rev1', pg_temp.s12ga_review('r1'), 'approve', E'bad\u0007reason');
+select pg_temp.s12ga_decide('st-markup', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'see <b>this</b>');
+select pg_temp.s12ga_decide('st-brace', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'see {this}');
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l) || coalesce('#' || nullif(pg_temp.s12ga_det(l), ''), ''), ';' order by l collate "C")
+     from unnest(array['st-capability', 'st-stepup', 'st-review', 'st-ifmatch', 'st-nokey', 'st-expected', 'st-decision',
+                       'st-empty', 'st-long', 'st-nfc', 'st-control', 'st-markup', 'st-brace']) l),
+  'st-brace=P0001:VALIDATION_FAILED#["/reason"];st-capability=P0001:INVALID_REQUEST;'
+    || 'st-control=P0001:VALIDATION_FAILED#["/reason"];st-decision=P0001:VALIDATION_FAILED#["/decision"];'
+    || 'st-empty=P0001:VALIDATION_FAILED#["/reason"];st-expected=P0001:VALIDATION_FAILED#["/expectedVersion"];'
+    || 'st-ifmatch=P0001:INVALID_REQUEST;st-long=P0001:VALIDATION_FAILED#["/reason"];'
+    || 'st-markup=P0001:VALIDATION_FAILED#["/reason"];st-nfc=P0001:VALIDATION_FAILED#["/reason"];'
+    || 'st-nokey=P0001:INVALID_REQUEST;st-review=P0001:INVALID_REQUEST;st-stepup=P0001:INVALID_REQUEST',
+  'a body capability or stepUpAt is an unknown key; a malformed review id, a missing key or If-Match disagreeing with '
+  || 'expectedVersion is INVALID_REQUEST; a bad decision, version or an empty, over-long, non-NFC, control, markup or brace '
+  || 'reason is VALIDATION_FAILED at its pointer [P2-S12-AC-071]');
+
+-- ----------------------------------------------------------- concealment and 403 and the CAS --
+select pg_temp.s12ga_rpc('cn-absent', 'platform_api.cms_record_governed_decision', 'rev1',
+  jsonb_build_object('reviewId', 'a12a0000-0000-4000-8000-0000000000e2', 'decision', 'approve', 'reason', 'Reviewed.',
+    'expectedVersion', '1', 'ifMatch', '1', 'idempotencyKey', 's12ga-cn-absent'));
+select pg_temp.s12ga_decide('cn-other-org', 'other', pg_temp.s12ga_review('r9'), 'approve');
+select pg_temp.s12ga_decide('cn-nonmember', 'rev3', pg_temp.s12ga_review('r9'), 'approve', 'Reviewed.',
+  '{}'::jsonb, array[]::text[], pg_temp.s12ga_ctx('rev3') || jsonb_build_object('actingPartyId', pg_temp.s12ga_org()));
+select pg_temp.s12ga_decide('cn-noscope', 'designer2', pg_temp.s12ga_review('r9'), 'approve');
+select pg_temp.s12ga_decide('cn-unassigned', 'rev2', pg_temp.s12ga_review('r9'), 'approve');
+select pg_temp.s12ga_decide('fb-submitter', 'owner', pg_temp.s12ga_review('r9'), 'approve');
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['cn-absent', 'cn-other-org', 'cn-nonmember', 'cn-noscope', 'cn-unassigned', 'fb-submitter']) l),
+  'cn-absent=P0001:NOT_FOUND;cn-nonmember=P0001:NOT_FOUND;cn-noscope=P0001:NOT_FOUND;cn-other-org=P0001:NOT_FOUND;'
+    || 'cn-unassigned=P0001:NOT_FOUND;fb-submitter=P0001:capability_missing',
+  'an absent, cross-owner, non-member or scope-less caller meets one concealed NOT_FOUND; the readable submitter without an '
+  || 'assignment is 403 capability_missing [P2-S12-AC-072]');
+select pg_temp.s12ga_decide('cas', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Reviewed.',
+  jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select ok(pg_temp.s12ga_out('cas') = 'P0001:VERSION_MISMATCH'
+    and pg_temp.s12ga_det('cas')::jsonb = '{"expectedVersion": "2", "currentVersion": "1"}'::jsonb,
+  'a stale review version is VERSION_MISMATCH naming the expected and the current version [P2-S12-AC-073]');
+select ok(pg_temp.s12ga_same('r1:gates', pg_temp.s12ga_review('r1'))
+    and pg_temp.s12ga_same('r9:gates', pg_temp.s12ga_review('r9'))
+    and (select count(*) from platform_private.idempotency_records
+          where operation = 'CMS-03C-07' and key_hash in (
+            select platform_private.cms_key_hash('s12ga-' || l)
+              from unnest(array['st-capability', 'st-empty', 'cn-absent', 'cn-noscope', 'fb-submitter', 'cas']) l)) = 0,
+  'every structure, concealment, 403 and CAS refusal leaves the covered stores identical, writes no decision and reserves nothing [P2-S12-AC-074]');

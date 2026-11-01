@@ -1,0 +1,42 @@
+-- AC-202: a WITHDRAWN block.  A template whose slot allows a real signed-registered block freezes it as a `block` dependency; the
+-- signed CMS-03A-08 lifecycle command deprecates and then withdraws the block; the recheck over the block identity (the identity
+-- cms.block.lifecycle.changed.v1 names) invalidates the review dependency_changed.  Registered after the typeA successor of 040, so the
+-- template binds the current typeA version.
+select pg_temp.p_register('gr:blk', pg_temp.p_block_request('gr.blk', 1, jsonb_build_object('compatibility',
+  jsonb_build_object('minSchemaCompiler', '1', 'maxSchemaCompiler', '1'))));
+select is(pg_temp.s09d_outcome('gr:blk'), 'OK', 'setup: the signed CMS-03A-05 producer registers the block gr.blk [P2-S12-AC-202]');
+
+select pg_temp.s12ga_rpc('mint:bk1', 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+  'templateKey', 's12ga-bk1',
+  'compatibleTypeIds', jsonb_build_array((select value::uuid from s12gov_ids where key = 'typeA')),
+  'slots', jsonb_build_array(jsonb_build_object('key', 'primary', 'required', true,
+    'allowedBlocks', jsonb_build_array(jsonb_build_object('blockKey', 'gr.blk', 'blockVersion', 1)), 'maxCount', 1)),
+  'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+  'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+  'idempotencyKey', 's12ga-mint-bk1'));
+insert into s12gov_ids(key, value) values ('bk1:subject', pg_temp.s12ga_body('mint:bk1')->>'id')
+  on conflict (key) do update set value = excluded.value;
+select pg_temp.s12ga_submit('bk1', 'owner');
+select pg_temp.s12ga_assign('as-bk1', 'owner', pg_temp.s12ga_review('bk1'), 'rev1', interval '20 hours');
+select pg_temp.s12ga_decide('ap-bk1', 'rev1', pg_temp.s12ga_review('bk1'), 'approve');
+select ok(pg_temp.s12ga_out('mint:bk1') = 'ok'
+    and (select review.state = 'approved' from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('bk1'))
+    and (select count(*) = 1 from platform_private.cms_governed_review_dependencies dependency
+          where dependency.review_id = pg_temp.s12ga_review('bk1') and dependency.kind = 'block'
+            and dependency.ref_id = (pg_temp.s09d_resp('gr:blk')->>'id')::uuid),
+  'fixture: an approved template review freezes the registered block as a block dependency [P2-S12-AC-202]');
+
+select pg_temp.s12gr_mark('bk1', 'bk1');
+select pg_temp.s12gr_run('run-blk-1', 'block', (pg_temp.s09d_resp('gr:blk')->>'id')::uuid);
+select ok(pg_temp.s12gb_sbody('run-blk-1') = pg_temp.s12gr_result(1, 0, 0, 0, null) and pg_temp.s12gr_untouched('bk1', 'bk1'),
+  'while the block is supported the recheck over its identity examines the one review and leaves it untouched [P2-S12-AC-202]');
+select pg_temp.p_advance('gr:blk-deprecate', pg_temp.p_lifecycle_request((pg_temp.s09d_resp('gr:blk')->>'id')::uuid, 'supported', 'deprecated'));
+select pg_temp.p_advance('gr:blk-withdraw', pg_temp.p_lifecycle_request((pg_temp.s09d_resp('gr:blk')->>'id')::uuid, 'deprecated', 'withdrawn'));
+select is(pg_temp.s09d_outcome('gr:blk-deprecate') || pg_temp.s09d_outcome('gr:blk-withdraw'), 'OKOK',
+  'control: the signed CMS-03A-08 command deprecates and then withdraws the block [P2-S12-AC-202]');
+select pg_temp.s12gr_run('run-blk-2', 'block', (pg_temp.s09d_resp('gr:blk')->>'id')::uuid);
+select ok(pg_temp.s12gb_sbody('run-blk-2') = pg_temp.s12gr_result(1, 1, 0, 0, null) and pg_temp.s12gr_invalidated('bk1', 'bk1', 'dependency_changed'),
+  'after the withdrawal the recheck invalidates the review dependency_changed (version + 1, subject back to draft) [P2-S12-AC-202]');
+select pg_temp.s12gr_run('run-blk-3', 'block', (pg_temp.s09d_resp('gr:blk')->>'id')::uuid);
+select ok(pg_temp.s12gb_sbody('run-blk-3') = pg_temp.s12gr_result(0, 0, 0, 0, null),
+  'a repeated run finds no live review: the invalidated review is skipped [P2-S12-AC-202]');

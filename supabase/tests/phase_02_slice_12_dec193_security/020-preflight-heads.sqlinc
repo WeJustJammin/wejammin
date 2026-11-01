@@ -1,0 +1,209 @@
+-- Effective heads only. All history below is a guarded legacy fixture, NOT
+-- evidence that an unsafe public producer should accept executable content.
+create temp table s12sh_out(label text primary key, tag text, report jsonb,
+  state text, message text, before_rows jsonb, after_rows jsonb) on commit drop;
+create or replace function pg_temp.s12sh_tree(p_props jsonb) returns jsonb
+language sql immutable as $body$
+  select jsonb_build_object('format','cms.detached_tree.v1','nodes',jsonb_build_array(
+    jsonb_build_object('parent',null,'keySegments',jsonb_build_array('same'),
+      'blockKey','s12pd.block','blockVersion',1,'props',p_props))) $body$;
+create temp table s12sh_nodes(tree jsonb) on commit drop;
+insert into s12sh_nodes values ('{"format":"cms.detached_tree.v1","nodes":[
+  {"parent":null,"keySegments":["same"],"blockKey":"s12pd.block","blockVersion":1,"props":[null,42,false,"ordinary"]},
+  {"parent":0,"keySegments":["child"],"blockKey":"s12pd.block","blockVersion":1,"props":{"url":"javascript:child()","template":"{{ child }}"}}]}');
+create or replace function pg_temp.s12sh_seed(p_tag text,p_path text,p_props jsonb,
+  p_tree jsonb default null,p_mode text default 'linked',p_state text default 'active',
+  p_bindings jsonb default '{}') returns setof text language plpgsql as $body$
+declare prior platform_private.cms_composition_instances; row_id uuid := extensions.gen_random_uuid();
+  stamp timestamptz := clock_timestamp(); prior_rpc text := current_setting('app.cms_rpc',true);
+  code text := '00000'; message text; image jsonb;
+begin
+  select * into prior from platform_private.cms_composition_instances where id=pg_temp.s12pu_head(p_tag,p_path);
+  if prior.id is null then
+    return next extensions.fail('SH fixture ' || p_tag || ': real placed predecessor exists'); return;
+  end if;
+  return next extensions.ok(prior.pattern_id is not null and prior.pattern_version>0
+    and prior.link_mode in ('linked','detached'),'SH fixture ' || p_tag || ': real positive placement ancestry, either latest mode');
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    insert into platform_private.cms_composition_instances select (jsonb_populate_record(
+      null::platform_private.cms_composition_instances,to_jsonb(prior) || jsonb_build_object(
+        'id',row_id,'version',prior.version+1,'props',p_props,'detached_tree',p_tree,
+        'link_mode',p_mode,'state',p_state,'bindings',p_bindings,'created_at',stamp,'updated_at',stamp))).*;
+  exception when others then
+    get stacked diagnostics code=returned_sqlstate,message=message_text;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+  return next extensions.is(code || coalesce(':' || message,''),'00000','SH fixture ' || p_tag || ': guarded append succeeds');
+  image := pg_temp.s12pu_row(row_id);
+  return next extensions.is(image->'props',p_props,'SH fixture ' || p_tag || ': exact appended props');
+  return next extensions.is(image->'detached_tree',coalesce(p_tree,'null'::jsonb),'SH fixture ' || p_tag || ': exact appended SQL-NULL/canonical tree');
+  return next extensions.is(image->'bindings',p_bindings,'SH fixture ' || p_tag || ': exact appended bindings');
+end;
+$body$;
+create or replace function pg_temp.s12sh_snapshot() returns jsonb language plpgsql volatile as $body$
+declare answer jsonb := pg_temp.s12pl_snapshot(); store text; rows_json jsonb;
+begin
+  foreach store in array array['cms_entry_field_values','cms_entry_relations','cms_edit_presence',
+    'cms_publication_settings_snapshots'] loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(r) order by to_jsonb(r)::text),''[]''::jsonb) from platform_private.%I r',store)
+      into rows_json;
+    answer := answer || jsonb_build_object(store,rows_json);
+  end loop;
+  return answer;
+end;
+$body$;
+create or replace function pg_temp.s12sh_check(p_label text,p_tag text,p_count integer,p_control text default null)
+returns setof text language plpgsql as $body$
+declare proc oid; answer jsonb; before_rows jsonb := pg_temp.s12sh_snapshot(); after_rows jsonb;
+  code text := '00000'; message text; prior_rpc text := current_setting('app.cms_rpc',true);
+  observed jsonb; other_results jsonb; control_results jsonb; categories jsonb;
+begin
+  proc := to_regprocedure('platform_private.cms_evaluate_preflight(jsonb)');
+  if proc is null or not exists(select 1 from pg_proc where oid=proc and prorettype='jsonb'::regtype
+    and not proretset and prokind='f') then
+    return next extensions.fail(p_label || ': exact real preflight signature available'); return;
+  end if;
+  perform pg_temp.s09d_session('owner','service_role');
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    execute 'select platform_private.cms_evaluate_preflight($1)' into answer using jsonb_build_object(
+      'phase','submit','revisionId',pg_temp.s12pl_rev(p_tag),'actingPartyId',pg_temp.s09d_id('ownerOrg'),
+      'actorPersonId',pg_temp.s09d_actor_id('owner','person'),
+      'effectiveAt',to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+  exception when others then
+    get stacked diagnostics code=returned_sqlstate,message=message_text;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+  after_rows := pg_temp.s12sh_snapshot();
+  insert into s12sh_out values(p_label,p_tag,answer,code,message,before_rows,after_rows);
+  select coalesce(jsonb_agg(item order by ordinal),'[]'),jsonb_agg(item->'category' order by ordinal)
+    into other_results,categories from jsonb_array_elements(case when jsonb_typeof(answer->'results')='array'
+      then answer->'results' else '[]'::jsonb end) with ordinality items(item,ordinal) where item->>'category'<>'security';
+  select coalesce(jsonb_agg(item),'[]') into observed from jsonb_array_elements(
+    case when jsonb_typeof(answer->'results')='array' then answer->'results' else '[]'::jsonb end) item
+    where item->>'category'='security';
+  return next extensions.is(code || coalesce(':' || message,''),'00000',p_label || ': real evaluator succeeds');
+  return next extensions.is((select jsonb_agg(k order by k collate "C") from jsonb_object_keys(
+    case when jsonb_typeof(answer)='object' then answer else '{}'::jsonb end) k),
+    '["evaluatedAt","passed","results"]'::jsonb,p_label || ': complete actual report envelope retained');
+  return next extensions.is(observed,jsonb_build_array(jsonb_build_object('category','security',
+    'providerKey','preflight.security','providerVersion','1','outcome',case when p_count=0 then 'passed' else 'failed' end,
+    'reasonCode',case when p_count=0 then null else 'unsafe_content' end,'blockingCount',p_count)),
+    p_label || ': exact independent security outcome/reason/count');
+  return next extensions.is(categories,'["contract","schema","template","block","pattern","taxonomy","settings","relation","privacy","accessibility","media","route","locale","migration","domain_binding","revocation"]'::jsonb,
+    p_label || ': complete nonsecurity category order retained');
+  return next extensions.is(answer->'passed',to_jsonb((select coalesce(bool_and(item->>'outcome'='passed'),false)
+    from jsonb_array_elements(case when jsonb_typeof(answer->'results')='array' then answer->'results' else '[]'::jsonb end) item)),
+    p_label || ': aggregate passed equals all actual provider outcomes, not security alone');
+  if p_control is not null then
+    select coalesce(jsonb_agg(item order by ordinal),'[]') into control_results from s12sh_out control,
+      jsonb_array_elements(case when jsonb_typeof(control.report->'results')='array'
+        then control.report->'results' else '[]'::jsonb end) with ordinality items(item,ordinal)
+      where control.label=p_control and control.tag=p_tag and item->>'category'<>'security';
+    return next extensions.is(other_results,control_results,p_label || ': every other complete provider result matches same-revision control');
+  end if;
+  return next extensions.is(after_rows,before_rows,p_label || ': all captured protected CMS/settings/value rows unchanged');
+  return next extensions.is(coalesce(current_setting('app.cms_rpc',true),''),coalesce(prior_rpc,''),
+    p_label || ': exact prior scoped CMS context restored');
+end;
+$body$;
+
+-- Every world starts with real governed-v2 public placement. Shared existing
+-- security worlds remain untouched; reports are scoped to each new revision.
+select placed.* from (values('sh-props'),('sh-tree'),('sh-retired-props'),('sh-retired-tree'),
+  ('sh-nodes'),('sh-json'),('sh-nulltree'),('sh-scope'),('sh-clean'),('sh-cap-props'),('sh-cap-tree')) tags(tag)
+  cross join lateral pg_temp.s12pu_place(tags.tag,'s12rs-same2') placed;
+select * from pg_temp.s12pu_place('sh-multi','s12rs-main2');
+select * from pg_temp.s12sh_check('SH-P11-control','sh-clean',0);
+
+-- Within-revision history appends change the existing pattern reference gate's
+-- count (17510:61-66). Do not assert unrelated full-result equality across them.
+select * from pg_temp.s12sh_check('SH-P01-control','sh-props',0);
+select * from pg_temp.s12sh_seed('sh-props','/same','{"/same":"javascript:old()"}');
+select * from pg_temp.s12sh_seed('sh-props','/same','{}');
+select * from pg_temp.s12sh_check('SH-P01','sh-props',0);
+
+select * from pg_temp.s12sh_seed('sh-tree','/same','{}',pg_temp.s12sh_tree('"ordinary"'),'detached');
+select * from pg_temp.s12sh_check('SH-P02-control','sh-tree',0);
+select * from pg_temp.s12sh_seed('sh-tree','/same','{}',pg_temp.s12sh_tree('"javascript:old-tree()"'),'detached');
+select * from pg_temp.s12sh_seed('sh-tree','/same','{}',pg_temp.s12sh_tree('"ordinary"'),'detached');
+select * from pg_temp.s12sh_check('SH-P02','sh-tree',0);
+
+-- Eligibility changes can legitimately change other providers; no paired
+-- nonsecurity equality is asserted for active -> retired transitions.
+select * from pg_temp.s12sh_seed('sh-retired-props','/same','{"/same":"javascript:old()"}');
+select * from pg_temp.s12sh_seed('sh-retired-props','/same','{"/same":"javascript:retired()"}',null,'linked','retired');
+select * from pg_temp.s12sh_check('SH-P03','sh-retired-props',0);
+select * from pg_temp.s12sh_seed('sh-retired-tree','/same','{}',pg_temp.s12sh_tree('"javascript:old-tree()"'),'detached');
+select * from pg_temp.s12sh_seed('sh-retired-tree','/same','{}',pg_temp.s12sh_tree('"javascript:retired-tree()"'),'detached','retired');
+select * from pg_temp.s12sh_check('SH-P04','sh-retired-tree',0);
+
+select * from pg_temp.s12sh_seed('sh-nodes','/same','{}',pg_temp.s12sh_tree('null'),'detached');
+select * from pg_temp.s12sh_check('SH-P05-control','sh-nodes',0);
+select * from pg_temp.s12sh_seed('sh-nodes','/same','{}',(select tree from s12sh_nodes),'detached');
+select * from pg_temp.s12sh_check('SH-P05','sh-nodes',2);
+select * from pg_temp.s12sh_seed('sh-json','/same','{}',pg_temp.s12sh_tree(
+  '[null,42,false,"ordinary",{"script":null,"style":17,"onload":"ordinary"}]'),'detached');
+select * from pg_temp.s12sh_check('SH-P06','sh-json',0);
+select * from pg_temp.s12sh_seed('sh-nulltree','/same','{"/same":{"script":null,"style":17,"onload":"ordinary"}}',null,'detached');
+select * from pg_temp.s12sh_check('SH-P07','sh-nulltree',0);
+
+-- Guarded field-value fixture only. One valid short_text string is unsafe under
+-- the existing detector. No field/update producer or policy substitution claim.
+do $field_fixture$
+declare prior_rpc text := current_setting('app.cms_rpc',true);
+begin
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    insert into platform_private.cms_entry_field_values(owner_id,state,version,revision_id,field_id,
+      field_definition_id,locale,value,provenance,value_hash)
+    select pg_temp.s09d_id('ownerOrg'),'active',1,pg_temp.s12pl_rev('sh-scope'),f.stable_field_id,f.id,
+      'en-US','"{{ field }}"'::jsonb,'authored',platform_private.cms_jcs_sha256('"{{ field }}"'::jsonb)
+      from platform_private.cms_field_definition_versions f where f.content_type_version_id=
+        (select version_id from s12pd_types where ordinal=1) and f.field_key='title';
+  exception when others then
+    perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true); raise;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+end;
+$field_fixture$;
+select is((select count(*) from platform_private.cms_entry_field_values where revision_id=pg_temp.s12pl_rev('sh-scope')
+  and value='"{{ field }}"'::jsonb),1::bigint,'SH-P08 premise: exactly one explicit unsafe field in this revision');
+select * from pg_temp.s12sh_check('SH-P08-control','sh-scope',1);
+select * from pg_temp.s12sh_seed('sh-scope','/same','{}',null,'linked','active','{"a":"javascript:old-binding()","b":"{{ old-binding }}"}');
+select * from pg_temp.s12sh_seed('sh-scope','/same','{}');
+select * from pg_temp.s12sh_check('SH-P08','sh-scope',1);
+select * from pg_temp.s12sh_seed('sh-scope','/same','{}',null,'linked','active','{"a":"javascript:new-binding()","b":"{{ new-binding }}"}');
+select * from pg_temp.s12sh_check('SH-P09','sh-scope',3);
+
+select * from pg_temp.s12sh_seed('sh-multi','/panel','{"/panel":{"a":"javascript:one()","b":"{{ two }}","c":"<iframe></iframe>"}}');
+select * from pg_temp.s12sh_seed('sh-multi','/quiet','{}',
+  '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["quiet"],"blockKey":"s12pd.block","blockVersion":1,"props":"ordinary"}]}','detached');
+select * from pg_temp.s12sh_seed('sh-multi','/quiet','{}',
+  '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["quiet"],"blockKey":"s12pd.block","blockVersion":1,"props":["javascript:first()","{{ second }}"]}]}','detached');
+select * from pg_temp.s12sh_seed('sh-multi','/badge','{}',null,'linked','retired');
+select * from pg_temp.s12sh_check('SH-P10','sh-multi',5);
+select ok(pg_temp.s12pl_rev('sh-clean')<>pg_temp.s12pl_rev('sh-scope')
+  and exists(select 1 from platform_private.cms_entry_field_values where revision_id=pg_temp.s12pl_rev('sh-scope')
+    and value='"{{ field }}"'::jsonb),'SH-P11 premise: unsafe field/binding/tree worlds are different revisions, same /same path');
+select * from pg_temp.s12sh_check('SH-P11','sh-clean',0,'SH-P11-control');
+
+-- 1024 unsafe string leaves, but each container is bounded: outer16 x inner64,
+-- not an invalid flat1024 array. The exact provider report must cap at1000.
+create temp table s12sh_cap(value jsonb) on commit drop;
+insert into s12sh_cap select jsonb_build_object('values',jsonb_agg(inner_values order by outer_n))
+  from generate_series(1,16) outer_n cross join lateral (
+    select jsonb_agg(to_jsonb('javascript:cap()'::text) order by inner_n) as inner_values
+      from generate_series(1,64) inner_n) nested;
+select ok(jsonb_array_length(value->'values')=16 and not exists(select 1 from jsonb_array_elements(value->'values') a
+  where jsonb_array_length(a)<>64) and platform_private.cms_json_bounded(jsonb_build_object('/same',value),262144,8,128,128),
+  'SH-P12 premise: bounded16x64 unsafe JSON with1024 leaves, not oversized per-container input') from s12sh_cap;
+select * from pg_temp.s12sh_seed('sh-cap-props','/same',(select jsonb_build_object('/same',value) from s12sh_cap));
+select * from pg_temp.s12sh_check('SH-P12','sh-cap-props',1000);
+select * from pg_temp.s12sh_seed('sh-cap-tree','/same','{}',pg_temp.s12sh_tree((select value from s12sh_cap)),'detached');
+select * from pg_temp.s12sh_check('SH-P13','sh-cap-tree',1000);
+select ok(exists(select 1 from pg_trigger t join pg_proc p on p.oid=t.tgfoid
+  join pg_namespace n on n.oid=p.pronamespace where t.tgrelid='platform_private.cms_composition_instances'::regclass
+    and not t.tgisinternal and t.tgenabled='O' and n.nspname='platform_private' and p.proname='cms_write_guard'),
+  'SH-P14: normal composition write guard remains enabled after all append-only fixtures');

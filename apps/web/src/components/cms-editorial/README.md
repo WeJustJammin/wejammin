@@ -34,7 +34,11 @@ no server message is ever rendered (fixed copy only).
   `use-cms-editorial-entry-create.ts`, `cms-editorial-entry-create-values.ts`
   (what is sent) and `cms-editorial-entry-create-submit.ts` (the command with
   `/fields/{id}` pointers, a key, no `If-Match`); transport in
-  `cms-editorial-entry-create-transport.ts`.
+  `cms-editorial-entry-create-transport.ts`. A taxonomy field's CMS-03C-17
+  selector scope is the server-derived create `typeKey` and the form locale, never
+  the label or the content type id; only a verified 422 `VALIDATION_FAILED` naming
+  `term_unavailable` bumps the refusal-driven refresh token, which re-reads the
+  selector and never edits the values.
 - Draft editor (CMS-03B-11 / -01): `CmsEditorialEntryEditorIsland.tsx` over
   `use-cms-editorial-entry-editor.ts` and the controller
   (`cms-editorial-entry-editor-{state,context,save,outcomes,controller}.ts`):
@@ -44,7 +48,8 @@ no server message is ever rendered (fixed copy only).
   `If-Match` come from the committed `entryVersion`. `CmsEditorialEditorBanners.tsx`,
   `CmsEditorialStatus.tsx` (the one polite live region),
   `CmsEditorialSyncConflict.tsx` (no last-write-wins) and
-  `CmsEditorialCapabilityGate.tsx` carry the non-field states.
+  `CmsEditorialCapabilityGate.tsx` (its heading is a focus target when `focusable`, so a form's named result heading can
+  be the gate) carry the non-field states.
   `cms-editorial-draft-values.ts` projects a verified draft onto its fields.
   Reconciliation never overwrites a field edited after dispatch (a merged 201
   keeps it; a field both sides changed stops in `sync-conflict`), and a stale
@@ -57,13 +62,26 @@ no server message is ever rendered (fixed copy only).
   disabled while a save is in flight (a disabled focused control drops keyboard
   focus to `<body>`); it is `aria-busy` and the controller refuses a second
   save, and the interrupting states (conflict, expired session, denied) take
-  focus on their alert.
+  focus on their alert. The bounded field map is extracted into
+  `CmsEditorialEntryFields.tsx` (one `CmsFieldEditor` per descriptor, given the
+  host's taxonomy context; only the map moved out of the island and the rendering
+  is unchanged). A taxonomy field's selector scope is the server-derived
+  `init.typeKey` and `init.locale`, never the label or the content type id; only a
+  verified 422 `term_unavailable` bumps the refresh token, which re-reads the
+  selector and leaves the unsent values untouched — the unknown-outcome replay is
+  unchanged.
 - Conflict (CMS-03B-12 / -02): `CmsEditorialConflictResolveIsland.tsx`,
   `CmsEditorialConflictPath.tsx`, `use-cms-editorial-conflict.ts`,
   `cms-editorial-conflict-{controller,controller-types,state,copy,
 detail-transport}.ts` and `cms-editorial-conflict-resolve.ts` (the resolve
   transport). No winner is inferred; a 409 re-reads the conflict and keeps only
   choices whose preimages are unchanged.
+  The optional JSON-only taxonomy context is defined in the state module and
+  supplied by verified page reads. An explicit replacement uses its exact
+  locale/type key and the descriptor's stable field key; only `{ termIds }`
+  enters the existing resolve choice. A verified 422 `term_unavailable`
+  refreshes the selector without changing choices or replaying the command.
+  A 409 re-read with a different bound revision reference is not adopted.
 - History / restore (CMS-03B-03 / -04): `CmsEditorialRevisionHistory.tsx`,
   `CmsEditorialRevisionCompare.tsx`, `CmsEditorialRestoreForm.tsx` (an inline
   review that restores the LEFT revision), `cms-editorial-restore-submit.ts` and
@@ -75,11 +93,22 @@ detail-transport}.ts` and `cms-editorial-conflict-resolve.ts` (the resolve
   `reasonCode`), `cms-editorial-reason-copy.ts` (closed vocabulary and its copy),
   `cms-editorial-app-routes.ts` (APP routes; a command navigates to one derived
   from the verified body, never to an API `Location`),
-  `cms-editorial-entry-draft-detail*.ts` (the CMS-03B-11 transport),
+  `cms-editorial-entry-draft-detail*.ts` (the CMS-03B-11 transport; with
+  `-conflict-detail-transport.ts` it retries a declared-retryable 502/503/504 twice and
+  reports a 429's `Retry-After`, FE03 :1172-1173, via `../../lib/safe-read-retry.ts`; the
+  editor keeps the unsent edits. A 429 on the draft re-read after a 409 waits that long and reads
+  AGAIN: the stale save is never re-sent for it, each limited read spends one unit of the rebase
+  budget, and no autosave writes while it waits; the bounded rebase after a verified read is the
+  only re-send),
   `cms-editorial-contracts.ts` / `cms-editorial-types.ts` (shared contracts
   re-exported and browser types), `cms-editorial-runtime-dom-feedback.ts`.
 - `*.test-support.ts` — fixtures parsed through the real contracts, a fake clock
-  and the editor harness.
+  and the editor harness, plus the create-island response helper
+  (`cms-editorial-create-island-responses.test-support.ts`: the 201 created entry
+  with its `location` and `ETag`, and the uniform typed API error).
+  `cms-editorial-runtime-fixtures.test-support.ts` holds the runtime suite's
+  revision/request fixtures, typed response builders and mutation submit helper;
+  test cases and mock cleanup stay in `cms-editorial-runtime.test.ts`.
 
 ## Extension rules
 

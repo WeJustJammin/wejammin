@@ -1,0 +1,65 @@
+-- CMS-03C-09 setup: real standing grants and real APPROVED governed reviews (mint -> submit -> assignment -> approval, all through
+-- the named producers under the real service_role).  rev1 / rev2 / designer2 are owner-party reviewers (designer2 also holds
+-- cms.reviewer.policy: the specialist slot); owner is the receipt owner, creator and submitter of every review.
+--   ga1  ordinary: the immediate activation          gg1  ordinary: the gates (step-up, structure, concealment, 403, CAS)
+--   gopen submitted only (review open)                gl1  ordinary: lineage v1 (activated, then superseded by gl2 below)
+--   gp1  protected (two approvals)                   gs1  ordinary: schedule acceptance, then the cancelling invalidation
+--   gs2  ordinary: the time rules                    gs3  ordinary: sub-microsecond precision
+--   gr7  approved by rev2 whose standing grant is later revoked                  gc8  designer2 holds only a reviewer scope
+--   gc9  designer2 later holds cms.template_designer and activates it            gd1/gd2  the bound content type later changes
+create temp table s12gb_setup(key text primary key, outcome text not null) on commit drop;
+insert into s12gb_setup(key, outcome) values
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 1)),
+  ('designer2:reviewer', pg_temp.s12ga_grant('designer2', 'cms.reviewer', 1));
+-- rev3 keeps its own person party: it is the DEC-108 schema reviewer of the successor chain at the end
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2');
+
+select pg_temp.s12gb_approved('ga1');
+select pg_temp.s12gb_approved('gg1');
+select pg_temp.s12ga_open('gopen', 'owner', array['typeA'], 'owner');
+select pg_temp.s12gb_approved('gl1');
+select pg_temp.s12gb_approved_protected('gp1');
+select pg_temp.s12gb_approved('gs1');
+select pg_temp.s12gb_approved('gs2');
+select pg_temp.s12gb_approved('gs3');
+select pg_temp.s12gb_approved('gr7', array['typeA'], 'rev2');
+select pg_temp.s12gb_approved('gc9');
+select pg_temp.s12gb_approved('gd1');
+select pg_temp.s12gb_approved('gd2');
+-- gc8: designer2 is an assigned reviewer (a read scope, no owner capability), rev1 approves
+select pg_temp.s12ga_open('gc8', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_assign('as-gc8-d2', 'owner', pg_temp.s12ga_review('gc8'), 'designer2', interval '20 hours');
+select pg_temp.s12ga_assign('as-gc8', 'owner', pg_temp.s12ga_review('gc8'), 'rev1', interval '20 hours');
+select pg_temp.s12ga_decide('ap-gc8', 'rev1', pg_temp.s12ga_review('gc8'), 'approve');
+
+select ok((select count(*) = 3 and bool_and(outcome = 'OK') from s12gb_setup),
+  'fixture: rev1, rev2 and designer2 hold real CMS-03A-15 cms.reviewer grants in the owner organization [P2-S12-AC-082]');
+select ok(
+  (select count(*) = 11 and bool_and(review.state = 'approved' and review.version = 2 and review.activated_at is null
+            and review.decided_at is not null and review.recorded_decision_count = review.required_decision_count)
+     from platform_private.cms_governed_reviews review
+    where review.id in (select pg_temp.s12ga_review(t) from unnest(array['ga1', 'gg1', 'gl1', 'gs1', 'gs2', 'gs3',
+            'gr7', 'gc8', 'gc9', 'gd1', 'gd2']) t))
+  and (select review.state = 'approved' and review.version = 3 and review.risk_class = 'protected'
+              and review.required_decision_count = 2 and review.recorded_decision_count = 2
+         from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('gp1'))
+  and (select review.state = 'open' and review.version = 1
+         from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('gopen')),
+  'fixture: twelve real approved governed reviews (eleven ordinary, one protected) and one open review exist [P2-S12-AC-082]');
+select ok(
+  (select count(*) = 13 and bool_and(subject.lifecycle_version = case when subject.id = pg_temp.s12ga_subject('gopen') then 2 else 3 end
+              and subject.version = 1 and subject.activated_at is null and subject.retired_at is null
+              and subject.state = case when subject.id = pg_temp.s12ga_subject('gopen') then 'review' else 'approved' end)
+     from platform_private.cms_template_versions subject
+    where subject.id in (select pg_temp.s12ga_subject(t) from unnest(array['ga1', 'gg1', 'gopen', 'gl1', 'gs1', 'gs2', 'gs3',
+            'gr7', 'gc8', 'gc9', 'gd1', 'gd2', 'gp1']) t)),
+  'fixture: every subject stands at lifecycle 3 (approved) or 2 (review), definition version 1, never activated [P2-S12-AC-082]');
+select ok(
+  (select count(*) = 0 from platform_private.cms_governed_activation_schedules)
+  and (select count(*) = 0 from platform_private.outbox_events where event_type in ('cms.template.activated.v1', 'cms.pattern.activated.v1', 'cms.taxonomy.changed.v1')),
+  'fixture: no schedule and no activation event exists before the first activation command [P2-S12-AC-082]');
+select has_function('platform_api', 'cms_activate_governed_subject', array['jsonb'],
+  'CMS-03C-09 has a named platform API RPC (BE03c 1447) [P2-S12-AC-082]');
+select has_function('platform_private', 'cms_activate_governed_subject', array['jsonb'],
+  'CMS-03C-09 has an atomic private implementation [P2-S12-AC-082]');

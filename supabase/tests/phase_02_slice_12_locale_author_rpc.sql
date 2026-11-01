@@ -105,10 +105,9 @@ select is(
   'locale authoring commits one private audit event'
 );
 select is(
-  pg_temp.s10_outbox_count(
-    'cms.localization.changed.v1',
-    (select value::uuid from s10_ids where key = 'entryId')
-  ),
+  (select count(*)::integer from platform_private.outbox_events
+   where event_type = 'cms.localization.changed.v1'
+     and payload->>'entryId' = (select value from s10_ids where key = 'entryId')),
   1,
   'locale authoring commits one identifier-only outbox event'
 );
@@ -116,10 +115,10 @@ select ok(
   (select payload ?& array['entryId','locale','revisionId']
      and (select count(*) from jsonb_object_keys(payload)) = 3
    from (
-     select pg_temp.s10_outbox_payload(
-       'cms.localization.changed.v1',
-       (select value::uuid from s10_ids where key = 'entryId')
-     ) as payload
+     select o.payload from platform_private.outbox_events o
+     where o.event_type = 'cms.localization.changed.v1'
+       and o.payload->>'entryId' = (select value from s10_ids where key = 'entryId')
+     limit 1
    ) event),
   'outbox payload excludes translated field values and source text'
 );

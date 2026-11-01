@@ -86,12 +86,14 @@ select is(pg_temp.h11_ref_row(pg_temp.h11w_uuid('clean:revision')), '0/0/0/0/0/1
 -- pattern
 -- ---------------------------------------------------------------------------
 select set_config('app.cms_rpc', 'true', true);
+-- PatternVersion shape (BE03c 1425): the ordered forest, one compatible type id and node_count; the guard derives the lineage id.
 insert into platform_private.cms_pattern_versions(
-  id, owner_id, version, pattern_key, block_tree, block_registry_digest,
-  content_hash, owner_capability, created_by
+  id, owner_id, version, pattern_key, block_tree, compatible_type_ids, node_count,
+  block_registry_digest, content_hash, owner_capability, created_by
 ) values (
   pg_temp.h11w_uuid('pattern'), pg_temp.h11w_org(), 1, 'h11-pattern',
-  '{"nodes":[{"blockKey":"profile.header"}]}'::jsonb, repeat('a', 64), repeat('b', 64),
+  '[{"kind":"block","key":"root","blockKey":"profile.header","blockVersion":1,"props":{},"children":[]}]'::jsonb,
+  jsonb_build_array((select value from h11w_ids where key = 'typeId')), 1, repeat('a', 64), repeat('b', 64),
   'cms.template_designer', (select value::uuid from s10_ids where key = 'creatorAuth')
 );
 

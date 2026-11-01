@@ -54,6 +54,7 @@ export default function CmsEditorialAssignmentRevoke({
   return (
     <CmsWorkflowCommandFrame
       headingId="assignment-revoke-title"
+      lazyRegion="review-assignment"
       title="Revoke an assignment"
       state={state}
       controller={controller}

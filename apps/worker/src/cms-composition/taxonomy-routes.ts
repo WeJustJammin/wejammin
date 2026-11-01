@@ -33,6 +33,8 @@ import {
   type CmsTaxonomyRateDecision,
   type CmsTaxonomyResult,
 } from './taxonomy-contracts';
+import { observeRequest } from './observability-observation';
+import { instrumentComposition } from './observability-instrument';
 import { commonHeaders, errorResponse } from './taxonomy-responses';
 
 export type {
@@ -51,8 +53,12 @@ const DEADLINE_MS = 15_000;
 
 export const registerCmsTaxonomyRoutes = <E extends Env>(
   app: Hono<E>,
-  dependencies: CmsTaxonomyDependencies,
+  registered: CmsTaxonomyDependencies,
 ): void => {
+  // BE03c Observability: the request event lists only the stages the request reached.
+  const dependencies = instrumentComposition(registered, {
+    writes: ['actTerm'],
+  });
   app.options(PATH, (context) => {
     const request = context.req.raw;
     const requestId = createRequestId(
@@ -125,12 +131,22 @@ export const registerCmsTaxonomyRoutes = <E extends Env>(
         return reject(failure(statusOf(parsed.status), parsed.details));
       const body = parsed.value;
       if (body.taxonomyId !== taxonomyId) return reject(failure(400));
+      // BE00 step 6 (line 386) and BE03c 408: the exact Idempotency-Key and quoted If-Match
+      // are validated before authorization, so a malformed header consumes no quota.
+      const headers = TaxonomyTermActionHeadersSchema.safeParse({
+        contentType: 'application/json',
+        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
+        ifMatch: request.headers.get('if-match') ?? undefined,
+      });
+      if (!headers.success) return reject(failure(400));
+      const ifMatch = headers.data.ifMatch.slice(1, -1);
+      if (body.expectedVersion !== ifMatch) return reject(failure(400));
       // BE00 step 7: capability, then quota.
       if (
         session.value.actingPartyId === null ||
         !session.value.capabilities.includes('cms.taxonomy_curator')
       )
-        return reject(failure(403, { reasonCode: 'CAPABILITY_REQUIRED' }));
+        return reject(failure(403, { reasonCode: 'capability_missing' }));
 
       for (const rateScope of ['user', 'party'] as const) {
         if (signal.aborted) return reject(failure(504, {}, 15));
@@ -191,16 +207,6 @@ export const registerCmsTaxonomyRoutes = <E extends Env>(
           );
         }
       }
-
-      // BE00 step 8: exact Idempotency-Key and quoted If-Match.
-      const headers = TaxonomyTermActionHeadersSchema.safeParse({
-        contentType: 'application/json',
-        idempotencyKey: request.headers.get('idempotency-key') ?? undefined,
-        ifMatch: request.headers.get('if-match') ?? undefined,
-      });
-      if (!headers.success) return reject(failure(400));
-      const ifMatch = headers.data.ifMatch.slice(1, -1);
-      if (body.expectedVersion !== ifMatch) return reject(failure(400));
 
       let result: CmsTaxonomyResult<TaxonomyTermResource>;
       try {
@@ -269,6 +275,12 @@ export const registerCmsTaxonomyRoutes = <E extends Env>(
                 : 'failure',
           actorClass: 'human',
           durationMs: Math.max(0, dependencies.now() - startedAt),
+          observation: observeRequest(
+            request,
+            requestId,
+            OPERATION_ID,
+            response.status,
+          ),
         }),
       ).catch(() => undefined);
     } catch {

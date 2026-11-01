@@ -3,6 +3,7 @@ import * as React from 'react';
 import CmsFieldErrorSummary, {
   type CmsFieldErrorSummaryItem,
 } from '../cms-editorial-fields/CmsFieldErrorSummary';
+import type { CmsFieldEditorProps } from '../cms-editorial-fields/CmsFieldEditor';
 import type { CmsFieldIssue } from '../cms-editorial-fields/cms-field-issue';
 import { validateCmsFieldValue } from '../cms-editorial-fields/cms-field-value';
 import CmsEditorialConflictPath from './CmsEditorialConflictPath';
@@ -74,6 +75,18 @@ export default function CmsEditorialConflictResolveIsland(
     },
   );
   const entryPath = cmsEditorialAppEntryPath(init.entryId);
+  // The selector scope of a divergent taxonomy field, bound from the verified
+  // init context (never a label or a content type id); absent when the conflict
+  // carries no taxonomy field.
+  const taxonomyContext: CmsFieldEditorProps['taxonomyContext'] =
+    init.taxonomyContext === undefined
+      ? undefined
+      : {
+          typeKey: init.taxonomyContext.typeKey,
+          locale: init.taxonomyContext.locale,
+          fetcher: props.fetcher,
+          refreshToken: state.taxonomyRefreshToken,
+        };
   const finished = state.phase === 'closed' || state.phase === 'resolved';
   // The fields stay enabled while the resolve is in flight: the controller
   // ignores a change then, and disabling a focused radio would drop focus.
@@ -143,6 +156,7 @@ export default function CmsEditorialConflictResolveIsland(
             choice={entry}
             issues={issuesFor(path.fieldId)}
             disabled={locked}
+            taxonomyContext={taxonomyContext}
             onChoose={(choice) => controller.choose(path.fieldId, choice)}
             onExplicit={(value) => controller.setExplicit(path.fieldId, value)}
             onInputError={(message) =>

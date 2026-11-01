@@ -8,6 +8,7 @@ import {
   it,
   vi,
 } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from './cms-workflow-answer-machinery.test-support';
 
 import {
   buttonNamed,
@@ -50,6 +51,8 @@ import {
   readingOf,
   regionsReading,
 } from './cms-workflow-status.test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
 
 beforeAll(enableReactAct);
 afterAll(disableReactAct);

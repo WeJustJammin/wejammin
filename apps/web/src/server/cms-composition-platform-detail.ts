@@ -41,7 +41,8 @@ export const readCmsTemplateDetail = async (
     return localError(request, 503);
   }
   if (!(upstream instanceof Response)) return localError(request, 503);
-  if (!upstream.ok) return forwardedError(request, upstream);
+  if (!upstream.ok)
+    return forwardedError(request, upstream, 'cmsTemplateLatestRead');
   if (upstream.status !== 200) return localError(request, 502);
   const body = await cmsEditorialBoundedResponseJson(upstream);
   if (!body.ok) return localError(request, 502);

@@ -1,0 +1,106 @@
+-- Cases the first fixture cannot distinguish (V3 F-7) and the DEC-216 scope: the gauge counts MEMBERS of stale_field_ids (not
+-- rows), only members that are `no_fallback` on an `active` definition of the content type's `active` version (not a
+-- retired definition, not a superseded type version), summed across entries, and only for entries whose lifecycle is `active`.
+-- Continues 005: entry 1 (E1) holds de-DE stale [title, legal] as its only counted field (gauge 1); fr-FR was revalidated
+-- (draft v3); fr-CA is the legacy row with no stale ids.
+
+select pg_temp.l208_as('creatorAuth');
+select set_config('app.cms_rpc', 'true', true);
+create temp table l208_ids on commit drop as select value::uuid as e1 from s10_ids where key = 'entryId';
+create or replace function pg_temp.l208_gauge() returns text language sql as $body$
+  select (pg_temp.l208_read('2030-01-01 00:00:00+00', '2030-01-01 00:01:00+00')->>'staleLegalFields')
+$body$;
+select is(pg_temp.l208_gauge(), '1', 'control: before the new cases the gauge is the one de-DE legal field');
+
+-- ---- a retired field definition is not counted (state = active) ----------------------------------------------------
+set local session_replication_role = replica;
+update platform_private.cms_field_definition_versions set state = 'retired'
+ where content_type_version_id = (select value::uuid from l12r_ids where key = 'versionId') and stable_field_id = pg_temp.l12r_fid('legal');
+set local session_replication_role = origin;
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l208_gauge(), '0', 'a stale field whose definition is retired in the schema is not counted [P2-S12-AC-052]');
+set local session_replication_role = replica;
+update platform_private.cms_field_definition_versions set state = 'active'
+ where content_type_version_id = (select value::uuid from l12r_ids where key = 'versionId') and stable_field_id = pg_temp.l12r_fid('legal');
+set local session_replication_role = origin;
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l208_gauge(), '1', 'control: the definition active again, the field counts again');
+
+-- ---- a type version that is not the active one is not "the entry's current schema" --------------------------------------
+set local session_replication_role = replica;
+update platform_private.cms_content_type_versions set state = 'superseded'
+ where id = (select value::uuid from l12r_ids where key = 'versionId');
+set local session_replication_role = origin;
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l208_gauge(), '0', 'with no active version of the type the entry has no current schema: nothing is counted [P2-S12-AC-052]');
+set local session_replication_role = replica;
+update platform_private.cms_content_type_versions set state = 'active'
+ where id = (select value::uuid from l12r_ids where key = 'versionId');
+set local session_replication_role = origin;
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l208_gauge(), '1', 'control: the version active again, the field counts again');
+
+-- ---- a second entry, two stale no_fallback fields on ONE variant ------------------------------------------------------
+create temp table l208_e2 on commit drop as
+select platform_api.cms_create_entry(jsonb_build_object(
+  'contentTypeId', (select value::uuid from l12r_ids where key = 'typeId'),
+  'contentTypeVersionId', (select value::uuid from l12r_ids where key = 'versionId'),
+  'locale', 'en-US',
+  'changedPaths', (select jsonb_agg('/fields/' || key order by key)
+                   from jsonb_object_keys(pg_temp.l12r_values('E2 title', 'E2 summary', 'E2 legal', 'E2 terms', 'e2-slug')) key),
+  'values', pg_temp.l12r_values('E2 title', 'E2 summary', 'E2 legal', 'E2 terms', 'e2-slug'),
+  'validatorRefs', '[]'::jsonb, 'idempotencyKey', 'l208-entry-save-0002',
+  'workflowPolicy', platform_private.cms_editorial_workflow_policy_evidence((select value::uuid from l12r_ids where key = 'versionId')),
+  'activationEvidence', platform_private.cms_type_version_resource((select value::uuid from l12r_ids where key = 'versionId'))->'activationEvidence',
+  'schemaArtifact', jsonb_build_object('id', artifact.id, 'contentTypeVersionId', artifact.content_type_version_id,
+    'artifactHash', artifact.artifact_hash, 'compilerVersion', artifact.compiler_version, 'zodContractRef', artifact.zod_contract_ref)
+)) as response
+from platform_private.cms_schema_artifacts artifact
+where artifact.id = (select value::uuid from l12r_ids where key = 'artifactId');
+select set_config('app.cms_rpc', 'true', true);
+select ok((select response#>>'{entry,id}' is not null from l208_e2), 'control: a second entry is saved by the real cms_create_entry');
+update s10_ids set value = (select response#>>'{entry,id}' from l208_e2) where key = 'entryId';
+create temp table l208_e2_fr on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('fr-FR', pg_temp.l12r_field_list(jsonb_build_object(
+  'title', 'Titre E2', 'legal', 'Mentions E2', 'terms', 'Conditions E2')), 'l208-e2-fr-0001')) as response;
+select set_config('app.cms_rpc', 'true', true);
+select is((select response->>'state' from l208_e2_fr), 'draft', 'control: the second entry has a translated fr-FR draft');
+select pg_temp.l12_source_edit(pg_temp.l12r_values('E2 title changed', 'E2 summary', 'E2 legal changed', 'E2 terms changed', 'e2-slug'));
+select set_config('app.cms_rpc', 'true', true);
+select is(pg_temp.l12_stored_stale('fr-FR')::text, (select jsonb_agg(f order by f)::text from unnest(array[
+  pg_temp.l12r_fid('title')::text, pg_temp.l12r_fid('legal')::text, pg_temp.l12r_fid('terms')::text]) f),
+  'control: the second entry''s one stale row stores title, legal and terms (two no_fallback fields on one variant)');
+select is((select count(*)::integer from platform_private.cms_locale_variants
+            where entry_id = pg_temp.l12_entry() and state = 'stale'), 1, 'control: exactly one stale row on the second entry');
+update s10_ids set value = (select e1::text from l208_ids) where key = 'entryId';
+select is(pg_temp.l208_gauge(), '3',
+  'the gauge counts MEMBERS across entries: E1 de-DE legal (1) + E2 legal and terms on one variant (2), not 2 rows [P2-S12-AC-052]');
+
+-- ---- an unpinned real fan-out row is read through its own minute -----------------------------------------------------
+create temp table l208_e2_minute on commit drop as
+select date_trunc('minute', variant.created_at) as minute_start
+  from platform_private.cms_locale_variants variant
+ where variant.entry_id = (select response#>>'{entry,id}' from l208_e2)::uuid and variant.state = 'stale';
+select is(pg_temp.l208_read((select minute_start::text from l208_e2_minute), (select (minute_start + interval '1 minute')::text from l208_e2_minute))
+          - 'staleLegalFields', '{"fanoutRows":1,"staleFieldsAppended":3}'::jsonb,
+  'the real, unpinned fan-out row (stamped clock_timestamp() at writer entry) is counted in the minute that contains it [P2-S12-AC-052]');
+select is(pg_temp.l208_read((select (minute_start - interval '1 minute')::text from l208_e2_minute), (select minute_start::text from l208_e2_minute))
+          - 'staleLegalFields', '{"fanoutRows":0,"staleFieldsAppended":0}'::jsonb,
+  'and not in the preceding minute (closed start of the next) [P2-S12-AC-052]');
+
+-- ---- DEC-216: only entries whose lifecycle is `active` are counted ---------------------------------------------------
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_entries set lifecycle = 'archived' where id = (select response#>>'{entry,id}' from l208_e2)::uuid;
+select is(pg_temp.l208_gauge(), '1', 'an archived entry''s stale no_fallback fields are not counted (it cannot be revalidated) [DEC-216]');
+update platform_private.cms_content_entries set lifecycle = 'held' where id = (select response#>>'{entry,id}' from l208_e2)::uuid;
+select is(pg_temp.l208_gauge(), '1', 'a held entry''s stale no_fallback fields are not counted [DEC-216]');
+update platform_private.cms_content_entries set lifecycle = 'deletion_pending' where id = (select response#>>'{entry,id}' from l208_e2)::uuid;
+select is(pg_temp.l208_gauge(), '1', 'a deletion_pending entry''s stale no_fallback fields are not counted [DEC-216]');
+update platform_private.cms_content_entries set lifecycle = 'active' where id = (select response#>>'{entry,id}' from l208_e2)::uuid;
+select is(pg_temp.l208_gauge(), '3', 'an active entry''s stale no_fallback fields are counted (control) [DEC-216]');
+update platform_private.cms_content_entries set lifecycle = 'archived' where id = (select e1 from l208_ids);
+select is(pg_temp.l208_gauge(), '2', 'the lifecycle rule applies per entry: archiving E1 leaves only E2''s two fields [DEC-216]');
+update platform_private.cms_content_entries set lifecycle = 'active' where id = (select e1 from l208_ids);
+select is(pg_temp.l208_gauge(), '3', 'control: E1 active again, the count returns [DEC-216]');
+select is(pg_temp.l208_read((select minute_start::text from l208_e2_minute), (select (minute_start + interval '1 minute')::text from l208_e2_minute))
+          ->> 'fanoutRows', '1', 'the lifecycle rule does not touch the window counters: fan-out history is history [DEC-216]');

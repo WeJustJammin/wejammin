@@ -28,6 +28,8 @@ export const SAVE_COPY = {
     'This entry changed elsewhere and nothing was overwritten. Your unsent changes are kept in this browser only; load the current version to continue.',
   rebasing:
     'This entry changed elsewhere. Saving your edits again in a moment; they are kept.',
+  readLimit:
+    'Reading the current version is still rate limited, so automatic saving stopped. Nothing was overwritten and your edits are kept; choose Save draft to try again.',
   rebaseLimit:
     'This entry keeps changing elsewhere, so automatic saving stopped. Nothing was overwritten and your edits are kept; choose Save draft to try again.',
   expired:
@@ -39,10 +41,18 @@ export const waitingMessage = (seconds: number | null): string =>
     ? 'Too many saves. Retrying shortly. Your unsent edits are kept.'
     : `Too many saves. Retrying in ${seconds} seconds. Your unsent edits are kept.`;
 
+/** A 429 on the READ of the canonical draft after a stale base: the read waits, no save is sent. */
+export const readWaitingMessage = (seconds: number | null): string =>
+  seconds === null
+    ? 'Too many requests while checking the current version. Retrying shortly. Your unsent edits are kept.'
+    : `Too many requests while checking the current version. Retrying in ${seconds} seconds. Your unsent edits are kept.`;
+
 /** A definite refusal of the request, mapped to the state it leaves behind. */
 export const refusalPatch = (
   result: CmsEditorialMutationResult,
   summaryToken: number,
+  /** The prior `taxonomyRefreshToken`: a refusal bumps it, never resets it. */
+  taxonomyRefreshToken: number,
 ): CmsEditorialEditorPatch | null => {
   if (result.outcome === 'unauthenticated')
     return {
@@ -66,11 +76,18 @@ export const refusalPatch = (
     const fieldIds = cmsEditorialViolationsFrom(result.errorDetails).flatMap(
       (violation) => (violation.fieldId === null ? [] : [violation.fieldId]),
     );
+    const termRefusal =
+      result.outcome === 'validation' &&
+      result.status === 422 &&
+      result.reasonCode === 'term_unavailable';
     return {
       phase: 'invalid',
       alert: false,
       refusedFieldIds: fieldIds,
       summaryToken: summaryToken + 1,
+      ...(termRefusal
+        ? { taxonomyRefreshToken: taxonomyRefreshToken + 1 }
+        : {}),
       message:
         cmsEditorialReasonMessage(result.reasonCode) ??
         safeCmsEditorialErrorMessage(result.errorCode ?? 'VALIDATION_FAILED'),

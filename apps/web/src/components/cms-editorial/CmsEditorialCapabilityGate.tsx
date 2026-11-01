@@ -6,6 +6,8 @@ export interface CmsEditorialCapabilityGateProps {
   readonly requestId?: string | null;
   /** The surface the gate stands for; the editor's default names editing. */
   readonly title?: string;
+  /** True when the heading is a focus target of its form (tabindex -1), as a form's named result heading is. */
+  readonly focusable?: boolean;
 }
 
 /**
@@ -18,13 +20,16 @@ const CmsEditorialCapabilityGate = ({
   reason,
   requestId = null,
   title = 'Editing unavailable',
+  focusable = false,
 }: CmsEditorialCapabilityGateProps): React.ReactElement => (
   <section
     className="cms-editorial-gate"
     aria-labelledby={headingId}
     data-cms-editorial-capability-gate="true"
   >
-    <h2 id={headingId}>{title}</h2>
+    <h2 id={headingId} tabIndex={focusable ? -1 : undefined}>
+      {title}
+    </h2>
     <p>{reason}</p>
     {requestId === null ? null : (
       <p className="cms-editorial-request-id">Reference: {requestId}</p>

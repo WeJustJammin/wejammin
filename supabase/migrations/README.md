@@ -498,7 +498,10 @@ races are `../tests/phase_02_slice_10_races/`. Operations: `../../docs/runbooks/
   (`../tests/phase_02_slice_10_locale_fanout_regression.sql`).
 - `011000` the write commands refuse a non-empty taxonomy or media value with the typed
   `taxonomy_source_unavailable` / `media_source_unavailable` and admit the validated field kinds
-  (`../tests/phase_02_slice_10_value_source_refusal.sql`).
+  (`../tests/phase_02_slice_10_value_source_refusal.sql`). The taxonomy producer boundary still
+  holds: no non-empty taxonomy value resolves here, and the refusal stays
+  `taxonomy_source_unavailable` until a Slice 12 registration is implemented and verified. The
+  media `media_source_unavailable` boundary is unchanged.
 - `011100` DEC-139: CMS-03B-12 answers a closed conflict with the same 404 as an absent one.
 - `011200` DEC-140: structural CMS-03B-13 cursor faults are `INVALID_REQUEST`; an expired, tampered or
   foreign cursor stays `CONFLICT`.
@@ -673,6 +676,442 @@ MD5-pinned by these files, so later changes to those functions must also be new 
   applies the keyset order and LIMIT before the four decoration joins and looks the assignment end up per page row. Two MD5-pinned,
   reversible anchors; owner, ACL, `search_path`, comment and signature unchanged. The relationship policies of `170200` are not the
   cause (dropped, the same statistics take 62.6 s against 65.0 s) and are untouched.
+
+### Slice 12 FIX forward migrations (`20261013100000`-`20261013100500`)
+
+CMS-03C-01 (templates), the two template reads and CMS-03C-04 (locale) made to match the locked BE03c text
+(`../../docs/handoffs/2026-10-12-claude-s12/lane-fix-report.md`).
+
+- `100000` (`../tests/phase_02_slice_12_fix_template_per_owner.sql`, `..._key_audience.sql`, `..._populated.sql`): E14 makes
+  `UNIQUE (template_key, version)` per owner, `UNIQUE (owner_id, template_key, version)`: the global constraint answered a second
+  owner's first version of a key with a 409 and so disclosed the key. Adds the lineage id `template_id` (the version-1 row's id,
+  backfilled over the `supersedes_id` chain before `NOT NULL`), `UNIQUE (template_id, version)` and one active version per lineage,
+  and the table CHECKs of E13 (`template_key` not `context`, `versions`, `new`) and E4 (audience `^[a-z0-9_-]{1,48}$`). Runs on a
+  populated table: both CHECKs are added `NOT VALID` and validated only when no row violates them, so a legacy row can never abort
+  the deploy (it just cannot be updated again); the definition CHECK is paused for the backfill UPDATE and restored. The lineage
+  rules are folded into `cms_template_versions_guard()` (no new trigger; the AC215 inventory is unchanged) and the guard moves to
+  the definer role (SEC-2). The text between the `BEGIN/END FIX-TEMPLATE-LINEAGE-DDL` markers is replayed verbatim by the
+  populated-table witness (a vitest fails if the copies differ).
+- `100100`: `cms_template_manifest_valid` takes the audience grammar (E4); every other clause is the body of `20261002210000`.
+- `100200`: `cms_define_template` looks the previous version up inside the caller's owner scope (E14), refuses a reserved key with the
+  typed token `key_reserved` (DETAIL `["/templateKey"]`) and a bad audience with `VALIDATION_FAILED` (DETAIL `["/audience"]`) before any
+  lookup, writes the lineage id and answers it as `templateId`; a stored idempotent response that predates `templateId` is completed.
+- `100300`: `cms_template_latest` answers `templateId` and sets the RPC-context flag it never set (SEC-2: the definer role is held to
+  the forced CMS policies, so over the real API the read found no row and answered NOT_FOUND for the caller's own template; every pgTAP
+  suite missed it because its fixtures leave the flag set, `../tests/phase_02_slice_12_fix_template_reads_rpc_context.sql` starts the
+  request without it). Its `platform_api` wrapper becomes the flag-restoring wrapper of the other CMS reads.
+- `100400` (`../tests/phase_02_slice_12_fix_locale_stale_field_ids.sql`): the CMS-03C-04 command answers and stores
+  `staleFieldIds: []` (LocaleVariantResource, DEC-121) and completes an older stored receipt on replay. A guarded amendment of the LIVE
+  source (two anchors, inverse-replacement proof, attributes unchanged), because `20261010130000` (E7) had already amended the body in
+  place with the settings-snapshot tail.
+- `100500`: the same flag and wrapper for `cms_template_context` (the picker listed no content type and no block over the real API).
+
+## Slice 12 authoring-context `typeKey` projection (`20261020203606`)
+
+`20261020203606` adds the server-derived `typeKey` to the author-safe CMS-03B-14
+`AuthoringContextType` projection. It replaces only
+`platform_private.cms_authoring_context_type(uuid)`, body-for-body equal to the
+Slice 10 definition in `20261005010800` plus `'typeKey', type_row.type_key` taken
+from the joined `cms_content_types` row; the language, `STABLE` behavior, the
+fixed empty `search_path`, the compiled-artifact/owner/hash and version-row
+joins, the existing fields, the `wejammin_cms_definer` owner and the
+private-helper ACL (revoked from PUBLIC, `anon`, `authenticated` and
+`service_role`; executable only by the owning definer) are unchanged. No table,
+public wrapper, grant, audit/outbox effect or request argument is added or
+removed, and the RPC identity and signature are unchanged.
+
+The member is required, so this is a coordinated strict-response-parser
+migration: the projection, the shared contract and every first-party consumer are
+promoted together, never as a compatible mixed-version release.
+
+**Status: UNRUN.** The migration and its pgTAP coverage
+(`../tests/phase_02_slice_10_authoring_context_type_key.sql`) are authored but
+have not been applied or executed — the native/database prerequisites are blocked
+— so this section claims no database, gate or acceptance-criteria pass. The
+existing `../tests/phase_02_slice_10_authoring_context.sql` was not run in this
+continuation, and this note makes no claim about earlier runs.
+
+## Slice 12 joint promotion of 2026-10-23 (80 migrations)
+
+Eighty migrations from fourteen reviewed WIP lanes were promoted from `supabase/migrations-wip/` into this directory on
+2026-10-23. The sources and SHA-256 values are recorded in
+`../../docs/handoffs/2026-10-22-claude-s12/evidence/promotion-manifest-20261023.json`. Their timestamps lie between
+`20261014050600` and `20261022120000`, so several sort before `20261020203606`. A local database that already applied
+`20261020203606` must apply the missing earlier files with `supabase migration up --include-all`; a fresh
+`supabase db reset` applies them in filename order. The fourteen sections below follow timestamp order of each lane's
+first file. Behavior is specified by BE03c, BE03b and the DEC-NNN records in `.memory/wiki/decisions.md` (later records
+are in `.memory/raw/events/`); the pgTAP coverage is `../tests/phase_02_slice_12_*.sql`.
+
+### Slice 12 locale preflight gate (`20261014050600`-`20261014050700`)
+
+The `locale` category of the publication preflight (BE03c "Locale preflight provider" and "Preflight providers registered
+by Slice 12"; BE03b "Publication preflight registry"; P2-S12-AC-051, AC-052, AC-152, AC-240, AC-241; DEC-121, DEC-138,
+DEC-192). Promoted together on 2026-10-23; a local database that already applied `20261020203606` needs
+`supabase migration up --include-all`. Tests: `../tests/phase_02_slice_12_locale_gate.sql`.
+
+- `20261014050600_cms_locale_no_fallback_gate.sql`: provider body `cms_locale_no_fallback_gate(revision, phase)`. It
+  evaluates every active `no_fallback` field of the revision's schema version for the revision's locale in one statement
+  and fails the category with `no_fallback_missing` or `no_fallback_stale` plus a blocking count. Otherwise a revision
+  that is a locale variant fails with `locale_variant_not_approved` unless its effective state is approved, scheduled or
+  published (DEC-192); the check applies in the schedule, publish and execute phases, never at submit. Private, STABLE,
+  `SECURITY DEFINER`, owned by the CMS definer.
+- `20261014050700_cms_preflight_locale_provider.sql`: a guarded anchored amendment of the live `cms_evaluate_preflight`
+  dispatches the `locale` category to the gate before the generic `preflight.<category>` key check, then registers
+  provider `cms.locale.no_fallback_gate` version 1 as registry version 2 for the category (kind `database`), replacing
+  the reference-gate row. The `route`, `media` and `privacy` rows stay on the reference gate. The seeding release
+  record id is the fixed namespaced value for DEC-138.
+
+### Slice 12 pattern updates (`20261014140000`-`20261014140610`)
+
+CMS-03C-14 (the typed three-way update diff) and CMS-03C-15 (accept or detach of 1 to 32 linked pattern instances), with
+the pending-version column of AC-258 (BE03c "Pattern versions and linked updates" and "Canonical records"; P2-S12-AC-112
+to AC-123, AC-219, AC-258, AC-261; DEC-181, DEC-185, DEC-186, DEC-193). Promoted together on 2026-10-23; a local database
+that already applied `20261020203606` needs `supabase migration up --include-all`. The CMS-03C-13 selector pair
+`20261014140300`/`20261014140310` was in this directory before this promotion, and the earlier WIP CMS-03C-14 reader
+`140400` was folded into `20261016040300` (DEC-215). Tests: `../tests/phase_02_slice_12_pattern_update_diff.sql`,
+`../tests/phase_02_slice_12_pattern_updates.sql`.
+
+- `20261014140000_cms_composition_instance_pending_version.sql`: nullable `pending_pattern_version` on composition rows,
+  non-null exactly when `state = 'pending_diff'`. Existing rows carry NULL, so populated tables migrate.
+- `20261014140100_cms_pattern_update_nodes.sql`: `cms_pattern_update_nodes(owner, forest, visited, strict)` expands a
+  pattern version into its block nodes with key chains, like the placement expander; `strict = true` requires every
+  nested pinned version to be active, `false` only that it exists (the base of a diff).
+- `20261014140200_cms_pattern_update_plan.sql`: `cms_pattern_update_target` and the DEC-193 writer plan
+  `cms_pattern_update_plan` (exact flat-slot base and target root snapshots, typed collision delta, pinned and target
+  metadata). Only the head of a path that is linked and `active` or `pending_diff` is offered a target.
+- `20261014140410_cms_get_instance_update_diff_public.sql`: the `platform_api` transport of CMS-03C-14 (a safe read);
+  `service_role` only, restores the RPC-context flag. The private reader is `20261016040300`.
+- `20261014140500_cms_pattern_update_check.sql`: the store-free request check of CMS-03C-15, run first so a malformed
+  request takes no lock and no idempotency key; the choices-path grammar allows up to 72 segments and 4680 characters
+  (DEC-193).
+- `20261014140550_cms_pattern_update_next_row.sql`: `cms_pattern_update_next_row`, the row appended per instance at the
+  next version, same position; one pure base/local/target resolution decides it (accept adopts the target pin, a removed
+  target root retires the row with its prior pin, detach keeps the prior pin).
+- `20261014140600_cms_apply_pattern_update.sql`: the CMS-03C-15 private command for an assigned author or editor,
+  all-or-nothing over the current draft revision; returns `{ items, entryVersion }`. A named row that is not the newest
+  of its path is 422 at its `instanceId`; only a stale head `expectedVersion` is 409.
+- `20261014140605_cms_apply_pattern_update_closure.sql`: owner, ACL and table privileges of the command and its
+  privilege closure, split out to keep each file under 300 lines.
+- `20261014140610_cms_apply_pattern_update_public.sql`: the Worker transport; a deadlock or lock timeout becomes the
+  retryable `CONFLICT` token and the sub-transaction rolls back, so the same `Idempotency-Key` may be retried.
+
+### Slice 12 DEC-194 taxonomy merge recovery (`20261014190010`-`20261014190050`)
+
+The bounded automatic sweep that re-requests a failed `cms.taxonomy.merge_converge` job (DEC-194; DEC-212 for the table
+name; BE03c "Merge convergence recovery" and "Slice 12 lock order"; P2-S12-AC-226). Promoted together on 2026-10-23; a
+local database that already applied `20261020203606` needs `supabase migration up --include-all`. Tests:
+`../tests/phase_02_slice_12_dec194_sweep.sql`; races: `../tests/phase_02_slice_12_dec194_*.race.mjs`.
+
+- `20261014190010_cms_reconcile_taxonomy_merge_converge_public.sql`: `platform_api` wrapper of the sweep; no request
+  members, answers `{ requested }` (a count), `service_role` only, a lock failure is the typed retryable `CONFLICT`;
+  called from the Worker scheduled tick.
+- `20261014190020_cms_taxonomy_merge_recovery_identity.sql`: `platform_private.taxonomy_merge_recoveries` (durable
+  failed-job to accepted-job identity, independent of BE00 receipt TTL; outside the `cms_` namespace per DEC-212; forced
+  RLS, no API-role grant) and the per-acting-party enqueue mutex `cms_taxonomy_merge_enqueue_lock`.
+- `20261014190030_cms_taxonomy_merge_request_serialized.sql`: replaces `cms_act_taxonomy_term` and
+  `cms_request_taxonomy_merge_converge` so a merge takes the mutex after the position-1 authority lock and before the
+  idempotency reservation and the vocabulary and term locks; the late enqueue takes the same key again.
+- `20261014190040_cms_taxonomy_merge_handler_serialized.sql`: replaces `cms_run_taxonomy_merge_converge` so the claimed
+  continuation takes position-1 authority before the mutex, rereads the claim after each wait, and rolls back
+  provisional effects if a late receipt wait loses the claim.
+- `20261014190050_cms_taxonomy_merge_recovery_serialized.sql`: the single definition of the sweep body. Per party with a
+  failed job, merged-term work and no queued or running job it requests one fresh job under a key derived from the failed
+  job's id, at most one per party per 15 minutes, stopping after 3 consecutive failed generations, and records each
+  reconciled failed job once in `taxonomy_merge_recoveries`.
+
+### Slice 12 DEC-195 related-content read (`20261014200000`-`20261014200010`)
+
+`cmsRelatedContentRead`, the protected read of a source entry's saved related-content rule (DEC-195; BE03c route
+registry, validation matrix and error matrix; P2-S12-AC-060 to AC-063, AC-261). Promoted together on 2026-10-23; a local
+database that already applied `20261020203606` needs `supabase migration up --include-all`.
+
+- `20261014200000_cms_get_related_content.sql`: private `cms_get_related_content(jsonb)` answering the strict
+  `{ rule }` of the source's current active rule set, else `{ "rule": null }`; a malformed `entryId` is
+  `INVALID_REQUEST` before any authority or existence answer.
+- `20261014200010_cms_get_related_content_public.sql`: the `platform_api` transport; `service_role` only, restores the
+  RPC-context flag.
+
+### Slice 12 DEC-197 receiving contracts (`20261016030000`)
+
+Receiving storage for DEC-197 (BE04a registry and lifecycle entry, BE04c registry); no compiler, delivery writer, API RPC,
+policy, principal or seed data. Promoted together on 2026-10-23; a local database that already applied `20261020203606`
+needs `supabase migration up --include-all`. Tests: `../tests/phase_02_slice_11_delivery_receiving.sql`.
+
+- `20261016030000_delivery_receiving_contracts.sql`: creates `platform_private.route_manifest_version` (one active row,
+  guard function and trigger) and `platform_private.publication_projection`, both with forced RLS and no API-role
+  access, then adds two validated foreign keys from `projection_consumer_state` to the projection. Any orphan consumer
+  row aborts the transaction and rolls back all of it.
+
+### Slice 12 DEC-193 snapshot, diff, writer, carry, provider and restore migrations (`20261016040000`-`20261017044800`)
+
+Detached local-tree snapshots and the linked-update accept and detach path on top of them (DEC-193), with the related
+carry, publication-currentness and restore amendments (DEC-198, DEC-199, DEC-200, DEC-201, DEC-209; DEC-210 for the
+block-rule call in the registry file; DEC-215 for the history squash). Promoted together on 2026-10-23; a local database
+that already applied `20261020203606` needs `supabase migration up --include-all`. No superseded intermediate function
+body is carried: the squash lists are in `../../docs/handoffs/2026-10-22-claude-s12/lane-squash-report.md`. Tests:
+`../tests/phase_02_slice_12_dec193_*.sql`.
+
+- `20261016040000_cms_detached_tree_storage.sql`: nullable `detached_tree` column, the pure validator
+  `cms_detached_tree_valid(jsonb)` and its row CHECK.
+- `20261016040100_cms_pattern_diff_delta.sql`: store-free typed delta over ordered expanded block forests for CMS-03C-14.
+- `20261016040200_cms_pattern_diff_plan.sql`: CMS-03C-14 planner with exact flat template-slot prefix binding, no writes
+  or locks.
+- `20261016040300_cms_get_instance_update_diff_dec193.sql`: the single private CMS-03C-14 reader
+  `cms_get_instance_update_diff(jsonb)`.
+- `20261016040400_cms_pattern_slot_exact.sql`: forward clone of the placement producer so a template-bound placement
+  names one exact flat slot.
+- `20261016040500_cms_pattern_snapshot_expanded.sql`: pure canonical-snapshot representation for internal resolution.
+- `20261016040600_cms_pattern_update_resolve.sql`: pure simultaneous per-selector resolution seam for accept.
+- `20261016040700_cms_pattern_root_snapshot.sql`: writer adapter for one real expanded block root with exact flat-slot
+  binding.
+- `20261016040800_cms_detached_tree_registry.sql`: canonical-content registry validation of a detached tree, including
+  the DEC-210 block-rule check.
+- `20261016041200_cms_composition_instance_content.sql`: shared private content image of an instance row; the legacy
+  NULL-tree image is unchanged.
+- `20261016041300_cms_composition_instance_resource_dec193.sql`: public instance resource; only the private content-hash
+  image changes.
+- `20261016041700_cms_preflight_effective_security.sql`: the security preflight provider counts only effective stored
+  content.
+- `20261016041900_cms_revision_comparison_dec193.sql`: revision comparison reads the newest immutable composition row
+  before state filtering (DEC-198).
+- `20261016042000_cms_composition_carry_provenance.sql`: nullable private immediate carry provenance (DEC-198, DEC-200).
+- `20261016042100_cms_revision_composition_carry.sql`: ordinary revision carry planner and writer, not restore.
+- `20261016042200_cms_revision_composition_carry_rpcs.sql`: carry wired into `cms_create_revision` and
+  `cms_resolve_conflict`; conflict resolution carries from the entry's current draft (`theirs`), not the base (DEC-209).
+- `20261016042300_cms_revision_effective_composition.sql`: read adapters for the effective composition of a revision.
+- `20261016042400_cms_composition_dependency_manifest_dec193.sql`: dependency manifest amends only the composition block
+  and provenance reads.
+- `20261016042500_cms_revision_render_plan_dec193.sql`: render plan keeps its six columns and derivations over the
+  effective composition.
+- `20261016042600_cms_accessibility_composition_dec193.sql`: accessibility check amends only the block payload lookup.
+- `20261016043400_cms_pattern_placement_roots_check.sql`: request guard for the optional expanded block-root selectors
+  (`roots`) of CMS-03C-02.
+- `20261016043500_cms_pattern_placement_selected_plan.sql`: placement plan expands the whole pin, then selects block
+  roots in forest order.
+- `20261016043600_cms_pattern_placement_path_allocation.sql`: path and position allocation, newest head first; retired
+  paths reuse their position.
+- `20261016043700_cms_insert_pattern_selected_roots.sql`: five exact live-source amendments wiring selected roots into the
+  CMS-03C-02 producer.
+- `20261016044000_cms_pattern_registry_digest_readonly.sql`: read-only registry digest for publication currentness
+  (DEC-199).
+- `20261016044100_cms_pattern_live_pin_reason.sql`: the closed publication reason of one live pattern pin (DEC-199).
+- `20261016044200_cms_pattern_active_digest.sql`: the `cms.pattern.active_digest` effective composition pattern provider
+  (DEC-199).
+- `20261016044300_cms_revision_manifest_currentness.sql`: revision-aware frozen-manifest currentness over the effective
+  pattern provider.
+- `20261016044400_cms_preflight_pattern_provider.sql`: installs the pattern provider row and dispatches it before the
+  shared `preflight.<category>` key guard.
+- `20261017044500_cms_restore_composition_plan.sql`: restore heads bound to the source and activity-neutral dependency
+  refs (DEC-201).
+- `20261017044510_cms_restore_composition_lock_plan.sql`: restore dependency lock planner over the previous file's heads
+  and refs.
+- `20261017044600_cms_restore_composition_registry.sql`: read-only restore repin after the planner's dependency
+  position 3.
+- `20261017044700_cms_restore_composition_copy.sql`: private restore copy after the caller's early dependency and schema
+  locks.
+- `20261017044705_cms_restore_composition_copy_acl.sql`: ownership, ACL and trusted-closure proof of the restore copy,
+  split from `044700` for the file-size limit.
+- `20261017044800_cms_restore_composition_integration.sql`: restore integration; amends only the post-E7 body of
+  `cms_restore_revision(jsonb)`.
+
+### Slice 12 DEC-202 default template (`20261022010000`-`20261022010100`)
+
+The first revision's template pin comes from the exact authorized active content-type version's stored default (DEC-202;
+BE03b "Initial revision default template (CMS-03B-10, DEC-202)" and "Write-path lock order" row 3; P2-S12-AC-286 to
+AC-296). Promoted together on 2026-10-23; a local database that already applied `20261020203606` needs
+`supabase migration up --include-all`. Tests: `../tests/phase_02_slice_12_entry_default_template.sql`.
+
+- `20261022010000_cms_entry_default_template_helpers.sql`: private `cms_lock_default_template_shared` (`FOR SHARE` on the
+  exact same-owner default template version) and `cms_entry_default_template_gate`, which runs the existing
+  compatibility resolver and maps only its three expected refusals to 404, 422 and 409.
+- `20261022010100_cms_create_entry_default_template.sql`: four guarded anchored amendments of the live
+  `cms_create_entry` (declaration, schema lock moved after the relation-target loop, default lock then content-type
+  version lock, the first revision inserts the resolved default instead of NULL).
+
+### Slice 12 DEC-205 locale-variant read (`20261022020000`-`20261022020010`)
+
+`cmsLocaleVariantRead`, the protected read of one entry's current locale variant for the translation form (DEC-205;
+BE03c epic index CMS-15, route registry, validation matrix and `LocaleVariantRead`; P2-S12-AC-058, AC-152, AC-234,
+AC-270). Promoted together on 2026-10-23; a local database that already applied `20261020203606` needs
+`supabase migration up --include-all`.
+
+- `20261022020000_cms_get_locale_variant.sql`: private `cms_get_locale_variant(jsonb)` answering the strict
+  `{ locale, activeFallbackChain, variant, fields, resolutions }`; a malformed `entryId` or locale is `INVALID_REQUEST`
+  before authority.
+- `20261022020010_cms_get_locale_variant_public.sql`: the `platform_api` transport; `service_role` only, restores the
+  RPC-context flag.
+
+### Slice 12 governed review recheck (`20261022030000`-`20261022030300`)
+
+Governed review invalidation: P2-S12-AC-202 (producers enqueue `cms.governed_review.recheck`), AC-203 (the bounded
+recheck run), AC-204 (reviewer-authority invalidation in the revoking or ending transaction); DEC-207 amends AC-202 so a
+grant revocation invalidates synchronously and never enqueues the recheck. Spec: BE03c "Governed review machinery" and
+"Slice 12 lock order"; BE03b "Review invalidation". Promoted together on 2026-10-23; a local database that already
+applied `20261020203606` needs `supabase migration up --include-all`. The companion fix `20261022120000` (DEC-221) is the
+last section below. Tests: `../tests/phase_02_slice_12_governed_recheck.sql`.
+
+- `20261022030000_cms_governed_recheck_verdict.sql`: `cms_governed_recheck_verdict(review)` answering current,
+  dependency_changed or reviewer_authority_changed.
+- `20261022030100_cms_recheck_governed_reviews.sql`: `cms_recheck_governed_reviews(request)` and its `platform_api`
+  wrapper; one bounded run, subject lock first, one failing review isolated.
+- `20261022030200_cms_invalidate_governed_reviews_for_person.sql`: `cms_invalidate_governed_reviews_for_person(person,
+capability)`, its per-candidate step `cms_governed_invalidate_review_if_live` (subject lock, re-read, skip a review no
+  longer live: DEC-221) and the two AFTER UPDATE or DELETE triggers (actor grant, membership tenure).
+- `20261022030300_cms_governed_recheck_resolve_event.sql`: `cms_governed_recheck_resolve_event(event)`, the producers'
+  event resolver.
+
+### Slice 12 DEC-206 composition instances read (`20261022050000`-`20261022050010`)
+
+`cmsCompositionInstancesRead`, the protected read of the composition instances of an entry's current draft revision
+(DEC-206, aligned to BE00 collection rules; BE03c route registry row 182 and validation row 409; P2-S12-AC-269).
+Promoted together on 2026-10-23; a local database that already applied `20261020203606` needs
+`supabase migration up --include-all`. Tests: `../tests/phase_02_slice_12_composition_instances_read.sql`.
+
+- `20261022050000_cms_list_composition_instances.sql`: private keyset reader `cms_list_composition_instances(jsonb)`
+  answering the strict page `{ revisionId, items, nextCursor }`; the cursor is unsigned at this layer.
+- `20261022050010_cms_list_composition_instances_public.sql`: `cms_list_composition_instances_signed`, which verifies the
+  signed context-bound cursor (domain `cms-03c-instances`) and signs the next one, and the `platform_api` transport
+  (`service_role` only, restores `app.cms_rpc`). A cursor fault answers `INVALID_REQUEST`.
+
+### Slice 12 DEC-210 block composition rules (`20261022080000`-`20261022080500`)
+
+`allowedChildren` and `slotRules` of the pinned block versions are enforced at the CMS-03C-12 save, the CMS-03C-02
+placement, the CMS-03C-15 accept and detach, and by the `cms.pattern.active_digest` provider (DEC-210; BE03c "Block
+composition rules (DEC-210)"). Promoted together on 2026-10-23; a local database that already applied `20261020203606`
+needs `supabase migration up --include-all`. The writer `20261016040800` raises `block_rules_violated` through the shared
+check. To add an operation, call the shared enforcers from its producer by an anchored patch and add the RED pgTAP in
+`../tests/phase_02_slice_12_block_rules/`.
+
+- `20261022080000_cms_block_rules_core.sql`: the pure `cms_block_rules_violation` and the registry rules map
+  `cms_block_rules_registry`.
+- `20261022080100_cms_block_rules_trees.sql`: tree adapters and the enforcers (`cms_block_rules_enforce_save`,
+  `cms_block_rules_enforce_plan`, `cms_detached_tree_block_rules`, the pointer resolver).
+- `20261022080200_cms_create_pattern_version_block_rules.sql`: anchored patch of the installed
+  `cms_create_pattern_version`.
+- `20261022080300_cms_insert_pattern_instance_block_rules.sql`: anchored patch of the installed
+  `cms_insert_pattern_instance`, after the DEC-193 selected roots.
+- `20261022080400_cms_apply_pattern_update_block_rules.sql`: anchored patch mapping the writer refusal to
+  `/instances/{i}/choices` or `/instances/{i}`.
+- `20261022080500_cms_pattern_active_digest_block_rules.sql`: anchored patch of the DEC-193 pattern provider.
+
+### Slice 12 DEC-208 locale observability (`20261022100000`-`20261022100020`)
+
+Database-side locale observability (DEC-208 owner decision, DEC-213 mechanism, DEC-216 active entries only, DEC-219 cost
+bound; BE03c Observability, "Database-side locale observability (DEC-208)"). The Worker reads, once per minute on its
+scheduled tick, the window `[T - 3 min, T - 2 min)` of the source-change fan-out and the count of stale `no_fallback`
+fields on current locale variants. Promoted together on 2026-10-23; a local database that already applied `20261020203606`
+needs `supabase migration up --include-all`. Tests: `../tests/phase_02_slice_12_locale_observability.sql`; Worker:
+`apps/worker/src/cms-composition/locale-observability.ts`. The answer is closed (three integers); extend the reader and
+the strict parser in `locale-observability.ts` together.
+
+- `20261022100000_cms_locale_variants_observability_indexes.sql`: `INDEX(state, created_at)`,
+  `INDEX(entry_id, lower(locale), version DESC, created_at DESC, id DESC)` and, from the DEC-219 plan diagnostic,
+  `INDEX(entry_id, locale, version DESC, created_at DESC, id DESC)` (under forced RLS `lower()` is not leakproof, so the
+  gauge skip scan uses the plain column).
+- `20261022100005_cms_locale_stale_legal_field_count.sql`: private helper `cms_locale_stale_legal_field_count`, the gauge
+  as a recursive skip scan from the active entries.
+- `20261022100010_cms_locale_observability_read.sql`: private `SECURITY DEFINER` reader
+  `cms_locale_observability_read`; sets the transaction-local RPC context, counts active entries only, answers
+  `VALIDATION_FAILED` on a malformed window, no function-level `statement_timeout`.
+- `20261022100020_cms_locale_observability_read_public.sql`: internal `platform_api` transport, `service_role` only,
+  restores the caller's `app.cms_rpc`, no browser operation id.
+
+### Slice 12 linked-update scan (`20261022110000`-`20261022110300`)
+
+The database half of the platform-queue job `cms.pattern.linked_update_scan` (P2-S12-AC-212, AC-213; BE03c "Linked update
+(diff, accept, detach)", "Job transport (DEC-166, DEC-180 G9)", "Slice 12 lock order" and "Event schemas"
+`cms.pattern.activated.v1`). Promoted together on 2026-10-23; a local database that already applied `20261020203606`
+needs `supabase migration up --include-all`. Tests: `../tests/phase_02_slice_12_linked_scan.sql`.
+
+- `20261022110000_cms_linked_scan_request.sql`: `cms_linked_scan_request(request)`: exact keys, batch of 1 to 500 and the
+  decoded opaque cursor `<entry uuid>.<hex of the path>`.
+- `20261022110050_cms_pattern_update_next_row_pending.sql`: anchored forward patch of `cms_pattern_update_next_row`
+  adding the `pending` action, the one writer of the `pending_diff` row.
+- `20261022110100_cms_scan_linked_pattern_updates.sql`: `cms_scan_linked_pattern_updates(request)`, one bounded
+  idempotent run (at most 500 instances, ascending entry id then bytewise path) in the Slice 12 lock order.
+- `20261022110200_cms_scan_linked_pattern_updates_api.sql`: the `platform_api` wrapper; `service_role` only, restores
+  `app.cms_rpc`, a deadlock or lock failure is the retryable `CONFLICT`.
+- `20261022110300_cms_linked_scan_resolve_event.sql`: `cms_linked_scan_resolve_event(event)`, the producer's resolver of a
+  `cms.pattern.activated.v1` row to `{ patternId, patternVersionId }`.
+
+### Slice 12 governed frozen-status lock failures (`20261022120000`)
+
+The Review V4 follow-up for the governed recheck (DEC-221; BE03c "Governed review machinery" Invalidation, changelog row
+"Governed lock failures and revocation races"). Promoted together on 2026-10-23, after and with the governed recheck
+files; a local database that already applied `20261020203606` needs `supabase migration up --include-all`. Tests:
+`../tests/phase_02_slice_12_governed_recheck.sql`.
+
+- `20261022120000_cms_governed_frozen_status_lock_failures.sql`: anchored patch of the live
+  `platform_private.cms_governed_frozen_status(uuid)` so the handler around the digest recomputation re-raises
+  `deadlock_detected` (40P01) and `lock_not_available` (55P03); the recheck run, the decision and the activation then
+  answer the retryable `CONFLICT`. Every other digest error is still `changed`. `57014` is not named because PL/pgSQL
+  `when others` never traps it.
+
+### Slice 12 race fix: publication pattern-dependency locks (`20261023100000`-`20261023100100`)
+
+Promoted on 2026-10-23 after the first canonical run of `supabase/tests/phase_02_slice_12_dec199_publication.race.mjs` showed that schedule (CMS-03B-07), publish (CMS-03B-09) and execute (CMS-03B-20) never locked the PatternVersion rows the DEC-199 pattern provider reads (DEC-224; BE03c "Slice 12 lock order"). A local database that already applied `20261020203606` needs `supabase migration up --include-all`.
+
+- `20261023100000_cms_lock_revision_pattern_dependencies.sql` — private helper: `FOR SHARE`, ascending id, on the live pattern roots and nested versions of one revision (a row with a nonnull `detached_tree` pins none; a missing revision locks nothing).
+- `20261023100100_cms_publication_pattern_dependency_locks.sql` — anchored amendment (exactly-once anchor, inverse check, attributes unchanged) of `cms_publication_lock_review(uuid)` and `cms_schedule_lock_review(uuid,uuid)` to call the helper before position 4.
+
+pgTAP: `supabase/tests/phase_02_slice_12_race_fixes_pattern_locks.sql`; the wait itself is proven by the DEC-199 race module.
+
+### Slice 12 gap wave promotion of 2026-10-29 (`20261024100000`-`20261027100020`)
+
+Five reviewed WIP directories promoted together in timestamp order (manifest
+`docs/handoffs/2026-10-22-claude-s12/evidence/promotion-manifest-wave3.json`, script `…/evidence/promote-wave3.sh`); a local
+database that already applied a later file needs `supabase migration up --include-all`.
+
+- `20261024100000`-`100800` taxonomy assignment integrity (DEC-141 receiving obligations, DEC-229, DEC-233; review V12,
+  verified): `cms_resolve_taxonomy_version`, the `cms.taxonomy.assignment_integrity` preflight provider (registry row 2),
+  the taxonomy value encoder (`term_unavailable`, duplicates refused), restore carry with merged-term re-pointing, and the
+  position-6 `FOR SHARE` term locks in every assigning writer. Tests: `../tests/phase_02_slice_12_taxonomy_integrity*.sql`
+  (incl. `_acl`, `_lock_order` and the dblink `_concurrency` file, which commits and removes its own fixture).
+- `20261024130000`-`130400` gap-test defects (review V13, verified): the governed lifecycle columns move only through the
+  governed writers (AC-195, incl. `updated_at`), the relay claims the exact Slice 12 aggregate types (AC-248), CMS-03C-01
+  lock positions 1 and 4 and CMS-03C-16 position 4 (AC-276), and every writer wrapper answers a deadlock or lock timeout as
+  the retryable `CONFLICT`. Tests: `../tests/phase_02_slice_12_gaps_*.sql` (the `_lock_position4_race` dblink file runs alone).
+- `20261024140000`-`140100` CMS-03C-12 node pointers (DEC-228; review V13): cycle, depth and node-count refusals name the
+  offending request node. Tests: `../tests/phase_02_slice_12_gaps_node_pointers.sql`.
+- `20261024150000`-`150400` placement performance (defect D1, BE03c "512-node pattern bounds … RPC <300ms"; review V14):
+  set-based path allocation, a linear block-rules scan, a single-query effective state and hashed resource images; behaviour
+  identical (equivalence suite against verbatim copies of the old bodies). Tests:
+  `../tests/phase_02_slice_12_placement_perf_*.sql`, bench `../tests/phase_02_slice_12_gaps_perf_patterns.sql`.
+- `20261027100000`-`100020` `cmsPatternNestableRead` (owner DEC-196, root DEC-232/DEC-234; review V14, verified): the
+  designer-only read of nestable patterns and the reserved pattern key `nestable` (the CHECK re-add first refuses with a
+  named 55000 if a stored key is `nestable`; before deploying, confirm none exists on the target database). Tests:
+  `../tests/phase_02_slice_12_nestable_read*.sql`.
+
+### Canonical registry provider pair of 2026-10-29 (`20261029110000`)
+
+`20261029110000` adds `CHECK ((provider_key IS NULL) = (provider_version IS NULL))` to `cms_canonical_domain_registry`, so each
+provider member is non-null exactly when the row is `built` (ratified P2-S12-AC-256; BE03c Canonical records as amended by
+DEC-238). It refuses with SQLSTATE 55000 and changes nothing when a stored row holds only one member, and asserts the installed
+constraints before and after. Lane gaps-db4, refutation 3 verification round PROMOTE; manifest
+`docs/handoffs/2026-10-22-claude-s12/evidence/promotion-manifest-db4.json`, script `…/evidence/promote-db4.sh`. Tests:
+`../tests/phase_02_slice_12_gaps_db4_registry.sql`.
+
+### Restore records only carried vocabularies of 2026-10-29 (`20261029130000`)
+
+`20261029130000` patches `platform_private.cms_restore_term_plan` (anchored, with a byte-for-byte inverse check, statement
+timeout and typed 55000 refusals): a restore records exactly one current active version id per vocabulary with a carried
+assignment, ascending bytewise, as every revision writer does; a source-recorded version whose vocabulary has no carried
+assignment is no longer carried (BE03c Receiving obligations item 3, root DEC-240). It supersedes the comment marker in
+`20261024100700`. The pin check that refuses an unresolvable recorded version is unchanged. Lane gaps-db5 (review V16
+conditions met); manifest `docs/handoffs/2026-10-22-claude-s12/evidence/promotion-manifest-db5.json`, script
+`…/evidence/promote-db5.sh`. Tests: `../tests/phase_02_slice_12_gaps_db5_restore_versions.sql`; corrected oracles
+`../tests/phase_02_slice_10_ev_ea_lineage.sql` (test 9) and `../tests/phase_02_slice_12_taxonomy_integrity/050-restore.sqlinc`.
+
+### Designer context lists platform blocks of 2026-10-29 (`20261029150000`)
+
+`20261029150000` drops the owner predicate from `platform_private.cms_template_context` (anchored, byte-for-byte inverse check,
+lock and statement timeouts, typed refusals): `cmsTemplateContextRead` lists every registered, currently supported block (at
+most 128, C-collation order), because a CMS-03A-05 block is owned by its release principal and never by an organization (root
+DEC-243; the Slice 09 ruling of `20261002209000`, P2-S09-AC-145). Before it the template and pattern designers' block choosers
+were empty on the real stack. Lane block_owner (RED proof, then fix), review V18; manifest
+`docs/handoffs/2026-10-22-claude-s12/evidence/promotion-manifest-block-owner.json`. Tests:
+`../tests/phase_02_slice_12_block_owner_red.sql`; corrected oracles in `../tests/phase_02_slice_12_gaps_db1_template.sql`
+(AC-159 block section). Open: the 128 cap is now platform-wide (review V18 MINOR-3).
 
 ## Related links
 

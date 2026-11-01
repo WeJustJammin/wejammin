@@ -1,0 +1,1744 @@
+[
+  {
+    "criterion": "P2-S12-AC-039",
+    "contingent": "c2 \"Idempotency-Key 8-128 printable ASCII\" is verified only once the older per-route tests of CMS-03C-01..-05 and -15 (and the missing/short sides of -06, -07, -09, -12) in missedTests are cited next to the 27: the 27 prove 6 of the 12 mutation operations (-06, -07, -08, -09, -12, -16).",
+    "citations": [
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+        "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-06 a key of 129 characters is 400 INVALID_REQUEST before any quota or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:34-50 - CMS-03C-06 submit through the production governed routes with a 129-character key: 400 INVALID_REQUEST and expectNoWork (rateLimit and fetchImpl never called). The request builder is the one governed-review-headers.test.ts:40-44 sends with the default key to a 201, so the key is the only difference. Mutation-sensitive: a ceiling of 129+ answers 201 and calls the port. Proves the 129 side of \"8-128\" for this route.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+        "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-06 a key of a control character is 400 INVALID_REQUEST before any quota or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:34-50 - same test, key \"idempotency\\u0001key-001\" (a control character; Headers keeps U+0001 intact, checked with node): 400 and no work. A regex wider than [\\x20-\\x7E] (packages/contracts/src/request-navigation-security.ts:44-52) would let it through.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+        "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-07 a key of 129 characters is 400 INVALID_REQUEST before the capability check, any quota or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:52-68 - CMS-03C-07 decision, 129-character key, reviewerHarness: 400 INVALID_REQUEST and no quota token or port call. Same assertion as row 0 on the decision route.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+        "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-07 a key of a control character is 400 INVALID_REQUEST before the capability check, any quota or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:52-68 - CMS-03C-07 decision, control-character key: 400 INVALID_REQUEST, no work.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+        "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-09 a key of 129 characters is 400 INVALID_REQUEST before the capability check, MFA, any quota or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:70-86 - CMS-03C-09 activation, 129-character key, activationHarness({ stepUpAt: null }): the answer is the 400 and not the 401 STEP_UP_REQUIRED the same caller would otherwise get, so the key parse is shown to precede the MFA gate as well; no quota, no port.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+        "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-09 a key of a control character is 400 INVALID_REQUEST before the capability check, MFA, any quota or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:70-86 - CMS-03C-09 activation, control-character key: 400 before MFA, no work.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+        "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-12 a key of 129 characters is 400 INVALID_REQUEST before any quota or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:88-103 - CMS-03C-12 pattern definition write, 129-character key: 400 INVALID_REQUEST, rateLimit and fetchImpl not called.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+        "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-12 a key of a control character is 400 INVALID_REQUEST before any quota or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:88-103 - CMS-03C-12, control-character key: 400, no work.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+        "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-07 a 128 character printable key is inside the bound and reaches the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:105-114 - CMS-03C-07 with a 128-character '~' key (0x7E, the top of the printable range): 200 and exactly one provider call. With row 2 (129 refused) it pins the upper bound on the decision route to exactly 128, inclusive. A positive case is itself the clause (\"8-128\" is an accepted range).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 missing Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:43-57 (MALFORMED table :24-31) - CMS-03C-08 assignment, header absent. requestWith (governed-review-ops.test-support.ts:64-79) DELETES the header for null, so this really sends no key (not the string \"null\"). 400 INVALID_REQUEST and expectNoWork.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 7 characters Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:43-57 - CMS-03C-08, 7 characters: the exclusive lower edge. Mutation min(7) answers 201.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 129 characters Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:43-57 - CMS-03C-08, 129 characters: the exclusive upper edge.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a control character Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:43-57 - CMS-03C-08, key with U+0001: 400, no work.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a DEL character Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:43-57 - CMS-03C-08, key with DEL (U+007F, one past the regex range; verified with node that Headers keeps it): 400, no work. A range \\x20-\\x7F would accept it.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a non-ASCII character Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:43-57 - CMS-03C-08, key with a non-ASCII character (U+00E9, which Headers accepts as a byte): 400, no work.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a malformed Idempotency-Key from a caller without the capability is the 400, not the 403",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:59-71 - CMS-03C-08, a 5-character key from reviewerSession (no cms.template_designer): the answer is the 400 and not the 403, no quota, no port. Not blind: without the key rule the caller would get the 403. It is the clause's refusal under a second caller state (ordering is the extra it shows).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a 8 character printable key is inside the bound and reaches the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:73-85 - CMS-03C-08, 8 characters ('~' x 8): 201 and one port call: the inclusive lower bound (Exact boundary, not a control).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a 128 character printable key is inside the bound and reaches the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:73-85 - CMS-03C-08, 128 characters: 201 and one port call: the inclusive upper bound.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 missing Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:88-101 - CMS-03C-16 taxonomy definition write through createTaxonomyRouteHarness, header absent (withKey deletes it for null, :38): 400 INVALID_REQUEST, rateLimit and createVersion not called.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 7 characters Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:88-101 - CMS-03C-16, 7 characters.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 129 characters Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:88-101 - CMS-03C-16, 129 characters.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a control character Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:88-101 - CMS-03C-16, control character.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a DEL character Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:88-101 - CMS-03C-16, DEL.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a non-ASCII character Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:88-101 - CMS-03C-16, non-ASCII character.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a malformed Idempotency-Key from a caller without the capability is the 400, not the 403",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:103-113 - CMS-03C-16, 5-character key with a session lacking cms.taxonomy_curator: 400, not 403; no quota, no port.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a 8 character printable key is inside the bound and reaches the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:115-126 - CMS-03C-16, 8 characters: 201 and createVersion called once (inclusive lower bound).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+        "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a 128 character printable key is inside the bound and reaches the port",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:115-126 - CMS-03C-16, 128 characters: 201 and createVersion called once (inclusive upper bound).",
+        "fix": null
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "Coverage of \"All\" (c2): 12 operations take an Idempotency-Key (BE03c 150: CMS-03C-01..-09, -12, -15, -16). The proposal cites 6. The other six exist and pass (write-header-order*.test.ts, pattern-update-order.test.ts) but are uncited, so as proposed the ledger would show \"verified\" with no evidence for half of \"All\". c0 and c1 already cite one test per operation.",
+      "Edges at route level: 7/8 and 128/129, DEL and non-ASCII are exercised on CMS-03C-08 and -16 only; -06, -07, -09, -12 carry 129 + control (+128 on -07) and the older \"short\"/missing tests use a 5-character key. Acceptable because every route parses the key through the one IdempotencyKeySchema (request-navigation-security.ts:44-52: min 8, max 128, /^[\\x20-\\x7E]+$/); a per-route divergence at exactly 7/8 on the other ten routes would not be caught.",
+      "Space (0x20) is printable ASCII and IdempotencyKeySchema accepts it inside a key (only a leading or trailing space is refused); no route-level test sends a key with an internal space, so a regex tightened to [\\x21-\\x7E] would pass every cited test. The schema-level case exists (packages/contracts/src/upload-admission.test.ts:62-69) but is not a route test. Optional.",
+      "Defence in depth is unasserted: platform_private.cms_reserve re-checks /^[ -~]{8,128}$/ and raises INVALID_REQUEST (20260930150000:82); no pgTAP case reaches it with a bad key."
+    ],
+    "missedTests": [
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-01 template version': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-01 template version': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-01 template version': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-01 template version': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-02 pattern instance': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-02 pattern instance': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-02 pattern instance': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-02 pattern instance': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-03 taxonomy term action': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-03 taxonomy term action': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-03 taxonomy term action': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order.test.ts",
+          "title": "'CMS-03C-03 taxonomy term action': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order-locale-related.test.ts",
+          "title": "'CMS-03C-04 locale variant': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order-locale-related.test.ts",
+          "title": "'CMS-03C-04 locale variant': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order-locale-related.test.ts",
+          "title": "'CMS-03C-04 locale variant': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order-locale-related.test.ts",
+          "title": "'CMS-03C-04 locale variant': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order-locale-related.test.ts",
+          "title": "'CMS-03C-05 related content': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order-locale-related.test.ts",
+          "title": "'CMS-03C-05 related content': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order-locale-related.test.ts",
+          "title": "'CMS-03C-05 related content': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/write-header-order-locale-related.test.ts",
+          "title": "'CMS-03C-05 related content': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "registerHeaderOrderTests it.each(MALFORMED_KEYS) (write-header-order.test-support.ts:84-96): 400 INVALID_REQUEST, no quota token, no port. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-update-order.test.ts",
+          "title": "'CMS-03C-15 pattern update': header validation precedes capability and quota a longer than 128 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "the same registerHeaderOrderTests table for CMS-03C-15 (pattern-update-order.test.ts). REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON (receipt marked stale there: the file changed since, root re-verifies)."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-update-order.test.ts",
+          "title": "'CMS-03C-15 pattern update': header validation precedes capability and quota a missing Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "the same registerHeaderOrderTests table for CMS-03C-15 (pattern-update-order.test.ts). REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON (receipt marked stale there: the file changed since, root re-verifies)."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-update-order.test.ts",
+          "title": "'CMS-03C-15 pattern update': header validation precedes capability and quota a non-printable ASCII Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "the same registerHeaderOrderTests table for CMS-03C-15 (pattern-update-order.test.ts). REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON (receipt marked stale there: the file changed since, root re-verifies)."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-update-order.test.ts",
+          "title": "'CMS-03C-15 pattern update': header validation precedes capability and quota a shorter than 8 Idempotency-Key is a 400 that consumes no quota and starts no write"
+        },
+        "evidence": "the same registerHeaderOrderTests table for CMS-03C-15 (pattern-update-order.test.ts). REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON (receipt marked stale there: the file changed since, root re-verifies)."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision-input.test.ts",
+          "title": "CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses Idempotency-Key \"café-key-0001\" with 400 before capability and quota"
+        },
+        "evidence": "governed-review-decision-input.test.ts:134-148: 400 before capability and quota. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision-input.test.ts",
+          "title": "CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses Idempotency-Key \"short\" with 400 before capability and quota"
+        },
+        "evidence": "governed-review-decision-input.test.ts:134-148: 400 before capability and quota. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision-input.test.ts",
+          "title": "CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses Idempotency-Key null with 400 before capability and quota"
+        },
+        "evidence": "governed-review-decision-input.test.ts:134-148: 400 before capability and quota. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-activation-admission.test.ts",
+          "title": "CMS-03C-09 transport admission (BE00 order: parse before authority) answers a short Idempotency-Key with 400 before capability, MFA and quota"
+        },
+        "evidence": "governed-activation-admission.test.ts:116-136: 400 before capability, MFA and quota. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-activation-admission.test.ts",
+          "title": "CMS-03C-09 transport admission (BE00 order: parse before authority) answers no Idempotency-Key with 400 before capability, MFA and quota"
+        },
+        "evidence": "governed-activation-admission.test.ts:116-136: 400 before capability, MFA and quota. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-write.test.ts",
+          "title": "CMS-03C-12 pattern definition write contract rejects a missing or invalid idempotency key: bad key"
+        },
+        "evidence": "pattern-definition-write.test.ts:211-223: 400 INVALID_REQUEST, rateLimit and fetchImpl not called. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON (receipt marked stale there: the file changed since, root re-verifies)."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-write.test.ts",
+          "title": "CMS-03C-12 pattern definition write contract rejects a missing or invalid idempotency key: undefined"
+        },
+        "evidence": "pattern-definition-write.test.ts:211-223: 400 INVALID_REQUEST, rateLimit and fetchImpl not called. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON (receipt marked stale there: the file changed since, root re-verifies)."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-headers.test.ts",
+          "title": "CMS-03C-06 capability, header and preflight admission (BE03c row 168) rejects a missing or invalid idempotency key: undefined"
+        },
+        "evidence": "governed-review-headers.test.ts:62-72: 400 INVALID_REQUEST, rateLimit and fetchImpl not called. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-headers.test.ts",
+          "title": "CMS-03C-06 capability, header and preflight admission (BE03c row 168) rejects a missing or invalid idempotency key: bad key"
+        },
+        "evidence": "governed-review-headers.test.ts:62-72: 400 INVALID_REQUEST, rateLimit and fetchImpl not called. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-headers.test.ts",
+          "title": "CMS-03C-06 capability, header and preflight admission (BE03c row 168) rejects a missing or invalid idempotency key: x"
+        },
+        "evidence": "governed-review-headers.test.ts:62-72: 400 INVALID_REQUEST, rateLimit and fetchImpl not called. REQUIRED for \"All\": c0 and c1 cite one test per operation (12 and 13 citations); c2 as proposed cites CMS-03C-06/-07/-08/-09/-12/-16 only. Identity from the 2026-10-23 canonical vitest JSON."
+      }
+    ],
+    "status": "verified",
+    "proposedStatus": "closed-clause",
+    "notes": "27 KEEP, 0 DROP, 0 FIX. Each rejection test deletes or replaces only the Idempotency-Key header of a request the same builder sends to a success elsewhere, asserts the exact 400 INVALID_REQUEST and that neither the quota token nor the port was reached, and fails if the bound, the printable range or the missing-key rule were relaxed (checked by reasoning over IdempotencyKeySchema). The inclusive-bound tests (8 and 128 accepted) are part of the clause (\"8-128\"), not controls. Identity: 4 describe titles, rows built with it.each %s/%i are unique per file; Headers keeps U+0001, U+007F and U+00E9 intact (node check)."
+  },
+  {
+    "criterion": "P2-S12-AC-095",
+    "citations": [
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+        "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a request carrying a media type is 415 with the empty allowlist before any quota",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:24-36 - GET /api/v1/cms/governed-reviews with a content-type header: 415 UNSUPPORTED_MEDIA_TYPE, details exactly { allowedMediaTypes: [] }, rateLimit and fetchImpl not called. The production guard is templateReadMediaError (template-shared.ts:143-149: any content-type on a read is 415 with an empty allowlist, BE00 step 2) reached through registerRead (governed-review-read-routes.ts:73). A GET Request cannot carry a body (Fetch forbids it), so a content-type is how \"a body\" reaches the Worker; it mirrors the CMS-03C-10 case governed-review-reads.test.ts:90-100 the ledger limitation itself named. BE03c 1422 lists \"unsupported media if sent\" for CMS-03C-11.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+        "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a non-zero content-length is 400 INVALID_REQUEST before any quota",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:38-55 - a non-zero content-length header: 400 INVALID_REQUEST before the quota and the port (templateReadHeadersError, template-shared.ts:157-168: content-length other than 0, transfer-encoding, a present body, Idempotency-Key or If-Match). Mutation: removing the content-length arm lets the request reach the quota and the test fails on rateLimit.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+        "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a transfer-encoding is 400 INVALID_REQUEST before any quota",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:38-55 - transfer-encoding: chunked: 400 INVALID_REQUEST, no quota, no port (the second body proxy of the same guard).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+        "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 an Idempotency-Key is 400 INVALID_REQUEST before any quota",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:38-55 - an Idempotency-Key header on the queue: 400 INVALID_REQUEST before the quota; BE03c 179 states \"safe read; no Idempotency-Key or If-Match\". The session is valid (reviewerSession) so the 400 cannot come from authentication.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+        "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 an If-Match is 400 INVALID_REQUEST before any quota",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:38-55 - an If-Match header on the queue: 400 INVALID_REQUEST before the quota (the other mutation header BE03c 179 names).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+        "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a plain query with none of them is answered 200 and charges the read quota",
+        "verdict": "DROP",
+        "reason": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:57-61 - control: a plain queue request answers 200 and charges the read quota. It shows the refusals above come from the headers, but it is the positive baseline, not the clause (which says what is rejected). Filed as proof of \"a body and any mutation header\" it is a CONTROL assertion; it stays in the file and still runs (a cited file may contain uncited passing tests).",
+        "fix": null,
+        "dropClass": "CONTROL"
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "The Request-level body branch of the production guard (request.body !== null, template-shared.ts:158-161) is not exercised: a GET Request cannot be constructed with a body, so \"a body\" is proven through its three header proxies (content-type, content-length, transfer-encoding), exactly as the CMS-03C-10 sibling does. Not a defect of the test; a limit of the harness.",
+      "\"any mutation header\" is proven for the two headers BE03c 179 names (Idempotency-Key, If-Match); X-CSRF-Token on a safe read is not a mutation header under the registry row (\"no CSRF mutation\") and is rightly untested."
+    ],
+    "missedTests": [],
+    "status": "verified",
+    "proposedStatus": "closed-clause",
+    "notes": "5 KEEP, 1 DROP (CONTROL). c2 is the only uncited clause of AC-095, so five KEEPs close it and the criterion is verified with an empty limitation. Identity: it.each rows are named from the first tuple member (%s), titles in the proposal match; describe and test titles are unique in the file."
+  },
+  {
+    "criterion": "P2-S12-AC-126",
+    "citations": [
+      {
+        "clauseIndex": 3,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+        "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a hidden or absent taxonomy scope (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:39-53 - the production CMS-03C-16 route and RPC port (createTaxonomyProductionHarness -> createProductionCmsTaxonomyDefinitionDependencies) fed PostgREST's relay of a raise, HTTP 400 { code: 'P0001', message: 'NOT_FOUND' }, answers 404 TAXONOMY_NOT_FOUND with the catalog message and calls the RPC once. DEC-226 rule 4 (a fed token counts only if the database raises exactly that token on this operation): checked in supabase/migrations/20261014030200_cms_create_taxonomy_version.sql:80-82 (concealment: 'NOT_FOUND' errcode P0001 for a caller who cannot read the owner party) is the very raise this models; the mapper is taxonomyRpcFailure (taxonomy-definition-response.ts:104-170). The SQL producer evidence is also in the suite: phase_02_slice_12_taxonomy_definition/050-authority.sqlinc:13,16,26 (hidden-existing, hidden-unused, other-owner-parent: 'NOT_FOUND', s12td_refusal asserts SQLSTATE and the exact message); hidden-existing and other-owner-parent are already cited under AC-126 c2. Mutation: deleting the NOT_FOUND to 404 mapping answers 500 or 409.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+        "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a successor over an absent lineage (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:55-62 - a successor request (If-Match \"3\") fed the same P0001 NOT_FOUND is 404 TAXONOMY_NOT_FOUND. DEC-226 rule 4 (a fed token counts only if the database raises exactly that token on this operation): checked in supabase/migrations/20261014030200_cms_create_taxonomy_version.sql:180 ('if not has_previous then raise exception NOT_FOUND', a successor of a lineage the caller's owner scope does not hold, the \"hidden or absent taxonomy\" half of the clause); pgTAP 040-validation.sqlinc:121 absent-parent. A successor request is a different SQL branch from row 0 and reaches the same wire answer.",
+        "fix": null
+      }
+    ],
+    "splits": [],
+    "missedGaps": [],
+    "missedTests": [],
+    "status": "verified",
+    "proposedStatus": "closed-clause",
+    "notes": "2 KEEP. c3 \"is 404\" is the only uncited clause of AC-126; closed. The limitation text goes with it (verified requires an empty one). The two rows are also AC-128 c1; no sole-proof exposure (two citations in each clause). Raise sites verified by reading the migration, not by the lane's line list alone: 81 and 180 as cited."
+  },
+  {
+    "criterion": "P2-S12-AC-128",
+    "citations": [
+      {
+        "clauseIndex": 1,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+        "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a hidden or absent taxonomy scope (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:39-53 - c1 \"a hidden or absent taxonomy scope (404)\": P0001 NOT_FOUND on a create is 404 TAXONOMY_NOT_FOUND. DEC-226 rule 4 (a fed token counts only if the database raises exactly that token on this operation): checked in supabase/migrations/20261014030200_cms_create_taxonomy_version.sql:80-82 raises exactly this on the create path (hidden owner scope). Same test as AC-126 c3, correctly filed under both.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 1,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+        "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a successor over an absent lineage (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:55-62 - c1: P0001 NOT_FOUND on a successor is 404 TAXONOMY_NOT_FOUND (SQL :180, the absent or foreign lineage).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+        "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-128] CMS-03C-16 a stale parent version or key (P0001 CONFLICT) is 409 TAXONOMY_VERSION_CONFLICT",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:64-82 row 1 - c2 \"a stale parent, key or version\": P0001 CONFLICT through the successor path is 409 TAXONOMY_VERSION_CONFLICT and the RPC is called once. DEC-226 rule 4 (a fed token counts only if the database raises exactly that token on this operation): checked in supabase/migrations/20261014030200_cms_create_taxonomy_version.sql:181 ('previous_row.version::text <> operand_text' raises CONFLICT: a stale parent version), also :184 (version ceiling) and :203 (unique violation). Producer evidence in the suite: 040-validation.sqlinc:118 future-parent, 060-review-successor.sqlinc:133 stale-parent (CONFLICT, exact message).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+        "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-128] CMS-03C-16 an idempotency conflict (P0001 IDEMPOTENCY_MISMATCH) is 409 TAXONOMY_VERSION_CONFLICT",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:64-82 row 2 - c2 \"an idempotency conflict\": P0001 IDEMPOTENCY_MISMATCH is 409 TAXONOMY_VERSION_CONFLICT. DEC-226 rule 4 (a fed token counts only if the database raises exactly that token on this operation): checked in supabase/migrations/20261014030200_cms_create_taxonomy_version.sql:98 calls cms_reserve (20260930150000_cms_idempotency_business_hash.sql:67-101, still the live definition: later migrations redefine only the cms_reserve_conflict wrapper), which calls identity_idempotency_reserve and that raises 'IDEMPOTENCY_MISMATCH' errcode P0001 (20260901030000_party_identity_aliases.sql:376-378) for a reused key with another request hash; nothing in the CMS-03C-16 body or the platform_api wrapper rewrites it. Producer evidence: 030-create.sqlinc:59,62 and 060-review-successor.sqlinc:136 (changed-body, changed-key-path, changed-expected-same-key: 'IDEMPOTENCY_MISMATCH').",
+        "fix": null
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+        "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-128] CMS-03C-16 a create over an existing lineage (P0001 CONFLICT) is 409 TAXONOMY_VERSION_CONFLICT",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:84-94 - c2 \"key\" half: a create over an existing lineage, P0001 CONFLICT, is 409 TAXONOMY_VERSION_CONFLICT. DEC-226 rule 4 (a fed token counts only if the database raises exactly that token on this operation): checked in supabase/migrations/20261014030200_cms_create_taxonomy_version.sql:176-177 ('if has_previous then raise exception CONFLICT' when expectedVersion is null). Producer evidence: 030-create.sqlinc:65 same-owner-duplicate (CONFLICT).",
+        "fix": null
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "The deadlock / lock-timeout path to the same 409 (20261014030300_cms_create_taxonomy_version_public.sql:23-26, raised by the wrapper) is not fed to the Worker; the clause lists \"stale parent, key or version or an idempotency conflict\", which rows 2-4 cover. Optional."
+    ],
+    "missedTests": [
+      {
+        "clauseIndex": 1,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_taxonomy_definition.sql",
+          "title": "hidden-unused: exact refusal message"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_taxonomy_definition/050-authority.sqlinc:16 - producer evidence for DEC-226 rule 4 (NOT_FOUND on a hidden unused key). RECOMMENDED next to the Worker rows so the ledger holds both halves; computed description, cited under the entrypoint .sql (DEC-226 rule 5). hidden-existing is already cited under AC-126 c2."
+      },
+      {
+        "clauseIndex": 1,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_taxonomy_definition.sql",
+          "title": "absent-parent: exact refusal message"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_taxonomy_definition/040-validation.sqlinc:121 - NOT_FOUND for a successor of an absent lineage (SQL :180). RECOMMENDED."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_taxonomy_definition.sql",
+          "title": "stale-parent: exact refusal message"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_taxonomy_definition/060-review-successor.sqlinc:133 - CONFLICT for a stale parent (SQL :181). RECOMMENDED."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_taxonomy_definition.sql",
+          "title": "same-owner-duplicate: exact refusal message"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_taxonomy_definition/030-create.sqlinc:65 - CONFLICT for a create over an existing key (SQL :177). RECOMMENDED."
+      },
+      {
+        "clauseIndex": 2,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_taxonomy_definition.sql",
+          "title": "changed-body: exact refusal message"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_taxonomy_definition/030-create.sqlinc:59 - IDEMPOTENCY_MISMATCH for a changed body under one key. RECOMMENDED."
+      }
+    ],
+    "status": "verified",
+    "proposedStatus": "closed-clause",
+    "notes": "5 KEEP. c1 and c2 were the only uncited clauses; with both cited AC-128 is verified and the limitation is empty. DEC-226 rule 4 is satisfied for every fed token: NOT_FOUND (:81, :180), CONFLICT (:177, :181, :184, :203, wrapper :25) and IDEMPOTENCY_MISMATCH (via cms_reserve to identity_idempotency_reserve:377) are raised by the database on this operation, each with a pgTAP exact-message case in phase_02_slice_12_taxonomy_definition (only c6's \"preserves every full snapshot row\" lines of some are cited today)."
+  },
+  {
+    "criterion": "P2-S12-AC-134",
+    "contingent": "c5 \"a read dependency or deadline (502/503/504)\" is verified only with the three existing selector 502 tests of missedTests cited beside the two new rows (503, 504).",
+    "citations": [
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts",
+        "title": "CMS-03C-17 selector read limit (429) [P2-S12-AC-134] CMS-03C-17 a denied user bucket is 429 RATE_LIMITED with Retry-After and the bucket ceiling, and the port is never called",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts:26-59 row 'user' (denied index 0, ceiling 300) - the Worker's first rateLimit call is denied: 429 with Retry-After 61, RateLimit-Limit 300, RateLimit-Remaining 0, Cache-Control no-store, ApiError RATE_LIMITED with details { limit: 300, retryAfterSeconds: 61 }, the selector port never called and rateLimit called exactly once. The 300 is the Worker's own limit (the mock echoes input.limit), equal to BE03c 187 \"300/min/user\" (the CMS-03C-17 row; the test comments cite 179, which is CMS-03C-11). Mutation: no 429 path answers 200 and the port is called; a wrong ceiling fails the header assertion.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts",
+        "title": "CMS-03C-17 selector read limit (429) [P2-S12-AC-134] CMS-03C-17 a denied party bucket is 429 RATE_LIMITED with Retry-After and the bucket ceiling, and the port is never called",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts:26-59 row 'party' (denied index 1, ceiling 600) - the second bucket denied: same 429 shape with RateLimit-Limit 600 (BE03c 187 \"600/min/party\"), port not called, rateLimit called twice. Together with row 0 it pins both buckets and their order.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 5,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts",
+        "title": "CMS-03C-17 selector production port: read dependency and deadline [P2-S12-AC-134] CMS-03C-17 a provider 5xx is a retryable 503 DEPENDENCY_UNAVAILABLE",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts:62-76 - the production selector port (createTaxonomyProductionHarness with a cms.author session) over a transport that answers HTTP 500: the route answers 503 with ApiError DEPENDENCY_UNAVAILABLE and the transport is called exactly once (no retry of the read on the server side).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 5,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts",
+        "title": "CMS-03C-17 selector production port: read dependency and deadline [P2-S12-AC-134] CMS-03C-17 a nonsettling transport is a 504 DEPENDENCY_UNAVAILABLE at the 8,000 ms read ceiling and not before",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts:78-95 - a transport that never settles, fake timers: nothing is answered at 7,990 ms, a 504 DEPENDENCY_UNAVAILABLE after 8,010 ms, one transport call. BE03c 187 states \"8,000ms\" for CMS-03C-17 (the test file comment says 179). The 10 ms window each side pins the ceiling to 8,000 within +-10 ms.",
+        "fix": null
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "Title over-claims slightly: \"a provider 5xx is a retryable 503\" asserts the status and the code, not details.retryable; the 502/503/504 members carry dependencyClass and retryable (taxonomy-definition-response.ts: safeDetails for status >= 502). Not a DROP (status and code are the clause)."
+    ],
+    "missedTests": [
+      {
+        "clauseIndex": 5,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition-production-taxonomy-reads.test.ts",
+          "title": "CMS-03C-17 production port: platform_api.cms_list_taxonomy_selector (BE03c 179, 1478) answers a witness-wrapped page as a retryable 502"
+        },
+        "evidence": "apps/worker/src/cms-composition-production-taxonomy-reads.test.ts:313-327 (it.each 'answers %s as a retryable 502', names as listed by list-test-identities on the 2026-10-23 canonical JSON): the production selector port answers a response-contract violation as 502 through createTaxonomyProductionHarness. REQUIRED for c5: the clause reads \"(502/503/504)\" and the proposal's two rows prove 503 and 504 only; the 502 half exists, passes, and is uncited. (BE03c's 502 is the DEPENDENCY_UNAVAILABLE response-contract failure.)"
+      },
+      {
+        "clauseIndex": 5,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition-production-taxonomy-reads.test.ts",
+          "title": "CMS-03C-17 production port: platform_api.cms_list_taxonomy_selector (BE03c 179, 1478) answers more items than the limit as a retryable 502"
+        },
+        "evidence": "apps/worker/src/cms-composition-production-taxonomy-reads.test.ts:313-327 (it.each 'answers %s as a retryable 502', names as listed by list-test-identities on the 2026-10-23 canonical JSON): the production selector port answers a response-contract violation as 502 through createTaxonomyProductionHarness. REQUIRED for c5: the clause reads \"(502/503/504)\" and the proposal's two rows prove 503 and 504 only; the 502 half exists, passes, and is uncited. (BE03c's 502 is the DEPENDENCY_UNAVAILABLE response-contract failure.)"
+      },
+      {
+        "clauseIndex": 5,
+        "citation": {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition-production-taxonomy-reads.test.ts",
+          "title": "CMS-03C-17 production port: platform_api.cms_list_taxonomy_selector (BE03c 179, 1478) answers an unknown member as a retryable 502"
+        },
+        "evidence": "apps/worker/src/cms-composition-production-taxonomy-reads.test.ts:313-327 (it.each 'answers %s as a retryable 502', names as listed by list-test-identities on the 2026-10-23 canonical JSON): the production selector port answers a response-contract violation as 502 through createTaxonomyProductionHarness. REQUIRED for c5: the clause reads \"(502/503/504)\" and the proposal's two rows prove 503 and 504 only; the 502 half exists, passes, and is uncited. (BE03c's 502 is the DEPENDENCY_UNAVAILABLE response-contract failure.)"
+      }
+    ],
+    "status": "verified",
+    "proposedStatus": "closed-clause",
+    "notes": "4 KEEP. c4 and c5 were the only uncited clauses. c4 is closed by rows 0-1 alone. c5 needs the 502 tests added (REQUIRED, exact identities in missedTests) or it would be marked proven for 502 without evidence; with them AC-134 is verified and the limitation is empty."
+  },
+  {
+    "criterion": "P2-S12-AC-169",
+    "citations": [],
+    "splits": [],
+    "missedGaps": [
+      "BOUNDARY ACCEPTED (root ruling: accepted unless a real server/queue/job caller is found). Search done independently over apps/ and packages/ (non-test sources): cmsTemplateLatestRead has NO queue or job caller. It has TWO server-side callers, both one-shot: apps/web/src/pages/app/cms-content-modeling/templates/[templateKey].astro:41 (SSR) and apps/web/src/pages/api/v1/cms/templates/[templateKey].ts:9 (the same-origin forwarder the browser reads through), both through readCmsTemplateDetail (apps/web/src/server/cms-composition-platform-detail.ts:20-60: one binding.fetch, no loop, a thrown fetch becomes localError 503). Neither implements a retry, so \"at most three retries at 15 s, 60 s, 300 s with jitter\" is met vacuously (a cap) and there is no schedule to assert; the browser retry (250/750 ms) is a separate, cited clause. The 15/60/300 ladder exists as CONSUMER_RETRY_DELAYS_SECONDS in apps/worker/src/event-consumers/retry-schedule.ts (BE00 550), used by queue and job consumers (linked-scan/retry.ts adds bounded jitter; governed-recheck/job.ts, cms-editorial/review-recheck/job.ts, the event consumers); none of them reads cmsTemplateLatestRead (no template read in governed-recheck or event-consumers) and no HTTP-read caller uses it, so the statement \"no shared retry constant for CMS-03C reads\" in the lane report is incomplete but its conclusion stands. The missing spec the lane names is real: no line says which server caller retries or how a 15 s first delay relates to a 15,000 ms request deadline.",
+      "LIMITATION TEXT FIX (factual): the proposal says the schedule \"would exceed the 8,000 ms read ceiling (BE03c 1419)\". BE03c 1419 is the CMS-03C-08 error-coverage row, and cmsTemplateLatestRead is 15,000 ms (BE03c 170: \"60/min/user, 60/min/party; 15,000ms; no-store; Tier 2\"; the Worker enforces it, phase-02-slice-12-dependency-unavailable.test.ts \"the 15-second route deadline answers 504\"). The argument survives (the first retry delay alone equals the whole request deadline) but the figure and line must be corrected before the text is written into the ledger. Also \"the only server caller is the SSR page\" omits the same-origin forwarder, and `[templateKey].astro:40` is :41.",
+      "Alternative reading, for root/owner only (not applied): because the clause is a cap (\"at most three\"), a test that the two server callers make exactly one attempt would be a true statement and would pin the cap; I did not judge it sufficient because it proves no schedule, and DEC-211 recorded \"no code change\" for the server half."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "proposedStatus": "partial",
+    "limitationAdvice": "Unproven (uncited clause): \"while server, queue and job callers retry it at most three times at 15 s, 60 s and 300 s with jitter (DEC-211).\": BOUNDARY: no queue or job caller of cmsTemplateLatestRead exists; its two server-side callers (the SSR page templates/[templateKey].astro and the same-origin forwarder pages/api/v1/cms/templates/[templateKey].ts, both through readCmsTemplateDetail) each make one pass-through fetch with no retry, a 15 s / 60 s / 300 s schedule cannot run inside the 15,000 ms request deadline of BE03c 170, and the 15/60/300 s ladder (CONSUMER_RETRY_DELAYS_SECONDS in event-consumers/retry-schedule.ts, BE00 550) is used by queue and job consumers only, none of which reads cmsTemplateLatestRead. Missing spec: a line naming the server, queue or job caller of cmsTemplateLatestRead and the retry-versus-request-deadline rule.",
+    "notes": "No citations proposed, none judged. Status stays partial: c10 uncited, every other clause already cited. Limitation text needs the correction above."
+  },
+  {
+    "criterion": "P2-S12-AC-042",
+    "citations": [
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] arms beforeunload only while the form holds unsent input",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:234-241 (create designer) - beforeunload is not prevented on the clean form, prevented once the surface holds unsent input (create: key + audience + a content-type; edit: audience changed), and not prevented again after the preimage is restored by hand. unloadPrevented() dispatches a cancelable beforeunload on window and reads defaultPrevented, so it observes the real useCmsEditorialLeaveGuard listener armed by CmsTemplateLeaveGuard.tsx:36-40 (active: dirty). Always-armed fails :236, never-armed fails :238. Clause: FE03 927 \"Unsaved changes: retain scoped draft, show inline leave confirmation, use beforeunload only while dirty, and clear only after success or explicit discard\" (the ledger already reads \"scoped draft before commit\" this way: AC-045 c12 cites CmsCompositionPage.unsaved.test.tsx, AC-048 c12 CmsTaxonomyTermForm.leave.test.tsx), \"beforeunload only while dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] arms beforeunload only while the form holds unsent input",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:234-241 (successor (edit) designer) - beforeunload is not prevented on the clean form, prevented once the surface holds unsent input (create: key + audience + a content-type; edit: audience changed), and not prevented again after the preimage is restored by hand. unloadPrevented() dispatches a cancelable beforeunload on window and reads defaultPrevented, so it observes the real useCmsEditorialLeaveGuard listener armed by CmsTemplateLeaveGuard.tsx:36-40 (active: dirty). Always-armed fails :236, never-armed fails :238. Clause: FE03 927 \"Unsaved changes: retain scoped draft, show inline leave confirmation, use beforeunload only while dirty, and clear only after success or explicit discard\" (the ledger already reads \"scoped draft before commit\" this way: AC-045 c12 cites CmsCompositionPage.unsaved.test.tsx, AC-048 c12 CmsTaxonomyTermForm.leave.test.tsx), \"beforeunload only while dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] shows an inline confirmation instead of leaving, keeps the draft and returns focus on Keep editing",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:243-267 (create designer) - after a 401 refusal renders the sign-in link, a click on it while the form is dirty is defaultPrevented by the root section's onClickCapture, navigate is not called, an inline role=\"alert\" (.cms-template-leave) names the discard, the typed value is unchanged; \"Keep editing\" removes the confirmation, keeps the value and returns focus to the link. Covers \"show inline leave confirmation\" and \"retain scoped draft\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] shows an inline confirmation instead of leaving, keeps the draft and returns focus on Keep editing",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:243-267 (successor (edit) designer) - after a 401 refusal renders the sign-in link, a click on it while the form is dirty is defaultPrevented by the root section's onClickCapture, navigate is not called, an inline role=\"alert\" (.cms-template-leave) names the discard, the typed value is unchanged; \"Keep editing\" removes the confirmation, keeps the value and returns focus to the link. Covers \"show inline leave confirmation\" and \"retain scoped draft\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] leaves only through the explicit discard, to the link the person chose",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:269-284 (create designer) - the only exit is the explicit \"Leave without saving\": navigate is called once with the href of the link the person chose. \"clear only after ... explicit discard\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] leaves only through the explicit discard, to the link the person chose",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:269-284 (successor (edit) designer) - the only exit is the explicit \"Leave without saving\": navigate is called once with the href of the link the person chose. \"clear only after ... explicit discard\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] does not intercept a link while the form is clean",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:286-299 (create designer) - the negative side: after a refusal the person restores the preimage by hand, then the same link click is NOT prevented and no confirmation appears. The confirmation exists only while dirty (\"only while dirty\" for the leave confirmation as well as beforeunload).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] does not intercept a link while the form is clean",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:286-299 (successor (edit) designer) - the negative side: after a refusal the person restores the preimage by hand, then the same link click is NOT prevented and no confirmation appears. The confirmation exists only while dirty (\"only while dirty\" for the leave confirmation as well as beforeunload).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] keeps the draft armed after a refusal and clears it only after a verified success",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:301-318 (create designer) - a 422 refusal leaves the guard armed (:312); the verified 201 with a matching ETag shows \"Draft created\"/\"version saved\" and disarms it (:315); the follow-up link is not intercepted (:317). \"clear only after success\", and a refusal does not clear.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] keeps the draft armed after a refusal and clears it only after a verified success",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:301-318 (successor (edit) designer) - a 422 refusal leaves the guard armed (:312); the verified 201 with a matching ETag shows \"Draft created\"/\"version saved\" and disarms it (:315); the follow-up link is not intercepted (:317). \"clear only after success\", and a refusal does not clear.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 create designer: explicit discard [P2-S12-AC-042] Start another draft after success leaves a clean form with the guard disarmed",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:323-338 (create designer) - after a verified success, \"Start another draft\" returns a clean form with the guard disarmed (:334; it would stay armed if the reset kept the fields, because draft.dirty would re-arm it), and a new edit arms it again (:336). The explicit reset leg of \"clear only after success or explicit discard\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 designer: the default destination [P2-S12-AC-042] without a navigate prop the explicit discard assigns the location the person chose",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:340-365 - with no navigate prop, the guarded click does not navigate (jsdom's \"Not implemented: navigation\" is absent from stderr until the press) and \"Leave without saving\" does (present after). Proves the production default exit (CmsTemplateLeaveGuard.tsx:14, window.location.assign) runs only on the explicit discard; the destination is asserted by rows 2 and 7, not here. Brittle (depends on jsdom's stderr text) but behavioural.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+        "title": "CMS-11 designer: no autosave [P2-S12-AC-042] the guard has nothing to save and always reports the draft as still unsent",
+        "verdict": "DROP",
+        "reason": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:368-372 - asserts the constant CMS_TEMPLATE_NO_AUTOSAVE (save() resolves undefined, stillUnsent() is true; CmsTemplateLeaveGuard.tsx:20-23). It renders nothing and calls no guard: it passes whether or not the guard honours \"no autosave\", and no component assertion shows that leaving sends nothing. A tautology over a literal, not behaviour.",
+        "fix": null,
+        "dropClass": "NOEFFECT"
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is clean for an identical copy, whatever the order of the content-type set and the row ui ids",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:20-32 - the predicate that arms the guard (use-cms-template-draft-fields.ts:42-50; CmsTemplateEditDesigner.tsx:85-91 with the parent version as preimage) is false for an identical copy whatever the content-type order or the row ui ids: no spurious beforeunload or confirmation on an untouched form.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for templateKey",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (templateKey) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a locale / extraRegions / type-set edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for compatibleTypeIds",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (compatibleTypeIds) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a locale / extraRegions / type-set edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for locale",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (locale) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a locale / extraRegions / type-set edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for audience",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (audience) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a locale / extraRegions / type-set edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for extraRegions",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (extraRegions) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a locale / extraRegions / type-set edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot key",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (a slot key) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a slot or binding edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot required flag",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (a slot required flag) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a slot or binding edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot maxCount",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (a slot maxCount) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a slot or binding edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot block list",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (a slot block list) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a slot or binding edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a removed slot",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (a removed slot) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a slot or binding edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a binding key",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (a binding key) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a slot or binding edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a binding projection",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (a binding projection) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a slot or binding edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a binding required flag",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (a binding required flag) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a slot or binding edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      },
+      {
+        "clauseIndex": 12,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+        "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a removed binding",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:34-65 - one field of the seven-member preimage differs (a removed binding) and cmsTemplateDraftDirty answers true, so the guard arms. This is the only evidence that a slot or binding edit arms the guard: the component rows 0-9 drive templateKey, audience, one content-type and (edit) audience only. The helper IS the decision procedure of the guard (dirty = cmsTemplateDraftDirty(fields, preimage), use-cms-template-draft-fields.ts:42, CmsTemplateDesigner.tsx:115), not an adjacent mechanism; kept as predicate coverage of \"dirty\".",
+        "fix": null
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "AC-042 stays partial from this lane: c1 \"focus stays until navigation or named result heading\" and c5 \"Render authoritative response/version/provenance/next action\" are uncited here (pw5 / web6 own them); only c12 is closed.",
+      "Component-level reach of \"dirty\": no component test arms the guard through a slot, binding, locale or extraRegions edit, or through the successor designer's non-audience fields; the 15 predicate tests cover the predicate, and the wiring (the seven-member `fields` object passed to cmsTemplateDraftDirty) is by construction, not asserted.",
+      "Guard reach: onClickCapture sits on the designer root section only (CmsTemplateLeaveGuard.tsx:45); links elsewhere on the page and history navigation are covered by the browser beforeunload prompt only. Same shape as the AC-045 and AC-048 precedents, so not a defect of this lane.",
+      "jsdom level (PAT-031 caveat): the tests dispatch a synthetic beforeunload and synthetic clicks; the native leave prompt and real navigation are not exercised. Same standard as the AC-045 and AC-048 citations; a real-Chrome check would be an addition, not a correction.",
+      "\"Retain scoped draft\" after a refusal is shown by the armed state (rows 4 and 9) and by the unchanged value on Keep editing (rows 1 and 6); a direct assertion that the typed values survive a 422 is in CmsTemplateDesigner.interaction.test.tsx, cited under c8."
+    ],
+    "missedTests": [],
+    "limitationAdvice": "The proposal's empty proposedLimitation is the delta for c12 only: AC-042 stays partial, so the ledger limitation must be rewritten, not blanked: delete the \"scoped draft before commit\" paragraph, keep the two paragraphs for \"focus stays until navigation or named result heading\" and \"Render authoritative response/version/provenance/next action\" (pw5 / web6 rows).",
+    "status": "partial",
+    "proposedStatus": "closed-clause",
+    "notes": "27 KEEP, 1 DROP (NOEFFECT, the constant). The 15 draft-dirty tests are kept as predicate coverage because the clause's \"dirty\" is exactly that predicate; if root prefers the AC-045/AC-048 shape (3-4 citations) they are the only candidates to leave out. Identity: describe.each $name rows come out as 'create designer' / 'successor (edit) designer' with vitest quoting; root checks against the JSON."
+  },
+  {
+    "criterion": "P2-S12-AC-164",
+    "citations": [
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource is exactly the six authentication members and names no CMS, designer or capability member",
+        "verdict": "KEEP",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:70-78 - the generated OpenAPI SessionResource (buildOpenApiDocument) has exactly the six authentication members (accountState, actingPartyId, authenticated, bootstrapState, personId, sessionExpiresAt), all required, additionalProperties false, and none of its keys matches /cms|designer|capabilit|template|permission|grant|role/. This is the contract-layer test the ledger limitation itself prescribed (\"a contract test asserting the session resource keys exclude any CMS designer capability field\"). FE03 1129-1131 (\"It does not extend the general auth-session resource or grant designer authority in the browser\", \"It\" = the cmsTemplateContextRead support route).",
+        "fix": null
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a capabilities member instead of extending itself",
+        "verdict": "KEEP",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:80-95 row 'capabilities' - SessionResourceSchema accepts the six-member session (control inside the test, :89) and rejects the same object with a \"capabilities\" member: the runtime Zod schema is strict, so the session resource cannot be extended. Distinct artifact from row 0 (Zod vs generated OpenAPI); redundant in mechanism between its own five rows but each fails if that key were admitted.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a cmsCapabilities member instead of extending itself",
+        "verdict": "KEEP",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:80-95 row 'cmsCapabilities' - SessionResourceSchema accepts the six-member session (control inside the test, :89) and rejects the same object with a \"cmsCapabilities\" member: the runtime Zod schema is strict, so the session resource cannot be extended. Distinct artifact from row 0 (Zod vs generated OpenAPI); redundant in mechanism between its own five rows but each fails if that key were admitted.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a templateDesigner member instead of extending itself",
+        "verdict": "KEEP",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:80-95 row 'templateDesigner' - SessionResourceSchema accepts the six-member session (control inside the test, :89) and rejects the same object with a \"templateDesigner\" member: the runtime Zod schema is strict, so the session resource cannot be extended. Distinct artifact from row 0 (Zod vs generated OpenAPI); redundant in mechanism between its own five rows but each fails if that key were admitted.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a cmsTemplateContext member instead of extending itself",
+        "verdict": "KEEP",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:80-95 row 'cmsTemplateContext' - SessionResourceSchema accepts the six-member session (control inside the test, :89) and rejects the same object with a \"cmsTemplateContext\" member: the runtime Zod schema is strict, so the session resource cannot be extended. Distinct artifact from row 0 (Zod vs generated OpenAPI); redundant in mechanism between its own five rows but each fails if that key were admitted.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a contentTypes member instead of extending itself",
+        "verdict": "KEEP",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:80-95 row 'contentTypes' - SessionResourceSchema accepts the six-member session (control inside the test, :89) and rejects the same object with a \"contentTypes\" member: the runtime Zod schema is strict, so the session resource cannot be extended. Distinct artifact from row 0 (Zod vs generated OpenAPI); redundant in mechanism between its own five rows but each fails if that key were admitted.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] authSessionRead and authSessionRefresh answer SessionResource and carry no designer capability, while the context read is the one protected route that does",
+        "verdict": "KEEP",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:97-114 - platformRegistrySet: authSessionRead and authSessionRefresh have successSchema SessionResourceSchema and NO capability; the generated GET /api/v1/auth/session 200 is $ref SessionResource; cmsTemplateContextRead is a separate route with TemplateDesignerContextSchema and capability cms.template_designer (packages/contracts/src/platform-registries.ts:354-370, 1780-1790). The designer capability lives on its own route, not on the session routes. The title's \"the one protected route that does\" over-states (other CMS routes also carry the capability) but the assertions are exact.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context is exactly its two selector members and shares no member with the session resource",
+        "verdict": "KEEP",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:116-128 - the generated TemplateDesignerContext has exactly the two selector members contentTypes and registeredBlocks, additionalProperties false, and shares no key with the session members: the context is its own resource and does not duplicate or extend the session resource.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member capabilities so it can grant no designer authority in the browser",
+        "verdict": "FIX",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:130-150 row 'capabilities' - TemplateDesignerContextSchema accepts the empty context (control :140) and rejects an added \"capabilities\" member. Sound, but its own title says what it proves: \"so it can grant no designer authority in the browser\" is the sentence AFTER the one c4 quotes. c4 is \"neither extend the general auth-session resource nor\"; the context carrying no authority member belongs to c5 \"grant designer authority in the browser\" (FE03 1130-1131). Filed under c4 it is an adjacent clause.",
+        "fix": "Cite under clause index 5 (\"grant designer authority in the browser\"), not clause index 4. Keeps the evidence, corrects the clause.",
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member canDefine so it can grant no designer authority in the browser",
+        "verdict": "FIX",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:130-150 row 'canDefine' - TemplateDesignerContextSchema accepts the empty context (control :140) and rejects an added \"canDefine\" member. Sound, but its own title says what it proves: \"so it can grant no designer authority in the browser\" is the sentence AFTER the one c4 quotes. c4 is \"neither extend the general auth-session resource nor\"; the context carrying no authority member belongs to c5 \"grant designer authority in the browser\" (FE03 1130-1131). Filed under c4 it is an adjacent clause.",
+        "fix": "Cite under clause index 5 (\"grant designer authority in the browser\"), not clause index 4. Keeps the evidence, corrects the clause.",
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member designer so it can grant no designer authority in the browser",
+        "verdict": "FIX",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:130-150 row 'designer' - TemplateDesignerContextSchema accepts the empty context (control :140) and rejects an added \"designer\" member. Sound, but its own title says what it proves: \"so it can grant no designer authority in the browser\" is the sentence AFTER the one c4 quotes. c4 is \"neither extend the general auth-session resource nor\"; the context carrying no authority member belongs to c5 \"grant designer authority in the browser\" (FE03 1130-1131). Filed under c4 it is an adjacent clause.",
+        "fix": "Cite under clause index 5 (\"grant designer authority in the browser\"), not clause index 4. Keeps the evidence, corrects the clause.",
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member authenticated so it can grant no designer authority in the browser",
+        "verdict": "FIX",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:130-150 row 'authenticated' - TemplateDesignerContextSchema accepts the empty context (control :140) and rejects an added \"authenticated\" member. Sound, but its own title says what it proves: \"so it can grant no designer authority in the browser\" is the sentence AFTER the one c4 quotes. c4 is \"neither extend the general auth-session resource nor\"; the context carrying no authority member belongs to c5 \"grant designer authority in the browser\" (FE03 1130-1131). Filed under c4 it is an adjacent clause.",
+        "fix": "Cite under clause index 5 (\"grant designer authority in the browser\"), not clause index 4. Keeps the evidence, corrects the clause.",
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member actingPartyId so it can grant no designer authority in the browser",
+        "verdict": "FIX",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:130-150 row 'actingPartyId' - TemplateDesignerContextSchema accepts the empty context (control :140) and rejects an added \"actingPartyId\" member. Sound, but its own title says what it proves: \"so it can grant no designer authority in the browser\" is the sentence AFTER the one c4 quotes. c4 is \"neither extend the general auth-session resource nor\"; the context carrying no authority member belongs to c5 \"grant designer authority in the browser\" (FE03 1130-1131). Filed under c4 it is an adjacent clause.",
+        "fix": "Cite under clause index 5 (\"grant designer authority in the browser\"), not clause index 4. Keeps the evidence, corrects the clause.",
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+        "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member ownerId so it can grant no designer authority in the browser",
+        "verdict": "FIX",
+        "reason": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:130-150 row 'ownerId' - TemplateDesignerContextSchema accepts the empty context (control :140) and rejects an added \"ownerId\" member. Sound, but its own title says what it proves: \"so it can grant no designer authority in the browser\" is the sentence AFTER the one c4 quotes. c4 is \"neither extend the general auth-session resource nor\"; the context carrying no authority member belongs to c5 \"grant designer authority in the browser\" (FE03 1130-1131). Filed under c4 it is an adjacent clause.",
+        "fix": "Cite under clause index 5 (\"grant designer authority in the browser\"), not clause index 4. Keeps the evidence, corrects the clause.",
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/template-context-session-isolation.test.ts",
+        "title": "GET /api/v1/auth/session beside the CMS-11 picker context [P2-S12-AC-164] answers a designer-capable caller with exactly the six authentication members and no capability",
+        "verdict": "DROP",
+        "reason": "apps/worker/src/cms-composition/template-context-session-isolation.test.ts:34-46 - cannot observe what its title says. The designer-capable session is put on resolveSession (DESIGNER_SESSION adds a capabilities member that AuthenticationSession does not even have, apps/worker/src/authentication/result-types), but GET /api/v1/auth/session builds its body from dependencies.readSession(resolved.value) (routes-session.ts:50-61) and the harness readSession is the default vi.fn(async () => success(resource)) (phase-02-slice-01.test-support.ts:100), which ignores its argument and returns the fixed six-member resource. The assertions (keys equal Object.keys(resource), no /cms\\.|capabilit|designer/) compare the mock's constant with itself: BLIND to the production projection (createSessionDependencies readSession, production-session.ts:244-254) and to any CMS capability. It passes whether or not the rule exists.",
+        "fix": "Not citable as written. To be citable: build the app with the production readSession (createSessionDependencies(config).readSession) over a session whose CMS capability resolves server-side, and assert the six members; or drop the claim, since rows 0-5 and 15 already pin the contract.",
+        "dropClass": "BLIND"
+      },
+      {
+        "clauseIndex": 4,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/template-context-session-isolation.test.ts",
+        "title": "GET /api/v1/auth/session beside the CMS-11 picker context [P2-S12-AC-164] never serves a session reader that widens the resource with designer authority",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/template-context-session-isolation.test.ts:48-62 - through the real GET /api/v1/auth/session route, a reader that returns the six-member resource plus capabilities: ['cms.template_designer'] is not served: status is not 200 (SessionResourceSchema.parse in routes-session.ts:54-56 throws on the extra key, answered by the Worker's generic handler) and the body never contains cms.template_designer. Runtime proof that the served session resource cannot be widened; a non-strict parse (200 with a stripped body) would also fail it. The default-harness 200 is the control (the same app answers 200 with the stock reader).",
+        "fix": null
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "AC-164 stays partial from this lane: c3 \"disable submission with the corresponding sign-in, capability, rate-wait or retry state ...\" and c6 \"verification covers each denied or degraded state\" are uncited here (pw5 owns them); only c4 is closed.",
+      "Runtime reach of c4: the claim that the production readSession never projects CMS authority rests on the explicit six-field construction in production-session.ts:244-254 plus the strict parse; no test drives the production projection with a CMS-capable caller (row 14 tried and is blind).",
+      "The six context rows (FIX) belong to c5, which today cites a request/resource contract test and the designer shell test; re-filed they would be the direct evidence that the context resource carries no authority member."
+    ],
+    "missedTests": [],
+    "limitationAdvice": "AC-164 stays partial (c3 and c6 uncited): delete the paragraph for \"neither extend the general auth-session resource nor\", keep the two for \"disable submission with the corresponding sign-in, capability, rate-wait or retry state ...\" and \"verification covers each denied or degraded state\".",
+    "status": "partial",
+    "proposedStatus": "closed-clause",
+    "notes": "9 KEEP (rows 0-7 and 15), 6 FIX (re-file under c5), 1 DROP (BLIND). c4 is cited by 9 sound tests, so it is closed. The Worker route test row 14 is the one the lane's title most over-claims."
+  },
+  {
+    "criterion": "P2-S12-AC-271",
+    "citations": [],
+    "splits": [],
+    "missedGaps": [
+      "No citation proposed, none judged; \"partial, not added\" is the honest outcome. c0 is one clause naming seven states across four island families (governedReviewState, selectorState/latestReadState, diffState, commandState) with the 250 ms skeleton rule; unit5 proves commandState loading for CMS-03C-01 only (CmsTemplateDesigner.pending.test.tsx, two surfaces: the pending label at once, only the commit control disabled, no success claimed, then the named resource - checked, sound) and rightly does not cite it for the whole clause. Status stays partial: c0 uncited, c1-c5 already cited.",
+      "LIMITATION TEXT: remove the product-deviation sentence (\"Same pending deviation ... is visible in CmsTaxonomyVersionDesigner.tsx:108, CmsTaxonomyTermAction.tsx:121, CmsLocaleVariantForm.tsx:128: not fixed here\"). It is already stale: those three files were modified at 00:55-01:04 today, after the unit5 report (web6 row 1 of briefs/web6-fixes.md targets exactly these three files), and at HEAD of the working tree line 108 is `<fieldset disabled={designer.done}>` and lines 121 and 128 are bare `<fieldset>` openers. A ledger limitation should say what is unproven (no test enumerates idle/loading/success/empty/error/degraded/disabled per island, including the 250 ms skeleton at 249/250 ms), not describe the state of other lanes' product files.",
+      "The 250 ms skeleton tests the lane lists (CmsLoadingRegion, CmsLatestReadLoading, CmsGovernedReviewDetailIsland.loading, CmsGovernedReviewPanel.loading, CmsTaxonomyTermChoice.loading, CmsTaxonomyConflictPanel.loading, CmsCompositionPage.loading) carry no AC tag and are not cited; web6 row 3 is the lane that enumerates the states per island."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "proposedStatus": "partial",
+    "limitationAdvice": "Unproven (uncited clause): \"Definition governance states: for `governedReviewState` ... and `commandState` ... the island renders `idle`, `loading` ..., `success`, `empty`, `error`, `degraded` and `disabled` exactly as the state table states\": no test enumerates the seven states for each island family (governed queue and detail, selector and latest reads, diff, every command form), including the skeleton after 250 ms (a fake-timer case at 249 and 250 ms); commandState loading (only the commit control disabled) is proved for CMS-03C-01 only (CmsTemplateDesigner.pending.test.tsx).",
+    "notes": "Zero citations, zero verdicts. Limitation text to be shortened as above."
+  },
+  {
+    "criterion": "P2-S12-AC-272",
+    "contingent": "AS PROPOSED THE ENTRY CANNOT BE APPLIED: c0 and c1 would both be cited while status is partial with a limitation, which the guard rejects (\"partial entry: every clause is cited, so the entry is verified, not partial\", ledger-guard-lib.mjs statusProblems). Either hold all eight until web6 row 4 (the CmsDiffPath browser sweep) is KEPT and then mark verified with an empty limitation, or split c0 as in `splits` and leave \"pattern diff values,\" uncited.",
+    "citations": [
+      {
+        "clauseIndex": 0,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+        "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-07 decision with a reason': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:149-173 row 'CMS-03C-07 decision with a reason' - the sentinel reason travels (asserted in the provider POST body, :162-165) and the provider reply carries policyBasisHash = the sentinel hash; the 200 answer is Cache-Control exactly \"no-store\" (the clause's \"public or private cache\"), its ETag matches neither /sentinel/ nor 32 hex, no outbound URL holds any of the five sentinels and no structured log line does. governedHarness builds the production governed dependencies (createProductionCmsGovernedReviewDependencies) over a scripted network boundary and wires tuning.logger into the production telemetry (cms-composition-production-governed-review.ts:82-104), so the sink sees the real log lines (lines.length > 0 is asserted). Mutation: logging the reason, or the hash in a URL, fails it. Decision reason and policy basis against cache, URL and log.",
+        "fix": null,
+        "splitParts": [
+          0
+        ]
+      },
+      {
+        "clauseIndex": 0,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+        "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-07 refusal carrying a canonic…': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:149-173 row 'CMS-03C-07 refusal carrying a canonic...' - the provider refusal is a P0001 CONFLICT whose details hold { canonicalId, reason }: 409, no-store, and the same ETag, URL and log sweep finds none of the five sentinels. The canonical-id leg of the clause on the refusal path. (The refusal BODY is swept for the reason by the :175-189 test, not here.)",
+        "fix": null,
+        "splitParts": [
+          2
+        ]
+      },
+      {
+        "clauseIndex": 0,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+        "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-08 assignment create naming a…': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:149-173 row 'CMS-03C-08 assignment create naming a...' - the reviewer person id travels in the POST body (asserted), the reply carries the assignment id and the reason; 201, no-store, none of the sentinels in the ETag, URLs or logs. The assignment-identifier leg. NOTE (reading, not a test defect): the 201 itself sets Location: /api/v1/cms/governed-reviews/{reviewId}/assignments/{assignmentId} (governed-review-command-routes.ts:283); the sweep inspects the outbound URLs and the ETag, not the response Location header. The lane reads \"URL\" as the browser URL; root records that reading (it is not stated in FE03 895).",
+        "fix": null,
+        "splitParts": [
+          2
+        ]
+      },
+      {
+        "clauseIndex": 0,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+        "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-10 review detail with a polic…': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:149-173 row 'CMS-03C-10 review detail with a polic...' - a detail whose policyBasisHash and assignments (assignment id, myAssignment) are the sentinels: 200, no-store, none in the ETag, outbound URLs or log lines. Policy basis and assignment identifiers against cache, URL and log.",
+        "fix": null,
+        "splitParts": [
+          0,
+          2
+        ]
+      },
+      {
+        "clauseIndex": 0,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+        "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-11 review queue': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+        "verdict": "DROP",
+        "reason": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:149-173 row 'CMS-03C-11 review queue' - queuePage() carries none of the five data classes (queueItem members are reviewId, subjectKind, subjectKey, subjectVersion, state, counts and timestamps; no reason, policy hash, diff value, canonical id or assignment id), so every sentinel assertion in this row is vacuous; what remains is the no-store of the queue, which is the first sentence of FE03 895 (\"server-authoritative and no-store\"), not the text of AC-272. Passes whether or not the privacy rule exists.",
+        "fix": null,
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 0,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+        "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] every refusal of the governed surface is no-store too",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:175-189 - for seven provider answers (401, 403 and 404 all script the same P0001 NOT_FOUND refusal; 409, 422, 500, 503 script a PostgREST fault) carrying the sentinel reason in the provider details: every Worker answer is Cache-Control no-store, its body never echoes the reason and no log line holds it. The refusal-path sweep that row 'CMS-03C-07 refusal' lacks for bodies. The title over-claims (\"every refusal of the governed surface\"): only CMS-03C-10 and only provider-driven refusals are swept, and the first three iterations are one case; Worker-originated 400/401/415/429 answers are not. Kept for what it does assert.",
+        "fix": null,
+        "splitParts": [
+          0
+        ]
+      },
+      {
+        "clauseIndex": 0,
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+        "title": "pattern diff values (CMS-03C-14, Worker) [P2-S12-AC-272] CMS-03C-14 serves a diff carrying a sentinel value no-store, with the instance version as the only validator and nothing of the diff in telemetry or the outbound request",
+        "verdict": "KEEP",
+        "reason": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:192-223 - CMS-03C-14 through the production route with a diff whose theirs value is the sentinel: 200, the sentinel IS in the body (it must reach the author), Cache-Control no-store, ETag exactly \"3\" (the instance version, no content), no response header holds it, the telemetry event list holds none of it. The pattern-diff-value leg at the Worker. The final assertion (the port input does not contain the value) is vacuous - the value is computed after the port - but harmless.",
+        "fix": null,
+        "splitParts": [
+          1
+        ]
+      },
+      {
+        "clauseIndex": 0,
+        "tool": "vitest",
+        "file": "apps/web/src/components/cms-governed-review/governed-privacy.test.tsx",
+        "title": "governed detail island privacy sweep (browser) [P2-S12-AC-272] a decision with a sentinel reason leaves the browser only in the POST body: no URL, history, storage, broadcast, Realtime, beacon or console carries a sentinel",
+        "verdict": "KEEP",
+        "reason": "apps/web/src/components/cms-governed-review/governed-privacy.test.tsx:79-176 - the governed detail island driven through a real decision: the reason appears only in the one POST body (asserted), to a fixed URL; no sentinel (reason, policy hash, assignment id) in that URL, the request headers, window.location, any console level; location and history length unchanged; the draft store, localStorage and sessionStorage empty after the verified success; BroadcastChannel, WebSocket, EventSource and sendBeacon never constructed or called (stubbed with vi.fn, so a constructor call is seen). The browser leg for decision reason, policy basis and assignment id, and the only evidence that no Realtime channel exists in the island. SUCCESS PATH ONLY - see missedGaps.",
+        "fix": null,
+        "splitParts": [
+          0,
+          2
+        ]
+      }
+    ],
+    "splits": [
+      {
+        "clauseIndex": 0,
+        "verdict": "REQUIRED unless web6 row 4 lands first",
+        "parts": [
+          "Governed surface privacy: decision reasons, the policy basis,",
+          "pattern diff values,",
+          "canonical ids and every assignment identifier are re-derived by the server and never enter a public or private cache, an analytics event, a Realtime body, a URL or a log,"
+        ],
+        "reason": "The parts are verbatim, in order, non-overlapping and separated by single spaces; simulated with the REAL evaluateLedger (scripts/evidence/ledger-guard-lib.mjs) on a one-entry ledger: as proposed (c0 cited, c1 cited, partial + limitation) it reports \"P2-S12-AC-272: partial entry: every clause is cited, so the entry is verified, not partial\"; with this split (part 1 uncited, partial + limitation) it reports no structural problem; c0 cited with verified + empty limitation also passes. The parts are verbatim, ordered and tile the text, and c1 (\"and a browser never calls CMS-03C-18 ...\") still follows. Part 0 takes KEEP rows 0, 3, 5, 7 (splitParts 0), part 2 rows 1, 2, 3, 7. Part 1 (\"pattern diff values,\") stays UNCITED until the browser diff surface is swept; the Worker row 6 (splitParts 1) is then held and cited together with that sweep, because part 1 is only half proved (server yes, browser diff island no). Part 2 carries the sink list, so the Realtime leg (\"a Realtime body\": no emitter exists, no channel is opened in the island) is judged there."
+      }
+    ],
+    "missedGaps": [
+      "RESIDUAL (the lane's own, accepted): the browser diff surface (CmsDiffPath and its parents) is not swept for sentinel diff values in URL, history, storage, console, beacon or broadcast; the diff is swept at the Worker only (row 6). web6 row 4 owns the browser half.",
+      "Step-up detour not swept: a 401 STEP_UP_REQUIRED stores the scoped draft { decision, reason } in the tab-scoped DraftStorage and navigates to /step-up?returnTo= (CmsGovernedDecisionForm.tsx:67, 125; use-governed-review-command.ts). That is the one path on which a decision reason sits in browser storage and next to a URL; row 7 asserts only the success path and that the store is empty afterwards. A sentinel through the detour (reason in storage allowed by FE03 \"scoped draft\", but never in the returnTo URL, history or console) is the missing negative.",
+      "Canonical ids are not in the browser sentinel list (SENTINELS = reason, policy hash, assignment id); the Worker sweep covers them on the refusal path only. CMS-03C-09 (activation) responses and refusals are not swept at the Worker although FE03 895's first sentence names the activation surface and canonical_source_unavailable carries a domain.",
+      "Cache: \"public or private cache\" is proved as response Cache-Control: no-store (Worker) and empty browser storage; no Cache Storage / service-worker cache is inspected (none exists, jsdom has none).",
+      "READING for root (not decided here): whether \"URL\" includes the API response Location header. If it does, CMS-03C-08's Location with the assignment id is a product defect; the sweep would then need a Location assertion. The lane reads browser URL."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "proposedStatus": "partial",
+    "limitationAdvice": "Unproven (uncited clause): \"pattern diff values,\": the pattern diff values are swept at the Worker only (governed-surface-privacy.test.ts, CMS-03C-14: no-store, version-only ETag, nothing in telemetry); the browser diff surface (CmsDiffPath) is not swept for them in the URL, history, storage, console, beacon or broadcast channels; no Realtime emitter exists to inspect.",
+    "notes": "7 KEEP, 1 DROP (ADJACENT: the queue row's sentinels are vacuous). The sweeps are real regression guards (real production route and port, real logger sink, sentinels proved to travel), not mocks of the leak. The status question is structural, not about proof: see contingent and splits."
+  },
+  {
+    "criterion": "P2-S12-AC-001",
+    "citations": [],
+    "splits": [],
+    "missedGaps": [
+      "BOUNDARY facts verified: BE03c 320-326 defines blockRegistryDigest as the JCS array of {blockKey, blockVersion, releaseDigest, propsSchemaHash, rendererRef, lifecycle} (no accessibility manifest); grep of supabase/migrations/20261013100200_cms_define_template_per_owner.sql for \"accessib\" finds nothing; the only template accessibility text in BE03c is the handoff test at 1828-1830 (stable JSON Pointer paths, reserved profile/provenance regions content cannot hide or reorder), already cited under clause 0. So no spec line states what a template must preserve of a placed block's accessibility contract, and the lane is right that a test written now would invent behaviour.",
+      "Not judged here (root's ruling): the reading that a template preserves block accessibility contracts because it pins exact immutable block versions and its strict CMS-03C-01 definition has no member that can override a block's accessibility manifest. Lane web6 row 5 is to prove it (contract schema and Worker route refuse such a member). If web6 finds the schema accepts one, that is a defect, not a citation. When web6's proposal lands the clause is closed by it, and the current limitation (which asks for a spec decision) must be rewritten to name the reading."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "proposedStatus": "partial",
+    "notes": "No citations proposed, none judged. Status stays partial (c3 uncited) until web6 row 5 is KEPT by its own refutation."
+  },
+  {
+    "criterion": "P2-S12-AC-211",
+    "citations": [],
+    "splits": [],
+    "missedGaps": [
+      "BOUNDARY facts verified. (1) BE03c 1585 closes the publication-time provider reasons to pattern_not_active, nested_pattern_not_active, pattern_digest_changed, pattern_block_rules_violated: no token for depth, node count or cycle at publication. (2) A stored PatternVersion is frozen: supabase/migrations/20261014020200_cms_pattern_lineage_guard.sql rejects any change except state and updated_at (:54-55: to_jsonb(new) - state - updated_at must equal the old image), and nested pins must pre-exist and be active at save (20261014020400), so depth, expanded node count and lineage cycle of a stored forest cannot change between save and publish. (3) The three placement-side re-proofs the lane names exist verbatim in supabase/tests/phase_02_slice_12_pattern_placement/065-defensive.sqlinc (:34-41 pattern_cycle, :49-56 pattern_depth_exceeded, :58-70 pattern_nodes_exceeded). Root ruling honoured: AC-211 stays one uncited clause (c1 is the bare fragment \"again before publish\", not splittable by violation kind).",
+      "CROSS-CRITERION, for root: the nested-pin half of \"again before publish\" is now evidenced both ways. AC-211 c3 (\"the live nested-pin active/compatibility recheck is the pattern provider's nested_pattern_not_active failed reason\") cites PC-N03/N05/N06, which are all ACTIVE-state failures; none shows an incompatible nested pin failing at publication. api5's A238-direct-publish and A238-recursive-publish (KEPT under AC-238 c3) are exactly that compatibility half in the publish phase. They are missedTests for AC-211 c3 (below). They do not close c1, which also names depth/nodes/cycle."
+    ],
+    "missedTests": [
+      {
+        "clauseIndex": 3,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+          "title": "A238-direct-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:107-109 (TAP ok 189): an active, same-owner nested version that does not list every parent type fails the pattern provider with nested_pattern_not_active, count 1, in the publish phase: the \"compatibility\" half of AC-211 c3. Valid only if the AC-238 technique (raw-copied draft taken through the real governed chain) is accepted."
+      },
+      {
+        "clauseIndex": 3,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+          "title": "A238-recursive-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:112-114 (TAP ok 211): the same failure when the offending edge is the second level of the graph, in the publish phase."
+      }
+    ],
+    "status": "partial",
+    "proposedStatus": "partial",
+    "notes": "No citations proposed, none judged. Status stays partial: c1 uncited."
+  },
+  {
+    "criterion": "P2-S12-AC-010",
+    "contingent": "Row 0 must be corrected (conflictState) before it can pass, and BOTH rows count only with a passed receipt from root's PostgREST run after pnpm db:reset (the lane did not run them; the guard demands a passed receipt for every cited identity).",
+    "citations": [
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts",
+        "title": "CMS-03C-02 pattern placement happy path through the real stack [P2-S12-AC-010] an assigned author placing an active compatible pattern on the current draft revision is a 201 { items } of CompositionInstanceResource rows, a strong entry ETag, the committed rows and one audit record",
+        "verdict": "FIX",
+        "reason": "tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts:95-155 - the proof is the right one (production Worker routes -> production RPC adapter -> Kong -> PostgREST -> newest SQL, only the session and an allow-all limiter supplied, createLatencyStack): 201, body keys exactly [\"items\"], PatternPlacementResourceSchema.parse (strict rows), paths [\"/root1\",\"/root2\"] and positions [0,1] (BE03c 1530: the root slot \"/\" adds no separator, first position 0), entry version + 1 read from cms_content_entries and equal to the quoted ETag, no-store, committed rows equal the response rows in position order, the pinned pattern columns, exactly one cms.composition.pattern.insert audit event on the first item id (cms_pattern_slot_exact.sql:238-240 audits (v_items->0->>'id')), and the named RPC answered 200. BUT :110-118 asserts conflictState: null for every row of a LINKED placement, and the database answers 'none': cms_composition_instance_resource_hashed emits case link_mode when 'linked' then 'none' else null (20261024150300:31), the pgTAP oracle says the same (phase_02_slice_12_pattern_placement/010-oracles.sqlinc:138), every Worker fixture sets conflictState 'none' (pattern-placement.test-support.ts:40), and the Worker returns the parsed rows unchanged (cms-composition-production-pattern.ts:208-217). toMatchObject({ conflictState: null }) is false for 'none': this test is RED on a correct stack.",
+        "fix": "Change conflictState: null to conflictState: 'none' at :117 (linked rows). Everything else stands; re-run under root's PostgREST runner and cite only with a passed receipt.",
+        "note": "static: a spec value mismatch found by reading the SQL, not by a run"
+      },
+      {
+        "clauseIndex": 2,
+        "tool": "vitest",
+        "file": "tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts",
+        "title": "CMS-03C-02 pattern placement happy path through the real stack [P2-S12-AC-010] a nested pattern reference expands into its block roots: the 201 carries one row per expanded root at consecutive positions under the reference key chain",
+        "verdict": "KEEP",
+        "reason": "tests/postgrest/phase-02-slice-12-pattern-placement.apispec.ts:157-185 - the nested-reference leg through the same real stack: a pattern of two references to a two-root pattern places as four rows /nested1/root1, /nested1/root2, /nested2/root1, /nested2/root2 at positions 0-3 (BE03c 1530: the reference key then the root key), every row pinned to the PLACED pattern and not the nested one, committed paths equal, ETag = the committed entry version. It asserts no conflictState, so it is not exposed to the row-0 defect. Same contingency: a passed receipt.",
+        "fix": null
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "Weak spot, not a DROP: `stack.rpcs()` is the stack's whole call log and is not cleared before the request (stack.clearRpcs exists), so `some(cms_insert_pattern_instance, 200)` could be satisfied by an earlier call. Today nothing earlier in this file places a pattern (beforeAll only defines and activates patterns and creates entries), so it is true only because of this request; clear the log first for robustness.",
+      "The happy path is one linked placement at the root slot \"/\" on an entry with no template; template-slot placement, detached mode and overrides are covered at the RPC (pgTAP 040-positive.sqlinc) and not composed. The clause says \"the declared happy path\", which the first test is."
+    ],
+    "missedTests": [],
+    "status": "verified",
+    "proposedStatus": "verified-after-root-run",
+    "notes": "1 KEEP, 1 FIX (a one-token change). c2 \"and complete the declared happy path\" is the only uncited clause of AC-010; with the fix and a passed receipt the criterion is verified and the limitation goes. Until then the clause stays uncited (the proposal's own condition)."
+  },
+  {
+    "criterion": "P2-S12-AC-016",
+    "contingent": "Counts only with a passed receipt from root's PostgREST run after pnpm db:reset (not run by the lane).",
+    "citations": [
+      {
+        "clauseIndex": 1,
+        "tool": "vitest",
+        "file": "tests/postgrest/phase-02-slice-12-taxonomy-term-action.apispec.ts",
+        "title": "CMS-03C-03 term action happy path through the real stack [P2-S12-AC-016] a taxonomy curator creating a term in the active flat vocabulary is a 200 with the closed TaxonomyTermResource, the quoted term version as ETag, the committed term and labels, one audit record and one taxonomy event",
+        "verdict": "KEEP",
+        "reason": "tests/postgrest/phase-02-slice-12-taxonomy-term-action.apispec.ts:83-164 - the real stack (production Worker -> RPC adapter -> Kong -> PostgREST -> newest SQL; the vocabulary is created and activated through the production governed chain exactly as phase-02-slice-12-latency-taxonomy.apispec.ts:55-121 does, and the term body is the one that spec posts 120 times with 200 expected, :122-144): create a term in the active flat vocabulary with two locales and an alias: 200, TaxonomyTermResourceSchema.parse (strict, 11 members), lifecycle active, version \"1\", null parent and successor, termId equal id (cms_term_resource, 20261014120200:205-218), ETag \"1\", no-store, JSON; the committed cms_terms row (lifecycle|version|term_key|taxonomy_version_id|aliases = active|1|key|<active version id>|[\"first\"], column types verified in 20260927260000), exactly one term for the key under that version, two active version-1 label rows en-US and fr-FR, exactly one cms.taxonomy.term.create audit event on the term id and one cms.taxonomy.changed.v1 outbox event with aggregate_id the term id (cms_act_taxonomy_term, 20261014120500: cms_emit_event('cms.taxonomy.term.' || action ...) and 'cms.taxonomy.changed.v1', 'cms_term'), and the named RPC cms_act_taxonomy_term answered 200. Every expectation was checked against the SQL and the pgTAP oracle (030-create.sqlinc:4-28); I found no value that contradicts the database (contrast AC-010 row 0).",
+        "fix": null
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "Same weak spot as AC-010: stack.rpcs() is not cleared before the request; harmless here because the setup (create, submit, assign, decide, activate) does not call cms_act_taxonomy_term.",
+      "Only the `create` action is composed; rename, alias, deprecate and merge are RPC-level (pgTAP 030-create.sqlinc and neighbours). The clause's \"declared happy path\" is one representative success of the operation, which is what the ledger limitation asked for."
+    ],
+    "missedTests": [],
+    "status": "verified",
+    "proposedStatus": "verified-after-root-run",
+    "notes": "1 KEEP. c1 \"and complete the declared happy path\" is the only uncited clause of AC-016; with a passed receipt the criterion is verified and the limitation goes."
+  },
+  {
+    "criterion": "P2-S12-AC-238",
+    "contingent": "The technique is accepted (ruling below). Add the six seam guardrails of missedTests with the eight KEEPs; they pin the premises (b) and the no-forgery claim (a).",
+    "citations": [
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-direct-submit [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+        "verdict": "KEEP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:108 (s12pc_check, supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:145-150) - Phase submit, direct edge: a placed pattern whose active nested child lists only type 1 while the parent lists types 1 and 2. The assertion is the exact pattern-category result of the real manifest builder + evaluator over the placed entry: [\"pattern\",\"cms.pattern.active_digest\",\"1\",\"failed\",\"nested_pattern_not_active\", blockingCount 1]. ALT run 3 TAP .lane-logs/alt-staged-none-003647-1626501.tap ok 178 (215 ok, 0 not ok, 215 distinct descriptions, none duplicated; SHA-256 7ad94e4f...9ae re-verified). supabase/migrations/20261016044100_cms_pattern_live_pin_reason.sql:41-72: the failing branch is the recursive immediate parent-to-child type containment (child.compatible_type_ids must list every parent type), reapplied at every edge; the closure branch before it (:30-37) and the digest branch after it (:74-79) are shown false by the premises and controls.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-direct-submit [P2-S12-AC-238]: actual revision-aware frozen status",
+        "verdict": "DROP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:108 (TAP ok 175) - cms_frozen_dependencies_status(revision, manifest) answers 'stale'. It is the consequence of the provider failure in a different function (the frozen-status wrapper), not the pattern provider's reason, and the clause (c3: every reached nested version must satisfy the existing graph compatibility rule) says nothing about that wrapper. The existing AC-238 citations (c1, c2, c4-c6) cite the helper's \"exact actual pattern provider outcome/reason/single-offender count\" line and c7 its \"exact effective provenance/live membership\" line, never the frozen-status line. The same signal is also what the control rows flip, but as proof of the clause it is adjacent.",
+        "fix": null,
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-direct-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+        "verdict": "KEEP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:108 (s12pc_check, supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:145-150) - Phase publish, direct edge: the same state at publication - the \"reached through a live use ... again\" recheck. The assertion is the exact pattern-category result of the real manifest builder + evaluator over the placed entry: [\"pattern\",\"cms.pattern.active_digest\",\"1\",\"failed\",\"nested_pattern_not_active\", blockingCount 1]. ALT run 3 TAP .lane-logs/alt-staged-none-003647-1626501.tap ok 189 (215 ok, 0 not ok, 215 distinct descriptions, none duplicated; SHA-256 7ad94e4f...9ae re-verified). supabase/migrations/20261016044100_cms_pattern_live_pin_reason.sql:41-72: the failing branch is the recursive immediate parent-to-child type containment (child.compatible_type_ids must list every parent type), reapplied at every edge; the closure branch before it (:30-37) and the digest branch after it (:74-79) are shown false by the premises and controls.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-direct-publish [P2-S12-AC-238]: actual revision-aware frozen status",
+        "verdict": "DROP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:108 (TAP ok 186) - the frozen-status wrapper in the publish phase; adjacent for the reason given in row 1.",
+        "fix": null,
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-recursive-submit [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+        "verdict": "KEEP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:113 (s12pc_check, supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:145-150) - Phase submit, recursive edge: an honest top pattern (type 1) over the mismatching parent; the bad edge is its SECOND level (top -> bad is containment-correct, bad -> child is not). The assertion is the exact pattern-category result of the real manifest builder + evaluator over the placed entry: [\"pattern\",\"cms.pattern.active_digest\",\"1\",\"failed\",\"nested_pattern_not_active\", blockingCount 1]. ALT run 3 TAP .lane-logs/alt-staged-none-003647-1626501.tap ok 200 (215 ok, 0 not ok, 215 distinct descriptions, none duplicated; SHA-256 7ad94e4f...9ae re-verified). supabase/migrations/20261016044100_cms_pattern_live_pin_reason.sql:41-72: the failing branch is the recursive immediate parent-to-child type containment (child.compatible_type_ids must list every parent type), reapplied at every edge; the closure branch before it (:30-37) and the digest branch after it (:74-79) are shown false by the premises and controls. Mutation checked by reading the CTE (:42-53 graph depth<9): a version that tests only the root's direct children passes this row's first edge and returns null, so only this row (not the direct row) detects it.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-recursive-submit [P2-S12-AC-238]: actual revision-aware frozen status",
+        "verdict": "DROP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:113 (TAP ok 197) - the frozen-status wrapper for the recursive case; adjacent.",
+        "fix": null,
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-recursive-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+        "verdict": "KEEP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:113 (s12pc_check, supabase/tests/phase_02_slice_12_dec193_pattern_currentness/000-fixture.sqlinc:145-150) - Phase publish, recursive edge. The assertion is the exact pattern-category result of the real manifest builder + evaluator over the placed entry: [\"pattern\",\"cms.pattern.active_digest\",\"1\",\"failed\",\"nested_pattern_not_active\", blockingCount 1]. ALT run 3 TAP .lane-logs/alt-staged-none-003647-1626501.tap ok 211 (215 ok, 0 not ok, 215 distinct descriptions, none duplicated; SHA-256 7ad94e4f...9ae re-verified). supabase/migrations/20261016044100_cms_pattern_live_pin_reason.sql:41-72: the failing branch is the recursive immediate parent-to-child type containment (child.compatible_type_ids must list every parent type), reapplied at every edge; the closure branch before it (:30-37) and the digest branch after it (:74-79) are shown false by the premises and controls.",
+        "fix": null
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-recursive-publish [P2-S12-AC-238]: actual revision-aware frozen status",
+        "verdict": "DROP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:113 (TAP ok 208) - the frozen-status wrapper in the publish phase; adjacent.",
+        "fix": null,
+        "dropClass": "ADJACENT"
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-control-submit [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+        "verdict": "KEEP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:96-99 (TAP ok 134) - SEAM GUARDRAIL (b), not proof of the clause: with an honest compatible parent over the same child (types equal, built by the real CMS-03C-12 producer) the same helper returns outcome passed, blockingCount 0 in the submit phase. It shows the nesting, the placement and the evaluator are clean, so the failures differ from it by the type set only. Kept so that a later edit cannot remove the control silently (refute3 5.1 precedent for AC-143's guardrails).",
+        "fix": null,
+        "note": "guardrail"
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-control-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+        "verdict": "KEEP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:96-99 (TAP ok 145) - SEAM GUARDRAIL (b), publish phase of the honest control.",
+        "fix": null,
+        "note": "guardrail"
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-rawcopy-control-submit [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+        "verdict": "KEEP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:101-104 (TAP ok 156) - SEAM GUARDRAIL (a)/(b), the one that matters: the SAME raw-copy path (g2p_raw_copy of the honest draft a238-src, taken through the real submit, assign, decide and activate chain, then really placed) with the type set UNCHANGED is 'passed', count 0. So the copy technique itself - the synthetic content_hash md5(key)||md5(key||'x'), the new lineage, version 1 - does not cause a failure; the only difference between this row and the failing direct row is compatible_type_ids. Submit phase.",
+        "fix": null,
+        "note": "guardrail"
+      },
+      {
+        "clauseIndex": 3,
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+        "title": "A238-rawcopy-control-publish [P2-S12-AC-238]: exact actual pattern provider outcome/reason/single-offender count",
+        "verdict": "KEEP",
+        "reason": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:101-104 (TAP ok 167) - SEAM GUARDRAIL, publish phase of the raw-copy control.",
+        "fix": null,
+        "note": "guardrail"
+      }
+    ],
+    "splits": [],
+    "seamRuling": {
+      "technique": "a DRAFT pattern row copied directly in the RPC context (g2p_raw_copy: insert ... select jsonb_populate_record(to_jsonb(draft) || {id, pattern_id, pattern_key, supersedes_id null, version 1, lifecycle_version 1, synthetic content_hash} || {compatible_type_ids: patched})), then taken through the REAL CMS-03C-06 submit, -08 assign, -07 decide, -09 activate and really placed through CMS-03C-02. Precedent: phase_02_slice_12_gaps_pattern_governed AC-200 (2b).",
+      "verdict": "ACCEPT as a labelled state fixture; KEEP the four outcome rows and the four controls; DROP the four frozen-status rows.",
+      "points": {
+        "a_substitutes_only_the_state_under_test": "YES. No production function, table, trigger or grant is replaced, so nothing is renamed or restored (the whole file runs in begin ... rollback). The inserted row is a DRAFT, which the lineage guard requires for any insert (20261014020200_cms_pattern_lineage_guard.sql:23, state must be draft and updated_at = created_at), so no trigger is bypassed; activation, approval and the review chain are the real producers (the setup lines ok 112/113 and the premises assert the copy is \"active through the real submit, assign, decide and activate chain\"). The copy differs from its honest source in the patched compatible_type_ids and in fields the raw-copy control proves harmless (a synthetic content_hash and a fresh lineage); the submit gate checks only that nested versions are active (\"by construction, compatible and acyclic\", 20261013300820_cms_submit_governed_review_binding_fix.sql:154), so the state is reachable only by this route, which is exactly why the README called the branch \"not runtime-proven\".",
+        "b_every_other_disjunct_shown_false": "YES. cms_pattern_live_pin_reason returns the first of: root not active (:26-28), nested missing or not active (:30-37), type containment at every edge (:41-72), digest or hash changed (:74-79). Root active: setup ok 112. Nested missing or inactive: premise ok 116 (the child is still active) and ok 117 (same owner, so it is found by the owner-scoped join). Digest and hash: the raw-copy control (rows 10-11) and the honest control (rows 8-9) pass through the same code with the same copy path; the digest branch also comes AFTER the type branch, so a digest fault could not produce this reason. Only the type set differs between the raw-copy control and the failing rows (premises ok 114/115 show the sets).",
+        "c_production_object_restored_and_asserted": "NOT APPLICABLE. There is no substituted production object. The rolled-back transaction is the restoration of the fixture rows.",
+        "d_asserted_behaviour_equals_the_clauses": "YES. The clause (BE03c 1585, DEC-199): a pinned nested version that is incompatible fails the pattern category with nested_pattern_not_active. The rows assert the provider's exact outcome, reason and single-offender count in both phases for the direct edge and the second-level edge. Direction and depth are pinned by mutation reasoning: reversing the containment (child subset of parent) passes {t1,t2} over {t1} and fails the direct row; testing only the root's direct children fails the recursive row; removing the block fails both."
+      },
+      "ownerHalf": "The \"same-owner\" half of BE03c 1585's \"same-owner/all-parent-compatible-types graph rule\" is not separately exercised: a nested version of another owner is simply not joined (child.owner_id = p_owner_id), so it surfaces through the missing-nested branch (:30-37) with the same reason. No cited test shows a different-owner pin failing as opposed to a non-existent one. The AC text of c3 (\"the existing graph compatibility rule\") is AC-211's \"listing every compatibleTypeIds member of the new pattern\", which is the type half; I accept the clause as closed by it and record the owner half as a gap."
+    },
+    "missedGaps": [
+      "Owner half of the DEC-199 rule not shown (see seamRuling.ownerHalf): constructible, if wanted, with the same technique by copying the parent draft with a block_tree that pins a pattern of the other organisation and showing the reason.",
+      "The case-insensitive UUID comparison in the containment test (:67, lower(listed.value) = lower(required_type.value)) and the depth<9 bound (:52) are not exercised; neither is named by the clause.",
+      "Placement is linked mode on type-1 entries; a plain detached NULL-tree row keeps live checks (c6) and is covered by PC-N04/N06 for the active branch, not for the compatibility branch. Not required by c3."
+    ],
+    "missedTests": [
+      {
+        "clauseIndex": 3,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+          "title": "premise: the pinned parent lists both content types [P2-S12-AC-238]"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:73 (TAP ok 114) - seam guardrail: the copied, activated parent really lists both types. Static literal in the entrypoint, so the entrypoint owns it. Pin it (the guard demands a passed receipt for every cited identity) so a later edit cannot remove an isolation premise; not proof of the clause."
+      },
+      {
+        "clauseIndex": 3,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+          "title": "premise: the nested child lists only the first content type, so the parent-to-child containment rule is violated [P2-S12-AC-238]"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:76 (TAP ok 115) - seam guardrail: the nested child lists only type 1, so the violated rule is the type containment. Static literal in the entrypoint, so the entrypoint owns it. Pin it (the guard demands a passed receipt for every cited identity) so a later edit cannot remove an isolation premise; not proof of the clause."
+      },
+      {
+        "clauseIndex": 3,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+          "title": "premise: the nested child is still active, so only the compatibility rule can fail the pin [P2-S12-AC-238]"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:79 (TAP ok 116) - seam guardrail: the closure branch (nested missing or inactive) is false. Static literal in the entrypoint, so the entrypoint owns it. Pin it (the guard demands a passed receipt for every cited identity) so a later edit cannot remove an isolation premise; not proof of the clause."
+      },
+      {
+        "clauseIndex": 3,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+          "title": "premise: parent and child have the same owner, so the owner rule is satisfied and the type rule alone differs [P2-S12-AC-238]"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:81 (TAP ok 117) - seam guardrail: the owner-scoped join finds the child. Static literal in the entrypoint, so the entrypoint owns it. Pin it (the guard demands a passed receipt for every cited identity) so a later edit cannot remove an isolation premise; not proof of the clause."
+      },
+      {
+        "clauseIndex": 3,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+          "title": "setup: a238-bad (a copied draft with the patched type set) is active through the real submit, assign, decide and activate chain"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:39-54 (a238_adopt, TAP ok 112) - computed description owned by the entrypoint: the patched copy passed the REAL governed chain and is active; no approval, trigger or state was forged. Seam guardrail (a)."
+      },
+      {
+        "clauseIndex": 3,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql",
+          "title": "setup: a238-rawok (a copied draft with the patched type set) is active through the real submit, assign, decide and activate chain"
+        },
+        "evidence": "supabase/tests/phase_02_slice_12_gaps_api5_pattern_compat.sql:39-54 (TAP ok 113) - the same for the raw-copy control (its description says \"patched\" although its type set is unchanged; cosmetic). Seam guardrail (a)/(b)."
+      }
+    ],
+    "status": "verified",
+    "proposedStatus": "verified-if-technique-accepted",
+    "notes": "8 KEEP (4 outcome rows, 4 guardrail controls), 4 DROP (ADJACENT, the frozen-status rows). c3 is the only uncited clause of AC-238; the four outcome rows close it, so the criterion is verified with an empty limitation once the receipt is recorded. Identity: all 12 proposed descriptions exist exactly once in the lane TAP (215 distinct descriptions); they are computed (label || ': ...' inside s12pc_check) and the proposal correctly cites them under the entrypoint .sql, not the .sqlinc (DEC-226 rule 5). The file is a top-level .sql entrypoint. Closure hash: the entrypoint includes the shared dec108/p240/helper .sqlinc files, so root's receipt must be taken on the final bytes of all of them."
+  }
+]

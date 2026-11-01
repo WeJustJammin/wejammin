@@ -1,0 +1,439 @@
+{
+ "promoted": [
+  {
+   "file": "20261014140000_cms_composition_instance_pending_version.sql",
+   "from": "pattern-updates",
+   "sha256": "ac79470b6509affff4c456132345dfec1f0cdabd412890ef0eaeb4acb6c3ac8f"
+  },
+  {
+   "file": "20261014140100_cms_pattern_update_nodes.sql",
+   "from": "pattern-updates",
+   "sha256": "dc5ac6c39ece5ba76b730c928e9cd5797125140d473703d899bc0372987b8e6e"
+  },
+  {
+   "file": "20261014140200_cms_pattern_update_plan.sql",
+   "from": "pattern-updates",
+   "sha256": "be1258c148702327d9d3df1992b4547411ad532f4679edbce944d969be00af74"
+  },
+  {
+   "file": "20261014140410_cms_get_instance_update_diff_public.sql",
+   "from": "pattern-updates",
+   "sha256": "b4d471562e04d3331caa091b3849e8e898312bca2e27f0309f3138b1bf84e690"
+  },
+  {
+   "file": "20261014140500_cms_pattern_update_check.sql",
+   "from": "pattern-updates",
+   "sha256": "2138591264f0e5dbc839ccd143cb556af2b6baba3aa684736fd3e65864a4459b"
+  },
+  {
+   "file": "20261014140550_cms_pattern_update_next_row.sql",
+   "from": "pattern-updates",
+   "sha256": "f2f89049bdc4a142240b4a442b52c8f59a8dbc09f9b7e7bfe48beeff14b7aa5f"
+  },
+  {
+   "file": "20261014140600_cms_apply_pattern_update.sql",
+   "from": "pattern-updates",
+   "sha256": "520eb425f57dd86991812b6b6f338a89f1911a99bd043f8f5cd717142f1771fa"
+  },
+  {
+   "file": "20261014140605_cms_apply_pattern_update_closure.sql",
+   "from": "pattern-updates",
+   "sha256": "c8cdca02472c6b332f028e97df8b3532702f7348bac18bdab8361f964324cfa7"
+  },
+  {
+   "file": "20261014140610_cms_apply_pattern_update_public.sql",
+   "from": "pattern-updates",
+   "sha256": "5ed9e15ec367998bf5b35a75dc795887fee61b3305bfdb6f47b3092bf229d3ba"
+  },
+  {
+   "file": "20261016040000_cms_detached_tree_storage.sql",
+   "from": "dec193",
+   "sha256": "ac3ec91d42b72fee2e5b4420c15c8cda8a33990483d5dfad3500448d343d3371"
+  },
+  {
+   "file": "20261016040100_cms_pattern_diff_delta.sql",
+   "from": "dec193",
+   "sha256": "f9065f20e67db4bfef6390d42b211f2c4cad0c9f6c5e76f4f49b432bb9e81288"
+  },
+  {
+   "file": "20261016040200_cms_pattern_diff_plan.sql",
+   "from": "dec193",
+   "sha256": "8c6dcb56a60175b5d14467ea6895bb89ac605752efe8f62be21dbd908c1b5b35"
+  },
+  {
+   "file": "20261016040300_cms_get_instance_update_diff_dec193.sql",
+   "from": "dec193",
+   "sha256": "44905939b9d0e3328d09ccd99064773049b18088c6380b744600724d408572cf"
+  },
+  {
+   "file": "20261016040400_cms_pattern_slot_exact.sql",
+   "from": "dec193",
+   "sha256": "1e53c53a565bbb1009c0b6255e2d4b80884a1cb1aca8a9bf5508c4926bb4b0c0"
+  },
+  {
+   "file": "20261016040500_cms_pattern_snapshot_expanded.sql",
+   "from": "dec193",
+   "sha256": "f58cb800533044b6653b67a7651e459aed98b0035687786eea6b0619d85ac0e4"
+  },
+  {
+   "file": "20261016040600_cms_pattern_update_resolve.sql",
+   "from": "dec193",
+   "sha256": "50087e85f14ec02d1b0896dee8fbcfafffd08e7b6b4a911dac27fe893bc22a6d"
+  },
+  {
+   "file": "20261016040700_cms_pattern_root_snapshot.sql",
+   "from": "dec193",
+   "sha256": "7b9299f5c533837033c7df8b68f23c552afed85ace7a48fb39df6f4207bfa52f"
+  },
+  {
+   "file": "20261016040800_cms_detached_tree_registry.sql",
+   "from": "dec193",
+   "sha256": "2206505b5243b2174b9da3b569955ba7aa1dc51c75cec302fd213ba9d7e855e0"
+  },
+  {
+   "file": "20261016041200_cms_composition_instance_content.sql",
+   "from": "dec193",
+   "sha256": "c0685f16f6bbee598e70c5bce531d0963a1e59548b030b450fc4494f4a4f8743"
+  },
+  {
+   "file": "20261016041300_cms_composition_instance_resource_dec193.sql",
+   "from": "dec193",
+   "sha256": "72285c651a3a24539062ed9dd4ddd7722c50ec0327b265ba18ccff27a0fa5746"
+  },
+  {
+   "file": "20261016041700_cms_preflight_effective_security.sql",
+   "from": "dec193",
+   "sha256": "ed8bdba1128d612b4957eea69da7b7d8e89c8f2f767389ba8b70719f7fe8afd3"
+  },
+  {
+   "file": "20261016041900_cms_revision_comparison_dec193.sql",
+   "from": "dec193",
+   "sha256": "03980e153eff2fad61041d7b103df343da2fc5fedffad5b7cd1a07ec1f6d8c59"
+  },
+  {
+   "file": "20261016042000_cms_composition_carry_provenance.sql",
+   "from": "dec193",
+   "sha256": "925719e983f5d9ccc0b01d2bbeb4a3cfadd73071586c7b7bef77cf7199c9e435"
+  },
+  {
+   "file": "20261016042100_cms_revision_composition_carry.sql",
+   "from": "dec193",
+   "sha256": "c473b33d72491c9faa20cc7e0d551da77a7a8b4a57b687959b7aa32e4c93ab03"
+  },
+  {
+   "file": "20261016042200_cms_revision_composition_carry_rpcs.sql",
+   "from": "dec193",
+   "sha256": "88ce2bb10566fd88256f322988004e47b7756d8d7968d5183c80179b9d04e31b"
+  },
+  {
+   "file": "20261016042300_cms_revision_effective_composition.sql",
+   "from": "dec193",
+   "sha256": "10d004b6f3830c33cd646bc27c9b0639dee770b7ac0b72673b1a13c1f10e0b99"
+  },
+  {
+   "file": "20261016042400_cms_composition_dependency_manifest_dec193.sql",
+   "from": "dec193",
+   "sha256": "ecad7d21253acae05eea42e677fb04cacf9b65fbdbfe63f0a1776e42218ffde9"
+  },
+  {
+   "file": "20261016042500_cms_revision_render_plan_dec193.sql",
+   "from": "dec193",
+   "sha256": "db3d3f797232069310987d519084d3e465ca5267429f49d4413df5381531c188"
+  },
+  {
+   "file": "20261016042600_cms_accessibility_composition_dec193.sql",
+   "from": "dec193",
+   "sha256": "6e6cfa4a58b3f027fe7155ea6adde7ad56f8bb540344a1f0136923018076974d"
+  },
+  {
+   "file": "20261016043400_cms_pattern_placement_roots_check.sql",
+   "from": "dec193",
+   "sha256": "459893d9f17be9efd1eafb860de38a1d13ae8340935bd306fbabc1867303cede"
+  },
+  {
+   "file": "20261016043500_cms_pattern_placement_selected_plan.sql",
+   "from": "dec193",
+   "sha256": "0531d7ccfe20a692da764d5dc7b52d3bf4ef332f8921f127b2698d5380d91762"
+  },
+  {
+   "file": "20261016043600_cms_pattern_placement_path_allocation.sql",
+   "from": "dec193",
+   "sha256": "f0e25950bc079833cf15347b2eddc64d7db547e725ddc926e2b533581fe0a94b"
+  },
+  {
+   "file": "20261016043700_cms_insert_pattern_selected_roots.sql",
+   "from": "dec193",
+   "sha256": "0928d377f6d46b1ba010c2f1aa64dad36e6c3bb07e8e90a8b1fa443c1917a558"
+  },
+  {
+   "file": "20261016044000_cms_pattern_registry_digest_readonly.sql",
+   "from": "dec193",
+   "sha256": "9f19f42e1ef91c5913aa306614ddc2a9c77543b89be2c9e896358c8905105a42"
+  },
+  {
+   "file": "20261016044100_cms_pattern_live_pin_reason.sql",
+   "from": "dec193",
+   "sha256": "5793e3e4841cc086cad2f6ccf9ecc68e83751f2b3c5b73b3d9a69d479ba3be0c"
+  },
+  {
+   "file": "20261016044200_cms_pattern_active_digest.sql",
+   "from": "dec193",
+   "sha256": "0340c68b59361eb8862f8c76fba93d4df90c85245bb0c383b53308b87f8d92e2"
+  },
+  {
+   "file": "20261016044300_cms_revision_manifest_currentness.sql",
+   "from": "dec193",
+   "sha256": "25cf8a81d1ac6010fd5de1f82dc21d3bab87dfc9728a3cf76cd61c8428817d58"
+  },
+  {
+   "file": "20261016044400_cms_preflight_pattern_provider.sql",
+   "from": "dec193",
+   "sha256": "0303359a136fc58d688fdac076b25e818494d4504e343673ad33e67c865d3c23"
+  },
+  {
+   "file": "20261017044500_cms_restore_composition_plan.sql",
+   "from": "dec193",
+   "sha256": "e5f211c18ec672c66b8a300e19946d00ea37e619366dfb3c04dfb04a2b135690"
+  },
+  {
+   "file": "20261017044510_cms_restore_composition_lock_plan.sql",
+   "from": "dec193",
+   "sha256": "f50ed10fc5340cd34b55c65cb999f4d053d114b3925028d970deb9b164600a20"
+  },
+  {
+   "file": "20261017044600_cms_restore_composition_registry.sql",
+   "from": "dec193",
+   "sha256": "115eb2f452d76471f05c5ade419ed8f8aa70d8fb951d3808c95d1b1b8e0a3854"
+  },
+  {
+   "file": "20261017044700_cms_restore_composition_copy.sql",
+   "from": "dec193",
+   "sha256": "1c5cfbe76b568edefe319ee732a79c897b333afccf8ae12d664f1513f94c6a14"
+  },
+  {
+   "file": "20261017044705_cms_restore_composition_copy_acl.sql",
+   "from": "dec193",
+   "sha256": "e52625e32a0f6e7d006b9f365acc1d88f08783da1ebfe96a4c05589353d7812b"
+  },
+  {
+   "file": "20261017044800_cms_restore_composition_integration.sql",
+   "from": "dec193",
+   "sha256": "d01270f87106d7d510246b0a454a143d4e2fa93795f443f4d6ba84ffe6452f7c"
+  },
+  {
+   "file": "20261022080000_cms_block_rules_core.sql",
+   "from": "block-rules",
+   "sha256": "5f5ca6da82fa92f5e14355c4fd078544692b5d9bb48e2e39ef022d9dcfa1f099"
+  },
+  {
+   "file": "20261022080100_cms_block_rules_trees.sql",
+   "from": "block-rules",
+   "sha256": "3cac8f04453b10c5756efbb37801cc47c2039c8546598cfc08c207cd1d75f82c"
+  },
+  {
+   "file": "20261022080200_cms_create_pattern_version_block_rules.sql",
+   "from": "block-rules",
+   "sha256": "741281066717b800cfba2dc4c8e876020a6e4067c91a221718abd3c632d38900"
+  },
+  {
+   "file": "20261022080300_cms_insert_pattern_instance_block_rules.sql",
+   "from": "block-rules",
+   "sha256": "12a517d820c5a15e2610a42da30803022009bf85565ca3fb4b78de439c3df159"
+  },
+  {
+   "file": "20261022080400_cms_apply_pattern_update_block_rules.sql",
+   "from": "block-rules",
+   "sha256": "6d6cf4ca0843e7c53b359e462be2b8058df366c066cf0af5931d81bb767534b7"
+  },
+  {
+   "file": "20261022080500_cms_pattern_active_digest_block_rules.sql",
+   "from": "block-rules",
+   "sha256": "a212eab0a54d1032a5c883f18854a58b0d03f3e05942d25c35aec6b0749ccb8a"
+  },
+  {
+   "file": "20261014190010_cms_reconcile_taxonomy_merge_converge_public.sql",
+   "from": "dec194",
+   "sha256": "ebc1d69495646b8dae392e184aaa02f91af071d20516c2b0094ff69dbb5c0afd"
+  },
+  {
+   "file": "20261014190020_cms_taxonomy_merge_recovery_identity.sql",
+   "from": "dec194",
+   "sha256": "0ae9ed81271fe70f2356832f49b37879df0e88494ab7701bb24fa9b560bfae78"
+  },
+  {
+   "file": "20261014190030_cms_taxonomy_merge_request_serialized.sql",
+   "from": "dec194",
+   "sha256": "2fdb28a80a7715e9639badd2afa35d691aecdb44b840c97fa534a83c3ffdae32"
+  },
+  {
+   "file": "20261014190040_cms_taxonomy_merge_handler_serialized.sql",
+   "from": "dec194",
+   "sha256": "8a67155582f1b874a93369e1babe39de000dfe7082b56596b2e4fe460d52be3d"
+  },
+  {
+   "file": "20261014190050_cms_taxonomy_merge_recovery_serialized.sql",
+   "from": "dec194",
+   "sha256": "07ebf6237d25e7368bee59c18149b685eef84150dbbd479196a85274b2960592"
+  },
+  {
+   "file": "20261014200000_cms_get_related_content.sql",
+   "from": "dec195",
+   "sha256": "db1b4b5f179e309843a6dda6d97e9a1a4dd6c052bc0d52e5eaf9d818326739c4"
+  },
+  {
+   "file": "20261014200010_cms_get_related_content_public.sql",
+   "from": "dec195",
+   "sha256": "13700443f52eb7c436438ba66ba0c2132a3d2a78bf0ec0fd67d3f09ef30bdd0b"
+  },
+  {
+   "file": "20261014050600_cms_locale_no_fallback_gate.sql",
+   "from": "locale-gate",
+   "sha256": "75ad1184e77d46dc723809e7c6dee09198dca115d4ce6fa471f12e8b07835dbd"
+  },
+  {
+   "file": "20261014050700_cms_preflight_locale_provider.sql",
+   "from": "locale-gate",
+   "sha256": "2718715bdd09381f892631fc933d53ccc623460aabc00af24667f029b6a95254"
+  },
+  {
+   "file": "20261016030000_delivery_receiving_contracts.sql",
+   "from": "dec197",
+   "sha256": "1117a83f72496887c6b36d100b7fa2635aa4673d699841932291967b1516f3b6"
+  },
+  {
+   "file": "20261022010000_cms_entry_default_template_helpers.sql",
+   "from": "dec202",
+   "sha256": "442cdfb9f3d366976ba24cf8140c139b489a45e93cfbaf3e9810c0c1963e9db8"
+  },
+  {
+   "file": "20261022010100_cms_create_entry_default_template.sql",
+   "from": "dec202",
+   "sha256": "b1d23e7d456c415a48a5682ac533bd10b1f15de338dab4a32f28fbfc54c4eec8"
+  },
+  {
+   "file": "20261022020000_cms_get_locale_variant.sql",
+   "from": "dec205",
+   "sha256": "42568a645b5a70b1d6c8a1ba70752bd0e3c02d18fdd59515331cc1c0475be503"
+  },
+  {
+   "file": "20261022020010_cms_get_locale_variant_public.sql",
+   "from": "dec205",
+   "sha256": "f2a23d1280e94baf13983c2bdf6cbbbdcb8386c28c6608329e597027d82e8ee3"
+  },
+  {
+   "file": "20261022050000_cms_list_composition_instances.sql",
+   "from": "dec206",
+   "sha256": "7c5b313c207bdde1add47563072559e7c44dba70f4e1e56eacbb5f9faa6f86fa"
+  },
+  {
+   "file": "20261022050010_cms_list_composition_instances_public.sql",
+   "from": "dec206",
+   "sha256": "08c5b0fca322832d0f20cc1dccb3520168434deb214cfa65c29d86c5094253d2"
+  },
+  {
+   "file": "20261022030000_cms_governed_recheck_verdict.sql",
+   "from": "governed-recheck",
+   "sha256": "7c6b93c99111771222ab91eccaef3a7c33bb149883760cd9fccd3e25fbd4ad2a"
+  },
+  {
+   "file": "20261022030100_cms_recheck_governed_reviews.sql",
+   "from": "governed-recheck",
+   "sha256": "5d11a406b8a435b61c9547244fc612d62d960cd5ed510ef2a96c90fb432b6bb6"
+  },
+  {
+   "file": "20261022030200_cms_invalidate_governed_reviews_for_person.sql",
+   "from": "governed-recheck",
+   "sha256": "9ef5e2baa75770d5892235839430cf9e2b5d6f9c867b2d5cd77d118c49c4cd50"
+  },
+  {
+   "file": "20261022030300_cms_governed_recheck_resolve_event.sql",
+   "from": "governed-recheck",
+   "sha256": "8731b987388c0ee14b52d7a7760b33af42fb1c035c00211a23eb89dd0ab3c8e9"
+  },
+  {
+   "file": "20261022120000_cms_governed_frozen_status_lock_failures.sql",
+   "from": "governed-v4",
+   "sha256": "81a4ed063a5ee764c9606330347b435c2027290c90d25a02e092bd85acc6d3ed"
+  },
+  {
+   "file": "20261022100000_cms_locale_variants_observability_indexes.sql",
+   "from": "dec208",
+   "sha256": "db067815bc0fe358984904c5eb397712a0af8547bed59a98fad0a3e7b0bd27cc"
+  },
+  {
+   "file": "20261022100005_cms_locale_stale_legal_field_count.sql",
+   "from": "dec208",
+   "sha256": "ae851c8f081cbb58711006081ce646963b633830a7b701fe0ee644b83673f9a5"
+  },
+  {
+   "file": "20261022100010_cms_locale_observability_read.sql",
+   "from": "dec208",
+   "sha256": "7e013e1fc4021979d5b7a62de3f160821abe12df3f9fb0bfce472f5fb96c9ce3"
+  },
+  {
+   "file": "20261022100020_cms_locale_observability_read_public.sql",
+   "from": "dec208",
+   "sha256": "5f186430e67c96ba27def514a672ed6f755a00ac3d6538673b2e01c0685705cd"
+  },
+  {
+   "file": "20261022110000_cms_linked_scan_request.sql",
+   "from": "linked-scan",
+   "sha256": "97dcfdd1d815e3f052b517a5ab04bfe043f5a162ed097a9b8c60d9fedec9eab0"
+  },
+  {
+   "file": "20261022110050_cms_pattern_update_next_row_pending.sql",
+   "from": "linked-scan",
+   "sha256": "414364cfd35751bd658bf1e47543ddfe81d8806adfffd5659ed0e892e0680215"
+  },
+  {
+   "file": "20261022110100_cms_scan_linked_pattern_updates.sql",
+   "from": "linked-scan",
+   "sha256": "95ba04652a19b46d1e00a5911c97526976d95dbdfb40898c21529dc8a982e182"
+  },
+  {
+   "file": "20261022110200_cms_scan_linked_pattern_updates_api.sql",
+   "from": "linked-scan",
+   "sha256": "a8e6ad0e5373d968ea0c7cf172030e946f0c54c3ebe8faa59a5c3ee7ecb6802b"
+  },
+  {
+   "file": "20261022110300_cms_linked_scan_resolve_event.sql",
+   "from": "linked-scan",
+   "sha256": "729b39f3f9f78ca6eb145cc96b1d719053fd3aec26f447b49f1552bce848f81e"
+  }
+ ],
+ "deleted_dirs": [
+  "governed-recheck-red",
+  "baseline-repair",
+  "block-compat",
+  "fix-dec193",
+  "fix-dec206",
+  "fix-recheck",
+  "governed-a",
+  "governed-b",
+  "governed-fix",
+  "governed-fix2",
+  "governed-fix3",
+  "governed-fix4",
+  "governed-retire",
+  "locale",
+  "pattern-def",
+  "placement",
+  "related",
+  "repair-a",
+  "repair-b",
+  "taxonomy-def",
+  "taxonomy-terms"
+ ],
+ "promoted_race_fixes": [
+  {
+   "file": "20261023100000_cms_lock_revision_pattern_dependencies.sql",
+   "from": "race-fixes",
+   "sha256": "d105b23e1625f2d9fa7755003aeec52f5ee7a4ac37ef0bc61f3fcaf4235d9018"
+  },
+  {
+   "file": "20261023100100_cms_publication_pattern_dependency_locks.sql",
+   "from": "race-fixes",
+   "sha256": "e659f4210a5cc63390b900bb58bb3777af180b82eec54aadb9d747c7e7e61bf8"
+  }
+ ]
+}

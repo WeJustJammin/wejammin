@@ -1,7 +1,8 @@
 import { describeCmsAuthoringFields } from '../cms-editorial-fields/cms-field-descriptor-decode';
 import {
-  AuthoringContextResourceSchema,
+  AuthoringContextReadSchema,
   CmsUuidSchema,
+  ConflictDetailQuerySchema,
   ConflictDetailResourceSchema,
 } from '@wejammin/contracts';
 
@@ -9,6 +10,7 @@ import {
   conflictInitFrom,
   type CmsEditorialConflictResolveInit,
 } from '../cms-editorial/cms-editorial-conflict-state';
+import { conflictTaxonomyContextFrom } from './cms-conflict-taxonomy-context';
 import {
   cmsEditorialNoticeFor,
   cmsEditorialUnverifiedNotice,
@@ -43,7 +45,9 @@ export const loadConflictPage = async (input: {
   };
   if (
     !CmsUuidSchema.safeParse(input.entryId).success ||
-    !CmsUuidSchema.safeParse(input.conflictId).success
+    !CmsUuidSchema.safeParse(input.conflictId).success ||
+    !ConflictDetailQuerySchema.safeParse(Object.fromEntries(url.searchParams))
+      .success
   )
     return {
       kind: 'notice',
@@ -91,21 +95,69 @@ export const loadConflictPage = async (input: {
   } catch {
     return cmsEditorialUnverifiedNotice('Conflict detail');
   }
-  const parsed = AuthoringContextResourceSchema.safeParse(definitionsBody);
+  const parsed = AuthoringContextReadSchema.safeParse({
+    query: { contentTypeVersionId: conflict.data.theirs.schemaVersionId },
+    resource: definitionsBody,
+  });
   if (!parsed.success) return cmsEditorialUnverifiedNotice('Conflict detail');
-  const init = conflictInitFrom(
-    conflict.data,
-    describeCmsAuthoringFields(parsed.data.fields),
+  const descriptors = describeCmsAuthoringFields(parsed.data.resource.fields);
+  const init = conflictInitFrom(conflict.data, descriptors);
+  const known = new Set(
+    parsed.data.resource.fields.map((field) => field.stableFieldId),
   );
-  const known = new Set(parsed.data.fields.map((field) => field.stableFieldId));
   if (init.paths.some((path) => !known.has(path.fieldId)))
     return cmsEditorialUnverifiedNotice('Conflict detail');
-  return {
+  const view = (
+    body: CmsEditorialConflictResolveInit,
+  ): CmsEditorialPageOutcome<CmsEditorialConflictPageView> => ({
     kind: 'view',
     status: 200,
     title: 'Resolve edit conflict',
     heading: 'Resolve edit conflict',
     description: 'Resolve a concurrent edit.',
-    view: { init },
-  };
+    view: { init: body },
+  });
+
+  // The locale of a divergent taxonomy field belongs to the conflict's own
+  // immutable revision, which the locked conflict detail does not carry. Only
+  // then does the page re-read that exact revision through the protected
+  // CMS-03B-15 read (the same authority scope as the conflict detail); every
+  // other conflict keeps its existing read sequence and view.
+  const needsTaxonomyLocale = init.paths.some((path) =>
+    descriptors.some(
+      (descriptor) =>
+        descriptor.fieldId === path.fieldId && descriptor.kind === 'taxonomy',
+    ),
+  );
+  if (!needsTaxonomyLocale) return view(init);
+  const selected = parsed.data.resource.selectedType;
+  if (selected === null) return cmsEditorialUnverifiedNotice('Conflict detail');
+  const theirs = conflict.data.theirs;
+  const workflowResponse = await input.reads.workflow(
+    new Request(
+      new URL(
+        `/api/v1/cms/entries/${input.entryId}/workflow?revisionId=${encodeURIComponent(theirs.revisionId)}`,
+        input.request.url,
+      ),
+      { method: 'GET', headers: input.request.headers },
+    ),
+    input.entryId,
+  );
+  if (workflowResponse.status !== 200)
+    return cmsEditorialNoticeFor(workflowResponse, context);
+  let workflowBody: unknown;
+  try {
+    workflowBody = await workflowResponse.json();
+  } catch {
+    return cmsEditorialUnverifiedNotice('Conflict detail');
+  }
+  const taxonomyContext = conflictTaxonomyContextFrom({
+    entryId: input.entryId,
+    typeKey: selected.typeKey,
+    theirs,
+    workflowBody,
+  });
+  if (taxonomyContext === null)
+    return cmsEditorialUnverifiedNotice('Conflict detail');
+  return view({ ...init, taxonomyContext });
 };

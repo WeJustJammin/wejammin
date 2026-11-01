@@ -1,15 +1,18 @@
 import type { EditorialReviewDetailResource } from '@wejammin/contracts';
 import * as React from 'react';
 
-import CmsEditorialDecisionForm from './CmsEditorialDecisionForm';
-import CmsEditorialReviewAssignmentForm from './CmsEditorialReviewAssignmentForm';
 import CmsEditorialReviewDetail from './CmsEditorialReviewDetail';
 import CmsWorkflowClosedState from './CmsWorkflowClosedState';
+import CmsWorkflowRateLimitNotice from './CmsWorkflowRateLimitNotice';
 import CmsWorkflowStatusRegion from './CmsWorkflowStatusRegion';
 import {
   readCanonicalReview,
   type CanonicalReadResult,
 } from './cms-workflow-canonical-read';
+import {
+  DecisionFormView,
+  ReviewAssignmentFormView,
+} from './cms-review-form-views';
 import { disabledActionCopy } from './cms-workflow-labels';
 import type { ReviewerOptionsResult } from './cms-workflow-reviewer-options';
 import { useCanonicalResource } from './use-cms-workflow-canonical';
@@ -91,19 +94,24 @@ export default function CmsEditorialReviewDetailIsland({
             Actions
           </h2>
           <CmsWorkflowStatusRegion text={confirmation.text} />
+          <CmsWorkflowRateLimitNotice rateLimit={canonical.rateLimit} />
           {review.state === 'open' && !permitted.has('record_decision') ? (
             <p>{disabledActionCopy('record_decision')}</p>
           ) : null}
           {permitted.has('record_decision') ? (
-            <CmsEditorialDecisionForm {...shared} review={review} />
+            <React.Suspense fallback={null}>
+              <DecisionFormView {...shared} review={review} />
+            </React.Suspense>
           ) : null}
           {permitted.has('assign_reviewer') ||
           permitted.has('revoke_assignment') ? (
-            <CmsEditorialReviewAssignmentForm
-              {...shared}
-              review={review}
-              {...(loadOptions === undefined ? {} : { loadOptions })}
-            />
+            <React.Suspense fallback={null}>
+              <ReviewAssignmentFormView
+                {...shared}
+                review={review}
+                {...(loadOptions === undefined ? {} : { loadOptions })}
+              />
+            </React.Suspense>
           ) : null}
         </section>
       </div>

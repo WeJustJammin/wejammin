@@ -123,8 +123,8 @@ from (values
       'value', '"asset"'::jsonb)))
 ) c(n, label, choices);
 
-select is(pg_temp.s10_probe_message('resolve_' || label), 'taxonomy_source_unavailable',
-  'cms_resolve_conflict: ' || label || ' fails closed with the typed taxonomy_source_unavailable reason [BE03b]')
+select is(pg_temp.s10_probe_message('resolve_' || label), 'term_unavailable',
+  'cms_resolve_conflict: ' || label || ' names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]')
 from unnest(array['tax_nonempty']) label;
 select is(pg_temp.s10_probe_message('resolve_' || label), 'media_source_unavailable',
   'cms_resolve_conflict: ' || label || ' fails closed with the typed media_source_unavailable reason [BE03b]')

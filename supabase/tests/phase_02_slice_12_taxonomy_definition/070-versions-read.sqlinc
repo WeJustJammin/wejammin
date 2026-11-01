@@ -1,0 +1,161 @@
+-- cmsTaxonomyVersionsRead (BE03c:166,406,1166-1169,1480; DEC-188; P2-S12-AC-177..182).
+-- Private transport (derived, like create): platform_api.cms_list_taxonomy_versions(p_request jsonb)
+-- takes the strict { taxonomyId } plus server context and answers the strict
+-- { taxonomyId, page: { items, pageVersion } } witness the frozen Worker adapter unwraps.
+-- Lineage 's12td-lifecycle' has three immutable rows here (v1 reviewed, v2, v3).
+select pg_temp.s12td_as('A');
+select pg_temp.s12td_run('read-lineage', pg_temp.s12td_read_request(
+  pg_temp.s12td_body('lifecycle-first')->>'taxonomyId'), 'read');
+select is((select sqlstate from s12td_calls where label = 'read-lineage'), '00000',
+  'read: curator reads their lineage');
+select is((select call_role from s12td_calls where label = 'read-lineage'), 'service_role',
+  'read: actual server transport role');
+select is((select string_agg(key, ',' order by key) from s12td_calls c,
+    jsonb_object_keys(coalesce(c.response, '{}'::jsonb)) member(key)
+  where c.label = 'read-lineage'), 'page,taxonomyId',
+  'read: strict witness members');
+select is(pg_temp.s12td_body('read-lineage')->'taxonomyId',
+  to_jsonb(pg_temp.s12td_body('lifecycle-first')->>'taxonomyId'),
+  'read: witness names the requested lineage');
+select is((select string_agg(key, ',' order by key) from s12td_calls c,
+    jsonb_object_keys(coalesce(c.response->'page', '{}'::jsonb)) member(key)
+  where c.label = 'read-lineage'), 'items,pageVersion', 'read: strict page members');
+select is((select jsonb_agg(item->'version' order by ord)
+  from jsonb_array_elements(coalesce(pg_temp.s12td_body('read-lineage')->'page'->'items', '[]'::jsonb))
+    with ordinality items(item, ord)), '["3","2","1"]'::jsonb,
+  'read: every version of the lineage, newest first');
+select is((select jsonb_agg(item->'taxonomyVersion' order by ord)
+  from jsonb_array_elements(coalesce(pg_temp.s12td_body('read-lineage')->'page'->'items', '[]'::jsonb))
+    with ordinality items(item, ord)), '[3,2,1]'::jsonb,
+  'read: numeric vocabulary version agrees with the decimal definition version');
+select is(pg_temp.s12td_body('read-lineage')#>'{page,items,0}', pg_temp.s12td_body('third'),
+  'read: newest item is exactly the resource its create answered');
+select is(pg_temp.s12td_body('read-lineage')#>'{page,items,1}', pg_temp.s12td_body('successor'),
+  'read: second item is exactly the resource its create answered');
+select is((pg_temp.s12td_body('read-lineage')#>'{page,items,2}') - array['state', 'updatedAt'],
+  pg_temp.s12td_body('lifecycle-first') - array['state', 'updatedAt'],
+  'read: reviewed first version keeps every definition member');
+select is(pg_temp.s12td_body('read-lineage')#>>'{page,items,2,state}', 'review',
+  'read: lifecycle state is current, not the creation snapshot');
+select is((select bool_and((select string_agg(key, ',' order by key) from jsonb_object_keys(item) member(key))
+    = 'allowedFieldKeys,allowedTypeKeys,canonicalOverlapDomains,contentHash,createdAt,id,shape,'
+    || 'state,taxonomyId,taxonomyKey,taxonomyVersion,updatedAt,version')
+  from jsonb_array_elements(coalesce(pg_temp.s12td_body('read-lineage')->'page'->'items', '[]'::jsonb)) item),
+  true, 'read: no owner, authority or lifecycle counter on any item');
+select is(pg_temp.s12td_body('read-lineage')#>>'{page,pageVersion}',
+  (select floor(extract(epoch from max(updated_at)) * 1000000)::bigint::text
+   from platform_private.cms_taxonomy_versions version_row
+   where to_jsonb(version_row)->>'taxonomy_id' = pg_temp.s12td_body('lifecycle-first')->>'taxonomyId'),
+  'read: page version is the high-water update instant of the page in microseconds');
+select is((select after_state from s12td_calls where label = 'read-lineage'),
+  (select before_state from s12td_calls where label = 'read-lineage'),
+  'read: writes no row in any store, including audit, reservation and outbox');
+
+-- Absent, hidden and cross-owner lineages are one indistinguishable 404. A
+-- version row id that is not the lineage id is also absent: never infer lineage
+-- existence from an empty page.
+select pg_temp.s12td_run('read-absent',
+  pg_temp.s12td_read_request('a9126000-0000-4000-8000-0000000000f0'), 'read');
+select * from pg_temp.s12td_refusal('read-absent', 'NOT_FOUND');
+select pg_temp.s12td_run('read-successor-id', pg_temp.s12td_read_request(
+  pg_temp.s12td_body('successor')->>'id'), 'read');
+select * from pg_temp.s12td_refusal('read-successor-id', 'NOT_FOUND');
+select pg_temp.s12td_as('B', 'B');
+select pg_temp.s12td_run('read-other-owner', pg_temp.s12td_read_request(
+  pg_temp.s12td_body('lifecycle-first')->>'taxonomyId'), 'read');
+select * from pg_temp.s12td_refusal('read-other-owner', 'NOT_FOUND');
+select pg_temp.s12td_as('B', 'A');
+select pg_temp.s12td_run('read-hidden-scope', pg_temp.s12td_read_request(
+  pg_temp.s12td_body('lifecycle-first')->>'taxonomyId'), 'read');
+select * from pg_temp.s12td_refusal('read-hidden-scope', 'NOT_FOUND');
+select is((select count(distinct jsonb_build_object('state', sqlstate, 'message', message, 'detail', detail))::integer
+  from s12td_calls where label in ('read-absent', 'read-other-owner', 'read-hidden-scope', 'read-successor-id')),
+  1, 'read: absent, hidden, cross-owner and non-lineage ids expose one complete refusal');
+
+select pg_temp.s12td_as('Member');
+select pg_temp.s12td_run('read-not-curator', pg_temp.s12td_read_request(
+  pg_temp.s12td_body('lifecycle-first')->>'taxonomyId'), 'read');
+select * from pg_temp.s12td_refusal('read-not-curator', 'capability_missing');
+select pg_temp.s12td_as('anonymous');
+select pg_temp.s12td_run('read-anonymous', pg_temp.s12td_read_request(
+  pg_temp.s12td_body('lifecycle-first')->>'taxonomyId'), 'read');
+select * from pg_temp.s12td_refusal('read-anonymous', 'UNAUTHENTICATED');
+select pg_temp.s12td_as('A');
+
+-- Strict request: only taxonomyId (a UUID) plus server context.
+create temp table s12td_read_invalid(label text primary key, request jsonb not null) on commit drop;
+insert into s12td_read_invalid values
+  ('body-null', 'null'::jsonb), ('body-array', '[]'::jsonb), ('body-string', '"x"'::jsonb),
+  ('missing-id', pg_temp.s12td_read_request('x') - 'taxonomyId'),
+  ('id-null', pg_temp.s12td_read_request('x', '{"taxonomyId":null}')),
+  ('id-number', pg_temp.s12td_read_request('x', '{"taxonomyId":1}')),
+  ('id-text', pg_temp.s12td_read_request('not-a-uuid')),
+  ('id-empty', pg_temp.s12td_read_request('')),
+  ('id-braced', pg_temp.s12td_read_request('{a9126000-0000-4000-8000-0000000000f0}')),
+  ('id-compact', pg_temp.s12td_read_request('a91260000000400080000000000000f0')),
+  ('id-array', pg_temp.s12td_read_request('x', '{"taxonomyId":["a9126000-0000-4000-8000-0000000000f0"]}'));
+insert into s12td_read_invalid
+select 'extra-' || member, pg_temp.s12td_read_request('a9126000-0000-4000-8000-0000000000f0',
+  jsonb_build_object(member, 'caller-controlled'))
+from unnest(array['page', 'limit', 'cursor', 'ownerId', 'state', 'idempotencyKey', 'ifMatch']) member;
+select pg_temp.s12td_run('read-' || label, request, 'read') from s12td_read_invalid order by label;
+select result from s12td_read_invalid invalid
+cross join lateral pg_temp.s12td_refusal('read-' || invalid.label, 'INVALID_REQUEST') result
+order by invalid.label;
+
+-- Current authority, not a cached view: a revoked curator reads nothing.
+create temp table s12td_read_grant on commit drop as
+select * from identity_private.organization_actor_grant
+where organization_id = (select value::uuid from s12td_ids where key = 'orgA')
+  and person_id = (select value::uuid from s12td_ids where key = 'personA')
+  and capability_code = 'cms.taxonomy_curator';
+update identity_private.organization_actor_grant set active = false
+where organization_id = (select value::uuid from s12td_ids where key = 'orgA')
+  and person_id = (select value::uuid from s12td_ids where key = 'personA')
+  and capability_code = 'cms.taxonomy_curator';
+select pg_temp.s12td_run('read-revoked', pg_temp.s12td_read_request(
+  pg_temp.s12td_body('lifecycle-first')->>'taxonomyId'), 'read');
+select * from pg_temp.s12td_refusal('read-revoked', 'capability_missing');
+update identity_private.organization_actor_grant g set active = original.active
+from s12td_read_grant original where g.organization_id = original.organization_id
+  and g.person_id = original.person_id and g.capability_code = original.capability_code;
+select ok(platform_private.cms_person_holds_capability(
+  (select value::uuid from s12td_ids where key = 'orgA'),
+  (select value::uuid from s12td_ids where key = 'personA'), 'cms.taxonomy_curator'),
+  'SETUP read-revocation probe restored the original curator authority');
+
+-- Bound: at most 50 versions, newest first, of a 52-version lineage.
+select pg_temp.s12td_run('many-' || i, pg_temp.s12td_request('s12td-many',
+  's12td-many-' || lpad(i::text, 3, '0'), '{}'::jsonb, case when i = 1 then null else (i - 1)::text end))
+from (select i from generate_series(1, 52) i order by i offset 0) steps;
+select is((select count(*)::integer from s12td_calls where label like 'many-%' and sqlstate = '00000'),
+  52, 'bound fixture: 52 chained versions were created through the real command');
+select pg_temp.s12td_run('read-many', pg_temp.s12td_read_request(
+  pg_temp.s12td_body('many-1')->>'taxonomyId'), 'read');
+select is(jsonb_array_length(coalesce(pg_temp.s12td_body('read-many')#>'{page,items}', '[]'::jsonb)), 50,
+  'read: at most fifty versions of a longer lineage');
+select is(pg_temp.s12td_body('read-many')#>'{page,items,0,taxonomyVersion}', '52'::jsonb,
+  'read: a truncated page starts at the newest version');
+select is(pg_temp.s12td_body('read-many')#>'{page,items,49,taxonomyVersion}', '3'::jsonb,
+  'read: a truncated page drops the oldest versions');
+
+-- Grant boundary of the read, like the create: browser roles cannot reach either function.
+select pg_temp.s12td_as('A');
+select pg_temp.s12td_run('read-browser-' || role, pg_temp.s12td_read_request(
+  pg_temp.s12td_body('lifecycle-first')->>'taxonomyId'), 'read', role)
+from (values ('anon'), ('authenticated')) actors(role);
+select result from (values ('anon'), ('authenticated')) actors(role)
+cross join lateral pg_temp.s12td_refusal('read-browser-' || role,
+  'permission denied for function cms_list_taxonomy_versions', '42501') result;
+select ok(coalesce((select bool_and(not has_function_privilege(role, p.oid, 'EXECUTE'))
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'platform_private' and p.proname = 'cms_list_taxonomy_versions'), false),
+  role || ' cannot invoke the private taxonomy versions read')
+from (values ('anon'), ('authenticated'), ('service_role')) actors(role);
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""'])
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname in ('platform_api', 'platform_private') and p.proname = 'cms_list_taxonomy_versions'), false),
+  'the versions read pins an empty search_path and uses a definer boundary');
+select ok(coalesce(has_function_privilege('service_role', 'platform_api.cms_list_taxonomy_versions(jsonb)', 'EXECUTE')
+  and has_function_privilege('service_role', 'platform_api.cms_create_taxonomy_version(jsonb)', 'EXECUTE'), false),
+  'the Worker service role holds EXECUTE on both public transports');

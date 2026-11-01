@@ -129,7 +129,11 @@ describe('immutable CMS origin in actual generic receiving composition', () => {
   it('retains restore fencing after a true immutable origin', async () => {
     const f = fixture({ fenced: true });
     await f.run();
-    f.check([read(), origin(), read(), restore(), ['retry']], 1);
+    // A restore fence is a retry-type CMS disposition: redelivered 15 s after the first delivery (DEC-184).
+    f.check(
+      [read(), origin(), read(), restore(), ['retry', { delaySeconds: 15 }]],
+      1,
+    );
   });
   it.each(['id', 'type'] as const)(
     'refuses a changed second canonical %s even at incoming version',

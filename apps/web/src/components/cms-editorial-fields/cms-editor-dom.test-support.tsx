@@ -181,3 +181,23 @@ export const selectBy = (
   if (found === null) throw new Error(`No element matches ${selector}`);
   return found as unknown as HTMLSelectElement;
 };
+
+/**
+ * A pointer arrives over the form's lazy region (`data-cms-lazy-region`): the first sign of
+ * intent, which starts the reads and loads a form defers to the person (`cms-lazy-intent.ts`).
+ */
+export const showIntent = (container: HTMLElement): void => {
+  const region = container.querySelector('[data-cms-lazy-region]');
+  if (region === null) throw new Error('No lazy region in this container');
+  act(() => {
+    region.dispatchEvent(new Event('pointerover', { bubbles: true }));
+  });
+};
+
+/** `mountElement`, then a pointer over the lazy region when the element has one. */
+export const mountWithIntent = (element: React.ReactElement): Mounted => {
+  const mounted = mountElement(element);
+  if (mounted.container.querySelector('[data-cms-lazy-region]') !== null)
+    showIntent(mounted.container);
+  return mounted;
+};

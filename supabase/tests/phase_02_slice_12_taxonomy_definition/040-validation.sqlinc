@@ -1,0 +1,121 @@
+-- P2-S12-AC-125/128. One changed contract dimension per request; every case
+-- reaches the actual command with a unique key and a full no-effect oracle.
+create temp table s12td_invalid(
+  label text primary key, request jsonb not null, message text not null
+) on commit drop;
+insert into s12td_invalid values
+  ('body-null','null'::jsonb,'INVALID_REQUEST'),
+  ('body-array','[]'::jsonb,'INVALID_REQUEST'),
+  ('body-string','"invalid"'::jsonb,'INVALID_REQUEST'),
+  ('body-number','1'::jsonb,'INVALID_REQUEST');
+insert into s12td_invalid
+select 'missing-' || member,
+  pg_temp.s12td_request('s12td-invalid','s12td-missing-' || member) - member,
+  'INVALID_REQUEST'
+from unnest(array['taxonomyKey','shape','allowedTypeKeys','allowedFieldKeys',
+  'canonicalOverlapDomains','expectedVersion','idempotencyKey']) member;
+insert into s12td_invalid
+select 'null-' || member,
+  pg_temp.s12td_request('s12td-invalid','s12td-null-' || member,
+    jsonb_build_object(member, null)), 'VALIDATION_FAILED'
+from unnest(array['taxonomyKey','shape','allowedTypeKeys','allowedFieldKeys',
+  'canonicalOverlapDomains']) member;
+
+insert into s12td_invalid
+select 'key-' || label, pg_temp.s12td_request('s12td-invalid','s12td-key-' || label,
+  jsonb_build_object('taxonomyKey', invalid)), 'VALIDATION_FAILED'
+from (values
+  ('empty','""'::jsonb), ('one','"a"'::jsonb),
+  ('long',to_jsonb(repeat('a',65))), ('upper','"Ab"'::jsonb),
+  ('number-prefix','"1a"'::jsonb), ('underscore','"aa_bb"'::jsonb),
+  ('space','"aa bb"'::jsonb), ('unicode','"aé"'::jsonb),
+  ('numeric','12'::jsonb), ('object','{}'::jsonb), ('array','[]'::jsonb)
+) cases(label,invalid);
+insert into s12td_invalid
+select 'shape-' || label, pg_temp.s12td_request('s12td-invalid','s12td-shape-' || label,
+  jsonb_build_object('shape',invalid)), 'VALIDATION_FAILED'
+from (values ('unknown','"tree"'::jsonb), ('case','"Flat"'::jsonb),
+  ('numeric','1'::jsonb), ('array','[]'::jsonb), ('object','{}'::jsonb)) cases(label,invalid);
+
+-- Both allowlists have independent 1..64, uniqueness and member-grammar gates.
+insert into s12td_invalid
+select member || '-' || label, pg_temp.s12td_request('s12td-invalid',
+  's12td-list-' || member || '-' || label, jsonb_build_object(member,invalid)), 'VALIDATION_FAILED'
+from unnest(array['allowedTypeKeys','allowedFieldKeys']) member
+cross join (values
+  ('empty','[]'::jsonb), ('scalar','"ab"'::jsonb), ('object','{}'::jsonb),
+  ('duplicate','["ab","ab"]'::jsonb), ('duplicate-nonadjacent','["ab","cd","ab"]'::jsonb),
+  ('member-empty','[""]'::jsonb), ('member-one','["a"]'::jsonb),
+  ('member-long',jsonb_build_array(repeat('a',65))),
+  ('member-upper','["Ab"]'::jsonb), ('member-number-prefix','["1a"]'::jsonb),
+  ('member-hyphen','["aa-bb"]'::jsonb), ('member-space','["aa bb"]'::jsonb),
+  ('member-unicode','["aé"]'::jsonb), ('member-null','[null]'::jsonb),
+  ('member-numeric','[12]'::jsonb), ('member-boolean','[true]'::jsonb),
+  ('member-array','[["ab"]]'::jsonb), ('member-object','[{}]'::jsonb)
+) cases(label,invalid);
+insert into s12td_invalid
+select member || '-65', pg_temp.s12td_request('s12td-invalid','s12td-size-' || member,
+  jsonb_build_object(member,(select jsonb_agg('key_' || i order by i) from generate_series(1,65) i))),
+  'VALIDATION_FAILED'
+from unnest(array['allowedTypeKeys','allowedFieldKeys']) member;
+insert into s12td_invalid
+select member || '-64-with-duplicate', pg_temp.s12td_request('s12td-invalid',
+  's12td-size-duplicate-' || member, jsonb_build_object(member,
+    (select jsonb_agg('key_' || case when i = 64 then 1 else i end order by i)
+     from generate_series(1,64) i))), 'VALIDATION_FAILED'
+from unnest(array['allowedTypeKeys','allowedFieldKeys']) member;
+
+insert into s12td_invalid
+select 'domains-' || label, pg_temp.s12td_request('s12td-invalid','s12td-domain-bad-' || label,
+  jsonb_build_object('canonicalOverlapDomains',invalid)), 'VALIDATION_FAILED'
+from (values
+  ('seventh','["role","instrument","gear","place","rights","jurisdiction","role"]'::jsonb),
+  ('duplicate','["role","role"]'::jsonb), ('unknown','["genre"]'::jsonb),
+  ('case','["Role"]'::jsonb), ('null-member','[null]'::jsonb),
+  ('number','[1]'::jsonb), ('boolean','[true]'::jsonb),
+  ('object-member','[{}]'::jsonb), ('array-member','[["role"]]'::jsonb),
+  ('scalar','"role"'::jsonb), ('object','{}'::jsonb)
+) cases(label,invalid);
+
+-- All protocol-only operand faults are 400 at transport, represented by the
+-- existing private INVALID_REQUEST convention, not a stale-version conflict.
+insert into s12td_invalid
+select 'version-' || label, pg_temp.s12td_request('s12td-flat','s12td-version-' || label,
+  jsonb_build_object('expectedVersion',invalid,'ifMatch',invalid)), 'INVALID_REQUEST'
+from (values
+  ('text-null','"null"'::jsonb), ('number','1'::jsonb), ('boolean','true'::jsonb),
+  ('empty','""'::jsonb), ('zero','"0"'::jsonb), ('negative','"-1"'::jsonb),
+  ('leading-zero','"01"'::jsonb), ('decimal','"1.0"'::jsonb),
+  ('exponent','"1e0"'::jsonb), ('space','" 1"'::jsonb),
+  ('bigint-overflow','"9223372036854775808"'::jsonb), ('array','[]'::jsonb), ('object','{}'::jsonb)
+) cases(label,invalid);
+insert into s12td_invalid values
+  ('create-if-match',pg_temp.s12td_request('s12td-invalid','s12td-create-match','{"ifMatch":"1"}'), 'INVALID_REQUEST'),
+  ('create-null-if-match',pg_temp.s12td_request('s12td-invalid','s12td-create-null-match','{"ifMatch":null}'), 'INVALID_REQUEST'),
+  ('edit-without-match',pg_temp.s12td_request('s12td-flat','s12td-edit-missing','{}','1') - 'ifMatch','INVALID_REQUEST'),
+  ('edit-mismatch',pg_temp.s12td_request('s12td-flat','s12td-edit-mismatch','{"ifMatch":"2"}','1'),'INVALID_REQUEST'),
+  ('edit-null-match',pg_temp.s12td_request('s12td-flat','s12td-edit-null','{"ifMatch":null}','1'),'INVALID_REQUEST'),
+  ('edit-number-match',pg_temp.s12td_request('s12td-flat','s12td-edit-number','{"ifMatch":1}','1'),'INVALID_REQUEST');
+insert into s12td_invalid
+select 'extra-' || member, pg_temp.s12td_request('s12td-invalid','s12td-extra-' || member,
+  jsonb_build_object(member,'caller-controlled')), 'INVALID_REQUEST'
+from unnest(array['ownerId','createdBy','taxonomyId','taxonomyVersion','contentHash',
+  'ownerCapability','lifecycleVersion','lifecycle_version','state','surprise']) member;
+insert into s12td_invalid
+select 'idempotency-' || label, pg_temp.s12td_request('s12td-invalid','unused-key',
+  jsonb_build_object('idempotencyKey',invalid)), 'INVALID_REQUEST'
+from (values ('short',to_jsonb(repeat('a',7))),('long',to_jsonb(repeat('a',129))),
+  ('unicode','"abcdefghé"'::jsonb), ('control',to_jsonb(E'abcdefgh\n'::text)),
+  ('null','null'::jsonb), ('numeric','12345678'::jsonb)) cases(label,invalid);
+
+select pg_temp.s12td_run(label,request) from s12td_invalid order by label;
+select result from s12td_invalid invalid
+cross join lateral pg_temp.s12td_refusal(invalid.label,invalid.message) result
+order by invalid.label;
+
+select pg_temp.s12td_run('future-parent',
+  pg_temp.s12td_request('s12td-flat','s12td-future-parent','{}','9223372036854775807'));
+select * from pg_temp.s12td_refusal('future-parent','CONFLICT');
+select pg_temp.s12td_run('absent-parent',
+  pg_temp.s12td_request('s12td-absent','s12td-absent-parent','{}','1'));
+select * from pg_temp.s12td_refusal('absent-parent','NOT_FOUND');

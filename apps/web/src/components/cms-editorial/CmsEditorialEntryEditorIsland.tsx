@@ -1,14 +1,15 @@
 import * as React from 'react';
 
-import CmsFieldEditor from '../cms-editorial-fields/CmsFieldEditor';
+import type { CmsFieldEditorProps } from '../cms-editorial-fields/CmsFieldEditor';
 import CmsFieldErrorSummary, {
   type CmsFieldErrorSummaryItem,
 } from '../cms-editorial-fields/CmsFieldErrorSummary';
-import { validateCmsFieldValue } from '../cms-editorial-fields/cms-field-value';
+import { validateLoadedCmsFieldValue } from '../cms-editorial-fields/cms-field-validation';
 import CmsEditorialDraftFacts from './CmsEditorialDraftFacts';
+import CmsEditorialEntryFields from './CmsEditorialEntryFields';
 import CmsEditorialEditorBanners from './CmsEditorialEditorBanners';
-import CmsEditorialResultPanel from './CmsEditorialResultPanel';
 import CmsEditorialLeaveConfirmation from './CmsEditorialLeaveConfirmation';
+import CmsEditorialResultPanel from './CmsEditorialResultPanel';
 import CmsEditorialStatus from './CmsEditorialStatus';
 import { cmsEditorialAppRevisionsPath } from './cms-editorial-app-routes';
 import { CMS_EDITORIAL_APP_ENTRIES_PATH } from './cms-editorial-app-routes';
@@ -74,9 +75,13 @@ export default function CmsEditorialEntryEditorIsland(
     );
     const raw = state.inputErrors[fieldId];
     const refused = state.refusedFieldIds.includes(fieldId);
+    // A refusal comes from a save, and the save loads the validators; before that the server's own message stands.
     const local =
       refused && descriptor !== undefined
-        ? validateCmsFieldValue(descriptor, state.values[fieldId] ?? null)
+        ? (validateLoadedCmsFieldValue(
+            descriptor,
+            state.values[fieldId] ?? null,
+          ) ?? [])
         : [];
     return [
       ...(refused && local.length === 0
@@ -98,6 +103,14 @@ export default function CmsEditorialEntryEditorIsland(
     state.phase !== 'unauthenticated' &&
     state.phase !== 'denied';
   const historyPath = cmsEditorialAppRevisionsPath(init.entryId);
+  const href = typeof window === 'undefined' ? '' : here();
+
+  const taxonomyContext: CmsFieldEditorProps['taxonomyContext'] = {
+    typeKey: init.typeKey,
+    locale: init.locale,
+    fetcher: props.fetcher,
+    refreshToken: state.taxonomyRefreshToken,
+  };
 
   return (
     <div className="cms-editorial-editor" onClickCapture={guard.onClickCapture}>
@@ -108,10 +121,8 @@ export default function CmsEditorialEntryEditorIsland(
       <CmsEditorialEditorBanners
         init={init}
         state={state}
-        signInHref={`/auth/sign-in?returnTo=${encodeURIComponent(
-          typeof window === 'undefined' ? '' : here(),
-        )}`}
-        currentHref={typeof window === 'undefined' ? '' : here()}
+        signInHref={`/auth/sign-in?returnTo=${encodeURIComponent(href)}`}
+        currentHref={href}
         alertRef={alertRef}
         onDiscardAndLoad={() => void controller.discardUnsentAndLoadCurrent()}
       />
@@ -152,24 +163,19 @@ export default function CmsEditorialEntryEditorIsland(
           void controller.saveNow();
         }}
       >
-        <fieldset disabled={!editable} className="cms-editorial-fields">
-          <legend>Draft fields</legend>
-          {controller.descriptors.map((descriptor) => (
-            <CmsFieldEditor
-              key={`${descriptor.fieldId}-${state.fieldRevisions[descriptor.fieldId] ?? 0}`}
-              descriptor={descriptor}
-              value={state.values[descriptor.fieldId] ?? null}
-              issues={issuesFor(descriptor.fieldId)}
-              readOnlyNotice={init.readOnlyNotices[descriptor.fieldId]}
-              onChange={(value) =>
-                controller.setValue(descriptor.fieldId, value)
-              }
-              onInputError={(message) =>
-                controller.setInputError(descriptor.fieldId, message)
-              }
-            />
-          ))}
-        </fieldset>
+        <CmsEditorialEntryFields
+          descriptors={controller.descriptors}
+          values={state.values}
+          fieldRevisions={state.fieldRevisions}
+          readOnlyNotices={init.readOnlyNotices}
+          disabled={!editable}
+          taxonomyContext={taxonomyContext}
+          issuesFor={issuesFor}
+          onChange={(fieldId, value) => controller.setValue(fieldId, value)}
+          onInputError={(fieldId, message) =>
+            controller.setInputError(fieldId, message)
+          }
+        />
         {/*
           Never disabled while a save is in flight: disabling the focused button
           makes the browser drop focus to <body>. The controller refuses a second

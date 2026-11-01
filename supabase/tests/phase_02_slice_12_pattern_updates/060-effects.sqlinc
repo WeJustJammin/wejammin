@@ -1,0 +1,54 @@
+-- CMS-03C-15 idempotency, the live-review invalidation (AC-219), the audit trail and the absence of events.  BE03c 177, 1367, 1504.
+-- [P2-S12-AC-121, AC-219]
+
+-- idempotent replay of the exact request returns the stored response and ETag and writes nothing ---------------------------------------------------
+select pg_temp.s12pu_update('i-first', pg_temp.s12pu_update_request('ap11', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap11', '/hero')), 's12pu-ap11-0001', 2));
+select is(pg_temp.s12pu_state('i-first'), '00000', 'the first update succeeds');
+select pg_temp.s12pu_update('i-replay', (select request from s12pu_out where label = 'i-first'));
+select is(pg_temp.s12pu_state('i-replay'), '00000', 'the exact replay succeeds');
+select is(pg_temp.s12pu_body('i-replay'), pg_temp.s12pu_body('i-first'), 'the replay returns the stored 200 body');
+select is((select headers from s12pu_out where label = 'i-replay'), (select headers from s12pu_out where label = 'i-first'),
+  'the replay publishes the stored ETag, not the current entry version');
+select ok(pg_temp.s12pu_unchanged('i-replay'), 'the replay writes nothing: no row, no version, no audit, no idempotency change');
+select * from pg_temp.s12pu_refused('i-mismatch', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('ap11', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap11', '/cta')), 's12pu-ap11-0001'), 'IDEMPOTENCY_MISMATCH');
+
+-- AC-219: a composition write invalidates the revision's live review in the same transaction ---------------------------------------------------
+-- (the constructed shape of the placement suite: an older review is still open beside a newer, invalidated one)
+select pg_temp.s12pl_review('ap13', timestamptz '2026-10-08T12:01:00Z') as newer_invalidated \gset
+select platform_private.cms_invalidate_editorial_review(jsonb_build_object('reviewId', :'newer_invalidated'::uuid,
+  'reasonCode', 'revision_superseded', 'correlationId', 'a9120000-0000-4000-8000-00000000c0c0'));
+select pg_temp.s12pl_review('ap13', timestamptz '2026-10-08T12:00:00Z') as older_open \gset
+select is(platform_private.cms_revision_effective_state(pg_temp.s12pl_rev('ap13')), 'draft',
+  'setup: the latest review is invalidated, so the revision is effective draft with an older review still open');
+select pg_temp.s12pu_update('i-ap13', pg_temp.s12pu_update_request('ap13', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap13', '/hero')), 's12pu-ap13-0001', 2));
+select * from pg_temp.s12puc_check('i-ap13', 'ap13', array['/hero'], jsonb_build_array(
+  jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+select is((select state || ':' || invalidated_reason || ':' || version::text from platform_private.cms_editorial_reviews where id = :'older_open'),
+  'invalidated:dependency_changed:2', 'the live review is invalidated dependency_changed in the same transaction, version advanced once [AC-219]');
+select is((select state || ':' || version::text from platform_private.cms_editorial_reviews where id = :'newer_invalidated'), 'invalidated:2',
+  'the review invalidated before the update is left untouched by it');
+select is(pg_temp.s12pu_count('i-ap13', 'after', 'platform_private.outbox_events') - pg_temp.s12pu_count('i-ap13', 'before', 'platform_private.outbox_events'), 1,
+  'the update emits exactly the one review-changed event of the invalidation it performed: CMS-03C-15 has no event of its own');
+-- no live review: no outbox event at all
+select is(pg_temp.s12pu_count('i-first', 'after', 'platform_private.outbox_events') - pg_temp.s12pu_count('i-first', 'before', 'platform_private.outbox_events'), 0,
+  'an update with no live review emits no outbox event (BE03c 177: audit only)');
+
+-- every successful call ran under the real service_role and restored the prior role setting; the RPC flag does not leak ------------------------------
+select ok((select bool_and(call_role = 'service_role' and role_restored) from s12pu_out where requested_role = 'service_role'),
+  'every update call ran under the real service_role and restored the prior role setting');
+select ok((select count(*) > 0 and bool_and(rpc_before = '') from s12pu_out),
+  'setup sanity: every call so far started with the RPC-context flag cleared, as a PostgREST request does');
+select ok((select count(*) > 0 and bool_and(rpc_after = rpc_before) from s12pu_out),
+  'the RPC-context flag does not leak: after every call (success, replay or refusal) it is the value the caller had [PAT-031, SEC-2]');
+
+-- a second author, assigned on the entry, answers the update; once the grant is revoked the next call is refused ------------------------------------
+select pg_temp.s12pu_assign('ap10', 'designer2', 'cms.author');
+select pg_temp.s12pu_update('x-designer2', pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-x-d2-0001', 2, null, 'designer2'), 'designer2');
+select ok(pg_temp.s12pu_state('x-designer2') = '00000' and (select created_by from platform_private.cms_composition_instances
+    where id = (pg_temp.s12pu_body('x-designer2')->'items'->0->>'id')::uuid) = (select auth_user_id from s09d_actor where key = 'designer2'),
+  'an author assigned on the entry answers the update and is recorded as the creator of the appended row');
+select is(pg_temp.s09d_revoke_via_rpc('designer2', 'cms.author'), 'OK', 'setup: the real revoke command ends designer2''s author grant');
+select * from pg_temp.s12pu_refused('x-revoked', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('ap10', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap10', '/cta')), 's12pu-x-d2-0002', null, null, 'designer2'),
+  'capability_missing', null, 'designer2');

@@ -8,7 +8,7 @@ import type {
 import {
   cmsDatetimeToLocalInput,
   cmsLocalInputToDatetime,
-} from './cms-field-value';
+} from './cms-field-basics';
 
 export interface CmsScalarControlProps {
   readonly id: string;

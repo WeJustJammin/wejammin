@@ -1,0 +1,41 @@
+-- TEST-ONLY, AUTHOR UNRUN. Caller owns a separately reset pre-DEC-197 database,
+-- pgTAP/no_plan(), BEGIN, TAP validation and only then COMMIT. No fixture DML.
+select ok(
+  pg_catalog.to_regclass('platform_private.projection_consumer_state') is not null,
+  'DR-UP-P01 real legacy consumer relation exists before positive upgrade');
+
+select is(
+  (select count(*)::text from platform_private.projection_consumer_state),
+  '0',
+  'DR-UP-P02 separately reset positive world has no historical consumers');
+
+select ok(
+  pg_catalog.to_regclass('platform_private.route_manifest_version') is null
+    and pg_catalog.to_regclass('platform_private.publication_projection') is null
+    and pg_catalog.to_regtype('platform_private.route_manifest_version') is null
+    and pg_catalog.to_regtype('platform_private.publication_projection') is null
+    and pg_catalog.to_regprocedure('platform_private.route_manifest_version_guard()') is null,
+  'DR-UP-P03 receiving relations, row types and guard are genuinely absent');
+
+select ok(exists (
+  select 1 from pg_catalog.pg_constraint c
+  where c.conrelid = 'platform_private.projection_consumer_state'::regclass
+    and c.conname = 'projection_consumer_state_publication_fk'
+    and c.contype = 'f' and c.convalidated
+    and c.confrelid = 'platform_private.cms_publication_versions'::regclass
+), 'DR-UP-P04 original validated publication VERSION FK remains intact');
+
+select ok(not exists (
+  select 1 from pg_catalog.pg_constraint c
+  where c.conrelid = 'platform_private.projection_consumer_state'::regclass
+    and c.conname in ('projection_consumer_state_projection_fk',
+      'projection_consumer_state_publication_projection_fk')
+), 'DR-UP-P05 receiving FKs were not preinstalled into the positive baseline');
+
+select pg_catalog.jsonb_build_object(
+  'witness', 'DEC197_UPGRADE_WORLD',
+  'database', pg_catalog.current_database(),
+  'backendPid', pg_catalog.pg_backend_pid(),
+  'publications', '[]'::jsonb,
+  'consumerCount', (select count(*)::text
+    from platform_private.projection_consumer_state));

@@ -130,7 +130,7 @@ export const recordFromEffectiveResponse = async (
   value: unknown,
 ): Promise<PlatformConfigurationRecord | null> => {
   const { Cfg05a02EffectiveValueResponseSchema } =
-    await import('@wejammin/contracts');
+    await import('@wejammin/contracts/platform-configuration/validators');
   const parsed = Cfg05a02EffectiveValueResponseSchema.safeParse(value);
   if (!parsed.success) return null;
   const response = parsed.data;

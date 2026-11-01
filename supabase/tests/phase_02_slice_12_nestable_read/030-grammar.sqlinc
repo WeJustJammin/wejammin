@@ -1,0 +1,76 @@
+-- cmsPatternNestableRead query grammar (BE03c 413, 1194 PatternNestableQuery, 1427): `contentTypeId` is an array of 1-64 UNIQUE UUIDs, each a
+-- content type of the caller's owner scope; optional signed cursor; limit 1-50 default 25; strict (no other key).  Validation precedes
+-- authority (BE00 order): a malformed query is 400 INVALID_REQUEST (no DETAIL) or, for a value out of its bounds, 422 VALIDATION_FAILED with the
+-- member pointer, never 403/404.  A hidden or absent type is the policy-safe NOT_FOUND.  [P2-S12-AC-105]
+
+create temp table s12nr_cases(label text primary key, patch jsonb not null, unset text[] not null default array[]::text[], expected text not null) on commit drop;
+insert into s12nr_cases(label, patch, expected)
+select 'type-' || cases.label, jsonb_build_object('contentTypeId', cases.value), cases.expected
+  from (values
+    ('string',    to_jsonb(pg_temp.s12nr_type(1)),                                     'P0001:INVALID_REQUEST'),
+    ('empty',     '[]'::jsonb,                                                          'P0001:INVALID_REQUEST'),
+    ('null',      'null'::jsonb,                                                        'P0001:INVALID_REQUEST'),
+    ('object',    '{}'::jsonb,                                                          'P0001:INVALID_REQUEST'),
+    ('number',    '5'::jsonb,                                                           'P0001:INVALID_REQUEST'),
+    ('member-word',   '["not-a-uuid"]'::jsonb,                                          'P0001:INVALID_REQUEST'),
+    ('member-number', '[5]'::jsonb,                                                     'P0001:INVALID_REQUEST'),
+    ('member-null',   '[null]'::jsonb,                                                  'P0001:INVALID_REQUEST'),
+    ('member-short',  '["a9120000-0000-4000-8000-00000000"]'::jsonb,                    'P0001:INVALID_REQUEST'),
+    ('dup',       jsonb_build_array(pg_temp.s12nr_type(1), pg_temp.s12nr_type(1)),     'P0001:INVALID_REQUEST'),
+    ('dup-case',  jsonb_build_array(pg_temp.s12nr_type(1), upper(pg_temp.s12nr_type(1)::text)), 'P0001:INVALID_REQUEST'),
+    ('65',        (select jsonb_agg(extensions.gen_random_uuid()) from generate_series(1, 65)), 'P0001:VALIDATION_FAILED#["/contentTypeId"]')
+  ) cases(label, value, expected);
+insert into s12nr_cases(label, patch, expected)
+select 'limit-' || cases.label, jsonb_build_object('limit', cases.value), 'P0001:VALIDATION_FAILED#["/limit"]'
+  from (values ('zero', '0'::jsonb), ('negative', '-1'::jsonb), ('over', '51'::jsonb), ('fraction', '2.5'::jsonb), ('text', '"5"'::jsonb),
+               ('boolean', 'true'::jsonb)) cases(label, value);
+insert into s12nr_cases(label, patch, expected)
+select 'extra-' || key, jsonb_build_object(key, 'x'), 'P0001:INVALID_REQUEST'
+  from unnest(array['ownerId', 'patternKey', 'state', 'sort', 'offset', 'contentTypeIds']) key;
+insert into s12nr_cases(label, patch, unset, expected)
+  values ('missing-contentTypeId', '{}'::jsonb, array['contentTypeId'], 'P0001:INVALID_REQUEST'),
+         ('missing-context', '{}'::jsonb, array['context'], 'P0001:INVALID_REQUEST');
+insert into s12nr_cases(label, patch, expected) values
+  ('limit-1', '{"limit":1}', 'ok'), ('limit-null', '{"limit":null}', 'ok'), ('cursor-null', '{"cursor":null}', 'ok'),
+  ('unknown-type', '{"contentTypeId":["a9120000-0000-4000-8000-0000000000aa"]}', 'P0001:NOT_FOUND');
+insert into s12nr_cases(label, patch, expected)
+  select 'sixty-four', jsonb_build_object('contentTypeId', (select jsonb_agg(extensions.gen_random_uuid()) from generate_series(1, 64))), 'P0001:NOT_FOUND';
+select pg_temp.s12nr_read('v-' || label, array[1], patch, unset) from s12nr_cases order by label;
+select is(pg_temp.s12pu_oc('v-' || c.label), c.expected, 'nestable query case ' || c.label) from s12nr_cases c order by c.label;
+select pg_temp.s12nr_call('v-body-array', 'platform_api.cms_list_pattern_nestable', '[]'::jsonb);
+select is(pg_temp.s12pu_oc('v-body-array'), 'P0001:INVALID_REQUEST', 'a non-object body is INVALID_REQUEST');
+
+-- hidden or absent: ONE unknown member makes the whole request the policy-safe 404, whatever the others are ------------------------------
+select pg_temp.s12nr_call('h-other-org', 'platform_api.cms_list_pattern_nestable', jsonb_build_object(
+  'contentTypeId', jsonb_build_array(pg_temp.s09d_id('nr-hidden:type')),
+  'context', pg_temp.s09d_context('owner', true), 'correlationId', 'a9120000-0000-4000-8000-00000000c0d3'));
+select pg_temp.s12nr_call('h-mixed', 'platform_api.cms_list_pattern_nestable', jsonb_build_object(
+  'contentTypeId', pg_temp.s12nr_types(1, 2) || to_jsonb(pg_temp.s09d_id('nr-hidden:type')),
+  'context', pg_temp.s09d_context('owner', true), 'correlationId', 'a9120000-0000-4000-8000-00000000c0d3'));
+select pg_temp.s12nr_call('h-mixed-absent', 'platform_api.cms_list_pattern_nestable', jsonb_build_object(
+  'contentTypeId', pg_temp.s12nr_types(1, 2) || '"a9120000-0000-4000-8000-0000000000bb"'::jsonb,
+  'context', pg_temp.s09d_context('owner', true), 'correlationId', 'a9120000-0000-4000-8000-00000000c0d3'));
+select is(pg_temp.s12pu_oc('h-other-org') || '/' || pg_temp.s12pu_oc('h-mixed') || '/' || pg_temp.s12pu_oc('h-mixed-absent'),
+  'P0001:NOT_FOUND/P0001:NOT_FOUND/P0001:NOT_FOUND',
+  'a type of another organization, and one hidden or absent type among real ones, are the same policy-safe NOT_FOUND: no partial answer');
+select ok(pg_temp.s12pu_body('h-mixed') is null and pg_temp.s12pu_unchanged('h-mixed') and pg_temp.s12pu_unchanged('h-other-org'),
+  'a hidden type discloses nothing (no body) and changes no store');
+
+-- BE00 order: strict validation before capability/concealment ------------------------------------------------------------------------
+create temp table s12nr_order(label text primary key, actor text not null, patch jsonb not null, expected text not null) on commit drop;
+insert into s12nr_order values
+  ('o-nocap-type',   'rev1',  '{"contentTypeId":"not-a-uuid"}',                                    'P0001:INVALID_REQUEST'),
+  ('o-nocap-empty',  'rev1',  '{"contentTypeId":[]}',                                              'P0001:INVALID_REQUEST'),
+  ('o-nocap-limit',  'rev1',  '{"limit":0}',                                                       'P0001:VALIDATION_FAILED#["/limit"]'),
+  ('o-nocap-cursor', 'rev1',  '{"cursor":"!!not a cursor!!"}',                                     'P0001:INVALID_REQUEST'),
+  ('o-other-type',   'other', '{"contentTypeId":"not-a-uuid"}',                                    'P0001:INVALID_REQUEST'),
+  ('o-other-limit',  'other', '{"limit":51}',                                                      'P0001:VALIDATION_FAILED#["/limit"]'),
+  ('o-absent-limit', 'owner', '{"contentTypeId":["a9120000-0000-4000-8000-0000000000bb"],"limit":0}', 'P0001:VALIDATION_FAILED#["/limit"]'),
+  ('o-nocap-ok',     'rev1',  '{}',                                                                'P0001:capability_missing'),
+  ('o-absent-ok',    'owner', '{"contentTypeId":["a9120000-0000-4000-8000-0000000000bb"]}',       'P0001:NOT_FOUND');
+select pg_temp.s12nr_read('v-' || label, array[1], patch, array[]::text[], actor) from s12nr_order order by label;
+select is(pg_temp.s12pu_oc('v-' || o.label), o.expected, 'validation precedes authority: ' || o.label) from s12nr_order o order by o.label;
+select pg_temp.s12nr_call('v-o-anon-bad', 'platform_api.cms_list_pattern_nestable',
+  pg_temp.s12nr_request(array[1], '{"contentTypeId":"not-a-uuid"}'::jsonb) || jsonb_build_object('context', '{}'::jsonb), 'anonymous');
+select is(pg_temp.s12pu_oc('v-o-anon-bad'), 'P0001:UNAUTHENTICATED', 'authentication still precedes validation: an anonymous malformed request is 401');
+select ok((select bool_and(before_rows = after_rows) from s12pu_out where label like 'v-%'), 'grammar and ordering refusals changed no store');

@@ -1,0 +1,72 @@
+-- cmsCompositionInstancesRead order and heads (DEC-206; BE03c route registry row, schemas, authority row "current-head draft, active and
+-- pending_diff rows ... in render order"; DEC-185 position; DEC-193 newest-per-path; tracker P2-S12-AC-269).
+
+-- Control: the authored order differs from the bytewise path order, so a path-only sort would fail these cases.
+select ok(array['/zeta', '/alpha', '/bb', '/ba', '/aa', '/zz'] <> (select array_agg(p order by p collate "C") from unnest(array['/zeta', '/alpha', '/bb', '/ba', '/aa', '/zz']) p),
+  'control: the authored order of ord1 is not its bytewise path order');
+
+-- ord1: three placements in one slot stay grouped, position before path.
+select pg_temp.s12ci_read('o-ord1', 'ord1');
+select is(pg_temp.s12ci_state('o-ord1'), '00000', 'the author reads the instance list of an untemplated entry [AC-269]');
+select is(pg_temp.s12ci_paths('o-ord1'), to_jsonb(array['/zeta', '/alpha', '/bb', '/ba', '/aa', '/zz']),
+  'three placements into one slot stay grouped in authored position order, never interleaved by path [DEC-185]');
+select is(pg_temp.s12ci_body('o-ord1')->'items', pg_temp.s12ci_expect('ord1', array['/zeta', '/alpha', '/bb', '/ba', '/aa', '/zz']),
+  'each item is the CompositionInstanceResource the write producers answer for that head [AC-269]');
+select is(pg_temp.s12ci_body('o-ord1')->'items', pg_temp.s12pl_stored('ord1'),
+  'each item equals the independently derived resource of its stored row (hand-assembled JCS content hash) [AC-269]');
+select is(pg_temp.s12ci_body('o-ord1') - 'items', jsonb_build_object('revisionId', pg_temp.s12pl_rev('ord1'), 'nextCursor', null),
+  'the page names the current draft revision and has no further page [AC-269]');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.s12ci_body('o-ord1')) k), array['items', 'nextCursor', 'revisionId'],
+  'the answer is exactly { revisionId, items, nextCursor }');
+select is((select array_agg(distinct k collate "C" order by k collate "C") from jsonb_array_elements(pg_temp.s12ci_body('o-ord1')->'items') i, jsonb_object_keys(i) k),
+  array['blockKey', 'blockRegistryDigest', 'blockVersion', 'conflictState', 'contentHash', 'createdAt', 'id', 'linkMode', 'path',
+        'patternId', 'patternVersion', 'position', 'revisionId', 'state', 'updatedAt', 'version'],
+  'an item carries exactly the closed resource members: no props, bindings, owner or tree');
+select ok(pg_temp.s12ci_unchanged('o-ord1'), 'the read changed no captured store');
+select is(pg_temp.s12ci_paths('o-ord1'), pg_temp.s12ci_plan_paths('ord1'), 'the order is the BE05c render-plan block order of the revision [DEC-185]');
+
+-- tpl1: slot ordinal first (side was placed first), position within the slot, an undeclared slot last.
+select pg_temp.s12ci_read('o-tpl1', 'tpl1');
+select is(pg_temp.s12ci_paths('o-tpl1'), to_jsonb(array['/main/zeta', '/main/alpha', '/main/aa', '/main/zz', '/side/bb', '/side/ba', '/ghost/x']),
+  'template slot ordinal leads (main before side although side was placed first), then position, and an undeclared slot sorts last');
+select is(pg_temp.s12ci_paths('o-tpl1'), pg_temp.s12ci_plan_paths('tpl1'), 'the templated order is the BE05c render-plan block order of the revision');
+select is(pg_temp.s12ci_body('o-tpl1')->'items', pg_temp.s12ci_expect('tpl1', array['/main/zeta', '/main/alpha', '/main/aa', '/main/zz', '/side/bb', '/side/ba', '/ghost/x']),
+  'templated items are the producers'' resources');
+
+-- heads1: newest row per path; pending_diff included; superseded and retired heads excluded with their history.
+select pg_temp.s12ci_read('h-heads1', 'heads1');
+select is(pg_temp.s12ci_paths('h-heads1'), to_jsonb(array['/zeta', '/alpha', '/ba']),
+  'the pending_diff head is listed once; a path whose newest row is superseded or retired is not listed at all');
+select is(pg_temp.s12ci_body('h-heads1')->'items'->1->>'id', :'pending_row', 'the listed /alpha row is the newest (pending_diff) row, not the active version 1 below it');
+select is(pg_temp.s12ci_body('h-heads1')->'items'->1->>'state' || '/' || (pg_temp.s12ci_body('h-heads1')->'items'->1->>'version'), 'pending_diff/2',
+  'the pending_diff head is version 2 in state pending_diff [AC-123]');
+select is(pg_temp.s12ci_body('h-heads1')->'items', pg_temp.s12ci_expect('heads1', array['/zeta', '/alpha', '/ba']), 'heads1 items are the producers'' resources');
+select ok(not exists (select 1 from jsonb_array_elements(pg_temp.s12ci_body('h-heads1')->'items') i
+                       where i->>'id' in (select id::text from platform_private.cms_composition_instances
+                                           where revision_id = pg_temp.s12pl_rev('heads1') and (state in ('superseded', 'retired') or (path = '/alpha' and version = 1)))),
+  'no superseded row, retired row or older version of a listed path appears [DEC-193]');
+select is(pg_temp.s12ci_paths('h-heads1'), pg_temp.s12ci_plan_paths('heads1'), 'the head set and order equal the render plan''s composition rows');
+select ok(pg_temp.s12ci_unchanged('h-heads1'), 'the heads read changed no captured store');
+
+-- det1: a detached head (a CMS-03C-15 detach) is a listed row beside a linked one.
+select pg_temp.s12ci_read('d-det1', 'det1');
+select is(pg_temp.s12ci_paths('d-det1'), to_jsonb(array['/zeta', '/alpha']), 'a detached local copy keeps its position and is listed');
+select is(pg_temp.s12ci_body('d-det1')->'items'->0->>'linkMode', 'detached', 'the detached row answers linkMode detached');
+select is(pg_temp.s12ci_body('d-det1')->'items'->0->'conflictState', 'null'::jsonb, 'a detached row answers a null conflictState');
+select is(pg_temp.s12ci_body('d-det1')->'items'->0->>'version', '2', 'the detached row is the second version of its path');
+select is(pg_temp.s12ci_body('d-det1')->'items', pg_temp.s12ci_expect('det1', array['/zeta', '/alpha']), 'detached and linked items are the producers'' resources');
+
+-- empty page without rows, and without a draft revision.
+select pg_temp.s12ci_read('e-empty', 'empty1');
+select is(pg_temp.s12ci_body('e-empty'), jsonb_build_object('revisionId', pg_temp.s12pl_rev('empty1'), 'items', '[]'::jsonb, 'nextCursor', null),
+  'a draft revision without instances answers an empty page naming the revision');
+select pg_temp.s12ci_read('e-norev', 'norev1');
+select is(pg_temp.s12ci_body('e-norev'), jsonb_build_object('revisionId', null, 'items', '[]'::jsonb, 'nextCursor', null),
+  'an entry with no current draft revision answers an empty page with a null revision');
+select ok(pg_temp.s12ci_unchanged('e-empty') and pg_temp.s12ci_unchanged('e-norev'), 'the empty reads changed no captured store');
+
+-- another entry's rows never leak: every item belongs to the page revision.
+select ok((select bool_and(i->>'revisionId' = pg_temp.s12pl_rev('ord1')::text) from jsonb_array_elements(pg_temp.s12ci_body('o-ord1')->'items') i),
+  'every item belongs to the entry''s current draft revision, never another entry''s or revision''s');
+select pg_temp.s12ci_read('o-other1', 'other1');
+select is(pg_temp.s12ci_paths('o-other1'), to_jsonb(array['/solo']), 'a second entry lists only its own row');

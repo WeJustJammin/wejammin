@@ -19,7 +19,8 @@
 }
 
 .cms-template-page :is(a, button, input, select):focus-visible,
-.cms-template-designer-status:focus {
+.cms-template-designer-status:focus,
+.cms-template-designer-status h3:focus {
   outline: 3px solid var(--cms-focus);
   outline-offset: 3px;
 }
@@ -86,6 +87,11 @@
 .cms-template-designer-status {
   margin-block: 1rem;
   min-block-size: 1.5rem;
+}
+
+.cms-template-designer-status h3 {
+  font-size: inherit;
+  margin-block: 0 0.25rem;
 }
 
 .cms-template-designer-status:not(:empty) {
@@ -186,6 +192,11 @@
 .cms-template-designer button[type='submit'] {
   background: var(--cms-graphite);
   color: var(--cms-surface);
+}
+
+.cms-template-designer button.cms-template-successor-commit {
+  box-sizing: border-box;
+  inline-size: min(100%, 18rem);
 }
 
 .cms-template-designer button:disabled {

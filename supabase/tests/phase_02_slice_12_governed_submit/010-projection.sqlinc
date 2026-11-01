@@ -1,0 +1,48 @@
+-- Internal projection wrappers for the governed-submit QA-RED support (lane s12_governed_red).
+-- Include AFTER phase_02_slice_12_governed_submit/000-fixtures.sqlinc.
+--
+-- cms_editorial_workflow_policy_evidence and cms_governed_subject_resolve are SECURITY DEFINER functions
+-- owned by the NOBYPASSRLS wejammin_cms_definer, so their reads of the forced-RLS tables require
+-- app.cms_rpc='true' (cms_rpc_context_valid()).  Each wrapper sets the flag, reads, and restores the
+-- EXACT prior value on success AND on exception, so the flag is never left enabled across the public
+-- platform_api commands or the refusal tests.
+create or replace function pg_temp.s12gov_evidence(p_version uuid)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  prior text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), '');
+  result jsonb;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  begin
+    result := platform_private.cms_editorial_workflow_policy_evidence(p_version);
+  exception when others then
+    perform pg_catalog.set_config('app.cms_rpc', prior, true);
+    raise;
+  end;
+  perform pg_catalog.set_config('app.cms_rpc', prior, true);
+  return result;
+end;
+$body$;
+
+create or replace function pg_temp.s12gov_resolve(p_kind text, p_id uuid)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  prior text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), '');
+  result jsonb;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  begin
+    result := platform_private.cms_governed_subject_resolve(p_kind, p_id);
+  exception when others then
+    perform pg_catalog.set_config('app.cms_rpc', prior, true);
+    raise;
+  end;
+  perform pg_catalog.set_config('app.cms_rpc', prior, true);
+  return result;
+end;
+$body$;
+

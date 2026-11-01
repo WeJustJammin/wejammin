@@ -1,0 +1,135 @@
+-- Every public refusal uses inherited full-row snapshots, not count-only checks.
+select pg_temp.s12pl_entry(tag) from (values('sr-security'),('sr-replay'),('sr-fault'),
+  ('sr-key-bound'),('sr-depth')) tags(tag);
+select * from pg_temp.s12pl_refused('sr-stale-cas',pg_temp.s12sr_request('stale-cas',
+  'sr-security','sr-main','["/a"]','{}','/','linked','99'),'VERSION_MISMATCH',
+  '{"expectedVersion":"99","currentVersion":"1"}');
+select * from pg_temp.s12pl_refused('sr-hidden-owner',pg_temp.s12sr_request('hidden-owner',
+  'sr-security','sr-main','["/a"]','{}','/','linked',null,'other'),'NOT_FOUND',null,'other');
+select * from pg_temp.s12pl_refused('sr-no-capability',pg_temp.s12sr_request('no-capability',
+  'sr-security','sr-main','["/a"]','{}','/','linked',null,'designer2'),
+  'capability_missing',null,'designer2');
+select * from pg_temp.s12pl_refused('sr-human-anonymous',pg_temp.s12sr_request('anonymous',
+  'sr-security','sr-main','["/a"]') || '{"context":{}}','UNAUTHENTICATED',null,'anonymous');
+select * from pg_temp.s12pl_refused('sr-inactive-pattern',pg_temp.s12sr_request('inactive',
+  'sr-security','pd','["/hero"]'),'pattern_version_not_active','["/patternVersion"]');
+select * from pg_temp.s12pl_refused('sr-incompatible-pattern',pg_temp.s12sr_request('incompatible',
+  'sr-security','pi','["/hero"]'),'pattern_incompatible','["/patternId"]');
+select * from pg_temp.s12pl_refused('sr-wrong-digest',pg_temp.s12sr_request('wrong-digest',
+  'sr-security','sr-main','["/a"]') || jsonb_build_object('blockRegistryDigest',repeat('0',64)),
+  'block_registry_digest_mismatch','["/blockRegistryDigest"]');
+
+select pg_temp.s12pl_run('sr-acl-' || role_name,pg_temp.s12sr_request('acl-' || role_name,
+  'sr-security','sr-main','["/a"]'),'owner',role_name)
+  from unnest(array['anon','authenticated']) role_name;
+select is((select state from s12pl_out where label='sr-acl-' || role_name),'42501',
+  'SR-ACL ' || role_name || ': real database role cannot invoke public transport')
+  from unnest(array['anon','authenticated']) role_name;
+select ok((select before_rows=after_rows and requested_role=call_role and role_restored
+  from s12pl_out where label='sr-acl-' || role_name),
+  'SR-ACL ' || role_name || ': actual role, restored context and no full-row effects')
+  from unnest(array['anon','authenticated']) role_name;
+select ok(not has_function_privilege('service_role',
+  'platform_private.cms_insert_pattern_instance(jsonb)','EXECUTE')
+  and not has_function_privilege('service_role',
+    'platform_private.cms_pattern_placement_check(jsonb)','EXECUTE'),
+  'SR-ACL: service transport still cannot execute the private producer or guard');
+
+select pg_temp.s12pl_run('sr-replay-first',pg_temp.s12sr_request('replay-key','sr-replay',
+  'sr-main','["/c","/a"]'));
+select * from pg_temp.s12sr_check('sr-replay-first','sr-replay','sr-main',
+  '[["/a","1",0,"s12pd.block",1],["/c","1",1,"s12pd.block",1]]','{}',true);
+select pg_temp.s12pl_run('sr-replay', (select request from s12pl_out where label='sr-replay-first'));
+select is(pg_temp.s12pl_state('sr-replay'),'00000','SR-REPLAY: exact original selected request succeeds after CAS changes');
+select is(pg_temp.s12pl_body('sr-replay'),pg_temp.s12pl_body('sr-replay-first'),
+  'SR-REPLAY: original ordered resources and identities replay exactly');
+select is((select headers from s12pl_out where label='sr-replay'),
+  (select headers from s12pl_out where label='sr-replay-first'),'SR-REPLAY: original aggregate ETag');
+select ok((select before_rows=after_rows from s12pl_out where label='sr-replay'),
+  'SR-REPLAY: no new row, CAS, audit, review, idempotency or other captured mutation');
+select * from pg_temp.s12pl_refused('sr-replay-roots-changed',
+  (select request || '{"roots":["/b"]}'::jsonb from s12pl_out where label='sr-replay-first'),
+  'IDEMPOTENCY_MISMATCH');
+
+-- Actual65 valid nodes: only the unchanged old override-count limit is wrong.
+select * from pg_temp.s12pl_refused('sr-overrides65',pg_temp.s12sr_request('overrides65',
+  'sr-key-bound','pb',(select jsonb_agg('/nested' || n || '/root' || m order by n,m)
+    from generate_series(1,5) n,generate_series(1,13) m),
+  (select jsonb_object_agg('/nested' || n || '/root' || m,1)
+    from generate_series(1,5) n,generate_series(1,13) m)),
+  'VALIDATION_FAILED','["/overrides"]');
+select pg_temp.s12pl_run('sr-overrides64',pg_temp.s12sr_request('overrides64','sr-key-bound','pb',
+  (select jsonb_agg('/nested' || n || '/root' || m order by n desc,m desc)
+    from generate_series(1,4) n,generate_series(1,16) m),
+  (select jsonb_object_agg('/nested' || n || '/root' || m,1)
+    from generate_series(1,4) n,generate_series(1,16) m)));
+select * from pg_temp.s12sr_check('sr-overrides64','sr-key-bound','pb',
+  (select jsonb_agg(jsonb_build_array('/nested' || n || '/root' || m,'1',
+    (n-1)*16+m-1,'s12pd.block',1) order by n,m)
+    from generate_series(1,4) n,generate_series(1,16) m),
+  (select jsonb_object_agg('/nested' || n || '/root' || m,
+    jsonb_build_object('/nested' || n || '/root' || m,1))
+    from generate_series(1,4) n,generate_series(1,16) m));
+create function pg_temp.s12sr_nest(p_n integer) returns jsonb language plpgsql immutable as $body$
+declare answer jsonb:='1'; n integer;
+begin
+  for n in 1..p_n loop answer:=jsonb_build_object('k',answer); end loop;
+  return answer;
+end;
+$body$;
+select * from pg_temp.s12pl_refused('sr-overrides-depth9',pg_temp.s12sr_request('depth9',
+  'sr-depth','sr-main','["/a"]',jsonb_build_object('/a',pg_temp.s12sr_nest(8))),
+  'VALIDATION_FAILED','["/overrides"]');
+select * from pg_temp.s12sr_guard('SR-GUARD override-depth8',pg_temp.s12sr_request('depth8',
+  'sr-depth','sr-main','["/a"]',jsonb_build_object('/a',pg_temp.s12sr_nest(7))),'ok:root');
+
+-- Transaction-local fault hook, never a disabled guard or replacement writer.
+-- It raises only before a LATER selected insert, after another selected row
+-- really exists in this statement's transaction. No assumed insertion order.
+-- Existing editorial defense-in-depth fixture: latest invalidated review makes
+-- the revision editable while an older open review remains to invalidate.
+select pg_temp.s12pl_review('sr-fault',timestamptz '2026-10-08T12:01:00Z') as sr_newer_review \gset
+select platform_private.cms_invalidate_editorial_review(jsonb_build_object('reviewId',:'sr_newer_review'::uuid,
+  'reasonCode','revision_superseded','correlationId','a9120000-0000-4000-8000-00000000c0c0'));
+select pg_temp.s12pl_review('sr-fault',timestamptz '2026-10-08T12:00:00Z') as sr_older_review \gset
+select is(platform_private.cms_revision_effective_state(pg_temp.s12pl_rev('sr-fault')),'draft',
+  'SR-ATOMIC-PRE: latest invalidated / older open review is a real editable fixture');
+select is((select state from platform_private.cms_editorial_reviews where id=:'sr_older_review'),'open',
+  'SR-ATOMIC-PRE: older live review genuinely exists before the forced refusal');
+create function pg_temp.s12sr_later_insert_fault() returns trigger
+language plpgsql security definer set search_path='' as $body$
+begin
+  if new.revision_id=pg_temp.s12pl_rev('sr-fault') and new.path in ('/a','/c')
+    and exists(select 1 from platform_private.cms_composition_instances r
+      where r.revision_id=new.revision_id and r.path in ('/a','/c')) then
+    raise exception 's12sr_later_selected_insert_fault' using errcode='P0001';
+  end if;
+  return new;
+end;
+$body$;
+create trigger s12sr_later_insert_fault before insert on platform_private.cms_composition_instances
+  for each row execute function pg_temp.s12sr_later_insert_fault();
+select * from pg_temp.s12pl_refused('sr-later-insert-fault',pg_temp.s12sr_request('fault',
+  'sr-fault','sr-main','["/c","/a"]'),'s12sr_later_selected_insert_fault');
+drop trigger s12sr_later_insert_fault on platform_private.cms_composition_instances;
+select is((select count(*)::integer from platform_private.cms_composition_instances
+  where revision_id=pg_temp.s12pl_rev('sr-fault')),0,
+  'SR-ATOMIC: real later-insert fault leaves neither selected row');
+select is((select state || ':' || version::text from platform_private.cms_editorial_reviews
+  where id=:'sr_older_review'),'open:1','SR-ATOMIC: later-insert fault preserves live review');
+-- Same exact key after rollback must be free, proving reservation did not leak.
+select pg_temp.s12pl_run('sr-fault-retry',pg_temp.s12sr_request('fault','sr-fault','sr-main','["/c","/a"]'));
+select * from pg_temp.s12sr_check('sr-fault-retry','sr-fault','sr-main',
+  '[["/a","1",0,"s12pd.block",1],["/c","1",1,"s12pd.block",1]]','{}',true,'linked',true);
+select is((select jsonb_agg(jsonb_build_array(review_row->>'id',review_row->>'state',
+  review_row->>'version') order by review_row->>'id') from s12pl_out o
+  cross join jsonb_array_elements(o.before_rows->'platform_private.cms_editorial_reviews') review_row
+  where o.label='sr-fault-retry' and review_row->>'revision_id'=pg_temp.s12pl_rev('sr-fault')::text
+    and review_row->>'state' in ('open','approved')),
+  jsonb_build_array(jsonb_build_array(:'sr_older_review'::text,'open','1')),
+  'SR-ATOMIC: retry before-image has exactly the original older open review at version1');
+select is((select state || ':' || invalidated_reason || ':' || version::text
+  from platform_private.cms_editorial_reviews where id=:'sr_older_review'),
+  'invalidated:dependency_changed:2','SR-ATOMIC: retry invalidates the one older live review once');
+select is((select state || ':' || version::text from platform_private.cms_editorial_reviews
+  where id=:'sr_newer_review'),'invalidated:2','SR-ATOMIC: already-invalidated latest review untouched');

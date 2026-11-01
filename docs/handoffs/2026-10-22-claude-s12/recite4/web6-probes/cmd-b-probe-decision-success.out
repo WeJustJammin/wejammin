@@ -1,0 +1,32 @@
+
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-decision-success.test.tsx (1 test | 1 failed) 159ms
+     × [P2-S12-AC-271] commandState success: the named resource, the stored draft cleared and the review refetched 104ms
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 1 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  apps/web/src/components/cms-governed-review/zz-web6-probe-decision-success.test.tsx > probe D1 decision success clears draft > [P2-S12-AC-271] commandState success: the named resource, the stored draft cleared and the review refetched
+AssertionError: expected 'Fine.' to be '' // Object.is equality
+
+- Expected
++ Received
+
++ Fine.
+
+ ❯ apps/web/src/components/cms-governed-review/zz-web6-probe-decision-success.test.tsx:118:37
+    116|     expect(storage.length).toBe(0);
+    117|     // Clause "the form clears its draft": the typed decision and reas…
+    118|     expect(reason(container).value).toBe('');
+       |                                     ^
+    119|     expect(radio(container, 'approve').checked).toBe(false);
+    120|   });
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/1]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  1 failed (1)
+   Start at  01:08:02
+   Duration  4.72s (transform 2.39s, setup 0ms, import 3.35s, tests 159ms, environment 983ms)
+

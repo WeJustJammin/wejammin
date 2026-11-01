@@ -1,0 +1,79 @@
+-- Lag fixture of the governed tests (shared by the governed-recheck, governed-activation, governed-decision, governed-schedule and dec191
+-- drivers).  BE03c "Reviewer-authority invalidation on revocation": "As defense in depth, activation recomputes the live qualifying
+-- approvals under its locks and refuses a short count, so a stored `approved` state that lags a revocation can never activate".
+-- Since P2-S12-AC-204 every authority loss that has an event invalidates the review in its own transaction (the CMS-03A-17 revocation, a
+-- grant UPDATE or DELETE, a membership tenure UPDATE or DELETE), so the one way a stored `approved` state can lag is a standing authority
+-- that ENDS WITHOUT A WRITE: a grant whose term passes by the calendar.  cms_person_holds_capability is the single reader of that
+-- authority for every recount, and it reads only the calendar (`current_date`), so the fixture reproduces the lapse by the labelled
+-- fault of 070-isolation: the test-admin puts a guard in front of the body of THAT ONE function, and restores it byte for byte.
+-- Moving the session clock instead cannot work: a zone of 16 h or more breaks every timestamptz written to text and read back (SQLSTATE
+-- 22009 inside the invalidation), and a shift below it reaches the next day only at some hours of the UTC day.
+--
+--   pg_temp.s12fr_lapse(organization, person, capability)  the person no longer holds the capability in the organization (checked: holds
+--                                                           before, does not hold after); every other person is unaffected.
+--   pg_temp.s12fr_restore()                                the original function body is back (verified: source, owner, ACL).
+-- The stand-in proves what each recount does with a `false` from the reader (a STORED `approved` state that lags is refused).  What the reader
+-- itself answers for a real lapsed row is proven without a stand-in in 085-real-reader.sqlinc (the labelled direct write of
+-- phase_02_slice_11_helpers_preflight.sql, no disabled trigger); the unmodified reader on lapsed rows is also proven in
+-- phase_02_slice_09_evidence_grants.sql and phase_02_slice_09_dec119_grant_lifecycle.sql.
+-- The caller keeps the lapse exactly as long as the lag must exist and restores it before the next section.  No row is written and no
+-- trigger runs or is disabled.  The lapse lives in the rolled-back test transaction.
+create temp table if not exists s12fr_lapse_guard(
+  saved text not null, source_md5 text not null, acl_before text, owner_before text not null) on commit drop;
+
+create or replace function pg_temp.s12fr_lapse(p_organization uuid, p_person uuid, p_capability text) returns void
+language plpgsql as $body$
+declare
+  v_signature constant text := 'platform_private.cms_person_holds_capability(uuid, uuid, text)';
+  v_target constant oid := pg_catalog.to_regprocedure(v_signature);
+  v_def text;
+  v_src text;
+  v_owner text;
+  v_acl text;
+  v_key constant text := p_organization::text || ':' || p_person::text || ':' || p_capability;
+begin
+  if current_user <> 'postgres' or v_target is null then
+    raise exception 'lapse fixture requires the test-admin and the existing function';
+  end if;
+  if not platform_private.cms_person_holds_capability(p_organization, p_person, p_capability) then
+    raise exception 'lapse fixture: % does not hold % today', p_person, p_capability;
+  end if;
+  if not exists (select 1 from s12fr_lapse_guard) then
+    select pg_catalog.pg_get_functiondef(proc.oid), proc.prosrc, pg_catalog.pg_get_userbyid(proc.proowner), proc.proacl::text
+      into v_def, v_src, v_owner, v_acl from pg_catalog.pg_proc proc where proc.oid = v_target;
+    if v_owner <> 'wejammin_cms_authority_reader' or (length(v_def) - length(replace(v_def, v_src, ''))) <> length(v_src) then
+      raise exception 'unexpected function metadata; no automatic repair';
+    end if;
+    insert into s12fr_lapse_guard(saved, source_md5, acl_before, owner_before) values (v_def, md5(v_src), v_acl, v_owner);
+    execute replace(v_def, v_src, E'\n  select (' || btrim(v_src, E' \n\t') || E')\n'
+      || E'     and not coalesce((p_organization_id::text || '':'' || p_person_id::text || '':'' || p_capability)\n'
+      || E'                      = any (pg_catalog.string_to_array(coalesce(pg_catalog.current_setting(''s12fr.lapsed'', true), ''''), '','')), false)\n');
+  end if;
+  perform pg_catalog.set_config('s12fr.lapsed',
+    coalesce(nullif(pg_catalog.current_setting('s12fr.lapsed', true), '') || ',', '') || v_key, true);
+  if platform_private.cms_person_holds_capability(p_organization, p_person, p_capability) then
+    raise exception 'lapse fixture: % still holds % after the guard', p_person, p_capability;
+  end if;
+end;
+$body$;
+
+create or replace function pg_temp.s12fr_restore() returns void language plpgsql as $body$
+declare
+  v_signature constant text := 'platform_private.cms_person_holds_capability(uuid, uuid, text)';
+  saved record;
+  v_restored boolean;
+begin
+  perform pg_catalog.set_config('s12fr.lapsed', '', true);
+  select * into saved from s12fr_lapse_guard;
+  if found then
+    execute saved.saved;
+    select pg_catalog.md5(proc.prosrc) = saved.source_md5 and proc.proacl::text is not distinct from saved.acl_before
+           and pg_catalog.pg_get_userbyid(proc.proowner) = saved.owner_before
+      into v_restored from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(v_signature);
+    if not coalesce(v_restored, false) then
+      raise exception 'lapse fixture: % was not restored byte for byte', v_signature;
+    end if;
+    delete from s12fr_lapse_guard;
+  end if;
+end;
+$body$;

@@ -1,0 +1,164 @@
+// @vitest-environment jsdom
+import * as React from 'react';
+import { act } from 'react';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  beforeEach,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
+
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
+import { rateLimitMessage } from '../../lib/safe-read-retry';
+import {
+  disableReactAct,
+  enableReactAct,
+  mountElement,
+} from '../cms-editorial-fields/cms-editor-dom.test-support';
+import CmsTemplateEditDesigner from './CmsTemplateEditDesigner';
+
+/*
+ * [P2-S12-AC-271] `latestReadState` of `cmsTemplateLatestRead` (FE03 "Slice 12 definition governance states"): the
+ * successor designer CmsTemplateEditDesigner over its real latest check, panel and reconcile state. The read is the
+ * explicit "Check latest version" offered after a 409 or an unknown outcome; the page itself is server HTML.
+ */
+const TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
+const HASH = 'a'.repeat(64);
+const ID = '50000000-0000-4000-8000-000000000005';
+const context = {
+  contentTypes: [
+    {
+      id: TYPE_ID,
+      typeKey: 'release_note',
+      activeVersionId: '018f0c45-73fe-7dc2-9c09-68f7ecf132db',
+      activeVersion: 2,
+      sourceLocale: 'en-US',
+    },
+  ],
+  registeredBlocks: [],
+};
+const detail = {
+  id: '018f0c45-73fe-7dc2-9c09-68f7ecf132db',
+  version: '2',
+  templateVersion: 2,
+  contentHash: HASH,
+  createdAt: '2026-09-27T12:00:00.000Z',
+  updatedAt: '2026-09-27T13:00:00.000Z',
+  state: 'draft' as const,
+  templateId: '90000000-0000-4000-8000-000000000009',
+  templateKey: 'release-note',
+  compatibleTypeIds: [TYPE_ID],
+  reservedRegions: ['header', 'now', 'record', 'detail', 'provenance'],
+  blockRegistryDigest: HASH,
+  slots: [],
+  bindings: {},
+  locale: 'en-US',
+  audience: 'public',
+};
+const conflict = (): Response =>
+  Response.json(
+    { code: 'TEMPLATE_VERSION_CONFLICT', message: 'm', requestId: ID, details: {} },
+    { status: 409 },
+  );
+const newer = (): Response =>
+  Response.json(
+    { ...detail, version: '3', templateVersion: 3, audience: 'newer' },
+    { status: 200, headers: { etag: '"3"' } },
+  );
+const refusal = (status: number): Response =>
+  Response.json(
+    { code: 'X', message: 'owner other-owner-key', requestId: ID, details: {} },
+    { status },
+  );
+
+beforeAll(async () => {
+  enableReactAct();
+  await loadCmsValidators();
+});
+afterAll(disableReactAct);
+beforeEach(() => {
+  vi.useFakeTimers();
+  vi.stubGlobal('crypto', { randomUUID: () => 'edit-attempt' });
+});
+afterEach(() => {
+  vi.useRealTimers();
+  vi.unstubAllGlobals();
+});
+
+const settle = async (ms = 0): Promise<void> => {
+  await act(async () => {
+    await vi.advanceTimersByTimeAsync(ms);
+  });
+};
+const setInput = (input: HTMLInputElement, value: string): void => {
+  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')?.set?.call(
+    input,
+    value,
+  );
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+};
+const button = (container: HTMLElement, name: RegExp): HTMLButtonElement =>
+  Array.from(container.querySelectorAll('button')).find((entry) =>
+    name.test(entry.textContent ?? ''),
+  ) as HTMLButtonElement;
+const check = (container: HTMLElement): HTMLButtonElement =>
+  button(container, /^Check(ing)? latest version/u);
+const save = (container: HTMLElement): HTMLButtonElement =>
+  button(container, /^Sav(e|ing) successor draft/u);
+const audience = (container: HTMLElement): HTMLInputElement =>
+  container.querySelector<HTMLInputElement>('#cms-template-audience')!;
+const skeleton = (container: HTMLElement): HTMLElement | null =>
+  container.querySelector('.cms-loading-region');
+const alerts = (container: HTMLElement): string[] =>
+  Array.from(container.querySelectorAll('[role="alert"]')).map(
+    (entry) => entry.textContent ?? '',
+  );
+const submitForm = async (container: HTMLElement): Promise<void> => {
+  await act(async () => {
+    container
+      .querySelector('form')!
+      .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
+  });
+  await settle();
+};
+const press = async (container: HTMLElement): Promise<void> => {
+  await act(async () => {
+    check(container).click();
+  });
+  await settle();
+};
+const element = (csrfToken = 'csrf', types = context) => (
+  <CmsTemplateEditDesigner context={types} detail={detail} csrfToken={csrfToken} />
+);
+/** Mounts the successor form, edits the audience and submits: the 409 offers the check. */
+const mountConflicted = async (...reads: Array<Response | Promise<Response>>) => {
+  const fetcher = vi.fn<typeof fetch>().mockResolvedValueOnce(conflict());
+  for (const read of reads) fetcher.mockImplementationOnce(() => Promise.resolve(read));
+  vi.stubGlobal('fetch', fetcher);
+  const view = mountElement(element());
+  setInput(audience(view.container), 'changed');
+  await submitForm(view.container);
+  return { ...view, fetcher };
+};
+
+
+describe('PROBE template defects', () => {
+  it('degraded: the last verified latest panel is kept when the next read fails', async () => {
+    const { container } = await mountConflicted(newer(), refusal(503));
+    await press(container);
+    expect(container.textContent).toContain('Latest version 3');
+    await press(container);
+    expect(alerts(container)).toContain('The latest version is unavailable. Wait and try again.');
+    expect(container.textContent).toContain('Latest version 3');
+  });
+  it('disabled: an empty content-type prerequisite is named', async () => {
+    vi.stubGlobal('fetch', vi.fn<typeof fetch>());
+    const { container } = mountElement(element('csrf', { contentTypes: [], registeredBlocks: [] }));
+    expect(save(container).disabled).toBe(true);
+    expect(container.textContent).toMatch(/No active content types/u);
+  });
+});

@@ -1,3 +1,4 @@
+import { retryable } from '../../lib/retryable-import';
 import type { JsonValue } from '@wejammin/contracts';
 
 import type { CmsFieldDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
@@ -42,6 +43,15 @@ type DraftDetail = NonNullable<
 >;
 
 /**
+ * What re-reading the canonical draft answered: the verified draft, a 429 (with the delay
+ * the server stated, if any, which the caller waits for) or a read that did not succeed.
+ */
+export type CmsEditorialCurrentRead =
+  | { readonly kind: 'ok'; readonly detail: DraftDetail }
+  | { readonly kind: 'rate-limited'; readonly retryAfterSeconds: number | null }
+  | { readonly kind: 'failed' };
+
+/**
  * The shared mutable context of one editor: the state store, the flags that
  * gate sending, and the reads every flow needs. The save, reconcile and
  * conflict flows are separate modules over this one context, so no flow can
@@ -68,6 +78,12 @@ export interface CmsEditorialEditorContext {
   /** The rebase budget is spent: only an explicit Save draft resumes. */
   rebaseLimited: boolean;
   inFlight: boolean;
+  /**
+   * A rate-limited READ of the canonical draft is waiting out `Retry-After`
+   * (FE03 :1172). The base is stale, so no save may go out until the read has
+   * answered; the unsent edits ride the one bounded rebase that follows.
+   */
+  readWait: boolean;
   disposed: boolean;
   timer: unknown;
   /** Re-arms or clears the autosave window from the current dirtiness. */
@@ -76,13 +92,17 @@ export interface CmsEditorialEditorContext {
   readonly changed: () => readonly string[];
   readonly settle: (saved: boolean) => void;
   readonly clearTimer: () => void;
-  readonly readCurrent: () => Promise<DraftDetail | null>;
+  readonly readCurrent: () => Promise<CmsEditorialCurrentRead>;
   readonly adoptCanonical: (
     detail: DraftDetail,
     keepLocal: (fieldId: string) => boolean,
     message: string,
   ) => void;
 }
+
+const loadDraftDetail = retryable(
+  () => import('./cms-editorial-entry-draft-detail-transport'),
+);
 
 export const createCmsEditorialEditorContext = (
   deps: CmsEditorialEntryEditorDeps,
@@ -111,6 +131,7 @@ export const createCmsEditorialEditorContext = (
     rebases: 0,
     rebaseLimited: false,
     inFlight: false,
+    readWait: false,
     disposed: false,
     timer: null,
     arm: () => undefined,
@@ -149,17 +170,22 @@ export const createCmsEditorialEditorContext = (
     // The draft-detail transport loads on the first re-read, not with the island
     // (AC-106); a chunk that cannot be fetched is a read that did not succeed.
     readCurrent: async () => {
-      const transport =
-        await import('./cms-editorial-entry-draft-detail-transport').catch(
-          () => null,
-        );
-      if (transport === null) return null;
+      const transport = await loadDraftDetail().catch(() => null);
+      if (transport === null) return { kind: 'failed' };
       const read = await transport.executeCmsEditorialEntryDraftDetailRead({
         basePath: '/api/v1/cms/entries',
         entryId: init.entryId,
         ...(deps.fetcher === undefined ? {} : { fetcher: deps.fetcher }),
       });
-      return read.outcome === 'success' ? read.resource : null;
+      if (read.outcome === 'success' && read.resource !== null)
+        return { kind: 'ok', detail: read.resource };
+      // FE03 :1172: a 429 carries the wait the caller has to honor.
+      if (read.outcome === 'rate-limited')
+        return {
+          kind: 'rate-limited',
+          retryAfterSeconds: read.retryAfterSeconds,
+        };
+      return { kind: 'failed' };
     },
     adoptCanonical: (detail, keepLocal, message) => {
       const projected = draftValuesFromDetail(detail, descriptors);
@@ -191,3 +217,6 @@ export const createCmsEditorialEditorContext = (
   };
   return context;
 };
+
+/** How long to wait before replaying a save whose outcome is unknown. */
+export const CMS_EDITORIAL_RECONCILE_DELAY_MS = 2_000;

@@ -1,0 +1,105 @@
+-- 030-security.sqlinc — the live-owner fence and no-effect characterization.
+-- The forged-future-clock fence is proven on a positive-source-row VERIFYING plan
+-- (the newly proposed eligible state), so the live-lease check -- not merely the
+-- verifying state gate -- is what refuses the takeover; the RUNNING case is a
+-- SEPARATE baseline caller-time characterization.  Stale CAS version, wrong
+-- fingerprint, stale rollback token and wrong fallback version are each refused
+-- with a deterministic full-content no-effects snapshot.  These characterize the
+-- current boundary and the DEC-184 recoverability witness; they are not proof.
+
+-- A positive-source-row verifying plan under a live lease held by another owner.
+select pg_temp.s09g_grant('sy:author', 'owner', 'owner', 'cms.author', pg_temp.s09g_day(5));
+select pg_temp.s09d_create_type('sy', 's12prepsy');
+select pg_temp.s09d_to_active('sy');
+select pg_temp.s09w_entry('sy:e1', 'sy', 'Alpha');
+select pg_temp.s09d_successor('sy2', 'sy');
+select pg_temp.s09d_dry_run('sy2');
+select pg_temp.s12_positive_verifying('sy2', '30000', 's12-live-owner');
+select is(pg_temp.s09d_read('cms_schema_migration_plans', 'state', pg_temp.s09d_id('sy2:plan')), 'verifying',
+  'S12 fixture: a positive-source-row verifying plan sits under a live lease held by another owner');
+create temp table s12_sy on commit drop as
+  select pg_temp.s09d_id('sy2:plan') as plan, pg_temp.s09d_id('sy2:version') as version;
+create temp table s12_sy_before on commit drop as select pg_temp.s12_effects((select plan from s12_sy)) as fp;
+
+-- PROPOSED ELIGIBILITY FENCE: a live owner's VERIFYING lease is not taken even
+-- with a forged far-future now.  The live-lease check precedes the state gate,
+-- so this proves the fence on the state DEC-184 proposes to make re-leasable.
+select pg_temp.s09d_session('owner', 'service_role');
+create temp table s12_forge_verify on commit drop as
+  select pg_temp.s09d_call('sy2.forge', 'platform_api.cms_claim_schema_migration_lease',
+    pg_temp.s12_base('sy2.forge.get', (select plan from s12_sy), (select version from s12_sy))
+    || jsonb_build_object('expectedVersion', pg_temp.s12_v((select plan from s12_sy))::text,
+         'leaseOwner', 's12-thief', 'workerId', 's12-thief', 'leaseDurationMs', '30000',
+         'now', (clock_timestamp() + interval '1 day')::text)) as claim;
+select ok(
+  (select not (claim->>'acquired')::boolean and claim->>'reasonCode' = 'LEASE_UNAVAILABLE' from s12_forge_verify),
+  'a live owner''s VERIFYING lease is not taken even with a forged far-future now [P2-S12-AC-050]');
+select ok(pg_temp.s12_effects((select plan from s12_sy)) = (select fp from s12_sy_before),
+  'the refused verifying takeover left the full plan/report content, audit, outbox and idempotency unchanged');
+
+-- A stale CAS version is refused with no effects.
+select pg_temp.s09d_call('sy2.stale', 'platform_api.cms_claim_schema_migration_lease',
+  pg_temp.s12_base('sy2.stale.get', (select plan from s12_sy), (select version from s12_sy))
+  || jsonb_build_object('expectedVersion', '999999', 'leaseOwner', 's12-thief', 'workerId', 's12-thief',
+       'leaseDurationMs', '30000', 'now', clock_timestamp()::text));
+select is(pg_temp.s09d_outcome('sy2.stale'), 'CONFLICT', 'a stale CAS version is refused CONFLICT');
+select ok(pg_temp.s12_effects((select plan from s12_sy)) = (select fp from s12_sy_before),
+  'the stale-version refusal changed nothing');
+
+-- A wrong source fingerprint is refused with no effects.
+select pg_temp.s09d_call('sy2.fp', 'platform_api.cms_claim_schema_migration_lease',
+  pg_temp.s12_base('sy2.fp.get', (select plan from s12_sy), (select version from s12_sy))
+  || jsonb_build_object('expectedVersion', pg_temp.s12_v((select plan from s12_sy))::text,
+       'leaseOwner', 's12-thief', 'workerId', 's12-thief', 'leaseDurationMs', '30000', 'now', clock_timestamp()::text,
+       'sourceHash', repeat('e', 64)));
+select is(pg_temp.s09d_outcome('sy2.fp'), 'VALIDATION_FAILED', 'a wrong source fingerprint is refused VALIDATION_FAILED');
+select ok(pg_temp.s12_effects((select plan from s12_sy)) = (select fp from s12_sy_before),
+  'the fingerprint refusal changed nothing');
+
+-- A stale rollback token against the live (granted) lease is refused with no effects.
+select pg_temp.s09d_call('sy2.badtoken', 'platform_api.cms_rollback_schema_migration',
+  pg_temp.s12_base('sy2.badtoken.get', (select plan from s12_sy), (select version from s12_sy))
+  || jsonb_build_object('expectedVersion', pg_temp.s12_v((select plan from s12_sy))::text,
+       'leaseToken', 'stale-token-0001', 'reasonCode', 'MIGRATION_RETRIES_EXHAUSTED', 'retryable', false,
+       'fallbackVersionId', pg_temp.s09d_id('sy:version'), 'preserveOldActive', true, 'deleteRows', false));
+select is(pg_temp.s09d_outcome('sy2.badtoken'), 'LEASE_EXPIRED', 'a stale rollback token is refused LEASE_EXPIRED');
+select ok(pg_temp.s12_effects((select plan from s12_sy)) = (select fp from s12_sy_before),
+  'the stale-token rollback left the live plan unchanged');
+
+-- A fallback version that is not the plan's own source is refused with no effects.
+select pg_temp.s09d_call('sy2.badfb', 'platform_api.cms_rollback_schema_migration',
+  pg_temp.s12_base('sy2.badfb.get', (select plan from s12_sy), (select version from s12_sy))
+  || jsonb_build_object('expectedVersion', pg_temp.s12_v((select plan from s12_sy))::text,
+       'leaseToken', pg_temp.s12_token((select plan from s12_sy)),
+       'reasonCode', 'MIGRATION_RETRIES_EXHAUSTED', 'retryable', false,
+       'fallbackVersionId', pg_temp.s09d_id('ex:version'), 'preserveOldActive', true, 'deleteRows', false));
+select is(pg_temp.s09d_outcome('sy2.badfb'), 'CONFLICT', 'a fallback version that is not the plan''s own source is refused CONFLICT');
+select ok(pg_temp.s12_effects((select plan from s12_sy)) = (select fp from s12_sy_before),
+  'the wrong-fallback rollback left the live plan unchanged');
+
+-- SEPARATE BASELINE CALLER-TIME CHARACTERIZATION: a live owner's RUNNING lease
+-- under the same forged far-future now.  Reported separately; it does not extend
+-- the proposed verifying-only recovery.
+select pg_temp.s09d_create_type('sr', 's12prepsr');
+select pg_temp.s09d_to_active('sr');
+select pg_temp.s09d_successor('sr2', 'sr');
+select pg_temp.s09d_dry_run('sr2');
+select pg_temp.s12_to_verifying('sr2', '30000', 's12-live-runner', 'running');
+select is(pg_temp.s09d_read('cms_schema_migration_plans', 'state', pg_temp.s09d_id('sr2:plan')), 'running',
+  'S12 fixture: a claimable running plan sits under a live lease held by another owner');
+create temp table s12_sr on commit drop as
+  select pg_temp.s09d_id('sr2:plan') as plan, pg_temp.s09d_id('sr2:version') as version;
+create temp table s12_sr_before on commit drop as select pg_temp.s12_effects((select plan from s12_sr)) as fp;
+select pg_temp.s09d_session('owner', 'service_role');
+create temp table s12_forge_run on commit drop as
+  select pg_temp.s09d_call('sr2.forge', 'platform_api.cms_claim_schema_migration_lease',
+    pg_temp.s12_base('sr2.forge.get', (select plan from s12_sr), (select version from s12_sr))
+    || jsonb_build_object('expectedVersion', pg_temp.s12_v((select plan from s12_sr))::text,
+         'leaseOwner', 's12-thief', 'workerId', 's12-thief', 'leaseDurationMs', '30000',
+         'now', (clock_timestamp() + interval '1 day')::text)) as claim;
+select ok(
+  (select not (claim->>'acquired')::boolean and claim->>'reasonCode' = 'LEASE_UNAVAILABLE' from s12_forge_run),
+  'BASELINE: a live owner''s RUNNING lease is also not taken with a forged far-future now');
+select ok(pg_temp.s12_effects((select plan from s12_sr)) = (select fp from s12_sr_before),
+  'BASELINE: the refused running takeover left every side effect unchanged');
+

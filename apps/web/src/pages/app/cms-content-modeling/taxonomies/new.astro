@@ -1,0 +1,58 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import CmsTaxonomyVersionDesigner from '../../../../components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner';
+import '../../../../components/cms-taxonomy-designer/cms-taxonomy.css';
+import { createTaxonomyPageReads } from '../../../../components/cms-taxonomy-pages/taxonomy-page-reads';
+import { loadTaxonomyPage } from '../../../../components/cms-taxonomy-pages/load-taxonomy-page';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (Astro.request.method !== 'GET') {
+  return new Response('Method not allowed', {
+    status: 405,
+    headers: { allow: 'GET', 'cache-control': 'no-store' },
+  });
+}
+
+/*
+ * Protected vocabulary designer for a new vocabulary (CMS-03C-16). All behavior lives in the
+ * tested loader and island: the loader proves the session and the curator capability with one
+ * protected read and returns one view, one closed state, or a sign-in redirect; the island
+ * renders the explicit-control form. Nothing is rendered from an unverified answer.
+ */
+const outcome = await loadTaxonomyPage({
+  request: Astro.request,
+  taxonomyId: null,
+  reads: createTaxonomyPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Govern a vocabulary and its terms."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <CmsTaxonomyVersionDesigner
+        latest={null}
+        csrfToken={outcome.view.csrfToken}
+        client:load
+      />
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

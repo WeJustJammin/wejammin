@@ -1,0 +1,96 @@
+-- Setup: real standing grants and real governed reviews (mint -> submit -> assignment -> approval -> schedule), all through the
+-- named producers under the real service_role.  Reviewers: rev1 / rev2 / designer2 (owner-party, cms.reviewer; designer2 also holds
+-- cms.reviewer.policy) and the pool x01 .. x13 (cms.reviewer; x04 also cms.reviewer.policy; x07 .. x13 are used by 080-tenure, x13 also holds cms.reviewer.policy there).
+--
+-- Dependency group (040), all bound to typeA unless noted:
+--   d1 d2 d3  approved (rev1)               dopen  open (submitted only)       dsch   approved (rev1) then scheduled
+--   dprot     protected approved (typeA + protectedType)                      dlag   approved by rev2 (lags a tenure end)
+--   dctl      protected approved, bound to protectedType ONLY (never selected by a typeA recheck)
+-- Authority group (030):
+--   pa1       approved by x01             pa2   approved by x01 then scheduled     po1   protected OPEN, x03 counted (base slot)
+--   pm1       protected approved: policy slot x04, base slot x06                   pc1   approved by x02 (lags a tenure end)
+--   pc2       approved by x05 (control: keeps its grant)
+create temp table s12gr_setup(key text primary key, outcome text not null) on commit drop;
+insert into s12gr_setup(key, outcome) values
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 1)),
+  ('designer2:reviewer', pg_temp.s12ga_grant('designer2', 'cms.reviewer', 1));
+-- rev3 keeps its own person party: it is the DEC-108 schema reviewer of the successor chain at the end
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2');
+select pg_temp.s12ga_pool(13);
+insert into s12gr_setup(key, outcome) values
+  ('x04:policy', pg_temp.s12ga_grant('x04', 'cms.reviewer.policy', 1));
+
+-- A protected review (two approvals: p_policy holds the specialist slot, p_base the base slot), approved; p_types bound.
+create or replace function pg_temp.s12gr_protected(p_tag text, p_policy text, p_base text, p_types text[])
+returns uuid language plpgsql as $body$
+declare v_review uuid;
+begin
+  v_review := pg_temp.s12ga_open(p_tag, 'owner', p_types, 'owner');
+  perform pg_temp.s12ga_assign('as-p-' || p_tag, 'owner', v_review, p_policy, interval '20 hours');
+  perform pg_temp.s12ga_assign('as-b-' || p_tag, 'owner', v_review, p_base, interval '20 hours');
+  perform pg_temp.s12ga_decide('ap-p-' || p_tag, p_policy, v_review, 'approve');
+  perform pg_temp.s12ga_decide('ap-b-' || p_tag, p_base, v_review, 'approve');
+  if (select state from platform_private.cms_governed_reviews where id = v_review) <> 'approved' then
+    raise exception 'governed-recheck fixture: % did not reach approved (% / %)', p_tag,
+      pg_temp.s12ga_out('ap-p-' || p_tag), pg_temp.s12ga_out('ap-b-' || p_tag);
+  end if;
+  return v_review;
+end;
+$body$;
+
+-- ---- dependency group
+select pg_temp.s12gb_approved('d1');
+select pg_temp.s12gb_approved('d2');
+select pg_temp.s12gb_approved('d3');
+select pg_temp.s12ga_open('dopen', 'owner', array['typeA'], 'owner');
+select pg_temp.s12gb_approved('dsch');
+select pg_temp.s12gb_act('dsch-sched', 'owner', pg_temp.s12ga_review('dsch'), 'schedule');
+select pg_temp.s12gb_approved_protected('dprot');
+select pg_temp.s12gb_approved('dlag', array['typeA'], 'rev2');
+select pg_temp.s12gr_protected('dctl', 'designer2', 'rev1', array['protectedType']);
+-- ---- authority group
+select pg_temp.s12gb_approved('pa1', array['typeA'], 'x01');
+select pg_temp.s12gb_approved('pa2', array['typeA'], 'x01');
+select pg_temp.s12gb_act('pa2-sched', 'owner', pg_temp.s12ga_review('pa2'), 'schedule');
+select pg_temp.s12ga_open('po1', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_assign('as-po1-x03', 'owner', pg_temp.s12ga_review('po1'), 'x03', interval '20 hours');
+select pg_temp.s12ga_assign('as-po1-d2', 'owner', pg_temp.s12ga_review('po1'), 'designer2', interval '20 hours');
+select pg_temp.s12ga_decide('ap-po1-x03', 'x03', pg_temp.s12ga_review('po1'), 'approve');
+select pg_temp.s12gr_protected('pm1', 'x04', 'x06', array['typeA', 'protectedType']);
+select pg_temp.s12gb_approved('pc1', array['typeA'], 'x02');
+select pg_temp.s12gb_approved('pc2', array['typeA'], 'x05');
+select pg_temp.s12ga_open('pr1', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_assign('as-pr1-x06', 'owner', pg_temp.s12ga_review('pr1'), 'x06', interval '20 hours');
+select pg_temp.s12ga_decide('ap-pr1-x06', 'x06', pg_temp.s12ga_review('pr1'), 'approve');
+
+select ok((select count(*) = 4 and bool_and(outcome = 'OK') from s12gr_setup),
+  'fixture: rev1, rev2, designer2 hold cms.reviewer and x04 holds cms.reviewer.policy through the real CMS-03A-15 command [P2-S12-AC-204]');
+select ok(
+  (select count(*) = 12 and bool_and(review.state = 'approved' and review.activated_at is null)
+     from platform_private.cms_governed_reviews review
+    where review.id in (select pg_temp.s12ga_review(t) from unnest(array['d1', 'd2', 'd3', 'dsch', 'dprot', 'dlag', 'dctl',
+            'pa1', 'pa2', 'pm1', 'pc1', 'pc2']) t)),
+  'fixture: twelve real approved governed reviews exist, none activated [P2-S12-AC-203]');
+select ok(
+  (select count(*) = 3 and bool_and(review.state = 'open')
+     from platform_private.cms_governed_reviews review
+    where review.id in (pg_temp.s12ga_review('dopen'), pg_temp.s12ga_review('po1'), pg_temp.s12ga_review('pr1')))
+  and (select count(*) = 2 and bool_and(schedule.state = 'pending')
+         from platform_private.cms_governed_activation_schedules schedule
+        where schedule.review_id in (pg_temp.s12ga_review('dsch'), pg_temp.s12ga_review('pa2')))
+  and (select count(*) = 2 and bool_and(subject.state = 'scheduled')
+         from platform_private.cms_template_versions subject
+        where subject.id in (pg_temp.s12ga_subject('dsch'), pg_temp.s12ga_subject('pa2'))),
+  'fixture: three open reviews exist and two approved reviews are scheduled (pending schedule, subject scheduled) [P2-S12-AC-203]');
+select ok(
+  (select count(*) = 1 and bool_and(review.risk_class = 'protected')
+     from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('dctl'))
+  and not exists (
+    select 1 from platform_private.cms_governed_review_dependencies dependency
+     where dependency.review_id = pg_temp.s12ga_review('dctl')
+       and dependency.ref_id = pg_temp.s12gr_type_a_active())
+  and (select count(*) >= 1 from platform_private.cms_governed_review_dependencies dependency
+        where dependency.review_id = pg_temp.s12ga_review('d1') and dependency.kind = 'content_type'
+          and dependency.ref_id = pg_temp.s12gr_type_a_active()),
+  'fixture: the typeA-bound reviews freeze the typeA active version as a content_type dependency and the protectedType-only control does not [P2-S12-AC-202]');

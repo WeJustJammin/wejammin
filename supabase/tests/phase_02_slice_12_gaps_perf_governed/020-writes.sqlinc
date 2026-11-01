@@ -1,0 +1,98 @@
+-- Perf world, part 2: the timed governed writes.  Every loop times only the RPC statement (pg_temp.g12p_call) and aborts the file
+-- on the first refusal, so a measurement of an error path can never be mistaken for the success path.
+create or replace function pg_temp.g12pg_require(p_op text, p_min integer) returns void language plpgsql as $body$
+begin
+  if not pg_temp.g12p_all_ok(p_op, p_min) then
+    raise exception 'perf bench: % needs at least % successful samples (has %, failures: %)',
+      p_op, p_min, pg_temp.g12p_n(p_op), pg_temp.g12p_failures(p_op);
+  end if;
+end;
+$body$;
+
+-- CMS-03C-06: mint 110 ordinary templates through the real CMS-03C-01 command (untimed), submit each (timed).
+do $bench$
+declare v_i integer; v_tag text; v_subject uuid; v_label text;
+begin
+  for v_i in 1..110 loop
+    v_tag := pg_temp.g12pg_tag(v_i);
+    v_subject := pg_temp.s12ga_mint(v_tag, 'owner', array['typeA']);
+    v_label := pg_temp.g12p_call('submit', 'platform_api.cms_submit_governed_review', 'owner', jsonb_build_object(
+      'subjectKind', 'template_version', 'subjectId', v_subject,
+      'subjectHash', (select content_hash::text from platform_private.cms_template_versions where id = v_subject),
+      'idempotencyKey', 's12gp-submit-' || v_tag), pg_temp.g12pg_w('owner'));
+    if pg_temp.g12p_out(v_label) = 'ok' then
+      insert into s12gov_ids(key, value) values (v_tag || ':review', pg_temp.g12p_body(v_label)->>'id')
+        on conflict (key) do update set value = excluded.value;
+    end if;
+  end loop;
+  perform pg_temp.g12pg_require('submit', 110);
+end;
+$bench$;
+
+-- CMS-03C-08 create: the owner assigns rev1 to every review (the queue population), timed.
+do $bench$
+declare v_i integer; v_tag text; v_review uuid; v_version text;
+begin
+  for v_i in 1..110 loop
+    v_tag := pg_temp.g12pg_tag(v_i);
+    v_review := pg_temp.g12pg_review(v_i);
+    v_version := pg_temp.s12ga_rver(v_review);
+    perform pg_temp.g12p_call('assign_create', 'platform_api.cms_assign_governed_reviewer', 'owner', jsonb_build_object(
+      'reviewId', v_review, 'action', 'create', 'expectedVersion', v_version, 'ifMatch', v_version,
+      'reviewerPersonId', pg_temp.s12ga_person('rev1'),
+      'expiresAt', pg_temp.s12ga_iso(clock_timestamp() + interval '20 hours'),
+      'idempotencyKey', 's12gp-assign-' || v_tag), pg_temp.g12pg_w('owner'));
+  end loop;
+  perform pg_temp.g12pg_require('assign_create', 110);
+end;
+$bench$;
+
+-- CMS-03C-07: rev1 approves reviews 1..48 (one required decision each), timed.
+do $bench$
+declare v_i integer; v_tag text; v_review uuid; v_version text;
+begin
+  for v_i in 1..48 loop
+    v_tag := pg_temp.g12pg_tag(v_i);
+    v_review := pg_temp.g12pg_review(v_i);
+    v_version := pg_temp.s12ga_rver(v_review);
+    perform pg_temp.g12p_call('decision', 'platform_api.cms_record_governed_decision', 'rev1', jsonb_build_object(
+      'reviewId', v_review, 'decision', 'approve', 'reason', 'Reviewed against the frozen policy basis.',
+      'expectedVersion', v_version, 'ifMatch', v_version, 'idempotencyKey', 's12gp-decide-' || v_tag), pg_temp.g12pg_w('rev1'));
+  end loop;
+  perform pg_temp.g12pg_require('decision', 48);
+end;
+$bench$;
+
+-- CMS-03C-09: activate 1..24, schedule 25..48, then retire the 24 activated, timed.
+do $bench$
+declare v_i integer; v_tag text; v_review uuid; v_version text;
+begin
+  for v_i in 1..24 loop
+    v_tag := pg_temp.g12pg_tag(v_i);
+    v_review := pg_temp.g12pg_review(v_i);
+    v_version := pg_temp.s12ga_rver(v_review);
+    perform pg_temp.g12p_call('activate', 'platform_api.cms_activate_governed_subject', 'owner', jsonb_build_object(
+      'reviewId', v_review, 'action', 'activate', 'expectedVersion', v_version, 'ifMatch', v_version,
+      'idempotencyKey', 's12gp-activate-' || v_tag), pg_temp.g12pg_w('owner'));
+  end loop;
+  perform pg_temp.g12pg_require('activate', 24);
+  for v_i in 25..48 loop
+    v_tag := pg_temp.g12pg_tag(v_i);
+    v_review := pg_temp.g12pg_review(v_i);
+    v_version := pg_temp.s12ga_rver(v_review);
+    perform pg_temp.g12p_call('schedule', 'platform_api.cms_activate_governed_subject', 'owner', jsonb_build_object(
+      'reviewId', v_review, 'action', 'schedule', 'expectedVersion', v_version, 'ifMatch', v_version,
+      'activateAt', pg_temp.s12gb_at(interval '90 seconds'), 'idempotencyKey', 's12gp-schedule-' || v_tag), pg_temp.g12pg_w('owner'));
+  end loop;
+  perform pg_temp.g12pg_require('schedule', 24);
+  for v_i in 1..24 loop
+    v_tag := pg_temp.g12pg_tag(v_i);
+    v_review := pg_temp.g12pg_review(v_i);
+    v_version := pg_temp.s12ga_rver(v_review);
+    perform pg_temp.g12p_call('retire', 'platform_api.cms_activate_governed_subject', 'owner', jsonb_build_object(
+      'reviewId', v_review, 'action', 'retire', 'expectedVersion', v_version, 'ifMatch', v_version,
+      'idempotencyKey', 's12gp-retire-' || v_tag), pg_temp.g12pg_w('owner'));
+  end loop;
+  perform pg_temp.g12pg_require('retire', 24);
+end;
+$bench$;

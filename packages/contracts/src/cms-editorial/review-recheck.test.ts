@@ -24,7 +24,7 @@ const AGGREGATE_FOR: Record<string, string> = {
   'cms.template.activated.v1': 'cms_template_version',
   'cms.pattern.activated.v1': 'cms_pattern_version',
   'cms.taxonomy.changed.v1': 'cms_taxonomy_version',
-  'cms.localization.changed.v1': 'cms_content_entry',
+  'cms.localization.changed.v1': 'cms_locale_variant',
   'cms.block.lifecycle.changed.v1': 'cms_block_definition_version',
 };
 
@@ -133,6 +133,39 @@ describe('[P2-S11-AC-113] review recheck source events', () => {
         eventType,
       ).toBe(false);
     }
+  });
+
+  // BE03c "Fan-out bound and event key (D12)": the localization event is produced under the locale
+  // aggregate (entry, locale) with a UUIDv5 id.  The aggregate type is the underscore token
+  // `cms_locale_variant` (root ruling 2026-10-14: it matches the consumer grammar
+  // `^[a-z][a-z0-9_]{0,63}$` of platform_private.consumer_dead_letters and the other Slice 12
+  // aggregates); the dotted `cms.locale_variant` of the BE03c text is a spec defect.
+  it('[P2-S12-AC-237] admits the locale aggregate envelope of cms.localization.changed.v1 and refuses the former and the dotted aggregate types', () => {
+    const UUID_V5_AGGREGATE = '6f2c1d8e-3a54-5b9a-8c01-2d3e4f5a6b7c';
+    const valid = envelope('cms.localization.changed.v1', {
+      aggregateType: 'cms_locale_variant',
+      aggregateId: UUID_V5_AGGREGATE,
+      aggregateVersion: '3',
+    });
+    expect(ReviewRecheckSourceEnvelopeSchema.parse(valid)).toEqual(valid);
+    expect(REVIEW_RECHECK_SOURCES['cms.localization.changed.v1']).toEqual({
+      kind: 'locale_source',
+      producer: 'cms.composition',
+      aggregateType: 'cms_locale_variant',
+    });
+    expect('cms_locale_variant').toMatch(/^[a-z][a-z0-9_]{0,63}$/u);
+    for (const aggregateType of [
+      'cms_content_entry',
+      'cms.locale_variant',
+      'cms_locale_variants',
+    ])
+      expect(
+        ReviewRecheckSourceEnvelopeSchema.safeParse({
+          ...valid,
+          aggregateType,
+        }).success,
+        aggregateType,
+      ).toBe(false);
   });
 
   it('refuses an event type outside the six', () => {

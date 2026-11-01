@@ -1,0 +1,98 @@
+-- cms_locale_observability_read function shape, grants and indexes (DEC-208, DEC-213; BE03c Observability;
+-- tracker P2-S12-AC-052, AC-263).  A private SECURITY DEFINER reader under the CMS definer and the internal
+-- platform_api transport, executable by service_role only; three indexes so no read scans the table.
+
+select ok(coalesce((select p.prosecdef and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer'
+                        and p.proconfig = array['search_path=""']::text[]
+                        and not has_function_privilege('anon', p.oid, 'execute')
+                        and not has_function_privilege('authenticated', p.oid, 'execute')
+                        and not has_function_privilege('service_role', p.oid, 'execute')
+                        and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+                                         where acl.grantee = 0 and acl.privilege_type = 'EXECUTE')
+                   from pg_proc p where p.oid = to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')), false),
+  'the private reader is SECURITY DEFINER of the CMS definer, search_path exactly "" (no function-level statement_timeout: the 5 s bound is the Worker''s 5,000 ms deadline, V3 F-8), no API-role execute [P2-S12-AC-052]');
+select is(pg_get_function_result(to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')), 'jsonb',
+  'the private reader answers jsonb [P2-S12-AC-052]');
+select is((select p.provolatile::text from pg_proc p where p.oid = to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')), 'v',
+  'the private reader is VOLATILE like every protected read that sets the RPC context (it still writes nothing) [P2-S12-AC-052]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')) ~ 'set_config\(''app\.cms_rpc'', ''true'', true\)', false), true,
+  'the private reader sets the transaction-local RPC context its forced-RLS reads require (DEC-216, SEC-2) [P2-S12-AC-052]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_api.cms_locale_observability_read(timestamptz,timestamptz)')) ~ 'rpc_previous.*set_config\(''app\.cms_rpc'', rpc_previous, true\)', false), true,
+  'the transport remembers the caller''s RPC-context value and restores it before returning (SEC-2 guard D spelling) [P2-S12-AC-052]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_stale_legal_field_count()')) ~ 'lifecycle\s*=\s*''active''', false), true,
+  'the gauge is scoped to entries whose lifecycle is active (DEC-216) [P2-S12-AC-052]');
+select ok(coalesce((select p.prosecdef and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer'
+                        and p.proconfig = array['search_path=""']::text[]
+                        and pg_get_function_result(p.oid) = 'bigint'
+                        and not has_function_privilege('anon', p.oid, 'execute')
+                        and not has_function_privilege('authenticated', p.oid, 'execute')
+                        and not has_function_privilege('service_role', p.oid, 'execute')
+                        and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+                                         where acl.grantee = 0 and acl.privilege_type = 'EXECUTE')
+                   from pg_proc p where p.oid = to_regprocedure('platform_private.cms_locale_stale_legal_field_count()')), false),
+  'the gauge helper is a private SECURITY DEFINER bigint function of the CMS definer, search_path exactly "", no API-role execute (DEC-219) [P2-S12-AC-052]');
+select ok(coalesce(has_function_privilege('wejammin_cms_definer', to_regprocedure('platform_private.cms_locale_stale_legal_field_count()'), 'execute'), false),
+  'and it is executable by its definer, which the reader runs as (DEC-219) [P2-S12-AC-052]');
+select ok(coalesce((select p.prosecdef and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer'
+                        and p.proconfig = array['search_path=""']::text[]
+                        and has_function_privilege('service_role', p.oid, 'execute')
+                        and not has_function_privilege('anon', p.oid, 'execute')
+                        and not has_function_privilege('authenticated', p.oid, 'execute')
+                        and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+                                         where acl.grantee = 0 and acl.privilege_type = 'EXECUTE')
+                   from pg_proc p where p.oid = to_regprocedure('platform_api.cms_locale_observability_read(timestamptz,timestamptz)')), false),
+  'the transport platform_api.cms_locale_observability_read is definer-owned, search_path exactly "" and service_role-only [P2-S12-AC-052]');
+select is(pg_get_function_result(to_regprocedure('platform_api.cms_locale_observability_read(timestamptz,timestamptz)')), 'jsonb',
+  'the transport answers jsonb [P2-S12-AC-052]');
+select is((select pg_get_function_arguments(to_regprocedure('platform_api.cms_locale_observability_read(timestamptz,timestamptz)'))),
+  'p_window_start timestamp with time zone, p_window_end timestamp with time zone',
+  'the transport arguments are exactly p_window_start and p_window_end [P2-S12-AC-052]');
+select ok(coalesce(has_function_privilege('wejammin_cms_definer', to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)'), 'execute'), false),
+  'the private reader is executable by its definer, which the transport runs as [P2-S12-AC-052]');
+select is((select count(*)::integer from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+            where ns.nspname = 'platform_api' and proc.proname = 'cms_locale_observability_read'), 1,
+  'exactly one transport overload exists [P2-S12-AC-052]');
+select is((select count(*)::integer from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+            where ns.nspname = 'platform_private' and proc.proname = 'cms_locale_observability_read'), 1,
+  'exactly one private overload exists [P2-S12-AC-052]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')) !~* '\m(insert\s+into|update\s+platform_private|delete\s+from)', false), true,
+  'the reader contains no insert, update or delete statement: a read writes nothing [P2-S12-AC-052]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')) !~* 'for\s+(update|share|no key update|key share)', false), true,
+  'the reader takes no row lock [P2-S12-AC-052]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')) !~* '\mlock\s+table|pg_advisory', false), true,
+  'the reader takes no table or advisory lock [P2-S12-AC-052]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')) !~* 'audit|outbox|idempotency', false), true,
+  'the reader names no audit, outbox or receipt object: it writes none [P2-S12-AC-052]');
+
+-- The three read indexes (BE03c: INDEX(state, created_at) and INDEX(entry_id, lower(locale), version DESC, created_at DESC, id DESC), plus the DEC-220 plain-column INDEX(entry_id, locale, version DESC, created_at DESC, id DESC)).
+select is((select count(*)::integer from pg_indexes
+            where schemaname = 'platform_private' and tablename = 'cms_locale_variants'
+              and indexdef ~ '\(state, created_at\)$'), 1,
+  'cms_locale_variants has INDEX(state, created_at) for the window read [P2-S12-AC-052]');
+select is((select count(*)::integer from pg_indexes
+            where schemaname = 'platform_private' and tablename = 'cms_locale_variants'
+              and indexdef ~ '\(entry_id, lower\(locale\), version DESC, created_at DESC, id DESC\)$'), 1,
+  'cms_locale_variants has INDEX(entry_id, lower(locale), version DESC, created_at DESC, id DESC) for the current-row rule [P2-S12-AC-052]');
+select is((select count(*)::integer from pg_indexes
+            where schemaname = 'platform_private' and tablename = 'cms_locale_variants'
+              and indexdef ~ '\(entry_id, locale, version DESC, created_at DESC, id DESC\)$'), 1,
+  'cms_locale_variants has INDEX(entry_id, locale, version DESC, created_at DESC, id DESC): the plain-column index the gauge skip scan uses, because under forced RLS lower(locale) cannot be an index condition (DEC-219) [P2-S12-AC-052]');
+select ok(coalesce((select bool_and(i.indisvalid and i.indisready and not i.indisunique)
+                      from pg_indexes x join pg_class c on c.relname = x.indexname
+                      join pg_namespace n on n.oid = c.relnamespace and n.nspname = x.schemaname
+                      join pg_index i on i.indexrelid = c.oid
+                     where x.schemaname = 'platform_private' and x.tablename = 'cms_locale_variants'
+                       and (x.indexdef ~ '\(state, created_at\)$'
+                         or x.indexdef ~ '\(entry_id, lower\(locale\), version DESC, created_at DESC, id DESC\)$'
+                         or x.indexdef ~ '\(entry_id, locale, version DESC, created_at DESC, id DESC\)$')), false),
+  'the three read indexes are valid, ready and non-unique [P2-S12-AC-052]');
+
+-- Role matrix of the transport (statement evaluated as each role; an arbitrary valid window).
+select is(pg_temp.l208_as_role('anon', $q$select platform_api.cms_locale_observability_read('2026-10-22 12:00:00+00'::timestamptz, '2026-10-22 12:01:00+00'::timestamptz)::text$q$),
+  '__error 42501', 'anon cannot execute the transport [P2-S12-AC-052]');
+select is(pg_temp.l208_as_role('authenticated', $q$select platform_api.cms_locale_observability_read('2026-10-22 12:00:00+00'::timestamptz, '2026-10-22 12:01:00+00'::timestamptz)::text$q$),
+  '__error 42501', 'authenticated cannot execute the transport [P2-S12-AC-052]');
+select is(pg_temp.l208_as_role('service_role', $q$select platform_private.cms_locale_observability_read('2026-10-22 12:00:00+00'::timestamptz, '2026-10-22 12:01:00+00'::timestamptz)::text$q$),
+  '__error 42501', 'service_role cannot execute the private reader directly [P2-S12-AC-052]');
+select is(pg_temp.l208_as_role('service_role', $q$select (platform_api.cms_locale_observability_read('2026-10-22 12:00:00+00'::timestamptz, '2026-10-22 12:01:00+00'::timestamptz) ? 'fanoutRows')::text$q$),
+  'true', 'service_role can execute the transport and gets the sample [P2-S12-AC-052]');

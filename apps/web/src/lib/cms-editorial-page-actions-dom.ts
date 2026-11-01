@@ -1,3 +1,4 @@
+import { retryable } from './retryable-import';
 /**
  * The small DOM helpers the CMS editorial page actions share: the polite status
  * line they append to the document, and the session storage of the page. They
@@ -31,3 +32,19 @@ export const focusStorage = (documentRef: Document): Storage | null => {
     return null;
   }
 };
+
+/** The seam a test replaces: the dynamic import of the restore command (AC-106). */
+export const restoreActionImporters = {
+  load: retryable(() => import('./cms-editorial-page-actions-restore')),
+};
+
+/** The seam a test replaces: the dynamic import of the restore draft store (AC-106). */
+export const restoreDraftImporters = {
+  load: retryable(() => import('./cms-editorial-restore-draft')),
+};
+
+export const RESTORE_DRAFT_RECOVERY_UNAVAILABLE =
+  'Part of this page could not be loaded, so a kept restore confirmation may not have been recovered. Reload the page.';
+
+export const RESTORE_DRAFT_FORGET_UNAVAILABLE =
+  'Part of this page could not be loaded, so the restore confirmation you closed may still be kept. Reload the page.';

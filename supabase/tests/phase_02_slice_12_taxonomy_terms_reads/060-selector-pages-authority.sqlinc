@@ -1,0 +1,88 @@
+-- CMS-03C-17 paging, cursor binding, query grammar, authority and concealment.  BE03c 179, 373, 1478; DEC-140 fault classes.
+-- [P2-S12-AC-131, AC-132, AC-133, AC-134]
+select pg_temp.s12tt_mark('before-selector-paging');
+select pg_temp.s12tr_sel('g-1', 'rev2', '{"limit":4}'::jsonb);
+select pg_temp.s12tr_sel('g-2', 'rev2', jsonb_build_object('limit', 4, 'cursor', pg_temp.s12ga_body('g-1')->>'nextCursor'));
+select pg_temp.s12tr_sel('g-3', 'rev2', jsonb_build_object('limit', 4, 'cursor', pg_temp.s12ga_body('g-2')->>'nextCursor'));
+select ok(pg_temp.s12tt_oc('g-1') = 'ok' and array_length(pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-1')), 1) = 4 and jsonb_typeof(pg_temp.s12ga_body('g-1')->'nextCursor') = 'string'
+    and octet_length(pg_temp.s12ga_body('g-1')->>'nextCursor') <= 512,
+  'limit 4 returns four items and a signed cursor of at most 512 characters [P2-S12-AC-133]');
+select is(pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-1')) || pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-2')) || pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-3')),
+  pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('s-after')), 'three pages are exactly the unpaged list in (taxonomyKey, termKey) order [P2-S12-AC-133]');
+select ok(array_length(pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-3')), 1) = 1 and pg_temp.s12ga_body('g-3')->'nextCursor' = 'null'::jsonb
+    and array_length(pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-2')), 1) = 4,
+  'the 9 listed terms page 4 + 4 + 1 and the last page has no cursor [P2-S12-AC-133]');
+select pg_temp.s12tr_sel('g-exact', 'rev2', '{"limit":9}'::jsonb);
+select ok(array_length(pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-exact')), 1) = 9 and pg_temp.s12ga_body('g-exact')->'nextCursor' = 'null'::jsonb,
+  'a page that exactly exhausts the list has no cursor [P2-S12-AC-133]');
+select pg_temp.s12tr_sel('g-one', 'rev2', '{"limit":1}'::jsonb);
+select pg_temp.s12tr_sel('g-one-2', 'rev2', jsonb_build_object('limit', 1, 'cursor', pg_temp.s12ga_body('g-one')->>'nextCursor'));
+select is(pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-one')) || pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-one-2')),
+  array['s12tt-vh/hq-child', 's12tt-vh/hq-other'], 'a cursor continues across term keys inside one vocabulary [P2-S12-AC-133]');
+select pg_temp.s12tr_sel('g-seed-3', 'rev2', '{"limit":3}'::jsonb);
+select pg_temp.s12tr_sel('g-seed-3-next', 'rev2', jsonb_build_object('limit', 3, 'cursor', pg_temp.s12ga_body('g-seed-3')->>'nextCursor'));
+select is(pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-seed-3')) || pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('g-seed-3-next')),
+  array['s12tt-vh/hq-child', 's12tt-vh/hq-other', 's12tt-vh/hq-root', 's12tt-vr/tr-a', 's12tt-vr/tr-d', 's12tt-vr/tr-f'],
+  'a cursor ending exactly at the last term of one vocabulary continues with the first term of the next vocabulary (taxonomyKey, then termKey) [P2-S12-AC-133]');
+
+-- cursor binding -------------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12tr_sel('c-other-limit', 'rev2', jsonb_build_object('limit', 5, 'cursor', pg_temp.s12ga_body('g-1')->>'nextCursor'));
+select pg_temp.s12tr_sel('c-other-locale', 'rev2', jsonb_build_object('limit', 4, 'locale', 'fr-FR', 'cursor', pg_temp.s12ga_body('g-1')->>'nextCursor'));
+select pg_temp.s12tr_sel('c-other-field', 'rev2', jsonb_build_object('limit', 4, 'fieldKey', 'subtitle', 'cursor', pg_temp.s12ga_body('g-1')->>'nextCursor'));
+select pg_temp.s12tr_sel('c-other-type', 'rev2', jsonb_build_object('limit', 4, 'typeKey', 'no_such_type', 'cursor', pg_temp.s12ga_body('g-1')->>'nextCursor'));
+select pg_temp.s12tr_sel('c-other-actor', 'designer2', jsonb_build_object('limit', 4, 'cursor', pg_temp.s12ga_body('g-1')->>'nextCursor'));
+select pg_temp.s12tr_sel('c-forged', 'rev2', jsonb_build_object('limit', 4,
+  'cursor', pg_temp.s12tr_forge(pg_temp.s12ga_body('g-1')->>'nextCursor', 'lastTermKey', '"zzz"')));
+select pg_temp.s12tr_sel('c-malformed', 'rev2', '{"cursor":"!!not a cursor!!"}'::jsonb);
+select pg_temp.s12tr_sel('c-number', 'rev2', '{"cursor":7}'::jsonb);
+select is(array[pg_temp.s12tt_oc('c-other-limit'), pg_temp.s12tt_oc('c-other-locale'), pg_temp.s12tt_oc('c-other-field'), pg_temp.s12tt_oc('c-other-type'),
+                pg_temp.s12tt_oc('c-other-actor'), pg_temp.s12tt_oc('c-forged')],
+  array_fill('P0001:CONFLICT'::text, array[6]),
+  'a cursor replayed against another limit, locale, field, type or actor, or forged, is 409 [P2-S12-AC-134]');
+select is(array[pg_temp.s12tt_oc('c-malformed'), pg_temp.s12tt_oc('c-number')], array_fill('P0001:INVALID_REQUEST'::text, array[2]),
+  'a structurally malformed cursor is 400 [P2-S12-AC-134]');
+
+-- query grammar --------------------------------------------------------------------------------------------------------------------------
+create temp table s12tr_sel_cases(label text primary key, patch jsonb not null, unset text[] not null default array[]::text[], expected text not null) on commit drop;
+insert into s12tr_sel_cases(label, patch, expected)
+select 'type-' || cases.label, jsonb_build_object('typeKey', cases.value), 'P0001:VALIDATION_FAILED#["/typeKey"]'
+  from (values ('empty', '""'::jsonb), ('one-char', '"a"'::jsonb), ('upper', '"Ab"'::jsonb), ('dash', '"a-b"'::jsonb), ('digit-first', '"1ab"'::jsonb),
+               ('long', to_jsonb(repeat('a', 65))), ('number', '5'::jsonb), ('null', 'null'::jsonb)) cases(label, value);
+insert into s12tr_sel_cases(label, patch, expected)
+select 'field-' || cases.label, jsonb_build_object('fieldKey', cases.value), 'P0001:VALIDATION_FAILED#["/fieldKey"]'
+  from (values ('empty', '""'::jsonb), ('one-char', '"a"'::jsonb), ('upper', '"Ab"'::jsonb), ('dash', '"a-b"'::jsonb), ('digit-first', '"1ab"'::jsonb),
+               ('long', to_jsonb(repeat('a', 65))), ('number', '5'::jsonb), ('null', 'null'::jsonb)) cases(label, value);
+insert into s12tr_sel_cases(label, patch, expected)
+select 'locale-' || cases.label, jsonb_build_object('locale', cases.value), 'P0001:VALIDATION_FAILED#["/locale"]'
+  from (values ('empty', '""'::jsonb), ('one-char', '"x"'::jsonb), ('underscore', '"en_US"'::jsonb), ('trailing-dash', '"en-"'::jsonb), ('number', '5'::jsonb), ('null', 'null'::jsonb)) cases(label, value);
+insert into s12tr_sel_cases(label, patch, expected)
+select 'limit-' || cases.label, jsonb_build_object('limit', cases.value), 'P0001:VALIDATION_FAILED#["/limit"]'
+  from (values ('zero', '0'::jsonb), ('negative', '-1'::jsonb), ('over', '101'::jsonb), ('fraction', '2.5'::jsonb), ('text', '"5"'::jsonb), ('boolean', 'true'::jsonb)) cases(label, value);
+insert into s12tr_sel_cases(label, patch, expected)
+select 'extra-' || key, jsonb_build_object(key, 'x'), 'P0001:INVALID_REQUEST' from unnest(array['ownerId', 'taxonomyId', 'lifecycle', 'sort', 'offset']) key;
+insert into s12tr_sel_cases(label, patch, unset, expected)
+select 'missing-' || key, '{}'::jsonb, array[key], 'P0001:INVALID_REQUEST' from unnest(array['typeKey', 'fieldKey', 'locale']) key;
+insert into s12tr_sel_cases(label, patch, expected) values
+  ('limit-100', '{"limit":100}', 'ok'), ('limit-1', '{"limit":1}', 'ok'), ('limit-null', '{"limit":null}', 'ok'), ('cursor-null', '{"cursor":null}', 'ok'),
+  ('type-two-chars', '{"typeKey":"ab"}', 'ok'), ('type-64-chars', jsonb_build_object('typeKey', repeat('a', 64)), 'ok'), ('locale-script', '{"locale":"zh-Hant-TW"}', 'ok');
+select pg_temp.s12tr_sel('v-' || label, 'rev2', patch, unset) from s12tr_sel_cases order by label;
+select is(pg_temp.s12tt_oc('v-' || c.label), c.expected, 'selector query case ' || c.label || ' [P2-S12-AC-131]') from s12tr_sel_cases c order by c.label;
+select pg_temp.s12ga_rpc('v-body-array', 'platform_api.cms_list_taxonomy_selector', 'rev2', '[]'::jsonb, pg_temp.s12ga_ctx('rev2', interval '1 minute', false));
+select is(pg_temp.s12tt_oc('v-body-array'), 'P0001:INVALID_REQUEST', 'a non-object request is 400 [P2-S12-AC-131]');
+
+-- authority and concealment ---------------------------------------------------------------------------------------------------------------
+select pg_temp.s12tr_sel('a-author', 'rev2');
+select pg_temp.s12tr_sel('a-editor', 'designer2');
+select pg_temp.s12tr_sel('a-curator', 'owner');
+select pg_temp.s12tr_sel('a-reviewer', 'rev1');
+select pg_temp.s12tr_sel('a-nonmember', 'rev3');
+select pg_temp.s12tr_sel('a-other-org', 'other');
+select pg_temp.s12tt_anonymous('a-anonymous', 'platform_api.cms_list_taxonomy_selector', jsonb_build_object('typeKey', 's12govordinary', 'fieldKey', 'title', 'locale', 'en-US'));
+select ok(pg_temp.s12tt_oc('a-author') = 'ok' and pg_temp.s12tt_oc('a-editor') = 'ok' and pg_temp.s12ga_body('a-editor') = pg_temp.s12ga_body('a-author')
+    and pg_temp.s12ga_body('a-author')->'items' = pg_temp.s12tr_selector_oracle('s12govordinary', 'title', 'en-US'),
+  'cms.author and cms.editor read the same page [P2-S12-AC-132]');
+select is(array[pg_temp.s12tt_oc('a-curator'), pg_temp.s12tt_oc('a-reviewer'), pg_temp.s12tt_oc('a-other-org')], array_fill('P0001:capability_missing'::text, array[3]),
+  'the taxonomy curator, a plain reviewer and a curator of another organization hold neither cms.author nor cms.editor: 403 capability_missing [P2-S12-AC-132]');
+select is(pg_temp.s12tt_oc('a-nonmember'), 'P0001:NOT_FOUND', 'a caller outside the owner organization gets the concealing 404 [P2-S12-AC-132]');
+select is(pg_temp.s12tt_oc('a-anonymous'), 'P0001:UNAUTHENTICATED', 'a request without a verified human is 401 UNAUTHENTICATED [P2-S12-AC-134]');
+select ok(pg_temp.s12tt_same('before-selector-paging'), 'paging, cursor faults, query refusals and authority refusals changed no store [P2-S12-AC-133]');

@@ -1,0 +1,125 @@
+-- F20. Reached negative TEST fault at the existing E7 leaf AFTER completed201.
+-- Only this function's exact captured definition is temporarily replaced; no trigger,
+-- row guard, policy, grant, approval, template pin or canonical store is modified by setup.
+select pg_temp.s09d_remember('edp-fault:type',pg_temp.s09d_id('edp-sbound:type'));
+select pg_temp.s09d_remember('edp-fault:version',pg_temp.s09d_id('edp-sbound:version'));
+insert into s12edp_saved values ('F-request',pg_temp.s12edp_request('edp-fault','FAULT RETRY','s12edp-late-fault-retry'));
+create temp table s12edp_fault_meta(guarded boolean, installed boolean, direct_code text, direct_message text,
+  other_code text, other_value jsonb, restored boolean, original jsonb, definition text, comment text) on commit drop;
+create function pg_temp.s12edp_fault() returns void language plpgsql as $test$
+declare
+  identity text := 'platform_private.cms_publication_settings_effective_values(uuid,timestamptz)';
+  original pg_proc; actual pg_proc; definition text; original_comment text; old_source text; new_source text;
+  create_source text; anchor text := E'begin\n  for setting_key in'; complete_anchor text :=
+    'perform platform_private.cms_complete(reservation.id, entry_id, 201, response);';
+  guarded boolean := false; installed boolean := false; direct_code text; direct_message text;
+  other_code text; other_value jsonb; base_owner jsonb; base_other jsonb;
+  context_before jsonb := pg_temp.s12edp_context(); owner uuid := pg_temp.s09d_id('ownerOrg');
+  request jsonb := (select value from s12edp_saved where key = 'F-request');
+begin
+  select * into original from pg_proc where oid = to_regprocedure(identity);
+  if found then
+    definition := pg_get_functiondef(original.oid); original_comment := obj_description(original.oid,'pg_proc');
+    old_source := original.prosrc;
+    select prosrc into create_source from pg_proc where oid = to_regprocedure('platform_private.cms_create_entry(jsonb)');
+    guarded := original.proowner = 'wejammin_cms_definer'::regrole and original.prosecdef
+      and original.prokind = 'f' and original.provolatile = 'v' and not original.proisstrict and not original.proretset
+      and original.prolang = (select oid from pg_language where lanname = 'plpgsql')
+      and original.proconfig = array['search_path=""']::text[] and original.pronargs = 2 and original.pronargdefaults = 0
+      and original.proargnames = array['p_owner_id','p_at']::text[] and original.prorettype = 'jsonb'::regtype
+      and md5(old_source) = 'd6d9e7475cb0dee1a03e4b27df3cf93a'
+      and (length(old_source)-length(replace(old_source,anchor,'')))/length(anchor) = 1
+      and (length(definition)-length(replace(definition,old_source,'')))/length(old_source) = 1
+      and (length(create_source)-length(replace(create_source,'cms_publication_settings_effective_values(','')))
+        / length('cms_publication_settings_effective_values(') = 1
+      and (length(create_source)-length(replace(create_source,complete_anchor,'')))/length(complete_anchor) = 1
+      and strpos(create_source,'cms_publication_settings_effective_values(') > strpos(create_source,complete_anchor)
+      and not exists (select 1 from unnest(array['anon','authenticated','service_role']) role_name
+        where has_function_privilege(role_name,original.oid,'EXECUTE'))
+      and platform_private.cms_publication_settings_keys() = array[]::text[]
+      and exists (select 1 from platform_private.cms_content_type_versions v
+        join platform_private.cms_template_versions t on t.id = v.default_template_version_id
+        where v.id = pg_temp.s09d_id('edp-sbound:version') and v.state = 'active' and v.owner_id = owner
+          and t.id = pg_temp.s12ga_subject('edp-st1') and t.state = 'superseded' and t.owner_id = v.owner_id)
+      and owner is not null and request#>>'{context,actingPartyId}' = owner::text;
+  end if;
+  if guarded is true then
+    base_owner := platform_private.cms_publication_settings_effective_values(owner,clock_timestamp());
+    base_other := platform_private.cms_publication_settings_effective_values(pg_temp.s09d_id('otherOrg'),clock_timestamp());
+    guarded := base_owner = '[]'::jsonb and base_other = '[]'::jsonb;
+  end if;
+  if guarded is true then
+    new_source := replace(old_source,anchor,format(E'begin\n  if p_owner_id = %L::uuid then\n'
+      || E'    raise exception ''DEC202_TEST_LATE_E7_22P02'' using errcode = ''22P02'';\n  end if;\n  for setting_key in',owner));
+    execute replace(definition,old_source,new_source); installed := true;
+    select * into actual from pg_proc where oid = original.oid;
+    if actual.prosrc <> new_source or to_jsonb(actual)-'prosrc' <> to_jsonb(original)-'prosrc'
+      or obj_description(actual.oid,'pg_proc') is distinct from original_comment then
+      raise exception 'DEC202 TEST fault changed non-source catalog metadata';
+    end if;
+    begin perform platform_private.cms_publication_settings_effective_values(owner,clock_timestamp());
+    exception when others then get stacked diagnostics direct_code = returned_sqlstate, direct_message = message_text;
+    end;
+    begin
+      other_value := platform_private.cms_publication_settings_effective_values(pg_temp.s09d_id('otherOrg'),clock_timestamp());
+      other_code := '00000';
+    exception when others then get stacked diagnostics other_code = returned_sqlstate;
+    end;
+    perform pg_temp.s12edp_call('edp-fault-fail',request);
+    -- Restore BEFORE every TAP assertion and before retry. A restore failure aborts.
+    execute definition;
+    select * into actual from pg_proc where oid = original.oid;
+    if to_jsonb(actual) is distinct from to_jsonb(original) or pg_get_functiondef(actual.oid) <> definition
+      or obj_description(actual.oid,'pg_proc') is distinct from original_comment then
+      raise exception 'DEC202 TEST fault exact catalog restoration failed';
+    end if;
+  end if;
+  perform pg_temp.s12edp_restore(context_before);
+  insert into s12edp_fault_meta values (coalesce(guarded,false),installed,direct_code,direct_message,other_code,other_value,
+    installed and pg_temp.s12edp_context() = context_before and to_jsonb(actual) = to_jsonb(original),
+    to_jsonb(original),definition,original_comment);
+exception when others then
+  -- Do not catch or relabel a failed restoration, and do not lose the original fault.
+  if installed then
+    execute definition;
+    select * into actual from pg_proc where oid = original.oid;
+    if to_jsonb(actual) is distinct from to_jsonb(original) or pg_get_functiondef(actual.oid) <> definition
+      or obj_description(actual.oid,'pg_proc') is distinct from original_comment then
+      raise exception 'DEC202 TEST exceptional catalog restoration failed';
+    end if;
+  end if;
+  perform pg_temp.s12edp_restore(context_before);
+  raise;
+end;
+$test$;
+select pg_temp.s12edp_fault();
+select ok((select guarded from s12edp_fault_meta),
+  'EDP-F01: exact existing CMS-owned/private E7 leaf and unique AFTER-completed201 call are guarded before substitution');
+select ok((select installed and direct_code = '22P02' and direct_message = 'DEC202_TEST_LATE_E7_22P02'
+  and other_code = '00000' and other_value = '[]'::jsonb from s12edp_fault_meta),
+  'EDP-F02: direct target probe reaches the argument-specific fault while the other real owner retains original behavior');
+select ok((select code = '22P02' and message = 'DEC202_TEST_LATE_E7_22P02'
+  and response is null and call_role = 'service_role' and restored from s12edp_calls where label = 'edp-fault-fail'),
+  'EDP-F03: actual public create reaches that late leaf and propagates its unexpected fault without template relabeling');
+select ok((select code = '22P02' and before_image = after_image from s12edp_calls where label = 'edp-fault-fail')
+  and pg_temp.s12edp_receipt((select value from s12edp_saved where key = 'F-request')) is null,
+  'EDP-F04: reached failure rolls back all full rows, values/assignment, effects/evidence/refcounts and even completed201 receipt');
+select ok((select restored and (select to_jsonb(p) from pg_proc p where p.oid = (m.original->>'oid')::oid) = m.original
+  and pg_get_functiondef((m.original->>'oid')::oid) = m.definition
+  and obj_description((m.original->>'oid')::oid,'pg_proc') is not distinct from m.comment
+  from s12edp_fault_meta m), 'EDP-F05: exact source/OID/full pg_proc/ACL/comment and session are restored BEFORE assertions/retry');
+select pg_temp.s12edp_call('edp-fault',(select value from s12edp_saved where key = 'F-request'));
+select * from pg_temp.s12edp_check_saved('edp-fault','FAULT RETRY',pg_temp.s12ga_subject('edp-st1'),
+  '[{"key":"main","required":false,"allowedBlocks":[],"maxCount":7}]'::jsonb);
+select ok(pg_temp.s12edp_delta('edp-fault'), 'EDP-F18: same saved key/request retries into exactly one complete allowed append set');
+insert into s12edp_saved select 'F-completed',jsonb_build_object('request',request,'response',response,
+  'receipt',pg_temp.s12edp_receipt(request)) from s12edp_calls where label = 'edp-fault';
+select pg_temp.s12edp_call('edp-fault-replay',(select value->'request' from s12edp_saved where key = 'F-completed'));
+select ok((select code = '00000' and response = (select value->'response' from s12edp_saved where key = 'F-completed')
+  and case when headers like '[%' then headers::jsonb else 'null'::jsonb end = '[{"x-cms-idempotent-replay":"true"}]'::jsonb
+  and call_role = 'service_role' and restored from s12edp_calls where label = 'edp-fault-replay'),
+  'EDP-F19: retry completion supports the exact original canonical replay/header without a second create');
+select ok((select before_image = after_image from s12edp_calls where label = 'edp-fault-replay')
+  and pg_temp.s12edp_receipt((select value->'request' from s12edp_saved where key = 'F-completed')) =
+    (select value->'receipt' from s12edp_saved where key = 'F-completed'),
+  'EDP-F20: retry replay leaves the complete persistent image and completed receipt identical');

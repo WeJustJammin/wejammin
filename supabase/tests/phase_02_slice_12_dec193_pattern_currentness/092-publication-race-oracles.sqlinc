@@ -1,0 +1,88 @@
+-- TEST ONLY. Exact observed locks and complete row images, never detector substitutes.
+create or replace function pg_temp.s12pr_snapshot() returns jsonb language plpgsql as $body$
+declare before_context jsonb:=pg_temp.s12pr_context(); store text; rows_json jsonb; answer jsonb:='{}';
+begin
+  perform set_config('app.cms_rpc','true',true);
+  for store in
+    select format('%I.%I',n.nspname,c.relname) from pg_class c join pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='platform_private' and c.relkind in ('r','p') and c.relname like 'cms\_%' escape '\'
+    union select unnest(array['platform_private.idempotency_records','platform_private.outbox_events',
+      'audit_private.audit_events','platform_private.person_party',
+      'identity_private.membership_tenure','identity_private.organization_actor_grant',
+      'platform_private.acting_context_binding'])
+    order by 1
+  loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(r) order by to_jsonb(r)::text collate "C"),''[]''::jsonb) from %s r',store)
+      into rows_json;
+    answer:=answer||jsonb_build_object(store,rows_json);
+  end loop;
+  perform pg_temp.s12pr_restore(before_context);
+  return answer;
+exception when others then perform pg_temp.s12pr_restore(before_context); raise;
+end;
+$body$;
+
+create or replace function pg_temp.s12pr_facts(p_tag text) returns jsonb language plpgsql as $body$
+declare item jsonb:=(select ids->p_tag from public.s12pr_world); before_context jsonb:=pg_temp.s12pr_context();
+  answer jsonb;
+begin
+  perform set_config('app.cms_rpc','true',true);
+  select jsonb_build_object(
+    'patterns',(select jsonb_agg(to_jsonb(p) order by p.id) from platform_private.cms_pattern_versions p
+      where p.id in ((item->>'child')::uuid,(item->>'next')::uuid,(item->>'parent')::uuid)),
+    'review',(select to_jsonb(r) from platform_private.cms_editorial_reviews r where r.id=(item->>'review')::uuid),
+    'rebuilt',platform_private.cms_build_dependency_manifest((item->>'revision')::uuid),
+    'schedules',(select coalesce(jsonb_agg(to_jsonb(s) order by s.id),'[]') from platform_private.cms_publication_schedules s
+      where s.review_id=(item->>'review')::uuid),
+    'publications',(select coalesce(jsonb_agg(to_jsonb(p) order by p.version),'[]') from platform_private.cms_publication_versions p
+      where p.entry_id=(item->>'entry')::uuid),
+    'receipts',(select coalesce(jsonb_agg(to_jsonb(r) order by r.id),'[]') from platform_private.idempotency_records r
+      where r.operation='CMS-03B-09' and r.key_hash=platform_private.cms_key_hash(item->'publish'->>'idempotencyKey')),
+    'keyHash',encode(platform_private.cms_key_hash(item->'publish'->>'idempotencyKey'),'hex'),
+    'evidence',(select coalesce(jsonb_agg(to_jsonb(e) order by e.id),'[]') from platform_private.cms_command_accessibility_evidence e
+      where e.operation_id='CMS-03B-09' and e.revision_id=(item->>'revision')::uuid),
+    'audits',(select coalesce(jsonb_agg(to_jsonb(a) order by a.id),'[]') from audit_private.audit_events a
+      where a.correlation_id=(item->'publish'->'context'->>'correlationId')::uuid),
+    'events',(select coalesce(jsonb_agg(to_jsonb(e) order by e.id),'[]') from platform_private.outbox_events e
+      where e.correlation_id=(item->'publish'->'context'->>'correlationId')::uuid)) into answer;
+  perform pg_temp.s12pr_restore(before_context);
+  return answer;
+exception when others then perform pg_temp.s12pr_restore(before_context); raise;
+end;
+$body$;
+
+create or replace function pg_temp.s12pr_tuple(p_id uuid) returns jsonb language sql as $body$
+  select jsonb_build_object('id',id,'page',split_part(btrim(ctid::text,'()'),',',1)::bigint,
+    'offset',split_part(btrim(ctid::text,'()'),',',2)::integer)
+  from platform_private.cms_pattern_versions where id=p_id
+$body$;
+create or replace function pg_temp.s12pr_held() returns jsonb language sql as $body$
+  select jsonb_build_object('pid',pg_backend_pid(),'xid',(select transactionid::text from pg_locks
+    where pid=pg_backend_pid() and locktype='transactionid' and granted and mode='ExclusiveLock'))
+$body$;
+
+create or replace function pg_temp.s12pr_wait(
+  p_waiter integer,p_holder integer,p_waiter_app text,p_holder_app text,p_xid text,
+  p_page bigint,p_offset integer,p_tuple_mode text,p_before_review boolean)
+returns boolean language sql as $body$
+  select exists(select 1 from pg_stat_activity w join pg_stat_activity h
+    on h.pid=any(pg_blocking_pids(w.pid))
+    where w.pid=p_waiter and h.pid=p_holder and w.application_name=p_waiter_app and h.application_name=p_holder_app
+      and w.datname='postgres' and h.datname='postgres' and w.usename='postgres' and h.usename='postgres'
+      and w.state='active' and w.wait_event_type='Lock' and w.wait_event='transactionid'
+      and h.state='idle in transaction'
+      and exists(select 1 from pg_locks waiting join pg_locks owning
+        on owning.transactionid=waiting.transactionid and owning.locktype='transactionid'
+        where waiting.pid=w.pid and owning.pid=h.pid and waiting.locktype='transactionid'
+          and not waiting.granted and waiting.mode='ShareLock' and owning.granted and owning.mode='ExclusiveLock'
+          and waiting.transactionid::text=p_xid)
+      and exists(select 1 from pg_locks tuple_lock where tuple_lock.pid=w.pid
+        and tuple_lock.locktype='tuple' and tuple_lock.granted and tuple_lock.mode=p_tuple_mode
+        and tuple_lock.relation='platform_private.cms_pattern_versions'::regclass
+        and tuple_lock.page=p_page and tuple_lock.tuple=p_offset)
+      and (not p_before_review or not exists(select 1 from pg_locks later
+        where later.pid=w.pid and later.granted and later.locktype='relation'
+          and later.relation in ('platform_private.cms_content_type_versions'::regclass,
+            'platform_private.cms_editorial_reviews'::regclass)
+          and later.mode<>'AccessShareLock')))
+$body$;

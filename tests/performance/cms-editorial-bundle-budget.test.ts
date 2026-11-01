@@ -35,6 +35,10 @@ const routeNamed = (name: string) => {
   return route;
 };
 
+/** The islands a route hydrates beside its primary one (FE03: each is held to the island budget). */
+const extraIslandsOf = (route: { readonly extraIslands?: readonly string[] }) =>
+  route.extraIslands ?? [];
+
 const astroFiles = (directory: string): string[] =>
   readdirSync(directory)
     .flatMap((name) => {
@@ -99,7 +103,10 @@ describe('CMS editorial bundle-budget route declaration', () => {
     for (const route of CMS_EDITORIAL_ROUTES) {
       const hydrated = hydratedIslands(join(PAGES, route.page));
       expect(hydrated, `islands hydrated by ${route.page}`).toEqual(
-        route.island === null ? [] : [route.island],
+        [
+          ...(route.island === null ? [] : [route.island]),
+          ...extraIslandsOf(route),
+        ].sort(),
       );
     }
   });
@@ -312,10 +319,12 @@ describe('CMS editorial bundle-budget measurement', () => {
     const lightIslands = Object.fromEntries(
       CMS_EDITORIAL_ROUTES.filter(
         (route) => route.measuredBy === undefined && route.island !== null,
-      ).map((route) => [
-        `${route.island}.entry.js`,
-        'export const light = true;',
-      ]),
+      ).flatMap((route) =>
+        [route.island as string, ...extraIslandsOf(route)].map((island) => [
+          `${island}.entry.js`,
+          'export const light = true;',
+        ]),
+      ),
     );
     const pageScripts = Object.fromEntries(
       CMS_EDITORIAL_ROUTES.flatMap((route) =>
@@ -337,6 +346,8 @@ describe('CMS editorial bundle-budget measurement', () => {
       'contracts.heavy.js': incompressiblePayload(31, 60_000),
       'client.runtime.js': incompressiblePayload(7, 100_000),
       ...documentScripts('export const actions = true;'),
+      'CmsEditorialPageActions.astro_astro_type_script_index_0_lang.d.js':
+        'export const pageActions = true;',
       ...pageScripts,
     } as Record<string, string>);
 

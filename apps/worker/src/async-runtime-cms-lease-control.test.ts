@@ -201,7 +201,11 @@ describe('private CMS lease control through the real receiving composition', () 
         leaseUntilMs: 501_000,
       },
     ]);
-    expect(f.prepareSchemaDryRun.mock.calls[0]).toHaveLength(2);
+    // Input, private lease control, and the Worker-layer delivery context (DEC-184).
+    expect(f.prepareSchemaDryRun.mock.calls[0]).toHaveLength(3);
+    expect((f.prepareSchemaDryRun.mock.calls[0] as unknown[])[2]).toMatchObject(
+      { deliveryAttempt: 1 },
+    );
     expect(f.ack).toHaveBeenCalledTimes(1);
     expect(f.retry).not.toHaveBeenCalled();
   });

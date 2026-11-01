@@ -1,0 +1,12 @@
+---
+/*
+ * The document-level page actions of the CMS editorial routes: the create type selector, the
+ * restore review and the restore confirmation (`lib/cms-editorial-page-actions.ts`). It is a
+ * component of its own so a route loads the script only when it renders one of those forms
+ * (P2-S11-AC-106): `CmsEditorialDocument.astro` takes it through the `pageActions` prop, and a
+ * test (`tests/performance/cms-page-actions-routes.test.ts`) fails when a route's
+ * markup and its prop disagree.
+ */
+---
+
+<script src="../../lib/cms-editorial-page-actions.ts"></script>

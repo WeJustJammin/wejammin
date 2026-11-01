@@ -27,6 +27,14 @@ import { createCmsTemplateFixture } from './cms-template-fixture';
 import { createCmsLocaleFixture } from './cms-locale-fixture';
 import type { S10RealBindings } from './s10-real-editorial';
 import { createS11RealCmsEditorial } from './s11-real-editorial';
+import {
+  createS12RealGoverned,
+  createS12RealRegistry,
+} from './s12-real-governed';
+import {
+  createS12RealLocale,
+  createS12RealTemplate,
+} from './s12-real-template-locale';
 
 const USER_ID = '10000000-0000-4000-8000-000000000001';
 const TYPE_ID = '30000000-0000-4000-8000-000000000003';
@@ -348,7 +356,29 @@ const appFor = (env: unknown): ReturnType<typeof createWorkerApp> => {
   const editorial =
     bindings.SUPABASE_URL !== undefined &&
     bindings.SUPABASE_SECRET_KEY !== undefined
-      ? { cmsEditorial: createS11RealCmsEditorial(bindings, revokedSessionIds) }
+      ? {
+          cmsEditorial: createS11RealCmsEditorial(bindings, revokedSessionIds),
+          // The Slice 12 composition boundaries are the production composition too (see
+          // s12-real-governed.ts). The template and locale routes keep their fixtures for lane
+          // and fixture sessions; a Slice 11/12 session reaches production (s12-real-template-locale.ts).
+          ...createS12RealGoverned(bindings, revokedSessionIds),
+          cmsTemplate: createS12RealTemplate(
+            baseDependencies.cmsTemplate,
+            bindings,
+            revokedSessionIds,
+          ),
+          cmsLocale: createS12RealLocale(
+            baseDependencies.cmsLocale,
+            bindings,
+            revokedSessionIds,
+          ),
+          // The owner's reviewer-options read (CMS-03A-18) is the production registry too.
+          contentSchemaRegistry: createS12RealRegistry(
+            registry,
+            bindings,
+            revokedSessionIds,
+          ),
+        }
       : {};
   app = createWorkerApp({
     ...baseDependencies,

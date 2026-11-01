@@ -1,0 +1,146 @@
+-- Representative-size locale performance (BE03c Security, performance, and recovery tests 1633; tracker
+-- P2-S12-AC-279, locale part): 128 locale fields meet the RPC < 300 ms target.  An ACTIVE `loc12bench`
+-- type with 64 localized and 64 no_fallback short_text fields is created by the real cms_create_type_draft
+-- (activated with the REAL seeded editorial policy), its entry is saved by the real cms_create_entry with 128
+-- values, and a fr-FR variant translates all 128 fields through the real CMS-03C-04 RPC.  It re-points the
+-- shared locale helpers at its own entry, and lives in its own suite because its timing assertions depend on
+-- the host: the functional suites must not fail for a loaded machine.  Run it on a quiet host.
+
+select pg_temp.s10_rpc_as(
+  (select value::uuid from s10_ids where key = 'creatorAuth'),
+  (select value::uuid from s10_ids where key = 'organization'));
+
+create temp table l12b_type_created on commit drop as
+select platform_api.cms_create_type_draft(request || jsonb_build_object(
+  'typeKey', 'loc12bench', 'label', 'Locale 128-field bench',
+  'idempotencyKey', 'l12b-type-create-0001',
+  'fields', (select jsonb_agg(jsonb_build_object(
+      'stableFieldId', ('a9500000-0000-4000-8000-' || lpad(to_hex(g), 12, '0'))::uuid,
+      'key', 'f' || lpad(g::text, 3, '0'), 'kind', 'short_text', 'constraints', '{}'::jsonb,
+      'required', false, 'validatorKey', null, 'validatorVersion', null, 'defaultMode', 'none',
+      'localizationMode', case when g <= 64 then 'localized' else 'no_fallback' end,
+      'editorConfig', jsonb_build_object('label', 'Field ' || g, 'order', g), 'lifecycle', 'active') order by g)
+    from generate_series(1, 128) g),
+  'relations', '[]'::jsonb)) as response
+from s10_type_request;
+
+create temp table l12b_ids on commit drop as
+select 'typeId' as key, response->>'contentTypeId' as value from l12b_type_created
+union all select 'versionId', response->>'id' from l12b_type_created
+union all select 'artifactId', response->>'schemaArtifactId' from l12b_type_created;
+
+select set_config('app.cms_rpc', 'true', true);
+create temp table l12b_policy on commit drop as
+select platform_private.cms_workflow_policy_member('editorial', 1) as member;
+update platform_private.cms_content_type_versions
+set state = 'active', version = version + 1,
+    activation_workflow_policy_key = (select member->>'key' from l12b_policy),
+    activation_workflow_policy_version = (select (member->>'version')::bigint from l12b_policy),
+    activation_workflow_policy_hash = (select member->>'policyHash' from l12b_policy),
+    activation_required_decision_count = (select (member->>'requiredDecisionCount')::integer from l12b_policy),
+    activation_required_capabilities = (select member->'requiredCapabilities' from l12b_policy),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = (select value::uuid from l12b_ids where key = 'versionId');
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = (select value::uuid from l12b_ids where key = 'typeId');
+
+create or replace function pg_temp.l12b_fid(p_n integer)
+returns uuid language sql immutable as $body$
+  select ('a9500000-0000-4000-8000-' || lpad(to_hex(p_n), 12, '0'))::uuid
+$body$;
+
+create temp table l12b_saved on commit drop as
+select platform_api.cms_create_entry(jsonb_build_object(
+  'contentTypeId', (select value::uuid from l12b_ids where key = 'typeId'),
+  'contentTypeVersionId', (select value::uuid from l12b_ids where key = 'versionId'),
+  'locale', 'en-US',
+  'changedPaths', (select jsonb_agg('/fields/' || pg_temp.l12b_fid(g)::text order by g) from generate_series(1, 128) g),
+  'values', (select jsonb_object_agg(pg_temp.l12b_fid(g)::text, 'Source ' || g) from generate_series(1, 128) g),
+  'validatorRefs', '[]'::jsonb, 'idempotencyKey', 'l12b-entry-save-0001',
+  'workflowPolicy', platform_private.cms_editorial_workflow_policy_evidence(
+    (select value::uuid from l12b_ids where key = 'versionId')),
+  'activationEvidence', platform_private.cms_type_version_resource(
+    (select value::uuid from l12b_ids where key = 'versionId'))->'activationEvidence',
+  'schemaArtifact', jsonb_build_object('id', artifact.id,
+    'contentTypeVersionId', artifact.content_type_version_id, 'artifactHash', artifact.artifact_hash,
+    'compilerVersion', artifact.compiler_version, 'zodContractRef', artifact.zod_contract_ref)
+)) as response
+from platform_private.cms_schema_artifacts artifact
+where artifact.id = (select value::uuid from l12b_ids where key = 'artifactId');
+update s10_ids set value = (select response#>>'{entry,id}' from l12b_saved) where key = 'entryId';
+
+select is((select count(*)::integer from platform_private.cms_entry_field_values value_row
+           where value_row.revision_id = pg_temp.l12_source()), 128,
+  'bench world: the real cms_create_entry saved a source revision with 128 field values');
+
+create or replace function pg_temp.l12b_request(p_key text)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.l12_req('fr-FR',
+    (select jsonb_agg(jsonb_build_object('fieldId', pg_temp.l12b_fid(g), 'value', 'Traduit ' || g) order by g)
+       from generate_series(1, 128) g),
+    p_key, jsonb_build_object('noFallbackFieldIds',
+      (select jsonb_agg(pg_temp.l12b_fid(g) order by g) from generate_series(65, 128) g)))
+$body$;
+
+-- Five sequential 128-field writes: each is a revalidation of the previous one (a new draft version).
+create temp table l12b_write_ms(run integer, ms numeric) on commit drop;
+do $bench$
+declare
+  started timestamptz;
+  response jsonb;
+begin
+  for run in 1..5 loop
+    started := clock_timestamp();
+    response := platform_api.cms_author_locale_variant(pg_temp.l12b_request('l12b-write-000' || run));
+    insert into l12b_write_ms values (run, extract(epoch from (clock_timestamp() - started)) * 1000);
+    perform set_config('app.cms_rpc', 'true', true);
+  end loop;
+end;
+$bench$;
+select is((select count(*)::integer from platform_private.cms_locale_variants
+           where entry_id = pg_temp.l12_entry() and locale = 'fr-FR'), 5,
+  'bench: five 128-field translations were committed through the real RPC');
+select ok((select percentile_cont(0.5) within group (order by ms) < 300 from l12b_write_ms),
+  'a 128-field CMS-03C-04 write meets the RPC < 300 ms target (median of five) [P2-S12-AC-279]');
+select diag('128-field write ms: ' || (select string_agg(round(ms)::text, ', ' order by run) from l12b_write_ms));
+
+-- Resolving all 128 fields in one statement, and the gate over the 64 no_fallback fields.
+create temp table l12b_read_ms(kind text, run integer, ms numeric) on commit drop;
+do $bench$
+declare
+  started timestamptz;
+  version_id uuid := (select value::uuid from l12b_ids where key = 'versionId');
+  revision_id uuid := (select (r.id) from platform_private.cms_entry_revisions r
+                        where r.entry_id = pg_temp.l12_entry() and r.locale = 'fr-FR'
+                        order by r.revision_number desc limit 1);
+  resolved integer;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  for run in 1..20 loop
+    started := clock_timestamp();
+    select count(*) into resolved from platform_private.cms_locale_resolutions(
+      pg_temp.l12_entry(), 'fr-FR', version_id,
+      (select array_agg(pg_temp.l12b_fid(g)) from generate_series(1, 128) g), null);
+    insert into l12b_read_ms values ('resolve128', run, extract(epoch from (clock_timestamp() - started)) * 1000);
+    started := clock_timestamp();
+    perform * from platform_private.cms_locale_no_fallback_gate(revision_id, 'publish');
+    insert into l12b_read_ms values ('gate64', run, extract(epoch from (clock_timestamp() - started)) * 1000);
+    started := clock_timestamp();
+    perform platform_private.cms_resolve_locale_field(pg_temp.l12_entry(), 'fr-FR', pg_temp.l12b_fid(100));
+    insert into l12b_read_ms values ('resolve1', run, extract(epoch from (clock_timestamp() - started)) * 1000);
+    if resolved <> 128 then raise exception 'resolved % of 128 fields', resolved; end if;
+  end loop;
+end;
+$bench$;
+select ok((select percentile_cont(0.95) within group (order by ms) < 300 from l12b_read_ms where kind = 'resolve128'),
+  'resolving all 128 locale fields of an entry in one statement meets the RPC < 300 ms target (p95 of 20) [P2-S12-AC-279]');
+select ok((select percentile_cont(0.95) within group (order by ms) < 300 from l12b_read_ms where kind = 'gate64'),
+  'the no_fallback gate over 64 no_fallback fields meets the RPC < 300 ms target (p95 of 20) [P2-S12-AC-279]');
+select ok((select percentile_cont(0.95) within group (order by ms) < 300 from l12b_read_ms where kind = 'resolve1'),
+  'one cms_resolve_locale_field call meets the RPC < 300 ms target (p95 of 20) [P2-S12-AC-279]');
+select diag('p95 ms resolve128/gate64/resolve1: ' || (select string_agg(kind || '=' || round(p::numeric, 1)::text, ', ' order by kind)
+  from (select kind, percentile_cont(0.95) within group (order by ms) as p from l12b_read_ms group by kind) t));

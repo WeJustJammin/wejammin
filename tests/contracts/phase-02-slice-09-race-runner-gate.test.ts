@@ -1,6 +1,6 @@
 import { spawnSync } from 'node:child_process';
 import { existsSync, readdirSync, readFileSync, statSync } from 'node:fs';
-import { join, relative, resolve } from 'node:path';
+import { dirname, join, relative, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
 
@@ -31,6 +31,7 @@ const gate = (await import(
   resolve(ROOT, 'infra/run-database-race-runners.mjs')
 )) as {
   RACE_RUNNERS: readonly string[];
+  RACE_SUPPORT_MODULES: readonly string[];
   RACE_RECEIPTS_PATH: string;
   REQUIRED_RACE_MARKERS: readonly string[];
   countOkLines: (output: string) => number;
@@ -52,7 +53,35 @@ describe('independent-session race runners are executed by the database gate', (
     const onDisk = independentSessionRunnersOnDisk(
       resolve(ROOT, 'supabase/tests'),
     ).sort();
-    expect([...gate.RACE_RUNNERS].sort()).toEqual(onDisk);
+    // Every .mjs file under supabase/tests is either an executed runner or a
+    // support module that only a runner imports (Slice 12 splits its race
+    // runners into fixture, session and assertion modules; running one of those
+    // alone would assert nothing and fail the verdict).
+    expect([...gate.RACE_RUNNERS, ...gate.RACE_SUPPORT_MODULES].sort()).toEqual(
+      onDisk,
+    );
+    expect(
+      gate.RACE_RUNNERS.filter((file) =>
+        gate.RACE_SUPPORT_MODULES.includes(file),
+      ),
+    ).toEqual([]);
+  });
+
+  it('[P2-S09-AC-424] [P2-S09-AC-586] a support module is imported by another race file and a runner is imported by none', () => {
+    const imported = new Set<string>();
+    for (const file of [...gate.RACE_RUNNERS, ...gate.RACE_SUPPORT_MODULES]) {
+      for (const match of read(file).matchAll(
+        /(?:from\s+|import\(\s*)['"](\.[^'"]+)['"]/gu,
+      )) {
+        imported.add(
+          relative(ROOT, resolve(ROOT, dirname(file), match[1] as string)),
+        );
+      }
+    }
+    expect(
+      gate.RACE_SUPPORT_MODULES.filter((file) => !imported.has(file)),
+    ).toEqual([]);
+    expect(gate.RACE_RUNNERS.filter((file) => imported.has(file))).toEqual([]);
   });
 
   it('[P2-S09-AC-424] the runner that proves concurrent decisions on one review version is in the gate', () => {

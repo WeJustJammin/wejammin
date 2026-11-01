@@ -12,7 +12,12 @@ transport. Every command here follows the outcome-unknown contract in
 `x-cms-editorial-outcome: unknown` means the command may have committed, so the
 client replays the identical request with the same `Idempotency-Key`.
 `related-content.ts` owns CMS-03C related-content create transport for a
-bounded entry target and relation payload.
+bounded entry target and relation payload. `compositions.ts` owns the
+`cmsCompositionInstancesRead` GET (DEC-206): a page of the instances of the
+entry's current draft revision with an optional opaque signed `cursor` and an
+optional `limit` (1-50, default 25), no body, no entity tag. `locales/[locale].ts` owns the `cmsLocaleVariantRead` GET (DEC-205): the entry's current
+variant, its stored values, the per-field resolution and the active fallback order (path only: no query,
+body or precondition); `locales/[locale]/variants.ts` owns the CMS-03C-04 write.
 
 ## Ownership
 

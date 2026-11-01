@@ -1,0 +1,167 @@
+-- DEC-194 durable recovery deduplication across the audited TTL expiry of the idempotency receipt.
+--
+-- Independent-review finding (first a RED witness, lane phils_dec194_red_20261016, GREEN since the durable table landed): the recovery of a failed
+-- cms.taxonomy.merge_converge Job is deduplicated ONLY by the BE00 idempotency receipt, whose
+-- expires_at is seven days out.  The audited TTL sweep (platform_api.idempotency_expiry_sweep,
+-- 20260912020000) deletes that receipt once it expires, and the recovery sweep then derives the same
+-- key for the same failed Job, finds no receipt and requests a SECOND recovery Job for work the first
+-- recovery already owns.  The implemented design closes this with a durable, non-TTL'd association of the
+-- failed Job to the recovery Job it produced (private platform_private.taxonomy_merge_recoveries),
+-- written inside the same acceptance transaction, on a fresh acceptance AND on a replay.
+--
+-- This fragment drives the REAL producers only:
+--   * the real handler (platform_api.cms_run_taxonomy_merge_converge) closes the 050 generation run with a
+--     genuine success, so the party is no longer at the 3-generation stop;
+--   * the durable association (j6 -> R) is asserted to exist independently of the receipt;
+--   * the real audited TTL sweep deletes the expired receipt with its exact cleanup audit;
+--   * the real recovery sweep then runs and MUST request nothing for the already-recovered failed Job, whose
+--     durable association - not the seven-day receipt - is what must survive the TTL.
+-- Labelled fixture forgeries (nothing else), both declared in README.md:
+--   * the completed receipt under the failed Job's derived key, inserted with an already-past expires_at the
+--     way phase_02_slice_03_idempotency_expiry.sql:56-70 seeds its expired receipt, because the BE00 guard
+--     makes expires_at immutable (no UPDATE, no guard toggle);
+--   * the recovery Job R of that history, accepted through the real platform_private.accept_job_with_outbox
+--     (real job row, real job.requested outbox event, real job.accepted audit) and settled through the real
+--     BE00 outcome path.
+-- [P2-S12-AC-226; DEC-194; BE03c "Merge convergence recovery (DEC-194 ...)"; BE00 571]
+
+-- fixture: close the 050 run of three consecutive failed generations with one genuine success.
+select pg_temp.s12dc_job('q7', 'owner', pg_temp.s09d_id('ownerOrg'), 7);
+select pg_temp.s12tt_claim('dc-q7', pg_temp.s12dc_id('job:q7'), 1);
+select pg_temp.s12tt_run('dc-q7-run', pg_temp.s12tt_claimed('dc-q7', 5000));
+select ok(pg_temp.s12gb_sout('dc-q7-run') = 'ok'
+          and pg_temp.s12gb_sbody('dc-q7-run') = '{"converged": 2, "remaining": 0, "continuationJobId": null}'::jsonb,
+  'fixture: the real handler converges the last 2 assignments of the merged term through q7 [P2-S12-AC-226]');
+select ok(pg_temp.s12tt_outcome('dc-q7', 'succeeded', pg_temp.s12gb_sbody('dc-q7-run'), null),
+  'fixture: q7 is recorded succeeded through the real BE00 outcome path, so the failed generation run ends [P2-S12-AC-226]');
+
+-- fixture: the recovery Job R of j6's history, accepted through the real BE00 path bound to the FAILED Job's OWN actor, acting party and
+-- correlation (the binding the sweep's own request carries), then SETTLED succeeded so it is neither a live job nor a failed generation.
+-- R is accepted BEFORE the clock is shifted so that, once time passes, R no longer resets the party's 15-minute activity clock.
+select pg_temp.s12dc_accept_for('r1', pg_temp.s12dc_id('job:j6'));
+select pg_temp.s12dc_settle_result('r1', pg_temp.s12dc_id('job:r1'), 'succeeded', '{"recovery": true}'::jsonb, null);
+select ok(pg_temp.s12dc_job_col(pg_temp.s12dc_id('job:r1'), 'state') = 'succeeded',
+  'fixture (R conjunct state): the recovery Job R is recorded succeeded [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_job_col(pg_temp.s12dc_id('job:r1'), 'actor_id') = pg_temp.s12dc_job_col(pg_temp.s12dc_id('job:j6'), 'actor_id'),
+  'fixture (R conjunct actor): R carries the failed Job j6 actor [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_job_col(pg_temp.s12dc_id('job:r1'), 'acting_party_id') = pg_temp.s12dc_job_col(pg_temp.s12dc_id('job:j6'), 'acting_party_id'),
+  'fixture (R conjunct party): R carries the failed Job j6 acting party [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_job_col(pg_temp.s12dc_id('job:r1'), 'correlation_id') = pg_temp.s12dc_job_col(pg_temp.s12dc_id('job:j6'), 'correlation_id'),
+  'fixture (R conjunct correlation): R carries the failed Job j6 correlation (the binding the sweep request uses) [P2-S12-AC-226]');
+select ok(exists (select 1 from platform_private.outbox_events event where event.aggregate_id = pg_temp.s12dc_id('job:r1')
+                    and event.event_type = 'job.requested'),
+  'fixture: R carries the real job.requested outbox event [P2-S12-AC-226]');
+
+-- fixture: fresh merged-term work appears again (a labelled tail), and enough time passes to clear the 15-minute bound for the WHOLE history,
+-- R included.  j6 must then be independently eligible again: failed, work, no live job, idle 15+ minutes, no failed generation at the head.
+select pg_temp.s12tt_seed_revision('dch');
+select pg_temp.s12tt_seed_revision('dci');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('dch'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-retire'), 1, 'active', 7);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('dci'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-retire'), 1, 'active', 8);
+select pg_temp.s12dc_elapse(20);
+
+-- The FULL eligibility of j6 as the recovery sweep computes it, rechecked at each stage below.  Every conjunct is its own assertion so a single
+-- wrong one is visible in the TAP by name: the failed head, no live job, the generation run, the 15-minute bound and the remaining work.
+select ok(pg_temp.s12dc_failed_head(pg_temp.s09d_id('ownerOrg')) = pg_temp.s12dc_id('job:j6'),
+  'fixture (eligibility conjunct head): j6 is still the failed head the sweep would select (its latest failed job of the type) [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_live(pg_temp.s09d_id('ownerOrg')) = 0,
+  'fixture (eligibility conjunct live): no live (queued or running) job of the type remains: q7 and R are succeeded [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_streak(pg_temp.s09d_id('ownerOrg')) = 0,
+  'fixture (eligibility conjunct streak): the head of the generation run is R (succeeded), so the consecutive failed run is 0 and the 3-generation stop cannot refuse [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) >= 20,
+  'fixture (eligibility conjunct idle): the last job activity of the type is at least 20 minutes old (R included), so the 15-minute bound cannot refuse [P2-S12-AC-226]');
+select ok(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 2,
+  'fixture (eligibility conjunct work): 2 merged-term assignments remain unconverged, so the work guard cannot refuse [P2-S12-AC-226]');
+select ok((select state from platform_private.jobs where id = pg_temp.s12dc_id('job:j6')) = 'failed',
+  'fixture (eligibility conjunct state): j6 is recorded failed [P2-S12-AC-226]');
+
+-- fixture: the completed receipt under j6's derived key.  Its expires_at is already past, but it has NOT yet been cleaned up, so it is still
+-- PRESENT.  platform_private.accept_job_with_outbox (20260830120000:132-135) selects the receipt by (actor, operation, key_hash) FOR UPDATE with
+-- NO expires_at filter, so a present-but-expired completed receipt still REPLAYS.  This is a present expired completed receipt, NOT a live one.
+-- Inserted, never updated: guard_idempotency (20260912020000) makes expires_at immutable and no guard is disabled.
+select pg_temp.s12dc_expired_receipt(pg_temp.s12dc_id('job:j6'), pg_temp.s12dc_id('job:r1'));
+select ok((select record.state = 'completed' and record.response_ref->>'jobRef' = pg_temp.s12dc_id('job:r1')::text
+                  and record.expires_at < clock_timestamp()
+             from platform_private.idempotency_records record
+            where record.operation = 'cms.taxonomy.merge_converge'
+              and record.key_hash = extensions.digest('cms.taxonomy.merge_converge.reconcile:' || pg_temp.s12dc_id('job:j6')::text, 'sha256')),
+  'fixture: the PRESENT completed receipt of j6''s derived key has an expires_at in the past and still names R (inserted, never updated) [P2-S12-AC-226]');
+
+-- fixture: the recovery Job R is NOT associated yet.  s12dc_accept_for calls BE00 directly, so nothing has written the association; the real
+-- production sweep x1 below is what materializes it.
+select ok(pg_temp.s12dc_assoc_job(pg_temp.s12dc_id('job:j6')) is null,
+  'fixture: j6 has no durable association yet before the production sweep runs (s12dc_accept_for is a direct BE00 accept, not the producer) [P2-S12-AC-226]');
+
+-- x1: the REAL production recovery sweep.  j6 is fully eligible (rechecked above) and its present-but-expired receipt still replays, so the
+-- sweep must associate j6 -> R here (the replay path materializes the association) while the acceptance stores stay unchanged.
+create temp table s12dc_assoc_before_x1 on commit drop as
+  select pg_temp.s12dc_assoc_rows() as row_count;
+select pg_temp.s12dc_mark('x1');
+select pg_temp.s12dc_full_mark('x1');
+select pg_temp.s12dc_sweep('x1');
+select is(pg_temp.s12dc_out('x1') || '#' || pg_temp.s12dc_delta('x1'),
+  'ok:{"requested": 0}#jobs +0, outbox +0, audit +0, idempotency +0, stores same',
+  'x1: the production sweep replays the present expired receipt, requests nothing and writes nothing to the acceptance stores [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_full_same('x1'),
+  'x1: jobs, outbox, audit and idempotency are byte-identical after the replay (the receipt is not consumed by the sweep) [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_assoc_table(),
+  'x1: the durable recovery association table exists [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_assoc_job(pg_temp.s12dc_id('job:j6')) = pg_temp.s12dc_id('job:r1'),
+  'x1: the production sweep materializes the durable association j6 -> R on the replay path [P2-S12-AC-226, DEC-194]');
+
+-- The durable association j6 -> R now exists (materialized by the real sweep x1 above) independently of the receipt's seven-day TTL.
+
+-- The real audited TTL sweep deletes the expired receipt of j6 with its exact cleanup audit.
+select pg_temp.s12dc_expire('sweep-a', 100, pg_temp.s12dc_corr(9));
+select ok(pg_temp.s12dc_expire_out('sweep-a') ~ '^ok:' and pg_temp.s12dc_expire_deleted('sweep-a') >= 1,
+  'the real audited TTL sweep runs under the real service_role and deletes the expired recovery receipt [P2-S12-AC-226, DEC-194]');
+select ok(not exists (select 1 from platform_private.idempotency_records record
+                       where record.operation = 'cms.taxonomy.merge_converge'
+                         and record.key_hash = extensions.digest('cms.taxonomy.merge_converge.reconcile:' || pg_temp.s12dc_id('job:j6')::text, 'sha256'))
+          and (select count(*)::integer from audit_private.audit_events event
+                where event.action = 'idempotency.expired' and event.reason_code = 'TTL_EXPIRED'
+                  and event.correlation_id = pg_temp.s12dc_corr(9)) = 1,
+  'the receipt is gone and exactly one correlated TTL_EXPIRED cleanup audit event remains [P2-S12-AC-226, DEC-194]');
+
+-- THE EXPIRY WITNESS.  j6 is otherwise independently eligible again (failed, work, no live job, idle 15+ minutes, streak below 3) and its
+-- receipt is gone.  The durable association must keep the sweep from requesting a second recovery Job for it.
+select ok(pg_temp.s12dc_assoc_table()
+          and pg_temp.s12dc_assoc_job(pg_temp.s12dc_id('job:j6')) = pg_temp.s12dc_id('job:r1'),
+  'the durable association still names R after the receipt was deleted (it is not the TTL-bound receipt) [P2-S12-AC-226, DEC-194]');
+select pg_temp.s12dc_assoc_mark('x2');
+select pg_temp.s12dc_mark('x2');
+select pg_temp.s12dc_full_mark('x2');
+select pg_temp.s12dc_party_mark('x2-party', pg_temp.s09d_id('ownerOrg'));
+select ok(pg_temp.s12dc_failed_head(pg_temp.s09d_id('ownerOrg')) = pg_temp.s12dc_id('job:j6'),
+  'fixture (x2 eligibility conjunct head): j6 is still the failed head the sweep would select [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_live(pg_temp.s09d_id('ownerOrg')) = 0,
+  'fixture (x2 eligibility conjunct live): no live job of the type remains, so the live guard cannot refuse [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_streak(pg_temp.s09d_id('ownerOrg')) = 0,
+  'fixture (x2 eligibility conjunct streak): the generation run is 0, so the 3-generation stop cannot refuse [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) >= 15,
+  'fixture (x2 eligibility conjunct idle): the last job activity is 15+ minutes old, so the 15-minute bound cannot refuse [P2-S12-AC-226]');
+select ok(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 2,
+  'fixture (x2 eligibility conjunct work): 2 assignments remain unconverged, so the work guard cannot refuse [P2-S12-AC-226]');
+select ok((select state from platform_private.jobs where id = pg_temp.s12dc_id('job:j6')) = 'failed',
+  'fixture (x2 eligibility conjunct state): j6 is recorded failed [P2-S12-AC-226]');
+select pg_temp.s12dc_sweep('x2');
+select is(pg_temp.s12dc_out('x2'),
+  'ok:{"requested": 0}',
+  'expiry witness: an expired recovery receipt must not permit a repeat recovery of the same failed Job j6 [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_delta('x2') = 'jobs +0, outbox +0, audit +0, idempotency +0, stores same',
+  'the expired-receipt tick adds no job, outbox event, audit event, receipt or term change [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_party_same('x2-party', pg_temp.s09d_id('ownerOrg')),
+  'the refused repeat added no job of the type for the acting party (its history is unchanged) [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_full_same('x2'),
+  'the expired-receipt tick leaves jobs, outbox, audit and idempotency byte-identical [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_assoc_same('x2'),
+  'the durable association is unchanged by the refused repeat: still exactly the one j6 -> R row [P2-S12-AC-226, DEC-194]');
+select ok(not exists (select 1 from platform_private.jobs job
+                       where job.job_type = 'cms.taxonomy.merge_converge' and job.acting_party_id = pg_temp.s09d_id('ownerOrg')
+                         and job.id not in (pg_temp.s12dc_id('job:x'), pg_temp.s12dc_id('job:c'), pg_temp.s12dc_id('job:q'),
+                                            pg_temp.s12dc_id('job:j3'), pg_temp.s12dc_id('job:j4'), pg_temp.s12dc_id('job:j5'),
+                                            pg_temp.s12dc_id('job:j6'), pg_temp.s12dc_id('job:q7'), pg_temp.s12dc_id('job:r1')))
+          and pg_temp.s12dc_assoc_rows() = (select row_count + 1 from s12dc_assoc_before_x1),
+  'no new job exists and the durable association count is the earlier history plus j6 -> R [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_assoc_names_only(pg_temp.s12dc_id('job:j6'), pg_temp.s12dc_id('job:r1')),
+  'the association of j6 still names only R: no second recovery Job was associated [P2-S12-AC-226, DEC-194]');

@@ -1,0 +1,82 @@
+-- Slice 12 lane pattern-updates, fix pass: the extra world of the pattern-update (CMS-03C-15) suite only.  It is NOT included by the selector or
+-- diff suites (their expected lists would change).  Every pattern is a REAL active pattern (CMS-03C-12 + the governed chain), every row is
+-- written by the real CMS-03C-02 producer, and the one new block version is registered by the signed CMS-03A-05 producer.
+--   block s12pd.block v2   a second registered version of the supported test block: a pattern version may adopt it
+--   pu-v   v1 roota{b1, A1}, rootb{b1, B1}   v2 roota{b2, A2}, rootb{b2, B1}   roota changes block version AND props, rootb only its block version
+--   pu-nn  v1 leaf{L1}  v2 leaf{L2}  v3 leaf{L3}        pu-dd v1 top{D1}, shared->pu-nn v1   v2 top{D2}, shared->pu-nn v2
+--          a placement of pu-dd v1 happens before pu-nn v2 exists; pu-nn v3 then supersedes the nested pu-nn v2 that pu-dd v2 pins, so the
+--          target pu-dd v2 is the latest ACTIVE compatible version whose nested version is no longer active (nested_pattern_not_active)
+--   dr1/dr2 two draft-state linked heads, sp1 a superseded-state linked head (labelled fixtures, see s12pu_staterow)
+-- The blockRegistryDigest of a forest whose reachable blocks are s12pd.block at the listed versions: the 03a tuples folded in the same
+-- form and JCS hash as cms_template_block_digest (and pg_temp.s12pd_expected_digest), assembled here from first principles.  A target
+-- whose roots adopt another block version has another digest than the pinned one, so a producer that kept the head's digest cannot pass.
+create or replace function pg_temp.s12puc_digest(p_versions integer[]) returns text language sql immutable as $body$
+  select platform_private.cms_jcs_sha256(coalesce(jsonb_agg(jsonb_build_object('blockKey', 's12pd.block', 'blockVersion', version_no,
+    'releaseDigest', repeat('e', 64), 'propsSchemaHash', repeat('a', 64), 'rendererRef', 'cms/renderers/hero/1', 'lifecycle', 'supported')
+    order by version_no), '[]'::jsonb)) from unnest(p_versions) version_no $body$;
+
+select pg_temp.p_register('s12pu:block2', pg_temp.p_block_request('s12pd.block', 2,
+  jsonb_build_object('allowedChildren', jsonb_build_array('s12pd.block'),
+    'slotRules', jsonb_build_object('maxDepth', 16, 'maxNodes', 512))));
+select is(pg_temp.s09d_outcome('s12pu:block2'), 'OK', 'setup: signed CMS-03A-05 registers version 2 of the supported test block');
+create or replace function pg_temp.s12pu_block2(p_key text, p_props jsonb) returns jsonb language sql immutable as $body$
+  select jsonb_set(pg_temp.s12pd_block(p_key, '[]'::jsonb, p_props), '{blockVersion}', '2'::jsonb) $body$;
+
+select * from pg_temp.s12pl_pattern('v1', 'pu-v', jsonb_build_array(
+  pg_temp.s12pd_block('roota', '[]'::jsonb, '{"title":"A1"}'::jsonb), pg_temp.s12pd_block('rootb', '[]'::jsonb, '{"title":"B1"}'::jsonb)));
+select * from pg_temp.s12pu_place('bv1', 'v1');
+select * from pg_temp.s12pl_pattern('v2', 'pu-v', jsonb_build_array(
+  pg_temp.s12pu_block2('roota', '{"title":"A2"}'::jsonb), pg_temp.s12pu_block2('rootb', '{"title":"B1"}'::jsonb)), null, true, '1');
+select is(pg_temp.s12pd_body('v2')->>'blockRegistryDigest', pg_temp.s12puc_digest(array[2]),
+  'setup: the digest the producer stores for pu-v v2 is the independent digest of block version 2 alone');
+select isnt(pg_temp.s12pd_body('v2')->>'blockRegistryDigest', pg_temp.s12pd_body('v1')->>'blockRegistryDigest',
+  'setup: pu-v v1 and v2 have different registry digests, so an accept that kept the pinned digest would be detected');
+
+select * from pg_temp.s12pl_pattern('nn1', 'pu-nn', jsonb_build_array(pg_temp.s12pd_block('leaf', '[]'::jsonb, '{"title":"L1"}'::jsonb)));
+select * from pg_temp.s12pl_pattern('dd1', 'pu-dd', jsonb_build_array(
+  pg_temp.s12pd_block('top', '[]'::jsonb, '{"title":"D1"}'::jsonb),
+  jsonb_build_object('kind', 'pattern', 'key', 'shared', 'patternId', pg_temp.s12pd_body('nn1')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('nn1')->'patternVersion')));
+select * from pg_temp.s12pu_place('nna1', 'dd1');
+select * from pg_temp.s12pl_pattern('nn2', 'pu-nn', jsonb_build_array(pg_temp.s12pd_block('leaf', '[]'::jsonb, '{"title":"L2"}'::jsonb)), null, true, '1');
+select * from pg_temp.s12pl_pattern('dd2', 'pu-dd', jsonb_build_array(
+  pg_temp.s12pd_block('top', '[]'::jsonb, '{"title":"D2"}'::jsonb),
+  jsonb_build_object('kind', 'pattern', 'key', 'shared', 'patternId', pg_temp.s12pd_body('nn2')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('nn2')->'patternVersion')), null, true, '1');
+select * from pg_temp.s12pl_pattern('nn3', 'pu-nn', jsonb_build_array(pg_temp.s12pd_block('leaf', '[]'::jsonb, '{"title":"L3"}'::jsonb)), null, true, '2');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('dd2')->>'id')::uuid), 'active',
+  'setup: pu-dd v2 is the active target ...');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('nn2')->>'id')::uuid), 'superseded',
+  'setup: ... but the nested pu-nn v2 it pins has been superseded by pu-nn v3');
+
+-- LABELLED FIXTURE: a linked head in a state no CMS-03C producer writes for a linked instance.  The real placement producer writes only `active`
+-- rows, nothing writes a linked `draft` row (the table default is the only source) and `superseded` is a derived state of history (deep dive
+-- :250); the linked-update scan lane will write `pending_diff` (s12pu_pending).  This guarded direct insert under app.cms_rpc copies the head
+-- row at the next version in the given state.  It pins the eligibility of BE03c 1476 / AC-120 and is a BOUNDARY until that lane exists (report,
+-- Open items): the `draft` (detach admitted) and `superseded` (detach refused) behaviours are proven on this fixture only.
+create or replace function pg_temp.s12pu_staterow(p_tag text, p_path text, p_state text) returns uuid
+language plpgsql as $body$
+declare head_row platform_private.cms_composition_instances; row_id uuid := extensions.gen_random_uuid(); stamp timestamptz := clock_timestamp();
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select * into head_row from platform_private.cms_composition_instances
+   where revision_id = pg_temp.s12pl_rev(p_tag) and path = p_path order by version desc limit 1;
+  insert into platform_private.cms_composition_instances
+  select (jsonb_populate_record(null::platform_private.cms_composition_instances, to_jsonb(head_row)
+    || jsonb_build_object('id', row_id, 'state', p_state, 'version', head_row.version + 1, 'created_at', stamp, 'updated_at', stamp))).*;
+  return row_id;
+end;
+$body$;
+create or replace function pg_temp.s12pu_draftrow(p_tag text, p_path text) returns uuid
+language sql as $body$ select pg_temp.s12pu_staterow(p_tag, p_path, 'draft') $body$;
+-- pu-a v2 is the newest active version, so a placement of it is still admitted (v1 is superseded) and has no newer version to offer
+select * from pg_temp.s12pu_place('dr1', 'a2');
+select * from pg_temp.s12pu_place('dr2', 'a2');
+select pg_temp.s12pu_draftrow('dr1', '/hero') as draft_row_1 \gset
+select pg_temp.s12pu_draftrow('dr2', '/hero') as draft_row_2 \gset
+select is((select state || ':' || link_mode from platform_private.cms_composition_instances where id = :'draft_row_1'::uuid), 'draft:linked',
+  'setup: the labelled fixture row is a linked draft-state head');
+select * from pg_temp.s12pu_place('sp1', 'a2');
+select pg_temp.s12pu_staterow('sp1', '/hero', 'superseded') as superseded_row \gset
+select is((select state || ':' || link_mode from platform_private.cms_composition_instances where id = :'superseded_row'::uuid), 'superseded:linked',
+  'setup: the labelled fixture row is a linked superseded-state head');

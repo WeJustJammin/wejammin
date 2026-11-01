@@ -172,6 +172,7 @@ export const selectedType = () =>
   AuthoringContextTypeSchema.parse({
     contentTypeId: CONTENT_TYPE_ID,
     contentTypeVersionId: CONTENT_TYPE_VERSION_ID,
+    typeKey: 'release_note',
     label: 'Release note',
     sourceLocale: 'en-US',
     defaultLocale: 'en-US',

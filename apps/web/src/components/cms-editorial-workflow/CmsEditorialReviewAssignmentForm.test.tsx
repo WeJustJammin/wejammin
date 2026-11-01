@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from './cms-workflow-answer-machinery.test-support';
 
 import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
@@ -12,7 +13,7 @@ import {
   disableReactAct,
   enableReactAct,
   flush,
-  mountElement,
+  mountWithIntent,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
 import {
@@ -32,6 +33,8 @@ import {
   jsonResponse,
   reviewDetailFixture,
 } from './cms-workflow-fixtures.test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
 
 beforeAll(enableReactAct);
 // The form checks run synchronously once the lazily loaded validators are in.
@@ -99,7 +102,7 @@ const mount = (
   const refetch = vi.fn(async () => true);
   const onDone = vi.fn();
   const navigate = vi.fn();
-  const mounted = mountElement(
+  const mounted = mountWithIntent(
     <CmsEditorialReviewAssignmentForm
       review={review()}
       disabledReason={null}
@@ -157,7 +160,10 @@ describe('reviewer options', () => {
     });
     await flush();
     expect(unavailable.container.textContent).toContain(
-      'Reviewer choices could not be loaded. Reload the page.',
+      'Reviewer choices could not be loaded.',
+    );
+    expect(unavailable.container.textContent).toContain(
+      'Try loading reviewers again',
     );
     const none = mount([], {
       loadOptions: async () => ({ kind: 'ok', options: [] }),

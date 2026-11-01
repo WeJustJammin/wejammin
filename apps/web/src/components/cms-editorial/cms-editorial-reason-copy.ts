@@ -1,3 +1,5 @@
+import { RICH_TEXT_NOT_CANONICAL_COPY } from './cms-rich-text-refusal-copy';
+
 /**
  * The closed vocabulary of typed reason tokens a CMS editorial refusal may
  * carry in `details.reasonCode` (BE03b value encodings and error matrix), and
@@ -5,8 +7,7 @@
  * sent: an unknown token is dropped and the status copy applies instead.
  */
 export const CMS_EDITORIAL_REASON_COPY = {
-  rich_text_not_canonical:
-    'The rich text is not in the supported format. Review the text and save again.',
+  rich_text_not_canonical: RICH_TEXT_NOT_CANONICAL_COPY,
   object_kind_unspecified:
     'This object field has no declared structure, so it cannot be saved.',
   object_property_invalid:
@@ -15,6 +16,8 @@ export const CMS_EDITORIAL_REASON_COPY = {
     'A linked entry is not available. Remove it or link another entry.',
   taxonomy_source_unavailable:
     'Taxonomy terms cannot be saved yet because the taxonomy source is not available.',
+  term_unavailable:
+    'A selected term is no longer available. Review the terms and save again.',
   media_source_unavailable:
     'Media cannot be saved yet because the media source is not available.',
   comparison_too_large:

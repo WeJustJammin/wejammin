@@ -1,0 +1,191 @@
+/*
+ * Composition page: insert form, instance list and pattern update diff. Presentation only: tokens come from
+ * @wejammin/ui and `cms-editorial.css` owns inputs, buttons, fieldsets and the 44px target. Every state (an update
+ * available, a local copy, a collision, a choice) is also stated in text, never by colour or position alone. On a phone
+ * the three-way columns stack and the row facts wrap; the list scroll region keeps a visible focus ring.
+ */
+@layer components {
+  #cms-editorial-main .cms-composition {
+    display: grid;
+    gap: var(--space-3, 1.5rem);
+    margin-block-end: var(--space-3, 1.5rem);
+  }
+
+  #cms-editorial-main .cms-composition h2:focus,
+  #cms-editorial-main .cms-composition h3:focus,
+  #cms-editorial-main .cms-composition-status h2:focus {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  #cms-editorial-main .cms-composition-field {
+    display: grid;
+    gap: 0.25rem;
+    min-inline-size: 0;
+  }
+
+  #cms-editorial-main .cms-composition-note {
+    margin: 0;
+    padding: var(--space-2);
+    border-inline-start: 4px solid var(--color-ink);
+    background: var(--color-panel);
+  }
+
+  #cms-editorial-main .cms-composition-error {
+    margin: 0;
+    padding-inline-start: var(--space-1, 0.5rem);
+    border-inline-start: 4px solid var(--cms-danger);
+    color: var(--cms-danger);
+    font-weight: 650;
+  }
+
+  #cms-editorial-main .cms-composition-leave {
+    padding: var(--space-2);
+    border: 2px solid var(--color-ink);
+    border-radius: var(--radius-panel);
+  }
+
+  #cms-editorial-main .cms-composition-summary {
+    padding: var(--space-2);
+    border: 2px solid var(--cms-danger);
+    border-radius: var(--radius-panel);
+  }
+
+  #cms-editorial-main .cms-composition-status {
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    background: var(--color-panel);
+  }
+
+  #cms-editorial-main .cms-composition-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  #cms-editorial-main .cms-visually-hidden {
+    position: absolute;
+    inline-size: 1px;
+    block-size: 1px;
+    overflow: hidden;
+    clip-path: inset(50%);
+    white-space: nowrap;
+  }
+
+  /* The list region. Above 100 rows it is a fixed-height scroll region with a fixed row height (virtualized). */
+  #cms-editorial-main .cms-instance-scroll[data-windowed='true'] {
+    max-block-size: 28rem;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+  }
+
+  #cms-editorial-main .cms-instance-scroll:focus-visible {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  #cms-editorial-main ul.cms-instance-rows {
+    display: grid;
+    gap: var(--space-1, 0.5rem);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  #cms-editorial-main .cms-instance-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-1, 0.5rem) var(--space-2);
+    padding: var(--space-1, 0.5rem) var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    background: var(--color-panel);
+    overflow-wrap: anywhere;
+  }
+
+  /* A virtualized row has one fixed height, so the facts stay on one line and the actions follow. */
+  #cms-editorial-main
+    .cms-instance-scroll[data-windowed='true']
+    .cms-instance-row {
+    flex-wrap: nowrap;
+    overflow: hidden;
+  }
+
+  #cms-editorial-main .cms-instance-facts {
+    display: flex;
+    flex: 1 1 16rem;
+    flex-wrap: wrap;
+    gap: 0.25rem 1rem;
+    min-inline-size: 0;
+  }
+
+  #cms-editorial-main .cms-instance-state {
+    font-weight: 650;
+  }
+
+  #cms-editorial-main .cms-instance-row[aria-current='true'] {
+    border-color: var(--color-ink);
+    border-inline-start-width: 6px;
+  }
+
+  #cms-editorial-main .cms-diff {
+    display: grid;
+    gap: var(--space-2);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+  }
+
+  #cms-editorial-main ul.cms-diff-paths {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  #cms-editorial-main .cms-diff-path {
+    display: grid;
+    gap: var(--space-1, 0.5rem);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    background: var(--color-panel);
+  }
+
+  #cms-editorial-main .cms-diff-columns {
+    display: grid;
+    gap: var(--space-2);
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  #cms-editorial-main .cms-diff-columns section {
+    min-inline-size: 0;
+    overflow-wrap: anywhere;
+  }
+
+  #cms-editorial-main .cms-diff-node dt {
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    font-weight: 650;
+  }
+
+  #cms-editorial-main .cms-diff-node dd {
+    margin: 0 0 0.25rem;
+  }
+
+  #cms-editorial-main .cms-diff-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  @media (max-width: 48rem) {
+    #cms-editorial-main .cms-diff-columns {
+      grid-template-columns: minmax(0, 1fr);
+    }
+  }
+}

@@ -1,0 +1,35 @@
+-- CMS-03C-13 follows the data through a RETIREMENT alone.  The earlier activation case (000-selector) moves pageVersion because the activation
+-- also writes a new version row; a retirement writes no row, only the state of an existing one.  pageVersion is documented as the high-water
+-- update instant of ALL the owner's compatible versions in any state "so that a supersession or retirement moves it" (BE03c 1363, AC-109), so a
+-- retirement must (1) remove the item and (2) move the validator, without a single version row being added.  The retirement is the real
+-- governed command (CMS-03C-09 `retire`, DEC-190) on pu-h v4 (a lineage with no draft successor and no dependent pattern).  [AC-108, AC-109]
+select pg_temp.s12ps_sel('ret-before');
+create temp table s12ps_ret_pre on commit drop as
+select pg_temp.s12pu_body('ret-before') as page,
+       (select count(*)::integer from platform_private.cms_pattern_versions) as version_rows,
+       (select to_jsonb(review) from platform_private.cms_governed_reviews review
+         where review.subject_id = (pg_temp.s12pd_body('h4')->>'id')::uuid) as review_row;
+select ok((select page->'items' @> jsonb_build_array(pg_temp.s12ps_item('h4')) from s12ps_ret_pre)
+    and (select review_row->>'state' from s12ps_ret_pre) = 'approved',
+  'setup: pu-h v4 is listed before the retirement and has an approved, activated governed review');
+
+select pg_temp.s12pd_run('h4:retire', jsonb_build_object(
+    'reviewId', (select review_row->>'id' from s12ps_ret_pre), 'action', 'retire',
+    'expectedVersion', (select review_row->>'version' from s12ps_ret_pre), 'ifMatch', (select review_row->>'version' from s12ps_ret_pre),
+    'reason', 'Selector retirement case', 'idempotencyKey', 's12ps-h4-retire-0001', 'context', pg_temp.s09d_context('owner', true)),
+  'owner', 'service_role', 'activate');
+select is(pg_temp.s12pd_state('h4:retire'), '00000', 'setup: the owner retires pu-h v4 through the real governed command');
+select diag(coalesce((select message || ' ' || coalesce(detail, '') from s12pd_out where label = 'h4:retire' and state <> '00000'), 'retire accepted'));
+select is(pg_temp.s12pd_row('h4')->>'state', 'retired', 'setup: the pattern row is retired');
+select is((select count(*)::integer from platform_private.cms_pattern_versions), (select version_rows from s12ps_ret_pre),
+  'the retirement added no pattern version row: only the state of an existing row changed');
+
+select pg_temp.s12ps_sel('ret-after');
+select is(pg_temp.s12ps_keys(pg_temp.s12pu_body('ret-after')),
+  array_remove((select pg_temp.s12ps_keys(page) from s12ps_ret_pre), 'pu-h@4'),
+  'the retired version leaves the list: exactly the previous items without pu-h@4 [AC-108]');
+select ok(pg_temp.s12pu_body('ret-after')->>'pageVersion' <> (select page->>'pageVersion' from s12ps_ret_pre)
+    and (pg_temp.s12pu_body('ret-after')->>'pageVersion')::numeric > (select (page->>'pageVersion')::numeric from s12ps_ret_pre)
+    and pg_temp.s12pu_body('ret-after')->>'pageVersion' = pg_temp.s12ps_page_version(1),
+  'a retirement ALONE moves pageVersion forward to the new high-water update instant of the compatible versions [AC-109]');
+select ok(pg_temp.s12pu_unchanged('ret-after'), 'the read after the retirement changed no store [AC-110]');

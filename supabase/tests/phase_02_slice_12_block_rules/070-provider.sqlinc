@@ -1,0 +1,192 @@
+-- Manifest prerequisite (read fixture): the E7 settings lookup (BE03b E7 / DEC-163: cms_settings_snapshot is a read-only
+-- lookup; an ordinary write tail records the empty registry-version-1 snapshot).  The placements above ran no such tail
+-- for this world, so the exact empty snapshot is seeded the same way the DEC-193 consumer fixture seeds it
+-- (phase_02_slice_12_dec193_consumers/000-fixture.sqlinc, CS-E7); nothing else is written outside a producer.
+do $br_e7$
+declare prior_rpc text := current_setting('app.cms_rpc', true);
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_publication_settings_snapshots(
+    owner_id, state, version, ordinal, registry_version, snapshot_hash, effective_values)
+  values (pg_temp.s09d_id('ownerOrg'), 'active', 1, 1, 1,
+    '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'::char(64), '[]'::jsonb);
+  perform set_config('app.cms_rpc', coalesce(prior_rpc, ''), true);
+end;
+$br_e7$;
+select is((select count(*)::integer from platform_private.cms_publication_settings_snapshots
+  where owner_id = pg_temp.s09d_id('ownerOrg') and registry_version = 1 and effective_values = '[]'::jsonb), 1,
+  'BR-V00: the exact empty E7 settings snapshot lookup prerequisite is present');
+-- DEC-210 / cms.pattern.active_digest: the publication provider fails the `pattern` category with the closed reason
+-- pattern_block_rules_violated for any reachable tree that breaks its pinned blocks' allowedChildren or slotRules (a pattern
+-- saved before the rule is caught here), one unit per offending pin or canonical tree; the existing reasons keep their
+-- precedence (pattern_not_active, nested_pattern_not_active, pattern_digest_changed, then this one).  The real manifest
+-- builder, frozen-status check and 17-category evaluator run; the pre-rule state is 040-legacy-setup.
+select * from pg_temp.s12pc_check('BR-V01-control', 'brv-ok', null, true, array['brn-three'], '[["br.leaf",1]]');
+select * from pg_temp.s12pc_check('BR-V02-live-pin', 'brd-prov-live', 'pattern_block_rules_violated', false,
+  array['brl-nodes'], '[["br.tight",1],["br.leaf",1]]');
+select * from pg_temp.s12pc_check('BR-V03-canonical-tree', 'brd-prov-canon', 'pattern_block_rules_violated', false,
+  array['brl-nodes'], '[["br.tight",1],["br.leaf",1]]');
+select * from pg_temp.s12pc_check('BR-V04-not-active-first', 'brd-prov-sup', 'pattern_not_active', false,
+  array['brl-sup'], '[["br.tight",1],["br.leaf",1]]');
+-- V2-04 (c): an empty allow-list and a depth over maxDepth are caught by the provider as well (live pin of a pre-rule pattern)
+select * from pg_temp.s12pc_check('BR-V02b-empty-allow-list', 'brd-prov-empty', 'pattern_block_rules_violated', false,
+  array['brl-empty'], '[["br.leaf",1]]');
+select * from pg_temp.s12pc_check('BR-V02c-depth', 'brd-prov-deep', 'pattern_block_rules_violated', false,
+  array['brl-deep'], '[["br.shallow",1],["br.leaf",1]]');
+-- Multi-pin reason precedence (BE03c "Preflight providers registered by Slice 12", ~1573, P2-S12-AC-238): when several pins of the
+-- manifest fail, the pattern category reports the FIRST reason present in the order pattern_not_active, nested_pattern_not_active,
+-- pattern_digest_changed, pattern_block_rules_violated, with one blocking unit per failing pin.  Every ordered pair of two different reasons
+-- is built as a revision with two live pins, once for each pin order: the provider reads the pins in path order, so the same two
+-- reasons are placed on /p1 then /p2 and on /p2 then /p1 (the lo and hi pattern of a reason differ only in their root key).  Every
+-- failure is real state of the real producers: pattern_not_active is a superseded pinned version (a successor activated after the
+-- placement), nested_pattern_not_active a superseded nested pattern, pattern_block_rules_violated a pre-rule tree placed while the
+-- DEC-210 plan enforcement is a no-op (restored and asserted identical, as in 040), and pattern_digest_changed a frozen manifest whose
+-- recorded content hash of the one pinned pattern differs from the stored one (the manifest the pin froze is the input, as PA-A06/A07).
+create or replace function pg_temp.brm_second(p_tag text, p_pattern text) returns setof text language plpgsql as $body$
+begin
+  perform pg_temp.s12pl_run('brm2:' || p_tag, pg_temp.s12pl_request(p_tag, p_pattern, '/', '{}'::jsonb,
+    'brm-second-' || p_tag || '-0001', 'linked'));
+  return next extensions.is(pg_temp.s12pl_state('brm2:' || p_tag), '00000',
+    'setup: ' || p_tag || ' places a second live pin ' || p_pattern || ' through CMS-03C-02');
+  if pg_temp.s12pl_state('brm2:' || p_tag) <> '00000' then
+    return next extensions.diag(coalesce((select message || ' ' || coalesce(detail, '') from s12pl_out
+      where label = 'brm2:' || p_tag), ''));
+  end if;
+end;
+$body$;
+-- The manifest the pin froze, with the recorded content hash of one pinned pattern changed.
+create or replace function pg_temp.brm_frozen(p_tag text, p_pattern text) returns jsonb language plpgsql volatile as $body$
+declare built jsonb; prior_rpc text := current_setting('app.cms_rpc', true);
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  built := platform_private.cms_build_dependency_manifest(pg_temp.s12pl_rev(p_tag));
+  perform set_config('app.cms_rpc', coalesce(prior_rpc, ''), true);
+  return jsonb_set(built, '{patterns}', (select jsonb_agg(case when member.value->>'id' = pg_temp.s12pd_body(p_pattern)->>'id'
+      then jsonb_set(member.value, '{hash}', to_jsonb(repeat('0', 64))) else member.value end order by member.ordinality)
+    from jsonb_array_elements(built->'patterns') with ordinality member(value, ordinality)));
+end;
+$body$;
+-- the patterns: a lo (root /p1) and a hi (root /p2) of each reason
+
+select * from pg_temp.s12pl_pattern('bm-na-lo', 'bm-na-lo', jsonb_build_array(pg_temp.brb('p1', 'br.leaf')));
+select * from pg_temp.s12pl_pattern('bm-in-lo', 'bm-in-lo', jsonb_build_array(pg_temp.brb('t', 'br.leaf')));
+select * from pg_temp.s12pl_pattern('bm-nn-lo', 'bm-nn-lo', jsonb_build_array(pg_temp.brb('p1', 'br.shallow',
+  jsonb_build_array(pg_temp.brr('bm-in-lo', 'ref')))));
+select * from pg_temp.s12pl_pattern('bm-dc-lo', 'bm-dc-lo', jsonb_build_array(pg_temp.brb('p1', 'br.leaf')));
+select * from pg_temp.s12pl_pattern('bm-na-hi', 'bm-na-hi', jsonb_build_array(pg_temp.brb('p2', 'br.leaf')));
+select * from pg_temp.s12pl_pattern('bm-in-hi', 'bm-in-hi', jsonb_build_array(pg_temp.brb('t', 'br.leaf')));
+select * from pg_temp.s12pl_pattern('bm-nn-hi', 'bm-nn-hi', jsonb_build_array(pg_temp.brb('p2', 'br.shallow',
+  jsonb_build_array(pg_temp.brr('bm-in-hi', 'ref')))));
+select * from pg_temp.s12pl_pattern('bm-dc-hi', 'bm-dc-hi', jsonb_build_array(pg_temp.brb('p2', 'br.leaf')));
+select pg_temp.brt_stub('save');
+select * from pg_temp.s12pl_pattern('bm-br-lo', 'bm-br-lo', jsonb_build_array(pg_temp.brb('p1', 'br.tight',
+  jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))));
+select * from pg_temp.s12pl_pattern('bm-br-hi', 'bm-br-hi', jsonb_build_array(pg_temp.brb('p2', 'br.tight',
+  jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))));
+select * from pg_temp.brt_restore('save', 'after the provider fixtures');
+-- the placements: the two live pins of each case (the pre-rule tree is placed with the plan enforcement a no-op, then restored)
+-- case 1a: pattern_not_active at /p1, nested_pattern_not_active at /p2
+select * from pg_temp.s12pu_place('bmx-1a', 'bm-na-lo');
+select * from pg_temp.brm_second('bmx-1a', 'bm-nn-hi');
+-- case 1b: nested_pattern_not_active at /p1, pattern_not_active at /p2
+select * from pg_temp.s12pu_place('bmx-1b', 'bm-nn-lo');
+select * from pg_temp.brm_second('bmx-1b', 'bm-na-hi');
+-- case 2a: pattern_not_active at /p1, pattern_digest_changed at /p2
+select * from pg_temp.s12pu_place('bmx-2a', 'bm-na-lo');
+select * from pg_temp.brm_second('bmx-2a', 'bm-dc-hi');
+-- case 2b: pattern_digest_changed at /p1, pattern_not_active at /p2
+select * from pg_temp.s12pu_place('bmx-2b', 'bm-dc-lo');
+select * from pg_temp.brm_second('bmx-2b', 'bm-na-hi');
+-- case 3a: pattern_not_active at /p1, pattern_block_rules_violated at /p2
+select * from pg_temp.s12pu_place('bmx-3a', 'bm-na-lo');
+select pg_temp.brt_stub('plan');
+select * from pg_temp.brm_second('bmx-3a', 'bm-br-hi');
+select * from pg_temp.brt_restore('plan', 'case 3a');
+-- case 3b: pattern_block_rules_violated at /p1, pattern_not_active at /p2
+select pg_temp.brt_stub('plan');
+select * from pg_temp.s12pu_place('bmx-3b', 'bm-br-lo');
+select * from pg_temp.brt_restore('plan', 'case 3b');
+select * from pg_temp.brm_second('bmx-3b', 'bm-na-hi');
+-- case 4a: nested_pattern_not_active at /p1, pattern_digest_changed at /p2
+select * from pg_temp.s12pu_place('bmx-4a', 'bm-nn-lo');
+select * from pg_temp.brm_second('bmx-4a', 'bm-dc-hi');
+-- case 4b: pattern_digest_changed at /p1, nested_pattern_not_active at /p2
+select * from pg_temp.s12pu_place('bmx-4b', 'bm-dc-lo');
+select * from pg_temp.brm_second('bmx-4b', 'bm-nn-hi');
+-- case 5a: nested_pattern_not_active at /p1, pattern_block_rules_violated at /p2
+select * from pg_temp.s12pu_place('bmx-5a', 'bm-nn-lo');
+select pg_temp.brt_stub('plan');
+select * from pg_temp.brm_second('bmx-5a', 'bm-br-hi');
+select * from pg_temp.brt_restore('plan', 'case 5a');
+-- case 5b: pattern_block_rules_violated at /p1, nested_pattern_not_active at /p2
+select pg_temp.brt_stub('plan');
+select * from pg_temp.s12pu_place('bmx-5b', 'bm-br-lo');
+select * from pg_temp.brt_restore('plan', 'case 5b');
+select * from pg_temp.brm_second('bmx-5b', 'bm-nn-hi');
+-- case 6a: pattern_digest_changed at /p1, pattern_block_rules_violated at /p2
+select * from pg_temp.s12pu_place('bmx-6a', 'bm-dc-lo');
+select pg_temp.brt_stub('plan');
+select * from pg_temp.brm_second('bmx-6a', 'bm-br-hi');
+select * from pg_temp.brt_restore('plan', 'case 6a');
+-- case 6b: pattern_block_rules_violated at /p1, pattern_digest_changed at /p2
+select pg_temp.brt_stub('plan');
+select * from pg_temp.s12pu_place('bmx-6b', 'bm-br-lo');
+select * from pg_temp.brt_restore('plan', 'case 6b');
+select * from pg_temp.brm_second('bmx-6b', 'bm-dc-hi');
+-- the successors (after every placement): a superseded pinned version and a superseded nested pattern
+select * from pg_temp.s12pl_pattern('bm-na-lo-2', 'bm-na-lo', jsonb_build_array(pg_temp.brb('p1', 'br.leaf'),
+  pg_temp.brb('p2', 'br.leaf')), null, true, '1');
+select * from pg_temp.s12pl_pattern('bm-in-lo-2', 'bm-in-lo', jsonb_build_array(pg_temp.brb('t', 'br.leaf'),
+  pg_temp.brb('u', 'br.leaf')), null, true, '1');
+select * from pg_temp.s12pl_pattern('bm-na-hi-2', 'bm-na-hi', jsonb_build_array(pg_temp.brb('p1', 'br.leaf'),
+  pg_temp.brb('p2', 'br.leaf')), null, true, '1');
+select * from pg_temp.s12pl_pattern('bm-in-hi-2', 'bm-in-hi', jsonb_build_array(pg_temp.brb('t', 'br.leaf'),
+  pg_temp.brb('u', 'br.leaf')), null, true, '1');
+select is((select string_agg(p.state, ',' order by k.ord) from (values (1, 'bm-na-lo'), (2, 'bm-na-hi'), (3, 'bm-in-lo'), (4, 'bm-in-hi')) k(ord, label)
+    join platform_private.cms_pattern_versions p on p.id = (pg_temp.s12pd_body(k.label)->>'id')::uuid), 'superseded,superseded,superseded,superseded',
+  'BR-M00: the pinned versions behind pattern_not_active and the nested versions behind nested_pattern_not_active are really superseded');
+select is((select string_agg(p.state, ',' order by k.ord) from (values (1, 'bm-nn-lo'), (2, 'bm-nn-hi'), (3, 'bm-dc-lo'), (4, 'bm-dc-hi'), (5, 'bm-br-lo'), (6, 'bm-br-hi')) k(ord, label)
+    join platform_private.cms_pattern_versions p on p.id = (pg_temp.s12pd_body(k.label)->>'id')::uuid), 'active,active,active,active,active,active',
+  'BR-M00: every other pinned root stays active, so only the intended pin of each case fails for its own reason');
+-- the checks: both pin orders of each ordered pair of reasons report the higher-precedence reason, with one unit per failing pin
+select * from pg_temp.s12pc_check('BR-M1a-pattern_not_active-over-nested_pattern_not_active', 'bmx-1a', 'pattern_not_active', false,
+  array['bm-na-lo', 'bm-nn-hi'], '[["br.leaf",1],["br.shallow",1]]', 'submit', null, null, 2);
+select * from pg_temp.s12pc_check('BR-M1b-pattern_not_active-over-nested_pattern_not_active', 'bmx-1b', 'pattern_not_active', false,
+  array['bm-nn-lo', 'bm-na-hi'], '[["br.leaf",1],["br.shallow",1]]', 'submit', null, null, 2);
+select * from pg_temp.s12pc_check('BR-M2a-pattern_not_active-over-pattern_digest_changed', 'bmx-2a', 'pattern_not_active', false,
+  array['bm-na-lo', 'bm-dc-hi'], '[["br.leaf",1]]', 'submit', pg_temp.brm_frozen('bmx-2a', 'bm-dc-hi'), null, 2);
+select * from pg_temp.s12pc_check('BR-M2b-pattern_not_active-over-pattern_digest_changed', 'bmx-2b', 'pattern_not_active', false,
+  array['bm-dc-lo', 'bm-na-hi'], '[["br.leaf",1]]', 'submit', pg_temp.brm_frozen('bmx-2b', 'bm-dc-lo'), null, 2);
+select * from pg_temp.s12pc_check('BR-M3a-pattern_not_active-over-pattern_block_rules_violated', 'bmx-3a', 'pattern_not_active', false,
+  array['bm-na-lo', 'bm-br-hi'], '[["br.leaf",1],["br.tight",1]]', 'submit', null, null, 2);
+select * from pg_temp.s12pc_check('BR-M3b-pattern_not_active-over-pattern_block_rules_violated', 'bmx-3b', 'pattern_not_active', false,
+  array['bm-br-lo', 'bm-na-hi'], '[["br.leaf",1],["br.tight",1]]', 'submit', null, null, 2);
+select * from pg_temp.s12pc_check('BR-M4a-nested_pattern_not_active-over-pattern_digest_changed', 'bmx-4a', 'nested_pattern_not_active', false,
+  array['bm-nn-lo', 'bm-dc-hi'], '[["br.leaf",1],["br.shallow",1]]', 'submit', pg_temp.brm_frozen('bmx-4a', 'bm-dc-hi'), null, 2);
+select * from pg_temp.s12pc_check('BR-M4b-nested_pattern_not_active-over-pattern_digest_changed', 'bmx-4b', 'nested_pattern_not_active', false,
+  array['bm-dc-lo', 'bm-nn-hi'], '[["br.leaf",1],["br.shallow",1]]', 'submit', pg_temp.brm_frozen('bmx-4b', 'bm-dc-lo'), null, 2);
+select * from pg_temp.s12pc_check('BR-M5a-nested_pattern_not_active-over-pattern_block_rules_violated', 'bmx-5a', 'nested_pattern_not_active', false,
+  array['bm-nn-lo', 'bm-br-hi'], '[["br.leaf",1],["br.shallow",1],["br.tight",1]]', 'submit', null, null, 2);
+select * from pg_temp.s12pc_check('BR-M5b-nested_pattern_not_active-over-pattern_block_rules_violated', 'bmx-5b', 'nested_pattern_not_active', false,
+  array['bm-br-lo', 'bm-nn-hi'], '[["br.leaf",1],["br.shallow",1],["br.tight",1]]', 'submit', null, null, 2);
+select * from pg_temp.s12pc_check('BR-M6a-pattern_digest_changed-over-pattern_block_rules_violated', 'bmx-6a', 'pattern_digest_changed', false,
+  array['bm-dc-lo', 'bm-br-hi'], '[["br.leaf",1],["br.tight",1]]', 'submit', pg_temp.brm_frozen('bmx-6a', 'bm-dc-lo'), null, 2);
+select * from pg_temp.s12pc_check('BR-M6b-pattern_digest_changed-over-pattern_block_rules_violated', 'bmx-6b', 'pattern_digest_changed', false,
+  array['bm-br-lo', 'bm-dc-hi'], '[["br.leaf",1],["br.tight",1]]', 'submit', pg_temp.brm_frozen('bmx-6b', 'bm-dc-hi'), null, 2);
+-- The provider is SECURITY INVOKER: like every caller (cms_evaluate_preflight, s12pc_check) the direct call runs under the CMS
+-- RPC context, otherwise its registry reads see no rows and it answers passed.
+select set_config('app.cms_rpc', 'true', true);
+select is((select array_agg(r.outcome || ':' || coalesce(r.reason_code, '') || ':' || r.blocking_count)
+    from platform_private.cms_pattern_active_digest(pg_temp.s12pl_rev('brd-prov-live'),
+      (select manifest from s12pc_out where label = 'BR-V02-live-pin')) r),
+  array['failed:pattern_block_rules_violated:1'], 'BR-V05: the provider function itself answers failed with exactly one unit for the offending pin');
+-- BE03c "Preflight providers registered by Slice 12": a provider answers one outcome per category.  A passing pin therefore
+-- answers exactly one row (passed, no unit); it must not fall through to a second failed row (DEC-215 Step 0).
+select is((select array_agg(r.outcome || ':' || coalesce(r.reason_code, '') || ':' || r.blocking_count)
+    from platform_private.cms_pattern_active_digest(pg_temp.s12pl_rev('brv-ok'),
+      (select manifest from s12pc_out where label = 'BR-V01-control')) r),
+  array['passed::0'], 'BR-V05: a rule-satisfying pin answers exactly one row, passed with no unit');
+select set_config('app.cms_rpc', '', true);
+select is((select platform_private.cms_frozen_dependencies_status(pg_temp.s12pl_rev('brd-prov-live'),
+      (select manifest from s12pc_out where label = 'BR-V02-live-pin'))), 'stale',
+  'BR-V06: the revision-aware frozen status is stale while a reachable tree breaks its block rules');

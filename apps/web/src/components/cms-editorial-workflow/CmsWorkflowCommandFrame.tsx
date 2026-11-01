@@ -1,6 +1,10 @@
 import * as React from 'react';
 
 import { warmCmsValidators } from '../../lib/cms-contract-validators';
+import { REGION_ATTRIBUTE, markRegionHydrated } from './cms-lazy-intent';
+import { warmWorkflowAnswerMachinery } from './cms-workflow-answer-machinery';
+import CmsWorkflowLocalErrors from './CmsWorkflowLocalErrors';
+import CmsWorkflowSyncConflict from './CmsWorkflowSyncConflict';
 import CmsWorkflowRefusalAlert, {
   type WorkflowFieldReference,
 } from './CmsWorkflowRefusalAlert';
@@ -37,8 +41,27 @@ export interface CmsWorkflowCommandFrameProps<TResource> {
   readonly disabledReason?: string | null;
   /** The committed result, shown beside the status. */
   readonly result?: React.ReactNode;
+  /**
+   * Set when the form loads on intent (`cms-lazy-view.tsx` `loadViewOnIntent`): the name of its
+   * region. The server markup carries it, and the mounted frame marks it hydrated. A form that
+   * does not load on intent is still a region, named by its heading id.
+   */
+  readonly lazyRegion?: string;
+  /**
+   * What the canonical re-read settled after a lost answer, when it settled it: the sentence
+   * that replaces the retry offer (FE03 governed reconciliation, DEC-113 and DEC-137). A form
+   * sets it once its reconciled read shows the command was recorded, or can no longer be
+   * repeated; the same request is then never offered again.
+   */
+  readonly settled?: string | null;
   readonly children: React.ReactNode;
 }
+
+/** A sign of intent: warm what the check and the send of this form will need. */
+const warmCommandForm = (): void => {
+  warmCmsValidators();
+  warmWorkflowAnswerMachinery();
+};
 
 const UNKNOWN_WAITING =
   'The result could not be confirmed. Checking the current state before you retry.';
@@ -50,6 +73,7 @@ export const workflowStatusText = <TResource,>(
   state: CommandState<TResource>,
   pendingLabel: string,
   committedLabel: (resource: TResource) => string,
+  settled: string | null = null,
 ): string => {
   switch (state.phase) {
     case 'pending':
@@ -61,7 +85,8 @@ export const workflowStatusText = <TResource,>(
     case 'restored':
       return 'Your entries were restored. Review them, then confirm.';
     case 'unknown':
-      return state.reconciled ? UNKNOWN_READY : UNKNOWN_WAITING;
+      if (!state.reconciled) return UNKNOWN_WAITING;
+      return settled ?? UNKNOWN_READY;
     default:
       return '';
   }
@@ -88,8 +113,18 @@ export default function CmsWorkflowCommandFrame<TResource>({
   localErrors = [],
   disabledReason = null,
   result = null,
+  lazyRegion,
+  settled = null,
   children,
 }: CmsWorkflowCommandFrameProps<TResource>): React.ReactElement {
+  const sectionRef = React.useRef<HTMLElement>(null);
+  // Every command form is a region (its own heading id unless it names one): a form that loads
+  // with the page still hydrates after its server markup is visible, and what a person chose,
+  // typed or pressed in between is kept and replayed (`cms-lazy-intent.ts`), not lost.
+  const region = lazyRegion ?? headingId;
+  React.useLayoutEffect(() => {
+    if (sectionRef.current !== null) markRegionHydrated(sectionRef.current);
+  }, [region]);
   const alertShown =
     state.phase === 'refused' ||
     state.phase === 'step-up-unavailable' ||
@@ -101,15 +136,22 @@ export default function CmsWorkflowCommandFrame<TResource>({
   }, [localErrors]);
 
   // A committed sentence belongs to the island's line, which outlives this form.
-  const statusText = workflowStatusText(state, pendingLabel, committedLabel);
+  const statusText = workflowStatusText(
+    state,
+    pendingLabel,
+    committedLabel,
+    settled,
+  );
   const handedOver = useCommittedAnnouncement(state.phase, statusText);
 
   return (
     <section
+      ref={sectionRef}
       aria-labelledby={headingId}
+      {...{ [REGION_ATTRIBUTE]: region }}
       data-cms-workflow-form=""
       className="cms-workflow-form"
-      onFocus={warmCmsValidators}
+      onFocus={warmCommandForm}
     >
       <h3 id={headingId} tabIndex={-1}>
         {title}
@@ -126,41 +168,13 @@ export default function CmsWorkflowCommandFrame<TResource>({
         <p data-cms-workflow-disabled="">{disabledReason}</p>
       )}
       {state.phase === 'conflict' && state.conflict !== null ? (
-        <section
-          aria-labelledby={`${headingId}-conflict`}
-          data-cms-editorial-sync-conflict="true"
-        >
-          <h4 id={`${headingId}-conflict`}>
-            This record changed while you were verifying
-          </h4>
-          <p>
-            You started at version {state.conflict.draftVersion ?? 'unknown'};
-            the current record is version{' '}
-            {state.conflict.currentVersion ?? 'unknown'}. Nothing was sent and
-            your entries are kept in this browser only.
-          </p>
-          <button type="button" onClick={controller.acknowledgeConflict}>
-            Review the current version and continue
-          </button>
-        </section>
+        <CmsWorkflowSyncConflict
+          headingId={headingId}
+          conflict={state.conflict}
+          onAcknowledge={controller.acknowledgeConflict}
+        />
       ) : null}
-      {localErrors.length === 0 ? null : (
-        <div
-          role="alert"
-          tabIndex={-1}
-          ref={localRef}
-          data-cms-workflow-local-errors=""
-        >
-          <p>Check these fields before continuing.</p>
-          <ul>
-            {localErrors.map((error) => (
-              <li key={error.id}>
-                <a href={`#${error.id}`}>{error.label}</a>: {error.message}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      <CmsWorkflowLocalErrors errors={localErrors} focusRef={localRef} />
       {alertShown ? (
         <CmsWorkflowRefusalAlert
           headingId={headingId}
@@ -168,9 +182,14 @@ export default function CmsWorkflowCommandFrame<TResource>({
           fieldIds={fieldIds}
         />
       ) : null}
-      {state.phase === 'unknown' ? (
+      {state.phase === 'unknown' && !(state.reconciled && settled !== null) ? (
         <p>
-          <button type="button" onClick={() => void controller.reconcile()}>
+          <button
+            type="button"
+            id={`${headingId}-check`}
+            data-cms-workflow-check=""
+            onClick={() => void controller.reconcile()}
+          >
             Check the current state
           </button>{' '}
           <button

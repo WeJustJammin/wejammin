@@ -1,5 +1,6 @@
 import { z } from 'zod';
 
+import { refineIfMatchEqualsExpectedVersion } from '../cms-editorial/if-match.ts';
 import {
   CmsLocaleSchema,
   CmsUuidSchema,
@@ -16,7 +17,8 @@ export const TaxonomyTermKeySchema = z
   .string()
   .regex(/^[a-z][a-z0-9-]{1,63}$/u, 'term_key_invalid');
 
-const TermLabelSchema = z.strictObject({
+/** One NFC label of a term in one locale (shared by the action request and the term list). */
+export const TaxonomyTermLabelSchema = z.strictObject({
   locale: CmsLocaleSchema,
   label: z
     .string()
@@ -32,7 +34,7 @@ export const TaxonomyTermActionRequestSchema = z
     termKey: TaxonomyTermKeySchema,
     parentId: CmsUuidSchema.nullable(),
     survivorId: CmsUuidSchema.nullable(),
-    labels: z.array(TermLabelSchema).min(1).max(64),
+    labels: z.array(TaxonomyTermLabelSchema).min(1).max(64),
     aliases: z.array(z.string().min(1).max(160)).max(64),
     expectedVersion: CmsVersionSchema,
   })
@@ -57,12 +59,18 @@ export const TaxonomyTermActionHeadersSchema = z.strictObject({
   ifMatch: QuotedVersionSchema,
 });
 
-/** OpenAPI transport shape for the canonical CMS-03C-03 operation. */
-export const TaxonomyTermActionApiRequestSchema = z.strictObject({
-  taxonomyId: CmsUuidSchema,
-  headers: TaxonomyTermActionHeadersSchema,
-  body: TaxonomyTermActionRequestSchema,
-});
+/**
+ * OpenAPI transport shape for the canonical CMS-03C-03 operation. The strong
+ * `If-Match` is the active taxonomy version's `version`, the body
+ * `expectedVersion`.
+ */
+export const TaxonomyTermActionApiRequestSchema = z
+  .strictObject({
+    taxonomyId: CmsUuidSchema,
+    headers: TaxonomyTermActionHeadersSchema,
+    body: TaxonomyTermActionRequestSchema,
+  })
+  .superRefine(refineIfMatchEqualsExpectedVersion);
 
 /** Browser-safe term and redirect identity; no owner or assignment authority. */
 export const TaxonomyTermResourceSchema = z.strictObject({

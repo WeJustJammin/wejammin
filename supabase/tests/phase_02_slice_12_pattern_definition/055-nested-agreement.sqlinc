@@ -1,0 +1,6 @@
+-- A nested pattern's blocks enter the digest through the pinned lineage; the governed recompute walks the same
+-- pins (cms_governed_pattern_closure), so both digests agree.  Runs before the block is withdrawn.
+select is(pg_temp.s12pd_governed_digest('nested'),pg_temp.s12pd_body('nested')->>'blockRegistryDigest',
+  'nested definition digest equals the governed recompute [P2-S12-AC-193]');
+select is(pg_temp.s12pd_governed_digest('expanded-512'),pg_temp.s12pd_body('expanded-512')->>'blockRegistryDigest',
+  'repeated nested references digest equals the governed recompute [P2-S12-AC-193]');

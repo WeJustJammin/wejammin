@@ -1,0 +1,67 @@
+-- DEC-202 (AC-289..AC-291, AC-296): the resolver-policy gate and the position-3 lock helper
+-- are exercised directly. States that no legitimate producer can create (a missing,
+-- concealed or incompatible stored default; the schema compat guard and the template
+-- registry forbid them) are reached by pointing the gate at an EXISTING real template/
+-- version pair that is genuinely incompatible, retired or blocked -- no row is forged.
+-- Gate: platform_private.cms_entry_default_template_gate(actor, acting_party, template, version).
+create temp table s12edg_calls(label text primary key, result uuid, code text, message text, detail text)
+  on commit drop;
+create function pg_temp.s12edg_call(p_label text, p_template uuid, p_version uuid,
+  p_actor uuid default null) returns void language plpgsql as $body$
+declare prior jsonb := pg_temp.s12edp_context(); answer uuid; code text := '00000'; msg text; det text;
+  ctx jsonb; actor uuid; party uuid := pg_temp.s09d_id('ownerOrg');
+begin
+  perform pg_temp.s09d_session('owner', 'service_role');
+  ctx := jsonb_build_object('context', pg_temp.s09d_context('owner', true));
+  perform set_config('app.cms_rpc', 'true', true);
+  actor := coalesce(p_actor, platform_private.cms_actor(ctx));
+  begin
+    answer := platform_private.cms_entry_default_template_gate(actor, party, p_template, p_version);
+  exception when others then
+    get stacked diagnostics code = returned_sqlstate, msg = message_text, det = pg_exception_detail;
+  end;
+  perform pg_temp.s12edp_restore(prior);
+  insert into s12edg_calls values (p_label, answer, code, msg, det);
+exception when others then perform pg_temp.s12edp_restore(prior); raise;
+end;
+$body$;
+select pg_temp.s12edg_call('superseded', pg_temp.s12ga_subject('edp-st1'), pg_temp.s09d_id('edp-sbound:version'));
+select pg_temp.s12edg_call('incompatible', pg_temp.s12ga_subject('edp-st1'), pg_temp.s09d_id('edp-bbound:version'));
+select pg_temp.s12edg_call('retired', pg_temp.s12ga_subject('edt-template'), pg_temp.s09d_id('edt-bound:version'));
+select pg_temp.s12edg_call('blocked', pg_temp.s12ga_subject('edp-bt'), pg_temp.s09d_id('edp-bbound:version'));
+select pg_temp.s12edg_call('missing', extensions.gen_random_uuid(), pg_temp.s09d_id('edp-sbound:version'));
+select pg_temp.s12edg_call('unexpected', pg_temp.s12ga_subject('edp-st1'), pg_temp.s09d_id('edp-sbound:version'),
+  extensions.gen_random_uuid());
+
+select is((select result::text || '|' || code from s12edg_calls where label = 'superseded'),
+  pg_temp.s12ga_subject('edp-st1')::text || '|00000',
+  'EDG-01: a compatible SUPERSEDED default is eligible and the gate returns that exact template version');
+select is((select code || ':' || coalesce(message, '') || ':' || coalesce(detail, '') from s12edg_calls where label = 'incompatible'),
+  'P0001:VALIDATION_FAILED:["/contentTypeVersionId"]',
+  'EDG-02: an incompatible default is the existing 422 VALIDATION_FAILED with DETAIL exactly ["/contentTypeVersionId"]');
+select is((select code || ':' || coalesce(message, '') || ':' || coalesce(detail, '') from s12edg_calls where label = 'retired'),
+  'P0001:CONFLICT:', 'EDG-03: a retired default is 409 CONFLICT with no detail');
+select is((select code || ':' || coalesce(message, '') || ':' || coalesce(detail, '') from s12edg_calls where label = 'blocked'),
+  'P0001:CONFLICT:', 'EDG-04: a blocked default is 409 CONFLICT with no detail');
+select is((select code || ':' || coalesce(message, '') || ':' || coalesce(detail, '') from s12edg_calls where label = 'missing'),
+  'P0001:NOT_FOUND:', 'EDG-05: a missing or concealed default is 404 NOT_FOUND with empty detail and no template identity');
+select is((select code || ':' || coalesce(message, '') || ':' || coalesce(detail, '') from s12edg_calls where label = 'unexpected'),
+  'P0001:UNAUTHENTICATED:', 'EDG-06: an unexpected resolver fault propagates unchanged, never relabeled as a template refusal');
+select ok((select bool_and(p.prosecdef and p.proconfig = array['search_path=""']::text[]
+    and p.proowner = 'wejammin_cms_definer'::regrole
+    and not exists (select 1 from unnest(array['anon', 'authenticated', 'service_role', 'public']) r(name)
+      where has_function_privilege(r.name, p.oid, 'EXECUTE'))) and count(*) = 2
+  from pg_proc p where p.oid in (
+    to_regprocedure('platform_private.cms_entry_default_template_gate(uuid,uuid,uuid,uuid)'),
+    to_regprocedure('platform_private.cms_lock_default_template_shared(uuid,uuid)'))),
+  'EDG-07: both DEC-202 helpers are definer-owned with an empty search_path and reachable by no API role');
+select lives_ok($lock$select platform_private.cms_lock_default_template_shared(null, extensions.gen_random_uuid())$lock$,
+  'EDG-08: no stored default is a no-op for the position-3 lock helper');
+select ok((select position('cms_resolve_relation_targets(' in src) between 1 and position('cms_lock_default_template_shared(' in src) - 1
+    and position('cms_lock_default_template_shared(' in src) < position('cms_lock_schema_version_shared(version_row.id)' in src)
+    and position('cms_lock_schema_version_shared(version_row.id)' in src) < position('cms_entry_default_template_gate(' in src)
+    and position('cms_entry_default_template_gate(' in src) < position('cms_complete(reservation.id, entry_id, 201, response);' in src)
+    and (length(src) - length(replace(src, 'cms_lock_schema_version_shared(version_row.id)', '')))
+      / length('cms_lock_schema_version_shared(version_row.id)') = 1
+  from (select prosrc as src from pg_proc where oid = to_regprocedure('platform_private.cms_create_entry(jsonb)')) s),
+  'EDG-09: installed create takes relation targets(2), then the default template(3), then the schema version(4) exactly once, then the resolver gate');

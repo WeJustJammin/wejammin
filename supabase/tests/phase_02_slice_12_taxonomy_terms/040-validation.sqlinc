@@ -1,0 +1,109 @@
+-- CMS-03C-03 request validation: every invalid request value reaches the real command with a unique key and is refused with the exact
+-- token (INVALID_REQUEST for protocol and structure, VALIDATION_FAILED with the member pointer for a value) and NO state change.
+-- BE03c route field validation matrix (CMS-03C-03 rows 372-374, All rows 408-410); contract taxonomy-term.ts.  [P2-S12-AC-017]
+select pg_temp.s12tt_mark('before-validation');
+create temp table s12tt_cases(
+  label text primary key, action text not null, term_key text not null, patch jsonb not null default '{}'::jsonb,
+  unset text[] not null default array[]::text[], expected text not null) on commit drop;
+
+-- protocol and structure ------------------------------------------------------------------------------------------------------------
+insert into s12tt_cases(label, action, term_key, unset, expected)
+select 'missing-' || member, 'create', 'val-term', array[member], 'P0001:INVALID_REQUEST'
+  from unnest(array['taxonomyId', 'action', 'termKey', 'parentId', 'survivorId', 'labels', 'aliases', 'expectedVersion', 'ifMatch',
+                    'idempotencyKey']) member;
+insert into s12tt_cases(label, action, term_key, patch, expected)
+select 'extra-' || member, 'create', 'val-term', jsonb_build_object(member, 'caller-controlled'), 'P0001:INVALID_REQUEST'
+  from unnest(array['ownerId', 'state', 'lifecycle', 'taxonomyVersionId', 'createdBy', 'version', 'successorId', 'surprise']) member;
+insert into s12tt_cases(label, action, term_key, patch, expected)
+select 'taxonomy-id-' || cases.label, 'create', 'val-term', jsonb_build_object('taxonomyId', cases.value), 'P0001:INVALID_REQUEST'
+  from (values ('text', '"not-a-uuid"'::jsonb), ('number', '7'::jsonb), ('null', 'null'::jsonb), ('empty', '""'::jsonb), ('object', '{}'::jsonb)) cases(label, value);
+insert into s12tt_cases(label, action, term_key, patch, expected)
+select 'version-' || cases.label, 'create', 'val-term', jsonb_build_object('expectedVersion', cases.value, 'ifMatch', cases.value), 'P0001:INVALID_REQUEST'
+  from (values ('text-null', '"null"'::jsonb), ('json-null', 'null'::jsonb), ('number', '1'::jsonb), ('boolean', 'true'::jsonb), ('empty', '""'::jsonb),
+               ('zero', '"0"'::jsonb), ('negative', '"-1"'::jsonb), ('leading-zero', '"01"'::jsonb), ('decimal', '"1.0"'::jsonb),
+               ('exponent', '"1e0"'::jsonb), ('space', '" 1"'::jsonb), ('overflow', '"9223372036854775808"'::jsonb),
+               ('array', '[]'::jsonb), ('object', '{}'::jsonb)) cases(label, value);
+insert into s12tt_cases(label, action, term_key, patch, expected) values
+  ('if-match-differs', 'create', 'val-term', '{"expectedVersion":"1","ifMatch":"2"}', 'P0001:INVALID_REQUEST'),
+  ('if-match-null', 'create', 'val-term', '{"ifMatch":null}', 'P0001:INVALID_REQUEST'),
+  ('if-match-number', 'create', 'val-term', '{"ifMatch":1}', 'P0001:INVALID_REQUEST');
+insert into s12tt_cases(label, action, term_key, patch, expected)
+select 'idempotency-' || cases.label, 'create', 'val-term', jsonb_build_object('idempotencyKey', cases.value), 'P0001:INVALID_REQUEST'
+  from (values ('short', to_jsonb(repeat('a', 7))), ('long', to_jsonb(repeat('a', 129))), ('unicode', '"abcdefghé"'::jsonb),
+               ('control', to_jsonb(E'abcdefgh\n'::text)), ('null', 'null'::jsonb), ('numeric', '12345678'::jsonb)) cases(label, value);
+
+-- values (with the member pointer) ----------------------------------------------------------------------------------------------------
+insert into s12tt_cases(label, action, term_key, patch, expected)
+select 'action-' || cases.label, 'create', 'val-term', jsonb_build_object('action', cases.value), 'P0001:VALIDATION_FAILED#["/action"]'
+  from (values ('unknown', '"upsert"'::jsonb), ('case', '"CREATE"'::jsonb), ('empty', '""'::jsonb), ('number', '1'::jsonb),
+               ('null', 'null'::jsonb), ('reactivate', '"reactivate"'::jsonb), ('move', '"move"'::jsonb)) cases(label, value);
+insert into s12tt_cases(label, action, term_key, patch, expected)
+select 'key-' || cases.label, 'create', 'val-term', jsonb_build_object('termKey', cases.value), 'P0001:VALIDATION_FAILED#["/termKey"]'
+  from (values ('empty', '""'::jsonb), ('one', '"a"'::jsonb), ('long', to_jsonb(repeat('a', 65))), ('upper', '"Ab"'::jsonb),
+               ('number-prefix', '"1a"'::jsonb), ('underscore', '"aa_bb"'::jsonb), ('space', '"aa bb"'::jsonb), ('unicode', '"aé"'::jsonb),
+               ('number', '12'::jsonb), ('null', 'null'::jsonb), ('object', '{}'::jsonb)) cases(label, value);
+insert into s12tt_cases(label, action, term_key, patch, expected)
+select 'parent-' || cases.label, 'create', 'val-term', jsonb_build_object('parentId', cases.value), 'P0001:VALIDATION_FAILED#["/parentId"]'
+  from (values ('text', '"not-a-uuid"'::jsonb), ('number', '5'::jsonb), ('object', '{}'::jsonb), ('empty', '""'::jsonb)) cases(label, value);
+insert into s12tt_cases(label, action, term_key, patch, expected) values
+  ('survivor-on-create', 'create', 'val-term', '{"survivorId":"a9186000-0000-4000-8000-0000000000aa"}', 'P0001:VALIDATION_FAILED#["/survivorId"]'),
+  ('survivor-on-rename', 'rename', 'val-term', '{"survivorId":"a9186000-0000-4000-8000-0000000000aa"}', 'P0001:VALIDATION_FAILED#["/survivorId"]'),
+  ('survivor-on-alias', 'alias', 'val-term', '{"survivorId":"a9186000-0000-4000-8000-0000000000aa"}', 'P0001:VALIDATION_FAILED#["/survivorId"]'),
+  ('survivor-on-deprecate', 'deprecate', 'val-term', '{"survivorId":"a9186000-0000-4000-8000-0000000000aa"}', 'P0001:VALIDATION_FAILED#["/survivorId"]'),
+  ('merge-without-survivor', 'merge', 'val-term', '{}', 'P0001:VALIDATION_FAILED#["/survivorId"]'),
+  ('merge-survivor-text', 'merge', 'val-term', '{"survivorId":"nope"}', 'P0001:VALIDATION_FAILED#["/survivorId"]'),
+  ('merge-survivor-number', 'merge', 'val-term', '{"survivorId":4}', 'P0001:VALIDATION_FAILED#["/survivorId"]');
+-- parentId on alias, deprecate and merge is NOT a protocol fault: the contract allows it on every action and BE03c 379/381, FE03 1792 forbid it
+-- on none; it is validated like any parent and never applied (060-hierarchy).
+-- labels
+insert into s12tt_cases(label, action, term_key, patch, expected)
+select 'labels-' || cases.label, 'create', 'val-term', jsonb_build_object('labels', cases.value), cases.expected
+  from (values
+    ('empty', '[]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels"]'),
+    ('null', 'null'::jsonb, 'P0001:VALIDATION_FAILED#["/labels"]'),
+    ('object', '{}'::jsonb, 'P0001:VALIDATION_FAILED#["/labels"]'),
+    ('string', '"Alpha"'::jsonb, 'P0001:VALIDATION_FAILED#["/labels"]'),
+    ('entry-string', '["Alpha"]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0"]'),
+    ('entry-no-locale', '[{"label":"Alpha"}]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0"]'),
+    ('entry-no-label', '[{"locale":"en-US"}]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0"]'),
+    ('entry-extra', '[{"locale":"en-US","label":"Alpha","note":"x"}]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0"]'),
+    ('locale-short', '[{"locale":"x","label":"Alpha"}]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0/locale"]'),
+    ('locale-underscore', '[{"locale":"en_US","label":"Alpha"}]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0/locale"]'),
+    ('locale-trailing-dash', '[{"locale":"en-","label":"Alpha"}]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0/locale"]'),
+    ('locale-number', '[{"locale":5,"label":"Alpha"}]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0/locale"]'),
+    ('label-empty', '[{"locale":"en-US","label":""}]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0/label"]'),
+    ('label-161', jsonb_build_array(jsonb_build_object('locale', 'en-US', 'label', repeat('L', 161))), 'P0001:VALIDATION_FAILED#["/labels/0/label"]'),
+    ('label-number', '[{"locale":"en-US","label":5}]'::jsonb, 'P0001:VALIDATION_FAILED#["/labels/0/label"]'),
+    ('label-not-nfc', jsonb_build_array(jsonb_build_object('locale', 'en-US', 'label', 'Cafe' || chr(769))), 'P0001:VALIDATION_FAILED#["/labels/0/label"]'),
+    ('second-entry-bad', jsonb_build_array(jsonb_build_object('locale', 'en-US', 'label', 'Alpha'), jsonb_build_object('locale', 'fr-FR', 'label', '')),
+       'P0001:VALIDATION_FAILED#["/labels/1/label"]'),
+    ('duplicate-locale', '[{"locale":"en-US","label":"Alpha"},{"locale":"en-US","label":"Beta"}]'::jsonb,
+       'P0001:VALIDATION_FAILED#["/labels/1/locale"]'),
+    ('sixty-five', (select jsonb_agg(jsonb_build_object('locale', 'x' || chr(97 + i / 26) || chr(97 + i % 26), 'label', 'L'))
+                      from generate_series(0, 64) i), 'P0001:VALIDATION_FAILED#["/labels"]')
+  ) cases(label, value, expected);
+-- aliases
+insert into s12tt_cases(label, action, term_key, patch, expected)
+select 'aliases-' || cases.label, 'create', 'val-term', jsonb_build_object('aliases', cases.value), cases.expected
+  from (values
+    ('null', 'null'::jsonb, 'P0001:VALIDATION_FAILED#["/aliases"]'),
+    ('object', '{}'::jsonb, 'P0001:VALIDATION_FAILED#["/aliases"]'),
+    ('string', '"first"'::jsonb, 'P0001:VALIDATION_FAILED#["/aliases"]'),
+    ('empty-member', '[""]'::jsonb, 'P0001:VALIDATION_FAILED#["/aliases/0"]'),
+    ('number-member', '[5]'::jsonb, 'P0001:VALIDATION_FAILED#["/aliases/0"]'),
+    ('null-member', '[null]'::jsonb, 'P0001:VALIDATION_FAILED#["/aliases/0"]'),
+    ('161-member', jsonb_build_array('ok', repeat('a', 161)), 'P0001:VALIDATION_FAILED#["/aliases/1"]'),
+    ('sixty-five', (select jsonb_agg('alias-' || i) from generate_series(1, 65) i), 'P0001:VALIDATION_FAILED#["/aliases"]')
+  ) cases(label, value, expected);
+
+select pg_temp.s12tt_act(label, 'owner', pg_temp.s12tt_lineage('vf'), action, term_key, patch, unset) from s12tt_cases order by label;
+select is(pg_temp.s12tt_oc(c.label), c.expected, 'validation case ' || c.label || ' [P2-S12-AC-017]') from s12tt_cases c order by c.label;
+select ok(pg_temp.s12tt_same('before-validation'),
+  'no validation refusal changed a term, label, assignment, audit, outbox, idempotency or job row (' || (select count(*) from s12tt_cases)::text || ' cases) [P2-S12-AC-017]');
+
+-- a request that is not an object ---------------------------------------------------------------------------------------------------
+select pg_temp.s12ga_rpc('body-array', 'platform_api.cms_act_taxonomy_term', 'owner', '[]'::jsonb);
+select pg_temp.s12ga_rpc('body-scalar', 'platform_api.cms_act_taxonomy_term', 'owner', '"x"'::jsonb);
+select is(pg_temp.s12tt_oc('body-array'), 'P0001:INVALID_REQUEST', 'an array body is INVALID_REQUEST [P2-S12-AC-017]');
+select is(pg_temp.s12tt_oc('body-scalar'), 'P0001:INVALID_REQUEST', 'a scalar body is INVALID_REQUEST [P2-S12-AC-017]');
+select ok(pg_temp.s12tt_same('before-validation'), 'the non-object bodies changed nothing [P2-S12-AC-017]');

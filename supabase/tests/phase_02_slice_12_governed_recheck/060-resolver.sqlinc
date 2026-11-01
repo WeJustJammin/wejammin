@@ -1,0 +1,32 @@
+-- AC-202: the producers' event resolver over REAL committed outbox events (the DEC-108 schema activation of 040, the signed block
+-- lifecycle changes of 050 and the CMS-03A-17 revocation of 030).  Run last so every event exists.
+create or replace function pg_temp.s12gr_resolve(p_event uuid) returns jsonb language plpgsql as $body$
+declare v_role text := current_setting('role'); v_out jsonb;
+begin
+  execute 'set local role service_role';
+  begin
+    v_out := platform_api.cms_governed_recheck_resolve_event(p_event);
+  exception when others then
+    v_out := jsonb_build_object('error', sqlstate || ':' || sqlerrm);
+  end;
+  perform set_config('role', v_role, true);
+  return v_out;
+end;
+$body$;
+create or replace function pg_temp.s12gr_latest_event(p_type text) returns platform_private.outbox_events
+language sql stable as $body$
+  select e.* from platform_private.outbox_events e where e.event_type = p_type order by e.occurred_at desc, e.id desc limit 1 $body$;
+
+select is(pg_temp.s12gr_resolve((pg_temp.s12gr_latest_event('cms.schema.activated.v1')).id),
+  jsonb_build_object('found', true, 'kind', 'content_type',
+    'refId', (pg_temp.s12gr_latest_event('cms.schema.activated.v1')).payload->>'schemaVersionId'),
+  'a committed cms.schema.activated.v1 resolves to the content_type dependency lookup of its schema version [P2-S12-AC-202]');
+select is(pg_temp.s12gr_resolve((pg_temp.s12gr_latest_event('cms.block.lifecycle.changed.v1')).id),
+  jsonb_build_object('found', true, 'kind', 'block', 'refId', pg_temp.s09d_resp('gr:blk')->>'id'),
+  'a committed cms.block.lifecycle.changed.v1 resolves to the block dependency lookup of its block version [P2-S12-AC-202]');
+select is(pg_temp.s12gr_resolve((pg_temp.s12gr_latest_event('cms.capability.grant.changed.v1')).id), '{"found": false}'::jsonb,
+  'an event of another family (a capability revocation) is not a governed source: { found: false } [P2-S12-AC-202]');
+select is(pg_temp.s12gr_resolve(extensions.gen_random_uuid()), '{"found": false}'::jsonb,
+  'an absent event row is { found: false } [P2-S12-AC-202]');
+select is(pg_temp.s12gr_resolve(null), jsonb_build_object('error', 'P0001:INVALID_REQUEST'),
+  'a null event id is INVALID_REQUEST [P2-S12-AC-202]');

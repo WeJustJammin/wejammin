@@ -1,16 +1,11 @@
 import { z } from 'zod';
 
-import { JsonValueSchema } from '../api-error.ts';
-import {
-  CmsDefaultModeSchema,
-  CmsFieldKindSchema,
-  CmsLocalizationModeSchema,
-} from '../content-schema-registry/models-enums.ts';
 import { WorkflowPolicyEvidenceSchema } from '../content-schema-registry/models-workflow.ts';
 import {
-  CmsFieldKeySchema,
+  CmsTypeKeySchema,
   CmsUuidSchema,
 } from '../content-schema-registry/primitives.ts';
+import { AuthoringContextFieldSchema } from './authoring-context-field.ts';
 import { Bcp47Schema } from './primitives.ts';
 import {
   SchemaArtifactEvidenceSchema,
@@ -47,11 +42,15 @@ export const AuthoringContextApiRequestSchema = z.strictObject({
  * carries the exact schema artifact, validator refs, editorial workflow
  * policy, and activation evidence the author is allowed to see -- and never a
  * registry-wide read, ownership identifier, or private schema authority.
+ * `typeKey` is the server-derived stable key of the owning content type (never
+ * a display label or a caller member), so a selector can round-trip the
+ * projection without a registry read.
  */
 export const AuthoringContextTypeSchema = z
   .strictObject({
     contentTypeId: CmsUuidSchema,
     contentTypeVersionId: CmsUuidSchema,
+    typeKey: CmsTypeKeySchema,
     label: z.string().trim().min(1).max(120),
     sourceLocale: Bcp47Schema,
     defaultLocale: Bcp47Schema,
@@ -64,38 +63,12 @@ export const AuthoringContextTypeSchema = z
   .readonly();
 
 /**
- * BE03b AuthoringContextFieldEditorConfig: the safe editor affordances.
- * Label and help text are trimmed, the order is a bounded non-negative
- * integer, and any unknown key is refused.
+ * BE03b AuthoringContextField: the author-safe field-definition projection is
+ * defined in `authoring-context-field.ts` so this module stays within the
+ * 150-line schema cap; re-exporting it keeps the same singleton object visible
+ * to every existing consumer and to the public barrel.
  */
-const authoringContextFieldEditorConfigSchema = z
-  .strictObject({
-    label: z.string().trim().min(1).max(120),
-    helpText: z.string().trim().max(500).optional(),
-    order: z.number().int().min(0).max(10_000),
-  })
-  .readonly();
-
-/**
- * BE03b AuthoringContextField: the author-safe field-definition projection.
- * Constraints and the relation definition are bounded JSON, defaultValue is
- * nullable JSON that may be omitted, and the closed kind/default/localization
- * vocabularies are reused from the registry so the projection cannot drift.
- */
-export const AuthoringContextFieldSchema = z
-  .strictObject({
-    stableFieldId: CmsUuidSchema,
-    key: CmsFieldKeySchema,
-    kind: CmsFieldKindSchema,
-    constraints: z.record(z.string(), JsonValueSchema),
-    required: z.boolean(),
-    defaultMode: CmsDefaultModeSchema,
-    defaultValue: JsonValueSchema.nullable().optional(),
-    localizationMode: CmsLocalizationModeSchema,
-    editorConfig: authoringContextFieldEditorConfigSchema,
-    relationDefinition: JsonValueSchema.nullable(),
-  })
-  .readonly();
+export { AuthoringContextFieldSchema };
 
 /**
  * BE03b AuthoringContextResource: the author-safe preparation envelope.  It

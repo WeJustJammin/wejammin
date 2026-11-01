@@ -1,0 +1,121 @@
+-- CMS-03C-15 typed refusals, each with the exact token, the DETAIL the transport reads and NO effect on any captured store.
+-- Order: envelope (store-free) -> concealment (404) -> one entry -> capability (403) -> idempotency -> entry CAS -> revision editable ->
+-- per instance head and CAS and eligibility -> target version -> collisions and choices.  BE03c 400, 1268, 1304, 1342, 1476.
+-- [P2-S12-AC-119 .. AC-122]
+create or replace function pg_temp.s12puc_pick(p_id uuid, p_version text, p_choices jsonb default null) returns jsonb language sql stable as $body$
+  select jsonb_build_object('instanceId', p_id, 'expectedVersion', p_version)
+    || case when p_choices is null then '{}'::jsonb else jsonb_build_object('choices', p_choices) end $body$;
+create or replace function pg_temp.s12puc_fn() returns text language sql immutable as $body$ select 'platform_api.cms_apply_pattern_update' $body$;
+
+-- concealment and authority -----------------------------------------------------------------------------------------------------------------
+select * from pg_temp.s12pu_refused('r-hidden-owner', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-r-hidden-0001', 2, null, 'other'),
+  'NOT_FOUND', null, 'other');
+select * from pg_temp.s12pu_refused('r-absent', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12puc_pick('a9120000-0000-4000-8000-0000000000dd', '1')), 's12pu-r-absent-0001', 2),
+  'NOT_FOUND');
+select * from pg_temp.s12pu_refused('r-one-absent', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero'),
+    pg_temp.s12puc_pick('a9120000-0000-4000-8000-0000000000dd', '1')), 's12pu-r-oneabs-0001', 2),
+  'NOT_FOUND');
+select ok((select a.message = b.message and a.detail is not distinct from b.detail and a.message = c.message and a.detail is not distinct from c.detail
+    from s12pu_out a, s12pu_out b, s12pu_out c where a.label = 'r-hidden-owner' and b.label = 'r-absent' and c.label = 'r-one-absent'),
+  'a hidden instance, an absent one and one absent among visible ones are the same uniform 404: nothing says which instance was concealed');
+select * from pg_temp.s12pu_refused('r-no-edit', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-r-noedit-0001', 2, null, 'designer2'),
+  'capability_missing', null, 'designer2');
+select pg_temp.s12pu_call('r-anon', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-r-anon-0001', 2) || jsonb_build_object('context', '{}'::jsonb),
+  'anonymous');
+select is(pg_temp.s12pu_oc('r-anon'), 'P0001:UNAUTHENTICATED', 'a request without a verified human context is 401 UNAUTHENTICATED');
+select * from pg_temp.s12pu_refused('r-two-entries', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero'), pg_temp.s12pu_target('ap11', '/hero')), 's12pu-r-two-0001', 2),
+  'VALIDATION_FAILED', '["/instances/1/instanceId"]'::jsonb);
+select pg_temp.s12pu_update('r-acl-anon', pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-r-acl-0001', 2), 'owner', 'anon');
+select pg_temp.s12pu_update('r-acl-authenticated', pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-r-acl-0002', 2), 'owner', 'authenticated');
+select is(pg_temp.s12pu_state('r-acl-anon') || '/' || pg_temp.s12pu_state('r-acl-authenticated'), '42501/42501',
+  'the real anon and authenticated database roles cannot execute the transport [AC-261]');
+select ok((select bool_and(before_rows = after_rows and call_role = requested_role) from s12pu_out where label like 'r-acl-%'), 'the ACL probes ran as those roles and wrote nothing');
+
+-- compare-and-swap: the entry aggregate version, each instance's own version, and the head of the path ---------------------------------------
+select * from pg_temp.s12pu_refused('r-entry-stale', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-r-estale-0001', 2, '99'),
+  'VERSION_MISMATCH', jsonb_build_object('expectedVersion', '99', 'currentVersion', pg_temp.s12pl_version('ap10')));
+select * from pg_temp.s12pu_refused('r-instance-stale', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12puc_pick(pg_temp.s12pu_head('ap10', '/hero'), '7')), 's12pu-r-istale-0001', 2),
+  'VERSION_MISMATCH', jsonb_build_object('expectedVersion', '7', 'currentVersion', '1', 'instanceId', pg_temp.s12pu_head('ap10', '/hero')));
+select * from pg_temp.s12pu_refused('r-instance-old-row', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap1', 'accept', jsonb_build_array(pg_temp.s12puc_pick(
+    (select id from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('ap1') and path = '/hero' and version = 1), '1')),
+    's12pu-r-oldrow-0001', 3),
+  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+-- R1-007: BE03c 410 and 1416 (DEC-193) say a named row that is not the newest version of its path is 422
+-- COMPOSITION_VALIDATION_FAILED at /instances/{n}/instanceId; 409 is only the stale expectedVersion of the HEAD row.
+select * from pg_temp.s12pu_refused('r-instance-old-row-detach', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap1', 'detach', jsonb_build_array(pg_temp.s12puc_pick(
+    (select id from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('ap1') and path = '/hero' and version = 1), '1')),
+    's12pu-r-oldrow-0002'),
+  'VALIDATION_FAILED', '["/instances/0/instanceId"]'::jsonb);
+
+-- revision editability (DEC-176): an open review, an archived entry ---------------------------------------------------------------------------
+select pg_temp.s12pl_review('ap12', timestamptz '2026-10-08T12:00:00Z');
+select is(platform_private.cms_revision_effective_state(pg_temp.s12pl_rev('ap12')), 'submitted', 'setup: an open review makes the current revision effective submitted');
+select * from pg_temp.s12pu_refused('r-submitted', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap12', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap12', '/hero')), 's12pu-r-subm-0001', 2),
+  'revision_not_editable', '["/instances/0/instanceId"]'::jsonb);
+select * from pg_temp.s12pu_refused('r-submitted-detach', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap12', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap12', '/hero')), 's12pu-r-subm-0002'),
+  'revision_not_editable', '["/instances/0/instanceId"]'::jsonb);
+select set_config('app.cms_rpc', 'true', true);
+update platform_private.cms_content_entries set lifecycle = 'archived' where id = pg_temp.s12pl_entry_id('ap18');
+select * from pg_temp.s12pu_refused('r-archived', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap18', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap18', '/hero')), 's12pu-r-arch-0001', 2),
+  'revision_not_editable', '["/instances/0/instanceId"]'::jsonb);
+
+-- the target: the latest ACTIVE COMPATIBLE version above the pinned one --------------------------------------------------------------------------
+select * from pg_temp.s12pu_refused('t-not-latest', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-t-nl-0001', 3),
+  'pattern_version_not_active', '["/targetPatternVersion"]'::jsonb);
+select * from pg_temp.s12pu_refused('t-not-above', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-t-na-0001', 1),
+  'pattern_version_not_active', '["/targetPatternVersion"]'::jsonb);
+select * from pg_temp.s12pu_refused('t-superseded', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ver3', 'accept', jsonb_build_array(pg_temp.s12pu_target('ver3', '/item')), 's12pu-t-sup-0001', 2),
+  'pattern_version_not_active', '["/targetPatternVersion"]'::jsonb);
+select * from pg_temp.s12pu_refused('t-incompatible', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('inc1', 'accept', jsonb_build_array(pg_temp.s12pu_target('inc1', '/item')), 's12pu-t-inc-0001', 2),
+  'pattern_version_not_active', '["/targetPatternVersion"]'::jsonb);
+select * from pg_temp.s12pu_refused('t-draft', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('fd1', 'accept', jsonb_build_array(pg_temp.s12pu_target('fd1', '/item')), 's12pu-t-draft-0001', 2),
+  'pattern_version_not_active', '["/targetPatternVersion"]'::jsonb);
+select * from pg_temp.s12pu_refused('t-newest-equal', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('nu1', 'accept', jsonb_build_array(pg_temp.s12pu_target('nu1', '/hero')), 's12pu-t-nu-0001', 2),
+  'pattern_version_not_active', '["/targetPatternVersion"]'::jsonb);
+select * from pg_temp.s12pu_refused('t-unknown-version', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero')), 's12pu-t-unk-0001', 99),
+  'pattern_version_not_active', '["/targetPatternVersion"]'::jsonb);
+
+-- collisions and choices ----------------------------------------------------------------------------------------------------------------------
+select * from pg_temp.s12pu_refused('c-bulk-1', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap4', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap4', '/hero'), pg_temp.s12pu_target('ap4', '/cta')), 's12pu-c-bulk1-0001', 2),
+  'diff_has_collisions', '["/instances/0/instanceId"]'::jsonb);
+select * from pg_temp.s12pu_refused('c-bulk-2', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap4', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap4', '/cta'), pg_temp.s12pu_target('ap4', '/hero')), 's12pu-c-bulk2-0001', 2),
+  'diff_has_collisions', '["/instances/1/instanceId"]'::jsonb);
+select * from pg_temp.s12pu_refused('c-missing', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap4', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap4', '/hero')), 's12pu-c-miss-0001', 2),
+  'VALIDATION_FAILED', '["/instances/0/choices"]'::jsonb);
+select * from pg_temp.s12pu_refused('c-partial', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('dif4', 'accept', jsonb_build_array(pg_temp.s12pu_target('dif4', '/hero', '[{"path":"/hero","choice":"yours"}]'::jsonb)), 's12pu-c-part-0001', 2),
+  'VALIDATION_FAILED', '["/instances/0/choices"]'::jsonb);
+select * from pg_temp.s12pu_refused('c-not-colliding', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap4', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap4', '/hero',
+    '[{"path":"/hero/title","choice":"yours"},{"path":"/hero","choice":"yours"}]'::jsonb)), 's12pu-c-nc-0001', 2),
+  'VALIDATION_FAILED', '["/instances/0/choices/1/path"]'::jsonb);
+select * from pg_temp.s12pu_refused('c-not-in-diff', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap4', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap4', '/hero',
+    '[{"path":"/hero/title","choice":"yours"},{"path":"/hero/note","choice":"yours"}]'::jsonb)), 's12pu-c-nid-0001', 2),
+  'VALIDATION_FAILED', '["/instances/0/choices/1/path"]'::jsonb);
+select * from pg_temp.s12pu_refused('c-no-collision-at-all', pg_temp.s12puc_fn(),
+  pg_temp.s12pu_update_request('ap10', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap10', '/hero', '[{"path":"/hero","choice":"yours"}]'::jsonb)), 's12pu-c-nca-0001', 2),
+  'VALIDATION_FAILED', '["/instances/0/choices/0/path"]'::jsonb);

@@ -1,0 +1,39 @@
+-- Everything the compatibility check does not touch is byte-identical to the applied body, so no previously
+-- returnable digest can change.  The expected md5 values are computed by script from the applied 20261013300400 body
+-- with the two promoted patches (20261014040000, 20261014080000) applied to the text, NOT from the function under
+-- test.  The check sits between the pattern loop and the closing fold.
+create temp table fix3_digest_src(src text not null) on commit drop;
+insert into fix3_digest_src
+select proc.prosrc from pg_catalog.pg_proc proc
+ where proc.oid = 'platform_private.cms_governed_current_digest(text,uuid,jsonb)'::regprocedure;
+select is(
+  (select md5(substr(src, 1, strpos(src, 'elsif p_kind = ''pattern_version'' then') - 1)) from fix3_digest_src),
+  '28ad23e75b0b273a89e9e72c092f8422',
+  'the template branch and declarations are byte-identical to the applied body [BE03c digest invariants]');
+select is(
+  (select md5(substr(src, strpos(src, 'elsif p_kind = ''pattern_version'' then'),
+      strpos(src, '    end loop;' || chr(10)) + length('    end loop;' || chr(10))
+        - strpos(src, 'elsif p_kind = ''pattern_version'' then'))) from fix3_digest_src),
+  '3d38a260d6ca31251a3c8dbbc45a818d',
+  'the pattern block loop (registry, lock, withdrawn guard, tuple) is byte-identical to the patched applied body [BE03c digest invariants]');
+select is(
+  (select md5(substr(src, strpos(src, '    return platform_private.cms_jcs_sha256(tuples);'))) from fix3_digest_src),
+  'd3efc21946cb1889ea6a07b482c5b9af',
+  'the fold return and the taxonomy fall-through are byte-identical to the applied body [BE03c digest invariants]');
+select ok((select src ~ ('    end loop;' || chr(10) || '    if not platform_private\.cms_pattern_blocks_compatible\(\s*p_owner_id, p_subject->''blockTree'', '
+                  || 'coalesce\(p_subject->''typeIds'', ''\[\]''::pg_catalog\.jsonb\)\) then\s+raise exception ''VALIDATION_FAILED'' '
+                  || 'using errcode = ''P0001'', detail = ''\["/blockTree"\]'';\s+end if;' || chr(10)
+                  || '    return platform_private\.cms_jcs_sha256\(tuples\);')
+            from fix3_digest_src),
+  'catalog source: the compatibility check sits after the loop and before the fold, with the producer refusal [BE03c 1361]');
+
+-- The helper the check calls is definer-owned (the digest function, owned by the same role, may execute it) and
+-- reachable by no API role.
+select is((select proc.proowner::regrole::text || '|' || proc.prosecdef::text
+             from pg_catalog.pg_proc proc
+            where proc.oid = 'platform_private.cms_pattern_blocks_compatible(uuid,jsonb,jsonb)'::regprocedure),
+  'wejammin_cms_definer|true', 'the compatibility helper stays definer-owned');
+select ok(not pg_catalog.has_function_privilege('anon', 'platform_private.cms_pattern_blocks_compatible(uuid,jsonb,jsonb)'::regprocedure, 'EXECUTE')
+  and not pg_catalog.has_function_privilege('authenticated', 'platform_private.cms_pattern_blocks_compatible(uuid,jsonb,jsonb)'::regprocedure, 'EXECUTE')
+  and not pg_catalog.has_function_privilege('service_role', 'platform_private.cms_pattern_blocks_compatible(uuid,jsonb,jsonb)'::regprocedure, 'EXECUTE'),
+  'no API role can execute the compatibility helper');

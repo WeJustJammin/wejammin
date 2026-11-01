@@ -1,7 +1,9 @@
 import type { JsonValue } from '@wejammin/contracts';
 import * as React from 'react';
 
-import CmsFieldEditor from '../cms-editorial-fields/CmsFieldEditor';
+import CmsFieldEditor, {
+  type CmsFieldEditorProps,
+} from '../cms-editorial-fields/CmsFieldEditor';
 import CmsFieldValueView from '../cms-editorial-fields/CmsFieldValueView';
 import type { CmsFieldDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
 import type { CmsFieldIssue } from '../cms-editorial-fields/cms-field-issue';
@@ -18,6 +20,8 @@ export interface CmsEditorialConflictPathProps {
   readonly choice: CmsEditorialConflictChoiceState;
   readonly issues: readonly CmsFieldIssue[];
   readonly disabled: boolean;
+  /** The selector scope of a taxonomy field's explicit control; absent otherwise. */
+  readonly taxonomyContext?: CmsFieldEditorProps['taxonomyContext'];
   readonly onChoose: (choice: CmsEditorialConflictChoice) => void;
   readonly onExplicit: (value: JsonValue | null) => void;
   readonly onInputError: (message: string | null) => void;
@@ -51,6 +55,7 @@ export default function CmsEditorialConflictPath({
   choice,
   issues,
   disabled,
+  taxonomyContext,
   onChoose,
   onExplicit,
   onInputError,
@@ -106,6 +111,7 @@ export default function CmsEditorialConflictPath({
             descriptor={{ ...descriptor, fieldId: `${path.fieldId}-explicit` }}
             value={choice.explicit}
             issues={[]}
+            taxonomyContext={taxonomyContext}
             onChange={onExplicit}
             onInputError={onInputError}
           />

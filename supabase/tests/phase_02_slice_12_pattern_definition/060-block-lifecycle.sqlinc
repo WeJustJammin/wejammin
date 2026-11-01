@@ -1,0 +1,24 @@
+-- The real signed lifecycle command requires supported -> deprecated ->
+-- withdrawn. Snapshots start after these setup mutations. No pattern/type
+-- lifecycle or release evidence is forged for the negative case.
+select pg_temp.p_advance('s12pd:block-deprecate',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('s12pd:block')->>'id')::uuid,'supported','deprecated'));
+select is(pg_temp.s09d_outcome('s12pd:block-deprecate'),'OK',
+  'setup: ordinary signed lifecycle command deprecates the block');
+-- BE03c 396/1361: a deprecated block is still admitted (only a withdrawn one is refused); the recomputed
+-- digest records the block's current lifecycle.
+select pg_temp.s12pd_run('deprecated-block',pg_temp.s12pd_request('s12pd-deprecated',
+  pg_temp.s12pd_forest(1),null,'s12pd-deprecated'));
+select is(pg_temp.s12pd_state('deprecated-block'),'00000',
+  'a deprecated (not withdrawn) block is admitted to a new draft [P2-S12-AC-101]');
+select is(pg_temp.s12pd_body('deprecated-block')->>'blockRegistryDigest',
+  pg_temp.s12pd_expected_digest('deprecated'),
+  'the registry digest records the deprecated lifecycle of the block [P2-S12-AC-193]');
+select is(pg_temp.s12pd_row('deprecated-block')->>'state','draft',
+  'a draft over a deprecated block is stored as a draft [P2-S12-AC-100]');
+select pg_temp.p_advance('s12pd:block-withdraw',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('s12pd:block')->>'id')::uuid,'deprecated','withdrawn'));
+select is(pg_temp.s09d_outcome('s12pd:block-withdraw'),'OK',
+  'setup: ordinary signed lifecycle command withdraws the block');
+select * from pg_temp.s12pd_refused('withdrawn-block',pg_temp.s12pd_request('s12pd-withdrawn',
+  pg_temp.s12pd_forest(1),null,'s12pd-withdrawn'),'VALIDATION_FAILED');

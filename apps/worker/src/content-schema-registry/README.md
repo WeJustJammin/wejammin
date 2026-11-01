@@ -22,10 +22,22 @@ Database RPCs remain the transaction and audit authority.
 - `migration-worker-resolved-admission.ts` owns shared post-read identity/state
   admission; `migration-worker-event-recovery.ts` owns unchanged legacy ACK/release
   recovery. The legacy claim/read/parse path delegates with its original context.
-- `claimed-schema-migration-preparation.ts` is an unwired private acquired-receipt
-  entry: one complete caller-bound resolve, plan-derived CAS, retained report and
-  request, trusted dry-run execution. Controlled entry and legacy-equivalence
-  tests do not establish persisted dispatch, continuation or live authority.
+- `claimed-schema-migration-preparation.ts` is the private acquired-receipt entry:
+  one complete caller-bound resolve, plan-derived CAS, retained report and
+  request, trusted dry-run execution. It is wired to the production Job path
+  (tracked boundary #128, DEC-183, DEC-184): `process` accepts the private BE00
+  lease control and `exhaust` is the last-delivery rollback.
+  `claimed-schema-migration-preparation-job-result.ts` is the total, fail-closed
+  map from the entry result to a BE00 Job disposition (BE03a "Preparation Job
+  disposition"); `-job-effect.ts` composes one delivery (the map, then on the fourth
+  delivery the rollback and `MIGRATION_RETRIES_EXHAUSTED`); `-lease-fence.ts` awaits a
+  lease checkpoint before each of eight state-advancing worker RPCs and latches the
+  first lost one; `-exhaustion.ts` re-reads the plan through the Job-fenced claimed
+  read, takes or claims the plan lease and makes the terminal rollback;
+  `-job-payload.ts` derives the trusted job payload. The Worker-level composition
+  per environment is `../production-schema-migration-preparation-claimed.ts`.
+  A preparation completes inside the four BE00 deliveries only for at most
+  `256 x maxBatchesPerInvocation` source rows (the capacity test pins the formula).
 - `migration-worker-activation.ts` preserves activation/reconciliation/rollback
   and durable event-ACK continuation, separate from pre-review preparation.
 - `migration-worker-input-schemas.ts` is the stable facade over the focused
@@ -133,6 +145,10 @@ Claimed preparation QA is kept separate from the legacy reader:
   unwired private claim/resolution boundary, cancellation and receipt isolation.
 - `claimed-schema-migration-preparation-stages.test.ts` asserts controlled
   scan/seal/fresh-reclaim/backfill/verification/completion without activation.
+- `claimed-schema-migration-preparation-sim.test-support.ts` is a behavioural model of
+  the plan RPC contract (CAS, leases, page size, transitions, rollback rules) used by
+  the capacity, lease-fence, exhaustion and job-effect tests; it is controlled replies,
+  not SQL authority (the `phase-02-b08-*.apispec.ts` suites prove the real stack).
 - `migration-worker-resolved-admission-equivalence.test.ts` preserves legacy
   identity/terminal ordering, exact ACK/release and rejected in-flight eviction.
 

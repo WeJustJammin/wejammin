@@ -1,0 +1,226 @@
+-- BE03c 520-524/774/1487: expanded choice addresses, NOT stored override keys.
+-- All block receipts, pattern creation/activation and placements are real RPCs.
+create or replace function pg_temp.s12wb_block(p_key text, p_children jsonb,
+  p_title text, p_version integer default 1) returns jsonb language sql immutable as $body$
+  select jsonb_build_object('kind','block','key',p_key,'blockKey','s12pd.block',
+    'blockVersion',p_version,'props',jsonb_build_object('title',p_title),'children',p_children)
+$body$;
+create or replace function pg_temp.s12wb_inner(p_deep_version integer) returns jsonb
+language plpgsql immutable as $body$
+declare node jsonb; n integer;
+begin
+  node := pg_temp.s12wb_block(repeat('g',64),'[]','DEEP',p_deep_version);
+  for n in reverse 6..1 loop
+    node := pg_temp.s12wb_block(repeat(chr(96+n),64),jsonb_build_array(node),'LEVEL'||n);
+  end loop;
+  return jsonb_build_array(node);
+end;
+$body$;
+create or replace function pg_temp.s12wb_ref(p_label text, p_key text) returns jsonb
+language sql stable as $body$
+  select jsonb_build_object('kind','pattern','key',p_key,
+    'patternId',pg_temp.s12pd_body(p_label)->'patternId',
+    'patternVersion',pg_temp.s12pd_body(p_label)->'patternVersion')
+$body$;
+create or replace function pg_temp.s12wb_path() returns text language sql immutable as $body$
+  select '/short/'||repeat('n',64)||string_agg('/'||repeat(chr(96+n),64),'' order by n)
+    from generate_series(1,7) n
+$body$;
+-- Independent canonical ordinal model; no production expander/delta/resolver builds it.
+create or replace function pg_temp.s12wb_expected() returns jsonb language sql immutable as $body$
+  select jsonb_build_object('format','cms.detached_tree.v1','nodes',
+    jsonb_build_array(jsonb_build_object('parent',null,'keySegments',jsonb_build_array('short'),
+      'blockKey','s12pd.block','blockVersion',1,'props',jsonb_build_object('title','ROOT')))
+    || (select jsonb_agg(jsonb_build_object('parent',n-1,
+      'keySegments',case when n=1 then jsonb_build_array(repeat('n',64),repeat('a',64))
+        else jsonb_build_array(repeat(chr(96+n),64)) end,
+      'blockKey','s12pd.block','blockVersion',1,
+      'props',jsonb_build_object('title',case when n=7 then 'DEEP' else 'LEVEL'||n end)) order by n)
+      from generate_series(1,7) n))
+$body$;
+
+select pg_temp.p_register('s12wb:block2',pg_temp.p_block_request('s12pd.block',2,
+  '{"allowedChildren":["s12pd.block"],"slotRules":{"maxDepth":16,"maxNodes":512}}'));
+select is(pg_temp.s09d_outcome('s12wb:block2'),'OK','WB-SETUP: signed block version 2 registers');
+select ok((select count(*)=2 and bool_and(release_verified_at is not null
+  and props_attestation_verified_at is not null) from platform_private.cms_block_definition_versions
+  where block_key='s12pd.block' and block_version in (1,2)),
+  'WB-SETUP: both compared identities have actual verified signed receipts');
+select * from pg_temp.s12pl_pattern('s12wb-inner1','s12wb-inner',pg_temp.s12wb_inner(1));
+select * from pg_temp.s12pl_pattern('s12wb-outer1','s12wb-outer',jsonb_build_array(
+  pg_temp.s12wb_block('short',jsonb_build_array(pg_temp.s12wb_ref('s12wb-inner1',repeat('n',64))),'ROOT')));
+select * from pg_temp.s12pu_place('wb-yours','s12wb-outer1');
+select * from pg_temp.s12pu_place('wb-theirs','s12wb-outer1');
+create temp table s12wb_initial on commit drop as
+select tag,pg_temp.s12pu_row(pg_temp.s12pu_head(tag,'/short')) as row_value,
+  pg_temp.s12pl_version(tag) as entry_version from (values ('wb-yours'),('wb-theirs')) cases(tag);
+select * from pg_temp.s12pl_pattern('s12wb-inner2','s12wb-inner',pg_temp.s12wb_inner(2),null,true,'1');
+select * from pg_temp.s12pl_pattern('s12wb-outer2','s12wb-outer',jsonb_build_array(
+  pg_temp.s12wb_block('short',jsonb_build_array(pg_temp.s12wb_ref('s12wb-inner2',repeat('n',64))),'ROOT')),
+  null,true,'1');
+select is(char_length(pg_temp.s12wb_path()),526,'WB-PREMISE: real descendant address is 526 ASCII characters');
+select is(cardinality(string_to_array(substr(pg_temp.s12wb_path(),2),'/')),9,
+  'WB-PREMISE: nine legal segments, not an over-72 address');
+select ok((select bool_and(row_value->>'path'='/short' and octet_length(row_value->>'path')=6
+  and row_value->'props'='{}'::jsonb and row_value->>'pattern_version'='1') from s12wb_initial),
+  'WB-PREMISE: real old-pin rows have a six-byte stored root and no long override');
+
+create or replace function pg_temp.s12wb_request(p_tag text, p_choice text,
+  p_path text default null, p_actor text default 'owner') returns jsonb language sql volatile as $body$
+  select pg_temp.s12pu_update_request(p_tag,'accept',jsonb_build_array(pg_temp.s12pu_target(p_tag,'/short',
+    jsonb_build_array(jsonb_build_object('path',coalesce(p_path,pg_temp.s12wb_path()),'choice',p_choice)))),
+    's12wb-'||p_tag||'-'||p_choice,2,null,p_actor)
+$body$;
+-- Each helper case independently guards exact availability/signature before dynamic call.
+-- A missing function is explicit TAP FAIL, never setup abort, fabricated result or skip.
+create or replace function pg_temp.s12wb_check(p_label text, p_function text, p_request jsonb,
+  p_error text default null, p_detail jsonb default null) returns setof text language plpgsql as $body$
+declare proc oid; code text:='00000'; msg text; details text; before_rows jsonb:=pg_temp.s12pl_snapshot();
+begin
+  if p_function not in ('cms_pattern_update_check','cms_pattern_placement_check') then
+    raise exception 'unknown writer-boundary helper';
+  end if;
+  proc:=to_regprocedure('platform_private.'||p_function||'(jsonb)');
+  if proc is null or not exists (select 1 from pg_proc where oid=proc and not proretset and prokind='f'
+    and prorettype=case p_function when 'cms_pattern_update_check' then 'void'::regtype else 'text'::regtype end) then
+    return next extensions.fail(p_label||': exact existing private helper is available');
+    return;
+  end if;
+  begin
+    execute format('select platform_private.%I($1)',p_function) using p_request;
+  exception when others then
+    get stacked diagnostics code=returned_sqlstate,msg=message_text,details=pg_exception_detail;
+  end;
+  return next extensions.is(code||coalesce(':'||msg,''),coalesce(p_error,'00000'),p_label||': exact helper outcome');
+  if p_detail is not null then
+    return next extensions.is(case when details ~ '^[\[{]' then details::jsonb end,p_detail,p_label||': exact offending pointer');
+  end if;
+  return next extensions.is(pg_temp.s12pl_snapshot(),before_rows,p_label||': no persistent effects');
+end;
+$body$;
+create temp table s12wb_paths(label text primary key,path text,valid boolean) on commit drop;
+insert into s12wb_paths values
+  ('expanded526',pg_temp.s12wb_path(),true),
+  ('max4680-72',repeat('/'||repeat('a',64),72),true),
+  ('over4680',repeat('/'||repeat('a',64),72)||'a',false),
+  ('over72-short',repeat('/a',73),false),
+  ('segment65','/'||repeat('a',65),false),('uppercase','/Short',false),
+  ('double-slash','/short//leaf',false),('non-ascii','/short/é',false),
+  ('control','/short/'||chr(10),false);
+select is((select char_length(path) from s12wb_paths where label='max4680-72'),4680,
+  'WB-CHECK: exact maximum has 4680 ASCII characters');
+select is((select cardinality(string_to_array(substr(path,2),'/')) from s12wb_paths where label='max4680-72'),72,
+  'WB-CHECK: exact maximum has 72 valid 64-character segments');
+select tap.* from s12wb_paths c cross join lateral pg_temp.s12wb_check('WB-CHECK-'||c.label,
+  'cms_pattern_update_check',pg_temp.s12wb_request('wb-yours','yours',c.path),
+  case when c.valid then null else 'P0001:VALIDATION_FAILED' end,
+  case when c.valid then null else '["/instances/0/choices/0/path"]'::jsonb end) tap;
+select * from pg_temp.s12wb_check('WB-CHECK-duplicate','cms_pattern_update_check',
+  jsonb_set(pg_temp.s12wb_request('wb-yours','yours','/short'),'{instances,0,choices}',
+    '[{"path":"/short","choice":"yours"},{"path":"/short","choice":"theirs"}]'),
+  'P0001:VALIDATION_FAILED','["/instances/0/choices/1/path"]');
+select ok(not has_function_privilege('service_role',to_regprocedure('platform_private.cms_pattern_update_check(jsonb)'),'EXECUTE')
+  and not has_function_privilege('anon',to_regprocedure('platform_private.cms_pattern_update_check(jsonb)'),'EXECUTE')
+  and not has_function_privilege('authenticated',to_regprocedure('platform_private.cms_pattern_update_check(jsonb)'),'EXECUTE'),
+  'WB-SECURITY: widening public choice addresses does not expose the private checker');
+
+-- Public read independently establishes the ONE real structural collision; it
+-- does not supply the expected model or require an artificial 128-path diff.
+select pg_temp.s12pu_diff_head('wb-diff','wb-yours','/short');
+select is(pg_temp.s12pu_oc('wb-diff'),'ok','WB-DIFF: actual public reader accepts the short instance');
+select is(pg_temp.s12pu_body('wb-diff')->'paths',jsonb_build_array(jsonb_build_object(
+  'path',pg_temp.s12wb_path(),'base',jsonb_build_object('blockKey','s12pd.block','blockVersion',1,
+    'props',jsonb_build_object('title','DEEP'),'children','[]'::jsonb),
+  'theirs',jsonb_build_object('blockKey','s12pd.block','blockVersion',2,
+    'props',jsonb_build_object('title','DEEP'),'children','[]'::jsonb),
+  'yours',null,'collision',true,'collisionKind','structure')),
+  'WB-DIFF: exact independent long-address structural collision, without any local override');
+select is(jsonb_build_object('slot',pg_temp.s12pu_body('wb-diff')->'slotPath',
+  'roots',pg_temp.s12pu_body('wb-diff')->'newRoots','count',pg_temp.s12pu_body('wb-diff')->'collisionCount',
+  'target',pg_temp.s12pu_body('wb-diff')->'targetPatternVersion'),
+  '{"slot":"/","roots":[],"count":1,"target":2}'::jsonb,'WB-DIFF: only the intended root/pin/one collision');
+select ok(pg_temp.s12pu_unchanged('wb-diff'),'WB-DIFF: read touches no persistent store');
+
+select * from pg_temp.s12pu_refused('wb-hidden','platform_api.cms_apply_pattern_update',
+  pg_temp.s12wb_request('wb-yours','yours',null,'other'),'NOT_FOUND',null,'other');
+select * from pg_temp.s12pu_refused('wb-no-author','platform_api.cms_apply_pattern_update',
+  pg_temp.s12wb_request('wb-yours','yours',null,'designer2'),'capability_missing',null,'designer2');
+select pg_temp.s12pu_update('wb-denied-'||role_name,pg_temp.s12wb_request('wb-yours','yours'),'owner',role_name)
+  from (values ('anon'),('authenticated')) roles(role_name);
+select tap.* from (values ('anon'),('authenticated')) roles(role_name) cross join lateral (
+  select extensions.is(pg_temp.s12pu_state('wb-denied-'||role_name),'42501',role_name||': public writer EXECUTE denied')
+  union all select extensions.ok(pg_temp.s12pu_unchanged('wb-denied-'||role_name),role_name||': denial changes no store')
+  union all select extensions.ok((select call_role=role_name and role_restored from s12pu_out
+    where label='wb-denied-'||role_name),role_name||': denial used actual role and restored harness role')) tap;
+select * from pg_temp.s12pu_refused('wb-long-unknown','platform_api.cms_apply_pattern_update',
+  pg_temp.s12wb_request('wb-yours','yours',pg_temp.s12wb_path()||'/absent'),
+  'VALIDATION_FAILED','["/instances/0/choices/0/path"]');
+select * from pg_temp.s12pu_refused('wb-too-many-segments','platform_api.cms_apply_pattern_update',
+  pg_temp.s12wb_request('wb-yours','yours',repeat('/a',73)),
+  'VALIDATION_FAILED','["/instances/0/choices/0/path"]');
+
+select pg_temp.s12pu_update('wb-accept-'||choice,pg_temp.s12wb_request('wb-'||choice,choice))
+  from (values ('yours'),('theirs')) answers(choice);
+create or replace function pg_temp.s12wb_result(p_choice text) returns setof text language plpgsql as $body$
+declare v_tag text:='wb-'||p_choice; v_label text:='wb-accept-'||p_choice;
+  actual jsonb:=pg_temp.s12pu_row(pg_temp.s12pu_head(v_tag,'/short')); prior jsonb;
+  body jsonb:=pg_temp.s12pu_body(v_label); item jsonb; expected_pin integer;
+begin
+  select row_value into prior from s12wb_initial where tag=v_tag;
+  expected_pin:=case when p_choice='yours' then 1 else 2 end;
+  item:=body#>'{items,0}';
+  return next extensions.is(pg_temp.s12pu_oc(v_label),'ok',v_label||': real public accept succeeds beyond 512');
+  return next extensions.is(jsonb_build_object('state',actual->'state','mode',actual->'link_mode',
+    'pin',actual->'pattern_version','props',actual->'props','tree',coalesce(actual->'detached_tree','null'::jsonb)),
+    jsonb_build_object('state','active','mode',case when p_choice='yours' then 'detached' else 'linked' end,
+      'pin',expected_pin,'props','{}'::jsonb,'tree',case when p_choice='yours' then pg_temp.s12wb_expected() else 'null'::jsonb end),
+    v_label||': exact resolved canonical tree or linked target, empty overrides and correct provenance');
+  return next extensions.is(jsonb_array_length(pg_temp.s12pu_chain(v_tag,'/short')),2,v_label||': exactly one append');
+  return next extensions.is(pg_temp.s12pu_row((prior->>'id')::uuid),prior,v_label||': old row stays byte-identical');
+  return next extensions.ok(actual->'path'=prior->'path' and actual->'position'=prior->'position'
+    and actual->'pattern_id'=prior->'pattern_id' and actual->'bindings'=prior->'bindings'
+    and actual->>'version'='2' and actual->>'block_key'='s12pd.block' and actual->>'block_version'='1',
+    v_label||': short row address, position, lineage, bindings and root identity unchanged');
+  return next extensions.is(pg_temp.s12pl_version(v_tag),
+    (select (entry_version::bigint+1)::text from s12wb_initial where tag=v_tag),
+    v_label||': entry CAS advances once');
+  return next extensions.is((select headers from s12pu_out where label=v_label),
+    jsonb_build_array(jsonb_build_object('etag','"'||pg_temp.s12pl_version(v_tag)||'"'))::text,v_label||': strong committed entry ETag');
+  return next extensions.is(body-'items','{}'::jsonb,v_label||': unchanged public items-only envelope');
+  return next extensions.is(jsonb_array_length(body->'items'),1,v_label||': exactly one public resource');
+  return next extensions.is(item-'contentHash',jsonb_build_object('id',actual->'id','version','2',
+    'createdAt',to_char((actual->>'created_at')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'updatedAt',to_char((actual->>'updated_at')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'state','active','revisionId',actual->'revision_id','path','/short','position',prior->'position',
+    'blockKey','s12pd.block','blockVersion',1,'patternId',prior->'pattern_id','patternVersion',expected_pin,
+    'blockRegistryDigest',actual->>'block_registry_digest','linkMode',case when p_choice='yours' then 'detached' else 'linked' end,
+    'conflictState',case when p_choice='theirs' then 'none' else null end),v_label||': complete non-hash public projection, no private tree');
+  return next extensions.ok(item->>'contentHash' ~ '^[0-9a-f]{64}$',v_label||': existing SHA-256 contentHash shape');
+end;
+$body$;
+select * from pg_temp.s12wb_result('yours');
+select * from pg_temp.s12wb_result('theirs');
+
+-- Stored override keys are STILL 512, not expanded choice paths. The private
+-- checker is store-free; the 512 positive is not a claim that this key is reachable.
+select tap.* from (values (512,true),(513,false)) cases(size,valid) cross join lateral pg_temp.s12wb_check(
+  'WB-OVERRIDE-'||size,'cms_pattern_placement_check',pg_temp.s12pl_request('wb-theirs','s12wb-outer2','/',
+    jsonb_build_object(repeat('/'||repeat('a',64),7)||'/'||repeat('b',size-456),null),'s12wb-override-'||size),
+  case when valid then null else 'P0001:VALIDATION_FAILED' end,
+  case when valid then null else '["/overrides"]'::jsonb end) tap;
+select * from pg_temp.s12pl_refused('wb-long-override',pg_temp.s12pl_request('wb-theirs','s12wb-outer2','/',
+  jsonb_build_object(pg_temp.s12wb_path(),null),'s12wb-long-override'),'VALIDATION_FAILED','["/overrides"]');
+
+-- A valid active nested forest whose actual BLOCK ROOT address is 260 bytes,
+-- unlike /short's long descendant. CMS-03C-02 must retain its 248-octet row cap.
+select * from pg_temp.s12pl_pattern('s12wb-wrap1','s12wb-wrap1',
+  jsonb_build_array(pg_temp.s12wb_ref('s12wb-inner2',repeat('x',64))));
+select * from pg_temp.s12pl_pattern('s12wb-wrap2','s12wb-wrap2',
+  jsonb_build_array(pg_temp.s12wb_ref('s12wb-wrap1',repeat('y',64))));
+select * from pg_temp.s12pl_pattern('s12wb-wrap3','s12wb-wrap3',
+  jsonb_build_array(pg_temp.s12wb_ref('s12wb-wrap2',repeat('z',64))));
+select pg_temp.s12pl_entry('wb-too-long-root');
+select is(octet_length('/'||repeat('z',64)||'/'||repeat('y',64)||'/'||repeat('x',64)||'/'||repeat('a',64)),260,
+  'WB-ROW: valid nested root is 260 bytes, over248 but under the stored512 grammar bound');
+select * from pg_temp.s12pl_refused('wb-row-cap',pg_temp.s12pl_request('wb-too-long-root','s12wb-wrap3','/','{}',
+  's12wb-row-cap'),'VALIDATION_FAILED','["/slotPath"]');

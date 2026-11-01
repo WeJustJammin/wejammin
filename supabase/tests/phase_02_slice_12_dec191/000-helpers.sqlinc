@@ -1,0 +1,59 @@
+-- DEC-191 helpers (pg_temp only).  Include AFTER the governed-b world (phase_02_slice_12_governed_activation/000-world.sqlinc).
+-- Nothing here writes a governed row except through the named platform_api commands under the real service_role.
+
+-- A successor draft of a template lineage whose key is 's12ga-<key tag>', defined over the parent tag's definition number (the stock
+-- s12gb_successor derives the key from the parent tag, so it cannot extend a lineage past its second version); submitted by the owner.
+create or replace function pg_temp.d191_successor(p_tag text, p_key_tag text, p_parent_tag text, p_types text[])
+returns uuid language plpgsql as $body$
+declare
+  v_parent_version text := (select version::text from platform_private.cms_template_versions
+                             where id = pg_temp.s12ga_subject(p_parent_tag));
+  v_response jsonb;
+begin
+  perform pg_temp.s12ga_rpc('mint:' || p_tag, 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+    'templateKey', 's12ga-' || p_key_tag,
+    'compatibleTypeIds', (select jsonb_agg(bound.id order by bound.id) from (
+       select (select value::uuid from s12gov_ids where key = k) as id from unnest(p_types) k) bound),
+    'slots', '[]'::jsonb,
+    'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+    'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'partners',
+    'expectedVersion', v_parent_version, 'ifMatch', v_parent_version,
+    'idempotencyKey', 's12ga-mint-' || p_tag));
+  v_response := pg_temp.s12ga_body('mint:' || p_tag);
+  if v_response is null or v_response->>'state' is distinct from 'draft' then
+    raise exception 'dec191 fixture: the real successor producer did not return a draft for %: %',
+      p_tag, pg_temp.s12ga_out('mint:' || p_tag);
+  end if;
+  insert into s12gov_ids(key, value) values (p_tag || ':subject', v_response->>'id')
+    on conflict (key) do update set value = excluded.value;
+  return pg_temp.s12ga_submit(p_tag, 'owner');
+end;
+$body$;
+
+-- The definition number a subject (any kind) carries, from the version tables.
+create or replace function pg_temp.d191_template_version(p_tag text) returns bigint language sql stable as $body$
+  select version from platform_private.cms_template_versions where id = pg_temp.s12ga_subject(p_tag) $body$;
+
+-- The activationSchedule member of a CMS-03C-10 body kept under a label.
+create or replace function pg_temp.d191_sched_member(p_label text) returns jsonb language sql stable as $body$
+  select pg_temp.s12ga_body(p_label)->'activationSchedule' $body$;
+
+-- One CMS-03C-10 read as an actor of a tag's review.
+create or replace function pg_temp.d191_read(p_label text, p_actor text, p_tag text) returns void language sql as $body$
+  select pg_temp.s12ga_get(p_label, p_actor, pg_temp.s12ga_review(p_tag)) $body$;
+
+-- Claim bookkeeping for the fire-time schedules (CMS-03C-19), by claim label.
+create or replace function pg_temp.d191_lease(p_label text, p_tag text) returns uuid language sql stable as $body$
+  select (pg_temp.s12gb_claimed(p_label, p_tag)->>'leaseId')::uuid $body$;
+create or replace function pg_temp.d191_cver(p_label text, p_tag text) returns text language sql stable as $body$
+  select pg_temp.s12gb_claimed(p_label, p_tag)->>'expectedVersion' $body$;
+create or replace function pg_temp.d191_exec(p_label text, p_claim text, p_tag text) returns void language sql as $body$
+  select pg_temp.s12gb_exec(p_label, pg_temp.s12gb_sid(p_tag), pg_temp.d191_cver(p_claim, p_tag), pg_temp.d191_lease(p_claim, p_tag)) $body$;
+
+-- The members of an activation body, in key order.
+create or replace function pg_temp.d191_act_keys(p_label text) returns text language sql stable as $body$
+  select pg_temp.s12ga_keys(pg_temp.s12ga_body(p_label)) $body$;
+
+-- The twelve members of GovernedActivationResource after DEC-191 (BE03c schema block), in key order.
+create or replace function pg_temp.d191_activation_keys() returns text language sql immutable as $body$
+  select 'action,activatedAt,eventType,lineageId,reviewId,reviewVersion,scheduledForUtc,subjectId,subjectKind,subjectState,subjectVersion,supersededVersion' $body$;

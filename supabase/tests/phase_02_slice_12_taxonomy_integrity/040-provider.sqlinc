@@ -1,0 +1,212 @@
+-- cms.taxonomy.assignment_integrity version 1 (BE03c "Preflight providers registered by Slice 12"; BE03b Publication preflight
+-- registry row 6; P2-S12-AC-239, AC-241 (taxonomy)).  Include after the Slice 11 helper world (h11doc type, tags field), 000-world.sqlinc.
+--
+-- The provider requires every `active` TermAssignment of the revision to name an `active` term (a `deprecated` term is tolerated
+-- for an existing assignment, a `merged` term whose assignment has not converged fails term_merged_unconverged), the
+-- vocabulary's active version to still list the entry type key and field key (allowlist_changed) and every taxonomy version id
+-- the revision records to be `active` (taxonomy_version_not_active).  Revisions are written by the real cms_create_entry.
+
+create or replace function pg_temp.ti_h_create(p_label text, p_tags text[]) returns uuid language plpgsql as $body$
+declare
+  response jsonb;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select platform_api.cms_create_entry(jsonb_build_object(
+    'contentTypeId', (select value::uuid from h11w_ids where key = 'typeId'),
+    'contentTypeVersionId', pg_temp.h11w_version(), 'locale', 'en-US',
+    'changedPaths', jsonb_build_array('/fields/' || pg_temp.h11w_fid('title')::text, '/fields/' || pg_temp.h11w_fid('tags')::text),
+    'values', jsonb_build_object(pg_temp.h11w_fid('title')::text, 'T ' || p_label,
+                                 pg_temp.h11w_fid('tags')::text, pg_temp.ti_terms(p_tags)),
+    'validatorRefs', '[]'::jsonb, 'idempotencyKey', 's12ti-h-' || p_label,
+    'workflowPolicy', platform_private.cms_editorial_workflow_policy_evidence(pg_temp.h11w_version()),
+    'activationEvidence', platform_private.cms_type_version_resource(pg_temp.h11w_version())->'activationEvidence',
+    'schemaArtifact', jsonb_build_object('id', artifact.id,
+      'contentTypeVersionId', artifact.content_type_version_id, 'artifactHash', artifact.artifact_hash,
+      'compilerVersion', artifact.compiler_version, 'zodContractRef', artifact.zod_contract_ref)))
+    into response
+  from platform_private.cms_schema_artifacts artifact
+  where artifact.id = (select value::uuid from h11w_ids where key = 'artifactId')
+    and artifact.content_type_version_id = pg_temp.h11w_version();
+  perform set_config('app.cms_rpc', 'true', true);
+  return (response#>>'{revision,id}')::uuid;
+end;
+$body$;
+
+create or replace function pg_temp.ti_gate(p_revision uuid) returns text language plpgsql as $body$
+declare outcome_text text;
+begin
+  select gate.outcome || '/' || coalesce(gate.reason_code, '-') || '/' || gate.blocking_count into outcome_text
+    from platform_private.cms_taxonomy_assignment_integrity(p_revision) gate;
+  return outcome_text;
+exception when others then
+  return '__error ' || sqlstate || ':' || sqlerrm;
+end;
+$body$;
+
+select pg_temp.ti_version('hv1', pg_temp.ti_org(), 'ti-h11', 1, 'active', '["h11doc"]'::jsonb, '["tags"]'::jsonb);
+
+-- ---- registry (AC239, AC241) -------------------------------------------------------------------------------------------
+select is(
+  (select provider_key || '@' || provider_version || '/' || provider_kind || '/' || coalesce(reference_kind, '-') || '/' || registry_version
+     from platform_private.cms_preflight_registry_current() where category = 'taxonomy'),
+  'cms.taxonomy.assignment_integrity@1/database/-/2',
+  'the taxonomy category is served by cms.taxonomy.assignment_integrity version 1 (database) as a newer registry row [P2-S12-AC-239]');
+select is(
+  (select string_agg(category || '=' || provider_key || '/' || registry_version, ',' order by category)
+     from platform_private.cms_preflight_registry_current() where category in ('route', 'media', 'privacy')),
+  'media=preflight.reference_gate/1,privacy=preflight.reference_gate/1,route=preflight.reference_gate/1',
+  'the route, media and privacy categories stay on the reference gate [P2-S12-AC-239]');
+select is(
+  (select string_agg(category || '=' || provider_key || '/' || registry_version, ',' order by category)
+     from platform_private.cms_preflight_registry_current() where category in ('pattern', 'locale')),
+  'locale=cms.locale.no_fallback_gate/2,pattern=cms.pattern.active_digest/2',
+  'the pattern and locale providers registered earlier are unchanged [P2-S12-AC-241]');
+select is(
+  (select count(*)::integer from platform_private.cms_preflight_registry where category = 'taxonomy'), 2,
+  'the replaced reference-gate row (version 1) is kept and the provider is the single newer row (version 2) [P2-S12-AC-239]');
+select ok(pg_temp.h11_private_definer('cms_taxonomy_assignment_integrity(uuid)'),
+  'the provider is a private SECURITY DEFINER function of the CMS definer with an empty search_path and no API-role or PUBLIC execute [P2-S12-AC-239]');
+select is(pg_temp.h11_volatility('cms_taxonomy_assignment_integrity(uuid)'), 's',
+  'and STABLE (it only reads) [P2-S12-AC-239]');
+
+-- ---- logic (AC239) ------------------------------------------------------------------------------------------------------
+select pg_temp.ti_term('hx1', pg_temp.ti_org(), 'hv1', 'hv1', 'hx1');
+select pg_temp.ti_term('hx2', pg_temp.ti_org(), 'hv1', 'hv1', 'hx2');
+create temp table ti_hrev on commit drop as select 'clean' as label, pg_temp.ti_h_create('clean', array['hx1', 'hx2']) as id;
+select is(pg_temp.ti_assignments((select id from ti_hrev where label = 'clean')), 'hx1:active:1:0|hx2:active:1:1',
+  'fixture: the real create persisted two assignments');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'clean')), 'passed/-/0',
+  'active assignments of active terms in the active, listed vocabulary version pass [P2-S12-AC-239]');
+
+insert into ti_hrev select 'none', pg_temp.ti_h_create('none', array[]::text[]);
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'none')), 'passed/-/0',
+  'a revision with no assignment and no taxonomy version passes [P2-S12-AC-239]');
+
+-- deprecated: tolerated for an existing assignment.
+select pg_temp.ti_term('hd1', pg_temp.ti_org(), 'hv1', 'hv1', 'hd1');
+insert into ti_hrev select 'dep', pg_temp.ti_h_create('dep', array['hd1']);
+select pg_temp.ti_term_to('hd1', 'deprecated');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'dep')), 'passed/-/0',
+  'a deprecated term is tolerated for an existing assignment [P2-S12-AC-239]');
+
+-- merged, not converged.
+select pg_temp.ti_term('hm1', pg_temp.ti_org(), 'hv1', 'hv1', 'hm1');
+select pg_temp.ti_term('hm2', pg_temp.ti_org(), 'hv1', 'hv1', 'hm2');
+select pg_temp.ti_term('hs1', pg_temp.ti_org(), 'hv1', 'hv1', 'hs1');
+insert into ti_hrev select 'merged1', pg_temp.ti_h_create('merged1', array['hm1']);
+insert into ti_hrev select 'merged2', pg_temp.ti_h_create('merged2', array['hm1', 'hm2', 'hx1']);
+select pg_temp.ti_term_to('hm1', 'merged', 'hs1');
+select pg_temp.ti_term_to('hm2', 'merged', 'hs1');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'merged1')), 'failed/term_merged_unconverged/1',
+  'an active assignment to a merged term that has not converged fails term_merged_unconverged [P2-S12-AC-239]');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'merged2')), 'failed/term_merged_unconverged/2',
+  'the count is the number of unconverged assignments, and the active term beside them is not counted [P2-S12-AC-239]');
+select pg_temp.ti_converge('hm1');
+select is(pg_temp.ti_assignments((select id from ti_hrev where label = 'merged1')), 'hm1:active:1:0|hm1:superseded:2:0|hs1:active:1:0',
+  'fixture: convergence appends a superseded version of the retired term''s assignment and an active one for the survivor (the original version 1 row keeps its state)');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'merged1')), 'passed/-/0',
+  'a converged assignment (superseded retired term, active survivor) passes: only active assignments are read [P2-S12-AC-239]');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'merged2')), 'failed/term_merged_unconverged/1',
+  'the revision whose other merged term has not converged still fails, now with one offender [P2-S12-AC-239]');
+
+-- vocabulary changes.
+select pg_temp.ti_version('hva1', pg_temp.ti_org(), 'ti-h-a', 1, 'active', '["h11doc"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('hta1', pg_temp.ti_org(), 'hva1', 'hva1', 'hta1');
+select pg_temp.ti_version('hvb1', pg_temp.ti_org(), 'ti-h-b', 1, 'active', '["h11doc"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('htb1', pg_temp.ti_org(), 'hvb1', 'hvb1', 'htb1');
+select pg_temp.ti_version('hvc1', pg_temp.ti_org(), 'ti-h-c', 1, 'active', '["h11doc"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('htc1', pg_temp.ti_org(), 'hvc1', 'hvc1', 'htc1');
+select pg_temp.ti_version('hvd1', pg_temp.ti_org(), 'ti-h-d', 1, 'active', '["h11doc"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('htd1', pg_temp.ti_org(), 'hvd1', 'hvd1', 'htd1');
+insert into ti_hrev select 'fielddrop', pg_temp.ti_h_create('fielddrop', array['hta1']);
+insert into ti_hrev select 'newver', pg_temp.ti_h_create('newver', array['htb1']);
+insert into ti_hrev select 'typedrop', pg_temp.ti_h_create('typedrop', array['htc1']);
+insert into ti_hrev select 'retired', pg_temp.ti_h_create('retired', array['htd1']);
+select is(pg_temp.ti_revision_ids((select id from ti_hrev where label = 'fielddrop')), jsonb_build_array(pg_temp.ti_uuid('hva1')),
+  'fixture: the revision records the vocabulary''s active version id');
+select pg_temp.ti_version_to('hva1', 'superseded');
+select pg_temp.ti_version('hva2', pg_temp.ti_org(), 'ti-h-a', 2, 'active', '["h11doc"]'::jsonb, '["title"]'::jsonb, 'hva1', 'hva1');
+select pg_temp.ti_version_to('hvb1', 'superseded');
+select pg_temp.ti_version('hvb2', pg_temp.ti_org(), 'ti-h-b', 2, 'active', '["h11doc"]'::jsonb, '["tags"]'::jsonb, 'hvb1', 'hvb1');
+select pg_temp.ti_version_to('hvc1', 'superseded');
+select pg_temp.ti_version('hvc2', pg_temp.ti_org(), 'ti-h-c', 2, 'active', '["other"]'::jsonb, '["tags"]'::jsonb, 'hvc1', 'hvc1');
+select pg_temp.ti_version_to('hvd1', 'retired');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'fielddrop')), 'failed/allowlist_changed/2',
+  'a successor vocabulary version that no longer lists the field key fails allowlist_changed (the recorded version id is also no longer active: two offenders) [P2-S12-AC-239]');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'typedrop')), 'failed/allowlist_changed/2',
+  'a successor version that no longer lists the entry type key fails allowlist_changed the same way [P2-S12-AC-239]');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'newver')), 'failed/taxonomy_version_not_active/1',
+  'a successor version that still lists both keys leaves only the recorded version id inactive: taxonomy_version_not_active [P2-S12-AC-239]');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'retired')), 'failed/taxonomy_version_not_active/1',
+  'a vocabulary with no active version at all fails taxonomy_version_not_active, not allowlist_changed [P2-S12-AC-239]');
+
+-- every recorded version id is read, not only the first, and a stale id with no assignment still fails.
+select pg_temp.h11_raw_exec('platform_private.cms_entry_revisions',
+  format('update platform_private.cms_entry_revisions set taxonomy_version_ids = %L::jsonb where id = %L::uuid',
+    jsonb_build_array(pg_temp.ti_uuid('hv1'), pg_temp.ti_uuid('hvb1')), (select id from ti_hrev where label = 'none')));
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'none')), 'failed/taxonomy_version_not_active/1',
+  'a recorded second version id that is superseded fails the revision even though the first is active and no assignment exists [P2-S12-AC-239]');
+select pg_temp.h11_raw_exec('platform_private.cms_entry_revisions',
+  format('update platform_private.cms_entry_revisions set taxonomy_version_ids = %L::jsonb where id = %L::uuid',
+    jsonb_build_array(pg_temp.ti_uuid('nobody')), (select id from ti_hrev where label = 'none')));
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'none')), 'failed/taxonomy_version_not_active/1',
+  'a recorded id that names no version fails taxonomy_version_not_active [P2-S12-AC-239]');
+
+-- precedence: term_merged_unconverged, then allowlist_changed, then taxonomy_version_not_active (BE03c, DEC-229).
+select pg_temp.ti_version('hve1', pg_temp.ti_org(), 'ti-h-e', 1, 'active', '["h11doc"]'::jsonb, '["tags"]'::jsonb);
+select pg_temp.ti_term('hte1', pg_temp.ti_org(), 'hve1', 'hve1', 'hte1');
+select pg_temp.ti_term('hte2', pg_temp.ti_org(), 'hve1', 'hve1', 'hte2');
+insert into ti_hrev select 'all3', pg_temp.ti_h_create('all3', array['hte1', 'hte2']);
+select pg_temp.ti_version_to('hve1', 'superseded');
+select pg_temp.ti_version('hve2', pg_temp.ti_org(), 'ti-h-e', 2, 'active', '["h11doc"]'::jsonb, '["title"]'::jsonb, 'hve1', 'hve1');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'all3')), 'failed/allowlist_changed/3',
+  'allowlist_changed outranks taxonomy_version_not_active; the count is one unit per failing assignment plus one per inactive version id [P2-S12-AC-239]');
+select pg_temp.ti_term_to('hte1', 'merged', 'hte2');
+select is(pg_temp.ti_gate((select id from ti_hrev where label = 'all3')), 'failed/term_merged_unconverged/3',
+  'term_merged_unconverged outranks both; the count is one unit per offending assignment (the merged one also fails the allowlist but is one unit) plus the offending version id (DEC-229) [P2-S12-AC-239]');
+
+-- unavailable: no revision.
+select is(pg_temp.ti_gate(pg_temp.ti_uuid('nobody')), 'unavailable/provider_unavailable/0',
+  'an absent revision is unavailable with provider_unavailable, never a pass [P2-S12-AC-241]');
+select is(pg_temp.ti_gate(null), 'unavailable/provider_unavailable/0',
+  'a null revision is unavailable with provider_unavailable [P2-S12-AC-241]');
+
+-- ---- through the deployed evaluator (AC241) ------------------------------------------------------------------------------
+create or replace function pg_temp.ti_eval(p_revision uuid, p_phase text) returns jsonb language plpgsql as $body$
+begin
+  return platform_private.cms_evaluate_preflight(jsonb_build_object(
+    'phase', p_phase, 'revisionId', p_revision, 'actingPartyId', pg_temp.h11w_org(),
+    'actorPersonId', (select value::uuid from s10_ids where key = 'creatorPerson'),
+    'effectiveAt', platform_private.auth_iso_time(clock_timestamp() + interval '1 hour')));
+exception when others then
+  return jsonb_build_object('error', sqlstate || ':' || sqlerrm);
+end;
+$body$;
+create or replace function pg_temp.ti_tax_result(p_report jsonb) returns text language sql as $body$
+  select coalesce(
+    (select r->>'outcome' || '/' || coalesce(r->>'reasonCode', '-') || '/' || (r->>'blockingCount')
+            || '/' || (r->>'providerKey') || '@' || (r->>'providerVersion')
+       from jsonb_array_elements(p_report->'results') r where r->>'category' = 'taxonomy'),
+    'ERR ' || coalesce(p_report->>'error', 'no taxonomy result')) $body$;
+select is(pg_temp.ti_tax_result(pg_temp.ti_eval((select id from ti_hrev where label = 'clean'), 'submit')),
+  'passed/-/0/cms.taxonomy.assignment_integrity@1',
+  'the deployed evaluator dispatches the taxonomy category to the registered provider and reports it passed [P2-S12-AC-241]');
+select is(pg_temp.ti_tax_result(pg_temp.ti_eval((select id from ti_hrev where label = 'merged2'), 'publish')),
+  'failed/term_merged_unconverged/1/cms.taxonomy.assignment_integrity@1',
+  'and reports its reason and offender count for a failing revision, in every phase [P2-S12-AC-241]');
+select is(pg_temp.ti_tax_result(pg_temp.ti_eval((select id from ti_hrev where label = 'newver'), 'schedule')),
+  'failed/taxonomy_version_not_active/1/cms.taxonomy.assignment_integrity@1',
+  'including taxonomy_version_not_active [P2-S12-AC-241]');
+select is(
+  (select count(*)::integer from jsonb_array_elements(pg_temp.ti_eval((select id from ti_hrev where label = 'clean'), 'submit')->'results') r
+    where r->>'category' = 'taxonomy' and r->>'outcome' = 'unavailable'),
+  0, 'the taxonomy category never evaluates unavailable with provider_unavailable because its provider is unimplemented [P2-S12-AC-241]');
+select is(
+  (select count(*)::integer from jsonb_array_elements(pg_temp.ti_eval((select id from ti_hrev where label = 'clean'), 'submit')->'results') r
+    where r->>'category' = 'taxonomy' and r->>'providerKey' = 'preflight.reference_gate'), 0,
+  'and the reference gate no longer serves the category [P2-S12-AC-239]');
+select is(
+  (select r->>'outcome' || '/' || coalesce(r->>'reasonCode', '-')
+     from jsonb_array_elements(pg_temp.ti_eval((select id from ti_hrev where label = 'clean'), 'submit')->'results') r
+    where r->>'category' = 'pattern'), 'passed/-',
+  'the pattern provider still dispatches (the evaluator anchor survives the new branch) [P2-S12-AC-241]');

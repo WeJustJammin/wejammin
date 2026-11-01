@@ -1,0 +1,92 @@
+-- AC-190 (BE03c E14, pattern half): every lookup by key is scoped to the caller's owner party, and a key held by another owner is
+-- indistinguishable from an unused key, so no cross-owner existence signal such as a 409 is possible.  The second owner is the
+-- S09 actor `other` (owner of the second organization); its pattern-designer grant and its one active content type are labelled
+-- fixtures (see the file header).
+insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
+select pg_temp.s09d_id('otherOrg'), person_id, 'cms.template_designer', current_date, current_date + 1, true
+  from s09d_actor where key = 'other';
+-- the second owner's active content type: a clone of chain type 1 under otherOrg
+create or replace function pg_temp.g2p_other_type(out o_type uuid, out o_version uuid) language plpgsql as $body$
+declare
+  src_type platform_private.cms_content_types%rowtype;
+  src_version platform_private.cms_content_type_versions%rowtype;
+  src_artifact platform_private.cms_schema_artifacts%rowtype;
+  new_artifact uuid := extensions.gen_random_uuid();
+  stamp timestamptz := clock_timestamp();
+  org uuid := pg_temp.s09d_id('otherOrg');
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  o_type := extensions.gen_random_uuid();
+  o_version := extensions.gen_random_uuid();
+  select c.* into src_type from platform_private.cms_content_types c where c.id = (select id from s12pd_chain_types where ordinal = 1);
+  select v.* into src_version from platform_private.cms_content_type_versions v where v.id = (select version_id from s12pd_chain_types where ordinal = 1);
+  select a.* into src_artifact from platform_private.cms_schema_artifacts a where a.id = src_version.schema_artifact_id;
+  insert into platform_private.cms_content_types
+    select (jsonb_populate_record(null::platform_private.cms_content_types, to_jsonb(src_type)
+      || jsonb_build_object('id', o_type, 'owner_id', org, 'type_key', 'gappother', 'state', 'retired', 'version', 1,
+        'created_at', stamp, 'updated_at', stamp))).*;
+  insert into platform_private.cms_content_type_versions
+    select (jsonb_populate_record(null::platform_private.cms_content_type_versions, to_jsonb(src_version)
+      || jsonb_build_object('id', o_version, 'owner_id', org, 'content_type_id', o_type, 'schema_artifact_id', new_artifact,
+        'state', 'draft', 'version', 1, 'version_no', 1, 'created_at', stamp, 'updated_at', stamp, 'supersedes_id', null,
+        'dry_run_id', null, 'approved_at', null, 'definition_hash', md5('gappother' || 'd') || md5('gappother' || 'e'),
+        'activation_workflow_policy_key', null, 'activation_workflow_policy_version', null, 'activation_workflow_policy_hash', null,
+        'activation_required_decision_count', null, 'activation_required_capabilities', null,
+        'activation_approval_evidence_hash', null))).*;
+  insert into platform_private.cms_schema_artifacts
+    select (jsonb_populate_record(null::platform_private.cms_schema_artifacts, to_jsonb(src_artifact)
+      || jsonb_build_object('id', new_artifact, 'owner_id', org, 'content_type_version_id', o_version, 'created_at', stamp,
+        'updated_at', stamp, 'compiled_at', stamp, 'artifact_hash', md5('gappother' || 'a') || md5('gappother' || 'b')))).*;
+  update platform_private.cms_content_type_versions version_row
+     set state = 'active', version = version_row.version + 1, updated_at = clock_timestamp(),
+         activation_workflow_policy_key = src_version.activation_workflow_policy_key,
+         activation_workflow_policy_version = src_version.activation_workflow_policy_version,
+         activation_workflow_policy_hash = src_version.activation_workflow_policy_hash,
+         activation_required_decision_count = src_version.activation_required_decision_count,
+         activation_required_capabilities = src_version.activation_required_capabilities,
+         activation_approval_evidence_hash = src_version.activation_approval_evidence_hash
+   where version_row.id = o_version;
+  update platform_private.cms_content_types type_row
+     set state = 'active', version = type_row.version + 1, updated_at = clock_timestamp() where type_row.id = o_type;
+  perform set_config('app.cms_rpc', '', true);
+end;
+$body$;
+create temp table g2p_other on commit drop as select * from pg_temp.g2p_other_type();
+-- a request of the second owner (its own type, its own context)
+create or replace function pg_temp.g2p_other_request(p_key text, p_expected text, p_idem text) returns jsonb language sql stable as $body$
+  select pg_temp.s12pd_request(p_key, pg_temp.s12pd_forest(1), p_expected, p_idem, null, p_expected)
+    || jsonb_build_object('compatibleTypeIds', jsonb_build_array((select o_type from g2p_other)),
+         'context', pg_temp.s09d_context('other', true))
+$body$;
+
+select pg_temp.s12pd_run('a-shared', pg_temp.s12pd_request('gapp-shared', pg_temp.s12pd_forest(1), null, 'g2p-key-a-shared'));
+select pg_temp.s12pd_run('a-only', pg_temp.s12pd_request('gapp-a-only', pg_temp.s12pd_forest(1), null, 'g2p-key-a-only'));
+select pg_temp.s12pd_run('b-shared', pg_temp.g2p_other_request('gapp-shared', null, 'g2p-key-b-shared'), 'other');
+select is(pg_temp.s12pd_state('a-shared') || pg_temp.s12pd_state('a-only') || pg_temp.s12pd_state('b-shared'), '000000000000000',
+  'fixture: owner A holds gapp-shared and gapp-a-only, and the second real owner B creates gapp-shared version 1 without a conflict [P2-S12-AC-190]');
+select ok(pg_temp.s12pd_body('b-shared')->>'patternId' is not null
+    and pg_temp.s12pd_body('b-shared')->>'patternId' is distinct from pg_temp.s12pd_body('a-shared')->>'patternId'
+    and (pg_temp.s12pd_row('b-shared')->>'owner_id') = pg_temp.s09d_id('otherOrg')::text
+    and (pg_temp.s12pd_row('a-shared')->>'owner_id') = pg_temp.s09d_id('ownerOrg')::text
+    and pg_temp.s12pd_body('b-shared')->'patternVersion' = '1'::jsonb,
+  'B''s first version of a key A holds succeeds with its own patternId, owner and version 1: a key is unique per owner, never a 409 [P2-S12-AC-190]');
+select pg_temp.s12pd_run('b-succ-held', pg_temp.g2p_other_request('gapp-a-only', '1', 'g2p-key-b-succ-held'), 'other');
+select pg_temp.s12pd_run('b-succ-unused', pg_temp.g2p_other_request('gapp-nobody', '1', 'g2p-key-b-succ-unused'), 'other');
+select is(pg_temp.s12pd_state('b-succ-held') || ':' || (select message from s12pd_out where label = 'b-succ-held'), 'P0001:NOT_FOUND',
+  'B''s successor of a key only A holds is the complete NOT_FOUND [P2-S12-AC-190]');
+select is((select (state, message, detail) from s12pd_out where label = 'b-succ-held'),
+  (select (state, message, detail) from s12pd_out where label = 'b-succ-unused'),
+  'a successor of a key held by another owner answers byte-identically to a successor of an unused key (SQLSTATE, message, DETAIL) [P2-S12-AC-190]');
+select ok((select before_rows = after_rows from s12pd_out where label = 'b-succ-held'),
+  'the cross-owner successor refusal writes nothing [P2-S12-AC-190]');
+select pg_temp.s12pd_run('b-latest-held', pg_temp.s12pd_latest_request('gapp-a-only', 'other'), 'other', 'service_role', 'latest');
+select pg_temp.s12pd_run('b-latest-unused', pg_temp.s12pd_latest_request('gapp-unused-key', 'other'), 'other', 'service_role', 'latest');
+select is((select (state, message, detail) from s12pd_out where label = 'b-latest-held'),
+  (select (state, message, detail) from s12pd_out where label = 'b-latest-unused'),
+  'B''s latest read of a key only A holds is byte-identical to a latest read of an unused key [P2-S12-AC-190]');
+select is((select state || ':' || message from s12pd_out where label = 'b-latest-held'), 'P0001:NOT_FOUND',
+  'both latest reads are the complete NOT_FOUND [P2-S12-AC-190]');
+select pg_temp.s12pd_run('b-latest-own', pg_temp.s12pd_latest_request('gapp-shared', 'other'), 'other', 'service_role', 'latest');
+select ok(pg_temp.s12pd_state('b-latest-own') = '00000'
+    and pg_temp.s12pd_body('b-latest-own')->>'patternId' = pg_temp.s12pd_body('b-shared')->>'patternId',
+  'control: B''s latest read of the shared key returns B''s own lineage, never A''s [P2-S12-AC-190]');

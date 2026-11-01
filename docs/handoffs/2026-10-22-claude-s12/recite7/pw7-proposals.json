@@ -1,0 +1,158 @@
+[
+ {
+  "criterion": "P2-S12-AC-058",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "CMS-03C-04 is consumed by the protected `CmsLocaleVariantForm` at `/app/cms-content-modeling/entries/:entryId/locales/:locale`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-page-operations-real-route.spec.ts",
+      "title": "[P2-S12-AC-058] saves a translation from /entries/:entryId/locales/:locale: the command is sent, one draft variant is committed, and a fresh load shows the stored translation",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "page-operations:85-141 - on the production-built locale page the author types a fr-FR title and presses Save translation; the page's POST to .../locales/fr-FR/variants answers 201 with If-Match = the entry version and the next strong ETag (L104-107); the result heading \"Translation saved as a draft\" and the row note \"Saved in this draft.\" show; the database holds exactly one draft variant (L126); a fresh load starts from the stored translation (L131-136).",
+      "descriptionLine": 104
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_pw7",
+  "runStatus": "pending root run: Playwright, the stack and db may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-105",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-page-operations-real-route.spec.ts",
+      "title": "[P2-S12-AC-105] saves a first pattern version from /patterns/new: the form sends CMS-03C-12, a draft is committed, and the page links the saved pattern",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "page-operations:146-186 - /patterns/new: key, content type, one top-level block and its props are entered and Create draft is pressed; the POST to /api/v1/cms/patterns/versions answers 201 with ETag \"1\" (L164-166), the heading \"Pattern draft saved\" shows, the database holds 1:draft (L170), and the page's own link opens /patterns/:patternKey editing from version 1 (L183-184). The chooser option for the owner-registered block is asserted present before it is chosen.",
+      "descriptionLine": 164
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-page-operations-real-route.spec.ts",
+      "title": "[P2-S12-AC-105] saves a successor version from /patterns/:patternKey: the form sends version 1 as If-Match, version 2 is committed beside it",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "page-operations:188-253 - /patterns/:patternKey: the Node 1 props are edited and Save successor draft is pressed; the POST answers 201 with If-Match \"1\" and ETag \"2\" (L217-219), the database holds 1:draft,2:draft (L223), and a fresh load edits from version 2 showing the saved props (L231-233). The pattern is built over a block registered by the world owner (support/s12-pw7-block.ts) so the designer's chooser lists it; the test also asserts the Node 1 block select holds that block.",
+      "descriptionLine": 223
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_pw7",
+  "runStatus": "pending root run: Playwright, the stack and db may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-111",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "CMS-03C-13 is consumed by the protected `CmsPatternSelector` in the instance-insert form at `/app/cms-content-modeling/entries/:entryId/composition`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-page-operations-real-route.spec.ts",
+      "title": "[P2-S12-AC-111] lists an active compatible pattern in the instance-insert form of /entries/:entryId/composition and places the pattern chosen there",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "page-operations:255-329 - a pattern activated through the governed chain is listed by the selector of the insert form for the entry's content type (the form pages the list until it appears, L267-275); it is chosen, linked mode and slot path / are set and Place pattern is pressed; the POST to /api/v1/cms/compositions/pattern-instances answers 201 with If-Match = the entry version and the next ETag (L302-306); the heading \"Pattern placed\" and the row /root1 show (L310-314); the database holds that one linked active placement (L322); a fresh load lists the stored row.",
+      "descriptionLine": 322
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_pw7",
+  "runStatus": "pending root run: Playwright, the stack and db may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-273",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "End-to-end journeys: Playwright, using the real routes and two people, ... a term merged with convergence, a locale variant with a `no_fallback` block, and related content pinned and excluded; ... with no diff value, canonical id or person id in the URL, storage, logs or telemetry.",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-journey-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J3 a template is defined, submitted, assigned, decided and scheduled in the browser by three people, and a second one is activated and retired",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-journey:86-161 - a template is defined in the browser form (201, ETag \"1\", L74-76), submitted from its page, assigned and decided in the browser, and scheduled (\"Scheduled activation: pending.\", L109); a second template is decided and then activated and retired in the browser (lifecycle \"Retired\", L147); no person id or content hash in URLs, console or storage (L152).",
+      "descriptionLine": 152
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-locale-related-journeys-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J4 a locale variant with a no_fallback block: the page names the rule and the missing field, a save translates the title only, and a second save translates the legal notice",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "locale-related-journeys:74-147 - an entry of a type with a fallback-allowed Title and a no_fallback Legal notice: the page words the rule, no source text for the legal field and \"Missing ... publishing this language is blocked\" (L88-99); a title-only save (201, stored variant holds the no_fallback field id, L115) leaves it missing; a second save translates it and the page says \"Translated in this language.\" (L132-134); two variant rows (L140).",
+      "descriptionLine": 140
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-locale-related-journeys-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J5 related content is pinned and excluded from the entry page: two pins in the chosen order and one exclusion are sent, stored and shown again on a fresh load",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "locale-related-journeys:171-243 - two pins (reordered in the page) and one exclusion are chosen on the related-content page and saved (If-Match = entry version, L214-216); \"Related content saved\" shows; the database holds the pins in the chosen order and the exclusion (L227-228); a fresh load shows the same order and the exclusion.",
+      "descriptionLine": 228
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-term-merge-journey-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J6 a term is merged into another in the browser and the entry that carried it converges: the retired term redirects, its assignment is superseded and the survivor holds an active one",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "term-merge-journey:72-166 - the curator creates two terms in the browser form, an entry carries the first (assignment active); the first is merged into the second in the browser (action, survivor, review step, permanent confirmation); the page names the redirect; the database holds merged|survivor (L150), the retired assignment superseded and an active assignment of the survivor (L151-152) and no merge work left (L154-158).",
+      "descriptionLine": 151
+     }
+    ],
+    "staleExisting": [],
+    "gap": "PARTIAL, do not cite as closing the clause: still not driven - a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, the protected decision inside a journey, schedule of a pattern, creating and assigning a pattern in the browser, a diff-value scan and any telemetry capture beyond browser requests, URLs, console and storage."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited): a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, the protected decision inside a journey, a pattern scheduled, a pattern created and assigned in the browser, the diff value scan and telemetry capture. Added by pw7 (pending root run): the template, locale no_fallback, related content pinned/excluded and term-merge convergence journeys; J1/J2 (pw5) prove the vocabulary and pattern lifecycle journeys.",
+  "lane": "claude_s12_pw7",
+  "runStatus": "pending root run: Playwright, the stack and db may not be run by this lane"
+ }
+]

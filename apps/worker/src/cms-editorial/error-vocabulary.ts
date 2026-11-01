@@ -13,6 +13,8 @@ export const TYPED_VALIDATION_REASONS = [
   'object_property_invalid',
   'relation_target_unavailable',
   'taxonomy_source_unavailable',
+  // BE03b value encodings (DEC-141): once the taxonomy authority exists a non-assignable term is the uniform term_unavailable.
+  'term_unavailable',
   'media_source_unavailable',
   'comparison_too_large',
   'comparison_unavailable',

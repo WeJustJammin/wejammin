@@ -47,6 +47,16 @@ const PGTAP_ROOT = 'supabase/tests';
 
 const sorted = (set) => [...set].sort();
 
+/**
+ * Playwright reads every positional argument as a regular expression, so a path
+ * with a dynamic-route directory (`[entryId]`, `[...slug]`) would be a character
+ * class that selects the wrong spec. Escape every metacharacter the citation
+ * grammar allows (`[`, `]`, `+`); `.` is left alone: it matches itself and the
+ * filter is an unanchored substring match either way.
+ */
+export const playwrightFilter = (file) =>
+  file.replace(/[\\^$*+?()[\]{}|]/gu, '\\$&');
+
 const sqlFilesUnder = (root, directory) => {
   const found = [];
   const visit = (relative) => {
@@ -188,7 +198,7 @@ export const planEvidenceRuns = ({
           `--output=${outDir}/playwright-artifacts-${posix.basename(config).replace(/\.ts$/u, '')}`,
           // A config that selects none of the cited specs is not a failure.
           '--pass-with-no-tests',
-          ...sorted(specs),
+          ...sorted(specs).map(playwrightFilter),
         ],
         env: { PLAYWRIGHT_JSON_OUTPUT_NAME: output },
         needsDatabase: /real/u.test(posix.basename(config)),

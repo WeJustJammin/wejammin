@@ -1,0 +1,127 @@
+-- CMS-03C-08 expiry bounds (seven days, the reviewer grant end, the grantor authority end), the submitter rule with
+-- an otherwise eligible reviewer, revoke, and the revoke of a counted approval.
+
+-- ------------------------------------------------------------------------------ the bounds --
+select pg_temp.s12ga_mark('r2:bounds', pg_temp.s12ga_review('r2'));
+select pg_temp.s12ga_assign('ex-long', 'owner', pg_temp.s12ga_review('r2'), 'rev2', interval '8 days');
+select pg_temp.s12ga_assign('ex-past', 'owner', pg_temp.s12ga_review('r2'), 'rev2', interval '-1 minute');
+select pg_temp.s12ga_assign('ex-now', 'owner', pg_temp.s12ga_review('r2'), 'rev2', interval '0 seconds');
+select pg_temp.s12ga_assign('ex-grantor', 'owner', pg_temp.s12ga_review('r2'), 'rev2', interval '5 days');
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l) || '#' || coalesce(pg_temp.s12ga_det(l), ''), ';' order by l collate "C")
+     from unnest(array['ex-long', 'ex-past', 'ex-now', 'ex-grantor']) l),
+  'ex-grantor=P0001:expiry_out_of_bounds#["/expiresAt"];ex-long=P0001:expiry_out_of_bounds#["/expiresAt"];'
+    || 'ex-now=P0001:expiry_out_of_bounds#["/expiresAt"];ex-past=P0001:expiry_out_of_bounds#["/expiresAt"]',
+  'an expiry beyond seven days, in the past, not after now, or beyond the grantor designer grant end (the reviewer grant is '
+  || '30 days) is expiry_out_of_bounds at /expiresAt [P2-S12-AC-077]');
+select ok(pg_temp.s12ga_same('r2:bounds', pg_temp.s12ga_review('r2')),
+  'the expiry refusals write no assignment and leave the covered stores identical [P2-S12-AC-077]');
+
+-- renew the owner designer grant to 30 days through the real CMS-03A-16 command
+select pg_temp.s09g_renew('renew-designer', 'owner',
+  (select id from platform_private.cms_capability_grants
+    where owner_id = pg_temp.s12ga_org() and subject_person_ref = pg_temp.s12ga_person('owner')
+      and capability_code = 'cms.template_designer'),
+  (select version::text from platform_private.cms_capability_grants
+    where owner_id = pg_temp.s12ga_org() and subject_person_ref = pg_temp.s12ga_person('owner')
+      and capability_code = 'cms.template_designer'),
+  pg_temp.s09g_day(30));
+select is(pg_temp.s09d_outcome('renew-designer'), 'OK',
+  'control: the owner designer grant is renewed to 30 days through the real CMS-03A-16 command [P2-S12-AC-077]');
+select pg_temp.s12ga_assign('ex-reviewer', 'owner', pg_temp.s12ga_review('r2'), 'rev1', interval '5 days');
+select pg_temp.s12ga_assign('ex-seven', 'owner', pg_temp.s12ga_review('r4'), 'rev2', interval '7 days 1 minute');
+select pg_temp.s12ga_assign('ok-edge', 'owner', pg_temp.s12ga_review('r2'), 'rev2', interval '6 days 23 hours',
+  jsonb_build_object('reason', repeat(E'\u00e9', 256)));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['ex-reviewer', 'ex-seven', 'ok-edge']) l),
+  'ex-reviewer=P0001:expiry_out_of_bounds;ex-seven=P0001:expiry_out_of_bounds;ok-edge=ok',
+  'with a 30-day grantor grant: five days past the reviewer one-day grant and seven days one minute are refused, six days '
+  || 'twenty-three hours inside both grants is accepted [P2-S12-AC-077]');
+select ok(pg_temp.s12ga_body('ok-edge')->>'reason' = repeat(E'\u00e9', 256)
+    and (select char_length(assignment.reason) = 256 and octet_length(assignment.reason) = 512
+           from platform_private.cms_governed_review_assignments assignment where assignment.id = (pg_temp.s12ga_body('ok-edge')->>'id')::uuid),
+  'a reason of exactly 256 code points (512 octets) is accepted and stored whole: the bound counts code points, not octets [P2-S12-AC-077]');
+select ok((pg_temp.s12ga_body('ok-edge')->>'expiresAt')::timestamptz - (pg_temp.s12ga_body('ok-edge')->>'startsAt')::timestamptz
+    between interval '6 days 22 hours' and interval '7 days',
+  'the accepted window never exceeds seven days [P2-S12-AC-077]');
+
+-- -------------------------------------------- the submitter rule with an otherwise eligible reviewer --
+select is(pg_temp.s12ga_grant('designer2', 'cms.reviewer', 1), 'OK',
+  'control: designer2 receives cms.reviewer through the real CMS-03A-15 command [P2-S12-AC-078]');
+select pg_temp.s12ga_assign('el-submitter2', 'owner', pg_temp.s12ga_review('r6'), 'designer2', interval '1 hour');
+select pg_temp.s12ga_assign('d2-r2', 'owner', pg_temp.s12ga_review('r2'), 'designer2', interval '6 hours');
+select is(pg_temp.s12ga_out('el-submitter2') || ' / ' || pg_temp.s12ga_out('d2-r2'),
+  'P0001:reviewer_not_eligible / ok',
+  'the review submitter is refused reviewer_not_eligible although eligible in every other way; the same human is assignable '
+  || 'on a review he did not submit [P2-S12-AC-078]');
+
+-- ---------------------------------------------------------------------------------- revoke --
+select pg_temp.s12ga_mark('r1:pre-revoke', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_revoke('rv1', 'owner', pg_temp.s12ga_review('r1'), (pg_temp.s12ga_kept('a1')->>'id')::uuid,
+  jsonb_build_object('reason', 'Reassigned to another reviewer'));
+select pg_temp.s12ga_keep('rv1', 'rv1');
+select ok(pg_temp.s12ga_out('rv1') = 'ok'
+    and pg_temp.s12ga_body('rv1')->>'state' = 'revoked' and pg_temp.s12ga_body('rv1')->>'version' = '2'
+    and pg_temp.s12ga_body('rv1')->>'id' = pg_temp.s12ga_kept('a1')->>'id'
+    and pg_temp.s12ga_body('rv1')->>'startsAt' = pg_temp.s12ga_kept('a1')->>'startsAt'
+    and pg_temp.s12ga_body('rv1')->>'expiresAt' = pg_temp.s12ga_kept('a1')->>'expiresAt'
+    and pg_temp.s12ga_body('rv1')->>'reason' = 'Initial assignment'
+    and pg_temp.s12ga_body('rv1')->'actions' = '["read","decide"]'::jsonb,
+  'the owner revokes an assignment: 200 with the same resource at state revoked and version 2 [P2-S12-AC-076]');
+select ok(
+  (select review.version = 1 and review.state = 'open' from platform_private.cms_governed_reviews review
+    where review.id = pg_temp.s12ga_review('r1'))
+  and (select subject.state = 'review' and subject.lifecycle_version = 2 from platform_private.cms_template_versions subject
+        where subject.id = pg_temp.s12ga_subject('r1'))
+  and pg_temp.s12ga_audit('cms.governed.review.assignment.revoke', pg_temp.s12ga_review('r1')) = 1
+  and exists (select 1 from platform_private.idempotency_records record
+               where record.operation = 'CMS-03C-08' and record.key_hash = platform_private.cms_key_hash('s12ga-rv1')
+                 and record.state = 'completed' and record.response_ref->>'status' = '200'),
+  'revoking an assignment that authorized no counted approval leaves the review open at version 1, writes one audit record '
+  || 'and stores status 200 [P2-S12-AC-079]');
+select pg_temp.s12ga_mark('r1:post-revoke', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_revoke('rv1', 'owner', pg_temp.s12ga_review('r1'), (pg_temp.s12ga_kept('a1')->>'id')::uuid,
+  jsonb_build_object('reason', 'Reassigned to another reviewer', 'expectedVersion', '1', 'ifMatch', '1'));
+select ok(pg_temp.s12ga_out('rv1') = 'ok' and pg_temp.s12ga_body('rv1') = pg_temp.s12ga_kept('rv1')
+    and pg_temp.s12ga_same('r1:post-revoke', pg_temp.s12ga_review('r1')),
+  'an exact same-key revoke replay returns the original response and writes nothing [P2-S12-AC-080]');
+select pg_temp.s12ga_revoke('rv-again', 'owner', pg_temp.s12ga_review('r1'), (pg_temp.s12ga_kept('a1')->>'id')::uuid);
+select pg_temp.s12ga_revoke('rv-foreign', 'owner', pg_temp.s12ga_review('r1'), (pg_temp.s12ga_body('ok-edge')->>'id')::uuid);
+select pg_temp.s12ga_revoke('rv-unknown', 'owner', pg_temp.s12ga_review('r1'), 'a12a0000-0000-4000-8000-0000000000f5');
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['rv-again', 'rv-foreign', 'rv-unknown']) l),
+  'rv-again=P0001:CONFLICT;rv-foreign=P0001:NOT_FOUND;rv-unknown=P0001:NOT_FOUND',
+  'revoking an already revoked assignment is CONFLICT; an assignment of another review or an unknown one is NOT_FOUND [P2-S12-AC-077]');
+select ok(pg_temp.s12ga_same('r1:post-revoke', pg_temp.s12ga_review('r1')),
+  'the revoke refusals leave the covered stores identical [P2-S12-AC-080]');
+select pg_temp.s12ga_assign('a1-again', 'owner', pg_temp.s12ga_review('r1'), 'rev1', interval '1 hour');
+select ok(pg_temp.s12ga_out('a1-again') = 'ok' and pg_temp.s12ga_body('a1-again')->>'id' <> pg_temp.s12ga_kept('a1')->>'id'
+    and (select count(*) from platform_private.cms_governed_review_assignments
+          where review_id = pg_temp.s12ga_review('r1') and reviewer_person_id = pg_temp.s12ga_person('rev1')
+            and state = 'active') = 1,
+  'after a revoke the same reviewer can be assigned again: one new active assignment [P2-S12-AC-078]');
+
+-- ------------------------------------ revoking the assignment of a counted approval invalidates --
+select pg_temp.s12ga_decide('d2-approve', 'designer2', pg_temp.s12ga_review('r2'), 'approve');
+select ok(pg_temp.s12ga_out('d2-approve') = 'ok'
+    and (select review.version = 2 and review.state = 'open' and review.recorded_decision_count = 1
+           from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r2'))
+    and (select decision.capability = 'cms.reviewer.policy' from platform_private.cms_governed_review_decisions decision
+          where decision.review_id = pg_temp.s12ga_review('r2')),
+  'control: designer2 records a counted approval of the protected review in the policy slot (review version 2, open) [P2-S12-AC-072]');
+select pg_temp.s12ga_revoke('rv-counted', 'owner', pg_temp.s12ga_review('r2'), (pg_temp.s12ga_body('d2-r2')->>'id')::uuid);
+select ok(pg_temp.s12ga_out('rv-counted') = 'ok' and pg_temp.s12ga_body('rv-counted')->>'state' = 'revoked'
+    and pg_temp.s12ga_body('rv-counted')->>'reviewId' = pg_temp.s12ga_review('r2')::text,
+  'revoking the assignment of a counted approval still answers 200 with the revoked assignment resource [P2-S12-AC-078]');
+select ok(
+  (select review.state = 'invalidated' and review.invalidated_reason = 'reviewer_authority_changed'
+          and review.version = 3 and review.decided_at is null and review.recorded_decision_count = 1
+     from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r2'))
+  and (select subject.state = 'draft' and subject.lifecycle_version = 3 and subject.version = 1
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('r2'))
+  and pg_temp.s12ga_audit('cms.governed.review.assignment.revoke', pg_temp.s12ga_review('r2')) = 1
+  and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('r2')) = 1,
+  'the same transaction invalidates the review reviewer_authority_changed at version 3, returns the subject to draft '
+  || '(lifecycle 3, definition version 1) and writes its own audit record [P2-S12-AC-078]');

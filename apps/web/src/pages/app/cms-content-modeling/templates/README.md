@@ -16,7 +16,10 @@ private database remain authoritative for capability and version checks.
 
 ## Extension rules
 
-The edit page rejects malformed keys with a disclosure-safe accessible 404.
+The edit page rejects a malformed key, and the reserved keys `context` and
+`versions` (BE03c E13), with a disclosure-safe accessible 400 before any
+protected read (FE03, P2-S12-AC-265); an absent or concealed key is the
+disclosure-safe 404 and a missing designer grant is the 403.
 The island uses the canonical version for `expectedVersion` and exact strong
 `If-Match`; an HTTP 409 requires an explicit latest-version comparison and
 rebase. Neither a newly created draft nor a successor is publication.

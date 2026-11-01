@@ -1,0 +1,60 @@
+-- CMS-03C-07 setup: real grants and assignments, nine real open governed reviews, the fixture controls.
+--   rev1 / rev2 / designer2 are owner-party reviewers (designer2 also holds cms.reviewer.policy: the specialist slot);
+--   owner is the receipt owner, creator and submitter of every review; rev3 stays outside the owner organization
+--   (its party is only claimed) and is the DEC-108 schema reviewer of the successor chain.
+--   R1 ordinary: happy path        R2 ordinary: first rejection      R3 protected: policy slot first, then base slot
+--   R4 protected: base slot first, then an unsatisfiable base approve, then the policy slot
+--   R5 protected: duplicate decision, then a rejection      R6 ordinary: dependency_changed
+--   R7 protected: a counted approval whose grant is later revoked (dead review)
+--   R8 ordinary: effective-assignment and standing-grant gates        R9 ordinary: concealment
+create temp table s12ga_setup(key text primary key, outcome text not null) on commit drop;
+insert into s12ga_setup(key, outcome) values
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 1)),
+  ('designer2:reviewer', pg_temp.s12ga_grant('designer2', 'cms.reviewer', 1));
+-- rev3 keeps its own person party: it is the DEC-108 schema reviewer of the successor chain at the end
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2');
+
+select pg_temp.s12ga_open('r1', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r2', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r3', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_open('r4', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_open('r5', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_open('r6', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r7', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_open('r8', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r9', 'owner', array['typeA'], 'owner');
+
+create temp table s12ga_assigned(label text primary key) on commit drop;
+insert into s12ga_assigned(label)
+select 'as-' || spec.tag || '-' || spec.reviewer from (values
+  ('r1', 'rev1'), ('r2', 'rev1'), ('r3', 'designer2'), ('r3', 'rev1'), ('r4', 'rev1'), ('r4', 'rev2'),
+  ('r4', 'designer2'), ('r5', 'rev1'), ('r5', 'designer2'), ('r6', 'rev2'), ('r7', 'rev1'), ('r7', 'designer2'),
+  ('r8', 'rev1')) spec(tag, reviewer);
+select pg_temp.s12ga_assign('as-' || spec.tag || '-' || spec.reviewer, 'owner', pg_temp.s12ga_review(spec.tag),
+  spec.reviewer, interval '20 hours')
+from (values
+  ('r1', 'rev1'), ('r2', 'rev1'), ('r3', 'designer2'), ('r3', 'rev1'), ('r4', 'rev1'), ('r4', 'rev2'),
+  ('r4', 'designer2'), ('r5', 'rev1'), ('r5', 'designer2'), ('r6', 'rev2'), ('r7', 'rev1'), ('r7', 'designer2'),
+  ('r8', 'rev1')) spec(tag, reviewer);
+
+select ok((select count(*) = 3 and bool_and(outcome = 'OK') from s12ga_setup),
+  'fixture: rev1, rev2 and designer2 hold real CMS-03A-15 cms.reviewer grants in the owner organization [P2-S12-AC-072]');
+select ok(
+  (select count(*) = 9 and bool_and(state = 'open' and version = 1 and recorded_decision_count = 0)
+     from platform_private.cms_governed_reviews where id in (select value::uuid from s12gov_ids where key like 'r_:review'))
+  and (select count(*) = 4 and bool_and(risk_class = 'protected' and required_decision_count = 2
+         and required_capabilities = '["cms.reviewer","cms.reviewer.policy"]'::jsonb)
+         from platform_private.cms_governed_reviews
+        where id in (select pg_temp.s12ga_review(t) from unnest(array['r3', 'r4', 'r5', 'r7']) t))
+  and (select count(*) = 5 and bool_and(risk_class = 'ordinary' and required_decision_count = 1)
+         from platform_private.cms_governed_reviews
+        where id in (select pg_temp.s12ga_review(t) from unnest(array['r1', 'r2', 'r6', 'r8', 'r9']) t)),
+  'fixture: nine real open governed reviews exist, four protected (two decisions, policy slot) and five ordinary [P2-S12-AC-073]');
+select ok((select count(*) = 13 and bool_and(pg_temp.s12ga_out(label) = 'ok') from s12ga_assigned)
+    and (select count(*) from platform_private.cms_governed_review_assignments where state = 'active') = 13,
+  'fixture: thirteen real active assignments were created through the CMS-03C-08 command [P2-S12-AC-072]');
+select has_function('platform_api', 'cms_record_governed_decision', array['jsonb'],
+  'CMS-03C-07 has a named platform API RPC [P2-S12-AC-070]');
+select has_function('platform_private', 'cms_record_governed_decision', array['jsonb'],
+  'CMS-03C-07 has an atomic private implementation [P2-S12-AC-070]');

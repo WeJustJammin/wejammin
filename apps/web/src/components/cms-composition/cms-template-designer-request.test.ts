@@ -47,6 +47,7 @@ const detail: TemplateVersionDetail = {
   createdAt: '2026-09-27T12:00:00.000Z',
   updatedAt: '2026-09-27T13:00:00.000Z',
   state: 'draft',
+  templateId: '90000000-0000-4000-8000-000000000009',
   templateKey: 'release-note',
   templateVersion: 2,
   compatibleTypeIds: [TYPE_ID],
@@ -101,6 +102,30 @@ describe('CMS-11 template draft request', () => {
         audience: 'public',
         expectedVersion: null,
       },
+    });
+  });
+
+  it('names an unavailable content type separately from an empty choice', () => {
+    expect(
+      buildCmsTemplateDraftRequest(
+        validators,
+        { ...fields, compatibleTypeIds: [TYPE_ID, OTHER_ID] },
+        context,
+      ),
+    ).toEqual({
+      ok: false,
+      message:
+        'A chosen content type is no longer active. Clear the box marked "no longer available", then save.',
+    });
+    expect(
+      buildCmsTemplateDraftRequest(
+        validators,
+        { ...fields, compatibleTypeIds: [] },
+        context,
+      ),
+    ).toEqual({
+      ok: false,
+      message: 'Choose at least one available active content type.',
     });
   });
 

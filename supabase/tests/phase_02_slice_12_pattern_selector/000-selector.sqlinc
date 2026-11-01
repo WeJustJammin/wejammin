@@ -1,0 +1,100 @@
+-- CMS-03C-13: the author-facing list of ACTIVE pattern versions of the caller's owner scope whose compatibleTypeIds contain the
+-- requested content type, in the keyset order (patternKey ASC, patternVersion DESC).  BE03c 175, 398, 1363, 1474.
+-- [P2-S12-AC-106, AC-107, AC-108, AC-109]
+
+create or replace function pg_temp.s12ps_type(p_ordinal integer) returns uuid language sql stable as $body$
+  select id from s12pd_types where ordinal = p_ordinal $body$;
+create or replace function pg_temp.s12ps_request(p_patch jsonb default '{}'::jsonb, p_unset text[] default array[]::text[],
+  p_actor text default 'owner', p_type integer default 1) returns jsonb language sql volatile as $body$
+  select (jsonb_build_object('contentTypeId', pg_temp.s12ps_type(p_type), 'context', pg_temp.s09d_context(p_actor, true),
+    'correlationId', 'a9120000-0000-4000-8000-00000000c0d3') || p_patch) - p_unset $body$;
+create or replace function pg_temp.s12ps_sel(p_label text, p_patch jsonb default '{}'::jsonb, p_unset text[] default array[]::text[],
+  p_actor text default 'owner', p_type integer default 1, p_role text default 'service_role') returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12pu_call(p_label, 'platform_api.cms_list_pattern_selector', pg_temp.s12ps_request(p_patch, p_unset, p_actor, p_type), p_actor, p_role);
+end;
+$body$;
+create or replace function pg_temp.s12ps_keys(p_page jsonb) returns text[] language sql stable as $body$
+  select coalesce(array_agg(item->>'patternKey' || '@' || (item->>'patternVersion') order by ordinality), array[]::text[])
+    from jsonb_array_elements(coalesce(p_page->'items', '[]'::jsonb)) with ordinality t(item, ordinality) $body$;
+-- The item the independent oracle expects for a created pattern label: every member comes from the CMS-03C-12 response of that
+-- label, never from the selector's own read of the table.
+create or replace function pg_temp.s12ps_item(p_label text) returns jsonb language sql stable as $body$
+  select jsonb_build_object('patternId', pg_temp.s12pd_body(p_label)->'patternId', 'patternVersionId', pg_temp.s12pd_body(p_label)->'id',
+    'patternKey', pg_temp.s12pd_body(p_label)->'patternKey', 'patternVersion', pg_temp.s12pd_body(p_label)->'patternVersion',
+    'nodeCount', pg_temp.s12pd_body(p_label)->'nodeCount', 'blockRegistryDigest', pg_temp.s12pd_body(p_label)->'blockRegistryDigest') $body$;
+-- The pageVersion oracle: the high-water update instant (UTC microseconds) of the owner's pattern versions compatible with the type, in any
+-- state, so that a supersession or retirement of a listed version changes it ("1" when there is none).
+create or replace function pg_temp.s12ps_page_version(p_type integer) returns text language sql stable as $body$
+  select coalesce(floor(extract(epoch from max(v.updated_at)) * 1000000)::bigint::text, '1')
+    from platform_private.cms_pattern_versions v
+   where v.owner_id = pg_temp.s09d_id('ownerOrg') and v.compatible_type_ids ? lower(pg_temp.s12ps_type(p_type)::text) $body$;
+
+select has_function('platform_api', 'cms_list_pattern_selector', array['jsonb'], 'CMS-03C-13 has a named platform API RPC (BE03c 1447, AC-261)');
+select has_function('platform_private', 'cms_list_pattern_selector', array['jsonb'], 'the unsigned keyset reader is a named private function');
+select has_function('platform_private', 'cms_list_pattern_selector_signed', array['jsonb'], 'the signed-cursor wrapper is a named private function');
+select ok(has_function_privilege('service_role', to_regprocedure('platform_api.cms_list_pattern_selector(jsonb)'), 'execute')
+    and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_api.cms_list_pattern_selector(jsonb)'), 'execute'))
+                    from (values ('public'), ('anon'), ('authenticated')) roles(role_name)), false)
+    and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_private.cms_list_pattern_selector(jsonb)'), 'execute')
+                                  and not has_function_privilege(role_name, to_regprocedure('platform_private.cms_list_pattern_selector_signed(jsonb)'), 'execute'))
+                    from (values ('public'), ('anon'), ('authenticated'), ('service_role')) roles(role_name)), false),
+  'only service_role executes the transport; the private readers are closed to every API role [AC-261]');
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""']) from pg_proc p
+                     where p.oid in (to_regprocedure('platform_api.cms_list_pattern_selector(jsonb)'), to_regprocedure('platform_private.cms_list_pattern_selector(jsonb)'),
+                                     to_regprocedure('platform_private.cms_list_pattern_selector_signed(jsonb)'))), false),
+  'the three functions are SECURITY DEFINER with an empty search_path [AC-261]');
+
+-- the signing environment is part of the contract: no Vault key, no page ------------------------------------------------------------
+select pg_temp.s12ps_sel('nokey');
+select is(pg_temp.s12pu_oc('nokey'), 'P0001:DEPENDENCY_UNAVAILABLE',
+  'without a valid Vault signing key the read fails closed: DEPENDENCY_UNAVAILABLE, never an unsigned page [AC-109]');
+-- This fixed key exists only inside the rolled-back pgTAP transaction; it is never an operational signing value.
+select vault.create_secret(repeat('b2', 32), 'cms_editorial_history_cursor_active', 'pgTAP transaction-only pattern selector test key');
+
+-- the full list of the first type -----------------------------------------------------------------------------------------------------
+select pg_temp.s12ps_sel('all');
+select is(pg_temp.s12pu_oc('all'), 'ok', 'an assigned-capability author reads the selector [AC-108]');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.s12pu_body('all')) k), array['items', 'nextCursor', 'pageVersion'],
+  'the page is exactly PatternSelectorPage [AC-106]');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.s12pu_body('all')->'items'->0) k),
+  array['blockRegistryDigest', 'nodeCount', 'patternId', 'patternKey', 'patternVersion', 'patternVersionId'],
+  'each item is exactly PatternSelectorItem: no owner, capability, authority or state member [AC-106, AC-108]');
+select is(pg_temp.s12ps_keys(pg_temp.s12pu_body('all')),
+  array['pu-a@2', 'pu-big@2', 'pu-c@2', 'pu-d@2', 'pu-f@1', 'pu-h@3', 'pu-n@2', 'pu-p8@1', 'pu-s@2', 'pu-w@2'],
+  'the list is the newest ACTIVE version of every lineage compatible with type 1, ordered by patternKey: no superseded pu-a@1, no draft '
+  || 'pu-f@2, no pu-e (its newest version is compatible with type 2 only), no other owner [AC-108]');
+select is(pg_temp.s12pu_body('all')->'items', (select jsonb_agg(pg_temp.s12ps_item(l) order by k collate "C") from (values
+    ('pu-a', 'a2'), ('pu-big', 'b2'), ('pu-c', 'c2'), ('pu-d', 'd2'), ('pu-f', 'f1'), ('pu-h', 'h3'), ('pu-n', 'n2'), ('pu-p8', 'q1'), ('pu-s', 's2'), ('pu-w', 'w2')) t(k, l)),
+  'every item equals the independently built row: lineage id, the version ROW id, key, version, nodeCount and digest of the CMS-03C-12 response [AC-106]');
+select ok(pg_temp.s12pu_body('all')->'nextCursor' = 'null'::jsonb and jsonb_typeof(pg_temp.s12pu_body('all')->'pageVersion') = 'string'
+    and pg_temp.s12pu_body('all')->>'pageVersion' ~ '^[1-9][0-9]*$' and pg_temp.s12pu_body('all')->>'pageVersion' = pg_temp.s12ps_page_version(1),
+  'a final page has no cursor and a decimal-string pageVersion equal to the high-water update instant of the compatible versions [AC-109]');
+select ok((select bool_and(v.owner_id = pg_temp.s09d_id('ownerOrg') and v.state = 'active')
+             from jsonb_array_elements(pg_temp.s12pu_body('all')->'items') item
+             join platform_private.cms_pattern_versions v on v.id = (item->>'patternVersionId')::uuid),
+  'every listed row is an active version of the caller''s owner party [AC-108]');
+select ok(pg_temp.s12pu_unchanged('all'), 'the selector read changed no store: no audit, no outbox, no idempotency record [AC-110]');
+select is(jsonb_array_length(pg_temp.s12pu_body('all')->'items'), 10, 'the default limit 25 lists all ten [AC-109]');
+
+-- the other type, and a type nothing is compatible with ------------------------------------------------------------------------------
+select pg_temp.s12ps_sel('type2', '{}'::jsonb, array[]::text[], 'owner', 2);
+select is(pg_temp.s12ps_keys(pg_temp.s12pu_body('type2')), array['pu-e@2'],
+  'type 2 lists exactly the version that names it: pu-e@2 (pu-e@1, compatible with type 1 only, is superseded) [AC-108]');
+select ok(pg_temp.s12pu_body('type2')->'items' = jsonb_build_array(pg_temp.s12ps_item('e2'))
+    and pg_temp.s12pu_body('type2')->>'pageVersion' = pg_temp.s12ps_page_version(2),
+  'the type-2 page equals the independent row and its own page version [AC-108]');
+select pg_temp.s12pu_call('type-none', 'platform_api.cms_list_pattern_selector',
+  pg_temp.s12ps_request() || jsonb_build_object('contentTypeId', (select id from platform_private.cms_content_types where type_key = 's12pddraft')));
+select ok(pg_temp.s12pu_oc('type-none') = 'ok' and pg_temp.s12pu_body('type-none') = '{"items":[],"nextCursor":null,"pageVersion":"1"}'::jsonb,
+  'a real content type no pattern is compatible with is an empty page with pageVersion "1", not an error [AC-111]');
+
+-- the list follows the data: an activation replaces the listed version -------------------------------------------------------------------
+select * from pg_temp.s12pl_pattern('h4', 'pu-h', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"k4"}'::jsonb)), null, true, '3');
+select pg_temp.s12ps_sel('after-h4');
+select is(pg_temp.s12ps_keys(pg_temp.s12pu_body('after-h4')),
+  array['pu-a@2', 'pu-big@2', 'pu-c@2', 'pu-d@2', 'pu-f@1', 'pu-h@4', 'pu-n@2', 'pu-p8@1', 'pu-s@2', 'pu-w@2'],
+  'a newly activated version replaces its superseded predecessor in the list [AC-108]');
+select ok(pg_temp.s12pu_body('after-h4')->>'pageVersion' <> pg_temp.s12pu_body('all')->>'pageVersion'
+    and pg_temp.s12pu_body('after-h4')->>'pageVersion' = pg_temp.s12ps_page_version(1),
+  'the pageVersion moved with the activation: it is the strong validator of the list [AC-109]');

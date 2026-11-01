@@ -8,7 +8,6 @@
  */
 @layer components {
   :root {
-    --cms-danger: oklch(45% 0.18 25);
     --cms-target: 44px;
   }
 

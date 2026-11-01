@@ -21,6 +21,19 @@ export interface CmsEditorialConflictPathView {
   readonly yours: CmsEditorialConflictSide;
 }
 
+/**
+ * The taxonomy scope a divergent taxonomy field's explicit replacement needs,
+ * bound from verified reads elsewhere (the conflict detail read carries no
+ * locale): the server-derived type key, the exact conflict locale and the four
+ * immutable reference members of the server-read `theirs` revision. It is an
+ * internal, JSON-only island input, never a protected wire member.
+ */
+export interface CmsEditorialConflictTaxonomyContext {
+  readonly typeKey: string;
+  readonly locale: string;
+  readonly theirs: ConflictDetailResource['theirs'];
+}
+
 /** What the resolution island is given; JSON-serializable. */
 export interface CmsEditorialConflictResolveInit {
   readonly entryId: string;
@@ -32,6 +45,11 @@ export interface CmsEditorialConflictResolveInit {
   /** Decoded by the loader from the author-safe definitions (AC-106: no zod in the island). */
   readonly descriptors: readonly CmsFieldDescriptor[];
   readonly paths: readonly CmsEditorialConflictPathView[];
+  /**
+   * The selector scope of a divergent taxonomy field, bound by the host from
+   * verified reads; absent for a conflict with no taxonomy field.
+   */
+  readonly taxonomyContext?: CmsEditorialConflictTaxonomyContext;
 }
 
 export type CmsEditorialConflictChoice =
@@ -67,6 +85,11 @@ export interface CmsEditorialConflictState {
   readonly inputErrors: Readonly<Record<string, string>>;
   readonly summaryToken: number;
   readonly retryAfterSeconds: number | null;
+  /**
+   * Bumped only by a verified 422 `VALIDATION_FAILED` naming `term_unavailable`,
+   * so a divergent taxonomy field re-reads its selector. Never bumped otherwise.
+   */
+  readonly taxonomyRefreshToken: number;
 }
 
 const sideOf = (side: {
@@ -162,4 +185,51 @@ export const initialConflictState = (
   inputErrors: {},
   summaryToken: 0,
   retryAfterSeconds: null,
+  taxonomyRefreshToken: 0,
+});
+
+/** A 409 re-read may be adopted only while it names the bound `theirs` revision. */
+export const conflictTheirsMatches = (
+  bound: ConflictDetailResource['theirs'],
+  read: ConflictDetailResource['theirs'],
+): boolean =>
+  bound.revisionId === read.revisionId &&
+  bound.revisionNumber === read.revisionNumber &&
+  bound.schemaVersionId === read.schemaVersionId &&
+  bound.contentHash === read.contentHash;
+
+/**
+ * True when a 409 re-read cannot be adopted for a taxonomy-bound conflict: it
+ * names a different `theirs` revision than the selector scope was bound to. A
+ * conflict with no taxonomy context is never refused here.
+ */
+export const conflictRebindRefused = (
+  context: CmsEditorialConflictTaxonomyContext | undefined,
+  read: ConflictDetailResource,
+): boolean =>
+  context !== undefined && !conflictTheirsMatches(context.theirs, read.theirs);
+
+/**
+ * True when a refusal is the one that re-reads a divergent taxonomy field's
+ * selector: a verified 422 whose `VALIDATION_FAILED` reason token names a term
+ * that is gone. A 400 also maps to `validation`, so the status is part of the
+ * rule, not only the reason.
+ */
+export const conflictRefusalRefreshesTaxonomy = (result: {
+  readonly outcome: string;
+  readonly status: number | null;
+  readonly reasonCode: string | null;
+}): boolean =>
+  result.outcome === 'validation' &&
+  result.status === 422 &&
+  result.reasonCode === 'term_unavailable';
+
+/** The existing failed-reload patch: a re-read that could not be verified. */
+export const conflictReloadFailedState = (
+  message: string,
+): Partial<CmsEditorialConflictState> => ({
+  phase: 'idle',
+  alert: true,
+  retryAfterSeconds: null,
+  message,
 });

@@ -1,0 +1,90 @@
+-- The maximum placement against the ACTUAL producer (FE03 1050, BE03c 1487, DEC-175, DEC-181, DEC-188/DEC-189):
+-- 32 references times 16 block roots = 512 rows, 64 overrides (the key bound), the response measured as the
+-- transport serializes it.  The first entry has no template and so places at the root path `/` (BE03c 1365); the
+-- worst-case entry is template-bound (slot main) because only a templated entry can carry a long slotPath.
+select pg_temp.s12pl_entry('big');
+-- 65 keys that all name real nodes: refused for the key bound alone (isolated from the unknown-node rule).
+select * from pg_temp.s12pl_refused('overrides-65', pg_temp.s12pl_request('big', 'pb', '/',
+  (select jsonb_object_agg('/nested' || n || '/root' || m, 1) from generate_series(1, 5) n, generate_series(1, 13) m),
+  's12pl-big65-0001'), 'VALIDATION_FAILED', '["/overrides"]'::jsonb);
+select pg_temp.s12pl_run('big', pg_temp.s12pl_request('big', 'pb', '/',
+  (select jsonb_object_agg('/nested' || n || '/root' || m, jsonb_build_object('n', n * 100 + m))
+     from generate_series(1, 4) n, generate_series(1, 16) m),
+  's12pl-big-0001', 'linked', null, pg_temp.s12pd_expected_digest()));
+select * from pg_temp.s12pl_check('big', 'big', 'pb',
+  (select array_agg('/nested' || n || '/root' || m order by n, m)
+     from generate_series(1, 32) n, generate_series(1, 16) m), 0);
+select is((select count(*)::integer from platform_private.cms_composition_instances
+  where revision_id = pg_temp.s12pl_rev('big')), 512, 'the maximum placement stored exactly 512 rows [P2-S12-AC-218]');
+select is((select count(*)::integer from platform_private.cms_composition_instances
+  where revision_id = pg_temp.s12pl_rev('big') and props <> '{}'::jsonb), 64,
+  'exactly the 64 rows that own an override store one (key bound 64) [P2-S12-AC-218]');
+select is((select count(distinct path)::integer from platform_private.cms_composition_instances
+  where revision_id = pg_temp.s12pl_rev('big')), 512, 'the 512 row paths are unique per (revision, path)');
+select is(pg_temp.s12pl_q(format($sql$select min(position) || ':' || max(position)
+    from platform_private.cms_composition_instances where revision_id = %L$sql$, pg_temp.s12pl_rev('big'))), '0:511',
+  'positions run 0..511 consecutively in forest order [DEC-185]');
+-- The decoded JSON response the transport reads (compact, UTF-8): jsonb::text pads ", " and ": " that
+-- JSON.stringify omits, and no value here contains either, so removing them yields the compact byte count.
+create temp table s12pl_big_bytes on commit drop as
+select octet_length(convert_to(replace(replace(response::text, '": ', '":'), ', ', ','), 'UTF8')) as compact_bytes,
+       octet_length(convert_to(response::text, 'UTF8')) as padded_bytes
+  from s12pl_out where label = 'big';
+select cmp_ok((select compact_bytes from s12pl_big_bytes), '<=', 1048576,
+  'the maximum 512-row success is within the 1 MiB decoded-response ceiling (DEC-189) [P2-S12-AC-010]');
+-- The production adapter bounds the RAW PostgREST body (readBoundedResponse, cms-editorial-production-transport.ts),
+-- which is jsonb text with its ", " and ": " padding, so the padded size binds too and is never smaller than compact.
+select cmp_ok((select padded_bytes from s12pl_big_bytes), '<=', 1048576,
+  'the maximum 512-row success is within 1 MiB as the raw PostgREST body (jsonb text with padding) [P2-S12-AC-010]');
+select diag('512-row response: compact ' || compact_bytes || ' bytes, padded jsonb text ' || padded_bytes || ' bytes, ceiling 1048576')
+  from s12pl_big_bytes;
+select cmp_ok((select compact_bytes from s12pl_big_bytes), '>', 262144,
+  'control: the maximum success really exceeds the ordinary 256 KiB ceiling, so the DEC-189 allowance is exercised');
+
+-- The worst-case response SIZE the producer can emit: every one of the 512 row paths at the 248-octet bound.  Row paths are
+-- built from ASCII node keys and a flat template slot (`^[a-z][a-z0-9_-]{0,63}$`, BE03c 1511 / DEC-193 slot binding), so no
+-- path character is JSON-escaped (the former quote-filled slot path no longer names a slot): 32 top references (60
+-- characters each) -> a chain of two more 60-character references -> 16 block roots of 59 characters:
+-- 5 + 61 + 61 + 61 + 60 = 248 octets, 32 * 16 = 512 rows.
+select * from pg_temp.s12pl_pattern('wl0', 's12pl-wl0', (
+  select jsonb_agg(pg_temp.s12pd_block('r' || lpad(m::text, 2, '0') || repeat('x', 56)) order by m) from generate_series(1, 16) m));
+select * from pg_temp.s12pl_pattern('wl1', 's12pl-wl1', jsonb_build_array(jsonb_build_object('kind', 'pattern',
+  'key', 'c' || repeat('x', 59), 'patternId', pg_temp.s12pd_body('wl0')->'patternId', 'patternVersion', pg_temp.s12pd_body('wl0')->'patternVersion')));
+select * from pg_temp.s12pl_pattern('wl2', 's12pl-wl2', jsonb_build_array(jsonb_build_object('kind', 'pattern',
+  'key', 'b' || repeat('x', 59), 'patternId', pg_temp.s12pd_body('wl1')->'patternId', 'patternVersion', pg_temp.s12pd_body('wl1')->'patternVersion')));
+select * from pg_temp.s12pl_pattern('wl3', 's12pl-wl3', (
+  select jsonb_agg(jsonb_build_object('kind', 'pattern', 'key', 'a' || lpad(n::text, 2, '0') || repeat('x', 57),
+    'patternId', pg_temp.s12pd_body('wl2')->'patternId', 'patternVersion', pg_temp.s12pd_body('wl2')->'patternVersion') order by n)
+  from generate_series(1, 32) n));
+select pg_temp.s12pl_tentry('big2');
+select pg_temp.s12pl_run('big-worst', pg_temp.s12pl_request('big2', 'wl3', '/main', '{}'::jsonb, 's12pl-bigw-0001'));
+select * from pg_temp.s12pl_check('big-worst', 'big2', 'wl3',
+  (select array_agg('/main/a' || lpad(n::text, 2, '0') || repeat('x', 57) || '/b' || repeat('x', 59) || '/c' || repeat('x', 59)
+       || '/r' || lpad(m::text, 2, '0') || repeat('x', 56) order by n, m)
+     from generate_series(1, 32) n, generate_series(1, 16) m), 0);
+select is((select max(octet_length(item->>'path')) from jsonb_array_elements(pg_temp.s12pl_body('big-worst')->'items') item),
+  248, 'control: the longest of the 512 row paths is exactly the 248-octet bound');
+create temp table s12pl_worst_bytes on commit drop as
+select octet_length(convert_to(replace(replace(response::text, '": ', '":'), ', ', ','), 'UTF8')) as compact_bytes,
+       octet_length(convert_to(response::text, 'UTF8')) as padded_bytes
+  from s12pl_out where label = 'big-worst';
+select cmp_ok((select compact_bytes from s12pl_worst_bytes), '<=', 1048576,
+  'even 512 maximal-length paths stay within the 1 MiB ceiling: the producer cannot emit an over-budget success (DEC-189)');
+select cmp_ok((select padded_bytes from s12pl_worst_bytes), '<=', 1048576,
+  'even 512 maximal-length paths stay within 1 MiB as the raw PostgREST body (padded jsonb text) (DEC-189)');
+select diag('worst-case 512-row response (248-octet paths): compact ' || compact_bytes || ' bytes, padded ' || padded_bytes || ' bytes of 1048576')
+  from s12pl_worst_bytes;
+
+-- The int32 bound of `position`: the last representable position is usable, one past it is refused and writes nothing.
+select pg_temp.s12pl_tentry('ovf1');
+select pg_temp.s12pl_row('ovf1', '/main/x', 'main', 2147483645);
+select pg_temp.s12pl_run('pos-fits', pg_temp.s12pl_request('ovf1', 'pa', '/main', '{}'::jsonb, 's12pl-ovf1-0001'));
+select * from pg_temp.s12pl_check('pos-fits', 'ovf1', 'pa', array['/main/hero', '/main/cta'], 2147483646);
+select pg_temp.s12pl_tentry('ovf2');
+select pg_temp.s12pl_row('ovf2', '/main/x', 'main', 2147483646);
+select * from pg_temp.s12pl_refused('pos-overflow', pg_temp.s12pl_request('ovf2', 'pa', '/main', '{}'::jsonb, 's12pl-ovf2-0001'),
+  'CONFLICT');
+select pg_temp.s12pl_tentry('ovf3');
+select pg_temp.s12pl_row('ovf3', '/main/x', 'main', 2147483647);
+select * from pg_temp.s12pl_refused('pos-max-held', pg_temp.s12pl_request('ovf3', 'pa', '/main', '{}'::jsonb, 's12pl-ovf3-0001'),
+  'CONFLICT');

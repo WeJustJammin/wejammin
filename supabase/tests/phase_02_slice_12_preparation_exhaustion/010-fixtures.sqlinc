@@ -1,0 +1,209 @@
+-- Slice 12 preparation-exhaustion fixtures.  Builds REAL successor plans through
+-- the named producer (CMS-03A-10) and the worker RPCs to the "verifying" state
+-- (a zero-row additive plan and a positive-source-row plan), then lets a short
+-- worker lease lapse on SERVER time (bounded wait, no guard disabling, no direct
+-- field writes) and snapshots the WHOLE persisted plan/report rows, the row
+-- evidence content and the audit/outbox/idempotency content a refused or
+-- read-only call must leave alone.  Nothing here writes a plan, report, decision
+-- or review by hand.
+
+-- The current CAS version of a plan (read through the RPC-context policy).
+create or replace function pg_temp.s12_v(p_plan uuid) returns bigint
+language plpgsql as $body$
+begin
+  return coalesce(pg_temp.s09d_read('cms_schema_migration_plans', 'version', p_plan), '0')::bigint;
+end;
+$body$;
+
+-- The plan's stored lease token, or null.
+create or replace function pg_temp.s12_token(p_plan uuid) returns text
+language plpgsql as $body$
+begin
+  return nullif(pg_temp.s09d_read('cms_schema_migration_plans', 'dry_run_report', p_plan)::jsonb->'lease'->>'token', '');
+end;
+$body$;
+
+-- The plan's stored lease expiry.
+create or replace function pg_temp.s12_expires(p_plan uuid) returns timestamptz
+language plpgsql as $body$
+begin
+  return (pg_temp.s09d_read('cms_schema_migration_plans', 'dry_run_report', p_plan)::jsonb->'lease'->>'expiresAt')::timestamptz;
+end;
+$body$;
+
+-- The fingerprint-bound base request the worker RPCs expect for a plan.
+create or replace function pg_temp.s12_base(p_label text, p_plan uuid, p_version uuid) returns jsonb
+language plpgsql as $body$
+declare plan_json jsonb;
+begin
+  plan_json := pg_temp.s09d_call(p_label, 'platform_api.cms_get_schema_migration_plan',
+    jsonb_build_object('migrationPlanId', p_plan, 'schemaVersionId', p_version,
+      'expectedVersion', pg_temp.s12_v(p_plan)::text));
+  return jsonb_build_object(
+    'migrationPlanId', p_plan, 'schemaVersionId', p_version, 'cursor', '0',
+    'transformKey', null, 'transformVersion', null,
+    'compilerHash', plan_json->'compilerHash', 'sourceHash', plan_json->'sourceHash',
+    'targetHash', plan_json->'targetHash');
+end;
+$body$;
+
+-- Drives a zero-row successor plan (CMS-03A-10 -> worker seal -> run claim ->
+-- bounded batch -> begin verification) to the "verifying" state under a live
+-- lease of p_lease_ms, or stops at the live "running" backfill when
+-- p_stop = 'running'.
+create or replace function pg_temp.s12_to_verifying(
+  p_tag text, p_lease_ms text default '15000', p_worker text default 's12-owner',
+  p_stop text default 'verifying'
+) returns jsonb language plpgsql as $body$
+declare
+  plan_id uuid := pg_temp.s09d_id(p_tag || ':plan');
+  version_id uuid := pg_temp.s09d_id(p_tag || ':version');
+  base jsonb; dry jsonb; run jsonb; final jsonb;
+begin
+  perform pg_temp.s09d_session('owner', 'service_role');
+  base := pg_temp.s12_base(p_tag || '.get', plan_id, version_id);
+  dry := pg_temp.s09d_call(p_tag || '.dry', 'platform_api.cms_claim_schema_migration_lease',
+    base || jsonb_build_object('expectedVersion', pg_temp.s12_v(plan_id)::text,
+      'leaseOwner', p_worker, 'workerId', p_worker, 'leaseDurationMs', p_lease_ms,
+      'now', clock_timestamp()::text));
+  perform pg_temp.s09d_call(p_tag || '.drybatch', 'platform_api.cms_process_schema_migration_dry_run_batch',
+    base || jsonb_build_object('expectedVersion', pg_temp.s12_v(plan_id)::text, 'limit', '1',
+      'leaseToken', dry->>'leaseToken', 'rowEvidence', '[]'::jsonb,
+      'correlationId', extensions.gen_random_uuid(), 'causationId', null));
+  perform pg_temp.s09d_call(p_tag || '.final', 'platform_api.cms_finalize_schema_migration_dry_run',
+    (base - 'schemaVersionId') || jsonb_build_object('expectedVersion', pg_temp.s12_v(plan_id)::text,
+      'sourceCount', '0', 'targetCount', '0', 'rowErrorCount', '0'));
+  run := pg_temp.s09d_call(p_tag || '.run', 'platform_api.cms_claim_schema_migration_lease',
+    base || jsonb_build_object('expectedVersion', pg_temp.s12_v(plan_id)::text,
+      'leaseOwner', p_worker, 'workerId', p_worker, 'leaseDurationMs', p_lease_ms,
+      'now', clock_timestamp()::text));
+  perform pg_temp.s09d_call(p_tag || '.runbatch', 'platform_api.cms_process_schema_migration_batch',
+    base || jsonb_build_object('expectedVersion', pg_temp.s12_v(plan_id)::text, 'limit', '1',
+      'leaseToken', run->>'leaseToken', 'rowEvidence', '[]'::jsonb,
+      'correlationId', extensions.gen_random_uuid(), 'causationId', null));
+  if p_stop = 'running' then
+    return pg_temp.s09d_resp(p_tag || '.run');
+  end if;
+  final := pg_temp.s09d_call(p_tag || '.begin', 'platform_api.cms_begin_schema_migration_verification',
+    (base - 'schemaVersionId') || jsonb_build_object('expectedVersion', pg_temp.s12_v(plan_id)::text,
+      'sourceCount', '0', 'targetCount', '0', 'rowErrorCount', '0', 'migratedCount', '0', 'failedCount', '0'));
+  return final;
+end;
+$body$;
+
+-- Drives a POSITIVE-source-row successor plan to "verifying" under a short live
+-- lease, reusing the DEC-108 worker evidence helpers (04-worker.sqlinc): real
+-- entries are created by CMS-03B-10, the scan reads them through the source-rows
+-- RPC and posts per-row evidence the database reproduces.  No rowEvidence is
+-- manufactured here and no table is written directly.
+create or replace function pg_temp.s12_positive_verifying(
+  p_tag text, p_lease_ms text default '15000', p_worker text default 's12-pos'
+) returns jsonb language plpgsql as $body$
+declare dryclaim jsonb; dry jsonb; runclaim jsonb; began jsonb;
+begin
+  perform pg_temp.s09d_session('owner', 'service_role');
+  dryclaim := pg_temp.s09d_call(p_tag || '.s12.dryclaim', 'platform_api.cms_claim_schema_migration_lease',
+    pg_temp.s09w_base(p_tag) || jsonb_build_object(
+      'expectedVersion', pg_temp.s09w_plan_version(p_tag), 'cursor', pg_temp.s09w_plan_cursor(p_tag),
+      'leaseOwner', p_worker, 'workerId', p_worker, 'leaseDurationMs', p_lease_ms, 'now', clock_timestamp()::text));
+  perform set_config('s09w.lease.' || p_tag, dryclaim->>'leaseToken', true);
+  dry := pg_temp.s09w_pass(p_tag, true, '1');
+  perform pg_temp.s09d_call(p_tag || '.s12.final', 'platform_api.cms_finalize_schema_migration_dry_run',
+    (pg_temp.s09w_base(p_tag) - 'schemaVersionId') || jsonb_build_object(
+      'expectedVersion', pg_temp.s09w_plan_version(p_tag), 'cursor', pg_temp.s09w_plan_cursor(p_tag),
+      'sourceCount', dry->>'sourceCount', 'targetCount', dry->>'targetCount', 'rowErrorCount', dry->>'rowErrorCount'));
+  runclaim := pg_temp.s09d_call(p_tag || '.s12.runclaim', 'platform_api.cms_claim_schema_migration_lease',
+    pg_temp.s09w_base(p_tag) || jsonb_build_object(
+      'expectedVersion', pg_temp.s09w_plan_version(p_tag), 'cursor', pg_temp.s09w_plan_cursor(p_tag),
+      'leaseOwner', p_worker, 'workerId', p_worker, 'leaseDurationMs', p_lease_ms, 'now', clock_timestamp()::text));
+  perform set_config('s09w.lease.' || p_tag, runclaim->>'leaseToken', true);
+  perform pg_temp.s09w_pass(p_tag, false, '1');
+  began := pg_temp.s09w_begin(p_tag);
+  return began;
+end;
+$body$;
+
+-- Waits (bounded) for a REAL plan's short worker lease to lapse on server time.
+-- The plan was claimed with a short lease; this sleeps until the persisted
+-- deadline has passed.  No guard is disabled and no field is written by hand.
+create or replace function pg_temp.s12_expire_lease(p_plan uuid) returns void
+language plpgsql as $body$
+begin
+  perform pg_sleep(greatest(0.0, extract(epoch from (pg_temp.s12_expires(p_plan) - clock_timestamp())) + 0.5));
+end;
+$body$;
+
+-- The WHOLE persisted plan row (every column, including version, timestamps and
+-- the lease object inside dry_run_report).  A no-effects snapshot uses this so a
+-- token/owner/expiry-only or version-only mutation is still detected.
+create or replace function pg_temp.s12_plan_row(p_plan uuid) returns jsonb
+language plpgsql as $body$
+begin
+  return pg_temp.s09d_scalar(format(
+    'select to_jsonb(plan)::text from platform_private.cms_schema_migration_plans plan where id = %L', p_plan))::jsonb;
+end;
+$body$;
+
+-- The WHOLE persisted sealed-report row for a plan.
+create or replace function pg_temp.s12_report_row(p_plan uuid) returns jsonb
+language plpgsql as $body$
+begin
+  return pg_temp.s09d_scalar(format(
+    'select to_jsonb(report)::text from platform_private.cms_schema_dry_run_reports report where report.plan_id = %L', p_plan))::jsonb;
+end;
+$body$;
+
+-- Preservation helper: the plan row minus ONLY the mutable version/updated_at
+-- fields (the dry-run report's lease object is stripped too).  `created_at` is
+-- NOT removed: a lease renewal must never change the creation timestamp.  Used
+-- to assert that a re-lease changes nothing but the lease metadata and CAS version.
+create or replace function pg_temp.s12_plan_preserved(p_plan uuid) returns jsonb
+language plpgsql as $body$
+begin
+  return pg_temp.s09d_scalar(format($q$
+    select (to_jsonb(plan) - 'version' - 'updated_at'
+            || jsonb_build_object('dry_run_report', plan.dry_run_report - 'lease'))::text
+      from platform_private.cms_schema_migration_plans plan where id = %L$q$, p_plan))::jsonb;
+end;
+$body$;
+
+-- Deterministic content hash of a plan's dry-run row-evidence rows: the WHOLE
+-- row (id, report_id, source_table, source_row_id, source_hash, output_hash,
+-- error_code, recorded_at) in a deterministic order, so a replacement or a
+-- timestamp-only mutation is caught.
+create or replace function pg_temp.s12_row_evidence(p_plan uuid) returns text
+language sql stable as $body$
+  select coalesce(pg_temp.s09d_scalar(format($q$
+    select coalesce(md5(string_agg(to_jsonb(evidence)::text, E'\n' order by evidence.id)), '-')
+      from platform_private.cms_schema_dry_run_row_evidence evidence where evidence.plan_id = %L$q$, p_plan)), 'MISSING')
+$body$;
+
+-- Deterministic hash of the FULL source revision rows of a schema version (every
+-- column of every row, ordered by id), so a deletion-plus-replacement that keeps
+-- the same row count is still caught.
+create or replace function pg_temp.s12_source_rows(p_version uuid) returns text
+language sql stable as $body$
+  select coalesce(pg_temp.s09d_scalar(format($q$
+    select coalesce(md5(string_agg(to_jsonb(revision)::text, E'\n' order by revision.id)), '-')
+      from platform_private.cms_entry_revisions revision where revision.schema_version_id = %L$q$, p_version)), 'MISSING')
+$body$;
+
+-- Full no-effects identity: the WHOLE plan row, the WHOLE report row, the
+-- deterministic row-evidence content and the full content of the audit, outbox
+-- and idempotency tables (single-transaction suite: nothing writes between the
+-- snapshot and the assertion, so full content is deterministic).
+create or replace function pg_temp.s12_effects(p_plan uuid) returns text
+language plpgsql as $body$
+declare parts text;
+begin
+  parts := pg_temp.s12_plan_row(p_plan)::text || '|' || pg_temp.s12_report_row(p_plan)::text;
+  parts := parts || '|' || pg_temp.s12_row_evidence(p_plan);
+  parts := parts || '|' || pg_temp.s09d_scalar($q$select coalesce(md5(string_agg(t::text, E'
+' order by t.id)), '-') from audit_private.audit_events t$q$);
+  parts := parts || '|' || pg_temp.s09d_scalar($q$select coalesce(md5(string_agg(t::text, E'
+' order by t.id)), '-') from platform_private.outbox_events t$q$);
+  parts := parts || '|' || pg_temp.s09d_scalar($q$select coalesce(md5(string_agg(t::text, E'
+' order by t.id)), '-') from platform_private.idempotency_records t$q$);
+  return md5(parts);
+end;
+$body$;

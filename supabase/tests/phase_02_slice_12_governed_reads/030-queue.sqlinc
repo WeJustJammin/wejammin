@@ -1,0 +1,138 @@
+-- CMS-03C-11 queue: the three scopes, the filters, exact items, ordering, the page bounds and validation.  The signed-cursor
+-- environment is provisioned AFTER the first assertion, which needs it missing.
+select pg_temp.s12ga_list('q-nokey', 'owner', jsonb_build_object('scope', 'owned'));
+select is(pg_temp.s12ga_out('q-nokey'), 'P0001:DEPENDENCY_UNAVAILABLE',
+  'without a valid Vault signing key the queue fails closed: DEPENDENCY_UNAVAILABLE, never an unsigned page [P2-S12-AC-097]');
+-- This fixed key exists only inside the rolled-back pgTAP transaction; it is never an operational signing value.
+select vault.create_secret(repeat('a1', 32), 'cms_editorial_history_cursor_active', 'pgTAP transaction-only CMS-03C-11 test key');
+
+select pg_temp.s12ga_mark('r3:queue', pg_temp.s12ga_review('r3'));
+select pg_temp.s12ga_list('q-rev1', 'rev1');
+select pg_temp.s12ga_list('q-owner-submitted', 'owner', jsonb_build_object('scope', 'submitted'));
+select pg_temp.s12ga_list('q-owner-owned', 'owner', jsonb_build_object('scope', 'owned'));
+select pg_temp.s12ga_list('q-d2-submitted', 'designer2', jsonb_build_object('scope', 'submitted'));
+select pg_temp.s12ga_list('q-d2-owned', 'designer2', jsonb_build_object('scope', 'owned'));
+select pg_temp.s12ga_list('q-rev2-assigned', 'rev2', jsonb_build_object('scope', 'assigned'));
+select pg_temp.s12ga_list('q-rev2-owned', 'rev2', jsonb_build_object('scope', 'owned'));
+select pg_temp.s12ga_list('q-rev1-submitted', 'rev1', jsonb_build_object('scope', 'submitted'));
+
+-- ---------------------------------------------------------------------------- the scopes --
+select ok(pg_temp.s12ga_out('q-rev1') = 'ok'
+    and pg_temp.s12ga_page_ids('q-rev1') = pg_temp.s12ga_oracle(pg_temp.s12ga_person('rev1'), 'assigned')
+    and array_length(pg_temp.s12ga_page_ids('q-rev1'), 1) = 3
+    and pg_temp.s12ga_page_ids('q-rev1') @> array[pg_temp.s12ga_review('r1'), pg_temp.s12ga_review('r2'), pg_temp.s12ga_review('r3')],
+  'scope assigned (the default) lists exactly the reviews the caller holds an active assignment on, in (updatedAt DESC, reviewId DESC) order [P2-S12-AC-096]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('q-rev1')),
+  'items,nextCursor,pageVersion', 'the page is exactly GovernedReviewQueuePage [P2-S12-AC-094]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('q-rev1')->'items'->0),
+  'assignmentEndsAt,myDecision,recordedDecisionCount,requiredDecisionCount,reviewId,riskClass,state,subjectKey,subjectKind,'
+  || 'subjectVersion,submittedAt,updatedAt',
+  'each item is exactly GovernedReviewQueueItem (12 members, no identifier) [P2-S12-AC-094]');
+select is(
+  (select jsonb_agg(item order by ordinality) from jsonb_array_elements(pg_temp.s12ga_body('q-rev1')->'items') with ordinality t(item, ordinality)),
+  (select jsonb_agg(jsonb_build_object(
+            'reviewId', r.id, 'subjectKind', r.subject_kind, 'subjectKey', r.subject_key, 'subjectVersion', r.subject_version,
+            'state', r.state, 'riskClass', r.risk_class, 'requiredDecisionCount', r.required_decision_count,
+            'recordedDecisionCount', r.recorded_decision_count,
+            'myDecision', coalesce((select d.decision from platform_private.cms_governed_review_decisions d
+                                     where d.review_id = r.id and d.reviewer_person_id = pg_temp.s12ga_person('rev1')), 'none'),
+            'assignmentEndsAt', pg_temp.s12ga_iso((select a.ends_at from platform_private.cms_governed_review_assignments a
+                                                    where a.review_id = r.id and a.reviewer_person_id = pg_temp.s12ga_person('rev1') and a.state = 'active')),
+            'submittedAt', pg_temp.s12ga_iso(r.submitted_at), 'updatedAt', pg_temp.s12ga_iso(r.updated_at))
+          order by date_trunc('milliseconds', r.updated_at) desc, r.id desc)
+     from platform_private.cms_governed_reviews r where r.id = any (pg_temp.s12ga_oracle(pg_temp.s12ga_person('rev1'), 'assigned'))),
+  'every item equals the independently computed row: key, version, state, risk, decision counts, the caller''s own decision, '
+  || 'assignment end and instants [P2-S12-AC-094]');
+select ok(
+  pg_temp.s12ga_body('q-rev1')->'nextCursor' = 'null'::jsonb and pg_temp.s12ga_body('q-rev1')->>'pageVersion' ~ '^[1-9][0-9]*$'
+    and jsonb_typeof(pg_temp.s12ga_body('q-rev1')->'pageVersion') = 'string',
+  'a final page has no cursor and a decimal-string pageVersion [P2-S12-AC-094]');
+select ok(
+  pg_temp.s12ga_page_ids('q-owner-submitted') = pg_temp.s12ga_oracle(pg_temp.s12ga_person('owner'), 'submitted')
+    and array_length(pg_temp.s12ga_page_ids('q-owner-submitted'), 1) = 6
+    and not (pg_temp.s12ga_page_ids('q-owner-submitted') @> array[pg_temp.s12ga_review('r6')])
+    and (select bool_and(item->'assignmentEndsAt' = 'null'::jsonb and item->>'myDecision' = 'none')
+           from jsonb_array_elements(pg_temp.s12ga_body('q-owner-submitted')->'items') item)
+    and pg_temp.s12ga_page_ids('q-d2-submitted') = array[pg_temp.s12ga_review('r6')],
+  'scope submitted lists only the reviews the caller submitted: owner six, designer2 only R6, with no assignment end [P2-S12-AC-096]');
+select ok(
+  pg_temp.s12ga_page_ids('q-owner-owned') = pg_temp.s12ga_oracle(pg_temp.s12ga_person('owner'), 'owned')
+    and array_length(pg_temp.s12ga_page_ids('q-owner-owned'), 1) = 7
+    and pg_temp.s12ga_page_ids('q-d2-owned') = pg_temp.s12ga_oracle(pg_temp.s12ga_person('designer2'), 'owned')
+    and array_length(pg_temp.s12ga_page_ids('q-d2-owned'), 1) = 7,
+  'scope owned lists the seven reviews of subjects the caller''s designer capability covers [P2-S12-AC-096]');
+select ok(
+  pg_temp.s12ga_page_ids('q-rev2-assigned') = pg_temp.s12ga_oracle(pg_temp.s12ga_person('rev2'), 'assigned')
+    and pg_temp.s12ga_page_ids('q-rev2-assigned') @> array[pg_temp.s12ga_review('r3'), pg_temp.s12ga_review('r6')]
+    and array_length(pg_temp.s12ga_page_ids('q-rev2-assigned'), 1) = 2
+    and pg_temp.s12ga_page_ids('q-rev2-owned') = array[]::uuid[] and pg_temp.s12ga_page_ids('q-rev1-submitted') = array[]::uuid[]
+    and pg_temp.s12ga_out('q-rev2-owned') = 'ok' and pg_temp.s12ga_out('q-rev1-submitted') = 'ok',
+  'a revoked assignment (R4) is not listed; a caller with no designer capability has an empty owned scope and a non-submitter an '
+  || 'empty submitted scope [P2-S12-AC-096]');
+select pg_temp.s12ga_list('q-other', 'other');
+select pg_temp.s12ga_rpc('q-nonmember', 'platform_api.cms_list_governed_reviews', 'rev3', jsonb_build_object('scope', 'owned'),
+  pg_temp.s12ga_ctx('rev3', interval '1 minute', false) || jsonb_build_object('actingPartyId', pg_temp.s12ga_org()));
+select ok(pg_temp.s12ga_out('q-other') = 'ok' and pg_temp.s12ga_out('q-nonmember') = 'ok'
+    and pg_temp.s12ga_page_ids('q-other') = array[]::uuid[] and pg_temp.s12ga_page_ids('q-nonmember') = array[]::uuid[]
+    and pg_temp.s12ga_body('q-nonmember')->>'pageVersion' = '1' and pg_temp.s12ga_body('q-nonmember')->'nextCursor' = 'null'::jsonb,
+  'a caller outside the acting party, or claiming a party he is not a member of, reads the empty page and no error [P2-S12-AC-096]');
+
+-- --------------------------------------------------------------------------------- filters --
+select pg_temp.s12ga_list('f-open', 'owner', jsonb_build_object('scope', 'owned', 'state', 'open'));
+select pg_temp.s12ga_list('f-invalidated', 'owner', jsonb_build_object('scope', 'owned', 'state', 'invalidated'));
+select pg_temp.s12ga_list('f-kind', 'owner', jsonb_build_object('scope', 'owned', 'subjectKind', 'template_version'));
+select pg_temp.s12ga_list('f-pattern', 'owner', jsonb_build_object('scope', 'owned', 'subjectKind', 'pattern_version'));
+select pg_temp.s12ga_list('f-null', 'owner', jsonb_build_object('scope', 'submitted', 'state', null, 'subjectKind', null, 'limit', null, 'cursor', null));
+select ok(
+  pg_temp.s12ga_page_ids('f-open') = pg_temp.s12ga_oracle(pg_temp.s12ga_person('owner'), 'owned', 'open')
+    and array_length(pg_temp.s12ga_page_ids('f-open'), 1) = 4
+    and pg_temp.s12ga_page_ids('f-invalidated') = array[pg_temp.s12ga_review('r5')]
+    and pg_temp.s12ga_page_ids('f-kind') = pg_temp.s12ga_oracle(pg_temp.s12ga_person('owner'), 'owned', null, 'template_version')
+    and array_length(pg_temp.s12ga_page_ids('f-kind'), 1) = 7
+    and pg_temp.s12ga_page_ids('f-pattern') = array[]::uuid[],
+  'the state and subjectKind filters narrow the scope: four open reviews, one invalidated, seven template versions, no pattern version [P2-S12-AC-095]');
+select ok(pg_temp.s12ga_out('f-null') = 'ok' and pg_temp.s12ga_page_ids('f-null') = pg_temp.s12ga_oracle(pg_temp.s12ga_person('owner'), 'submitted'),
+  'null filters, limit and cursor are treated as absent [P2-S12-AC-095]');
+
+-- ------------------------------------------------------------------ pagination walk, limit 2 --
+select pg_temp.s12ga_list('w1', 'owner', jsonb_build_object('scope', 'owned', 'limit', 2));
+select pg_temp.s12ga_list('w2', 'owner', jsonb_build_object('scope', 'owned', 'limit', 2, 'cursor', pg_temp.s12ga_body('w1')->>'nextCursor'));
+select pg_temp.s12ga_list('w3', 'owner', jsonb_build_object('scope', 'owned', 'limit', 2, 'cursor', pg_temp.s12ga_body('w2')->>'nextCursor'));
+select pg_temp.s12ga_list('w4', 'owner', jsonb_build_object('scope', 'owned', 'limit', 2, 'cursor', pg_temp.s12ga_body('w3')->>'nextCursor'));
+select ok(pg_temp.s12ga_out('w1') = 'ok' and pg_temp.s12ga_out('w2') = 'ok' and pg_temp.s12ga_out('w3') = 'ok' and pg_temp.s12ga_out('w4') = 'ok'
+    and pg_temp.s12ga_page_ids('w1') || pg_temp.s12ga_page_ids('w2') || pg_temp.s12ga_page_ids('w3') || pg_temp.s12ga_page_ids('w4')
+        = pg_temp.s12ga_oracle(pg_temp.s12ga_person('owner'), 'owned')
+    and array_length(pg_temp.s12ga_page_ids('w1'), 1) = 2 and array_length(pg_temp.s12ga_page_ids('w3'), 1) = 2
+    and array_length(pg_temp.s12ga_page_ids('w4'), 1) = 1,
+  'a keyset walk with limit 2 returns the seven reviews exactly once each, in order, over four pages (2, 2, 2, 1) [P2-S12-AC-097]');
+select ok(
+  jsonb_typeof(pg_temp.s12ga_body('w1')->'nextCursor') = 'string' and length(pg_temp.s12ga_body('w1')->>'nextCursor') <= 512
+    and jsonb_typeof(pg_temp.s12ga_body('w3')->'nextCursor') = 'string'
+    and pg_temp.s12ga_body('w4')->'nextCursor' = 'null'::jsonb
+    and pg_temp.s12ga_body('w1')->>'nextCursor' <> pg_temp.s12ga_body('w2')->>'nextCursor',
+  'every non-final page carries a signed cursor of at most 512 characters and the last page none [P2-S12-AC-097]');
+select pg_temp.s12ga_list('lim-default', 'owner', jsonb_build_object('scope', 'owned', 'limit', 1));
+select pg_temp.s12ga_list('lim-max', 'owner', jsonb_build_object('scope', 'owned', 'limit', 50));
+select ok(array_length(pg_temp.s12ga_page_ids('lim-default'), 1) = 1 and array_length(pg_temp.s12ga_page_ids('lim-max'), 1) = 7
+    and pg_temp.s12ga_page_ids('lim-max') = pg_temp.s12ga_oracle(pg_temp.s12ga_person('owner'), 'owned'),
+  'limit 1 returns one row and the maximum limit 50 returns the whole scope [P2-S12-AC-097]');
+
+-- ---------------------------------------------------------------------------- validation --
+select pg_temp.s12ga_list('v-key', 'owner', jsonb_build_object('cursor2', 'x'));
+select pg_temp.s12ga_list('v-scope', 'owner', jsonb_build_object('scope', 'all'));
+select pg_temp.s12ga_list('v-state', 'owner', jsonb_build_object('state', 'weird'));
+select pg_temp.s12ga_list('v-kind', 'owner', jsonb_build_object('subjectKind', 'navigation_version'));
+select pg_temp.s12ga_list('v-limit0', 'owner', jsonb_build_object('limit', 0));
+select pg_temp.s12ga_list('v-limit51', 'owner', jsonb_build_object('limit', 51));
+select pg_temp.s12ga_list('v-limit-text', 'owner', jsonb_build_object('limit', 'ten'));
+select pg_temp.s12ga_list('v-limit-frac', 'owner', jsonb_build_object('limit', 2.5));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l) || coalesce('#' || nullif(pg_temp.s12ga_det(l), ''), ''), ';' order by l collate "C")
+     from unnest(array['v-key', 'v-scope', 'v-state', 'v-kind', 'v-limit0', 'v-limit51', 'v-limit-text', 'v-limit-frac']) l),
+  'v-key=P0001:INVALID_REQUEST;v-kind=P0001:VALIDATION_FAILED#["/subjectKind"];v-limit-frac=P0001:VALIDATION_FAILED#["/limit"];'
+    || 'v-limit-text=P0001:VALIDATION_FAILED#["/limit"];v-limit0=P0001:VALIDATION_FAILED#["/limit"];'
+    || 'v-limit51=P0001:VALIDATION_FAILED#["/limit"];v-scope=P0001:VALIDATION_FAILED#["/scope"];v-state=P0001:VALIDATION_FAILED#["/state"]',
+  'an unknown query key is INVALID_REQUEST; an unknown scope, state or subject kind and a limit outside 1-50 are VALIDATION_FAILED at '
+  || 'their pointer [P2-S12-AC-095]');
+select ok(pg_temp.s12ga_same('r3:queue', pg_temp.s12ga_review('r3')),
+  'the queue reads write no audit, outbox, idempotency or review row [P2-S12-AC-097]');

@@ -1,0 +1,51 @@
+-- Real taxonomy subjects through the named producers (CMS-03C-16 create, CMS-03C-06 submit), as governed_activation/080-taxonomy does.
+-- g2_tax(tag, allowedTypeKeys, domains) creates and submits one vocabulary and records '<tag>:subject' and '<tag>:review'.
+create or replace function pg_temp.g2_tax(p_tag text, p_type_keys jsonb, p_domains jsonb default '[]'::jsonb)
+returns uuid language plpgsql as $body$
+declare v_subject uuid;
+begin
+  perform pg_temp.s12ga_rpc('txc:' || p_tag, 'platform_api.cms_create_taxonomy_version', 'owner', jsonb_build_object(
+    'taxonomyKey', 'gapb-' || p_tag, 'shape', 'flat', 'allowedTypeKeys', p_type_keys,
+    'allowedFieldKeys', jsonb_build_array('gapb_field'), 'canonicalOverlapDomains', p_domains,
+    'expectedVersion', null, 'idempotencyKey', 's12ga-txc-' || p_tag));
+  if pg_temp.s12ga_out('txc:' || p_tag) <> 'ok' then
+    raise exception 'gaps fixture: the taxonomy producer refused %: %', p_tag, pg_temp.s12ga_out('txc:' || p_tag);
+  end if;
+  v_subject := (pg_temp.s12ga_body('txc:' || p_tag)->>'id')::uuid;
+  insert into s12gov_ids(key, value) values (p_tag || ':subject', v_subject::text)
+    on conflict (key) do update set value = excluded.value;
+  return pg_temp.g2_tax_submit(p_tag, 's12ga-txs-' || p_tag);
+end;
+$body$;
+create or replace function pg_temp.g2_tax_submit(p_tag text, p_idem text) returns uuid language plpgsql as $body$
+declare v_review uuid;
+begin
+  perform pg_temp.s12ga_rpc('txs:' || p_idem, 'platform_api.cms_submit_governed_review', 'owner', jsonb_build_object(
+    'subjectKind', 'taxonomy_version', 'subjectId', pg_temp.s12ga_subject(p_tag),
+    'subjectHash', (select content_hash::text from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject(p_tag)),
+    'idempotencyKey', p_idem));
+  if pg_temp.s12ga_out('txs:' || p_idem) <> 'ok' then return null; end if;
+  v_review := (pg_temp.s12ga_body('txs:' || p_idem)->>'id')::uuid;
+  insert into s12gov_ids(key, value) values (p_tag || ':review', v_review::text)
+    on conflict (key) do update set value = excluded.value;
+  return v_review;
+end;
+$body$;
+-- A taxonomy review approved by rev1 (ordinary basis, one decision).
+create or replace function pg_temp.g2_tax_approve(p_tag text) returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12ga_assign('as-' || p_tag, 'owner', pg_temp.s12ga_review(p_tag), 'rev1', interval '20 hours');
+  perform pg_temp.s12ga_decide('ap-' || p_tag, 'rev1', pg_temp.s12ga_review(p_tag), 'approve');
+end;
+$body$;
+-- The expected basis member of a bound type (the policy hash is recomputed by the production hash function from the seeded literals).
+create or replace function pg_temp.g2_member(p_type_key text, p_policy text, p_risk text, p_count integer, p_caps jsonb)
+returns jsonb language sql stable as $body$
+  select jsonb_build_object('contentTypeId', (select value::uuid from s12gov_ids where key = p_type_key),
+    'policyKey', p_policy, 'policyVersion', 1::bigint,
+    'policyHash', platform_private.cms_workflow_policy_hash(p_policy, 1, p_risk, p_count, p_caps))
+$body$;
+create or replace function pg_temp.g2_sorted(p_members jsonb[]) returns jsonb language sql stable as $body$
+  select jsonb_agg(m order by (m->>'policyKey') collate "C", (m->>'policyVersion')::bigint, (m->>'contentTypeId') collate "C")
+    from unnest(p_members) m
+$body$;

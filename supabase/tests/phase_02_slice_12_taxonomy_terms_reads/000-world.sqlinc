@@ -1,0 +1,72 @@
+-- Helpers of the taxonomy reads suites (cmsTaxonomyTermsRead and the CMS-03C-17 selector).  Include after taxonomy_terms/000-world and 010-setup.
+-- Reads send no step-up claim (a safe read: no MFA, no idempotency, no If-Match).
+
+create or replace function pg_temp.s12tr_read(
+  p_label text, p_actor text, p_tax uuid, p_patch jsonb default '{}'::jsonb, p_unset text[] default array[]::text[]
+) returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12ga_rpc(p_label, 'platform_api.cms_list_taxonomy_terms', p_actor,
+    (jsonb_build_object('taxonomyId', p_tax) || p_patch) - p_unset, pg_temp.s12ga_ctx(p_actor, interval '1 minute', false));
+end;
+$body$;
+
+create or replace function pg_temp.s12tr_sel(
+  p_label text, p_actor text, p_patch jsonb default '{}'::jsonb, p_unset text[] default array[]::text[]
+) returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12ga_rpc(p_label, 'platform_api.cms_list_taxonomy_selector', p_actor,
+    (jsonb_build_object('typeKey', 's12govordinary', 'fieldKey', 'title', 'locale', 'en-US') || p_patch) - p_unset,
+    pg_temp.s12ga_ctx(p_actor, interval '1 minute', false));
+end;
+$body$;
+
+-- The page of a terms read (the Worker unwraps the witness) and the keys of its items.
+create or replace function pg_temp.s12tr_page(p_label text) returns jsonb language sql stable as $body$
+  select pg_temp.s12ga_body(p_label)->'page' $body$;
+create or replace function pg_temp.s12tr_keys(p_page jsonb) returns text[] language sql stable as $body$
+  select coalesce(array_agg(item->>'termKey' order by ordinality), array[]::text[])
+    from jsonb_array_elements(coalesce(p_page->'items', '[]'::jsonb)) with ordinality t(item, ordinality) $body$;
+create or replace function pg_temp.s12tr_sel_keys(p_page jsonb) returns text[] language sql stable as $body$
+  select coalesce(array_agg((item->>'taxonomyKey') || '/' || (item->>'termKey') order by ordinality), array[]::text[])
+    from jsonb_array_elements(coalesce(p_page->'items', '[]'::jsonb)) with ordinality t(item, ordinality) $body$;
+
+-- The item the independent oracle expects for a term of the terms read.
+create or replace function pg_temp.s12tr_item(p_term uuid) returns jsonb language sql stable as $body$
+  select jsonb_build_object('termId', term.id, 'termKey', term.term_key, 'lifecycle', term.lifecycle, 'version', term.version::text,
+    'parentId', term.parent_term_id, 'successorId', term.successor_id, 'labels', pg_temp.s12tt_labels(term.id), 'aliases', term.aliases)
+    from platform_private.cms_terms term where term.id = p_term $body$;
+
+-- The pageVersion oracle: the page's high-water update instant in UTC microseconds (1 for an empty page).
+create or replace function pg_temp.s12tr_page_version(p_terms uuid[]) returns text language sql stable as $body$
+  select coalesce(floor(extract(epoch from max(updated_at)) * 1000000)::bigint::text, '1')
+    from platform_private.cms_terms where id = any (p_terms) $body$;
+
+-- Re-seals a decoded cursor envelope with one payload member replaced (the signature then fails to verify).
+create or replace function pg_temp.s12tr_forge(p_cursor text, p_member text, p_value jsonb) returns text language sql as $body$
+  select replace(encode(convert_to(
+    (convert_from(decode(p_cursor, 'base64'), 'utf8')::jsonb || jsonb_build_object(p_member, p_value))::text, 'utf8'), 'base64'), E'\n', '') $body$;
+
+-- The current label of a term for one locale: the highest version of that locale when it is active, else null (no fallback).
+create or replace function pg_temp.s12tr_label(p_term uuid, p_locale text) returns text language sql stable as $body$
+  select current_label.label from (select label_row.label, label_row.state from platform_private.cms_term_labels label_row
+                                     where label_row.term_id = p_term and label_row.locale = p_locale
+                                     order by label_row.version desc limit 1) current_label
+   where current_label.state = 'active' $body$;
+
+-- The selector oracle: every active term of every active vocabulary of the owner organization whose allowlists name the type and the field.
+create or replace function pg_temp.s12tr_selector_oracle(p_type text, p_field text, p_locale text) returns jsonb language sql stable as $body$
+  select coalesce(jsonb_agg(jsonb_build_object(
+           'taxonomyId', version_row.taxonomy_id, 'taxonomyVersionId', version_row.id, 'taxonomyKey', version_row.taxonomy_key,
+           'shape', version_row.shape, 'termId', term.id, 'termKey', term.term_key, 'parentId', term.parent_term_id,
+           'label', pg_temp.s12tr_label(term.id, p_locale))
+         order by version_row.taxonomy_key collate "C", term.term_key collate "C"), '[]'::jsonb)
+    from platform_private.cms_taxonomy_versions version_row
+    join platform_private.cms_terms term on term.taxonomy_id = version_row.taxonomy_id and term.lifecycle = 'active'
+   where version_row.owner_id = pg_temp.s09d_id('ownerOrg') and version_row.state = 'active'
+     and version_row.allowlisted_type_keys ? p_type and version_row.allowlisted_field_keys ? p_field $body$;
+create or replace function pg_temp.s12tr_selector_version(p_type text, p_field text) returns text language sql stable as $body$
+  select coalesce(floor(extract(epoch from max(greatest(term.updated_at, version_row.updated_at))) * 1000000)::bigint::text, '1')
+    from platform_private.cms_taxonomy_versions version_row
+    join platform_private.cms_terms term on term.taxonomy_id = version_row.taxonomy_id and term.lifecycle = 'active'
+   where version_row.owner_id = pg_temp.s09d_id('ownerOrg') and version_row.state = 'active'
+     and version_row.allowlisted_type_keys ? p_type and version_row.allowlisted_field_keys ? p_field $body$;

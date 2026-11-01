@@ -1,0 +1,57 @@
+-- P2-S12-AC-198 (BE03c "Governed policy basis"): the basis members, their sort, the slot order and the default-policy fallback, read
+-- from the frozen review row a real submit wrote.  Types: typeA / gapb2 / gapb3 are ordinary (editorial v1); protectedType is
+-- cms.disclosure.policy, gapbl cms.disclosure.legal, gapbs cms.disclosure.security (all protected, two decisions).
+-- ---- (3) two types sharing one policy key sort by contentTypeId
+select pg_temp.s12ga_open('b1', 'owner', array['typeA', 'gapb2', 'gapb3'], 'owner');
+select is((select r.policy_basis from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('b1')),
+  pg_temp.g2_sorted(array[
+    pg_temp.g2_member('typeA', 'editorial', 'ordinary', 1, '["cms.reviewer"]'),
+    pg_temp.g2_member('gapb2', 'editorial', 'ordinary', 1, '["cms.reviewer"]'),
+    pg_temp.g2_member('gapb3', 'editorial', 'ordinary', 1, '["cms.reviewer"]')]),
+  'three types sharing the policy key editorial form three basis members ordered by contentTypeId (byte order) [P2-S12-AC-198]');
+select ok((select r.policy_basis_hash::text = platform_private.cms_jcs_sha256(r.policy_basis) and r.risk_class = 'ordinary'
+          and r.required_decision_count = 1 and r.required_capabilities = '["cms.reviewer"]'::jsonb
+      from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('b1')),
+  'the three-member ordinary basis hashes as the JCS SHA-256 of the array and stays ordinary, one decision, the base slot only [P2-S12-AC-198]');
+-- ---- (4) first appearance across the sorted basis, three or more members, two different specialists
+select pg_temp.s12ga_open('b2', 'owner', array['typeA', 'protectedType', 'gapbl', 'gapbs'], 'owner');
+select is((select r.policy_basis from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('b2')),
+  pg_temp.g2_sorted(array[
+    pg_temp.g2_member('typeA', 'editorial', 'ordinary', 1, '["cms.reviewer"]'),
+    pg_temp.g2_member('protectedType', 'cms.disclosure.policy', 'protected', 2, '["cms.reviewer","cms.reviewer.policy"]'),
+    pg_temp.g2_member('gapbl', 'cms.disclosure.legal', 'protected', 2, '["cms.reviewer","cms.reviewer.legal"]'),
+    pg_temp.g2_member('gapbs', 'cms.disclosure.security', 'protected', 2, '["cms.reviewer","cms.reviewer.security"]')]),
+  'a four-member basis is sorted by (policyKey, policyVersion, contentTypeId): legal, policy, security, editorial [P2-S12-AC-198]');
+select is((select r.required_capabilities from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('b2')),
+  '["cms.reviewer","cms.reviewer.legal","cms.reviewer.policy","cms.reviewer.security"]'::jsonb,
+  'required_capabilities is the base slot then each specialist in order of first appearance across the sorted basis, not the order the types were listed [P2-S12-AC-198]');
+select ok((select r.risk_class = 'protected' and r.required_decision_count = 2
+      from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('b2')),
+  'the effective risk is protected and the count is the largest member count (2) [P2-S12-AC-198]');
+-- ---- (1) taxonomy basis: owner-scope types by key, an absent key is no member
+select pg_temp.g2_tax('tb1', jsonb_build_array('s12govordinary', 's12govprotected', 'gapb_absent'));
+select ok(pg_temp.s12ga_out('txc:tb1') = 'ok' and pg_temp.s12ga_review('tb1') is not null,
+  'fixture: a real taxonomy version naming two owner types and one absent type key was created and submitted [P2-S12-AC-198]');
+select is((select r.policy_basis from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('tb1')),
+  pg_temp.g2_sorted(array[
+    pg_temp.g2_member('typeA', 'editorial', 'ordinary', 1, '["cms.reviewer"]'),
+    pg_temp.g2_member('protectedType', 'cms.disclosure.policy', 'protected', 2, '["cms.reviewer","cms.reviewer.policy"]')]),
+  'a taxonomy basis holds the resolved policy of each owner-scope type named by allowedTypeKeys and no member for a key naming no owner type, and no default member beside them [P2-S12-AC-198]');
+select ok((select r.risk_class = 'protected' and r.required_decision_count = 2
+          and r.required_capabilities = '["cms.reviewer","cms.reviewer.policy"]'::jsonb
+      from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('tb1')),
+  'the mixed taxonomy basis resolves protected, two decisions and the policy specialist slot [P2-S12-AC-198]');
+-- ---- (5) the default policy applies only when no bound type resolves
+select pg_temp.g2_tax('tb2', jsonb_build_array('gapb_absent'));
+select is((select r.policy_basis from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('tb2')),
+  jsonb_build_array(jsonb_build_object('contentTypeId', null, 'policyKey', 'editorial.default', 'policyVersion', 1,
+    'policyHash', platform_private.cms_workflow_policy_hash('editorial.default', 1, 'ordinary', 1, '["cms.reviewer"]'))),
+  'a taxonomy naming no owner type is bound to the single registry member editorial.default v1 with a null contentTypeId [P2-S12-AC-198]');
+select ok((select r.risk_class = 'ordinary' and r.required_decision_count = 1 and r.required_capabilities = '["cms.reviewer"]'::jsonb
+          and r.policy_basis_hash::text = platform_private.cms_jcs_sha256(r.policy_basis)
+      from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('tb2')),
+  'the default basis is ordinary, one decision, the base slot, hashed as the JCS SHA-256 of its one-member array [P2-S12-AC-198]');
+select ok(not exists (select 1 from platform_private.cms_governed_reviews r, jsonb_array_elements(r.policy_basis) m
+    where r.id in (pg_temp.s12ga_review('b1'), pg_temp.s12ga_review('b2'), pg_temp.s12ga_review('tb1'))
+      and m->>'policyKey' = 'editorial.default'),
+  'a subject with at least one resolvable bound type never carries the default member [P2-S12-AC-198]');

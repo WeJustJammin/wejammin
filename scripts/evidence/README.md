@@ -65,7 +65,10 @@ also `project`), pgTAP by the file that holds the description + the exact
   text changes or the policy sets `contractOnlyNeedsTrackerText: false`), every clause
   cited, limitation required, and never counted as verified.
 - **Citations**: exact keys; repository-relative POSIX path of a file that exists whose kind
-  matches the tool; a trimmed single-line title that is never a file-level verdict (a path,
+  matches the tool (characters `A-Za-z0-9 _ . @ + / - [ ]`; `[` `]` are allowed for Astro
+  dynamic-route directories such as `[entryId]` and `[...slug]`; `..`, absolute, `./`, backslash,
+  whitespace, `*`, `?`, braces and control characters stay rejected; `run-plan-lib.mjs` escapes
+  the path for Playwright, whose positional filters are regular expressions); a trimmed single-line title that is never a file-level verdict (a path,
   `x.sql .... ok`, `Result: PASS`, `All tests successful.`, `Files=...`); `project` for
   Playwright and nowhere else; no duplicate inside a clause.
 - **Receipts**: every cited identity needs a receipt, and ALL receipts of it must be

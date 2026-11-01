@@ -1,0 +1,147 @@
+-- AC-204 (BE03c "Reviewer-authority invalidation on revocation" G6; BE03b "Review invalidation" and rule 7 of "Write-path lock order and
+-- authority fencing"): the membership tenure end invalidates in its own transaction exactly like the actor-grant revocation, as the 03b
+-- trigger cms_membership_tenure_review_authority does for editorial reviews (review R3-07), and the cases R3-11 found uncovered: a renewal,
+-- the DELETE branch, a tenure end in ANOTHER organization, a write that changes no authority and a revocation of the base capability when
+-- the decision satisfied the specialist slot.  Real producers for every governed row; the only labelled forgeries are the S09 membership
+-- tenure writes (no command ends an ungoverned tenure: rpc_accept_or_end_membership ends governed tenures only).
+create temp table s12fr_pol(outcome text not null) on commit drop;
+insert into s12fr_pol(outcome) values (pg_temp.s12ga_grant('x13', 'cms.reviewer.policy', 1));
+
+select pg_temp.s12gb_approved('tn1', array['typeA'], 'x07');
+select pg_temp.s12gb_approved('tn2', array['typeA'], 'x07');
+select pg_temp.s12gb_act('tn2-sched', 'owner', pg_temp.s12ga_review('tn2'), 'schedule');
+select pg_temp.s12ga_open('tn3', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_assign('as-tn3-x08', 'owner', pg_temp.s12ga_review('tn3'), 'x08', interval '20 hours');
+select pg_temp.s12ga_decide('ap-tn3-x08', 'x08', pg_temp.s12ga_review('tn3'), 'approve');
+select pg_temp.s12gb_approved('tn4', array['typeA'], 'x09');
+select pg_temp.s12gb_approved('tn5', array['typeA'], 'x10');
+select pg_temp.s12gb_approved('tn6', array['typeA'], 'x11');
+select pg_temp.s12gb_approved('tn7', array['typeA'], 'x12');
+select pg_temp.s12gr_protected('tn8', 'x13', 'rev1', array['typeA', 'protectedType']);
+
+select ok((select outcome = 'OK' from s12fr_pol)
+    and (select count(*) = 6 and bool_and(review.state = 'approved' and review.activated_at is null)
+           from platform_private.cms_governed_reviews review
+          where review.id in (select pg_temp.s12ga_review(t) from unnest(array['tn1', 'tn2', 'tn4', 'tn5', 'tn6', 'tn7']) t))
+    and (select review.state = 'approved' and review.required_decision_count = 2
+           from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('tn8'))
+    and (select review.state = 'open' and review.recorded_decision_count = 1
+           from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('tn3'))
+    and (select schedule.state = 'pending' from platform_private.cms_governed_activation_schedules schedule
+          where schedule.review_id = pg_temp.s12ga_review('tn2')),
+  'fixture: real governed reviews counted on x07 (approved, approved and scheduled), x08 (open), x09 .. x12 (approved) and x13 + rev1 (protected, '
+  || 'specialist slot) exist before any tenure change [P2-S12-AC-204]');
+
+select ok(exists (
+  select 1 from pg_trigger trigger_row
+   where trigger_row.tgrelid = 'identity_private.membership_tenure'::regclass
+     and trigger_row.tgname = 'cms_membership_tenure_governed_authority' and not trigger_row.tgisinternal
+     and trigger_row.tgenabled = 'O'
+     and trigger_row.tgtype & 1 = 1 and trigger_row.tgtype & 2 = 0 and trigger_row.tgtype & 8 = 8
+     and trigger_row.tgtype & 16 = 16 and trigger_row.tgtype & 4 = 0),
+  'an AFTER UPDATE OR DELETE row trigger on the membership tenure runs the person invalidation in the transaction of the tenure end, as 03b does '
+  || 'for editorial reviews (BE03b rule 7: the loss reaches the review rows whichever session performs it) [P2-S12-AC-204]');
+
+select pg_temp.s12gr_mark(t, t) from unnest(array['tn1', 'tn2', 'tn3', 'tn4', 'tn5', 'tn6', 'tn7', 'tn8']) t;
+
+-- ---------------------------------------------------- R3-11 (a): a renewal restarts the term and invalidates nothing
+select pg_temp.s09g_renew('tn5-renew', 'owner',
+  (select grant_row.id from platform_private.cms_capability_grants grant_row
+    where grant_row.owner_id = pg_temp.s09d_id('ownerOrg') and grant_row.subject_person_ref = pg_temp.s12ga_person('x10')
+      and grant_row.capability_code = 'cms.reviewer'),
+  (select grant_row.version::text from platform_private.cms_capability_grants grant_row
+    where grant_row.owner_id = pg_temp.s09d_id('ownerOrg') and grant_row.subject_person_ref = pg_temp.s12ga_person('x10')
+      and grant_row.capability_code = 'cms.reviewer'),
+  pg_temp.s09g_day(30));
+select ok(pg_temp.s09d_outcome('tn5-renew') = 'OK'
+    and (select actor_grant.valid_through = pg_temp.s09g_today() + 30 from identity_private.organization_actor_grant actor_grant
+          where actor_grant.organization_id = pg_temp.s09d_id('ownerOrg') and actor_grant.person_id = pg_temp.s12ga_person('x10')
+            and actor_grant.capability_code = 'cms.reviewer')
+    and pg_temp.s12gr_untouched('tn5', 'tn5') and pg_temp.s12ga_approvals(pg_temp.s12ga_review('tn5')) = 1,
+  'a renewal through the real CMS-03A-16 command rewrites the actor-grant projection (the ON CONFLICT DO UPDATE path fires the trigger) and the approval '
+  || 'still counts: the review is untouched [P2-S12-AC-204]');
+
+-- ----------------------------- R3-11 (b): a tenure end in ANOTHER organization does not touch the reviews of the owner party
+-- FIXTURE FORGERY (V4-09): x11 also holds a confirmed tenure AND a cms.reviewer actor-grant projection in the second organization (the S09
+-- harness forges the second organization's own schema-designer projection the same way; no command creates either for an ungoverned tenure),
+-- and then that tenure ends.  The INSERTs fire no AFTER UPDATE|DELETE trigger.
+insert into identity_private.membership_tenure(
+  organization_id, person_id, state, provenance, governance_mode, starts_on, accepted_at, actor_id, version)
+select pg_temp.s09d_id('otherOrg'), pg_temp.s12ga_person('x11'), 'confirmed', 'invitation', 'ungoverned', current_date,
+       pg_catalog.clock_timestamp(), owner.person_id, 1
+  from s09d_actor owner where owner.key = 'owner';
+insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
+values (pg_temp.s09d_id('otherOrg'), pg_temp.s12ga_person('x11'), 'cms.reviewer', current_date, current_date + 1, true);
+select ok(platform_private.cms_person_holds_capability(pg_temp.s09d_id('otherOrg'), pg_temp.s12ga_person('x11'), 'cms.reviewer')
+    and platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x11'), 'cms.reviewer')
+    and pg_temp.s12gr_untouched('tn6', 'tn6') and pg_temp.s12ga_approvals(pg_temp.s12ga_review('tn6')) = 1,
+  'control: before the tenure ends x11 holds cms.reviewer in BOTH organizations and tn6 counts x11 [P2-S12-AC-204]');
+update identity_private.membership_tenure
+   set state = 'ended', revoked_at = pg_catalog.clock_timestamp(), updated_at = pg_catalog.clock_timestamp()
+ where organization_id = pg_temp.s09d_id('otherOrg') and person_id = pg_temp.s12ga_person('x11') and state = 'confirmed';
+select ok((select count(*) = 1 from identity_private.membership_tenure tenure
+            where tenure.organization_id = pg_temp.s09d_id('otherOrg') and tenure.person_id = pg_temp.s12ga_person('x11')
+              and tenure.state = 'ended')
+    and not platform_private.cms_person_holds_capability(pg_temp.s09d_id('otherOrg'), pg_temp.s12ga_person('x11'), 'cms.reviewer')
+    and platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x11'), 'cms.reviewer')
+    and pg_temp.s12gr_untouched('tn6', 'tn6') and pg_temp.s12ga_approvals(pg_temp.s12ga_review('tn6')) = 1,
+  'the tenure of x11 in the second organization is ended by the UPDATE, x11 no longer holds cms.reviewer there but still does in the owner organization: '
+  || 'the person invalidation is not scoped to the ended tenure''s party, it re-evaluates every review and tn6 still counts, untouched [P2-S12-AC-204]');
+
+-- ---------------------------------------- a write that changes no authority (updated_at only) invalidates nothing
+update identity_private.membership_tenure
+   set updated_at = pg_catalog.clock_timestamp()
+ where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s12ga_person('x12') and state = 'confirmed';
+select ok(pg_temp.s12gr_untouched('tn7', 'tn7') and pg_temp.s12ga_approvals(pg_temp.s12ga_review('tn7')) = 1,
+  'a tenure UPDATE that changes no authority (the approver still holds the capability) invalidates nothing: the trigger invalidates only an approval that no longer counts [P2-S12-AC-204]');
+
+-- ------------- R3-11 (d): the BASE capability is revoked while x13''s decision satisfied the SPECIALIST slot: the approval stays counted
+select is(pg_temp.s09d_revoke_via_rpc('x13', 'cms.reviewer'), 'OK',
+  'control: the real CMS-03A-17 command revokes the base cms.reviewer grant of x13, whose decision was recorded under cms.reviewer.policy [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_untouched('tn8', 'tn8') and pg_temp.s12ga_approvals(pg_temp.s12ga_review('tn8')) = 2,
+  'the invalidation is keyed by the capability the decision satisfied: revoking the base capability invalidates nothing and the specialist approval still counts '
+  || '(two live approvals) [P2-S12-AC-204]');
+
+-- ------------------------------------------------ R3-07: the tenure END invalidates in its own transaction
+select pg_temp.s12gr_count_mark('tenure:before');
+-- FIXTURE FORGERY: no command ends an ungoverned membership tenure (rpc_accept_or_end_membership ends governed tenures only).
+update identity_private.membership_tenure
+   set state = 'ended', revoked_at = pg_catalog.clock_timestamp(), updated_at = pg_catalog.clock_timestamp()
+ where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s12ga_person('x07') and state = 'confirmed';
+select ok(pg_temp.s12gr_invalidated('tn1', 'tn1', 'reviewer_authority_changed')
+    and pg_temp.s12gr_invalidated('tn2', 'tn2', 'reviewer_authority_changed'),
+  'the tenure end of x07 invalidates both approved reviews x07 counted on reviewer_authority_changed in the same transaction (version + 1, decidedAt cleared, '
+  || 'each subject back to draft); no later recheck, decision or fire is needed to find it [P2-S12-AC-204]');
+select ok((select schedule.state = 'cancelled' and schedule.reason_code = 'approval_invalidated' and schedule.version = 2
+                  and schedule.lease_id is null and schedule.next_attempt_at is null
+             from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('tn2'))
+    and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('tn1')) = 1
+    and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('tn2')) = 1
+    and (select count(*) = 1 from audit_private.audit_events
+          where action = 'cms.governed.schedule.cancel'
+            and target_id = (select schedule.id from platform_private.cms_governed_activation_schedules schedule
+                              where schedule.review_id = pg_temp.s12ga_review('tn2')))
+    and (select events = (select count(*) from platform_private.outbox_events) from s12gr_counts where label = 'tenure:before'),
+  'the pending schedule is cancelled approval_invalidated, one invalidation audit record per review and one schedule cancellation record are written, no event is emitted [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_untouched('tn3', 'tn3') and pg_temp.s12gr_untouched('tn4', 'tn4') and pg_temp.s12gr_untouched('tn5', 'tn5')
+    and pg_temp.s12gr_untouched('tn6', 'tn6') and pg_temp.s12gr_untouched('tn7', 'tn7') and pg_temp.s12gr_untouched('tn8', 'tn8'),
+  'the reviews x07 never counted on are untouched [P2-S12-AC-204]');
+select is(pg_temp.s12gr_inv_person(pg_temp.s12ga_person('x07'), null) + pg_temp.s12gr_inv_person(pg_temp.s12ga_person('x07'), 'cms.reviewer'), 0,
+  'repeating the person invalidation after the tenure end transitions nothing: the two reviews are skipped as already invalidated [P2-S12-AC-204]');
+
+-- an OPEN review in which the person counted
+update identity_private.membership_tenure
+   set state = 'ended', revoked_at = pg_catalog.clock_timestamp(), updated_at = pg_catalog.clock_timestamp()
+ where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s12ga_person('x08') and state = 'confirmed';
+select ok(pg_temp.s12gr_invalidated('tn3', 'tn3', 'reviewer_authority_changed')
+    and (select review.recorded_decision_count = 1 from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('tn3')),
+  'the tenure end of x08 invalidates the OPEN protected review x08 counted in, the recorded decision row untouched [P2-S12-AC-204]');
+
+-- ------------------------------------------- R3-11 (c): the DELETE branch of the trigger (new is null)
+-- FIXTURE FORGERY: the tenure row of x09 is deleted outright (the DELETE branch passes old.person_id only).
+delete from identity_private.membership_tenure
+ where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s12ga_person('x09');
+select ok(pg_temp.s12gr_invalidated('tn4', 'tn4', 'reviewer_authority_changed')
+    and pg_temp.s12gr_untouched('tn5', 'tn5') and pg_temp.s12gr_untouched('tn6', 'tn6') and pg_temp.s12gr_untouched('tn7', 'tn7')
+    and pg_temp.s12gr_untouched('tn8', 'tn8'),
+  'deleting the tenure row of x09 runs the DELETE branch: tn4 is invalidated reviewer_authority_changed and the other reviews are untouched [P2-S12-AC-204]');

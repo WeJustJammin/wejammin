@@ -8,6 +8,7 @@ import { cmsEditorialAppEntryPath } from '../../../../../components/cms-editoria
 import CmsEditorialPageNotice from '../../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
 import { createCmsEditorialPageReads } from '../../../../../components/cms-editorial-pages/cms-editorial-page-reads';
 import { loadRevisionHistoryPage } from '../../../../../components/cms-editorial-pages/load-revision-history-page';
+import { cmsRedirectResponse } from '../../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -27,7 +28,7 @@ const outcome = await loadRevisionHistoryPage({
   entryId,
   reads: createCmsEditorialPageReads(env.PLATFORM_API),
 });
-if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
 Astro.response.status =
   outcome.kind === 'view' ? outcome.status : outcome.notice.status;
 const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
@@ -36,7 +37,7 @@ const heading =
 const draftPath = cmsEditorialAppEntryPath(entryId);
 ---
 
-<CmsEditorialDocument title={title} heading={heading}>
+<CmsEditorialDocument title={title} heading={heading} pageActions>
   {
     outcome.kind === 'view' ? (
       <>

@@ -7,6 +7,7 @@ import CmsListEditor from './CmsListEditor';
 import CmsObjectEditor from './CmsObjectEditor';
 import CmsRelationEditor from './CmsRelationEditor';
 import CmsScalarControl from './CmsScalarControl';
+import CmsTaxonomyFieldConnected from './CmsTaxonomyFieldConnected';
 import CmsUnavailableField from './CmsUnavailableField';
 import {
   describeCmsConstraints,
@@ -14,13 +15,16 @@ import {
   type CmsFieldDescriptor,
 } from './cms-field-descriptor';
 import type { CmsFieldIssue } from './cms-field-issue';
-import { CMS_EMPTY_RICH_TEXT } from './cms-field-value';
+import { CMS_EMPTY_RICH_TEXT } from './cms-field-basics';
+import type { TaxonomyContextInput } from './cms-taxonomy-field-connection';
 
 export interface CmsFieldEditorProps {
   readonly descriptor: CmsFieldDescriptor;
   readonly value: JsonValue | null;
   /** The issues to show, already gated by the host (touched / submitted). */
   readonly issues: readonly CmsFieldIssue[];
+  /** The CMS-03C-17 read scope of a taxonomy field; absent keeps the typed unavailable notice. */
+  readonly taxonomyContext?: TaxonomyContextInput | undefined;
   readonly disabled?: boolean | undefined;
   /** When set, the field shows this typed unavailable notice, no controls. */
   readonly readOnlyNotice?: string | undefined;
@@ -55,6 +59,22 @@ export default function CmsFieldEditor(
     );
   if (isCmsUnavailableDescriptor(descriptor))
     return <CmsUnavailableField descriptor={descriptor} notice={undefined} />;
+  if (descriptor.kind === 'taxonomy') {
+    const context = props.taxonomyContext;
+    return context === undefined ? (
+      <CmsUnavailableField descriptor={descriptor} notice={undefined} />
+    ) : (
+      <CmsTaxonomyFieldConnected
+        descriptor={descriptor}
+        context={context}
+        value={value}
+        issues={issues}
+        disabled={props.disabled}
+        onBlur={props.onBlur}
+        onChange={onChange}
+      />
+    );
+  }
   const shared = {
     disabled: props.disabled,
     onBlur: props.onBlur,

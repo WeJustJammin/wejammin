@@ -4,8 +4,13 @@ import type {
   AsyncWorkerBindings,
   PlatformJobsMessage,
 } from './async-entrypoint';
+import type { CmsGovernedActivationRpcName } from './cms-governed-activation-rpc-names';
+import type { CmsTaxonomyMergeConvergeRpcName } from './cms-taxonomy-merge-converge-names';
 import type { CmsPublicationScheduleRpcName } from './cms-publication-schedule-rpc-names';
+import type { CmsGovernedRecheckRpcName } from './cms-composition/governed-recheck/rpc-names';
+import type { CmsLinkedScanRpcName } from './cms-composition/linked-scan/rpc-names';
 import type { CmsReviewRecheckRpcName } from './cms-editorial/review-recheck/rpc-names';
+import type { JobEffectDeliveryContext } from './async-runtime-job-context';
 import type { SchemaMigrationRpcName } from './content-schema-registry/migration-worker';
 import type { EventConsumerRpcName } from './event-consumers/rpc-names';
 
@@ -15,6 +20,7 @@ export type AsyncRpcOperation =
   | 'idempotency_expiry_sweep'
   | 'cms_sweep_expired_review_authority'
   | 'cms_expire_edit_presence_leases'
+  | 'cms_reconcile_taxonomy_merge_converge'
   | 'read_canonical_job'
   | 'read_restore_fence'
   | 'claim_job'
@@ -23,7 +29,11 @@ export type AsyncRpcOperation =
   | 'record_processed_event'
   | 'ac265_prepare_hosted_run'
   | CmsPublicationScheduleRpcName
+  | CmsGovernedActivationRpcName
+  | CmsTaxonomyMergeConvergeRpcName
   | CmsReviewRecheckRpcName
+  | CmsGovernedRecheckRpcName
+  | CmsLinkedScanRpcName
   | EventConsumerRpcName
   | SchemaMigrationRpcName;
 
@@ -44,7 +54,19 @@ export type AsyncRpcClient = <T>(
 export type AsyncJobRuntimeDependencies = Readonly<{
   rpc?: AsyncRpcClient;
   fetch?: typeof fetch;
-  effect?: import('@wejammin/application').JobEffectPort['execute'];
+  /**
+   * The job effect. Only the CMS preparation family receives the third argument, the Worker-layer delivery
+   * context; every other effect keeps the application consumer's one- or two-argument call.
+   */
+  effect?: (
+    input: Parameters<
+      import('@wejammin/application').JobEffectPort['execute']
+    >[0],
+    control?: Parameters<
+      import('@wejammin/application').JobEffectPort['execute']
+    >[1],
+    context?: JobEffectDeliveryContext,
+  ) => ReturnType<import('@wejammin/application').JobEffectPort['execute']>;
   verifyCmsSchemaDryRunOrigin?: (
     input: Readonly<{
       env: AsyncWorkerBindings;

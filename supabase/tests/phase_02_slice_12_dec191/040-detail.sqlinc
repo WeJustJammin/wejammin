@@ -1,0 +1,138 @@
+-- DEC-191 / CMS-03C-10: GovernedReviewDetailResource.activationSchedule (BE03c schema block; FE03 :1118).  The review's most recent
+-- cms_governed_activation_schedules row as { state, reasonCode } or null; reasonCode non-null exactly when state is blocked or cancelled
+-- (the table CHECK, BE03c :1437; vocabulary :1328).  Every state the producers reach is read through the real platform_api read:
+-- none (approved, open, activated), pending, cancelled (invalidation), executing (claimed), completed, failed_retryable (the labelled
+-- policy-evidence fault), blocked for activation_authority_ended, approval_invalidated and dependency_changed, and the most recent of two
+-- schedules of one review.  The suite REALLY WAITS for the +62..+70 s schedules of 010 (no clock is forged, no trigger disabled).
+-- Not reached here: blocked canonical_source_unavailable (a taxonomy domain loses its provider: the registry is code-owned, no producer
+-- unbuilds a provider) and blocked retries_exhausted (phase_02_slice_12_dec191_exhausted.sql, a 7.5 minute ladder).
+
+-- ----------------------------------------------------------------------------- no schedule: null --
+select pg_temp.s12gb_mark('dn:read', 'dn');
+select pg_temp.d191_read('g-dn', 'owner', 'dn');
+select pg_temp.d191_read('g-dopen', 'owner', 'dopen');
+select pg_temp.d191_read('g-al1', 'owner', 'al1');
+select ok(pg_temp.s12ga_out('g-dn') = 'ok' and pg_temp.s12ga_out('g-dopen') = 'ok' and pg_temp.s12ga_out('g-al1') = 'ok'
+    and (select bool_and(pg_temp.s12ga_body(l) ? 'activationSchedule' and pg_temp.d191_sched_member(l) = 'null'::jsonb)
+           from unnest(array['g-dn', 'g-dopen', 'g-al1']) l),
+  'an approved, an open and an activated review that were never scheduled carry activationSchedule null (the member is present) [P2-S12-AC-088]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('g-dn')),
+  'activatedAt,activationSchedule,assignments,blockRegistryDigest,contentHash,createdAt,decidedAt,decisions,distinctApprovalCount,id,'
+  || 'invalidatedReason,lineageId,myAssignment,permittedNextActions,policyBasis,policyBasisHash,recordedDecisionCount,'
+  || 'requiredCapabilities,requiredDecisionCount,riskClass,state,subjectHash,subjectId,subjectKey,subjectKind,subjectState,'
+  || 'subjectVersion,submittedAt,updatedAt,version',
+  'the detail body is exactly GovernedReviewDetailResource after DEC-191 (30 members) [P2-S12-AC-088]');
+
+-- ----------------------------------------------------------------------------- pending, cancelled --
+select pg_temp.d191_read('g-al4', 'owner', 'al4');
+select pg_temp.d191_read('g-dk', 'owner', 'dk');
+select ok(pg_temp.d191_sched_member('g-al4') = '{"state": "pending", "reasonCode": null}'::jsonb
+    and pg_temp.s12ga_keys(pg_temp.d191_sched_member('g-al4')) = 'reasonCode,state'
+    and (select state = 'pending' from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('al4')),
+  'a review with a pending schedule shows { state pending, reasonCode null } and exactly those two members [P2-S12-AC-142]');
+select ok(pg_temp.d191_sched_member('g-dk') = '{"state": "cancelled", "reasonCode": "approval_invalidated"}'::jsonb
+    and (select review.state = 'invalidated' from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('dk')),
+  'a schedule cancelled by the invalidation of its review shows { state cancelled, reasonCode approval_invalidated } [P2-S12-AC-145]');
+
+-- ----------------------------------------------------------------------------- the schedules fall due --
+select pg_sleep(greatest(0, 80 - extract(epoch from (clock_timestamp() - (select started from d191_clock)))));
+select pg_temp.s12gb_claim('cl1');
+select ok(pg_temp.s12gb_sout('cl1') = 'ok' and jsonb_array_length(pg_temp.s12gb_sbody('cl1')) = 5
+    and (select count(*) = 5 from unnest(array['dc', 'de', 'da', 'db', 'dd']) t where pg_temp.s12gb_claimed('cl1', t) is not null),
+  'fixture: the claim takes exactly the five due schedules (the +600 s schedule and the cancelled one stay) [P2-S12-AC-149]');
+
+-- executing: claimed, not yet executed
+select pg_temp.d191_read('g-dc-exec', 'owner', 'dc');
+select ok(pg_temp.d191_sched_member('g-dc-exec') = '{"state": "executing", "reasonCode": null}'::jsonb,
+  'a claimed schedule shows { state executing, reasonCode null } [P2-S12-AC-149]');
+
+-- completed
+select pg_temp.d191_exec('x-dc', 'cl1', 'dc');
+select pg_temp.d191_read('g-dc', 'owner', 'dc');
+select ok(pg_temp.s12gb_sbody('x-dc')->>'outcome' = 'completed'
+    and pg_temp.d191_sched_member('g-dc') = '{"state": "completed", "reasonCode": null}'::jsonb,
+  'an executed schedule shows { state completed, reasonCode null } [P2-S12-AC-150]');
+
+-- failed_retryable (the labelled negative fault of the schedule suite: NULL workflow-policy evidence is the retryable class)
+select pg_temp.s12gb_fault_on();
+select pg_temp.d191_exec('x-de', 'cl1', 'de');
+select is(pg_temp.s12gb_fault_off()::text, 'true', 'control: the policy-evidence resolver is restored byte for byte after the fault [P2-S12-AC-152]');
+select pg_temp.d191_read('g-de', 'owner', 'de');
+select ok(pg_temp.s12gb_sbody('x-de')->>'outcome' = 'failed_retryable'
+    and pg_temp.d191_sched_member('g-de') = '{"state": "failed_retryable", "reasonCode": null}'::jsonb,
+  'a schedule waiting for its retry step shows { state failed_retryable, reasonCode null } [P2-S12-AC-152]');
+
+-- blocked activation_authority_ended: the schedule creator (rev2) loses the designer capability
+select is(pg_temp.s09d_revoke_via_rpc('rev2', 'cms.template_designer'), 'OK',
+  'control: the real CMS-03A-17 command revokes the designer capability of rev2, the creator of the da schedule [P2-S12-AC-151]');
+select pg_temp.d191_exec('x-da', 'cl1', 'da');
+select pg_temp.d191_read('g-da-blocked', 'owner', 'da');
+select ok(pg_temp.s12gb_sbody('x-da')->>'reasonCode' = 'activation_authority_ended'
+    and pg_temp.d191_sched_member('g-da-blocked') = '{"state": "blocked", "reasonCode": "activation_authority_ended"}'::jsonb,
+  'a creator whose authority ended shows { state blocked, reasonCode activation_authority_ended } [P2-S12-AC-146]');
+
+-- the most recent of two schedules: the blocked subject (review still approved) is scheduled again by the owner
+select pg_temp.s12gb_act('sch-da2', 'owner', pg_temp.s12ga_review('da'), 'schedule', p_after => interval '600 seconds');
+select pg_temp.d191_read('g-da-again', 'owner', 'da');
+select ok(pg_temp.s12ga_out('sch-da2') = 'ok'
+    and (select count(*) = 2 and count(*) filter (where state = 'blocked') = 1 and count(*) filter (where state = 'pending') = 1
+           from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('da'))
+    and pg_temp.d191_sched_member('g-da-again') = '{"state": "pending", "reasonCode": null}'::jsonb,
+  'a review with a blocked and then a new pending schedule shows the most recent one: { state pending, reasonCode null } [P2-S12-AC-146]');
+
+-- blocked approval_invalidated: the only counted approver loses the standing authority after acceptance
+-- LAG FIXTURE (002-lapse-helpers): since P2-S12-AC-204 (BE03c G6) every authority loss that has an event (the CMS-03A-17 revocation, a
+-- grant or tenure UPDATE or DELETE) invalidates the review and cancels the schedule in its own transaction, so the approval that stops
+-- counting between acceptance and fire is made with a grant that ENDS BY THE CALENDAR (its term passes without any write; the fixture reproduces exactly that read).
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('rev2'), 'cms.reviewer');
+select ok(pg_temp.s12ga_approvals(pg_temp.s12ga_review('db')) = 0,
+  'control: the cms.reviewer grant of rev2, the only approver of db, lapsed by the calendar after db was scheduled: the live recount is 0 [P2-S12-AC-146]');
+select pg_temp.d191_exec('x-db', 'cl1', 'db');
+select pg_temp.d191_read('g-db', 'owner', 'db');
+select ok(pg_temp.s12gb_sbody('x-db')->>'reasonCode' = 'approval_invalidated'
+    and pg_temp.d191_sched_member('g-db') = '{"state": "blocked", "reasonCode": "approval_invalidated"}'::jsonb,
+  'an approval that stopped counting shows { state blocked, reasonCode approval_invalidated } [P2-S12-AC-146]');
+select pg_temp.s12fr_restore();
+
+-- blocked dependency_changed: a real successor of the bound content type is activated after acceptance
+select pg_temp.s09d_successor('ordnew', 's12govordinary');
+select pg_temp.s09d_to_active('ordnew', array['rev3']);
+select ok(pg_temp.s09d_outcome('ordnew:activate') = 'OK',
+  'control: a real successor of the bound content type is activated through the DEC-108 chain after dd was scheduled [P2-S12-AC-146]');
+select pg_temp.d191_exec('x-dd', 'cl1', 'dd');
+select pg_temp.s12gb_mark('dd:read', 'dd');
+select pg_temp.d191_read('g-dd', 'owner', 'dd');
+select pg_temp.d191_read('g-dd-rev1', 'rev1', 'dd');
+select ok(pg_temp.s12gb_sbody('x-dd')->>'reasonCode' = 'dependency_changed'
+    and pg_temp.d191_sched_member('g-dd') = '{"state": "blocked", "reasonCode": "dependency_changed"}'::jsonb,
+  'a changed frozen dependency shows { state blocked, reasonCode dependency_changed } [P2-S12-AC-146]');
+select ok(pg_temp.s12ga_out('g-dd-rev1') = 'ok' and pg_temp.d191_sched_member('g-dd-rev1') = pg_temp.d191_sched_member('g-dd')
+    and pg_temp.s12gb_same('dd:read', 'dd'),
+  'an assigned reviewer reads the same activationSchedule as the owner, and the read changed nothing (review, subject, schedule, idempotency, audit, outbox) [P2-S12-AC-088]');
+
+-- ----------------------------------------------------------------------------- the closed relation between state and reasonCode --
+select ok(
+  (select count(*) = 10 and bool_and((s->>'state' in ('blocked', 'cancelled')) = (s->>'reasonCode' is not null))
+     from (select body->'activationSchedule' as s from s12ga_rcpt
+            where label like 'g-%' and body->'activationSchedule' <> 'null'::jsonb) shown)
+  and (select count(distinct s->>'state') = 6 from (select body->'activationSchedule' as s from s12ga_rcpt
+            where label like 'g-%' and body->'activationSchedule' <> 'null'::jsonb) shown),
+  'across every body read here reasonCode is non-null exactly when the state is blocked or cancelled, and all six states were shown [P2-S12-AC-088]');
+select ok((select count(*) = 13 and bool_and(rpc_user = 'service_role' and before_user = after_user)
+             from s12ga_rcpt where label like 'g-%'),
+  'role control: every read of this fragment executed as service_role and restored the session role [P2-S12-AC-091]');
+
+-- Evidence emission (no assertion): the response bodies the contract-parse check reads from the TAP stream.
+select 'EVIDENCE v1 ' || coalesce(pg_temp.s12ga_kept('v1')::text, 'null');
+select 'EVIDENCE v3 ' || coalesce(pg_temp.s12ga_kept('v3')::text, 'null');
+select 'EVIDENCE sc4 ' || coalesce(pg_temp.s12ga_kept('sc4')::text, 'null');
+select 'EVIDENCE rt3 ' || coalesce(pg_temp.s12ga_kept('rt3')::text, 'null');
+select 'EVIDENCE tx2-act ' || coalesce(pg_temp.s12ga_body('tx2-act')::text, 'null');
+select 'EVIDENCE g-dn ' || coalesce(pg_temp.s12ga_body('g-dn')::text, 'null');
+select 'EVIDENCE g-al4 ' || coalesce(pg_temp.s12ga_body('g-al4')::text, 'null');
+select 'EVIDENCE g-dk ' || coalesce(pg_temp.s12ga_body('g-dk')::text, 'null');
+select 'EVIDENCE g-dc ' || coalesce(pg_temp.s12ga_body('g-dc')::text, 'null');
+select 'EVIDENCE g-de ' || coalesce(pg_temp.s12ga_body('g-de')::text, 'null');
+select 'EVIDENCE g-da-blocked ' || coalesce(pg_temp.s12ga_body('g-da-blocked')::text, 'null');
+select 'EVIDENCE g-db ' || coalesce(pg_temp.s12ga_body('g-db')::text, 'null');
+select 'EVIDENCE g-dd ' || coalesce(pg_temp.s12ga_body('g-dd')::text, 'null');

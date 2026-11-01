@@ -21,6 +21,11 @@ export interface CmsEditorialEntryEditorInit {
   readonly baseRevision: string;
   readonly locale: string;
   readonly schemaVersionId: string;
+  /**
+   * The owning content type's server-derived stable key: the taxonomy selector's
+   * `typeKey`. Never derived from the label or the content type id.
+   */
+  readonly typeKey: string;
   readonly lifecycle: string;
   readonly state: string;
   readonly validationState: string;
@@ -78,6 +83,11 @@ export interface CmsEditorialEditorState {
   readonly refusedFieldIds: readonly string[];
   /** Bumped each time the summary must take focus. */
   readonly summaryToken: number;
+  /**
+   * Bumped only by a verified `term_unavailable` refusal, so the taxonomy field
+   * re-reads its first selector page. Never bumped for an unknown outcome.
+   */
+  readonly taxonomyRefreshToken: number;
   /** Bumped when canonical values replace local ones. */
   readonly adoptCount: number;
   /**
@@ -148,6 +158,7 @@ export const initialCmsEditorialEditorState = (
   inputErrors: {},
   refusedFieldIds: [],
   summaryToken: 0,
+  taxonomyRefreshToken: 0,
   adoptCount: 0,
   fieldRevisions: {},
   unsentCount: 0,

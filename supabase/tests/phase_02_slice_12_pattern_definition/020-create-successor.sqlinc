@@ -1,0 +1,90 @@
+select pg_temp.s12pd_run('create',pg_temp.s12pd_request('s12pd-pattern',
+  pg_temp.s12pd_forest(1),null,'s12pd-create-0001'));
+select is(pg_temp.s12pd_state('create'),'00000','first definition succeeds [P2-S12-AC-100]');
+select is(pg_temp.s12pd_body('create')->>'state','draft','first definition is draft [P2-S12-AC-100]');
+select is(pg_temp.s12pd_body('create')->'patternVersion','1'::jsonb,
+  'definition number is numeric 1 [P2-S12-AC-100]');
+select is(pg_temp.s12pd_body('create')->'version','"1"'::jsonb,
+  'public CAS version is decimal string 1 [P2-S12-AC-103]');
+select is(pg_temp.s12pd_body('create')->'nodeCount','1'::jsonb,
+  'stored count includes the one block [P2-S12-AC-211]');
+select is(pg_temp.s12pd_body('create')->>'blockRegistryDigest',pg_temp.s12pd_expected_digest(),
+  'digest is recomputed from the signed registry tuple [P2-S12-AC-193]');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.s12pd_body('create')) k),
+  array['blockRegistryDigest','compatibleTypeIds','contentHash','createdAt','id','nodeCount',
+    'patternId','patternKey','patternVersion','state','updatedAt','version']::text[],
+  'resource is the exact safe projection; lifecycle and authority stay private [P2-S12-AC-100]');
+select is(pg_temp.s12pd_body('create')->'compatibleTypeIds',
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),
+  'resource retains exact compatible content type [P2-S12-AC-101]');
+select ok(pg_temp.s12pd_body('create')->>'id' is not null and
+  pg_temp.s12pd_body('create')->>'patternId'=pg_temp.s12pd_body('create')->>'id',
+  'first row id is the stable lineage id [P2-S12-AC-103]');
+select is(pg_temp.s12pd_row('create')->'lifecycle_version','1'::jsonb,
+  'private lifecycle starts at 1 independently of definition version [P2-S12-AC-100]');
+select is(pg_temp.s12pd_row('create')->'block_tree',pg_temp.s12pd_forest(1),
+  'database stores the actual forest without changing keys or props [P2-S12-AC-101]');
+select is(pg_temp.s12pd_row('create')->>'owner_id',pg_temp.s09d_id('ownerOrg')::text,
+  'owner is derived from the verified acting context [P2-S12-AC-102]');
+select is(pg_temp.s12pd_row('create')->>'created_by',pg_temp.s09d_actor_id('owner','auth'),
+  'creator is the verified human [P2-S12-AC-102]');
+select matches(pg_temp.s12pd_body('create')->>'contentHash','^[a-f0-9]{64}$',
+  'server definition hash uses lowercase SHA-256 [P2-S12-AC-100]');
+select ok(pg_temp.s12pd_body('create')->>'contentHash' is not null and
+  pg_temp.s12pd_row('create')->>'content_hash'=pg_temp.s12pd_body('create')->>'contentHash',
+  'resource hash equals the persisted definition hash [P2-S12-AC-100]');
+select ok((select state='00000' and before_rows->'platform_private.outbox_events'=
+  after_rows->'platform_private.outbox_events' from s12pd_out where label='create'),
+  'draft creation emits no activation event [P2-S12-AC-103]');
+select is((select jsonb_array_length(after_rows->'audit_private.audit_events')-
+  jsonb_array_length(before_rows->'audit_private.audit_events') from s12pd_out where label='create'),1,
+  'draft creation appends exactly one audit record [P2-S12-AC-103]');
+select is((select count(*)::integer from platform_private.idempotency_records
+  where key_hash=platform_private.cms_key_hash('s12pd-create-0001') and state='completed'),1,
+  'successful create completes exactly one reservation [P2-S12-AC-103]');
+
+-- Replay reuses the identical captured transport request, not a regenerated
+-- random server context. Exact response AND full effect image must match.
+select pg_temp.s12pd_run('replay',(select request from s12pd_out where label='create'));
+select is(pg_temp.s12pd_state('replay'),'00000','identical replay succeeds [P2-S12-AC-103]');
+select ok(pg_temp.s12pd_state('create')='00000' and pg_temp.s12pd_state('replay')='00000'
+  and pg_temp.s12pd_body('create') is not null
+  and pg_temp.s12pd_body('replay')=pg_temp.s12pd_body('create'),
+  'replay returns exactly the first body [P2-S12-AC-103]');
+select ok((select state='00000' and before_rows=after_rows from s12pd_out where label='replay'),
+  'successful replay changes no captured full row [P2-S12-AC-103]');
+select * from pg_temp.s12pd_refused('idem-body-conflict',
+  (select request || jsonb_build_object('blockTree',pg_temp.s12pd_forest(2))
+    from s12pd_out where label='create'),'IDEMPOTENCY_MISMATCH');
+
+create temp table s12pd_original on commit drop as select pg_temp.s12pd_row('create') as row_data;
+select pg_temp.s12pd_run('successor',pg_temp.s12pd_request('s12pd-pattern',
+  pg_temp.s12pd_forest(2),'1','s12pd-successor-0002',null,'1'));
+select is(pg_temp.s12pd_state('successor'),'00000','parent CAS creates successor [P2-S12-AC-103]');
+select is(pg_temp.s12pd_body('successor')->'patternVersion','2'::jsonb,
+  'successor definition number increments once [P2-S12-AC-103]');
+select is(pg_temp.s12pd_body('successor')->'version','"2"'::jsonb,
+  'successor public version uses its immutable definition number [P2-S12-AC-103]');
+select is(pg_temp.s12pd_row('successor')->'lifecycle_version','1'::jsonb,
+  'new definition starts its own lifecycle at 1 [P2-S12-AC-100]');
+select ok(pg_temp.s12pd_body('create')->>'patternId' is not null and
+  pg_temp.s12pd_body('successor')->'patternId'=pg_temp.s12pd_body('create')->'patternId',
+  'successor preserves lineage identity [P2-S12-AC-103]');
+select ok(pg_temp.s12pd_body('create')->>'id' is not null and
+  pg_temp.s12pd_row('successor')->>'supersedes_id'=pg_temp.s12pd_body('create')->>'id',
+  'successor pins its exact immutable parent row [P2-S12-AC-103]');
+select ok(pg_temp.s12pd_state('successor')='00000' and pg_temp.s12pd_row('create') is not null
+  and pg_temp.s12pd_row('create')=(select row_data from s12pd_original),
+  'successor leaves every parent column unchanged [P2-S12-AC-103]');
+select is(pg_temp.s12pd_body('successor')->>'blockRegistryDigest',pg_temp.s12pd_expected_digest(),
+  'two uses of one block deduplicate to one registry tuple [P2-S12-AC-193]');
+select is(pg_temp.s12pd_body('successor')->'nodeCount','2'::jsonb,
+  'successor stores its actual two-node forest count [P2-S12-AC-211]');
+select isnt(pg_temp.s12pd_body('successor')->>'contentHash',pg_temp.s12pd_body('create')->>'contentHash',
+  'changing definition content changes the server hash [P2-S12-AC-100]');
+select ok((select state='00000' and before_rows->'platform_private.outbox_events'=
+  after_rows->'platform_private.outbox_events' from s12pd_out where label='successor'),
+  'successor draft also emits no activation event [P2-S12-AC-103]');
+select is((select jsonb_array_length(after_rows->'audit_private.audit_events')-
+  jsonb_array_length(before_rows->'audit_private.audit_events') from s12pd_out where label='successor'),1,
+  'successor appends exactly one audit record [P2-S12-AC-103]');

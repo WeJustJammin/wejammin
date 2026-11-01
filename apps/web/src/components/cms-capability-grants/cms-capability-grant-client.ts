@@ -1,4 +1,5 @@
 import { addClientBindingIdHeader } from '../../lib/client-binding';
+import { retryingSafeRead } from '../../lib/safe-read-retry';
 import {
   loadCmsValidators,
   loadedCmsValidators,
@@ -203,16 +204,19 @@ export const readGrantList = async (input: {
   const url = grantListUrl(input.query, input.subjectPersonId ?? '');
   let response: Response;
   try {
-    response = await fetcher(
-      url,
-      await addClientBindingIdHeader(url, {
-        method: 'GET',
-        headers: new Headers({
-          accept: 'application/json',
-          'cache-control': 'no-store',
+    // FE03 :1173: a 502/503/504 the BE declares safe is retried twice (250 ms, 750 ms).
+    response = await retryingSafeRead(async () =>
+      fetcher(
+        url,
+        await addClientBindingIdHeader(url, {
+          method: 'GET',
+          headers: new Headers({
+            accept: 'application/json',
+            'cache-control': 'no-store',
+          }),
+          credentials: 'same-origin',
         }),
-        credentials: 'same-origin',
-      }),
+      ),
     );
   } catch {
     return { kind: 'degraded' };

@@ -1,0 +1,28 @@
+-- CMS-03C-15 lock order (BE03c 1338, 1342): a writer takes its positions in order and never acquires an earlier position after a later one:
+-- 0 the entry row (FOR UPDATE), 1 the authority rows (FOR SHARE), 3 the pattern version rows the write pins (FOR SHARE), 4 the entry's content-type
+-- version row (FOR SHARE), 5 the revision's live editorial review rows (FOR UPDATE).  A single session cannot observe the acquisition order of two
+-- transactions (the deadlock itself belongs to the race module run by root), so this is a STATIC check on the stored function source: the
+-- anchors below occur once, in code, in the order the function acquires the locks.  Placement (CMS-03C-02) takes position 3 before 4 the same way.
+create temp table s12puc_lock_src(src text not null) on commit drop;
+insert into s12puc_lock_src
+select pg_catalog.regexp_replace(prosrc, '\s+', ' ', 'g') from pg_proc where oid = to_regprocedure('platform_private.cms_apply_pattern_update(jsonb)');
+-- Each anchor is the FULL lock clause (the statement that acquires the rows, including `for share` / `for update` and, for positions 3 and 5, the
+-- ordering), so deleting or weakening a lock clause fails the check, and each occurs exactly once (a second occurrence would make the first-position
+-- comparison ambiguous).  Fix pass 2, R3.  It still proves only the SOURCE order, not run-time order, deadlock freedom or callee locks.
+create temp table s12puc_lock_pos(position_no integer primary key, anchor text not null, at integer, occurrences integer) on commit drop;
+insert into s12puc_lock_pos(position_no, anchor)
+values (0, 'cms_content_entries entry_row where entry_row.id = v_entries[1] for update'),
+       (1, 'perform platform_private.cms_lock_entry_authority('),
+       (3, 'cms_pattern_versions locked where locked.id = any (v_lock_ids) order by locked.id for share'),
+       (4, 'cms_content_type_versions type_version where type_version.id = v_revision.schema_version_id for share'),
+       (5, 'cms_editorial_reviews review_row where review_row.revision_id = v_revision.id and review_row.state in (''open'', ''approved'') '
+           || 'order by review_row.id for update');
+update s12puc_lock_pos set at = pg_catalog.strpos((select src from s12puc_lock_src), anchor),
+  occurrences = (pg_catalog.length((select src from s12puc_lock_src))
+                 - pg_catalog.length(pg_catalog.replace((select src from s12puc_lock_src), anchor, ''))) / pg_catalog.length(anchor);
+select is((select count(*)::integer from s12puc_lock_src), 1, 'the apply function source was read once');
+select ok((select bool_and(at > 0) from s12puc_lock_pos), 'the apply function source names every full lock clause of 1342 (positions 0, 1, 3, 4 and 5)');
+select is((select string_agg(position_no::text || ':' || occurrences::text, ' ' order by position_no) from s12puc_lock_pos), '0:1 1:1 3:1 4:1 5:1',
+  'each full lock clause occurs exactly once in the stored source');
+select is((select string_agg(position_no::text, ' < ' order by at) from s12puc_lock_pos), '0 < 1 < 3 < 4 < 5',
+  'CMS-03C-15 acquires position 3 (pattern versions) before position 4 (content-type version), after 0 and 1 and before 5 [BE03c 1338, 1342]');

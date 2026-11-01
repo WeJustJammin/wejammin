@@ -1,7 +1,9 @@
-import { existsSync, readFileSync, statSync } from 'node:fs';
-import { dirname, relative, resolve } from 'node:path';
+import { existsSync, readFileSync } from 'node:fs';
+import { relative, resolve } from 'node:path';
 
 import { describe, expect, it } from 'vitest';
+
+import { SRC_ROOT, staticClosure } from './island-static-closure.test-support';
 
 /**
  * FE03 "Performance budgets and loading strategy" (AC261, AC-106): the CMS
@@ -13,7 +15,6 @@ import { describe, expect, it } from 'vitest';
  * are not followed; `import type` is erased and not counted.
  */
 
-const SRC_ROOT = resolve(import.meta.dirname);
 const COMPONENTS = resolve(SRC_ROOT, 'components');
 
 /** Every browser entry of the CMS content-modeling surface that hydrates or runs at load. */
@@ -26,6 +27,9 @@ const ENTRIES: readonly string[] = [
   'cms-capability-grants/CmsCapabilityGrantConsoleIsland.tsx',
   'cms-composition/CmsTemplateDesigner.tsx',
   'cms-composition/CmsTemplateEditDesigner.tsx',
+  'cms-governed-review/CmsGovernedReviewDetailIsland.tsx',
+  'cms-governed-review/CmsGovernedTemplatePanel.tsx',
+  'cms-governed-review/CmsGovernedPatternPanel.tsx',
 ].map((entry) => resolve(COMPONENTS, entry));
 
 /** The document shell scripts every CMS editorial page loads. */
@@ -34,54 +38,6 @@ const DOCUMENT_SCRIPTS: readonly string[] = [
   'lib/route-heading-focus.ts',
   'lib/auth-scope-sync.ts',
 ].map((entry) => resolve(SRC_ROOT, entry));
-
-const STATIC_IMPORT =
-  /(?:^|\n)\s*(?:import|export)\s+(type\s+)?(?:[^;'"]*?\s+from\s+)?['"]([^'"]+)['"]/gu;
-
-const resolveLocal = (from: string, specifier: string): string | null => {
-  if (!specifier.startsWith('.')) return null;
-  const base = resolve(dirname(from), specifier);
-  for (const candidate of [
-    base,
-    `${base}.ts`,
-    `${base}.tsx`,
-    `${base}/index.ts`,
-    `${base}/index.tsx`,
-  ]) {
-    if (existsSync(candidate) && statSync(candidate).isFile()) return candidate;
-  }
-  return null;
-};
-
-interface Closure {
-  readonly files: readonly string[];
-  /** Non-relative value imports as `<package> <- <importer>`. */
-  readonly packages: readonly string[];
-}
-
-const staticClosure = (entry: string): Closure => {
-  const seen = new Set<string>();
-  const packages = new Set<string>();
-  const pending = [entry];
-  while (pending.length > 0) {
-    const file = pending.pop() as string;
-    if (seen.has(file)) continue;
-    seen.add(file);
-    const source = readFileSync(file, 'utf8');
-    for (const match of source.matchAll(STATIC_IMPORT)) {
-      if (match[1] !== undefined) continue;
-      const specifier = match[2] as string;
-      const local = resolveLocal(file, specifier);
-      if (local !== null) pending.push(local);
-      else if (!specifier.startsWith('.'))
-        packages.add(`${specifier} <- ${relative(SRC_ROOT, file)}`);
-    }
-  }
-  return {
-    files: [...seen].map((file) => relative(SRC_ROOT, file)).sort(),
-    packages: [...packages].sort(),
-  };
-};
 
 const FORBIDDEN = [
   'zod <-',

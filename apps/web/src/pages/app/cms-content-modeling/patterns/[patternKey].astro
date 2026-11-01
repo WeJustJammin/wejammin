@@ -1,0 +1,87 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import CmsGovernedPatternPanel from '../../../../components/cms-governed-review/CmsGovernedPatternPanel';
+import { createCmsGovernedPageReads } from '../../../../components/cms-governed-review/governed-review-page-reads';
+import { loadGovernedSubjectReview } from '../../../../components/cms-governed-review/load-governed-subject-review';
+import CmsPatternVersionDesigner from '../../../../components/cms-pattern-designer/CmsPatternVersionDesigner';
+import '../../../../components/cms-pattern-designer/cms-pattern-designer.css';
+import {
+  createPatternDesignerPageReads,
+  loadPatternDesignerPage,
+} from '../../../../components/cms-pattern-designer/load-pattern-designer-page';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (Astro.request.method !== 'GET') {
+  return new Response('Method not allowed', {
+    status: 405,
+    headers: { allow: 'GET', 'cache-control': 'no-store' },
+  });
+}
+
+/*
+ * Protected pattern designer for a saved key (cmsPatternLatestRead + CMS-03C-12) with
+ * the bounded definition-review panel (CMS-03C-06). A malformed key and the reserved
+ * keys `context`, `versions`, `selector`, `nestable` and `new` are a 400 before any protected read;
+ * a concealed or absent key is the disclosure-safe 404. The panel island is given only
+ * the few facts of the served version it needs.
+ */
+const outcome = await loadPatternDesignerPage({
+  request: Astro.request,
+  patternKey: Astro.params.patternKey ?? '',
+  reads: createPatternDesignerPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+// FE03 :877, :1066: the panel shows the version's review summary and links to the review itself.
+const panelReview =
+  outcome.kind === 'view' && outcome.view.panel !== null
+    ? await loadGovernedSubjectReview({
+        request: Astro.request,
+        reads: createCmsGovernedPageReads(env.PLATFORM_API),
+        subject: {
+          kind: 'pattern_version',
+          key: outcome.view.panel.patternKey,
+          version: outcome.view.panel.patternVersion,
+        },
+      })
+    : null;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Define a reusable pattern and submit it for review."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <>
+        <CmsPatternVersionDesigner
+          context={outcome.view.context}
+          latest={outcome.view.latest}
+          csrfToken={outcome.view.csrfToken}
+          client:load
+        />
+        {outcome.view.panel !== null ? (
+          <CmsGovernedPatternPanel
+            detail={outcome.view.panel}
+            review={panelReview}
+            client:load
+          />
+        ) : null}
+      </>
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

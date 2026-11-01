@@ -8,6 +8,7 @@ import DataTable from './DataTable';
 import { ProposeChangeForm } from './platform-configuration-forms';
 import { sanitizeConfigurationValue } from './platform-configuration-security';
 import SettingsFlagsRuntimeWorkbench from './SettingsFlagsRuntimeWorkbench';
+import { recordFromEffectiveResponse } from './settings-flags-runtime-controller-helpers';
 import {
   canonicalInstantFormValue,
   formDataToConfigurationCommand,
@@ -174,6 +175,58 @@ describe('Phase 2 Slice 07 frontend contracts', () => {
       Cfg05a02EffectiveValueResponseSchema.safeParse(effective).success,
     ).toBe(true);
   });
+
+  it('[BROWSER-EFFECTIVE-01] maps the exact effective response without changing its schema', async () => {
+    expect(await recordFromEffectiveResponse(effective)).toEqual({
+      ...record,
+      projection: {
+        definitionId: effective.definitionId,
+        definitionVersionId: effective.definitionVersionId,
+        key: effective.key,
+        valueKind: effective.valueKind,
+        typedValue: effective.typedValue,
+        sourceScope: effective.sourceScope,
+        sourceSubjectId: null,
+        sourceValueVersionId: null,
+        isDefault: true,
+        effectiveFrom: null,
+        effectiveTo: null,
+        evaluatedAt: effective.evaluatedAt,
+        evaluatorVersion: effective.evaluatorVersion,
+        correlationId: effective.correlationId,
+        compatibility: 'exact',
+      },
+    });
+  });
+
+  it.each(['last_compatible', 'contract_fallback'] as const)(
+    '[BROWSER-EFFECTIVE-02] keeps %s as a compatible fallback',
+    async (compatibility) => {
+      const mapped = await recordFromEffectiveResponse({
+        ...effective,
+        compatibility,
+      });
+      expect(mapped?.state).toBe('compatible-fallback');
+      expect(mapped?.projection).toMatchObject({
+        compatibility,
+        typedValue: 'jam',
+      });
+      expect(mapped?.provenance).toEqual(record.provenance);
+    },
+  );
+
+  it.each([
+    null,
+    { ...effective, definitionId: 'not-a-uuid' },
+    { ...effective, evaluatorVersion: '0' },
+    { ...effective, compatibility: 'new-client-authority' },
+    { ...effective, ownerId: 'must-not-be-accepted' },
+  ])(
+    '[BROWSER-EFFECTIVE-03] refuses malformed or unknown-field effective data %#',
+    async (value) => {
+      expect(await recordFromEffectiveResponse(value)).toBeNull();
+    },
+  );
 
   it('renders a server-shaped workbench with semantic selection and action fields', () => {
     const markup = renderToStaticMarkup(

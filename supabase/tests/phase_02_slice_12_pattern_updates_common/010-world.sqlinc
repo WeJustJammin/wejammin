@@ -1,0 +1,138 @@
+-- Slice 12 lane pattern-updates: the shared world of the selector, update-diff and pattern-update suites.
+-- Every pattern is a REAL active pattern created by CMS-03C-12 and activated through the governed chain (CMS-03C-06/08/07/09); every
+-- composition row is written by the real CMS-03C-02 producer.  A placement pins the version that is active AT THAT TIME, so every
+-- v1 placement happens before its successor is activated (activation supersedes v1 and CMS-03C-02 refuses a superseded pin).
+-- Lineages (tree -> purpose):
+--   pu-a   v1 hero{H1,warm; title T1, note N1}, cta{C1}      v2 hero{H2; title T2, note N1}, cta{C1}, +badge   theirs-only, collisions, retained overrides
+--   pu-c   v1 keep{x1}, gone{y1}                              v2 keep{x2} (gone removed)                         a removed root retires its row
+--   pu-n   v1 leaf{v1}   v2 leaf{v2}                          pu-d v1 top{t1}, shared->pu-n v1; v2 top{t2}, shared->pu-n v2   chains through a nested reference, superseded nested base
+--   pu-e   v1 type 1     v2 compatible with type 2 only       an incompatible newer version is no update for a type-1 entry
+--   pu-f   v1 active     v2 draft only                        a draft is no update
+--   pu-h   v1, v2, v3 (v2 superseded by v3)                   the target is the latest active version only
+--   pu-big 31 roots + nested pu-p8 (8 roots) P1 -> P2         a placement of 39 rows is answered in successive requests of at most 32 (DEC-181)
+--   pu-w   one root with 155 descendants n1 -> n2             156 changed paths: 422 diff_too_large; a detach materialization over 128 keys
+--   pu-s   one root, 120 nodes of 1100-character values       a diff over 256 KiB is 422 diff_too_large
+select * from pg_temp.s12pl_pattern('a1', 'pu-a', jsonb_build_array(
+  pg_temp.s12pd_block('hero', jsonb_build_array(
+    pg_temp.s12pd_block('title', '[]'::jsonb, '{"title":"T1"}'::jsonb), pg_temp.s12pd_block('note', '[]'::jsonb, '{"title":"N1"}'::jsonb)),
+    '{"title":"H1"}'::jsonb),
+  pg_temp.s12pd_block('cta', '[]'::jsonb, '{"title":"C1"}'::jsonb)));
+select * from pg_temp.s12pl_pattern('c1', 'pu-c', jsonb_build_array(
+  pg_temp.s12pd_block('keep', '[]'::jsonb, '{"title":"K1"}'::jsonb), pg_temp.s12pd_block('gone', '[]'::jsonb, '{"title":"G1"}'::jsonb)));
+select * from pg_temp.s12pl_pattern('n1', 'pu-n', jsonb_build_array(pg_temp.s12pd_block('leaf', '[]'::jsonb, '{"title":"L1"}'::jsonb)));
+select * from pg_temp.s12pl_pattern('d1', 'pu-d', jsonb_build_array(
+  pg_temp.s12pd_block('top', '[]'::jsonb, '{"title":"D1"}'::jsonb),
+  jsonb_build_object('kind', 'pattern', 'key', 'shared', 'patternId', pg_temp.s12pd_body('n1')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('n1')->'patternVersion')));
+select * from pg_temp.s12pl_pattern('e1', 'pu-e', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"k1"}'::jsonb)));
+select * from pg_temp.s12pl_pattern('f1', 'pu-f', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"k1"}'::jsonb)));
+select * from pg_temp.s12pl_pattern('h1', 'pu-h', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"k1"}'::jsonb)));
+select * from pg_temp.s12pl_pattern('w1', 'pu-w', jsonb_build_array(pg_temp.s12pd_block('wide', (
+  select jsonb_agg(pg_temp.s12pd_block('c' || c, (
+    select jsonb_agg(pg_temp.s12pd_block('g' || g, '[]'::jsonb, '{"title":"n1"}'::jsonb) order by g) from generate_series(1, 30) g),
+    '{"title":"n1"}'::jsonb) order by c) from generate_series(1, 5) c), '{"title":"n1"}'::jsonb)));
+select * from pg_temp.s12pl_pattern('s1', 'pu-s', jsonb_build_array(pg_temp.s12pd_block('fat', (
+  select jsonb_agg(pg_temp.s12pd_block('q' || q, (
+    select jsonb_agg(pg_temp.s12pd_block('g' || g, '[]'::jsonb, jsonb_build_object('title', repeat('x', 1100))) order by g)
+      from generate_series(1, 30) g)) order by q) from generate_series(1, 4) q))));
+-- A forest holds at most 32 roots, so the 39-row placement of DEC-181 is pu-big: 31 roots plus a nested reference that expands to the
+-- 8 block roots of pu-p8.
+select * from pg_temp.s12pl_pattern('q1', 'pu-p8', (
+  select jsonb_agg(pg_temp.s12pd_block('extra' || n, '[]'::jsonb, '{"title":"X1"}'::jsonb) order by n) from generate_series(1, 8) n));
+select * from pg_temp.s12pl_pattern('b1', 'pu-big', (
+  select jsonb_agg(pg_temp.s12pd_block('root' || n, '[]'::jsonb, '{"title":"P1"}'::jsonb) order by n) from generate_series(1, 31) n)
+  || jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'more', 'patternId', pg_temp.s12pd_body('q1')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('q1')->'patternVersion')));
+
+-- A real template with slots main and side, for the placement path prefix of a templated entry (/main/hero).
+select pg_temp.s09d_rpc('s12pu-template', 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+  'templateKey', 's12pu-tpl', 'compatibleTypeIds', jsonb_build_array((select id from s12pd_types where ordinal = 1)),
+  'slots', jsonb_build_array(
+    jsonb_build_object('key', 'main', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128),
+    jsonb_build_object('key', 'side', 'required', false, 'allowedBlocks', '[]'::jsonb, 'maxCount', 128)),
+  'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+  'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'public', 'expectedVersion', null,
+  'idempotencyKey', 's12pu-template-0001'), true);
+select is(pg_temp.s09d_outcome('s12pu-template'), 'OK', 'setup: a real draft template declares the slots main and side');
+
+-- v1 placements -------------------------------------------------------------------------------------------------------------------
+create temp table s12pu_cases(tag text primary key, overrides jsonb not null, link text not null default 'linked') on commit drop;
+insert into s12pu_cases(tag, overrides, link) values
+  ('dif1', '{}', 'linked'),
+  ('dif2', '{"/hero/title":{"title":"MINE"},"/hero/note":{"title":"MY-NOTE"}}', 'linked'),
+  ('dif3', '{"/hero":{"title":"H1"}}', 'linked'),
+  ('dif4', '{"/hero":{"title":"MINE-H"},"/hero/title":{"title":"MINE-T"}}', 'linked'),
+  ('dif5', '{}', 'detached'),
+  ('dif6', '{"/cta":{"title":"MY-C"}}', 'linked'),
+  ('dif7', '{"/hero/title":null}', 'linked'),
+  ('ap1', '{}', 'linked'), ('ap2', '{}', 'linked'),
+  ('ap3', '{"/hero/title":{"title":"MINE"},"/hero/note":{"title":"MY-NOTE"}}', 'linked'),
+  ('ap3b', '{"/hero/title":{"title":"MINE"},"/hero/note":{"title":"MY-NOTE"}}', 'linked'),
+  ('ap4', '{"/hero/title":{"title":"MINE"}}', 'linked'),
+  ('ap5', '{"/hero":{"title":"MINE-H"},"/hero/title":{"title":"MINE-T"}}', 'linked'),
+  ('ap6', '{"/hero":{"title":"H1"}}', 'linked'),
+  ('ap7', '{"/hero/title":{"title":"MINE"}}', 'linked'),
+  ('ap8', '{}', 'linked'), ('ap9', '{}', 'detached'), ('ap10', '{}', 'linked'), ('ap11', '{}', 'linked'), ('ap12', '{}', 'linked'),
+  ('ap13', '{}', 'linked'), ('ap14', '{}', 'linked'),
+  ('ap15', '{"/cta":{"title":"MY-C"}}', 'linked'),
+  ('ap16', '{"/hero/title":null}', 'linked'), ('ap17', '{}', 'linked'), ('ap18', '{}', 'linked'),
+  ('st1', '{"/hero/title":{"title":"MINE"}}', 'linked');
+select placed.* from s12pu_cases c cross join lateral pg_temp.s12pu_place(c.tag, 'a1', c.overrides, c.link) placed;
+select * from pg_temp.s12pu_place('tpl1', 'a1', '{}'::jsonb, 'linked', '/main', true);
+select * from pg_temp.s12pu_place('rm1', 'c1');
+select * from pg_temp.s12pu_place('rm2', 'c1', '{"/gone":{"title":"G99"}}'::jsonb);
+select * from pg_temp.s12pu_place('rm3', 'c1', '{"/keep":{"title":"K50"}}'::jsonb);
+select * from pg_temp.s12pu_place('rm4', 'c1', '{"/gone":{"title":"G99"}}'::jsonb);
+select * from pg_temp.s12pu_place('nest1', 'd1');
+select * from pg_temp.s12pu_place('nest2', 'd1', '{"/shared/leaf":{"title":"L77"}}'::jsonb);
+select * from pg_temp.s12pu_place('inc1', 'e1');
+select * from pg_temp.s12pu_place('fd1', 'f1');
+select * from pg_temp.s12pu_place('ver1', 'h1');
+select * from pg_temp.s12pu_place('ver3', 'h1');
+select * from pg_temp.s12pu_place('big1', 'b1');
+select * from pg_temp.s12pu_place('big2', 'b1');
+select * from pg_temp.s12pu_place('wid1', 'w1');
+select * from pg_temp.s12pu_place('wid2', 'w1');
+select * from pg_temp.s12pu_place('wid3', 'w1');
+select * from pg_temp.s12pu_place('fat1', 's1');
+
+-- successors -----------------------------------------------------------------------------------------------------------------------
+select * from pg_temp.s12pl_pattern('a2', 'pu-a', jsonb_build_array(
+  pg_temp.s12pd_block('hero', jsonb_build_array(
+    pg_temp.s12pd_block('title', '[]'::jsonb, '{"title":"T2"}'::jsonb), pg_temp.s12pd_block('note', '[]'::jsonb, '{"title":"N1"}'::jsonb)),
+    '{"title":"H2"}'::jsonb),
+  pg_temp.s12pd_block('cta', '[]'::jsonb, '{"title":"C1"}'::jsonb),
+  pg_temp.s12pd_block('badge', '[]'::jsonb, '{"title":"B"}'::jsonb)), null, true, '1');
+select * from pg_temp.s12pl_pattern('c2', 'pu-c', jsonb_build_array(pg_temp.s12pd_block('keep', '[]'::jsonb, '{"title":"K2"}'::jsonb)), null, true, '1');
+select * from pg_temp.s12pl_pattern('n2', 'pu-n', jsonb_build_array(pg_temp.s12pd_block('leaf', '[]'::jsonb, '{"title":"L2"}'::jsonb)), null, true, '1');
+select * from pg_temp.s12pl_pattern('d2', 'pu-d', jsonb_build_array(
+  pg_temp.s12pd_block('top', '[]'::jsonb, '{"title":"D2"}'::jsonb),
+  jsonb_build_object('kind', 'pattern', 'key', 'shared', 'patternId', pg_temp.s12pd_body('n2')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('n2')->'patternVersion')), null, true, '1');
+select * from pg_temp.s12pl_pattern('e2', 'pu-e', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"k2"}'::jsonb)),
+  jsonb_build_array((select id from s12pd_types where ordinal = 2)), true, '1');
+select * from pg_temp.s12pl_pattern('f2', 'pu-f', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"k2"}'::jsonb)), null, false, '1');
+select * from pg_temp.s12pl_pattern('h2', 'pu-h', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"k2"}'::jsonb)), null, true, '1');
+select * from pg_temp.s12pu_place('ver2', 'h2');
+select * from pg_temp.s12pl_pattern('h3', 'pu-h', jsonb_build_array(pg_temp.s12pd_block('item', '[]'::jsonb, '{"title":"k3"}'::jsonb)), null, true, '2');
+select * from pg_temp.s12pl_pattern('b2', 'pu-big', (
+  select jsonb_agg(pg_temp.s12pd_block('root' || n, '[]'::jsonb, '{"title":"P2"}'::jsonb) order by n) from generate_series(1, 31) n)
+  || jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'more', 'patternId', pg_temp.s12pd_body('q1')->'patternId',
+    'patternVersion', pg_temp.s12pd_body('q1')->'patternVersion')), null, true, '1');
+select * from pg_temp.s12pl_pattern('w2', 'pu-w', jsonb_build_array(pg_temp.s12pd_block('wide', (
+  select jsonb_agg(pg_temp.s12pd_block('c' || c, (
+    select jsonb_agg(pg_temp.s12pd_block('g' || g, '[]'::jsonb, '{"title":"n2"}'::jsonb) order by g) from generate_series(1, 30) g),
+    '{"title":"n2"}'::jsonb) order by c) from generate_series(1, 5) c), '{"title":"n2"}'::jsonb)), null, true, '1');
+select * from pg_temp.s12pl_pattern('s2', 'pu-s', jsonb_build_array(pg_temp.s12pd_block('fat', (
+  select jsonb_agg(pg_temp.s12pd_block('q' || q, (
+    select jsonb_agg(pg_temp.s12pd_block('g' || g, '[]'::jsonb, jsonb_build_object('title', repeat('y', 1100))) order by g)
+      from generate_series(1, 30) g)) order by q) from generate_series(1, 4) q))), null, true, '1');
+-- a placement of the newest version: nothing newer exists
+select * from pg_temp.s12pu_place('nu1', 'a2');
+select is((select count(*)::integer from platform_private.cms_pattern_versions where state = 'active'
+    and pattern_id in (select (pg_temp.s12pd_body(l)->>'patternId')::uuid from unnest(array['a2', 'c2', 'n2', 'd2', 'e2', 'h3', 'b2', 'w2', 's2', 'f1', 'q1']) l)), 11,
+  'setup: exactly one active version per lineage, the newest of each');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('f2')->>'id')::uuid), 'draft',
+  'setup: the never-activated pu-f v2 is a real draft');
+select is((select state from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('n1')->>'id')::uuid), 'superseded',
+  'setup: the nested pu-n v1 pinned by pu-d v1 is superseded');

@@ -1,0 +1,76 @@
+-- DEC-194 atomicity of the durable recovery association: the marker insert that names the recovery Job must
+-- commit or roll back WITH the acceptance it describes.
+--
+-- Independent-review finding (first a RED witness, lane phils_dec194_red_20261016, GREEN since the durable table landed): the implemented design writes the
+-- association (failed_job_id -> recovery_job_id) inside the acceptance transaction, after the acceptance
+-- returns (including a replay).  A fault at that insert must therefore leave NO acceptance effect behind:
+-- no new job, no job.requested outbox event, no job.accepted audit row, no new idempotency receipt and no
+-- association row.  This fragment injects exactly that fault with ONE transaction-local always-violating
+-- CHECK constraint on the association table (NOT VALID, so no existing row is touched), snapshots every
+-- relevant store BEFORE the fault is removed, then removes the fault and proves the acceptance effects
+-- rolled back.
+--
+-- State after 060: j6 already carries the durable association j6 -> R, so it is no longer a recovery
+-- candidate at all; the party's tail is still unconverged (2 assignments).  This fragment therefore adds a
+-- NEW failed head for the party, j8, which has no association yet: its FIRST recovery is the acceptance whose
+-- post-acceptance marker insert the fault rejects.
+--
+-- The fault assertions need the association table (platform_private.taxonomy_merge_recoveries, DEC-212) to
+-- exist: were it absent the fault could not be installed and these assertions would fail rather than pass.
+-- The decisive behavioural expiry witness lives in 060.
+-- [P2-S12-AC-226; DEC-194; BE03c "Merge convergence recovery (DEC-194 ...)"]
+
+select ok(pg_temp.s12dc_assoc_table(),
+  'the durable recovery association table exists (platform_private.taxonomy_merge_recoveries) [P2-S12-AC-226, DEC-194]');
+select pg_temp.s12dc_job('j8', 'owner', pg_temp.s09d_id('ownerOrg'), 10);
+select pg_temp.s12dc_settle('j8', pg_temp.s12dc_id('job:j8'), 'failed', 'DEPENDENCY_UNAVAILABLE');
+-- drain any recovery job an earlier tick left queued (real BE00 claim/outcome): a queued job of the type is live and would exclude the party.
+select pg_temp.s12dc_cancel_live();
+select pg_temp.s12dc_elapse(20);
+select pg_temp.s12dc_party_mark('a0-party', pg_temp.s09d_id('ownerOrg'));
+select ok(pg_temp.s12dc_failed_head(pg_temp.s09d_id('ownerOrg')) = pg_temp.s12dc_id('job:j8'),
+  'fixture: j8 is the failed head the sweep would select for the party [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_live(pg_temp.s09d_id('ownerOrg')) = 0,
+  'fixture: no live job of the type remains, so the live guard cannot refuse j8 [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_streak(pg_temp.s09d_id('ownerOrg')) = 1,
+  'fixture: exactly one consecutive failed generation at the head (j8), so the 3-generation stop cannot refuse [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) >= 20,
+  'fixture: the last job activity of the type is at least 20 minutes old, so the 15-minute bound cannot refuse [P2-S12-AC-226]');
+select ok(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 2,
+  'fixture: 2 merged-term assignments remain, so the work guard cannot refuse [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_assoc_job(pg_temp.s12dc_id('job:j8')) is null,
+  'fixture: the new failed head j8 has no durable association yet (its recovery is the first one) [P2-S12-AC-226]');
+
+-- With the fault in place the association insert fails AFTER the acceptance, so the whole acceptance must roll back.
+select ok(pg_temp.s12dc_marker_fault_on(),
+  'the transaction-local marker-insert fault is installed on the association table [P2-S12-AC-226, DEC-194]');
+select pg_temp.s12dc_mark('a1');
+select pg_temp.s12dc_full_mark('a1');
+select pg_temp.s12dc_assoc_mark('a1');
+select pg_temp.s12dc_sweep('a1');
+select ok(pg_temp.s12dc_out('a1') like 'P0001:%',
+  'the acceptance is refused (P0001) when the durable association insert fails after it [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_delta('a1') = 'jobs +0, outbox +0, audit +0, idempotency +0, stores same',
+  'the failed acceptance leaves no job, outbox event, audit row, receipt or term change behind [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_full_same('a1'),
+  'jobs, outbox, audit and idempotency are byte-identical after the failed acceptance [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_assoc_same('a1')
+          and pg_temp.s12dc_assoc_rows() = (select row_count + 1 from s12dc_assoc_before_x1),
+  'no association row was committed by the failed acceptance [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_party_same('a0-party', pg_temp.s09d_id('ownerOrg')),
+  'the failed acceptance added no job of the type for the acting party (its history is unchanged) [P2-S12-AC-226, DEC-194]');
+
+-- Remove the fault and prove the table definition is restored byte for byte, then prove the same request now succeeds.
+select ok(pg_temp.s12dc_marker_fault_off(),
+  'the marker-insert fault is removed and the association table definition is restored exactly [P2-S12-AC-226]');
+select ok(not pg_temp.s12dc_fault_present(),
+  'no fault constraint remains on the association table (vacuously true if the table were absent) [P2-S12-AC-226]');
+select pg_temp.s12dc_mark('a2');
+select pg_temp.s12dc_sweep('a2');
+select is(pg_temp.s12dc_out('a2') || '#' || pg_temp.s12dc_delta('a2'),
+  'ok:{"requested": 1}#jobs +1, outbox +1, audit +1, idempotency +1, stores same',
+  'with the fault removed the same failed Job is recovered exactly once: one job, one outbox event, one audit row, one receipt, no term change [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12dc_assoc_job(pg_temp.s12dc_id('job:j8')) is not null
+          and pg_temp.s12dc_assoc_job(pg_temp.s12dc_id('job:j8')) <> pg_temp.s12dc_id('job:j8')
+          and pg_temp.s12dc_assoc_job(pg_temp.s12dc_id('job:j8')) <> pg_temp.s12dc_id('job:r1'),
+  'the successful recovery associates j8 with the NEW recovery Job it just accepted [P2-S12-AC-226, DEC-194]');

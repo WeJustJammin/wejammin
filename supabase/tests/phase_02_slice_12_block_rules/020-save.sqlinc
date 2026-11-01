@@ -1,0 +1,46 @@
+-- DEC-210 / CMS-03C-12: a pattern version save keeps every pinned block's allowedChildren and slotRules over the
+-- expanded block forest.  The refusal is the SQL token block_rules_violated (the Worker maps it to 422
+-- COMPOSITION_VALIDATION_FAILED with details.reasonCode) with DETAIL [the offending node's request pointer]; the
+-- refusal preserves every captured full row (s12pd_refused).
+-- accepted: allowed child, maxNodes at the limit, maxDepth at the limit, several valid roots
+select * from pg_temp.brs_ok('S01', 'br-save-chain', jsonb_build_array(pg_temp.brb('a', 'br.root',
+  jsonb_build_array(pg_temp.brb('b', 'br.mid', jsonb_build_array(pg_temp.brb('c', 'br.leaf')))))));
+select is((select node_count::integer from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('S01')->>'id')::uuid),
+  3, 'S01: the stored node count is unchanged by the rule check');
+select * from pg_temp.brs_ok('S02', 'br-save-nodes-at', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf')))));
+select * from pg_temp.brs_ok('S03', 'br-save-depth-at', jsonb_build_array(pg_temp.brb('s', 'br.shallow',
+  jsonb_build_array(pg_temp.brb('l', 'br.leaf')))));
+select * from pg_temp.brs_ok('S04', 'br-save-roots', jsonb_build_array(pg_temp.brb('a', 'br.leaf'),
+  pg_temp.brb('b', 'br.tight', jsonb_build_array(pg_temp.brb('c', 'br.leaf'))), pg_temp.brb('d', 'br.root')));
+
+-- refused: disallowed child, empty allow-list leaf, maxNodes over, maxDepth over
+select * from pg_temp.brs_refused('S05', 'br-save-bad-child', jsonb_build_array(pg_temp.brb('a', 'br.root',
+  jsonb_build_array(pg_temp.brb('b', 'br.root')))), '/blockTree/0/children/0');
+select * from pg_temp.brs_refused('S06', 'br-save-leaf-child', jsonb_build_array(pg_temp.brb('a', 'br.leaf',
+  jsonb_build_array(pg_temp.brb('b', 'br.leaf')))), '/blockTree/0/children/0');
+select * from pg_temp.brs_refused('S07', 'br-save-nodes-over', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))),
+  '/blockTree/0');
+select * from pg_temp.brs_refused('S08', 'br-save-depth-over', jsonb_build_array(pg_temp.brb('s', 'br.shallow',
+  jsonb_build_array(pg_temp.brb('s2', 'br.shallow', jsonb_build_array(pg_temp.brb('l', 'br.leaf')))))),
+  '/blockTree/0');
+-- pointers: the second root, a deep node, the first offender in node order
+select * from pg_temp.brs_refused('S09', 'br-save-second-root', jsonb_build_array(pg_temp.brb('a', 'br.root'),
+  pg_temp.brb('t', 'br.tight', jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'),
+    pg_temp.brb('l3', 'br.leaf')))), '/blockTree/1');
+select * from pg_temp.brs_refused('S10', 'br-save-deep', jsonb_build_array(pg_temp.brb('a', 'br.root',
+  jsonb_build_array(pg_temp.brb('b', 'br.mid', jsonb_build_array(pg_temp.brb('c', 'br.mid')))))),
+  '/blockTree/0/children/0/children/0');
+select * from pg_temp.brs_refused('S11', 'br-save-first-offender', jsonb_build_array(
+  pg_temp.brb('a', 'br.leaf', jsonb_build_array(pg_temp.brb('b', 'br.leaf'))),
+  pg_temp.brb('t', 'br.tight', jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'),
+    pg_temp.brb('l3', 'br.leaf')))), '/blockTree/0/children/0');
+-- a successor version is held to the same rules, and the rule precedes the digest expectation (422 before 409)
+select * from pg_temp.brs_refused('S12', 'br-save-chain', jsonb_build_array(pg_temp.brb('a', 'br.root',
+  jsonb_build_array(pg_temp.brb('b', 'br.root')))), '/blockTree/0/children/0', '1');
+select * from pg_temp.brs_refused('S13', 'br-save-digest-order', jsonb_build_array(pg_temp.brb('a', 'br.leaf',
+  jsonb_build_array(pg_temp.brb('b', 'br.leaf')))), '/blockTree/0/children/0', null, repeat('f', 64));
+select is((select count(*)::integer from platform_private.cms_pattern_versions where pattern_key like 'br-save-%'
+    and pattern_key not in ('br-save-chain', 'br-save-nodes-at', 'br-save-depth-at', 'br-save-roots')), 0,
+  'S14: no refused save left a pattern version row');

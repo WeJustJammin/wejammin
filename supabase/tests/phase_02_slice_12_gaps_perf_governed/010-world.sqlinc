@@ -1,0 +1,22 @@
+-- Perf world, part 1: the standing grants of the three named reviewers (real CMS-03A-15 commands) and the review counts.
+-- QN = 110 ordinary template reviews are submitted, each assigned to rev1; reviews 1..48 are approved by rev1; 1..24 are activated
+-- and then retired, 25..48 are scheduled.  The detail-bound review (protected, 36 assignment rows) is built in 030.
+create temp table g12pg_setup(key text primary key, outcome text not null) on commit drop;
+insert into g12pg_setup(key, outcome) values
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 1)),
+  ('designer2:reviewer', pg_temp.s12ga_grant('designer2', 'cms.reviewer', 1));
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2');
+
+create or replace function pg_temp.g12pg_tag(p_i integer) returns text language sql immutable as $body$
+  select 'q' || lpad(p_i::text, 3, '0') $body$;
+-- The verified-actor context of a write (recent step-up) and of a read (none).
+create or replace function pg_temp.g12pg_w(p_actor text) returns jsonb language sql volatile as $body$
+  select pg_temp.s12ga_ctx(p_actor) $body$;
+create or replace function pg_temp.g12pg_r(p_actor text) returns jsonb language sql volatile as $body$
+  select pg_temp.s12ga_ctx(p_actor, interval '1 minute', false) $body$;
+create or replace function pg_temp.g12pg_review(p_i integer) returns uuid language sql stable as $body$
+  select pg_temp.s12ga_review(pg_temp.g12pg_tag(p_i)) $body$;
+
+select ok((select count(*) = 3 and bool_and(outcome = 'OK') from g12pg_setup),
+  'fixture: rev1, rev2 and designer2 hold real CMS-03A-15 cms.reviewer grants in the owner organization [P2-S12-AC-067]');

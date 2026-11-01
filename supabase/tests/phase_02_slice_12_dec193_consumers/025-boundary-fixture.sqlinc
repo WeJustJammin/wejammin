@@ -1,0 +1,260 @@
+-- TEST ONLY. Real signed/governed donors; labelled guarded read/scan fixtures.
+-- No carry/restore policy, scan producer, registry bypass or provider proof.
+create temp table s12cb_before(tag text primary key,rows jsonb) on commit drop;
+create or replace function pg_temp.s12cb_seed(p_source text,p_target text,p_head uuid default null)
+returns setof text language plpgsql as $body$
+declare source_id uuid:=pg_temp.s12pl_rev(p_source); target_id uuid; selected uuid;
+ donor platform_private.cms_composition_instances; stamp timestamptz;
+ before_rows jsonb:=pg_temp.s12cs_history(source_id);
+ prior text:=coalesce(current_setting('app.cms_rpc',true),'');
+begin
+ perform set_config('app.cms_rpc','true',true);
+ target_id:=pg_temp.s12pl_entry(p_target);
+ select id into selected from platform_private.cms_composition_instances
+  where revision_id=source_id order by version desc,id desc limit 1;
+ if selected is null then raise exception 'boundary donor missing'; end if;
+ for donor in select * from platform_private.cms_composition_instances
+  where revision_id=source_id order by path collate "C",version loop
+  if donor.parent_instance_id is not null then raise exception 'unexpected donor parent'; end if;
+  stamp:=clock_timestamp();
+  insert into platform_private.cms_composition_instances
+  select (jsonb_populate_record(null::platform_private.cms_composition_instances,to_jsonb(donor)||jsonb_build_object(
+   'id',case when donor.id=selected and p_head is not null then p_head else extensions.gen_random_uuid() end,
+   'revision_id',target_id,'created_at',stamp,'updated_at',stamp))).*;
+ end loop;
+ perform set_config('app.cms_rpc',prior,true);
+ return next extensions.is(pg_temp.s12cs_semantics(pg_temp.s12cs_history(target_id)),
+  pg_temp.s12cs_semantics(before_rows),p_target||': guarded copy retains every donor history semantic field');
+ return next extensions.is(pg_temp.s12cs_history(source_id),before_rows,p_target||': real producer donor remains byte-identical');
+ return next extensions.ok(exists(select 1 from platform_private.cms_content_entries e
+  where e.id=pg_temp.s12pl_entry_id(p_target) and e.current_draft_revision_id=target_id),
+  p_target||': guarded read fixture is a fresh current draft');
+exception when others then
+ perform set_config('app.cms_rpc',prior,true);
+ return next extensions.fail(p_target||': guarded copy succeeds');
+ return next extensions.diag(sqlstate||':'||sqlerrm);
+end;
+$body$;
+create or replace function pg_temp.s12cb_pending(p_tag text)
+returns setof text language plpgsql as $body$
+declare prior text:=coalesce(current_setting('app.cms_rpc',true),''); old_rows jsonb;
+ row_id uuid;
+begin
+ old_rows:=pg_temp.s12cs_history(pg_temp.s12pl_rev(p_tag));
+ row_id:=pg_temp.s12pu_pending(p_tag,'/panel',2);
+ perform set_config('app.cms_rpc',prior,true);
+ return next extensions.is(pg_temp.s12pu_row(row_id)->>'state','pending_diff',
+  'CB-PENDING fixture: guarded scan-output head, not a claimed scan producer');
+ return next extensions.is(pg_temp.s12pu_row(row_id)->>'pattern_version','1','CB-PENDING fixture: unchanged B pin');
+ return next extensions.is(pg_temp.s12pu_row(row_id)->>'pending_pattern_version','2','CB-PENDING fixture: distinct pending T');
+ return next extensions.ok(not exists(select 1 from jsonb_array_elements(old_rows) old
+  where not exists(select 1 from jsonb_array_elements(pg_temp.s12cs_history(pg_temp.s12pl_rev(p_tag))) now where now=old)),
+  'CB-PENDING fixture: every older full row survives unchanged');
+exception when others then
+ perform set_config('app.cms_rpc',prior,true);
+ return next extensions.fail('CB-PENDING guarded fixture admission succeeds');
+ return next extensions.diag(sqlstate||':'||sqlerrm);
+end;
+$body$;
+create or replace function pg_temp.s12cb_solo(p_tag text,p_key text,p_props jsonb)
+returns setof text language plpgsql as $body$
+declare prior text:=coalesce(current_setting('app.cms_rpc',true),''); target uuid; stamp timestamptz:=clock_timestamp();
+ donor platform_private.cms_composition_instances;
+begin
+ perform set_config('app.cms_rpc','true',true);
+ target:=pg_temp.s12pl_entry(p_tag);
+ select * into donor from platform_private.cms_composition_instances
+  where id=pg_temp.s12pu_head('cs-b-repeat','/panel');
+ insert into platform_private.cms_composition_instances
+ select (jsonb_populate_record(null::platform_private.cms_composition_instances,to_jsonb(donor)||jsonb_build_object(
+  'id',extensions.gen_random_uuid(),'revision_id',target,'version',1,'path','/solo','slot_key','root','position',0,
+  'block_key',p_key,'block_version',2,'pattern_id',null,'pattern_version',null,'pending_pattern_version',null,
+  'state','active','link_mode','detached','detached_tree',null,'props',p_props,'bindings','{}'::jsonb,
+  'created_at',stamp,'updated_at',stamp))).*;
+ perform set_config('app.cms_rpc',prior,true);
+ return next extensions.ok(exists(select 1 from platform_private.cms_composition_instances c where c.revision_id=target
+  and c.pattern_id is null and c.detached_tree is null and c.props=p_props),p_tag||': guarded standalone read fixture admitted');
+exception when others then
+ perform set_config('app.cms_rpc',prior,true);
+ return next extensions.fail(p_tag||': standalone read-fixture admission succeeds');
+ return next extensions.diag(sqlstate||':'||sqlerrm);
+end;
+$body$;
+create or replace function pg_temp.s12cb_reads(p_tag text)
+returns setof text language plpgsql as $body$
+begin
+ return query select * from pg_temp.s12cs_call('cb-manifest-'||p_tag,'platform_private.cms_build_dependency_manifest',
+  jsonb_build_object('revisionId',pg_temp.s12pl_rev(p_tag)));
+ return query select * from pg_temp.s12cs_call('cb-plan-'||p_tag,'platform_private.cms_revision_render_plan',
+  jsonb_build_object('revisionId',pg_temp.s12pl_rev(p_tag)));
+ return query select * from pg_temp.s12cs_call('cb-checker-'||p_tag,'platform_private.cms_accessibility_checker_input',
+  jsonb_build_object('revisionId',pg_temp.s12pl_rev(p_tag),'dependencyHash',repeat('f',64)));
+ return query select * from pg_temp.s12cs_call('cb-quality-'||p_tag,'platform_api.cms_load_quality_gate_input',
+  jsonb_build_object('phase','workflow_read','entryId',pg_temp.s12pl_entry_id(p_tag),
+   'revisionId',pg_temp.s12pl_rev(p_tag),'context',pg_temp.s09d_context('owner',true)),'owner','service_role');
+end;
+$body$;
+create or replace function pg_temp.s12cb_refused(p_tag text,p_token text)
+returns setof text language plpgsql as $body$
+declare before_rows jsonb:=pg_temp.s12pl_snapshot(); after_rows jsonb; answer jsonb;
+ code text:='00000'; message text; details text;
+ prior text:=coalesce(current_setting('app.cms_rpc',true),'');
+ prior_user text:=current_user; prior_role text:=current_setting('role');
+begin
+ perform set_config('app.cms_rpc','true',true);
+ begin
+  answer:=platform_private.cms_build_dependency_manifest(pg_temp.s12pl_rev(p_tag));
+ exception when others then
+  get stacked diagnostics code=returned_sqlstate,message=message_text,details=pg_exception_detail;
+  answer:=null;
+ end;
+ perform set_config('app.cms_rpc',prior,true);
+ after_rows:=pg_temp.s12pl_snapshot();
+ return next extensions.is(code||':'||coalesce(message,''),
+  'P0001:'||p_token,p_tag||': actual builder preserves exact refusal');
+ return next extensions.is(coalesce(details,''),'',p_tag||': refusal has exactly no extra DETAIL');
+ return next extensions.ok(answer is null,p_tag||': refusal returns no manifest body');
+ return next extensions.is(after_rows,before_rows,p_tag||': refusal is effect-free across every captured full row');
+ return next extensions.ok(current_user=prior_user and current_setting('role')=prior_role
+  and coalesce(current_setting('app.cms_rpc',true),'')=prior,p_tag||': refusal restores exact caller/RPC context');
+exception when others then
+ perform set_config('app.cms_rpc',prior,true);
+ raise;
+end;
+$body$;
+
+-- Real repeated tuple, distinct ordered locations. A detach supplies parity's donor.
+select * from pg_temp.s12pl_pattern('cs-b-repeat-pattern','s12cs-b-repeat',jsonb_build_array(
+ pg_temp.s12cs_block('panel','s12cs.root',2,'R',jsonb_build_array(
+  pg_temp.s12cs_block('zeta','s12cs.leaf',2,'Z'),pg_temp.s12cs_block('alpha','s12cs.leaf',2,'A')))));
+select * from pg_temp.s12pu_place('cs-b-repeat','cs-b-repeat-pattern');
+select pg_temp.s12pu_update('cs-b-repeat-detach',pg_temp.s12pu_update_request('cs-b-repeat','detach',
+ jsonb_build_array(pg_temp.s12pu_target('cs-b-repeat','/panel')),'s12cs-b-repeat-detach'));
+select is(pg_temp.s12pu_oc('cs-b-repeat-detach'),'ok','CB-DONOR: real repeated-tuple detach succeeds');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-b-repeat','/panel'))->'detached_tree',
+ '{"format":"cms.detached_tree.v1","nodes":[
+  {"parent":null,"keySegments":["panel"],"blockKey":"s12cs.root","blockVersion":2,"props":{"title":"R","accessible_name":"R"}},
+  {"parent":0,"keySegments":["zeta"],"blockKey":"s12cs.leaf","blockVersion":2,"props":{"title":"Z","accessible_name":"Z"}},
+  {"parent":0,"keySegments":["alpha"],"blockKey":"s12cs.leaf","blockVersion":2,"props":{"title":"A","accessible_name":"A"}}]}'::jsonb,
+ 'CB-DONOR premise: actual public detach persisted the independent complete canonical tree');
+select * from pg_temp.s12cb_seed('cs-b-repeat','cs-b-parity','a9c19300-0000-4000-8000-00000000c001');
+select is(pg_temp.s12pu_head('cs-b-parity','/panel'),'a9c19300-0000-4000-8000-00000000c001'::uuid,
+ 'CB-PARITY: selected guarded copy has the fixed private parity anchor');
+
+-- Arbitrary JSON is an actual placement override and actual detach input.
+select * from pg_temp.s12pu_place('cs-b-json','s12cs-outer2',
+ '{"/panel":null,"/panel/ns/zeta":[],"/panel/ns/alpha":"scalar"}');
+select pg_temp.s12pu_update('cs-b-json-detach',pg_temp.s12pu_update_request('cs-b-json','detach',
+ jsonb_build_array(pg_temp.s12pu_target('cs-b-json','/panel')),'s12cs-b-json-detach'));
+select is(pg_temp.s12pu_oc('cs-b-json-detach'),'ok','CB-JSON: real detach accepts null/array/scalar effective props');
+select * from pg_temp.s12cb_solo('cs-b-solo','s12cs.leaf','{"accessible_name":"SOLO"}');
+select * from pg_temp.s12cb_solo('cs-b-missing','s12cb.missing','{}');
+
+-- Five intervening 64-character reference namespaces exceed the checker pointer
+-- budget when naively concatenated, while the placed root remains /panel.
+select * from pg_temp.s12pl_pattern('cs-b-long0','s12cs-b-long0',jsonb_build_array(pg_temp.s12cs_block('leaf','s12cs.leaf',2,'LONG')));
+create or replace function pg_temp.s12cb_long() returns setof text language plpgsql as $body$
+declare n integer; tree jsonb; prior_label text:='cs-b-long0';
+begin
+ for n in 1..4 loop
+  tree:=jsonb_build_array(jsonb_build_object('kind','pattern','key','n'||repeat('x',63),
+   'patternId',pg_temp.s12pd_body(prior_label)->'patternId','patternVersion',1));
+  return query select * from pg_temp.s12pl_pattern('cs-b-long'||n,'s12cs-b-long'||n,tree);
+  prior_label:='cs-b-long'||n;
+ end loop;
+ return query select * from pg_temp.s12pl_pattern('cs-b-long-root','s12cs-b-long-root',jsonb_build_array(
+  pg_temp.s12cs_block('panel','s12cs.root',2,'LONG-ROOT',jsonb_build_array(jsonb_build_object(
+   'kind','pattern','key','n'||repeat('x',63),'patternId',pg_temp.s12pd_body(prior_label)->'patternId','patternVersion',1)))));
+end;
+$body$;
+select * from pg_temp.s12cb_long();
+select * from pg_temp.s12pu_place('cs-b-long','cs-b-long-root');
+select pg_temp.s12pu_update('cs-b-long-detach',pg_temp.s12pu_update_request('cs-b-long','detach',
+ jsonb_build_array(pg_temp.s12pu_target('cs-b-long','/panel')),'s12cs-b-long-detach'));
+select is(pg_temp.s12pu_oc('cs-b-long-detach'),'ok','CB-LONG: real nested detach succeeds before bounded-pointer reads');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('cs-b-long','/panel'))->'detached_tree',
+ jsonb_build_object('format','cms.detached_tree.v1','nodes',jsonb_build_array(
+  jsonb_build_object('parent',null,'keySegments',jsonb_build_array('panel'),'blockKey','s12cs.root','blockVersion',2,
+   'props','{"title":"LONG-ROOT","accessible_name":"LONG-ROOT"}'::jsonb),
+  jsonb_build_object('parent',0,'keySegments',jsonb_build_array('n'||repeat('x',63),'n'||repeat('x',63),
+   'n'||repeat('x',63),'n'||repeat('x',63),'n'||repeat('x',63),'leaf'),'blockKey','s12cs.leaf','blockVersion',2,
+   'props','{"title":"LONG","accessible_name":"LONG"}'::jsonb))),
+ 'CB-LONG premise: actual public detach persisted exactly five reference namespaces and the literal child');
+select * from pg_temp.s12cb_seed('cs-b-long','cs-b-long-parity','a9c19300-0000-4000-8000-00000000c002');
+
+-- Real template union and two successive placements whose position order is not key order.
+select pg_temp.s09d_rpc('cs-b-template','platform_api.cms_define_template','owner',jsonb_build_object(
+ 'templateKey','s12cs-b-template','compatibleTypeIds',jsonb_build_array((select id from s12pd_types where ordinal=1)),
+ 'slots',(select jsonb_agg(jsonb_build_object('key',key,'required',false,'maxCount',128,'allowedBlocks',
+  '[{"blockKey":"s12cs.root","blockVersion":2},{"blockKey":"s12cs.leaf","blockVersion":2},{"blockKey":"s12cs.tail","blockVersion":1}]'::jsonb) order by n)
+  from (values (1,'zeta'),(2,'alpha')) slots(n,key)),
+ 'reservedRegions','["header","now","record","detail","provenance"]'::jsonb,'bindings','{}'::jsonb,
+ 'locale','en-US','audience','public','expectedVersion',null,'idempotencyKey','s12cs-b-template'),true);
+select is(pg_temp.s09d_outcome('cs-b-template'),'OK','CB-ORDER: actual template declares zeta before alpha and an unused root union member');
+select * from pg_temp.s12pl_pattern('cs-b-forest1','s12cs-b-forest1',jsonb_build_array(
+ pg_temp.s12cs_block('zeta','s12cs.tail',1,'Z'),pg_temp.s12cs_block('alpha','s12cs.leaf',2,'A')));
+select * from pg_temp.s12pl_pattern('cs-b-forest2','s12cs-b-forest2',jsonb_build_array(
+ pg_temp.s12cs_block('omega','s12cs.leaf',2,'O'),pg_temp.s12cs_block('beta','s12cs.tail',1,'B')));
+select pg_temp.s12pl_tentry('cs-b-order','owner','cs-b-template');
+select pg_temp.s12pl_run('cs-b-order1',pg_temp.s12pl_request('cs-b-order','cs-b-forest1','/zeta','{}','s12cs-b-order1','linked'));
+select pg_temp.s12pl_run('cs-b-order2',pg_temp.s12pl_request('cs-b-order','cs-b-forest2','/zeta','{}','s12cs-b-order2','linked'));
+select pg_temp.s12pl_run('cs-b-order3',pg_temp.s12pl_request('cs-b-order','cs-b-forest1','/alpha','{}','s12cs-b-order3','linked'));
+select is(pg_temp.s12pl_state(label),'00000',label||': real sequential placement succeeds')
+ from (values ('cs-b-order1'),('cs-b-order2'),('cs-b-order3')) calls(label);
+
+select * from pg_temp.s12pl_pattern('cs-b-pending1','s12cs-b-pending',jsonb_build_array(pg_temp.s12cs_block('panel','s12cs.root',1,'PINNED')));
+select * from pg_temp.s12pu_place('cs-b-pending','cs-b-pending1');
+select * from pg_temp.s12pl_pattern('cs-b-pending2','s12cs-b-pending',jsonb_build_array(pg_temp.s12cs_block('panel','s12cs.root',2,'TARGET')),null,true,'1');
+select * from pg_temp.s12cb_pending('cs-b-pending');
+
+-- A newest active re-placement must not be suppressed by a historical tombstone.
+select * from pg_temp.s12pl_pattern('cs-b-reuse1','s12cs-b-reuse',jsonb_build_array(pg_temp.s12cs_block('gone','s12cs.tail',1,'GONE')));
+select * from pg_temp.s12pu_place('cs-b-reuse','cs-b-reuse1');
+select * from pg_temp.s12pl_pattern('cs-b-reuse2','s12cs-b-reuse',jsonb_build_array(pg_temp.s12cs_block('keep','s12cs.leaf',2,'KEEP')),null,true,'1');
+select pg_temp.s12pu_update('cs-b-retire',pg_temp.s12pu_update_request('cs-b-reuse','accept',
+ jsonb_build_array(pg_temp.s12pu_target('cs-b-reuse','/gone','[{"path":"/gone","choice":"theirs"}]')),'s12cs-b-retire',2));
+select is(pg_temp.s12pu_oc('cs-b-retire'),'ok','CB-REUSE: actual removed-root theirs appends retirement');
+select * from pg_temp.s12pl_pattern('cs-b-replacement','s12cs-b-replacement',jsonb_build_array(pg_temp.s12cs_block('gone','s12cs.tail',1,'RETURNED')));
+select pg_temp.s12pl_run('cs-b-replace',pg_temp.s12pl_request('cs-b-reuse','cs-b-replacement','/','{}','s12cs-b-replace','linked'));
+select is(pg_temp.s12pl_state('cs-b-replace'),'00000','CB-REUSE: actual placement reuses retired path');
+
+-- Distinct descendant registry metadata, signed independently of the root.
+select pg_temp.p_register('cs-b-special-leaf',pg_temp.p_block_request('s12cb.leaf',1,jsonb_build_object(
+ 'releaseDigest',repeat('d',64),'accessibility',jsonb_build_object('nameRequired',false,'keyboard',true,'focusOrder','document','statusAnnouncement',true))));
+select is(pg_temp.s09d_outcome('cs-b-special-leaf'),'OK','CB-REGISTRY: actual signed child has different digest/name contract');
+select * from pg_temp.s12cs_register('s12cb.root',1,'["s12cb.leaf"]');
+select * from pg_temp.s12pl_pattern('cs-b-special-pattern','s12cs-b-special',jsonb_build_array(
+ pg_temp.s12cs_block('panel','s12cb.root',1,'SPECIAL',jsonb_build_array(jsonb_build_object(
+  'kind','block','key','leaf','blockKey','s12cb.leaf','blockVersion',1,'props','{"title":"CHILD"}'::jsonb,'children','[]'::jsonb)))));
+select * from pg_temp.s12pu_place('cs-b-special','cs-b-special-pattern');
+select pg_temp.p_advance('cs-b-deprecate',pg_temp.p_lifecycle_request((select id from platform_private.cms_block_definition_versions
+ where block_key='s12cb.leaf' and block_version=1),'supported','deprecated','1',jsonb_build_object('releaseDigest',repeat('d',64))));
+select is(pg_temp.s09d_outcome('cs-b-deprecate'),'OK','CB-REGISTRY: actual signed child-only deprecation succeeds');
+
+-- Group-bound proof: real signed versions, one registered self-recursive branch,
+-- 132/133 valid nodes but 128/129 distinct registry identities respectively.
+create or replace function pg_temp.s12cb_limits() returns setof text language plpgsql as $body$
+declare n integer; children jsonb; forest jsonb; label text;
+begin
+ for n in 1..128 loop
+  label:='cs-b-limit-register-'||n;
+  perform pg_temp.p_register(label,pg_temp.p_block_request('s12cb.limit',n));
+  return next extensions.is(pg_temp.s09d_outcome(label),'OK',label||': real signed version');
+ end loop;
+ return query select * from pg_temp.s12cs_register('s12cb.branch',1,'["s12cb.branch","s12cb.limit"]');
+ for n in 127..128 loop
+  select jsonb_agg(jsonb_build_object('kind','block','key','g'||g,'blockKey','s12cb.branch','blockVersion',1,
+   'props','{"title":"GROUP"}'::jsonb,'children',(select jsonb_agg(jsonb_build_object('kind','block','key','v'||v,
+    'blockKey','s12cb.limit','blockVersion',v,'props','{"title":"LEAF"}'::jsonb,'children','[]'::jsonb) order by v)
+    from generate_series(g*32+1,least((g+1)*32,n)) v)) order by g) into children from generate_series(0,3) g;
+  forest:=jsonb_build_array(jsonb_build_object('kind','block','key','panel','blockKey','s12cb.branch','blockVersion',1,
+   'props','{"title":"LIMIT"}'::jsonb,'children',children));
+  return query select * from pg_temp.s12pl_pattern('cs-b-limit'||n,'s12cs-b-limit'||n,forest);
+  return query select * from pg_temp.s12pu_place('cs-b-limit'||n,'cs-b-limit'||n);
+ end loop;
+end;
+$body$;
+select * from pg_temp.s12cb_limits();
+insert into s12cb_before select tag,pg_temp.s12cs_history(pg_temp.s12pl_rev(tag)) from (values
+ ('cs-b-repeat'),('cs-b-parity'),('cs-b-json'),('cs-b-solo'),('cs-b-missing'),('cs-b-long'),('cs-b-long-parity'),
+ ('cs-b-order'),('cs-b-pending'),('cs-b-reuse'),('cs-b-special'),('cs-b-limit127'),('cs-b-limit128')) cases(tag);

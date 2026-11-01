@@ -1,0 +1,79 @@
+-- CMS-03C-10 / CMS-03C-11 setup: real grants, seven real governed reviews driven through the real submit, assignment and
+-- decision commands into the states the reads must serve.
+--   R1 ordinary approved (rev1 approved)        R2 ordinary rejected (rev1 rejected)
+--   R3 protected open, designer2 approved (policy slot), assignees designer2 + rev1 + rev2
+--   R4 ordinary open, rev2's assignment revoked  R5 protected invalidated (designer2's counted approval's assignment revoked)
+--   R6 ordinary open, SUBMITTED by designer2 (a designer), assignee rev2     R7 ordinary open, no assignee
+create temp table s12ga_setup(key text primary key, outcome text not null) on commit drop;
+insert into s12ga_setup(key, outcome) values
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 1)),
+  ('designer2:reviewer', pg_temp.s12ga_grant('designer2', 'cms.reviewer', 1)),
+  ('designer2:designer', pg_temp.s12ga_grant('designer2', 'cms.template_designer', 1));
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2', 'rev3');
+
+select pg_temp.s12ga_open('r1', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r2', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r3', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_open('r4', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('r5', 'owner', array['typeA', 'protectedType'], 'owner');
+select pg_temp.s12ga_open('r6', 'owner', array['typeA'], 'designer2');
+select pg_temp.s12ga_open('r7', 'owner', array['typeA'], 'owner');
+
+select pg_temp.s12ga_assign('as-r1-rev1', 'owner', pg_temp.s12ga_review('r1'), 'rev1', interval '20 hours');
+select pg_temp.s12ga_assign('as-r2-rev1', 'owner', pg_temp.s12ga_review('r2'), 'rev1', interval '20 hours');
+select pg_temp.s12ga_assign('as-r3-d2', 'owner', pg_temp.s12ga_review('r3'), 'designer2', interval '20 hours');
+select pg_temp.s12ga_assign('as-r3-rev1', 'owner', pg_temp.s12ga_review('r3'), 'rev1', interval '20 hours');
+select pg_temp.s12ga_assign('as-r3-rev2', 'owner', pg_temp.s12ga_review('r3'), 'rev2', interval '20 hours');
+select pg_temp.s12ga_assign('as-r4-rev2', 'owner', pg_temp.s12ga_review('r4'), 'rev2', interval '20 hours');
+select pg_temp.s12ga_assign('as-r5-d2', 'owner', pg_temp.s12ga_review('r5'), 'designer2', interval '20 hours');
+select pg_temp.s12ga_assign('as-r6-rev2', 'owner', pg_temp.s12ga_review('r6'), 'rev2', interval '20 hours');
+select pg_temp.s12ga_decide('dc-r1', 'rev1', pg_temp.s12ga_review('r1'), 'approve', 'Matches the frozen definition.');
+select pg_temp.s12ga_decide('dc-r2', 'rev1', pg_temp.s12ga_review('r2'), 'reject', 'The definition changes a protected region.');
+select pg_temp.s12ga_decide('dc-r3', 'designer2', pg_temp.s12ga_review('r3'), 'approve', 'The disclosure policy is met.');
+select pg_temp.s12ga_decide('dc-r5', 'designer2', pg_temp.s12ga_review('r5'), 'approve', 'The disclosure policy is met.');
+select pg_temp.s12ga_revoke('rv-r4', 'owner', pg_temp.s12ga_review('r4'), pg_temp.s12ga_aid(pg_temp.s12ga_review('r4'), 'rev2'));
+select pg_temp.s12ga_revoke('rv-r5', 'owner', pg_temp.s12ga_review('r5'), pg_temp.s12ga_aid(pg_temp.s12ga_review('r5'), 'designer2'));
+
+create temp table s12ga_stepcheck(label text primary key) on commit drop;
+insert into s12ga_stepcheck(label) values ('as-r1-rev1'), ('as-r2-rev1'), ('as-r3-d2'), ('as-r3-rev1'), ('as-r3-rev2'),
+  ('as-r4-rev2'), ('as-r5-d2'), ('as-r6-rev2'), ('dc-r1'), ('dc-r2'), ('dc-r3'), ('dc-r5'), ('rv-r4'), ('rv-r5');
+select ok((select count(*) = 4 and bool_and(outcome = 'OK') from s12ga_setup)
+    and (select count(*) = 14 and bool_and(pg_temp.s12ga_out(label) = 'ok') from s12ga_stepcheck),
+  'fixture: real grants, eight assignments, four decisions and two revocations all succeeded through the named commands [P2-S12-AC-090]');
+select ok(
+  (select review.state = 'approved' and review.version = 2 from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r1'))
+  and (select review.state = 'rejected' and review.version = 2 from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r2'))
+  and (select review.state = 'open' and review.version = 2 and review.recorded_decision_count = 1
+         from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r3'))
+  and (select review.state = 'open' and review.version = 1 from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r4'))
+  and (select review.state = 'invalidated' and review.version = 3 and review.invalidated_reason = 'reviewer_authority_changed'
+         from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r5'))
+  and (select review.state = 'open' and review.version = 1 from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r6'))
+  and (select review.state = 'open' and review.version = 1 from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r7')),
+  'fixture: the seven reviews are approved, rejected, open with a policy approval, open, invalidated and two untouched open [P2-S12-AC-090]');
+select has_function('platform_api', 'cms_get_governed_review', array['jsonb'], 'CMS-03C-10 has a named platform API RPC [P2-S12-AC-088]');
+select has_function('platform_private', 'cms_get_governed_review', array['jsonb'], 'CMS-03C-10 has a private implementation [P2-S12-AC-088]');
+select has_function('platform_api', 'cms_list_governed_reviews', array['jsonb'], 'CMS-03C-11 has a named platform API RPC [P2-S12-AC-094]');
+select has_function('platform_private', 'cms_list_governed_reviews', array['jsonb'], 'CMS-03C-11 has a private keyset reader [P2-S12-AC-094]');
+select has_function('platform_private', 'cms_list_governed_reviews_signed', array['jsonb'], 'CMS-03C-11 has a signed-cursor wrapper [P2-S12-AC-097]');
+
+-- Oracles computed independently from the tables: the ids in (updatedAt DESC at millisecond precision, reviewId DESC).
+create or replace function pg_temp.s12ga_oracle(p_person uuid, p_scope text, p_state text default null, p_kind text default null)
+returns uuid[] language sql stable as $body$
+  select coalesce(array_agg(r.id order by date_trunc('milliseconds', r.updated_at) desc, r.id desc), array[]::uuid[])
+    from platform_private.cms_governed_reviews r
+   where r.owner_id = pg_temp.s12ga_org()
+     and (p_state is null or r.state = p_state) and (p_kind is null or r.subject_kind = p_kind)
+     and case p_scope
+           when 'assigned' then exists (select 1 from platform_private.cms_governed_review_assignments a
+                                         where a.review_id = r.id and a.reviewer_person_id = p_person and a.state = 'active')
+           when 'submitted' then r.submitted_by = p_person
+           else platform_private.cms_person_holds_capability(r.owner_id, p_person,
+                  case when r.subject_kind = 'taxonomy_version' then 'cms.taxonomy_curator' else 'cms.template_designer' end)
+         end
+$body$;
+-- The ids of a page, in page order.
+create or replace function pg_temp.s12ga_page_ids(p_label text) returns uuid[] language sql stable as $body$
+  select coalesce(array_agg((item->>'reviewId')::uuid order by ordinality), array[]::uuid[])
+    from jsonb_array_elements(pg_temp.s12ga_body(p_label)->'items') with ordinality as t(item, ordinality) $body$;

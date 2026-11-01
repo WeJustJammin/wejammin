@@ -8,6 +8,10 @@
 **Acceptance criteria**: 174  
 **Plan source**: [Phase 2 plan](../../../wiki/specs/phases/phase-2.md)
 
+## Receiving-foundation sequencing — DEC-197, 2026-10-16
+
+Owner-approved Slice 11 work now supplies the complete route-manifest storage contract, receiving manifest/projection tables and consumer projection/same-publication relationships. Their corrected governing specs are independently CLEAR; implementation is pending. Reuse those receivers rather than creating competing tables. This does not deliver menu/route/discovery endpoints, writers, whole-manifest activation or authority/CAS behavior; all 174 criteria, including AC164, remain unchecked and this slice stays not-started behind Slices 11/12.
+
 ## Tasks
 
 - [ ] Contract: lock Zod, data, registry, event, and route contracts

@@ -1,0 +1,194 @@
+-- DEC-201 TEST infrastructure: real signed donors, labelled guarded history.
+-- No future restore helper, producer replacement, disabled guard or new actor.
+create temp table s12rr_ids(key text primary key,id uuid) on commit drop;
+create temp table s12rr_literal(tree jsonb) on commit drop;
+
+create function pg_temp.s12rr_context() returns jsonb language plpgsql stable as $body$
+declare name text; answer jsonb:='{}'::jsonb;
+begin
+  foreach name in array array['request.jwt.claims','request.jwt.claim.role','request.jwt.claim.sub',
+    'app.auth_user_id','app.actor_auth_user_id','app.actor_person_id','app.acting_party_id','app.acting_context_id',
+    'app.cms_session_actor','app.cms_session_party','app.mfa_session_subject','app.step_up_verified',
+    'app.cms_rpc','app.cfg_rpc','app.correlation_id','app.idempotency_key_hash','app.request_hash',
+    'app.release_principal_id','response.headers','role'] loop
+    answer:=answer||jsonb_build_object(name,coalesce(current_setting(name,true),''));
+  end loop;
+  return answer;
+end;
+$body$;
+create function pg_temp.s12rr_signed(p_label text,p_request jsonb,p_lifecycle boolean default false)
+returns setof text language plpgsql as $body$
+declare saved jsonb:=pg_temp.s12rr_context(); prior_user text:=current_user;
+  setting record; code text:='00000';
+begin
+  begin
+    if p_lifecycle then perform pg_temp.p_advance(p_label,p_request);
+    else perform pg_temp.p_register(p_label,p_request); end if;
+  exception when others then get stacked diagnostics code=returned_sqlstate;
+  end;
+  for setting in select key,value from jsonb_each_text(saved) where key<>'role' loop
+    if coalesce(current_setting(setting.key,true),'') is distinct from setting.value then
+      perform set_config(setting.key,setting.value,true);
+    end if;
+  end loop;
+  perform set_config('role',saved->>'role',true);
+  return next extensions.is(code,'00000',p_label||': signed helper invocation completes');
+  return next extensions.is(pg_temp.s09d_outcome(p_label),'OK',p_label||': real signed command succeeds');
+  return next extensions.is(pg_temp.s12rr_context(),saved,p_label||': every affected request/session/role GUC restored');
+  return next extensions.is(current_user::text,prior_user,p_label||': exact effective SQL caller restored');
+end;
+$body$;
+select pg_temp.s09d_session('owner','service_role');
+select * from pg_temp.s12rr_signed('rr-leaf',pg_temp.p_block_request('s12rr.leaf',1));
+select * from pg_temp.s12rr_signed('rr-root',pg_temp.p_block_request('s12rr.root',1,
+  '{"allowedChildren":["s12rr.leaf"],"slotRules":{"maxDepth":16,"maxNodes":512}}'));
+select * from pg_temp.s12rr_signed('rr-unused',pg_temp.p_block_request('s12rr.unused',1));
+select * from pg_temp.s12rr_signed('rr-replay',pg_temp.p_block_request('s12rr.replay',1));
+select ok((select count(*)=4 and bool_and(release_verified_at is not null and props_attestation_verified_at is not null)
+  from platform_private.cms_block_definition_versions where block_key in
+    ('s12rr.root','s12rr.leaf','s12rr.unused','s12rr.replay')),
+  'RR-SIGNED: four isolated identities have real release and props receipts, not withdrawn cc donors');
+
+-- Independent tuple preimage: these signed fixtures all use definition1 and the
+-- literal e/a/hero release fields above. Key sets are specified by each test.
+create function pg_temp.s12rr_digest(p_keys text[]) returns text language sql immutable as $body$
+  select platform_private.cms_jcs_sha256(jsonb_agg(jsonb_build_object('blockKey',key,'blockVersion',1,
+    'releaseDigest',repeat('e',64),'propsSchemaHash',repeat('a',64),
+    'rendererRef','cms/renderers/hero/1','lifecycle','supported') order by key collate "C"))
+    from unnest(p_keys) named(key) $body$;
+
+-- Guarded entry/title/assignment bootstrap, not an entry/schema producer claim.
+-- Optional template binding is an appended immutable revision, never an UPDATE.
+create function pg_temp.s12rr_world(p_tag text,p_template uuid default null) returns void
+language plpgsql as $body$
+declare old_revision platform_private.cms_entry_revisions; next_id uuid:=extensions.gen_random_uuid();
+begin
+  perform pg_temp.s09d_session('owner','service_role');
+  perform pg_temp.s12cb_world(p_tag);
+  if p_template is null then return; end if;
+  select * into old_revision from platform_private.cms_entry_revisions where id=pg_temp.s12pl_rev(p_tag);
+  perform set_config('app.cms_rpc','true',true);
+  insert into platform_private.cms_entry_revisions select (jsonb_populate_record(
+    null::platform_private.cms_entry_revisions,to_jsonb(old_revision)||jsonb_build_object(
+      'id',next_id,'revision_number',2,'template_version_id',p_template,
+      'parent_revision_ids',jsonb_build_array(old_revision.id)))).*;
+  insert into platform_private.cms_entry_field_values select (jsonb_populate_record(
+    null::platform_private.cms_entry_field_values,to_jsonb(f)||jsonb_build_object(
+      'id',extensions.gen_random_uuid(),'revision_id',next_id))).*
+    from platform_private.cms_entry_field_values f where revision_id=old_revision.id;
+  update platform_private.cms_content_entries set current_draft_revision_id=next_id,version=version+1
+    where id=old_revision.entry_id;
+  update s12cc_world set source_id=next_id,current_id=next_id where tag=p_tag;
+  update s12pl_ids set value=next_id::text where key=p_tag||':revision';
+end;
+$body$;
+
+-- Valid append-only legacy/scan-output seam. Caller specifies the discriminator;
+-- fixed fresh identity/owner/revision/times cannot accidentally reuse a donor row.
+create function pg_temp.s12rr_seed(p_tag text,p_key text,p_patch jsonb,p_donor uuid default null)
+returns uuid language plpgsql as $body$
+declare donor platform_private.cms_composition_instances; target platform_private.cms_entry_revisions;
+  row_id uuid:=extensions.gen_random_uuid(); stamp timestamptz:=clock_timestamp();
+begin
+  select * into donor from platform_private.cms_composition_instances
+    where id=coalesce(p_donor,pg_temp.s12pu_head('cp-donor','/spare'));
+  select * into target from platform_private.cms_entry_revisions where id=pg_temp.s12pl_rev(p_tag);
+  perform set_config('app.cms_rpc','true',true);
+  insert into platform_private.cms_composition_instances select (jsonb_populate_record(
+    null::platform_private.cms_composition_instances,to_jsonb(donor)||jsonb_build_object(
+      'path','/legacy','slot_key','root','position',0,'version',1,'state','active',
+      'pattern_id',null,'pattern_version',null,'pending_pattern_version',null,'link_mode','detached',
+      'parent_instance_id',null,'detached_tree',null,'carried_from_id',null,
+      'block_key','s12pd.block','block_version',1,'props','{"title":"LEGACY"}'::jsonb,
+      'bindings',jsonb_build_object('caption',p_key))||p_patch||jsonb_build_object(
+      'id',row_id,'owner_id',target.owner_id,'revision_id',target.id,
+      'created_at',stamp,'updated_at',stamp))).*;
+  insert into s12rr_ids values(p_tag||':'||p_key,row_id);
+  return row_id;
+end;
+$body$;
+create function pg_temp.s12rr_id(p_key text) returns uuid language sql stable as $body$
+  select id from s12rr_ids where key=p_key $body$;
+create function pg_temp.s12rr_expect(p_tag text,p_ids uuid[],p_digests jsonb default '{}')
+returns void language sql as $body$
+  update s12cc_world w set source_rows=(select jsonb_agg(to_jsonb(i) order by path,version)
+    from platform_private.cms_composition_instances i where revision_id=w.source_id),
+    expected_heads=(select coalesce(jsonb_agg(to_jsonb(i)||case when p_digests ? i.path
+      then jsonb_build_object('block_registry_digest',p_digests->>i.path) else '{}'::jsonb end
+      order by i.position,i.path),'[]'::jsonb)
+      from platform_private.cms_composition_instances i where i.id=any(p_ids)) where tag=p_tag $body$;
+
+-- Explicit source IDs and explicit child-path -> selected-parent source IDs are
+-- independent fixture expectations, not a call to the future production planner.
+create function pg_temp.s12rr_restored(p_label text,p_tag text,p_parents jsonb default '{}')
+returns setof text language plpgsql as $body$
+declare result jsonb:=pg_temp.s12cc_body(p_label); o s12cc_out; w s12cc_world;
+  source_revision platform_private.cms_entry_revisions; actual jsonb; expected jsonb;
+  active_schema uuid; entry_type uuid; hash text; verification jsonb;
+  generated text[]:=array['id','revision_id','version','created_at','updated_at','carried_from_id','parent_instance_id'];
+begin
+  select * into o from s12cc_out where label=p_label;
+  select * into w from s12cc_world where tag=p_tag;
+  select * into source_revision from platform_private.cms_entry_revisions where id=w.source_id;
+  select content_type_id into entry_type from platform_private.cms_content_entries where id=pg_temp.s12pl_entry_id(p_tag);
+  select id into active_schema from platform_private.cms_content_type_versions where content_type_id=entry_type and state='active';
+  hash:=pg_temp.s12cc_manifest_hash(entry_type,source_revision.schema_version_id,active_schema);
+  expected:=coalesce(w.expected_heads,'[]'::jsonb);
+  select coalesce(jsonb_agg(to_jsonb(i) order by position,path),'[]'::jsonb) into actual
+    from platform_private.cms_composition_instances i where revision_id=(result->>'id')::uuid;
+  return next extensions.is(o.state,'00000',p_label||': real public restore succeeds');
+  return next extensions.is(o.call_role,'service_role',p_label||': actual service-role invocation');
+  return next extensions.is((select jsonb_agg(key order by key collate "C") from jsonb_object_keys(
+    case when jsonb_typeof(o.response)='object' then o.response else '{}'::jsonb end) named(key)),
+    '["resource","restoreVerification"]'::jsonb,p_label||': exact locked restore envelope');
+  verification:=case when jsonb_typeof(o.response->'restoreVerification')='object'
+    then o.response->'restoreVerification' else '{}'::jsonb end;
+  return next extensions.is(verification-'seams',jsonb_build_object('request',jsonb_build_object(
+    'entryId',o.request->'entryId','revisionId',w.source_id,'migrationChainId',o.request->'migrationChainId',
+    'expectedVersion',o.request->'expectedVersion'),'registry',jsonb_build_object('revisionId',w.source_id,
+    'migrationChainId',o.request->'migrationChainId','sourceSchemaVersionId',source_revision.schema_version_id,
+    'activeSchemaVersionId',active_schema,'chainSchemaVersionIds',jsonb_build_array(source_revision.schema_version_id),
+    'entryVersion',o.request->'expectedVersion')),p_label||': exact named-source/active-schema verification references');
+  return next extensions.is((select jsonb_agg(value order by value collate "C") from jsonb_array_elements_text(
+    coalesce(verification->'seams','[]'::jsonb)) item(value)),
+    '["active_schema_compatibility_recheck","entry_version_cas","migration_chain_covers_source_to_active_schema", "migration_chain_registered_and_ordered","new_draft_revision_only_never_activates_source","non_fabricating_defaults_and_relations_translation","restore_idempotency_and_epoch_fencing","source_revision_readable_and_immutable"]'::jsonb,
+    p_label||': all eight locked verification seams');
+  return next extensions.ok(exists(select 1 from platform_private.cms_restore_chain_manifests m where
+    m.manifest_hash::text=hash and m.owner_id=source_revision.owner_id and m.content_type_id=entry_type
+    and m.source_schema_version_id=source_revision.schema_version_id and m.target_schema_version_id=active_schema
+    and m.plan_ids='[]'::jsonb and m.edge_count=0),p_label||': actual manifest matches independent zero-edge preimage');
+  return next extensions.is(jsonb_array_length(actual),jsonb_array_length(expected),p_label||': exact explicit active-source cardinality');
+  return next extensions.ok(not exists(select 1 from jsonb_array_elements(expected) e where not exists(
+    select 1 from jsonb_array_elements(actual) a where a-generated=e-generated and a->>'id'<>e->>'id'
+      and a->>'version'='1' and a->>'carried_from_id'=e->>'id')),
+    p_label||': every semantic member, fresh identity/version and immediate provenance retained');
+  return next extensions.ok(not exists(select 1 from jsonb_array_elements(actual) child where
+    case when p_parents ? (child->>'path') then not exists(select 1 from jsonb_array_elements(actual) parent
+      where parent->>'carried_from_id'=p_parents->>(child->>'path')
+        and parent->>'id'=child->>'parent_instance_id' and parent->>'owner_id'=child->>'owner_id'
+        and parent->>'revision_id'=child->>'revision_id') else child->>'parent_instance_id' is not null end),
+    p_label||': exact independently named parent copies and no cross-revision/root attachment');
+  return next extensions.ok(not exists(select 1 from platform_private.cms_composition_instances i
+    join platform_private.cms_entry_revisions r on r.id=i.revision_id where r.id=(result->>'id')::uuid
+      and (i.created_at<>i.updated_at or i.created_at<>r.created_at)),p_label||': copies use one new revision snapshot time');
+  return next extensions.is((select jsonb_agg(to_jsonb(i) order by path,version)
+    from platform_private.cms_composition_instances i where revision_id=w.source_id),w.source_rows,
+    p_label||': complete named-source history immutable');
+  return next extensions.ok(not exists(select 1 from jsonb_array_elements(
+    o.before_rows->'platform_private.cms_composition_instances') old where not exists(
+      select 1 from platform_private.cms_composition_instances i where to_jsonb(i)=old)),p_label||': every old composition full row unchanged');
+  return next extensions.is(result->'parentRevisionIds',jsonb_build_array(w.current_id,w.source_id),
+    p_label||': exact current/source revision parent references');
+  return next extensions.ok((select current_draft_revision_id=(result->>'id')::uuid
+    and version=(o.request->>'expectedVersion')::bigint+1 from platform_private.cms_content_entries
+    where id=pg_temp.s12pl_entry_id(p_tag)),p_label||': exact persisted new draft and one entry CAS advance');
+end;
+$body$;
+
+-- Literal complete512 preorder: arbitrary per-value JSON and >256KiB aggregate.
+insert into s12rr_literal select jsonb_build_object('format','cms.detached_tree.v1','nodes',
+  jsonb_agg(jsonb_build_object('parent',case when n=0 then null else 0 end,
+    'keySegments',jsonb_build_array(case when n=0 then 'wide' else 'n'||n end),
+    'blockKey',case when n=0 then 's12rr.root' else 's12rr.leaf' end,'blockVersion',1,
+    'props',case n when 1 then 'null'::jsonb when 2 then '42'::jsonb when 3 then '"scalar"'::jsonb
+      else jsonb_build_object('title',repeat('w',600)) end) order by n)) from generate_series(0,511) n;

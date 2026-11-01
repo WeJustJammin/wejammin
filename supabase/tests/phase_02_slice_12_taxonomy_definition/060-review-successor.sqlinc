@@ -1,0 +1,151 @@
+-- DEC-135: each unbuilt declared domain is accepted on create, then refused
+-- on ordinary submission. The same persisted draft supplies the subject id
+-- and hash; no hand-inserted subject or manufactured state is accepted.
+select pg_temp.s12td_run('submit-' || domain,
+  pg_temp.s12td_submit_request('domain-' || domain,'s12td-submit-' || domain),'submit')
+from (values ('instrument'),('gear'),('place'),('rights'),('jurisdiction')) v(domain);
+select result from (values ('instrument'),('gear'),('place'),('rights'),('jurisdiction')) v(domain)
+cross join lateral pg_temp.s12td_refusal('submit-' || domain,'canonical_source_unavailable') result;
+select is(pg_temp.s12td_row('domain-' || domain)->>'state','draft',
+  domain || ': canonical refusal leaves the actual created draft intact')
+from (values ('instrument'),('gear'),('place'),('rights'),('jurisdiction')) v(domain);
+-- The unbuilt provider identities are request-known, so reporting the refused
+-- domain is required safe detail (BE03c:1314,1375), not hidden-resource leakage.
+select is((select case when detail ~ '^\s*\{' then detail::jsonb->>'domain' end
+  from s12td_calls where label = 'submit-' || domain),domain,
+  domain || ': canonical-source refusal identifies its declared domain')
+from (values ('instrument'),('gear'),('place'),('rights'),('jurisdiction')) v(domain);
+
+-- Built-domain and no-domain positive controls discriminate indiscriminate
+-- provider refusal from the actual closed declaration behavior.
+select pg_temp.s12td_run('submit-role',
+  pg_temp.s12td_submit_request('domain-role','s12td-submit-role'),'submit');
+select is((select sqlstate from s12td_calls where label = 'submit-role'),'00000',
+  'built declared domain submits through the real governed command');
+-- The expectation is the registry's current row of the domain, read directly as the test superuser: the registry is
+-- forced-RLS (BE03c:1451) and its pinned reader answers a row only inside an RPC context, so the oracle does not
+-- borrow the production reader or the RPC flag.
+select is((select jsonb_agg(jsonb_build_object('kind',d.kind,'refId',d.ref_id)
+  order by d.kind,d.ref_id) from platform_private.cms_governed_review_dependencies d
+  where d.review_id::text = pg_temp.s12td_body('submit-role')->>'id'),
+  (select jsonb_build_array(jsonb_build_object('kind','canonical_domain','refId',registry.id))
+   from (select r.id from platform_private.cms_canonical_domain_registry r
+     where r.domain = 'role' order by r.version desc limit 1) registry),
+  'built-domain review freezes exactly its real provider registry identity');
+
+select pg_temp.s12td_run('lifecycle-first',
+  pg_temp.s12td_request('s12td-lifecycle','s12td-lifecycle-first'));
+select * from pg_temp.s12td_created('lifecycle-first');
+create temp table s12td_parent_snapshots(label text primary key, row_data jsonb) on commit drop;
+insert into s12td_parent_snapshots values ('before-submit',pg_temp.s12td_row('lifecycle-first'));
+select pg_temp.s12td_run('submit-no-domains',
+  pg_temp.s12td_submit_request('lifecycle-first','s12td-submit-no-domains'),'submit');
+select is((select sqlstate from s12td_calls where label = 'submit-no-domains'),'00000',
+  'no declared domains submits while five registry providers remain unbuilt');
+select is(pg_temp.s12td_row('lifecycle-first')->>'state','review',
+  'ordinary submission performs draft to review');
+select is(pg_temp.s12td_row('lifecycle-first')->'version','1'::jsonb,
+  'DEC-188 submission keeps immutable definition version one');
+select is(pg_temp.s12td_row('lifecycle-first')->'lifecycle_version','2'::jsonb,
+  'DEC-188 submission advances only the lifecycle counter, exactly once');
+select is(pg_temp.s12td_row('lifecycle-first')
+    - array['state','lifecycle_version','activated_at','retired_at','updated_at'],
+  (select row_data from s12td_parent_snapshots where label = 'before-submit')
+    - array['state','lifecycle_version','activated_at','retired_at','updated_at'],
+  'submission preserves every complete definition field');
+select is((select jsonb_build_object('subjectVersion',subject_version,'subjectId',subject_id,
+  'lineageId',lineage_id,'subjectHash',subject_hash,'state',state)
+  from platform_private.cms_governed_reviews
+  where id::text = pg_temp.s12td_body('submit-no-domains')->>'id'),
+  jsonb_build_object('subjectVersion',1,'subjectId',pg_temp.s12td_body('lifecycle-first')->>'id',
+    'lineageId',pg_temp.s12td_body('lifecycle-first')->>'taxonomyId',
+    'subjectHash',pg_temp.s12td_body('lifecycle-first')->>'contentHash','state','open'),
+  'review pins the exact immutable subject identity/version/hash');
+select is((select count(*)::integer from platform_private.cms_governed_review_dependencies
+  where review_id::text = pg_temp.s12td_body('submit-no-domains')->>'id'),0,
+  'no bound type and no declared domain yield zero frozen dependencies');
+select is((select jsonb_build_object('riskClass',risk_class,'count',required_decision_count,
+  'slots',required_capabilities,'basis',policy_basis)
+  from platform_private.cms_governed_reviews
+  where id::text = pg_temp.s12td_body('submit-no-domains')->>'id'),
+  jsonb_build_object('riskClass','ordinary','count',1,'slots','["cms.reviewer"]'::jsonb,
+    'basis',jsonb_build_array(jsonb_build_object('contentTypeId',null,
+      'policyKey','editorial.default','policyVersion',1,'policyHash',
+      platform_private.cms_workflow_policy_member('editorial.default',1)->>'policyHash'))),
+  'no-bound-type review uses the real seeded default policy basis');
+select ok(not (pg_temp.s12td_body('submit-no-domains')
+  ?| array['lifecycle_version','lifecycleVersion','ownerId','createdBy','ownerCapability']),
+  'review response cannot serialize private subject lifecycle or authority');
+select is((select after_state->'platform_private.outbox_events'
+  from s12td_calls where label = 'submit-no-domains'),
+  (select before_state->'platform_private.outbox_events'
+  from s12td_calls where label = 'submit-no-domains'),
+  'submission emits no taxonomy activation event');
+select pg_temp.s12td_run('create-replay-after-submit',
+  (select request from s12td_calls where label = 'lifecycle-first'));
+select * from pg_temp.s12td_replay('create-replay-after-submit','lifecycle-first');
+
+-- Critical discrimination: lifecycle is now 2, definition remains 1. The edit
+-- operand MUST be 1. No synthetic lifecycle UPDATE creates this precondition.
+insert into s12td_parent_snapshots values ('before-successor',pg_temp.s12td_row('lifecycle-first'));
+select pg_temp.s12td_run('lifecycle-not-parent',
+  pg_temp.s12td_request('s12td-lifecycle','s12td-wrong-operand','{}','2'));
+select * from pg_temp.s12td_refusal('lifecycle-not-parent','CONFLICT');
+select pg_temp.s12td_run('successor',pg_temp.s12td_request('s12td-lifecycle',
+  's12td-successor','{"shape":"hierarchical","allowedFieldKeys":["s12td_field","s12td_second"]}','1'));
+select is((select sqlstate from s12td_calls where label = 'successor'),'00000',
+  'matching immutable parent operand creates successor after review transition');
+select is(pg_temp.s12td_body('successor')->'version','"2"'::jsonb,
+  'successor public definition version is decimal two');
+select is(pg_temp.s12td_body('successor')->'taxonomyVersion','2'::jsonb,
+  'successor vocabulary version is numeric two');
+select is(pg_temp.s12td_body('successor')->>'state','draft','successor starts draft');
+select is(pg_temp.s12td_body('successor')->>'taxonomyId',
+  pg_temp.s12td_body('lifecycle-first')->>'taxonomyId','taxonomyId is stable across successor');
+select isnt(pg_temp.s12td_body('successor')->>'id',pg_temp.s12td_body('lifecycle-first')->>'id',
+  'successor is an additive, distinct row');
+select is(pg_temp.s12td_row('successor')->>'supersedes_id',
+  pg_temp.s12td_body('lifecycle-first')->>'id','successor records exact parent provenance');
+select is(pg_temp.s12td_row('successor')->'lifecycle_version','1'::jsonb,
+  'successor starts its own independent lifecycle counter');
+select is(pg_temp.s12td_row('successor')->'version','2'::jsonb,
+  'successor persists immutable definition number two');
+select is(pg_temp.s12td_row('successor')->>'shape','hierarchical','successor persists changed shape');
+select is(pg_temp.s12td_row('successor')->'allowlisted_field_keys',
+  '["s12td_field","s12td_second"]'::jsonb,'successor persists changed allowlist');
+select is(pg_temp.s12td_row('lifecycle-first'),
+  (select row_data from s12td_parent_snapshots where label = 'before-successor'),
+  'successor creation preserves every parent field including review lifecycle');
+select is((select after_state - array['platform_private.cms_taxonomy_versions',
+  'audit_private.audit_events','platform_private.idempotency_records']
+  from s12td_calls where label = 'successor'),
+  (select before_state - array['platform_private.cms_taxonomy_versions',
+  'audit_private.audit_events','platform_private.idempotency_records']
+  from s12td_calls where label = 'successor'),
+  'successor leaves empty term stores and every complete review/dependency/outbox row intact');
+select ok(not (pg_temp.s12td_body('successor')
+  ?| array['lifecycle_version','lifecycleVersion','ownerId','createdBy','ownerCapability']),
+  'successor resource excludes the private lifecycle counter and authority');
+select pg_temp.s12td_run('successor-replay',(select request from s12td_calls where label = 'successor'));
+select * from pg_temp.s12td_replay('successor-replay','successor');
+select pg_temp.s12td_run('stale-parent',
+  pg_temp.s12td_request('s12td-lifecycle','s12td-stale-parent','{}','1'));
+select * from pg_temp.s12td_refusal('stale-parent','CONFLICT');
+select pg_temp.s12td_run('changed-expected-same-key',
+  (select request from s12td_calls where label = 'successor') || '{"expectedVersion":"2","ifMatch":"2"}');
+select * from pg_temp.s12td_refusal('changed-expected-same-key','IDEMPOTENCY_MISMATCH');
+
+-- Third version proves keys/numbers are not reused and the lineage does not
+-- drift to the immediately preceding row's id.
+select pg_temp.s12td_run('third',pg_temp.s12td_request('s12td-lifecycle','s12td-third','{}','2'));
+select is((select sqlstate from s12td_calls where label = 'third'),'00000','second successor succeeds');
+select is(pg_temp.s12td_body('third')->'taxonomyVersion','3'::jsonb,'lineage allocates version three');
+select is(pg_temp.s12td_body('third')->>'taxonomyId',pg_temp.s12td_body('lifecycle-first')->>'id',
+  'third version keeps the version-one lineage id');
+select is(pg_temp.s12td_row('third')->>'supersedes_id',pg_temp.s12td_body('successor')->>'id',
+  'third version points to its immediate predecessor');
+select is((select jsonb_agg(version order by version)
+  from platform_private.cms_taxonomy_versions
+  where owner_id = (select value::uuid from s12td_ids where key = 'orgA')
+    and taxonomy_key = 's12td-lifecycle'),'[1,2,3]'::jsonb,
+  'owner/key lineage has exactly one immutable row for each allocated version');

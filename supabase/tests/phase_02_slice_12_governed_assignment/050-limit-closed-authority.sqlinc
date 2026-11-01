@@ -1,0 +1,91 @@
+-- CMS-03C-08: the sixteen-assignment limit, a closed review, a lapsed owner authority, the privilege boundary.
+
+-- ------------------------------------------------------------------------ assignment_limit --
+select is(pg_temp.s12ga_pool(13), 13,
+  'control: thirteen more owner-party humans are bootstrapped, made members and granted cms.reviewer by the real commands [P2-S12-AC-079]');
+select is(pg_temp.s12ga_grant('rev3', 'cms.reviewer', 1), 'OK',
+  'control: rev3 becomes a member holding cms.reviewer through the real CMS-03A-15 command [P2-S12-AC-079]');
+select pg_temp.s12ga_assign('lim-' || k, 'owner', pg_temp.s12ga_review('r4'), k, interval '1 hour')
+  from unnest(array['rev1', 'rev2', 'designer2', 'x01', 'x02', 'x03', 'x04', 'x05', 'x06', 'x07', 'x08', 'x09',
+                    'x10', 'x11', 'x12', 'x13']) k;
+select ok((select count(*) = 16 and bool_and(pg_temp.s12ga_out('lim-' || k) = 'ok')
+             from unnest(array['rev1', 'rev2', 'designer2', 'x01', 'x02', 'x03', 'x04', 'x05', 'x06', 'x07', 'x08',
+                               'x09', 'x10', 'x11', 'x12', 'x13']) k)
+    and (select count(*) from platform_private.cms_governed_review_assignments
+          where review_id = pg_temp.s12ga_review('r4') and state = 'active') = 16,
+  'sixteen distinct reviewers are assigned to one review [P2-S12-AC-079]');
+select pg_temp.s12ga_mark('r4:limit', pg_temp.s12ga_review('r4'));
+select pg_temp.s12ga_assign('lim-rev3', 'owner', pg_temp.s12ga_review('r4'), 'rev3', interval '1 hour');
+select is(pg_temp.s12ga_out('lim-rev3'), 'P0001:assignment_limit',
+  'the seventeenth active assignment is refused assignment_limit [P2-S12-AC-079]');
+select ok(pg_temp.s12ga_same('r4:limit', pg_temp.s12ga_review('r4')),
+  'the limit refusal leaves the covered stores identical [P2-S12-AC-079]');
+select pg_temp.s12ga_revoke('lim-free', 'owner', pg_temp.s12ga_review('r4'),
+  (pg_temp.s12ga_body('lim-x13')->>'id')::uuid);
+select pg_temp.s12ga_assign('lim-rev3b', 'owner', pg_temp.s12ga_review('r4'), 'rev3', interval '1 hour');
+select ok(pg_temp.s12ga_out('lim-free') = 'ok' and pg_temp.s12ga_out('lim-rev3b') = 'ok'
+    and (select count(*) from platform_private.cms_governed_review_assignments
+          where review_id = pg_temp.s12ga_review('r4') and state = 'active') = 16,
+  'a revoke frees a slot: the next human is assignable and the active count is sixteen again [P2-S12-AC-079]');
+
+-- --------------------------------------------------------------------- a closed review --
+select pg_temp.s12ga_assign('r5-rev1', 'owner', pg_temp.s12ga_review('r5'), 'rev1', interval '1 hour');
+select pg_temp.s12ga_decide('r5-reject', 'rev1', pg_temp.s12ga_review('r5'), 'reject');
+select ok(pg_temp.s12ga_out('r5-reject') = 'ok'
+    and (select review.state = 'rejected' from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r5')),
+  'control: the first rejection closes R5 [P2-S12-AC-073]');
+select pg_temp.s12ga_mark('r5:closed', pg_temp.s12ga_review('r5'));
+select pg_temp.s12ga_assign('closed-create', 'owner', pg_temp.s12ga_review('r5'), 'rev2', interval '1 hour');
+select pg_temp.s12ga_revoke('closed-revoke', 'owner', pg_temp.s12ga_review('r5'), (pg_temp.s12ga_body('r5-rev1')->>'id')::uuid);
+select is(pg_temp.s12ga_out('closed-create') || ' / ' || pg_temp.s12ga_out('closed-revoke'),
+  'P0001:review_not_open / P0001:review_not_open',
+  'create and revoke on a rejected review are refused review_not_open [P2-S12-AC-080]');
+select ok(pg_temp.s12ga_same('r5:closed', pg_temp.s12ga_review('r5')),
+  'the closed-review refusals leave the covered stores identical [P2-S12-AC-080]');
+
+-- -------------------------------------------------------- a lapsed grantor authority is 403 --
+select is(pg_temp.s09d_revoke_via_rpc('owner', 'cms.template_designer'), 'OK',
+  'control: the owner designer grant is revoked through the real CMS-03A-17 command [P2-S12-AC-078]');
+select pg_temp.s12ga_mark('r1:lapsed', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_assign('lapsed-create', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour');
+select pg_temp.s12ga_revoke('lapsed-revoke', 'owner', pg_temp.s12ga_review('r1'), (pg_temp.s12ga_body('a1-again')->>'id')::uuid);
+select is(pg_temp.s12ga_out('lapsed-create') || ' / ' || pg_temp.s12ga_out('lapsed-revoke'),
+  'P0001:capability_missing / P0001:capability_missing',
+  'the receipt-derived owner without a valid designer grant is refused capability_missing for create and for revoke [P2-S12-AC-078]');
+select ok(pg_temp.s12ga_same('r1:lapsed', pg_temp.s12ga_review('r1')),
+  'the authority refusals leave the covered stores identical [P2-S12-AC-078]');
+select pg_temp.s09g_grant('regrant', 'owner', 'owner', 'cms.template_designer', pg_temp.s09g_day(5));
+select pg_temp.s12ga_assign('regranted-create', 'owner', pg_temp.s12ga_review('r1'), 'rev2', interval '1 hour');
+select ok(pg_temp.s09d_outcome('regrant') = 'OK' and pg_temp.s12ga_out('regranted-create') = 'ok',
+  'after the designer grant is re-established the same owner assigns again [P2-S12-AC-078]');
+
+-- --------------------------------------------------------------- never grantable, privileges --
+select pg_temp.s09g_grant('ng', 'owner', 'rev1', 'cms.definition_review.assign', pg_temp.s09g_day(1));
+select ok(pg_temp.s09d_outcome('ng') not in ('OK', 'MISSING')
+    and not exists (select 1 from platform_private.cms_capability_grants where capability_code = 'cms.definition_review.assign')
+    and not exists (select 1 from identity_private.organization_actor_grant where capability_code = 'cms.definition_review.assign'),
+  'cms.definition_review.assign can never be granted: the real grant command refuses it and no grant exists [P2-S12-AC-078]');
+select is(
+  (select string_agg(r || '=' || pg_temp.s12ga_denied(r, 'select platform_api.cms_assign_governed_reviewer(''{}''::jsonb)'),
+                     ';' order by r collate "C") from unnest(array['anon', 'authenticated']) r),
+  'anon=42501;authenticated=42501',
+  'anon and authenticated may not execute the platform API assignment RPC [P2-S12-AC-079]');
+select is(
+  pg_temp.s12ga_denied('service_role', 'select platform_private.cms_assign_governed_reviewer(''{}''::jsonb)'), '42501',
+  'service_role may not execute the private implementation, only the platform API wrapper [P2-S12-AC-079]');
+select ok(has_function_privilege('service_role', 'platform_api.cms_assign_governed_reviewer(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_api.cms_assign_governed_reviewer(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_private.cms_assign_governed_reviewer(jsonb)', 'EXECUTE')
+    and (select proc.prosecdef and proc.proconfig = array['search_path=""']
+           and pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer'
+           from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_assign_governed_reviewer(jsonb)')),
+  'the wrapper is service_role only; the private body is SECURITY DEFINER, empty search_path and owned by the CMS definer [P2-S12-AC-079]');
+select ok((select count(*) >= 30 and bool_and(rpc_user = 'service_role' and before_user = after_user)
+             from s12ga_rcpt),
+  'role control: every command of this suite really executed as service_role and restored the session role [P2-S12-AC-079]');
+
+-- Evidence emission (no assertion): the response bodies the contract-parse check reads from the TAP stream.
+select 'EVIDENCE a1 ' || coalesce(pg_temp.s12ga_kept('a1')::text, 'null');
+select 'EVIDENCE rv1 ' || coalesce(pg_temp.s12ga_body('rv1')::text, 'null');
+select 'EVIDENCE ok-edge ' || coalesce(pg_temp.s12ga_body('ok-edge')::text, 'null');
+select 'EVIDENCE rv-counted ' || coalesce(pg_temp.s12ga_body('rv-counted')::text, 'null');

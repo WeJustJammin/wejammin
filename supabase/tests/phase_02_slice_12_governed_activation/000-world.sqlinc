@@ -1,0 +1,267 @@
+-- Shared world helpers for the governed-b suites (CMS-03C-09 activation / scheduling, CMS-03C-19 claim and execute).
+-- Include AFTER phase_02_slice_12_governed_assignment/000-world.sqlinc (the governed-a world: s12ga_* helpers) and the
+-- S09 / governed-submit fragments it needs.  Everything here is pg_temp and dies with the rolled-back transaction;
+-- no governed row is ever written except through the named platform_api RPCs under the real service_role.
+
+-- The activateAt object of a `schedule` request: UTC wall clock, resolved UTC and the pinned tzdb version.
+create or replace function pg_temp.s12gb_at(
+  p_after interval default interval '90 seconds', p_patch jsonb default '{}'::jsonb
+) returns jsonb language sql volatile as $body$
+  select jsonb_build_object(
+    'localDateTime', to_char(wall.at_utc, 'YYYY-MM-DD"T"HH24:MI:SS.US'),
+    'timezone', 'UTC',
+    'resolvedUtc', to_char(wall.at_utc, 'YYYY-MM-DD"T"HH24:MI:SS.US"Z"'),
+    'tzdbVersion', platform_private.cms_tzdb_version(),
+    'disambiguation', 'none') || p_patch
+  from (select (clock_timestamp() + p_after) at time zone 'UTC' as at_utc) wall
+$body$;
+
+-- The activateAt a labelled `schedule` call used (a replay of the label sends the same instant).
+create temp table s12gb_ats(label text primary key, activate_at jsonb not null) on commit drop;
+
+-- One CMS-03C-09 call.  expectedVersion = ifMatch = the review's current version unless patched.  A `schedule` call sends
+-- activateAt = now + p_after unless the patch names one; the first activateAt of a label is kept for its replays.
+create or replace function pg_temp.s12gb_act(
+  p_label text, p_actor text, p_review uuid, p_action text default 'activate',
+  p_patch jsonb default '{}'::jsonb, p_unset text[] default array[]::text[], p_ctx jsonb default null,
+  p_after interval default interval '90 seconds'
+) returns void language plpgsql as $body$
+declare v_version text := pg_temp.s12ga_rver(p_review); v_at jsonb;
+begin
+  if p_action = 'schedule' and not (p_patch ? 'activateAt') then
+    select activate_at into v_at from s12gb_ats where label = p_label;
+    if v_at is null then
+      v_at := pg_temp.s12gb_at(p_after);
+      insert into s12gb_ats(label, activate_at) values (p_label, v_at);
+    end if;
+  end if;
+  perform pg_temp.s12ga_rpc(p_label, 'platform_api.cms_activate_governed_subject', p_actor,
+    (jsonb_build_object('reviewId', p_review, 'action', p_action, 'expectedVersion', v_version, 'ifMatch', v_version,
+       'idempotencyKey', 's12ga-' || p_label)
+      || case when v_at is not null then jsonb_build_object('activateAt', v_at) else '{}'::jsonb end
+      || p_patch) - p_unset, p_ctx);
+end;
+$body$;
+
+-- A template review that is APPROVED through the real producers: mint, submit, one assignment, one approval.
+create or replace function pg_temp.s12gb_approved(
+  p_tag text, p_types text[] default array['typeA'], p_reviewer text default 'rev1'
+) returns uuid language plpgsql as $body$
+declare v_review uuid;
+begin
+  v_review := pg_temp.s12ga_open(p_tag, 'owner', p_types, 'owner');
+  perform pg_temp.s12ga_assign('as-' || p_tag, 'owner', v_review, p_reviewer, interval '20 hours');
+  perform pg_temp.s12ga_decide('ap-' || p_tag, p_reviewer, v_review, 'approve');
+  if pg_temp.s12ga_out('as-' || p_tag) <> 'ok' or pg_temp.s12ga_out('ap-' || p_tag) <> 'ok'
+     or (select state from platform_private.cms_governed_reviews where id = v_review) <> 'approved' then
+    raise exception 'governed-b fixture: % did not reach approved (% / %)', p_tag,
+      pg_temp.s12ga_out('as-' || p_tag), pg_temp.s12ga_out('ap-' || p_tag);
+  end if;
+  return v_review;
+end;
+$body$;
+
+-- A protected review (two approvals: the policy slot of designer2, then the base slot of rev1) that is approved.
+create or replace function pg_temp.s12gb_approved_protected(p_tag text) returns uuid language plpgsql as $body$
+declare v_review uuid;
+begin
+  v_review := pg_temp.s12ga_open(p_tag, 'owner', array['typeA', 'protectedType'], 'owner');
+  perform pg_temp.s12ga_assign('as-d-' || p_tag, 'owner', v_review, 'designer2', interval '20 hours');
+  perform pg_temp.s12ga_assign('as-r-' || p_tag, 'owner', v_review, 'rev1', interval '20 hours');
+  perform pg_temp.s12ga_decide('ap-d-' || p_tag, 'designer2', v_review, 'approve');
+  perform pg_temp.s12ga_decide('ap-r-' || p_tag, 'rev1', v_review, 'approve');
+  if (select state from platform_private.cms_governed_reviews where id = v_review) <> 'approved' then
+    raise exception 'governed-b fixture: % did not reach approved (% / %)', p_tag,
+      pg_temp.s12ga_out('ap-d-' || p_tag), pg_temp.s12ga_out('ap-r-' || p_tag);
+  end if;
+  return v_review;
+end;
+$body$;
+
+-- A successor draft of the template lineage of p_parent_tag (CMS-03C-01 with expectedVersion = the parent's
+-- definition number), submitted by the owner; records '<tag>:subject' and '<tag>:review'.
+create or replace function pg_temp.s12gb_successor(p_tag text, p_parent_tag text, p_types text[])
+returns uuid language plpgsql as $body$
+declare
+  v_parent_version text := (select version::text from platform_private.cms_template_versions
+                             where id = pg_temp.s12ga_subject(p_parent_tag));
+  v_response jsonb;
+begin
+  perform pg_temp.s12ga_rpc('mint:' || p_tag, 'platform_api.cms_define_template', 'owner', jsonb_build_object(
+    'templateKey', 's12ga-' || p_parent_tag,
+    'compatibleTypeIds', (select jsonb_agg(bound.id order by bound.id) from (
+       select (select value::uuid from s12gov_ids where key = k) as id from unnest(p_types) k) bound),
+    'slots', '[]'::jsonb,
+    'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+    'bindings', '{}'::jsonb, 'locale', 'en-US', 'audience', 'partners',
+    'expectedVersion', v_parent_version, 'ifMatch', v_parent_version,
+    'idempotencyKey', 's12ga-mint-' || p_tag));
+  v_response := pg_temp.s12ga_body('mint:' || p_tag);
+  if v_response is null or v_response->>'state' is distinct from 'draft' then
+    raise exception 'governed-b fixture: the real successor producer did not return a draft for %: %',
+      p_tag, pg_temp.s12ga_out('mint:' || p_tag);
+  end if;
+  insert into s12gov_ids(key, value) values (p_tag || ':subject', v_response->>'id')
+    on conflict (key) do update set value = excluded.value;
+  return pg_temp.s12ga_submit(p_tag, 'owner');
+end;
+$body$;
+
+-- The approval of a successor review by rev1 (assignment + decision), returning the review.
+create or replace function pg_temp.s12gb_approve(p_tag text, p_reviewer text default 'rev1')
+returns uuid language plpgsql as $body$
+declare v_review uuid := pg_temp.s12ga_review(p_tag);
+begin
+  perform pg_temp.s12ga_assign('as-' || p_tag, 'owner', v_review, p_reviewer, interval '20 hours');
+  perform pg_temp.s12ga_decide('ap-' || p_tag, p_reviewer, v_review, 'approve');
+  if (select state from platform_private.cms_governed_reviews where id = v_review) <> 'approved' then
+    raise exception 'governed-b fixture: % did not reach approved', p_tag;
+  end if;
+  return v_review;
+end;
+$body$;
+
+-- The subject row and review row of a tag as jsonb.
+create or replace function pg_temp.s12gb_subj(p_tag text) returns jsonb language sql stable as $body$
+  select to_jsonb(t) from platform_private.cms_template_versions t where t.id = pg_temp.s12ga_subject(p_tag) $body$;
+create or replace function pg_temp.s12gb_rev(p_tag text) returns jsonb language sql stable as $body$
+  select to_jsonb(r) from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review(p_tag) $body$;
+-- The (single) schedule row of a review as jsonb, or null.
+create or replace function pg_temp.s12gb_sched(p_tag text) returns jsonb language sql stable as $body$
+  select to_jsonb(s) from platform_private.cms_governed_activation_schedules s
+   where s.review_id = pg_temp.s12ga_review(p_tag) order by s.created_at desc limit 1 $body$;
+-- Number of outbox events about one subject.
+create or replace function pg_temp.s12gb_events(p_tag text) returns bigint language sql stable as $body$
+  select count(*) from platform_private.outbox_events where aggregate_id = pg_temp.s12ga_subject(p_tag) $body$;
+-- Number of audit rows of one action about one subject.
+create or replace function pg_temp.s12gb_audits(p_action text, p_tag text) returns bigint language sql stable as $body$
+  select count(*) from audit_private.audit_events
+   where action = p_action and target_id = pg_temp.s12ga_subject(p_tag) $body$;
+-- Idempotency rows an operation key left.
+create or replace function pg_temp.s12gb_reserved(p_label text) returns bigint language sql stable as $body$
+  select count(*) from platform_private.idempotency_records
+   where operation = 'CMS-03C-09' and key_hash = platform_private.cms_key_hash('s12ga-' || p_label) $body$;
+
+-- The scoped no-effect snapshot of a tag: subject, review and schedule rows by full content, plus the append-only
+-- store sizes (a refusal or a held action must leave every one identical).
+create or replace function pg_temp.s12gb_snap(p_tag text) returns text language sql stable as $body$
+  select jsonb_build_object(
+    'review', (select to_jsonb(r)::text from platform_private.cms_governed_reviews r
+                where r.id = (select value::uuid from s12gov_ids where key = p_tag || ':review')),
+    'subject', (select to_jsonb(t)::text from platform_private.cms_template_versions t
+                 where t.id = (select value::uuid from s12gov_ids where key = p_tag || ':subject')),
+    'schedules', (select coalesce(string_agg(to_jsonb(s)::text, '|' order by s.id), '')
+                    from platform_private.cms_governed_activation_schedules s
+                   where s.review_id = (select value::uuid from s12gov_ids where key = p_tag || ':review')),
+    'idempotency', (select md5(coalesce(string_agg(to_jsonb(i)::text, '|' order by i.id), ''))
+                      from platform_private.idempotency_records i),
+    'audit', (select count(*) from audit_private.audit_events),
+    'outbox', (select count(*) from platform_private.outbox_events)
+  )::text
+$body$;
+create temp table s12gb_snaps(label text primary key, snapshot text not null) on commit drop;
+create or replace function pg_temp.s12gb_mark(p_label text, p_tag text) returns void language sql as $body$
+  insert into s12gb_snaps(label, snapshot) values (p_label, pg_temp.s12gb_snap(p_tag))
+  on conflict (label) do update set snapshot = excluded.snapshot $body$;
+create or replace function pg_temp.s12gb_same(p_label text, p_tag text) returns boolean language sql stable as $body$
+  select pg_temp.s12gb_snap(p_tag) = (select snapshot from s12gb_snaps where label = p_label) $body$;
+
+-- 'ok' or '<sqlstate>:<message>' followed by '#<detail>' when the refusal carried one (JSON details normalized as jsonb text).
+create or replace function pg_temp.s12gb_oc(p_label text) returns text language sql stable as $body$
+  select pg_temp.s12ga_out(p_label) || coalesce('#' || nullif(
+    case when pg_temp.s12ga_det(p_label) ~ '^[\[{]' then pg_temp.s12ga_det(p_label)::jsonb::text
+         else pg_temp.s12ga_det(p_label) end, ''), '')
+$body$;
+
+-- A system call (CMS-03C-19: no actor, no context) under the REAL service_role; only the RPC call is caught.
+create temp table s12gb_sys(
+  ordinal bigint generated always as identity, label text not null, body jsonb, state text, message text, detail text,
+  rpc_user text, before_user text, after_user text) on commit drop;
+create or replace function pg_temp.s12gb_call(p_label text, p_function text, p_request jsonb)
+returns void language plpgsql security invoker as $body$
+declare
+  v_user text := current_user; v_role text := current_setting('role'); v_rpc_user text;
+  v_response jsonb; v_state text := '00000'; v_message text; v_detail text;
+begin
+  execute 'set local role service_role';
+  v_rpc_user := current_user;
+  begin
+    execute format('select %s($1)', p_function) into v_response using p_request;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_message = message_text, v_detail = pg_exception_detail;
+  end;
+  perform set_config('role', v_role, true);
+  if current_user is distinct from v_user or current_setting('role') is distinct from v_role then
+    raise exception 'governed-b system call role restoration failed';
+  end if;
+  insert into s12gb_sys(label, body, state, message, detail, rpc_user, before_user, after_user)
+  values (p_label, v_response, v_state, v_message, v_detail, v_rpc_user, v_user, current_user);
+end;
+$body$;
+create or replace function pg_temp.s12gb_sbody(p_label text) returns jsonb language sql stable as $body$
+  select body from s12gb_sys where label = p_label order by ordinal desc limit 1 $body$;
+create or replace function pg_temp.s12gb_sout(p_label text) returns text language sql stable as $body$
+  select case when state = '00000' then 'ok' else state || ':' || message end
+    from s12gb_sys where label = p_label order by ordinal desc limit 1 $body$;
+create or replace function pg_temp.s12gb_sdet(p_label text) returns text language sql stable as $body$
+  select detail from s12gb_sys where label = p_label order by ordinal desc limit 1 $body$;
+
+-- CMS-03C-19: the claim and one execution.
+create or replace function pg_temp.s12gb_claim(p_label text, p_batch jsonb default '100'::jsonb) returns void language sql as $body$
+  select pg_temp.s12gb_call(p_label, 'platform_api.cms_claim_due_governed_activations', jsonb_build_object('batch', p_batch)) $body$;
+create or replace function pg_temp.s12gb_exec(
+  p_label text, p_schedule uuid, p_expected text, p_lease uuid, p_patch jsonb default '{}'::jsonb
+) returns void language sql as $body$
+  select pg_temp.s12gb_call(p_label, 'platform_api.cms_execute_governed_activation',
+    jsonb_build_object('scheduleId', p_schedule, 'expectedVersion', p_expected, 'leaseId', p_lease) || p_patch) $body$;
+-- The claimed element of one schedule (by its review tag) from a claim label, or null.
+create or replace function pg_temp.s12gb_claimed(p_label text, p_tag text) returns jsonb language sql stable as $body$
+  select element.value from jsonb_array_elements(coalesce(pg_temp.s12gb_sbody(p_label), '[]'::jsonb)) element(value)
+   where element.value->>'reviewId' = pg_temp.s12ga_review(p_tag)::text $body$;
+-- The schedule row id of a tag.
+create or replace function pg_temp.s12gb_sid(p_tag text) returns uuid language sql stable as $body$
+  select (pg_temp.s12gb_sched(p_tag)->>'id')::uuid $body$;
+
+-- Invalidation of a live (open or approved) review through the private helper, outcome recorded (a refusal is its sqlstate:message).
+create temp table s12gb_inv(label text primary key, outcome text not null) on commit drop;
+create or replace function pg_temp.s12gb_inval(p_label text, p_review uuid, p_reason text) returns void language plpgsql as $body$
+begin
+  begin
+    perform platform_private.cms_governed_invalidate_approved_review(
+      p_review, p_reason, pg_temp.s12ga_auth('owner'), pg_temp.s12ga_org(), extensions.gen_random_uuid());
+    insert into s12gb_inv(label, outcome) values (p_label, 'ok');
+  exception when others then
+    insert into s12gb_inv(label, outcome) values (p_label, sqlstate || ':' || sqlerrm);
+  end;
+end;
+$body$;
+
+-- Isolated NEGATIVE fault: the test-admin replaces the source of ONE existing function (the workflow-policy evidence resolver) for
+-- this transaction and restores it byte for byte; no policy-row DML, grant, ownership change, trigger toggle or fake approval.
+create temp table s12gb_fault(saved text not null, source text not null) on commit drop;
+create or replace function pg_temp.s12gb_fault_on() returns void language plpgsql as $body$
+declare
+  target oid := to_regprocedure('platform_private.cms_editorial_workflow_policy_evidence(uuid)');
+  def text; src text; owner_name text;
+begin
+  if current_user <> 'postgres' or target is null then
+    raise exception 'fault installation requires the test-admin and the existing function';
+  end if;
+  select pg_get_functiondef(proc.oid), proc.prosrc, pg_get_userbyid(proc.proowner) into def, src, owner_name
+    from pg_proc proc where proc.oid = target;
+  if owner_name <> 'wejammin_cms_definer' or (length(def) - length(replace(def, src, ''))) <> length(src) then
+    raise exception 'unexpected resolver metadata; no automatic repair';
+  end if;
+  insert into s12gb_fault(saved, source) values (def, src);
+  execute replace(def, src, E'\nbegin\n  return null;\nend;\n');
+end;
+$body$;
+create or replace function pg_temp.s12gb_fault_off() returns boolean language plpgsql as $body$
+declare
+  target oid := to_regprocedure('platform_private.cms_editorial_workflow_policy_evidence(uuid)');
+  def text := (select saved from s12gb_fault);
+begin
+  execute def;
+  return pg_get_functiondef(target) = def;
+end;
+$body$;

@@ -176,15 +176,19 @@ select is(
   'P0001:comparison_unavailable',
   'every recorded taxonomy version must resolve: one resolvable plus one unresolvable pin is comparison_unavailable');
 
--- ---- even a taxonomy version that exists is not resolved by a comparison (DEC-141) ----------------
+-- ---- a taxonomy version that exists in the caller's owner scope is resolved by identity (DEC-141 item 1) ----
 select pg_temp.s10t_call('exists-still-unavailable', pg_temp.s10t_pin(
   (select second_revision::uuid from s10t_second), '["a9140000-0000-4000-8000-0000000000a2"]'::jsonb)
   || pg_temp.s10t_pin((select first_revision::uuid from s10t_entry), '[]'::jsonb)
   || pg_temp.s10t_compare_sql((select entry_id::uuid from s10t_entry), (select first_revision::uuid from s10t_entry)));
 select is(
-  (select state || ':' || message from s10t_calls where label = 'exists-still-unavailable'),
-  'P0001:comparison_unavailable',
-  'a non-empty recorded taxonomy list fails closed even when the version exists: no Slice 10 authority resolves it (DEC-141)');
+  (select state || ':' || coalesce(message, '') from s10t_calls where label = 'exists-still-unavailable'),
+  '00000:',
+  'a recorded taxonomy version that exists in the caller''s owner scope is resolved by identity and the comparison succeeds (BE03c Receiving obligations from Slice 10 (DEC-141) item 1; P2-S12-AC-242)');
+select is(
+  (select response ? 'compare' and response->'compare' <> 'null'::jsonb from s10t_calls where label = 'exists-still-unavailable'),
+  true,
+  'and the comparison is computed, not a partial answer (BE03c Receiving obligations from Slice 10 (DEC-141) item 1; P2-S12-AC-242)');
 
 -- ---- an empty recorded list compares normally ---------------------------------------------------------
 select pg_temp.s10t_call('empty-lists', pg_temp.s10t_pin(

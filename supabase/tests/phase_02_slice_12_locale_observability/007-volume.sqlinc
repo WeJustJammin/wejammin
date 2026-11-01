@@ -1,0 +1,108 @@
+-- DEC-219 (BE03c "Database-side locale observability (DEC-208)"; V3 F-5, V5-2): cms_locale_variants is append-only, so neither
+-- count may grow with its history.  The gauge starts from the `active` entries and reaches each current (entry, locale) head
+-- by a skip scan of INDEX(entry_id, locale, version DESC, created_at DESC, id DESC) (plain column: under FORCE ROW LEVEL
+-- SECURITY a lower(locale) qualifier is not an index condition because lower() is not leakproof); the window counts read only
+-- the window's rows through INDEX(state, created_at).
+-- Continues 006 (E2 active; gauge 3: E1 de-DE legal, E2 legal + terms on one variant).
+--
+-- Volume: 200 superseded stale versions are appended for ONE (entry, locale), E2 fr-FR (addressed by its own id: the helpers'
+-- current entry is E1 again), the 200th being the new head with [legal, terms]: the answer must not change, and the reads must
+-- not visit the history.
+--
+-- How "does not visit the history" is measured (plan-agnostic, planner settings at their defaults): l219_reads() is the sum of
+-- the TRANSACTION-LOCAL tuple counters (visible at once, unlike the lagged pg_stat_user_*) of EVERY index of the table
+-- (pg_stat_get_xact_tuples_returned(index) is its idx_tup_read) plus the table's own tuples_returned (sequential scans) and
+-- tuples_fetched (heap fetches).  So whichever access path the planner picks, a read that visits the 200 appended rows raises
+-- the total by about 200.  Each call is measured BEFORE and AFTER the append (tables ANALYZEd both times); the bound is on the
+-- DIFFERENCE, so the absolute cost of a tiny test table, whichever plan it uses, does not matter.  A positive control (a
+-- window that really contains the 200 rows) shows the counters do see them.  A gauge that drove by `state = 'stale'` would
+-- read the 200 rows and fail the bound (the lane report records that scratch mutant run).
+
+create or replace function pg_temp.l219_reads() returns numeric language sql as $body$
+  select (select coalesce(sum(pg_stat_get_xact_tuples_returned(i.indexrelid)), 0)
+            from pg_index i where i.indrelid = 'platform_private.cms_locale_variants'::regclass)::numeric
+       + pg_stat_get_xact_tuples_returned('platform_private.cms_locale_variants'::regclass)::numeric
+       + pg_stat_get_xact_tuples_fetched('platform_private.cms_locale_variants'::regclass)::numeric
+$body$;
+
+-- Tuples read by one statement (every index plus the table), whatever plan ran.
+create or replace function pg_temp.l219_cost(p_sql text) returns numeric language plpgsql as $body$
+declare
+  before_reads numeric := pg_temp.l219_reads();
+begin
+  execute p_sql;
+  return pg_temp.l219_reads() - before_reads;
+end;
+$body$;
+
+select set_config('app.cms_rpc', 'true', true);
+analyze platform_private.cms_locale_variants;
+analyze platform_private.cms_content_entries;
+create temp table l219_cost on commit drop as
+select pg_temp.l219_cost('select platform_private.cms_locale_stale_legal_field_count()') as gauge_before,
+       pg_temp.l219_cost($q$select pg_temp.l208_read('2030-01-01 00:00:00+00', '2030-01-01 00:01:00+00')$q$) as reader_before;
+
+set local session_replication_role = replica;
+create temp table l219_volume on commit drop as
+with head as (
+  select v.* from platform_private.cms_locale_variants v
+   where v.entry_id = (select response#>>'{entry,id}' from l208_e2)::uuid and v.locale = 'fr-FR' and v.state = 'stale'
+   order by v.version desc limit 1
+), appended as (
+  insert into platform_private.cms_locale_variants(
+    id, owner_id, state, version, created_at, updated_at, entry_id, revision_id, source_revision_id, locale,
+    source_locale, source_hash, fallback_chain, no_fallback_field_ids, created_by, field_source_hashes, stale_field_ids)
+  select extensions.gen_random_uuid(), h.owner_id, 'stale', h.version + g.n, stamp.at, stamp.at, h.entry_id, h.revision_id,
+         h.source_revision_id, h.locale, h.source_locale, h.source_hash, h.fallback_chain, h.no_fallback_field_ids,
+         h.created_by, h.field_source_hashes,
+         case when g.n = 200 then jsonb_build_array(pg_temp.l12r_fid('legal')::text, pg_temp.l12r_fid('terms')::text)
+              else jsonb_build_array(pg_temp.l12r_fid('legal')::text) end
+    from head h cross join generate_series(1, 200) g(n)
+   cross join lateral (select '2026-10-23 06:00:00+00'::timestamptz + g.n * interval '1 millisecond' as at) stamp
+  returning 1)
+select count(*)::integer as appended from appended;
+set local session_replication_role = origin;
+select set_config('app.cms_rpc', 'true', true);
+select is((select appended from l219_volume), 200, 'control: 200 superseded stale versions are appended for one (entry, locale)');
+select is((select count(*)::integer from platform_private.cms_locale_variants
+            where entry_id = (select response#>>'{entry,id}' from l208_e2)::uuid and locale = 'fr-FR' and state = 'stale'), 201,
+  'control: E2 fr-FR now has 201 stale rows, one of them current');
+
+select is(pg_temp.l208_gauge(), '3',
+  'the answer is unchanged by 200 superseded rows: only the current head counts (legal + terms) [DEC-219]');
+select is(pg_temp.l208_read('2030-01-01 00:00:00+00', '2030-01-01 00:01:00+00'),
+  '{"fanoutRows":0,"staleFieldsAppended":0,"staleLegalFields":3}'::jsonb,
+  'and the reader answers the same real gauge on a quiet window [DEC-219]');
+
+analyze platform_private.cms_locale_variants;
+analyze platform_private.cms_content_entries;
+alter table l219_cost add column gauge_after numeric, add column reader_after numeric, add column window_with_rows numeric;
+update l219_cost set
+  gauge_after = pg_temp.l219_cost('select platform_private.cms_locale_stale_legal_field_count()'),
+  reader_after = pg_temp.l219_cost($q$select pg_temp.l208_read('2030-01-01 00:00:00+00', '2030-01-01 00:01:00+00')$q$),
+  window_with_rows = pg_temp.l219_cost($q$select pg_temp.l208_read('2026-10-23 06:00:00+00', '2026-10-23 06:01:00+00')$q$);
+select diag('tuples read (all indexes + table): gauge ' || gauge_before || ' -> ' || gauge_after || ', quiet-window reader '
+            || reader_before || ' -> ' || reader_after || ', window holding the 200 rows ' || window_with_rows)
+  from l219_cost;
+
+select cmp_ok((select gauge_after - gauge_before from l219_cost), '<', 20::numeric,
+  'the gauge reads no more tuples (every index plus the table) after 200 superseded versions than before: the difference stays far under 200 [DEC-219, V5-2]');
+select cmp_ok((select gauge_after from l219_cost), '<', 100::numeric,
+  'and in absolute terms the gauge reads fewer than 100 tuples (every index plus the table) with 200 superseded versions present: reading them would take it past 200 [DEC-219, V5-2]');
+select cmp_ok((select reader_after - reader_before from l219_cost), '<', 20::numeric,
+  'neither does the whole reader on a quiet window (the window query and the gauge together) [DEC-219, V5-2]');
+select cmp_ok((select window_with_rows - reader_after from l219_cost), '>=', 200::numeric,
+  'positive control: a window that really contains the 200 rows lifts the counters by at least 200, so the counters see the history when it is read [DEC-219, V5-2]');
+select is(pg_temp.l208_read('2026-10-23 06:00:00+00', '2026-10-23 06:01:00+00')->>'fanoutRows', '200',
+  'and that window counts the 200 appended fan-out rows [DEC-219]');
+
+-- Source pins (the plan cannot be EXPLAINed through a function): the gauge is a recursive skip scan from the active entries, and
+-- the reader reaches it through that function instead of repeating the old state scan.
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_stale_legal_field_count()')) ~* 'with\s+recursive', false), true,
+  'the gauge is a recursive skip scan (source pin) [DEC-219]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_stale_legal_field_count()')) ~* 'lifecycle\s*=\s*''active''[\s\S]*with\s+recursive|with\s+recursive[\s\S]*lifecycle\s*=\s*''active''', false), true,
+  'and it starts from the active entries (source pin) [DEC-219]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')) ~ 'cms_locale_stale_legal_field_count\(\)', false), true,
+  'the reader takes the gauge from that function (source pin) [DEC-219]');
+select is(coalesce(pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_locale_observability_read(timestamptz,timestamptz)')) !~* 'not\s+exists', false), true,
+  'and no longer carries the old per-row NOT EXISTS probe over the stale history (source pin) [DEC-219]');

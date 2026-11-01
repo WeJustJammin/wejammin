@@ -1,3 +1,4 @@
+import type { CompositionObservation } from './observability-observation';
 import type {
   TemplateDesignerContext,
   TemplateVersionDetail,
@@ -75,6 +76,8 @@ export type CmsTemplateTelemetry = Readonly<{
   outcome: 'success' | 'rejected' | 'failure';
   actorClass: 'human';
   durationMs: number;
+  /** BE03c Observability: the trace, counters and allowlisted log members of the request. */
+  observation?: CompositionObservation;
 }>;
 
 export type CmsTemplateDependencies = Readonly<{
@@ -115,9 +118,9 @@ export const ERROR_CODES: Readonly<Record<Status, string>> = {
   422: 'TEMPLATE_VALIDATION_FAILED',
   429: 'RATE_LIMITED',
   500: 'INTERNAL_ERROR',
-  502: 'DEPENDENCY_INVALID_RESPONSE',
+  502: 'DEPENDENCY_UNAVAILABLE',
   503: 'DEPENDENCY_UNAVAILABLE',
-  504: 'DEPENDENCY_DEADLINE_EXCEEDED',
+  504: 'DEPENDENCY_UNAVAILABLE',
 };
 
 export const failure = (
@@ -181,7 +184,7 @@ export const validEnvelope = <T>(
 
 export const validRateDecision = (
   decision: unknown,
-  limit: 30 | 60,
+  limit: number,
 ): decision is CmsTemplateRateDecision =>
   typeof decision === 'object' &&
   decision !== null &&

@@ -5,7 +5,7 @@ vi.mock('cloudflare:workers', () => ({
   env: { PLATFORM_API: { fetch: fetchMock } },
 }));
 
-import { POST, prerender } from './related-content';
+import { GET, POST, prerender } from './related-content';
 
 const origin = 'https://app.example.test';
 const entryId = '10000000-0000-4000-8000-000000000001';
@@ -74,6 +74,57 @@ describe('CMS-03C-05 related-content page route', () => {
       params: { entryId },
     } as unknown as Parameters<typeof POST>[0]);
     expect(response.status).toBe(415);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+});
+
+describe('cmsRelatedContentRead page route (DEC-195)', () => {
+  const readRequest = (headers: Record<string, string> = {}) =>
+    new Request(`${origin}${path}`, {
+      method: 'GET',
+      headers: { origin, cookie: 'wj_access=protected', ...headers },
+    });
+
+  it('is a first-party GET that forwards a bodiless read to the protected Worker', async () => {
+    fetchMock.mockClear();
+    fetchMock.mockResolvedValueOnce(
+      new Response(JSON.stringify({ rule: null }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      }),
+    );
+    const response = await GET({
+      request: readRequest(),
+      params: { entryId },
+    } as unknown as Parameters<typeof GET>[0]);
+    expect(response.status).toBe(200);
+    expect(await response.json()).toEqual({ rule: null });
+    const forwarded = fetchMock.mock.calls[0]?.[0] as Request;
+    expect(forwarded.method).toBe('GET');
+    expect(forwarded.url).toBe(`https://platform-api.internal${path}`);
+    expect(forwarded.body).toBeNull();
+  });
+
+  it('fails closed without forwarding on a query, a media type or a bad id', async () => {
+    fetchMock.mockClear();
+    for (const [request, id, status] of [
+      [
+        new Request(`${origin}${path}?pins=1`, {
+          method: 'GET',
+          headers: { origin },
+        }),
+        entryId,
+        400,
+      ],
+      [readRequest({ 'content-type': 'application/json' }), entryId, 415],
+      [readRequest(), 'not-a-uuid', 400],
+    ] as const) {
+      const response = await GET({
+        request,
+        params: { entryId: id },
+      } as unknown as Parameters<typeof GET>[0]);
+      expect(response.status).toBe(status);
+    }
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });

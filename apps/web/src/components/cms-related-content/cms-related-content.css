@@ -1,0 +1,196 @@
+/*
+ * Related-content form. Presentation only: tokens come from @wejammin/ui and `cms-editorial.css` owns
+ * inputs, buttons, fieldsets and the 44px target. Every choice is also stated in text (the "Chosen as"
+ * cell, the position), never by colour or position alone. On a phone the candidate table becomes one
+ * block per entry, each cell labelled by its `data-label`.
+ */
+@layer components {
+  #cms-editorial-main .cms-related-content {
+    display: grid;
+    gap: var(--space-3, 1.5rem);
+    margin-block-end: var(--space-3, 1.5rem);
+  }
+
+  #cms-editorial-main .cms-related-list,
+  #cms-editorial-main .cms-related-candidates {
+    display: grid;
+    gap: var(--space-2);
+    min-inline-size: 0;
+  }
+
+  #cms-editorial-main .cms-related-list h2:focus,
+  #cms-editorial-main .cms-related-status h2:focus {
+    outline: 3px solid var(--color-focus);
+    outline-offset: 2px;
+  }
+
+  #cms-editorial-main dl.cms-related-facts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-1, 0.5rem) var(--space-3, 1.5rem);
+    margin: 0;
+  }
+
+  #cms-editorial-main dl.cms-related-facts dt {
+    color: var(--color-muted);
+    font-size: 0.875rem;
+    font-weight: 650;
+  }
+
+  #cms-editorial-main dl.cms-related-facts dd {
+    margin: 0;
+  }
+
+  /* The states of the form that are not an outcome: a note the person should read once. */
+  #cms-editorial-main .cms-related-note {
+    padding: var(--space-2);
+    border-inline-start: 4px solid var(--color-ink);
+    background: var(--color-panel);
+  }
+
+  #cms-editorial-main ol.cms-related-rows,
+  #cms-editorial-main ul.cms-related-rows {
+    display: grid;
+    gap: var(--space-2);
+    margin: 0;
+    padding-inline-start: 2rem;
+  }
+
+  #cms-editorial-main .cms-related-rows > li {
+    display: grid;
+    gap: var(--space-1, 0.5rem);
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-panel);
+    background: var(--color-panel);
+  }
+
+  #cms-editorial-main .cms-related-entry {
+    display: grid;
+    gap: 0.25rem;
+    min-inline-size: 0;
+  }
+
+  #cms-editorial-main .cms-related-entry small,
+  #cms-editorial-main .cms-related-candidates small,
+  #cms-editorial-main .cms-related-rule small {
+    color: var(--color-muted);
+  }
+
+  #cms-editorial-main .cms-related-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  /* A refusal sits in the row it names, marked by a rule and by its text. */
+  #cms-editorial-main .cms-related-refusal,
+  #cms-editorial-main .cms-related-error {
+    margin: 0;
+    padding-inline-start: var(--space-1, 0.5rem);
+    border-inline-start: 4px solid var(--cms-danger);
+    color: var(--cms-danger);
+    font-weight: 650;
+  }
+
+  #cms-editorial-main table.cms-related-table {
+    inline-size: 100%;
+    border-collapse: collapse;
+  }
+
+  #cms-editorial-main .cms-related-table caption {
+    margin-block-end: var(--space-1, 0.5rem);
+    text-align: start;
+    font-weight: 650;
+  }
+
+  #cms-editorial-main .cms-related-table th,
+  #cms-editorial-main .cms-related-table td {
+    padding: var(--space-1, 0.5rem);
+    border-block-end: 1px solid var(--color-border);
+    text-align: start;
+    vertical-align: top;
+    overflow-wrap: anywhere;
+  }
+
+  #cms-editorial-main .cms-related-rule .cms-related-choice {
+    flex-wrap: wrap;
+  }
+
+  #cms-editorial-main .cms-related-rule .cms-related-choice small {
+    flex-basis: 100%;
+    padding-inline-start: 2rem;
+  }
+
+  #cms-editorial-main .cms-related-field {
+    display: grid;
+    gap: 0.25rem;
+  }
+
+  #cms-editorial-main .cms-related-status {
+    padding: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-inline-start: 4px solid var(--color-ink);
+    border-radius: var(--radius-panel);
+    background: var(--color-panel);
+  }
+
+  #cms-editorial-main .cms-related-status[role='alert'] {
+    border-inline-start-color: var(--cms-danger);
+  }
+
+  /* A choice that is not available stays focusable (focus is not lost when it is used); the live
+     region says why a click did nothing. */
+  #cms-editorial-main .cms-related-candidates button[aria-disabled='true'] {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  #cms-editorial-main .cms-related-live:empty {
+    display: none;
+  }
+
+  #cms-editorial-main .cms-related-submit {
+    display: grid;
+    gap: var(--space-1, 0.5rem);
+    justify-items: start;
+  }
+
+  @media (max-width: 48rem) {
+    #cms-editorial-main table.cms-related-table,
+    #cms-editorial-main .cms-related-table thead,
+    #cms-editorial-main .cms-related-table tbody,
+    #cms-editorial-main .cms-related-table tr,
+    #cms-editorial-main .cms-related-table th,
+    #cms-editorial-main .cms-related-table td {
+      display: block;
+    }
+
+    #cms-editorial-main .cms-related-table thead {
+      position: absolute;
+      inline-size: 1px;
+      block-size: 1px;
+      overflow: hidden;
+      clip-path: inset(50%);
+    }
+
+    #cms-editorial-main .cms-related-table tr {
+      margin-block-end: var(--space-2);
+      border: 1px solid var(--color-border);
+      border-radius: var(--radius-panel);
+    }
+
+    #cms-editorial-main .cms-related-table td[data-label]::before,
+    #cms-editorial-main .cms-related-table th[data-label]::before {
+      display: block;
+      color: var(--color-muted);
+      font-size: 0.875rem;
+      font-weight: 650;
+      content: attr(data-label);
+    }
+
+    #cms-editorial-main .cms-related-actions > button {
+      flex: 1 1 100%;
+    }
+  }
+}

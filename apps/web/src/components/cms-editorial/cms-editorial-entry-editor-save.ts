@@ -1,3 +1,4 @@
+import { retryable } from '../../lib/retryable-import';
 import type { JsonValue } from '@wejammin/contracts';
 
 import type { CmsFieldDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
@@ -7,9 +8,10 @@ import {
   newCmsEditorialIdempotencyKey,
   READ_CSRF_COOKIE_FROM_DOCUMENT,
 } from './cms-editorial-request-support';
-import type {
-  CmsEditorialEditorContext,
-  CmsEditorialPendingSave,
+import {
+  CMS_EDITORIAL_RECONCILE_DELAY_MS,
+  type CmsEditorialEditorContext,
+  type CmsEditorialPendingSave,
 } from './cms-editorial-entry-editor-context';
 import {
   SAVE_COPY,
@@ -31,7 +33,7 @@ export type CmsEditorialSaveOutcome = 'saved' | 'unknown' | 'stopped' | 'noop';
  * the save is reported exactly like a request whose answer was lost, so the
  * author's values stay and the identical request is replayed under its key.
  */
-const loadRuntime = () => import('./cms-editorial-runtime');
+const loadRuntime = retryable(() => import('./cms-editorial-runtime'));
 const TRANSPORT_UNAVAILABLE: CmsEditorialMutationResult = {
   outcome: 'unknown',
   status: null,
@@ -44,8 +46,6 @@ const TRANSPORT_UNAVAILABLE: CmsEditorialMutationResult = {
   retryAfterSeconds: null,
 };
 
-/** How long to wait before replaying a save whose outcome is unknown. */
-export const CMS_EDITORIAL_RECONCILE_DELAY_MS = 2_000;
 const RECONCILE_AUTOMATIC_REPLAYS = 3;
 
 /**
@@ -76,8 +76,9 @@ export const createCmsEditorialSaveFlow = (
     // Two parents: the server merged another session's changes into this
     // revision, so the canonical draft holds fields the browser has not seen.
     if (resource.parentRevisionIds.length === 2) {
-      const detail = await ctx.readCurrent();
-      if (detail !== null) {
+      const current = await ctx.readCurrent();
+      if (current.kind === 'ok') {
+        const detail = current.detail;
         // Every dirty-at-dispatch field was in the request, and its value is now
         // the base. What differs from the base NOW was therefore edited after
         // dispatch (during the save, the canonical read, or an unknown-outcome
@@ -162,7 +163,11 @@ export const createCmsEditorialSaveFlow = (
       await staleBase.handleConflict(sent.request);
       return 'stopped';
     }
-    const patch = refusalPatch(result, ctx.state.summaryToken);
+    const patch = refusalPatch(
+      result,
+      ctx.state.summaryToken,
+      ctx.state.taxonomyRefreshToken,
+    );
     if (patch?.phase === 'unauthenticated' || patch?.phase === 'denied')
       ctx.paused = true;
     ctx.set(
@@ -202,7 +207,13 @@ export const createCmsEditorialSaveFlow = (
   };
 
   const attempt = async (): Promise<CmsEditorialSaveOutcome> => {
-    if (ctx.inFlight || ctx.disposed || !ctx.canEdit || ctx.paused)
+    if (
+      ctx.inFlight ||
+      ctx.readWait ||
+      ctx.disposed ||
+      !ctx.canEdit ||
+      ctx.paused
+    )
       return 'noop';
     const csrf =
       ctx.deps.csrfToken?.() ?? READ_CSRF_COOKIE_FROM_DOCUMENT(document);
@@ -277,3 +288,7 @@ export const createCmsEditorialSaveFlow = (
 
   return { attempt, reconcile, replayPending };
 };
+
+export type CmsEditorialSaveFlow = ReturnType<
+  typeof createCmsEditorialSaveFlow
+>;

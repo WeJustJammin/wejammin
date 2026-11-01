@@ -1,7 +1,7 @@
 # Spec Graph
 
-- **Nodes**: 1657
-- **Edges**: 10175
+- **Nodes**: 1673
+- **Edges**: 10190
 
 ## Relationship Chains
 
@@ -188,6 +188,8 @@
 - [[specs/audits/2026-09-02-fe-ambiguity-report|Fresh FE Ambiguity Audit]]
 - [[specs/audits/2026-09-02-ia-ambiguity-report|IA Ambiguity Audit — Fresh Combined Final Report (2026-09-02)]]
 - [[specs/audits/audit-scope|Ambiguity Audit Scope — BE + FE]]
+- [[specs/audits/propagation-2026-10-19-dec203-lease-output-normalization|DEC-203 lease output normalization propagation record — 2026-10-19]]
+- [[specs/audits/propagation-implementation-contract-2026-10-19-dec203-bootstrap-binding|DEC203 private binding propagation result]]
 - [[specs/audits/propagation-observability-cost-2026-08-30|Sentry Removal and Free-Only Operations Propagation Record]]
 - [[specs/audits/propagation-s11-owner-approvals-2026-10-09|DEC-162/163 propagation record —2026-10-09]]
 - [[specs/audits/propagation-scan-2026-09-27-cms-draft-revision-number|Propagation scan — CMS-03B-11 draft authoring base]]
@@ -198,6 +200,9 @@
 - [[specs/audits/propagation-scan-2026-09-28-cms-template-activation|Propagation scan — governed template activation]]
 - [[specs/audits/propagation-scan-2026-10-02|Propagation scan — Slice 09 activation amendment]]
 - [[specs/audits/propagation-scan-2026-10-09|DEC-162/163 propagation scan —2026-10-09]]
+- [[specs/audits/propagation-scan-2026-10-17-codex-dec203-tracing|DEC-203 propagation scan — isolated per-run native tracing]]
+- [[specs/audits/propagation-scan-2026-10-19-dec203-bootstrap-binding|DEC203 private bootstrap binding propagation scan]]
+- [[specs/audits/propagation-scan-2026-10-19-dec203-lease-output-normalization|DEC-203 lease output normalization propagation scan — 2026-10-19]]
 - [[specs/ideation/09-rights-ownership/09.03-chain-of-title-lifecycle/09.03-chain-of-title-lifecycle-cx|Chain of Title & Rights Lifecycle — Cross-Cuts]]
 - [[specs/ideation/09-rights-ownership/09.05-ai-voice-likeness-consent/09.05-ai-voice-likeness-consent-cx|AI, Voice & Likeness Consent — Cross-Cuts]]
 - [[specs/ideation/11-music-licensing/11.01-sync-licensing/11.01-sync-licensing-cx|Sync Licensing — Cross-Cuts]]
@@ -229,4 +234,7 @@
 - [[specs/ideation/25-content-management-platform-configuration/25.10-portability-governance-quality/25.10-portability-governance-quality-cx|Portability, Governance & Quality — Cross-Cuts]]
 - [[specs/ideation/25-content-management-platform-configuration/content-management-platform-configuration-cx|Content Management & Platform Configuration — Cross-Cuts]]
 - [[specs/index|Specs Hub]]
+- [[specs/propagation-scan-2026-10-16-codex-dec198|DEC-198 ordinary pending-row carry propagation]]
+- [[specs/propagation-scan-2026-10-16-codex-dec199|DEC-199 propagation — live nested-pattern publication gate]]
+- [[specs/propagation-scan-2026-10-16-codex-dec200|DEC-200 propagation — historical parent remapping on ordinary carry]]
 

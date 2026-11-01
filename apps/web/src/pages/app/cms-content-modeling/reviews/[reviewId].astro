@@ -6,6 +6,7 @@ import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/C
 import { createCmsEditorialPageReads } from '../../../../components/cms-editorial-pages/cms-editorial-page-reads';
 import { loadReviewDetailPage } from '../../../../components/cms-editorial-pages/load-review-detail-page';
 import CmsEditorialReviewDetailIsland from '../../../../components/cms-editorial-workflow/CmsEditorialReviewDetailIsland';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -25,7 +26,7 @@ const outcome = await loadReviewDetailPage({
   reviewId: Astro.params.reviewId ?? '',
   reads: createCmsEditorialPageReads(env.PLATFORM_API),
 });
-if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
 Astro.response.status =
   outcome.kind === 'view' ? outcome.status : outcome.notice.status;
 const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;

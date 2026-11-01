@@ -33,6 +33,15 @@ import {
 /** BE03b maxBodyBytes, identical for create, revision, and draft read. */
 export const CMS_EDITORIAL_MAX_BODY_BYTES = 262_144;
 
+/**
+ * DEC-188/DEC-189: the decoded JSON response of CMS-03C-02 is the one response
+ * ceiling exception at 1 MiB, because its bounded 1-512-row
+ * `PatternPlacementResource` can exceed 256 KiB. It is response-only: the
+ * request body and every other response stay at `CMS_EDITORIAL_MAX_BODY_BYTES`.
+ * The 1 MiB value is an approved allowance, not a proven producer bound.
+ */
+export const CMS_PATTERN_PLACEMENT_MAX_RESPONSE_BYTES = 1_048_576;
+
 export type CmsEditorialBoundedBytes =
   Readonly<{ ok: true; bytes: Uint8Array }> | Readonly<{ ok: false }>;
 
@@ -49,8 +58,9 @@ const declaredLengthOf = (headers: Headers): number | null => {
 const readBounded = async (
   body: ReadableStream<Uint8Array> | null,
   declaredLength: number | null,
+  maximumBytes: number,
 ): Promise<CmsEditorialBoundedBytes> => {
-  if (declaredLength !== null && declaredLength > CMS_EDITORIAL_MAX_BODY_BYTES)
+  if (declaredLength !== null && declaredLength > maximumBytes)
     return { ok: false };
   if (body === null) return { ok: true, bytes: new Uint8Array() };
   const reader = body.getReader();
@@ -61,7 +71,7 @@ const readBounded = async (
       const next = await reader.read();
       if (next.done) break;
       total += next.value.byteLength;
-      if (total > CMS_EDITORIAL_MAX_BODY_BYTES) {
+      if (total > maximumBytes) {
         await reader.cancel();
         return { ok: false };
       }
@@ -103,6 +113,7 @@ export const cmsEditorialBoundedRequestJson = async (
   const read = await readBounded(
     request.body,
     declaredLengthOf(request.headers),
+    CMS_EDITORIAL_MAX_BODY_BYTES,
   );
   return read.ok ? decodeJson(read.bytes) : { ok: false };
 };
@@ -113,6 +124,24 @@ export const cmsEditorialBoundedResponseJson = async (
   const read = await readBounded(
     response.body,
     declaredLengthOf(response.headers),
+    CMS_EDITORIAL_MAX_BODY_BYTES,
+  );
+  return read.ok ? decodeJson(read.bytes) : { ok: false };
+};
+
+/**
+ * DEC-188/DEC-189: the CMS-03C-02 success response reader. It is the same
+ * bounded, fatal-UTF-8 read as the ordinary response reader, raised only for
+ * this operation to `CMS_PATTERN_PLACEMENT_MAX_RESPONSE_BYTES`. An over-cap
+ * body is refused and its source cancelled rather than truncated.
+ */
+export const cmsPatternPlacementBoundedResponseJson = async (
+  response: Response,
+): Promise<CmsEditorialBoundedJson> => {
+  const read = await readBounded(
+    response.body,
+    declaredLengthOf(response.headers),
+    CMS_PATTERN_PLACEMENT_MAX_RESPONSE_BYTES,
   );
   return read.ok ? decodeJson(read.bytes) : { ok: false };
 };

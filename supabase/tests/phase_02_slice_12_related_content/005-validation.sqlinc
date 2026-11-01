@@ -1,0 +1,93 @@
+-- CMS-03C-05 request validation (BE03c route field validation matrix 385-387, 1383; tracker P2-S12-AC-036,
+-- AC-037, AC-038, AC-229): every refusal leaves the entry, the rule rows, the audit log and the idempotency
+-- table untouched.  The caller is the creator; the source srcV is assigned and active.
+
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+                          (select value::uuid from s10_ids where key = 'organization'));
+
+create or replace function pg_temp.r12_v(p_overrides jsonb, p_pins text[] default array['c1'], p_excl text[] default array['c2'],
+  p_rule jsonb default null)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.r12_curate(pg_temp.r12_req('srcV', p_pins, p_excl, p_rule, 'r12-srcV-validation-0001', p_overrides))
+$body$;
+
+create or replace function pg_temp.r12_uuids(p_count integer, p_seed text)
+returns jsonb
+language sql
+as $body$
+  select jsonb_agg(pg_temp.h11w_uuid('r12:' || p_seed || ':' || n)) from generate_series(1, p_count) n
+$body$;
+
+-- Control on a different source (srcZ) so srcV stays at version 1: the same body is valid there.
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcZ', array['c1'], array['c2'], null, 'r12-srcZ-validation-ctl'))->>'__error' is null, true,
+  'control: the base body (c1 pinned, c2 excluded, no rule) is valid on another assigned source [P2-S12-AC-036]');
+create temp table r12_v_before on commit drop as
+select (select count(*)::integer from audit_private.audit_events where action = 'cms.related_content.curate') as audits,
+       (select count(*)::integer from platform_private.idempotency_records where operation = 'CMS-03C-05') as receipts,
+       (select count(*)::integer from platform_private.cms_related_content_rules) as rules;
+
+-- Pins and exclusions.
+select is(pg_temp.r12_v(jsonb_build_object('pins', jsonb_build_array(pg_temp.r12_id('c1'), pg_temp.r12_id('c1'))))->>'__error', 'VALIDATION_FAILED',
+  'a duplicate pin is refused [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('pins', jsonb_build_array(pg_temp.r12_id('c1'), pg_temp.r12_id('c1'))))->'__detail', '["/pins/1"]'::jsonb,
+  'the duplicate is named at its second occurrence [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('exclusions', jsonb_build_array(pg_temp.r12_id('c2'), pg_temp.r12_id('c2'))))->>'__error', 'VALIDATION_FAILED',
+  'a duplicate exclusion is refused [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('exclusions', jsonb_build_array(pg_temp.r12_id('c2'), pg_temp.r12_id('c2'))))->'__detail', '["/exclusions/1"]'::jsonb,
+  'the duplicate exclusion is named at its second occurrence [P2-S12-AC-036]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c1'])->>'__error', 'VALIDATION_FAILED',
+  'a target both pinned and excluded is refused (exclusions win, so the request is contradictory) [P2-S12-AC-036]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c1'])->'__detail', '["/exclusions/0"]'::jsonb,
+  'the overlap is named at the exclusion [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('pins', pg_temp.r12_uuids(33, 'pin')))->>'__error', 'VALIDATION_FAILED', 'more than 32 pins is refused [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('pins', pg_temp.r12_uuids(33, 'pin')))->'__detail', '["/pins"]'::jsonb, 'the pin bound is named at the array [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('exclusions', pg_temp.r12_uuids(65, 'excl')))->>'__error', 'VALIDATION_FAILED', 'more than 64 exclusions is refused [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('exclusions', pg_temp.r12_uuids(65, 'excl')))->'__detail', '["/exclusions"]'::jsonb, 'the exclusion bound is named at the array [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('pins', 'c1'))->>'__error', 'VALIDATION_FAILED', 'pins that are not an array are refused [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('pins', jsonb_build_array('not-a-uuid')))->'__detail', '["/pins/0"]'::jsonb, 'a pin that is not a UUID is refused at its index [P2-S12-AC-036]');
+select is(pg_temp.r12_v(jsonb_build_object('exclusions', jsonb_build_array(pg_temp.r12_id('c2'), 7)))->'__detail', '["/exclusions/1"]'::jsonb, 'an exclusion that is not a string UUID is refused at its index [P2-S12-AC-036]');
+
+-- Derived rule shape.
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], '{"key":"shared-terms","version":"1","reasonCode":"shared_terms"}'::jsonb)->>'__error', 'VALIDATION_FAILED',
+  'a derived rule without maxCandidates is refused [P2-S12-AC-037]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], '{"key":"shared-terms","version":"1","reasonCode":"shared_terms","maxCandidates":3,"query":"select 1"}'::jsonb)->>'__error', 'VALIDATION_FAILED',
+  'a derived rule with an extra member (an arbitrary query) is refused [P2-S12-AC-037]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], pg_temp.r12_rule('shared-terms', 0))->'__detail', '["/derivedRule/maxCandidates"]'::jsonb, 'maxCandidates 0 is refused [P2-S12-AC-037]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], pg_temp.r12_rule('shared-terms', 129))->'__detail', '["/derivedRule/maxCandidates"]'::jsonb, 'maxCandidates 129 is refused [P2-S12-AC-037]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], '{"key":"shared-terms","version":"1","reasonCode":"shared_terms","maxCandidates":1.5}'::jsonb)->'__detail', '["/derivedRule/maxCandidates"]'::jsonb, 'a fractional maxCandidates is refused [P2-S12-AC-037]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], '{"key":"shared-terms","version":"1","reasonCode":"shared_terms","maxCandidates":"3"}'::jsonb)->'__detail', '["/derivedRule/maxCandidates"]'::jsonb, 'a string maxCandidates is refused [P2-S12-AC-037]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], '{"key":"shared-terms","version":1,"reasonCode":"shared_terms","maxCandidates":3}'::jsonb)->'__detail', '["/derivedRule/version"]'::jsonb, 'a numeric version is refused (the version is a decimal string) [P2-S12-AC-037]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], '{"key":"Bad Key!","version":"1","reasonCode":"shared_terms","maxCandidates":3}'::jsonb)->'__detail', '["/derivedRule/key"]'::jsonb, 'a key outside the key grammar is a schema failure at /derivedRule/key [P2-S12-AC-037]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], '"shared-terms"'::jsonb)->>'__error', 'VALIDATION_FAILED', 'a derived rule that is not an object or null is refused [P2-S12-AC-037]');
+
+-- Registry membership (OD-5): the typed derived_rule_unknown.
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], pg_temp.r12_rule('recent-popular', 3))->>'__error', 'derived_rule_unknown',
+  'a well-formed key outside the registry is derived_rule_unknown [P2-S12-AC-229]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], pg_temp.r12_rule('recent-popular', 3))->'__detail', '["/derivedRule/key"]'::jsonb, 'it names the key [P2-S12-AC-229]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], pg_temp.r12_rule('shared-terms', 3, '2', 'shared_terms'))->>'__error', 'derived_rule_unknown',
+  'an unregistered version of a registered rule is derived_rule_unknown [P2-S12-AC-229]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], pg_temp.r12_rule('shared-terms', 3, '2', 'shared_terms'))->'__detail', '["/derivedRule/version"]'::jsonb, 'it names the version [P2-S12-AC-229]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], pg_temp.r12_rule('shared-terms', 3, '1', 'some_other_reason'))->>'__error', 'derived_rule_unknown',
+  'a reasonCode that is not the registry value of the rule is refused [P2-S12-AC-229]');
+select is(pg_temp.r12_v('{}'::jsonb, array['c1'], array['c2'], pg_temp.r12_rule('same-type-recent', 3, '1', 'shared_terms'))->'__detail', '["/derivedRule/reasonCode"]'::jsonb,
+  'one rule''s reason code does not satisfy the other rule''s equality expectation [P2-S12-AC-229]');
+
+-- Envelope, version and key.
+select is(pg_temp.r12_v('{"extra":1}'::jsonb)->>'__error', 'INVALID_REQUEST', 'an unknown top-level member is an invalid request [P2-S12-AC-038]');
+select is(pg_temp.r12_curate(pg_temp.r12_req('srcV', array['c1'], array['c2'], null, 'r12-srcV-validation-0002') - 'idempotencyKey')->>'__error', 'INVALID_REQUEST', 'a missing idempotency key is an invalid request [P2-S12-AC-061]');
+select is(pg_temp.r12_v('{"idempotencyKey":"short"}'::jsonb)->>'__error', 'INVALID_REQUEST', 'an idempotency key under 8 characters is an invalid request [P2-S12-AC-061]');
+select is(pg_temp.r12_v('{"entryId":"not-a-uuid"}'::jsonb)->>'__error', 'INVALID_REQUEST', 'a malformed entry id is an invalid request [P2-S12-AC-062]');
+select is(pg_temp.r12_v('{"ifMatch":"7"}'::jsonb)->>'__error', 'INVALID_REQUEST', 'an If-Match that differs from expectedVersion is an invalid request [P2-S12-AC-038]');
+select is(pg_temp.r12_v('{"expectedVersion":"abc","ifMatch":"abc"}'::jsonb)->>'__error', 'INVALID_REQUEST', 'a non-decimal version is an invalid request [P2-S12-AC-038]');
+select is(pg_temp.r12_v('{"expectedVersion":"0","ifMatch":"0"}'::jsonb)->>'__error', 'INVALID_REQUEST', 'version 0 is an invalid request (positive decimals only) [P2-S12-AC-038]');
+select is(pg_temp.r12_v('{"expectedVersion":"01","ifMatch":"01"}'::jsonb)->>'__error', 'INVALID_REQUEST', 'a leading-zero version is an invalid request [P2-S12-AC-038]');
+select is(pg_temp.r12_v('{"expectedVersion":"9223372036854775808","ifMatch":"9223372036854775808"}'::jsonb)->>'__error', 'INVALID_REQUEST', 'a version beyond bigint is an invalid request [P2-S12-AC-038]');
+select is(pg_temp.r12_call($$select platform_api.cms_curate_related_content('[]'::jsonb)$$)->>'__error', 'INVALID_REQUEST', 'a non-object request is an invalid request [P2-S12-AC-062]');
+
+-- Nothing was written by any refusal.
+select is(pg_temp.r12_version('srcV'), 1::bigint, 'no refusal advanced the source entry [P2-S12-AC-062]');
+select is(pg_temp.r12_history('srcV'), '', 'no refusal appended a rule row [P2-S12-AC-062]');
+select is((select count(*)::integer from audit_private.audit_events where action = 'cms.related_content.curate') - (select audits from r12_v_before), 0, 'no refusal wrote an audit record [P2-S12-AC-062]');
+select is((select count(*)::integer from platform_private.idempotency_records where operation = 'CMS-03C-05') - (select receipts from r12_v_before), 0, 'no refusal left an idempotency receipt [P2-S12-AC-062]');

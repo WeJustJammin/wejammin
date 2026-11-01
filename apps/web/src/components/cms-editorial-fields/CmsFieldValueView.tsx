@@ -6,7 +6,8 @@ import {
   isCmsUnavailableDescriptor,
   type CmsFieldDescriptor,
 } from './cms-field-descriptor';
-import { isJsonRecord } from './cms-field-value-structured';
+import { isJsonRecord } from './cms-field-basics';
+import { validateCmsTaxonomyValue } from './cms-field-taxonomy-value';
 
 export interface CmsFieldValueViewProps {
   readonly descriptor: CmsFieldDescriptor;
@@ -42,9 +43,10 @@ const Scalar = ({
 /**
  * A typed, read-only rendering of one field value: the same kind of thing the
  * editor edits, shown as what it is (text, a number, a date, rich text, a list,
- * an object's declared properties, a relation's linked entries) and never as a
- * JSON dump. Every string passes through React's escaping; rich text goes
- * through the typed renderer, which refuses what the grammar refuses.
+ * an object's declared properties, a relation's linked entries, a taxonomy
+ * selection's stored term ids) and never as a JSON dump. Every string passes
+ * through React's escaping; rich text goes through the typed renderer, which
+ * refuses what the grammar refuses.
  */
 export default function CmsFieldValueView({
   descriptor,
@@ -118,6 +120,26 @@ export default function CmsFieldValueView({
           );
         })}
       </ul>
+    );
+  }
+  if (descriptor.kind === 'taxonomy') {
+    // The view carries no selector projection, so a valid value shows the exact
+    // stored ids and never a guessed label; a value the shape refuses is not
+    // available here and its content is never echoed.
+    if (validateCmsTaxonomyValue(value).length > 0)
+      return <span>Not available</span>;
+    const termIds =
+      isJsonRecord(value) && Array.isArray(value.termIds) ? value.termIds : [];
+    if (termIds.length === 0)
+      return <span className="cms-value-none">No selected terms</span>;
+    return (
+      <ol>
+        {termIds.map((termId, index) => (
+          <li key={index}>
+            Term <code>{text(termId)}</code>
+          </li>
+        ))}
+      </ol>
     );
   }
   return <Scalar kind={descriptor.kind} value={value} />;

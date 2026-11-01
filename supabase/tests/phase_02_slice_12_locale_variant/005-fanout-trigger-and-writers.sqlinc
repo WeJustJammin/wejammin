@@ -1,0 +1,74 @@
+-- F3 (review-locale): the source-change fan-out is attached to the draft head move of the revision writers
+-- and to the end of the locale author command, so stale_field_ids is computed after the revision values exist
+-- (20261014050310, 20261014050200).  The behavior is proved through the real writer in 002; this fragment pins
+-- the structure that makes it hold and the guard that fails when a new revision writer appears.
+
+select is(
+  (select count(*)::integer from pg_trigger trigger_row
+   where trigger_row.tgrelid = 'platform_private.cms_content_entries'::regclass
+     and trigger_row.tgname = 'cms_content_entries_locale_stale' and not trigger_row.tgisinternal
+     and trigger_row.tgenabled = 'O' and not trigger_row.tgdeferrable
+     and (trigger_row.tgtype & 1) = 1 and (trigger_row.tgtype & 2) = 0 and (trigger_row.tgtype & 16) = 16
+     and trigger_row.tgfoid = to_regprocedure('platform_private.cms_content_entry_locale_stale_trigger()')
+     and exists (select 1 from pg_attribute attribute
+                  where attribute.attrelid = trigger_row.tgrelid
+                    and attribute.attname = 'current_draft_revision_id'
+                    and attribute.attnum = any (trigger_row.tgattr::smallint[]))
+     and pg_get_triggerdef(trigger_row.oid) like '%WHEN%'),
+  1,
+  'the fan-out is one enabled immediate AFTER UPDATE OF current_draft_revision_id row trigger of cms_content_entries with a WHEN clause [P2-S12-AC-235]'
+);
+select is(
+  (select count(*)::integer from pg_trigger trigger_row
+   where trigger_row.tgrelid = 'platform_private.cms_entry_revisions'::regclass
+     and trigger_row.tgname = 'cms_entry_revisions_locale_stale'),
+  0, 'the revision-insert trigger, which fired before any value existed, is retired [P2-S12-AC-235]'
+);
+select is(
+  to_regprocedure('platform_private.cms_entry_revision_locale_stale_trigger()')::text, null,
+  'the retired trigger function is dropped [P2-S12-AC-235]'
+);
+select ok(
+  (select proc.prosecdef and proc.proowner = 'wejammin_cms_definer'::regrole
+     and proc.proconfig = array['search_path=""']
+     and not has_function_privilege('anon', proc.oid, 'execute')
+     and not has_function_privilege('authenticated', proc.oid, 'execute')
+     and not has_function_privilege('service_role', proc.oid, 'execute')
+   from pg_proc proc
+   where proc.oid = to_regprocedure('platform_private.cms_content_entry_locale_stale_trigger()')),
+  'the trigger function is a SECURITY DEFINER of the CMS definer with a pinned search_path, unreachable to API roles [P2-S12-AC-235]'
+);
+
+-- Writer guard: every installed function that inserts a revision row is known, and each head-moving writer
+-- writes the revision, then its values, and only then moves the head.  A new revision writer fails here
+-- until its author decides how it fans out.
+select is(
+  (select string_agg(proc.proname, ',' order by proc.proname)
+   from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+   where ns.nspname = 'platform_private'
+     and proc.prosrc ~* 'insert\s+into\s+platform_private\.cms_entry_revisions'),
+  'cms_author_locale_variant,cms_create_entry,cms_create_revision,cms_resolve_conflict,cms_restore_revision',
+  'exactly five functions write revision rows; a sixth must decide how it fans out the source change [P2-S12-AC-235]'
+);
+select is(
+  (select string_agg(proc.proname, ',' order by proc.proname)
+   from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+   where ns.nspname = 'platform_private'
+     and proc.proname in ('cms_create_revision', 'cms_resolve_conflict', 'cms_restore_revision')
+     and strpos(proc.prosrc, 'insert into platform_private.cms_entry_revisions') > 0
+     and strpos(proc.prosrc, 'insert into platform_private.cms_entry_revisions')
+         < strpos(proc.prosrc, 'insert into platform_private.cms_entry_field_values')
+     and strpos(proc.prosrc, 'insert into platform_private.cms_entry_field_values')
+         < strpos(proc.prosrc, 'current_draft_revision_id = new_revision_id')),
+  'cms_create_revision,cms_resolve_conflict,cms_restore_revision',
+  'the three source writers write the revision row, then its values, then move the draft head, which is when the fan-out runs [P2-S12-AC-235]'
+);
+select ok(
+  (select strpos(proc.prosrc, 'insert into platform_private.cms_entry_field_values')
+          < strpos(proc.prosrc, 'perform platform_private.cms_stale_locale_dependents(new_revision_id, false)')
+      and strpos(proc.prosrc, 'perform platform_private.cms_stale_locale_dependents(new_revision_id, false)')
+          < strpos(proc.prosrc, 'insert into platform_private.cms_locale_variants')
+   from pg_proc proc
+   where proc.oid = to_regprocedure('platform_private.cms_author_locale_variant(jsonb)')),
+  'the locale author command fans out its target-locale revision after the revision values and before its variant row [P2-S12-AC-235]'
+);

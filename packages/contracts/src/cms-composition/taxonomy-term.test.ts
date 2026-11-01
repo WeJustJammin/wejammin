@@ -183,3 +183,31 @@ describe('CMS-03C-03 taxonomy-term wire contract', () => {
       );
   });
 });
+
+describe('CMS-03C-03 If-Match operand', () => {
+  const headers = {
+    contentType: 'application/json',
+    idempotencyKey: 'taxonomy-term-0001',
+    ifMatch: '"1"',
+  };
+
+  it('[P2-S12-AC-019] ties the strong If-Match to the active taxonomy version expectedVersion, reported at headers.ifMatch', () => {
+    expect(
+      TaxonomyTermActionApiRequestSchema.safeParse({
+        taxonomyId: TAXONOMY_ID,
+        headers,
+        body: request,
+      }).success,
+    ).toBe(true);
+    const mismatch = TaxonomyTermActionApiRequestSchema.safeParse({
+      taxonomyId: TAXONOMY_ID,
+      headers: { ...headers, ifMatch: '"2"' },
+      body: request,
+    });
+    expect(mismatch.success).toBe(false);
+    if (!mismatch.success)
+      expect(
+        mismatch.error.issues.map((issue) => issue.path.join('.')),
+      ).toEqual(['headers.ifMatch']);
+  });
+});

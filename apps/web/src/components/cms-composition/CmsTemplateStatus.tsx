@@ -1,7 +1,13 @@
 import * as React from 'react';
 import type { TemplateVersionResource } from '@wejammin/contracts';
 
-import type { CmsTemplateSubmitResult } from './cms-template-designer-submit';
+import CmsEditorialCapabilityGate from '../cms-editorial/CmsEditorialCapabilityGate';
+import { PATTERN_REFUSAL_COPY } from '../cms-pattern-designer/pattern-designer-reasons';
+import {
+  KEY_RESERVED_REASON,
+  type CmsTemplateSubmitResult,
+} from './cms-template-designer-submit';
+import { CMS_TEMPLATE_RESULT_HEADING_ID } from './cms-template-result-focus';
 
 export type CmsTemplateFormStatus =
   | { readonly kind: 'idle' }
@@ -13,6 +19,20 @@ export type CmsTemplateFormStatus =
       readonly result: Exclude<CmsTemplateSubmitResult, { kind: 'created' }>;
     };
 
+/** The fixed copy of the 422 `key_reserved` refusal: shown at the key field and in the summary. */
+export const KEY_RESERVED_COPY =
+  'This template key is reserved. Choose another key.';
+
+/** The key field's own message, or null when the last answer did not refuse the key. */
+export const templateKeyError = (
+  status: CmsTemplateFormStatus,
+): string | null =>
+  status.kind === 'result' &&
+  status.result.kind === 'rejected' &&
+  status.result.reasonCode === KEY_RESERVED_REASON
+    ? KEY_RESERVED_COPY
+    : null;
+
 const statusCopy = (
   result: Exclude<CmsTemplateSubmitResult, { kind: 'created' }>,
   mode: 'create' | 'successor',
@@ -21,6 +41,10 @@ const statusCopy = (
     return mode === 'successor'
       ? 'The result is unknown. Check the latest version before retrying; these unchanged values will reuse the same idempotency key.'
       : 'The result is unknown. Check for an existing draft before retrying; a retry of these unchanged values will reuse the same idempotency key.';
+  // FE03 names no template-designer copy for the CMS-03C-01 token; the pattern designer's fixed copy for the same token
+  // (FE03 line 883, CMS-03C-12 row) applies. Never taken from the response.
+  if (result.kind === 'conflict' && result.reasonCode !== undefined)
+    return PATTERN_REFUSAL_COPY[result.reasonCode];
   if (result.kind === 'conflict')
     return mode === 'successor'
       ? 'The server reported a conflict. Check the latest version and explicitly reconcile your unsent values before another submit.'
@@ -36,20 +60,33 @@ const statusCopy = (
       return result.retryAfterSeconds === undefined
         ? 'The request was rate-limited. Wait before retrying.'
         : `The request was rate-limited. Wait at least ${result.retryAfterSeconds} seconds before retrying.`;
+    case 422:
+      return result.reasonCode === KEY_RESERVED_REASON
+        ? KEY_RESERVED_COPY
+        : 'The server rejected the draft values. Review the form and try again.';
     case 400:
     case 415:
-    case 422:
       return 'The server rejected the draft values. Review the form and try again.';
     default:
       return 'The template service is unavailable. Your form values remain here for a later retry.';
   }
 };
 
+/**
+ * FE03 1048: a 403 renders the CapabilityGate copy (never a step-up route). The gate's heading is not the named result
+ * heading: a refusal keeps focus on the summary region (CMS-11 row, "focus summary/field").
+ */
+const isCapabilityDenial = (
+  result: Exclude<CmsTemplateSubmitResult, { kind: 'created' }>,
+): boolean => result.kind === 'rejected' && result.status === 403;
+
 interface Props {
   readonly status: CmsTemplateFormStatus;
   readonly summaryRef: React.Ref<HTMLDivElement>;
   readonly mode?: 'create' | 'successor';
   readonly returnTo?: string;
+  /** The version a successor was based on: the provenance of a verified success (FE03 CMS-11), else omitted. */
+  readonly parentVersion?: string;
 }
 
 export default function CmsTemplateStatus({
@@ -57,6 +94,7 @@ export default function CmsTemplateStatus({
   summaryRef,
   mode = 'create',
   returnTo = '/app/cms-content-modeling/templates/new',
+  parentVersion,
 }: Props): React.ReactElement {
   return (
     <div
@@ -76,14 +114,32 @@ export default function CmsTemplateStatus({
           ? 'Saving successor draft…'
           : 'Creating the draft…'
         : null}
-      {status.kind === 'result' ? statusCopy(status.result, mode) : null}
+      {status.kind === 'result' && !isCapabilityDenial(status.result)
+        ? statusCopy(status.result, mode)
+        : null}
+      {templateKeyError(status) === null ? null : (
+        <>
+          {' '}
+          <a href="#cms-template-key">Template key</a>
+        </>
+      )}
+      {status.kind === 'result' && isCapabilityDenial(status.result) ? (
+        <CmsEditorialCapabilityGate
+          headingId="cms-template-gate-heading"
+          title="Not available to you"
+          reason={statusCopy(status.result, mode)}
+        />
+      ) : null}
       {status.kind === 'created' ? (
         <>
-          <strong>
+          <h3 id={CMS_TEMPLATE_RESULT_HEADING_ID} tabIndex={-1}>
             {mode === 'successor' ? 'Draft version saved.' : 'Draft created.'}
-          </strong>{' '}
-          Template ID {status.resource.id}, version {status.resource.version}.
-          This is not a published template.{' '}
+          </h3>
+          Template ID {status.resource.id}, version {status.resource.version}
+          {parentVersion === undefined
+            ? null
+            : `, based on version ${parentVersion}`}
+          . This is not a published template.{' '}
           <a
             href={`/app/cms-content-modeling/templates/${encodeURIComponent(status.resource.templateKey)}`}
           >

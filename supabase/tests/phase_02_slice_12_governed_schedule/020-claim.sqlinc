@@ -1,0 +1,72 @@
+-- CMS-03C-19 claim: structure, nothing due yet, the cancelled schedule, then (after the suite really waits for the first schedules
+-- to fall due) ordered batches under a five-minute lease.
+select pg_temp.s12gb_claim('claim-early');
+select is(pg_temp.s12gb_sout('claim-early') || '|' || coalesce(pg_temp.s12gb_sbody('claim-early')::text, '-'), 'ok|[]',
+  'no schedule is due yet: the claim answers an empty array and takes no schedule [P2-S12-AC-149]');
+select pg_temp.s12gb_claim('claim-zero', '0'::jsonb);
+select pg_temp.s12gb_claim('claim-big', '101'::jsonb);
+select pg_temp.s12gb_claim('claim-text', '"5"'::jsonb);
+select pg_temp.s12gb_claim('claim-fraction', '5.5'::jsonb);
+select pg_temp.s12gb_claim('claim-null', 'null'::jsonb);
+select pg_temp.s12gb_claim('claim-true', 'true'::jsonb);
+select pg_temp.s12gb_call('claim-extra', 'platform_api.cms_claim_due_governed_activations', '{"batch": 5, "lease": 1}'::jsonb);
+select pg_temp.s12gb_call('claim-missing', 'platform_api.cms_claim_due_governed_activations', '{}'::jsonb);
+select pg_temp.s12gb_call('claim-array', 'platform_api.cms_claim_due_governed_activations', '[5]'::jsonb);
+select is(
+  (select string_agg(l || '=' || pg_temp.s12gb_sout(l), ';' order by l collate "C")
+     from unnest(array['claim-zero', 'claim-big', 'claim-text', 'claim-fraction', 'claim-null', 'claim-true', 'claim-extra',
+                       'claim-missing', 'claim-array']) l),
+  'claim-array=P0001:INVALID_REQUEST;claim-big=P0001:INVALID_REQUEST;claim-extra=P0001:INVALID_REQUEST;'
+    || 'claim-fraction=P0001:INVALID_REQUEST;claim-missing=P0001:INVALID_REQUEST;claim-null=P0001:INVALID_REQUEST;'
+    || 'claim-text=P0001:INVALID_REQUEST;claim-true=P0001:INVALID_REQUEST;claim-zero=P0001:INVALID_REQUEST',
+  'the claim takes exactly { batch } as an integer 1..100: zero, 101, a string, a fraction, null, a boolean, a missing member, an extra member and a non-object are INVALID_REQUEST [P2-S12-AC-149]');
+
+-- ec: the invalidation of an approved review whose subject is scheduled cancels the schedule before it falls due
+select pg_temp.s12gb_inval('inv-ec', pg_temp.s12ga_review('ec'), 'dependency_changed');
+select ok((select outcome from s12gb_inv where label = 'inv-ec') = 'ok'
+    and (select state = 'cancelled' and reason_code = 'approval_invalidated' from platform_private.cms_governed_activation_schedules
+          where review_id = pg_temp.s12ga_review('ec')),
+  'control: the invalidation of the ec review cancelled its pending schedule (cancelled, approval_invalidated) [P2-S12-AC-145]');
+
+-- wait for the first schedules (62 s) to fall due: the real clock, no forgery
+select pg_sleep(greatest(0, 72 - extract(epoch from (clock_timestamp() - (select started from s12gb_clock)))));
+select pg_temp.s12gb_claim('claim-1', '2'::jsonb);
+select ok(pg_temp.s12gb_sout('claim-1') = 'ok' and jsonb_array_length(pg_temp.s12gb_sbody('claim-1')) = 2
+    and (select string_agg(element.value->>'reviewId', ',' order by element.ord)
+           from jsonb_array_elements(pg_temp.s12gb_sbody('claim-1')) with ordinality element(value, ord))
+        = pg_temp.s12ga_review('ex1')::text || ',' || pg_temp.s12ga_review('e2')::text,
+  'a batch of 2 claims the two oldest due schedules ordered by resolved instant; the cancelled earlier schedule is never claimed [P2-S12-AC-149]');
+select is(pg_temp.s12ga_keys(pg_temp.s12gb_claimed('claim-1', 'ex1')),
+  'correlationId,expectedVersion,leaseId,reviewId,scheduleId,scheduleVersion,subjectId,subjectKind',
+  'a claimed record is exactly ClaimedGovernedActivation: identifiers and versions only, never content (8 members) [P2-S12-AC-149]');
+select ok(
+  pg_temp.s12gb_claimed('claim-1', 'ex1')->>'scheduleId' = pg_temp.s12gb_sid('ex1')::text
+    and pg_temp.s12gb_claimed('claim-1', 'ex1')->>'subjectKind' = 'template_version'
+    and pg_temp.s12gb_claimed('claim-1', 'ex1')->>'subjectId' = pg_temp.s12ga_subject('ex1')::text
+    and pg_temp.s12gb_claimed('claim-1', 'ex1')->>'scheduleVersion' = '2'
+    and pg_temp.s12gb_claimed('claim-1', 'ex1')->>'expectedVersion' = '2'
+    and pg_temp.s12gb_claimed('claim-1', 'ex1')->>'leaseId' = pg_temp.s12gb_sched('ex1')->>'lease_id'
+    and (pg_temp.s12gb_claimed('claim-1', 'ex1')->>'correlationId')::uuid
+        = platform_private.cms_schedule_correlation(pg_temp.s12gb_sid('ex1'), (pg_temp.s12gb_sched('ex1')->>'lease_id')::uuid),
+  'the claim answers the schedule version it produced (2), the approved review version it relied on (2), the new lease and the deterministic correlation id [P2-S12-AC-149]');
+select ok(
+  (select count(*) = 2 and bool_and(schedule.state = 'executing' and schedule.version = 2 and schedule.lease_id is not null
+            and schedule.lease_until between clock_timestamp() + interval '299 seconds' and clock_timestamp() + interval '301 seconds'
+            and schedule.next_attempt_at is null and schedule.attempt_count = 0 and schedule.reason_code is null)
+     from platform_private.cms_governed_activation_schedules schedule
+    where schedule.review_id in (pg_temp.s12ga_review('ex1'), pg_temp.s12ga_review('e2')))
+  and (select count(*) = 4 from platform_private.cms_governed_activation_schedules where state = 'pending')
+  and (select count(*) = 1 from platform_private.cms_governed_activation_schedules where state = 'cancelled')
+  and pg_temp.s12gb_events('ex1') = 0 and pg_temp.s12gb_events('e2') = 0,
+  'a claim moves the two schedules to executing (version 2) with a five-minute lease and emits no event; the other schedules stay pending or cancelled [P2-S12-AC-149]');
+select pg_temp.s12gb_claim('claim-2');
+select ok(pg_temp.s12gb_sout('claim-2') = 'ok' and jsonb_array_length(pg_temp.s12gb_sbody('claim-2')) = 3
+    and (select string_agg(element.value->>'reviewId', ',' order by element.ord)
+           from jsonb_array_elements(pg_temp.s12gb_sbody('claim-2')) with ordinality element(value, ord))
+        = pg_temp.s12ga_review('e3')::text || ',' || pg_temp.s12ga_review('ea')::text || ',' || pg_temp.s12ga_review('e5')::text
+    and pg_temp.s12gb_claimed('claim-2', 'e3')->>'expectedVersion' = '2',
+  'the next claim takes exactly the remaining due schedules in resolved order; the schedule due in ten minutes is not claimed, and an executing schedule is not claimed twice [P2-S12-AC-149]');
+select pg_temp.s12gb_claim('claim-3');
+select ok(pg_temp.s12gb_sout('claim-3') = 'ok' and pg_temp.s12gb_sbody('claim-3') = '[]'::jsonb
+    and (select state = 'pending' from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('ef')),
+  'a claim with nothing due answers an empty array [P2-S12-AC-149]');

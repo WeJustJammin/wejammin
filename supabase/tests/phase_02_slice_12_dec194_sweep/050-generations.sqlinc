@@ -1,0 +1,43 @@
+-- The generation bound: at most 3 consecutive failed generations per party, after which the sweep stops (the failed jobs' alert, route
+-- platform.on_call, is the signal).  A job that is not failed breaks the run (here the succeeded recovery job of 040).  [P2-S12-AC-226, DEC-194]
+select pg_temp.s12dc_job('j4', 'owner', pg_temp.s09d_id('ownerOrg'), 4);
+select pg_temp.s12dc_settle('j4', pg_temp.s12dc_id('job:j4'), 'failed', 'DEPENDENCY_UNAVAILABLE');
+select pg_temp.s12dc_elapse(16);
+select is(pg_temp.s12dc_streak(pg_temp.s09d_id('ownerOrg')), 1,
+  'fixture: one failed generation since the succeeded recovery job (it ends the earlier run of failures) [P2-S12-AC-226]');
+select pg_temp.s12dc_mark('gen-a');
+select pg_temp.s12dc_sweep('gen-a');
+select is(pg_temp.s12dc_out('gen-a') || '#' || pg_temp.s12dc_delta('gen-a'), 'ok:{"requested": 1}#jobs +1, outbox +1, audit +1, idempotency +1, stores same',
+  'after one failed generation the sweep requests the next job (generation 2) [P2-S12-AC-226, DEC-194]');
+insert into s12dc_ids(key, value) values ('job:j5', pg_temp.s12dc_key_job(pg_temp.s12dc_id('job:j4')));
+select ok((select job.state = 'queued' and job.actor_id = failed.actor_id and job.acting_party_id = failed.acting_party_id and job.correlation_id = failed.correlation_id
+             from platform_private.jobs job, platform_private.jobs failed where job.id = pg_temp.s12dc_id('job:j5') and failed.id = pg_temp.s12dc_id('job:j4')),
+  'the generation-2 job is queued and bound to the generation-1 job''s actor, party and correlation [P2-S12-AC-226, DEC-194]');
+
+select pg_temp.s12dc_settle('j5', pg_temp.s12dc_id('job:j5'), 'failed', 'DEPENDENCY_UNAVAILABLE');
+select pg_temp.s12dc_elapse(16);
+select is(pg_temp.s12dc_streak(pg_temp.s09d_id('ownerOrg')), 2, 'fixture: two consecutive failed generations [P2-S12-AC-226]');
+select pg_temp.s12dc_mark('gen-b');
+select pg_temp.s12dc_sweep('gen-b');
+select is(pg_temp.s12dc_out('gen-b') || '#' || pg_temp.s12dc_delta('gen-b'), 'ok:{"requested": 1}#jobs +1, outbox +1, audit +1, idempotency +1, stores same',
+  'after two failed generations the sweep still requests (generation 3) [P2-S12-AC-226, DEC-194]');
+insert into s12dc_ids(key, value) values ('job:j6', pg_temp.s12dc_key_job(pg_temp.s12dc_id('job:j5')));
+select ok((select job.state = 'queued' and job.correlation_id = failed.correlation_id from platform_private.jobs job, platform_private.jobs failed
+            where job.id = pg_temp.s12dc_id('job:j6') and failed.id = pg_temp.s12dc_id('job:j5')),
+  'the generation-3 job is queued and keeps the chain''s correlation id [P2-S12-AC-226, DEC-194]');
+
+select pg_temp.s12dc_settle('j6', pg_temp.s12dc_id('job:j6'), 'failed', 'DEPENDENCY_UNAVAILABLE');
+select pg_temp.s12dc_elapse(16);
+select ok(pg_temp.s12dc_streak(pg_temp.s09d_id('ownerOrg')) = 3 and pg_temp.s12dc_live(pg_temp.s09d_id('ownerOrg')) = 0
+          and pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) >= 16 and pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 2,
+  'fixture: three consecutive failed generations, no live job, 16 minutes idle, 2 assignments remain [P2-S12-AC-226]');
+select pg_temp.s12dc_mark('stop');
+select pg_temp.s12dc_sweep('stop');
+select is(pg_temp.s12dc_out('stop') || '#' || pg_temp.s12dc_delta('stop'), 'ok:{"requested": 0}#jobs +0, outbox +0, audit +0, idempotency +0, stores same',
+  'after 3 consecutive failed generations the sweep stops: nothing is requested and nothing is written [P2-S12-AC-226, DEC-194]');
+select pg_temp.s12dc_elapse(600);
+select pg_temp.s12dc_sweep('stop-later');
+select is(pg_temp.s12dc_out('stop-later') || '#' || pg_temp.s12dc_delta('stop'), 'ok:{"requested": 0}#jobs +0, outbox +0, audit +0, idempotency +0, stores same',
+  'the stop is not a time-out: ten hours later the sweep still requests nothing [P2-S12-AC-226, DEC-194]');
+select is((select count(*)::integer from platform_private.jobs where acting_party_id = pg_temp.s09d_id('ownerOrg') and job_type = 'cms.taxonomy.merge_converge'), 7,
+  'the party''s history is exactly X, C, Q, the sweep''s J3, the fixture J4, and the sweep''s J5 and J6: the sweep requested 3 jobs in all [P2-S12-AC-226, DEC-194]');

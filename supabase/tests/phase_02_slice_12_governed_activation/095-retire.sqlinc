@@ -1,0 +1,265 @@
+-- CMS-03C-09 `retire` (DEC-190; BE03c 392, 1326 "retire", 1348, 1552-1554, 1561; tracker P2-S12-AC-083, AC-087, AC-143): the subject owner removes
+-- the exposure of an ACTIVE governed version through the review-addressed route.  Retire needs the resolved subject `active` (else 409
+-- subject_not_retirable) and NOTHING of the activation gates: no fresh approval, no dependency, policy, provider or preflight validity.  It keeps
+-- unconditional step-up, concealment, the owner capability, the review `version` CAS and idempotency, and commits `retired`, lifecycle +1,
+-- retired_at, one audit record and exactly one subject-kind event.  The review `version` ADVANCES by exactly one (root ruling on DEC-190: CMS-03C-10's
+-- strong ETag is "{review.version}" while its body exposes subjectState / permittedNextActions, and BE03c 215 counts an activation as a version
+-- change), like an activation; the definition version, pins and every other review and subject column stay.
+-- Fixtures at this point: ga1 active (its bound content type was superseded in 060: the dependency evidence is stale), gp1 protected active,
+-- gl2 active (v2 of the gl1 lineage, gl1 superseded), gc9 active (activated by a capability holder), tx a taxonomy version active, gs3
+-- scheduled, gd1 draft with an invalidated review, gc8 approved and never activated.
+create temp table s12gb_ret_pre(tag text primary key, subject jsonb not null, review jsonb not null) on commit drop;
+insert into s12gb_ret_pre(tag, subject, review)
+select t, pg_temp.s12gb_subj(t), pg_temp.s12gb_rev(t) from unnest(array['ga1', 'gp1', 'gl2', 'gc9']) t;
+
+-- The retirement left a template subject retired at lifecycle + 1 with its definition and activated_at untouched, and its review row changed in
+-- exactly two columns: version + 1 and updated_at (state, activated_at, decided_at and every frozen column stay).
+create or replace function pg_temp.s12gb_ret_effect(p_tag text) returns boolean language sql stable as $body$
+  select (select s.state = 'retired' and s.lifecycle_version = (pre.subject->>'lifecycle_version')::bigint + 1
+                  and s.version = (pre.subject->>'version')::bigint
+                  and s.activated_at is not distinct from (pre.subject->>'activated_at')::timestamptz
+                  and s.retired_at is not null and s.retired_at >= s.activated_at
+                  and (to_jsonb(s) - array['state', 'lifecycle_version', 'retired_at', 'updated_at'])
+                    = (pre.subject - array['state', 'lifecycle_version', 'retired_at', 'updated_at'])
+            from platform_private.cms_template_versions s, s12gb_ret_pre pre
+           where s.id = pg_temp.s12ga_subject(p_tag) and pre.tag = p_tag)
+     and (select r.version = (pre.review->>'version')::bigint + 1
+                 and r.updated_at >= (pre.review->>'updated_at')::timestamptz
+                 and (to_jsonb(r) - array['version', 'updated_at']) = (pre.review - array['version', 'updated_at'])
+            from platform_private.cms_governed_reviews r, s12gb_ret_pre pre
+           where r.id = pg_temp.s12ga_review(p_tag) and pre.tag = p_tag)
+$body$;
+-- The activation event plus exactly one retirement event of the template subject (aggregate = the subject row at lifecycle p_lifecycle).
+create or replace function pg_temp.s12gb_ret_event(p_tag text, p_lifecycle bigint) returns boolean language sql stable as $body$
+  select count(*) = 2 and count(*) filter (where event.aggregate_version = p_lifecycle) = 1
+         and bool_and(event.event_type = 'cms.template.activated.v1' and event.schema_version = 1
+                      and event.aggregate_type = 'cms_template_version'
+                      and event.payload = jsonb_build_object('templateId', subject.template_id, 'templateVersionId', subject.id))
+    from platform_private.outbox_events event
+    join platform_private.cms_template_versions subject on subject.id = event.aggregate_id
+   where event.aggregate_id = pg_temp.s12ga_subject(p_tag)
+$body$;
+-- The exact 200 GovernedActivationResource of a retirement (12 members, DEC-191): reviewVersion the ADVANCED version, activatedAt the original instant.
+create or replace function pg_temp.s12gb_ret_body(p_label text, p_tag text) returns boolean language sql stable as $body$
+  select pg_temp.s12ga_body(p_label) = jsonb_build_object(
+    'reviewId', review.id, 'reviewVersion', review.version::text, 'subjectKind', 'template_version', 'subjectId', subject.id,
+    'lineageId', subject.template_id, 'subjectVersion', subject.version, 'supersededVersion', null, 'action', 'retire', 'subjectState', 'retired',
+    'activatedAt', platform_private.auth_iso_time(subject.activated_at), 'scheduledForUtc', null,
+    'eventType', 'cms.template.activated.v1')
+    from platform_private.cms_governed_reviews review
+    join platform_private.cms_template_versions subject on subject.id = review.subject_id
+   where review.id = pg_temp.s12ga_review(p_tag)
+$body$;
+
+-- ------------------------------------------------------------------------------ the private helpers --
+select ok(
+  (select count(*) = 2 from unnest(array[
+     'platform_private.cms_governed_retire_subject(text, uuid, timestamptz)',
+     'platform_private.cms_governed_apply_retirement(uuid, uuid, uuid, uuid, timestamptz)']) f where to_regprocedure(f) is not null)
+  and (select bool_and(not has_function_privilege(r.role_name, proc.oid, 'EXECUTE'))
+         from unnest(array['public', 'anon', 'authenticated', 'service_role']) r(role_name)
+         cross join (select to_regprocedure(f) as oid from unnest(array[
+           'platform_private.cms_governed_retire_subject(text, uuid, timestamptz)',
+           'platform_private.cms_governed_apply_retirement(uuid, uuid, uuid, uuid, timestamptz)']) f) proc
+        where proc.oid is not null)
+  and (select bool_and(proc.prosecdef and proc.proconfig = array['search_path=""'] and pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer')
+         from pg_proc proc where proc.oid in (
+           to_regprocedure('platform_private.cms_governed_retire_subject(text, uuid, timestamptz)'),
+           to_regprocedure('platform_private.cms_governed_apply_retirement(uuid, uuid, uuid, uuid, timestamptz)'))),
+  'the two private retirement helpers exist, are SECURITY DEFINER with an empty search_path owned by the CMS definer, and no API role can execute them [P2-S12-AC-087]');
+
+-- ----------------------------------------------------------------- refusals on the active ga1 change nothing --
+select ok(platform_private.cms_governed_activation_verdict(pg_temp.s12ga_review('ga1')) = 'dependency_changed',
+  'control: the frozen dependency evidence of ga1 is stale (its bound content type was superseded), so activation would commit an invalidation [P2-S12-AC-084]');
+select pg_temp.s12gb_mark('ga1:retire-gates', 'ga1');
+select pg_temp.s12gb_act('rt-su-none', 'owner', pg_temp.s12ga_review('ga1'), 'retire', '{}'::jsonb, array[]::text[],
+  pg_temp.s12ga_ctx('owner', interval '1 minute', false));
+select pg_temp.s12gb_act('rt-su-stale', 'owner', pg_temp.s12ga_review('ga1'), 'retire', '{}'::jsonb, array[]::text[],
+  pg_temp.s12ga_ctx('owner', interval '11 minutes'));
+select pg_temp.s12gb_act('rt-su-future', 'owner', pg_temp.s12ga_review('ga1'), 'retire', '{}'::jsonb, array[]::text[],
+  pg_temp.s12ga_ctx('owner', interval '-2 minutes'));
+select pg_temp.s12gb_act('rt-other-org', 'other', pg_temp.s12ga_review('ga1'), 'retire');
+select pg_temp.s12gb_act('rt-reviewer', 'rev1', pg_temp.s12ga_review('ga1'), 'retire');
+select pg_temp.s12gb_act('rt-stale-cas', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select pg_temp.s12gb_act('rt-future-cas', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('expectedVersion', '4', 'ifMatch', '4'));
+select pg_temp.s12gb_act('rt-reason-empty', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('reason', ''));
+select pg_temp.s12gb_act('rt-reason-long', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('reason', repeat('a', 257)));
+select pg_temp.s12gb_act('rt-reason-type', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('reason', 5));
+select pg_temp.s12gb_act('rt-reason-nfd', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('reason', 'e' || U&'\0301'));
+select pg_temp.s12gb_act('rt-activate-at', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('activateAt', pg_temp.s12gb_at()));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12gb_oc(l), ';' order by l collate "C")
+     from unnest(array['rt-su-none', 'rt-su-stale', 'rt-su-future', 'rt-other-org', 'rt-reviewer', 'rt-stale-cas', 'rt-future-cas',
+                       'rt-reason-empty', 'rt-reason-long', 'rt-reason-type', 'rt-reason-nfd', 'rt-activate-at']) l),
+  'rt-activate-at=P0001:INVALID_REQUEST;'
+    || 'rt-future-cas=P0001:VERSION_MISMATCH#{"currentVersion": "3", "expectedVersion": "4"};rt-other-org=P0001:NOT_FOUND;'
+    || 'rt-reason-empty=P0001:VALIDATION_FAILED#["/reason"];rt-reason-long=P0001:VALIDATION_FAILED#["/reason"];'
+    || 'rt-reason-nfd=P0001:VALIDATION_FAILED#["/reason"];rt-reason-type=P0001:VALIDATION_FAILED#["/reason"];'
+    || 'rt-reviewer=P0001:capability_missing;'
+    || 'rt-stale-cas=P0001:VERSION_MISMATCH#{"currentVersion": "3", "expectedVersion": "2"};rt-su-future=P0001:STEP_UP_REQUIRED;'
+    || 'rt-su-none=P0001:STEP_UP_REQUIRED;rt-su-stale=P0001:STEP_UP_REQUIRED',
+  'retire keeps every control: a missing, stale or future step-up is STEP_UP_REQUIRED, a cross-owner caller meets the concealed NOT_FOUND, an assigned reviewer '
+  || 'without the owner capability is 403 capability_missing, a stale or future review version is VERSION_MISMATCH, an empty, 257-character, non-string or non-NFC reason '
+  || 'is VALIDATION_FAILED at /reason and an activateAt is INVALID_REQUEST [P2-S12-AC-083]');
+select ok(pg_temp.s12gb_same('ga1:retire-gates', 'ga1') and pg_temp.s12gb_events('ga1') = 1,
+  'every retire refusal on the active ga1 leaves the subject, review, idempotency, audit and outbox stores identical [P2-S12-AC-086]');
+
+-- ------------------------------------------------------------- only an ACTIVE subject can be retired --
+select pg_temp.s12gb_mark('gs3:retire', 'gs3');
+select pg_temp.s12gb_mark('gd1:retire', 'gd1');
+select pg_temp.s12gb_mark('gl1:retire', 'gl1');
+select pg_temp.s12gb_mark('gc8:retire', 'gc8');
+select pg_temp.s12gb_act('rt-scheduled', 'owner', pg_temp.s12ga_review('gs3'), 'retire');
+select pg_temp.s12gb_act('rt-draft', 'owner', pg_temp.s12ga_review('gd1'), 'retire');
+select pg_temp.s12gb_act('rt-superseded', 'owner', pg_temp.s12ga_review('gl1'), 'retire', jsonb_build_object('reason', 'older version'));
+select pg_temp.s12gb_act('rt-approved', 'owner', pg_temp.s12ga_review('gc8'), 'retire');
+select is(
+  (select string_agg(l || '=' || pg_temp.s12gb_oc(l), ';' order by l collate "C")
+     from unnest(array['rt-scheduled', 'rt-draft', 'rt-superseded', 'rt-approved']) l),
+  'rt-approved=P0001:subject_not_retirable;rt-draft=P0001:subject_not_retirable;rt-scheduled=P0001:subject_not_retirable;rt-superseded=P0001:subject_not_retirable',
+  'a scheduled, draft (invalidated review), superseded or approved subject is 409 subject_not_retirable: retirement is for an active version only [P2-S12-AC-087]');
+select ok(pg_temp.s12gb_same('gs3:retire', 'gs3') and pg_temp.s12gb_same('gd1:retire', 'gd1') and pg_temp.s12gb_same('gl1:retire', 'gl1')
+    and pg_temp.s12gb_same('gc8:retire', 'gc8')
+    and (select count(*) = 0 from platform_private.idempotency_records record
+          where record.operation = 'CMS-03C-09' and record.key_hash in (
+            select platform_private.cms_key_hash('s12ga-' || l)
+              from unnest(array['rt-scheduled', 'rt-draft', 'rt-superseded', 'rt-approved']) l)),
+  'the subject_not_retirable refusals change nothing and reserve no idempotency record [P2-S12-AC-086]');
+
+-- ---------------------------------------- retire ga1: no fresh approval and no dependency validity needed --
+select pg_temp.s12gb_act('rt1', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('reason', 'retired by the owner'));
+select pg_temp.s12ga_keep('rt1', 'rt1');
+select is(pg_temp.s12ga_out('rt1'), 'ok',
+  'the owner retires an active version whose frozen dependency evidence is stale: no fresh approval, dependency, policy, provider or preflight validity is required [P2-S12-AC-087]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('rt1')),
+  'action,activatedAt,eventType,lineageId,reviewId,reviewVersion,scheduledForUtc,subjectId,subjectKind,subjectState,subjectVersion,supersededVersion',
+  'the 200 body is exactly GovernedActivationResource (12 members, DEC-191 supersededVersion) [P2-S12-AC-087]');
+select ok(pg_temp.s12gb_ret_body('rt1', 'ga1') and pg_temp.s12ga_body('rt1')->>'reviewVersion' = '4'
+    and (select review.version = 4 from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('ga1')),
+  'the resource names the review at its ADVANCED version 4 (expected 3 + 1), the subject at its immutable definition number, action retire, state retired, the original activation instant, no schedule and the template event type [P2-S12-AC-087]');
+select ok(pg_temp.s12gb_ret_effect('ga1'),
+  'retirement moves the subject active -> retired (lifecycle 4 -> 5, retired_at stamped) with definition version, activated_at and every definition column untouched; the review row differs only in version 3 -> 4 and updated_at [P2-S12-AC-087]');
+select ok(pg_temp.s12gb_ret_event('ga1', 5) and pg_temp.s12gb_audits('cms.governed.retire', 'ga1') = 1
+    and pg_temp.s12gb_audits('cms.governed.activate', 'ga1') = 1,
+  'exactly one more cms.template.activated.v1 commits (aggregate = the retired subject row at lifecycle counter 5, payload { templateId, templateVersionId }) with one retirement audit record [P2-S12-AC-087]');
+select ok((select count(*) = 1 and bool_and(audit.actor_id = pg_temp.s12ga_auth('owner') and audit.acting_party_id = pg_temp.s12ga_org()
+                  and audit.target_type = 'cms_template_version' and audit.decision = 'allowed' and audit.reason_code = 'CMS_GOVERNED_RETIRED')
+             from audit_private.audit_events audit
+            where audit.action = 'cms.governed.retire' and audit.target_id = pg_temp.s12ga_subject('ga1')),
+  'the retirement audit record names the acting owner, the owner party, the template version target and CMS_GOVERNED_RETIRED [P2-S12-AC-087]');
+select ok(exists (select 1 from platform_private.idempotency_records record
+                   where record.operation = 'CMS-03C-09' and record.key_hash = platform_private.cms_key_hash('s12ga-rt1')
+                     and record.state = 'completed' and record.response_ref->>'status' = '200'),
+  'the completed idempotency record stores status 200 for the retire [P2-S12-AC-086]');
+select ok(pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)') like '%cms_governed_apply_retirement%'
+    and strpos(pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)'), 'cms_governed_apply_retirement')
+        < strpos(pg_temp.s12gb_after_advisory('platform_private.cms_activate_governed_subject(jsonb)'), 'cms_governed_apply_activation'),
+  'SOURCE ORACLE (weaker than behavior): the retirement is applied only after the lineage advisory lock, the last lock position, like the activation; the lost race itself needs a second session and is unproven here [P2-S12-AC-087]');
+
+-- replay and mismatch, then a second retirement
+select pg_temp.s12gb_mark('ga1:retired', 'ga1');
+select pg_temp.s12gb_act('rt1', 'owner', pg_temp.s12ga_review('ga1'), 'retire',
+  jsonb_build_object('reason', 'retired by the owner', 'expectedVersion', '3', 'ifMatch', '3'));
+select ok(pg_temp.s12ga_out('rt1') = 'ok' and pg_temp.s12ga_body('rt1') = pg_temp.s12ga_kept('rt1')
+    and pg_temp.s12gb_same('ga1:retired', 'ga1') and pg_temp.s12gb_events('ga1') = 2,
+  'an exact same-key replay of the retire returns the original response and writes no second event, audit record or state change [P2-S12-AC-086]');
+select pg_temp.s12gb_act('rt1', 'owner', pg_temp.s12ga_review('ga1'), 'retire',
+  jsonb_build_object('reason', 'a different reason', 'expectedVersion', '3', 'ifMatch', '3'));
+select pg_temp.s12gb_act('rt1-stale', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('expectedVersion', '3', 'ifMatch', '3'));
+select pg_temp.s12gb_act('rt1-noreason', 'owner', pg_temp.s12ga_review('ga1'), 'retire');
+select pg_temp.s12gb_act('rt1-again', 'owner', pg_temp.s12ga_review('ga1'), 'retire', jsonb_build_object('reason', 'retired by the owner'));
+select is(pg_temp.s12ga_out('rt1') || '|' || pg_temp.s12ga_out('rt1-noreason') || '|' || pg_temp.s12ga_out('rt1-again'),
+  'P0001:IDEMPOTENCY_MISMATCH|P0001:subject_not_retirable|P0001:subject_not_retirable',
+  'the same key with a different reason is IDEMPOTENCY_MISMATCH, and a second retirement of the retired subject under a new key and the current version is 409 subject_not_retirable [P2-S12-AC-086]');
+select ok(pg_temp.s12ga_out('rt1-stale') = 'P0001:VERSION_MISMATCH'
+    and nullif(pg_temp.s12ga_det('rt1-stale'), '')::jsonb = '{"expectedVersion": "3", "currentVersion": "4"}'::jsonb
+    and pg_temp.s12gb_reserved('rt1-stale') = 0,
+  'a second retirement with the pre-retirement review version is VERSION_MISMATCH (current 4): the retirement advanced the review version, so a client holding the old ETag is refused before the state check and nothing is reserved [P2-S12-AC-087]');
+select ok(pg_temp.s12gb_same('ga1:retired', 'ga1') and pg_temp.s12gb_events('ga1') = 2
+    and pg_temp.s12gb_audits('cms.governed.retire', 'ga1') = 1,
+  'the mismatch and the second retirement left the subject, review, event and audit counts exactly as the one retirement made them [P2-S12-AC-086]');
+select pg_temp.s12gb_act('rt1-activate', 'owner', pg_temp.s12ga_review('ga1'), 'activate');
+select pg_temp.s12gb_act('rt1-schedule', 'owner', pg_temp.s12ga_review('ga1'), 'schedule');
+select is(pg_temp.s12ga_out('rt1-activate') || '|' || pg_temp.s12ga_out('rt1-schedule'),
+  'P0001:subject_not_activatable|P0001:subject_not_activatable',
+  'a retired version can be neither activated nor scheduled again: retired is terminal [P2-S12-AC-083]');
+
+-- ------------------------------------------------------- a protected review (two approvals), retired without a reason --
+select pg_temp.s12gb_act('rt-gp1', 'owner', pg_temp.s12ga_review('gp1'), 'retire');
+select ok(pg_temp.s12ga_out('rt-gp1') = 'ok' and pg_temp.s12gb_ret_body('rt-gp1', 'gp1') and pg_temp.s12ga_body('rt-gp1')->>'reviewVersion' = '5'
+    and pg_temp.s12gb_ret_effect('gp1') and pg_temp.s12gb_ret_event('gp1', 5) and pg_temp.s12gb_audits('cms.governed.retire', 'gp1') = 1,
+  'a protected two-approval review retires without a reason and without a further decision: review version advances 4 -> 5, one event, one audit record [P2-S12-AC-087]');
+
+-- ------- the specialist approver loses authority AFTER the activation: the same loss kills an activation, not a retirement --
+-- (a review whose subject is active is approved with activated_at and can never be invalidated: cms_governed_reviews_guard and the activated-state
+--  check.  gq1 is activated while its approvers still hold their grants; gq2 is approved by the same two approvers and still unactivated.)
+select pg_temp.s12gb_approved_protected('gq1');
+select pg_temp.s12gb_approved_protected('gq2');
+select pg_temp.s12gb_act('rq-activate-1', 'owner', pg_temp.s12ga_review('gq1'), 'activate');
+insert into s12gb_ret_pre(tag, subject, review) values ('gq1', pg_temp.s12gb_subj('gq1'), pg_temp.s12gb_rev('gq1'));
+select ok(pg_temp.s12ga_out('rq-activate-1') = 'ok' and pg_temp.s12ga_body('rq-activate-1')->>'subjectState' = 'active'
+    and pg_temp.s12gb_events('gq1') = 1,
+  'control: the protected gq1, approved by designer2 (policy slot) and rev1 (base slot), activates while both approvers hold their grants [P2-S12-AC-082]');
+-- LAG FIXTURE (002-lapse-helpers): since P2-S12-AC-204 (BE03c G6) every authority loss that has an event (the CMS-03A-17 revocation, a
+-- grant or tenure UPDATE or DELETE) invalidates gq2 in its own transaction, so the approval of gq2 that no longer counts at activation is
+-- made with a specialist grant that ENDS BY THE CALENDAR (its term passes without any write; the fixture reproduces exactly that read).
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('designer2'), 'cms.reviewer.policy');
+select ok(not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('designer2'), 'cms.reviewer.policy')
+    and (select review.state = 'approved' from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('gq2')),
+  'control: the cms.reviewer.policy grant of designer2, the specialist approver of gq1 and gq2, lapsed by the calendar: gq2 still reads approved and the approval no longer counts [P2-S12-AC-084]');
+select pg_temp.s12gb_act('rq-activate-2', 'owner', pg_temp.s12ga_review('gq2'), 'activate');
+select ok(pg_temp.s12ga_out('rq-activate-2') = 'ok'
+    and pg_temp.s12ga_body('rq-activate-2') = '{"kind": "refusal", "details": {}, "reasonCode": "dependency_changed"}'::jsonb
+    and (select review.state = 'invalidated' and review.invalidated_reason = 'reviewer_authority_changed'
+           from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('gq2'))
+    and (select subject.state = 'draft' from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('gq2')),
+  'control: with the specialist approver''s authority gone, ACTIVATING gq2 commits the invalidation (reviewer_authority_changed) and answers the committed refusal [P2-S12-AC-084]');
+select pg_temp.s12gb_act('rt-gq1', 'owner', pg_temp.s12ga_review('gq1'), 'retire', jsonb_build_object('reason', 'specialist approver left'));
+select ok(pg_temp.s12ga_out('rt-gq1') = 'ok' and pg_temp.s12gb_ret_body('rt-gq1', 'gq1') and pg_temp.s12gb_ret_effect('gq1')
+    and pg_temp.s12gb_ret_event('gq1', 5) and pg_temp.s12gb_audits('cms.governed.retire', 'gq1') = 1,
+  'the same loss of authority does not stop RETIRING the active gq1: retirement needs no live approval and no fresh decision [P2-S12-AC-087]');
+select pg_temp.s12fr_restore();
+
+-- ------------------------------------------------------------ the lineage of gl2 (v2 active, v1 superseded) --
+select pg_temp.s12gb_act('rt-gl2', 'owner', pg_temp.s12ga_review('gl2'), 'retire', jsonb_build_object('reason', 'withdrawn from use'));
+select ok(pg_temp.s12ga_out('rt-gl2') = 'ok' and pg_temp.s12gb_ret_body('rt-gl2', 'gl2') and pg_temp.s12ga_body('rt-gl2')->>'reviewVersion' = '4'
+    and pg_temp.s12gb_ret_effect('gl2') and pg_temp.s12gb_ret_event('gl2', 5),
+  'the active v2 of a lineage retires: one more event at lifecycle 5, review version advanced 3 -> 4 [P2-S12-AC-087]');
+select ok((select count(*) = 0 from platform_private.cms_template_versions member
+            where member.template_id = (pg_temp.s12gb_subj('gl2')->>'template_id')::uuid and member.state = 'active')
+    and (select subject.state = 'superseded' from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('gl1')),
+  'retiring the lineage''s active version leaves the lineage with no active version and does not resurrect the superseded predecessor [P2-S12-AC-087]');
+
+-- ------------------------------ no workflow-policy validity: the retire runs while the policy evidence is unavailable --
+select pg_temp.s12gb_fault_on();
+select pg_temp.s12gb_act('rt-fault-activate', 'owner', pg_temp.s12ga_review('gc8'), 'activate');
+select pg_temp.s12gb_act('rt-fault', 'owner', pg_temp.s12ga_review('gc9'), 'retire');
+select ok(pg_temp.s12gb_fault_off(), 'the labelled negative fault (workflow-policy evidence unavailable) is removed and the resolver restored byte for byte [P2-S12-AC-087]');
+select ok(pg_temp.s12ga_out('rt-fault-activate') = 'P0001:DEPENDENCY_UNAVAILABLE'
+    and (select state = 'approved' from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('gc8')),
+  'control: with the policy evidence unavailable an activation fails closed (DEPENDENCY_UNAVAILABLE) and changes nothing [P2-S12-AC-084]');
+select ok(pg_temp.s12ga_out('rt-fault') = 'ok' and pg_temp.s12gb_ret_body('rt-fault', 'gc9') and pg_temp.s12gb_ret_effect('gc9')
+    and pg_temp.s12gb_ret_event('gc9', 5),
+  'the same unavailable policy evidence does not stop a retirement: retire consults no workflow policy [P2-S12-AC-087]');
+
+-- ---------------------------------------------------------------- a taxonomy subject (the third kind) --
+select pg_temp.s12gb_mark('tx:retire', 'tx');
+select pg_temp.s12gb_act('rt-tx', 'owner', pg_temp.s12ga_review('tx'), 'retire');
+select ok(pg_temp.s12ga_out('rt-tx') = 'ok' and pg_temp.s12ga_body('rt-tx')->>'subjectKind' = 'taxonomy_version'
+    and pg_temp.s12ga_body('rt-tx')->>'action' = 'retire' and pg_temp.s12ga_body('rt-tx')->>'subjectState' = 'retired'
+    and pg_temp.s12ga_body('rt-tx')->>'eventType' = 'cms.taxonomy.changed.v1' and pg_temp.s12ga_body('rt-tx')->>'reviewVersion' = '4'
+    and pg_temp.s12ga_body('rt-tx')->>'lineageId' = (select taxonomy_id::text from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tx'))
+    and pg_temp.s12ga_body('rt-tx')->>'activatedAt' = (select platform_private.auth_iso_time(activated_at) from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tx')),
+  'retiring a taxonomy version answers the taxonomy event type, its lineage id and the advanced review version 4 [P2-S12-AC-087]');
+select ok(
+  (select state = 'retired' and lifecycle_version = 5 and version = 1 and retired_at is not null and activated_at is not null
+     from platform_private.cms_taxonomy_versions where id = pg_temp.s12ga_subject('tx'))
+  and (select count(*) = 2 and count(*) filter (where event.aggregate_version = 5) = 1
+             and bool_and(event.event_type = 'cms.taxonomy.changed.v1' and event.aggregate_type = 'cms_taxonomy_version'
+                          and event.payload = jsonb_build_object('taxonomyId', subject.taxonomy_id, 'taxonomyVersionId', subject.id))
+         from platform_private.outbox_events event
+         join platform_private.cms_taxonomy_versions subject on subject.id = event.aggregate_id
+        where event.aggregate_id = pg_temp.s12ga_subject('tx'))
+  and pg_temp.s12gb_audits('cms.governed.retire', 'tx') = 1
+  and (select review.state = 'approved' and review.version = 4 and review.activated_at is not null from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('tx')),
+  'the taxonomy retirement commits exactly one more cms.taxonomy.changed.v1 (aggregate cms_taxonomy_version at lifecycle 5, payload { taxonomyId, taxonomyVersionId }) and one audit record; the review stays approved and activated at version 4 [P2-S12-AC-087]');

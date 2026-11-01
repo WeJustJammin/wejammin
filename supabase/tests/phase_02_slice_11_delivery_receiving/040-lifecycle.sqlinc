@@ -1,0 +1,100 @@
+-- These diagnostics make a guard refusal attributable. They are internal SQL
+-- test contract identities, not a new public error envelope or activation RPC.
+select is(pg_temp.dr_scalar(format('select (b.version_no>a.version_no)::text
+  from platform_private.route_manifest_version a cross join platform_private.route_manifest_version b
+  where a.id=%L and b.id=%L',pg_temp.dr_id('manifest-a'),pg_temp.dr_id('manifest-b'))),'true',
+  'DR-L01 identity allocates positive increasing ordinals; no gapless promise [DEC-197]');
+select is(pg_temp.dr_scalar(format('select count(*) from platform_private.route_manifest_version where state=''active''')),'0',
+  'DR-L02 receiving DDL and ready fixtures create no fake initial active manifest');
+select is(pg_temp.dr_result(format('update platform_private.route_manifest_version
+  set state=''active'',activated_at=''2026-10-16T12:00:00Z'' where id=%L',pg_temp.dr_id('manifest-a')),true)->>'state',
+  '00000','DR-L03 ready -> active accepts activation exactly at generation');
+select is(pg_temp.dr_scalar(format('select state || ''/'' || (activated_at=generated_at)::text
+  from platform_private.route_manifest_version where id=%L',pg_temp.dr_id('manifest-a'))),'active/true',
+  'DR-L04 accepted activation stores both new state and exact boundary instant');
+
+select is(pg_temp.dr_diag(format('update platform_private.route_manifest_version set %s where id=%L',
+  assignment,pg_temp.dr_id('manifest-a'))),'23514:' || expected,label)
+from (values
+  ('id=''' || pg_temp.dr_id('changed-id') || '''', 'route_manifest_version_immutable_check','DR-L05 manifest identity is immutable'),
+  ('version_no=version_no+100','route_manifest_version_immutable_check','DR-L06 ordinal never renumbers'),
+  ('publication_set_hash=repeat(''c'',64)','route_manifest_version_immutable_check','DR-L07 frozen publication-set hash is immutable'),
+  ('generated_at=generated_at-interval ''1 second''','route_manifest_version_immutable_check','DR-L08 generation instant is immutable'),
+  ('activated_at=activated_at+interval ''1 second''','route_manifest_version_activation_immutable_check','DR-L09 activation time is write-once'),
+  ('activated_at=null','route_manifest_version_activation_immutable_check','DR-L10 activation instant cannot be cleared'),
+  ('state=''ready'',activated_at=null','route_manifest_version_transition_check','DR-L11 active cannot reverse to ready')) q(assignment,expected,label);
+
+select is(pg_temp.dr_diag(format('update platform_private.route_manifest_version set state=''superseded'',
+  activated_at=''2026-10-16T12:01:00Z'' where id=%L',pg_temp.dr_id('manifest-b'))),
+  '23514:route_manifest_version_transition_check','DR-L12 ready cannot skip active and become superseded');
+select is(pg_temp.dr_diag(pg_temp.dr_manifest_sql('insert-active',
+  '{"state":"active","activated_at":"2026-10-16T12:00:00Z"}')),
+  '23514:route_manifest_version_transition_check','DR-L13 newly sealed artifacts must begin ready; no direct active insert');
+select is(pg_temp.dr_diag(pg_temp.dr_manifest_sql('insert-superseded',
+  '{"state":"superseded","activated_at":"2026-10-16T12:00:00Z"}')),
+  '23514:route_manifest_version_transition_check','DR-L14 no direct superseded insert bypasses the lifecycle');
+select is(pg_temp.dr_diag(format('update platform_private.route_manifest_version set state=''active'',
+  activated_at=''2026-10-16T11:59:59.999999Z'' where id=%L',pg_temp.dr_id('manifest-b'))),
+  '23514:' || coalesce(pg_temp.dr_check('platform_private.route_manifest_version',array['activated_at >= generated_at']),'<missing-time-check>'),
+  'DR-L15 activation before generation fails the intended temporal CHECK');
+select is(pg_temp.dr_diag(format('update platform_private.route_manifest_version set state=''active'' where id=%L',
+  pg_temp.dr_id('manifest-b'))),
+  '23514:' || coalesce(pg_temp.dr_check('platform_private.route_manifest_version',
+    array['state','ready','activated_at IS NOT NULL']),'<missing-activation-check>'),
+  'DR-L16 active without activation fails the intended shape CHECK');
+
+-- A real competing ready -> active attempt reaches the partial UNIQUE index.
+select is(pg_temp.dr_diag(format('update platform_private.route_manifest_version set state=''active'',
+  activated_at=''2026-10-16T12:01:00Z'' where id=%L',pg_temp.dr_id('manifest-b'))),
+  '23505:' || coalesce((select ic.relname from pg_index i join pg_class ic on ic.oid=i.indexrelid
+    where i.indrelid=to_regclass('platform_private.route_manifest_version') and i.indisunique
+      and i.indpred is not null and pg_get_expr(i.indpred,i.indrelid) like '%active%' limit 1),'<missing-one-active-index>'),
+  'DR-L17 second active artifact fails specifically the one-active unique index');
+
+-- The first update is intentionally legal. A later injected SQL error rolls the
+-- entire replacement statement back; success cannot be inferred from no candidates.
+create temp table dr_replacement_before on commit drop as
+select pg_temp.dr_scalar(format('select jsonb_agg(to_jsonb(m) order by id)::text
+  from platform_private.route_manifest_version m where id in (%L,%L)',
+  pg_temp.dr_id('manifest-a'),pg_temp.dr_id('manifest-b'))) as snapshot;
+select is(pg_temp.dr_diag(format($sql$
+  do $replace$ declare n bigint; begin
+    update platform_private.route_manifest_version set state='superseded' where id=%L;
+    get diagnostics n=row_count;
+    if n<>1 then raise exception using errcode='23514',constraint='dec197_replacement_setup_check',message='old active row absent'; end if;
+    update platform_private.route_manifest_version set state='active',activated_at='2026-10-16T12:01:00Z' where id=%L;
+    get diagnostics n=row_count;
+    if n<>1 then raise exception using errcode='23514',constraint='dec197_replacement_setup_check',message='replacement row absent'; end if;
+    raise exception using errcode='23514',constraint='dec197_injected_after_replacement',message='injected after both writes';
+  end; $replace$ $sql$,pg_temp.dr_id('manifest-a'),pg_temp.dr_id('manifest-b'))),
+  '23514:dec197_injected_after_replacement','DR-L18 injected fault is reached after both legal replacement writes');
+select is(pg_temp.dr_scalar(format('select jsonb_agg(to_jsonb(m) order by id)::text
+  from platform_private.route_manifest_version m where id in (%L,%L)',pg_temp.dr_id('manifest-a'),pg_temp.dr_id('manifest-b'))),
+  (select snapshot from dr_replacement_before),
+  'DR-L19 failed replacement preserves the complete original active and ready row images');
+
+select is(pg_temp.dr_result(format($sql$ do $replace$ begin
+  update platform_private.route_manifest_version set state='superseded' where id=%L;
+  update platform_private.route_manifest_version set state='active',activated_at='2026-10-16T12:01:00Z' where id=%L;
+end; $replace$ $sql$,pg_temp.dr_id('manifest-a'),pg_temp.dr_id('manifest-b')),true)->>'state','00000',
+  'DR-L20 legal replacement supersedes old and activates ready artifact in one statement transaction');
+select is(pg_temp.dr_scalar(format('select state || ''/'' || (activated_at=''2026-10-16T12:00:00Z''::timestamptz)::text
+  from platform_private.route_manifest_version where id=%L',pg_temp.dr_id('manifest-a'))),'superseded/true',
+  'DR-L21 active -> superseded retains original write-once activation instant');
+select is(pg_temp.dr_diag(format('update platform_private.route_manifest_version set state=''active'' where id=%L',
+  pg_temp.dr_id('manifest-a'))),'23514:route_manifest_version_transition_check','DR-L22 superseded never reactivates');
+select is(pg_temp.dr_diag(format('update platform_private.route_manifest_version set state=''ready'',activated_at=null where id=%L',
+  pg_temp.dr_id('manifest-a'))),'23514:route_manifest_version_transition_check','DR-L23 superseded never reverses to ready');
+select is(pg_temp.dr_diag(format('delete from platform_private.route_manifest_version where id=%L',pg_temp.dr_id('manifest-a'))),
+  '23514:route_manifest_version_delete_check','DR-L24 referenced superseded manifest deletion is refused by its own immutable-artifact guard');
+select is(pg_temp.dr_result(pg_temp.dr_manifest_sql('unreferenced-manifest'),true)->>'state','00000',
+  'DR-L25 unreferenced complete ready artifact exists for independent deletion refusal');
+select is(pg_temp.dr_diag(format('delete from platform_private.route_manifest_version where id=%L',pg_temp.dr_id('unreferenced-manifest'))),
+  '23514:route_manifest_version_delete_check','DR-L26 unreferenced ready artifact deletion is also refused');
+select is((select (r->>'state') || '/' || (r->>'rows') from (select pg_temp.dr_result(format('update platform_private.route_manifest_version set state=state,
+  activated_at=activated_at,id=id,version_no=version_no,publication_set_hash=publication_set_hash,generated_at=generated_at
+  where id=%L',pg_temp.dr_id('manifest-a')),true) r) q),'00000/1',
+  'DR-L27 exact no-op update preserves a sealed artifact without inventing a transition');
+select is(pg_temp.dr_scalar(format('select (state=''active'' and activated_at=''2026-10-16T12:01:00Z''::timestamptz)::text
+  from platform_private.route_manifest_version where id=%L',pg_temp.dr_id('manifest-b'))),'true',
+  'DR-L28 legal replacement leaves the intended new active row and activation instant');

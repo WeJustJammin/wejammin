@@ -5,6 +5,7 @@ import { createRequestId } from '@wejammin/contracts';
 import CmsCapabilityGrantConsoleIsland from '../../../components/cms-capability-grants/CmsCapabilityGrantConsoleIsland';
 import '../../../components/content-schema-registry/content-schema-registry.css';
 import '../../../components/cms-capability-grants/cms-capability-grants.css';
+import '../../../styles/cms-danger-action.css';
 import {
   cmsCapabilityGrantIdFromRequest,
   createCmsCapabilityGrantPlatformPorts,
@@ -25,6 +26,7 @@ import {
   isStepUpRequiredCode,
   stepUpTargetForLocation,
 } from '../../../components/step-up-required';
+import { cmsRedirectResponse } from '../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -56,10 +58,10 @@ if (Astro.request.method === 'POST') {
   );
   if (!mutation.ok) {
     if (isStepUpRequiredCode(await mutationFailureCode(mutation)))
-      return Astro.redirect(stepUpTargetForLocation(Astro.url), 303);
+      return cmsRedirectResponse(stepUpTargetForLocation(Astro.url));
     return mutation;
   }
-  return Astro.redirect(consolePath, 303);
+  return cmsRedirectResponse(consolePath);
 }
 let ports: CmsCapabilityGrantPorts | null;
 try {
@@ -73,9 +75,8 @@ const result = await resolveCmsCapabilityGrantPage({
   requestId,
 });
 if (result.kind === 'unauthenticated') {
-  return Astro.redirect(
+  return cmsRedirectResponse(
     `/auth/sign-in?returnTo=${encodeURIComponent(safeContentSchemaRegistryReturnPath(Astro.url))}`,
-    303,
   );
 }
 if (isCmsCapabilityGrantRefusal(result))

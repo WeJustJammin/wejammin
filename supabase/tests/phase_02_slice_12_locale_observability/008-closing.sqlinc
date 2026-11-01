@@ -1,0 +1,64 @@
+-- Case-insensitive locale identity, then the shape and no-write proofs.  Continues 007 (gauge 3: E1 de-DE legal, E2 legal+terms).
+-- cms_locale_variants.locale only checks the tag grammar, so a differently cased tag is the same locale aggregate
+-- (cmsLocaleVariantRead and cms_locale_variant_state compare lower(locale)).  No real writer stores a second case, so this
+-- state is NOT reachable through a producer.  It is built FK-consistently: a matching `de-de` revision row is forged first,
+-- because cms_locale_variants_revision_locale_fkey binds (revision_id, locale) to the revision's own locale (V3 F-6).
+
+select set_config('app.cms_rpc', 'true', true);
+set local session_replication_role = replica;
+create temp table l208_cased on commit drop as
+with source_variant as (
+  select v.* from platform_private.cms_locale_variants v
+   where v.entry_id = pg_temp.l12_entry() and v.locale = 'de-DE' and v.state = 'stale'
+), forged_revision as (
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id, template_version_id, taxonomy_version_ids,
+    parent_revision_ids, locale, payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at)
+  select extensions.gen_random_uuid(), r.owner_id, r.entry_id, r.revision_number, r.schema_version_id, r.template_version_id,
+         r.taxonomy_version_ids, r.parent_revision_ids, 'de-de', r.payload_hash, r.author_person_id, r.acting_party_id,
+         r.state, r.version, r.validation_state, r.validation_report, r.created_at, r.updated_at
+    from platform_private.cms_entry_revisions r join source_variant s on s.revision_id = r.id
+  returning id
+), forged_variant as (
+  insert into platform_private.cms_locale_variants(
+    id, owner_id, state, version, created_at, updated_at, entry_id, revision_id, source_revision_id, locale,
+    source_locale, source_hash, fallback_chain, no_fallback_field_ids, created_by, field_source_hashes, stale_field_ids)
+  select extensions.gen_random_uuid(), s.owner_id, 'draft', s.version + 1, '2026-10-22 12:05:00+00', '2026-10-22 12:05:00+00',
+         s.entry_id, (select id from forged_revision), s.source_revision_id, 'de-de', s.source_locale, s.source_hash,
+         s.fallback_chain, s.no_fallback_field_ids, s.created_by, s.field_source_hashes, '[]'::jsonb
+    from source_variant s
+  returning id)
+select (select count(*) from forged_revision)::integer as revisions, (select count(*) from forged_variant)::integer as variants;
+set local session_replication_role = origin;
+select set_config('app.cms_rpc', 'true', true);
+select is((select revisions || '/' || variants from l208_cased), '1/1', 'control: a de-de revision and a newer de-de draft row are stored');
+select is((select count(*)::integer from platform_private.cms_locale_variants v
+            where v.entry_id = pg_temp.l12_entry()
+              and not exists (select 1 from platform_private.cms_entry_revisions r
+                               where r.id = v.revision_id and r.locale = v.locale and r.entry_id = v.entry_id)), 0,
+  'control: every variant row of E1, the forged one included, satisfies the revision-locale foreign key (V3 F-6)');
+select is(pg_temp.l208_gauge(), '2',
+  'a newer row of the same case-insensitive locale supersedes the de-DE stale row: E1''s de-DE legal falls out, E2''s two remain [P2-S12-AC-052]');
+
+-- ---- the answer is exactly three non-negative integers, nothing else ----------------------------------------------
+create temp table l208_last on commit drop as select pg_temp.l208_read('2026-10-22 12:00:00+00', '2026-10-22 12:01:00+00') as answer;
+select is((select answer - 'staleLegalFields' from l208_last), '{"fanoutRows":2,"staleFieldsAppended":4}'::jsonb,
+  'the pinned window is unchanged by everything above (append history) [P2-S12-AC-052]');
+select is((select array_agg(key order by key) from l208_last, jsonb_object_keys(answer) key),
+  array['fanoutRows', 'staleFieldsAppended', 'staleLegalFields'],
+  'the answer has exactly the three keys fanoutRows, staleFieldsAppended, staleLegalFields and no id, locale, field id or text [P2-S12-AC-052]');
+select is((select bool_and(jsonb_typeof(value) = 'number' and value = to_jsonb(trunc((value #>> '{}')::numeric)) and (value #>> '{}')::numeric >= 0)
+             from l208_last, jsonb_each(answer)), true,
+  'each member is a non-negative integer JSON number [P2-S12-AC-052]');
+select ok((select answer::text !~ '[0-9a-f]{8}-[0-9a-f]{4}-' and answer::text !~* '(Titre|Mentions|Source|fr-FR|de-DE)' from l208_last),
+  'no identifier, locale tag or text appears in the answer [P2-S12-AC-052]');
+
+-- ---- a read writes and locks nothing ---------------------------------------------------------------------------------
+create temp table l208_pre on commit drop as select pg_temp.l208_evidence() as value;
+select pg_temp.l208_read('2026-10-22 12:00:00+00', '2026-10-22 12:01:00+00');
+select pg_temp.l208_read('2030-01-01 00:00:00+00', '2030-01-01 00:01:00+00');
+select is(pg_temp.l208_evidence(), (select value from l208_pre),
+  'repeated reads leave variants, revisions, values, audit, receipts, outbox and entry versions untouched [P2-S12-AC-052]');
+select is(pg_temp.l208_read('2026-10-22 12:00:00+00', '2026-10-22 12:01:00+00'), (select answer from l208_last),
+  'two reads of unchanged state are byte-identical [P2-S12-AC-052]');

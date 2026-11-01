@@ -1,0 +1,12 @@
+     × D1 403 renders CapabilityGate 105ms
+     × D6 canonical_overlap copy is at the term key field 62ms
+     × D7 csrf-less commit control states its reason 28ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 3 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected null not to be null
+AssertionError: expected null to be 'true' // Object.is equality
+- Expected:
++ Received:
+AssertionError: expected 'TermsTerm actions run under the activ…' to match /security token|protected form sessio…/u
+- Expected:
++ Received:
+      Tests  3 failed (3)

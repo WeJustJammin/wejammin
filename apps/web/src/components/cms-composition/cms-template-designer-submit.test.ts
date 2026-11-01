@@ -27,6 +27,7 @@ const resource = {
   createdAt: '2026-09-27T12:00:00.000Z',
   updatedAt: '2026-09-27T12:00:00.000Z',
   state: 'draft',
+  templateId: '90000000-0000-4000-8000-000000000009',
   templateKey: 'release-note',
   templateVersion: 1,
   compatibleTypeIds: [TYPE_ID],
@@ -175,9 +176,9 @@ describe('CMS-11 first-party draft submission', () => {
     [415, 'UNSUPPORTED_MEDIA_TYPE'],
     [422, 'TEMPLATE_VALIDATION_FAILED'],
     [500, 'INTERNAL_ERROR'],
-    [502, 'DEPENDENCY_INVALID_RESPONSE'],
+    [502, 'DEPENDENCY_UNAVAILABLE'],
     [503, 'DEPENDENCY_UNAVAILABLE'],
-    [504, 'DEPENDENCY_DEADLINE_EXCEEDED'],
+    [504, 'DEPENDENCY_UNAVAILABLE'],
   ])('accepts only BE03c %i %s as a typed refusal', async (status, code) => {
     const fetcher = vi
       .fn<typeof fetch>()

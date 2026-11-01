@@ -1,0 +1,151 @@
+-- DEC-197 labelled storage fixtures, not compiler/delivery/append-producer proof.
+-- Include after the schema prelude and shared 000/001/002/004 fragments. No TAP
+-- assertions, role/grant changes, trigger disabling or audit/outbox writes here.
+-- Each entrypoint rolls back these private pg_temp registries and guarded rows.
+create temp table h11d_publications (
+  id uuid primary key, label text not null, publication_hash text not null
+) on commit drop;
+create temp table h11d_receivers (
+  publication_id uuid not null, variant text not null,
+  projection_id uuid not null unique, manifest_id uuid not null unique,
+  frozen_input jsonb not null, primary key (publication_id, variant)
+) on commit drop;
+
+-- A first-row publication fixture with real revision/review/version-set evidence.
+-- Deliberately NOT cms_append_publication_lineage: only the suites' actual append
+-- calls own their audit/event assertions (including exactly three change events).
+create or replace function pg_temp.h11d_publication(
+  p_id uuid, p_revision uuid, p_audience text, p_at timestamptz
+)
+returns void language plpgsql set search_path = '' as $body$
+declare
+  revision_row platform_private.cms_entry_revisions%rowtype;
+  manifest jsonb;
+  version_set jsonb;
+  frozen_dependency_hash text;
+  approved_review uuid;
+  publication_hash text;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  select r.* into strict revision_row from platform_private.cms_entry_revisions r where r.id = p_revision;
+  manifest := platform_private.cms_build_dependency_manifest(p_revision);
+  version_set := platform_private.cms_revision_version_set(p_revision, manifest);
+  frozen_dependency_hash := platform_private.cms_jcs_sha256(manifest);
+  select r.id into approved_review from platform_private.cms_editorial_reviews r
+   where r.revision_id = p_revision and r.state = 'approved' and r.dependency_hash = frozen_dependency_hash
+   order by r.id limit 1;
+  if approved_review is null then
+    raise exception 'H11D_APPROVED_REVIEW_MISSING' using errcode = 'P0001';
+  end if;
+  publication_hash := platform_private.cms_jcs_sha256(pg_catalog.jsonb_build_object(
+    'action', 'publish', 'audience', p_audience, 'dependencyHash', frozen_dependency_hash,
+    'entryId', revision_row.entry_id, 'locale', revision_row.locale, 'publicationId', p_id,
+    'revisionId', p_revision, 'supersedesId', null, 'version', 1, 'versionSet', version_set));
+  insert into platform_private.cms_publication_versions(
+    id, owner_id, state, version, publication_id, supersedes_id, action, entry_id, revision_id,
+    schedule_id, publisher_person_id, dependency_hash, activation_evidence_hash,
+    schema_artifact_id, schema_artifact_hash, version_set, schema_version_id,
+    template_version_id, taxonomy_version_ids, settings_version, locale, audience,
+    publication_hash, activated_at, revoked_at, created_at, updated_at
+  ) values (
+    p_id, revision_row.owner_id, 'active', 1, p_id, null, 'publish', revision_row.entry_id, p_revision,
+    null, pg_temp.s11_id('reviewer04'), frozen_dependency_hash, platform_private.cms_activation_evidence_hash(approved_review),
+    (version_set->'schemaArtifact'->>'id')::uuid, version_set->'schemaArtifact'->>'artifactHash',
+    version_set, revision_row.schema_version_id, revision_row.template_version_id,
+    version_set->'taxonomyVersionIds', (version_set->>'settingsVersion')::bigint, revision_row.locale, p_audience,
+    publication_hash, p_at, null, p_at, p_at
+  );
+  insert into pg_temp.h11d_publications(id, label, publication_hash)
+  select p.id, p_audience, p.publication_hash::text from platform_private.cms_publication_versions p where p.id = p_id;
+end;
+$body$;
+
+-- One receiver per real publication VERSION and variant. Unknown parents raise;
+-- this helper never fabricates a publication to make a negative probe succeed.
+-- The registered, labelled version rows are the complete fixture compilation
+-- input at creation. The actual appended probe row is registered only AFTER its
+-- guarded INSERT; earlier sealed artifacts retain their original frozen inputs.
+create or replace function pg_temp.h11d_receiver(p_publication uuid, p_variant text default 'p1')
+returns uuid language plpgsql set search_path = '' as $body$
+declare
+  publication_row platform_private.cms_publication_versions%rowtype;
+  projection_uuid uuid;
+  manifest_uuid uuid;
+  frozen jsonb;
+  payload jsonb;
+  stamp timestamptz := pg_catalog.clock_timestamp();
+begin
+  select r.projection_id into projection_uuid from pg_temp.h11d_receivers r
+   where r.publication_id = p_publication and r.variant = p_variant;
+  if found then return projection_uuid; end if;
+  select p.* into strict publication_row from platform_private.cms_publication_versions p where p.id = p_publication;
+  if p_variant is null then raise exception 'H11D_VARIANT_MISSING' using errcode = '22023'; end if;
+  insert into pg_temp.h11d_publications(id, label, publication_hash)
+  values (publication_row.id, 'append:' || publication_row.id::text, publication_row.publication_hash::text)
+  on conflict (id) do nothing;
+  select pg_catalog.jsonb_build_object('publicationVersions', pg_catalog.jsonb_agg(
+    pg_catalog.jsonb_build_object('publicationVersionId', p.id::text, 'publicationHash', p.publication_hash::text)
+    order by p.id::text collate "C")) into frozen
+    from pg_temp.h11d_publications f join platform_private.cms_publication_versions p on p.id = f.id;
+  projection_uuid := pg_temp.h11w_uuid('delivery-projection:' || p_publication::text || ':' || p_variant);
+  manifest_uuid := pg_temp.h11w_uuid('delivery-manifest:' || p_publication::text || ':' || p_variant);
+  payload := pg_catalog.jsonb_build_object('publicationVersionId', p_publication, 'fixtureVariant', p_variant);
+  insert into platform_private.route_manifest_version(
+    id, version_no, publication_set_hash, state, generated_at, activated_at
+  ) values (manifest_uuid, default, platform_private.cms_jcs_sha256(frozen), 'ready', stamp, null);
+  insert into platform_private.publication_projection(
+    id, publication_id, route_manifest_id, locale, audience, render_payload, render_hash,
+    discovery_hash, required_refs, state, version, created_at, updated_at
+  ) values (
+    projection_uuid, p_publication, manifest_uuid, publication_row.locale, publication_row.audience,
+    payload, platform_private.cms_jcs_sha256(payload),
+    platform_private.cms_jcs_sha256(pg_catalog.jsonb_build_object(
+      'publicationVersionId', p_publication, 'locale', publication_row.locale, 'audience', publication_row.audience)),
+    '[]'::jsonb, 'ready', 1, stamp, stamp
+  );
+  insert into pg_temp.h11d_receivers(publication_id, variant, projection_id, manifest_id, frozen_input)
+  values (p_publication, p_variant, projection_uuid, manifest_uuid, frozen);
+  return projection_uuid;
+end;
+$body$;
+
+-- Exact ordered consumer FK plus its actual validated parent PK/unique index.
+create or replace function pg_temp.h11d_consumer_fk(
+  p_name text, p_columns text[], p_parent text, p_parent_columns text[]
+)
+returns boolean language sql stable set search_path = '' as $body$
+  select exists (
+    select 1 from pg_catalog.pg_constraint c
+     where c.conrelid = pg_catalog.to_regclass('platform_private.projection_consumer_state')
+       and c.conname = p_name and c.contype = 'f' and c.convalidated
+       and not c.condeferrable and not c.condeferred and c.confmatchtype = 's'
+       and c.confupdtype in ('a', 'r') and c.confdeltype in ('a', 'r')
+       and c.confrelid = pg_catalog.to_regclass(p_parent)
+       and array(select a.attname::text from pg_catalog.unnest(c.conkey) with ordinality k(num, pos)
+         join pg_catalog.pg_attribute a on a.attrelid = c.conrelid and a.attnum = k.num order by k.pos) = p_columns
+       and array(select a.attname::text from pg_catalog.unnest(c.confkey) with ordinality k(num, pos)
+         join pg_catalog.pg_attribute a on a.attrelid = c.confrelid and a.attnum = k.num order by k.pos) = p_parent_columns
+       and exists (select 1 from pg_catalog.pg_constraint parent_key
+         join pg_catalog.pg_index i on i.indexrelid = parent_key.conindid
+         where parent_key.conrelid = c.confrelid and parent_key.contype in ('p', 'u')
+           and parent_key.convalidated and parent_key.conkey = c.confkey and parent_key.conindid = c.conindid
+           and i.indisunique and i.indisvalid and i.indisready and i.indnatts = i.indnkeyatts)
+  )
+$body$;
+
+-- Both accepted and refused writes roll back. Only the actual SQLSTATE and
+-- constraint are returned, so a guard failure cannot masquerade as an FK denial.
+create or replace function pg_temp.h11d_diag(p_sql text)
+returns text language plpgsql set search_path = '' as $body$
+declare refusal_constraint text;
+begin
+  begin
+    execute p_sql;
+    raise exception 'H11D_PROBE_ACCEPTED';
+  exception when others then
+    if sqlerrm = 'H11D_PROBE_ACCEPTED' then return '00000:'; end if;
+    get stacked diagnostics refusal_constraint = constraint_name;
+    return sqlstate || ':' || coalesce(refusal_constraint, '');
+  end;
+end;
+$body$;

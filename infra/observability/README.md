@@ -5,6 +5,9 @@
 - Alert policy, thresholds, contracts, evaluator, and provider-free boundary
 - Local verification command and production observability handoff
 
+- Slice 12 (BE03c Observability) alert policy and provider-free delivery seam
+  (`cms-composition-alert-policy.ts`, `cms-composition-alert-boundary.ts`)
+
 ## Ownership
 
 The `infra/observability` modules own redacted S09 aggregate evaluation and
@@ -23,10 +26,15 @@ Keep telemetry fields compatible with the structured observability contracts;
 never accept request bodies, cookies, tokens, content values, or capability
 graphs in this boundary.
 
+The Slice 12 policy evaluates DLQ depth, outbox age, a blocked activation, the stale locale legal-field count,
+a failed locale observability read (DEC-220, stateless) and the target-filter anomaly from a redacted aggregate snapshot (runbook `cms-composition`); like Slice 09 it
+is provider-free and the repository deploys no provider-side rule for it yet.
+
 ## Related links
 
 - `tests/observability/phase-02-slice-09-alert-policy.test.ts`
 - `tests/observability/phase-02-slice-09-alert-boundary.test.ts`
+- `tests/observability/phase-02-slice-12-alert-policy.test.ts`
 - `docs/local-bootstrap.md`
 
 `content-schema-registry-alert-policy.ts` is the public, tested, side-effect-free

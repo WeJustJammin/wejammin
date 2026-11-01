@@ -1,4 +1,5 @@
-import { validateCmsFieldValue } from '../cms-editorial-fields/cms-field-value';
+import { retryable } from '../../lib/retryable-import';
+import { rateLimitMessage } from '../../lib/rate-limit-message';
 import { cmsEditorialAppEntryPath } from './cms-editorial-app-routes';
 import type {
   CmsEditorialConflictResolveRequest,
@@ -6,6 +7,9 @@ import type {
 } from './cms-editorial-conflict-resolve';
 import {
   conflictPathViewsFrom,
+  conflictRebindRefused,
+  conflictRefusalRefreshesTaxonomy,
+  conflictReloadFailedState,
   retainConflictChoices,
   initialConflictState,
   type CmsEditorialConflictState,
@@ -14,6 +18,11 @@ import {
   newCmsEditorialIdempotencyKey,
   READ_CSRF_COOKIE_FROM_DOCUMENT,
 } from './cms-editorial-request-support';
+import {
+  attemptsWaitingMessage,
+  conflictResolveRequest,
+  unresolvedConflictFieldIds,
+} from './cms-editorial-conflict-request';
 import { COPY, refusedFromViolations } from './cms-editorial-conflict-copy';
 import type {
   CmsEditorialConflictController,
@@ -25,6 +34,14 @@ export type {
   CmsEditorialConflictController,
   CmsEditorialConflictControllerDeps,
 } from './cms-editorial-conflict-controller-types';
+
+const loadDraftDetail = retryable(
+  () => import('./cms-editorial-entry-draft-detail-transport'),
+);
+const loadConflictDetail = retryable(
+  () => import('./cms-editorial-conflict-detail-transport'),
+);
+const loadResolve = retryable(() => import('./cms-editorial-conflict-resolve'));
 
 /**
  * The state machine of the CMS-06 resolution form (BE03b CMS-03B-02). No winner
@@ -61,10 +78,7 @@ export const createCmsEditorialConflictController = (
   // loading strategy", AC-106). A chunk that cannot be fetched sent nothing.
   const close = async (): Promise<void> => {
     // The draft is re-read so the entry page the author returns to is canonical.
-    const draftDetail =
-      await import('./cms-editorial-entry-draft-detail-transport').catch(
-        () => null,
-      );
+    const draftDetail = await loadDraftDetail().catch(() => null);
     await draftDetail?.executeCmsEditorialEntryDraftDetailRead({
       basePath: '/api/v1/cms/entries',
       entryId: init.entryId,
@@ -75,10 +89,7 @@ export const createCmsEditorialConflictController = (
   };
 
   const reloadAfterConflict = async (): Promise<void> => {
-    const detail =
-      await import('./cms-editorial-conflict-detail-transport').catch(
-        () => null,
-      );
+    const detail = await loadConflictDetail().catch(() => null);
     const read = await detail?.executeCmsEditorialConflictDetailRead({
       basePath: '/api/v1/cms/entries',
       entryId: init.entryId,
@@ -86,10 +97,23 @@ export const createCmsEditorialConflictController = (
       ...(deps.fetcher === undefined ? {} : { fetcher: deps.fetcher }),
     });
     if (read?.outcome === 'not-found') return close();
-    if (read?.outcome !== 'success' || read.resource === null) {
-      set({ phase: 'idle', alert: true, message: COPY.reloadFailed });
+    if (read?.outcome === 'rate-limited') {
+      // FE03 :1172: announce the remaining wait; every choice is kept.
+      set({
+        phase: 'idle',
+        alert: true,
+        retryAfterSeconds: read.retryAfterSeconds,
+        message: rateLimitMessage(read.retryAfterSeconds),
+      });
       return;
     }
+    if (read?.outcome !== 'success' || read.resource === null) {
+      set(conflictReloadFailedState(COPY.reloadFailed));
+      return;
+    }
+    // A re-read naming another theirs revision is a failed reload, not an adopt.
+    if (conflictRebindRefused(init.taxonomyContext, read.resource))
+      return set(conflictReloadFailedState(COPY.reloadFailed));
     const paths = conflictPathViewsFrom(read.resource);
     const { choices, reset } = retainConflictChoices(
       state.paths,
@@ -151,11 +175,10 @@ export const createCmsEditorialConflictController = (
         phase: 'waiting',
         alert: false,
         retryAfterSeconds: result.retryAfterSeconds,
-        message:
-          result.retryAfterSeconds === null
-            ? 'Too many attempts. Try again shortly; your choices are kept.'
-            : `Too many attempts. Try again in ${result.retryAfterSeconds} seconds; your choices are kept.`,
+        message: attemptsWaitingMessage(result.retryAfterSeconds),
       });
+    if (conflictRefusalRefreshesTaxonomy(result))
+      set({ taxonomyRefreshToken: state.taxonomyRefreshToken + 1 });
     set({
       phase: 'invalid',
       alert: false,
@@ -178,9 +201,7 @@ export const createCmsEditorialConflictController = (
     inFlight = true;
     set({ phase: 'submitting', alert: false, message: COPY.submitting });
     try {
-      const resolve = await import('./cms-editorial-conflict-resolve').catch(
-        () => null,
-      );
+      const resolve = await loadResolve().catch(() => null);
       if (resolve === null) {
         // Nothing was sent: the identical request is replayed under its key.
         set({ phase: 'unknown', alert: false, message: COPY.unknown });
@@ -206,19 +227,7 @@ export const createCmsEditorialConflictController = (
       if (csrf !== null) await send(pending, csrf);
       return;
     }
-    const refused = state.paths
-      .filter((path) => {
-        const entry = state.choices[path.fieldId];
-        if (entry === undefined || entry.choice === null) return true;
-        if (state.inputErrors[path.fieldId] !== undefined) return true;
-        if (entry.choice !== 'explicit') return false;
-        const descriptor = descriptors.get(path.fieldId);
-        return (
-          descriptor === undefined ||
-          validateCmsFieldValue(descriptor, entry.explicit).length > 0
-        );
-      })
-      .map((path) => path.fieldId);
+    const refused = unresolvedConflictFieldIds(state, descriptors);
     if (refused.length > 0) {
       set({
         phase: 'invalid',
@@ -233,26 +242,10 @@ export const createCmsEditorialConflictController = (
       set({ phase: 'invalid', alert: true, message: COPY.csrf });
       return;
     }
-    const fieldIds = state.paths.map((path) => path.fieldId);
     pending = {
-      fieldIds,
+      fieldIds: state.paths.map((path) => path.fieldId),
       key: (deps.newKey ?? newCmsEditorialIdempotencyKey)() ?? 'fallback',
-      request: {
-        entryId: init.entryId,
-        conflictId: init.conflictId,
-        baseRevision: state.baseRevision,
-        expectedVersion: state.entryVersion,
-        choices: fieldIds.map((fieldId) => {
-          const entry = state.choices[fieldId];
-          return entry?.choice === 'explicit'
-            ? {
-                path: `/fields/${fieldId}`,
-                choice: 'explicit' as const,
-                value: entry.explicit,
-              }
-            : { path: `/fields/${fieldId}`, choice: entry?.choice ?? 'base' };
-        }),
-      },
+      request: conflictResolveRequest(init, state),
     };
     await send(pending, csrf);
   };

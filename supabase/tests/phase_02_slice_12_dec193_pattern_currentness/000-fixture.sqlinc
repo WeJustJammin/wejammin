@@ -1,0 +1,195 @@
+-- Real signed/governed consumer producers were included above. Additional row
+-- copies below are explicitly guarded READ fixtures, never carry/writer proof.
+create temp table s12pc_out(label text primary key,tag text,phase text,
+  manifest jsonb,report jsonb,status text,sqlstate text,message text) on commit drop;
+
+create function pg_temp.s12pc_patterns(p_labels text[]) returns jsonb
+language sql stable as $body$
+  select coalesce(jsonb_agg(jsonb_build_object('id',pattern.id,'hash',pattern.content_hash)
+    order by pattern.id),'[]'::jsonb)
+  from platform_private.cms_pattern_versions pattern
+  where pattern.id in (select (pg_temp.s12pd_body(label)->>'id')::uuid
+    from unnest(p_labels) label)
+$body$;
+
+-- The caller supplies the independent closed reachable set. This only looks up
+-- its signed identities; it never invokes a manifest/graph/digest implementation.
+create function pg_temp.s12pc_blocks(p_refs jsonb) returns jsonb
+language sql stable as $body$
+  select coalesce(jsonb_agg(jsonb_build_object('id',block.id,'hash',block.release_digest)
+    order by block.id),'[]'::jsonb)
+  from platform_private.cms_block_definition_versions block
+  where exists(select 1 from jsonb_array_elements(p_refs) ref
+    where block.block_key=ref->>0 and block.block_version=(ref->>1)::bigint)
+$body$;
+
+create function pg_temp.s12pc_snapshot() returns jsonb
+language plpgsql volatile as $body$
+declare answer jsonb:=pg_temp.s12pl_snapshot(); store record; rows_json jsonb;
+begin
+  -- Include every real CMS store, not only the expected write tail. No vault or
+  -- signing-key read; inherited snapshots cover audit/outbox/idempotency/grants.
+  for store in select c.relname from pg_catalog.pg_class c
+    join pg_catalog.pg_namespace n on n.oid=c.relnamespace
+    where n.nspname='platform_private' and c.relkind in ('r','p')
+      and c.relname like 'cms\_%' escape '\' order by c.relname loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(r) order by to_jsonb(r)::text),''[]''::jsonb)
+      from platform_private.%I r',store.relname) into rows_json;
+    answer:=answer||jsonb_build_object('platform_private.'||store.relname,rows_json);
+  end loop;
+  return answer;
+end;
+$body$;
+
+create function pg_temp.s12pc_stale(p_label text,p_tag text,p_manifest jsonb)
+returns setof text language plpgsql as $body$
+declare answer text; code text:='00000'; message text;
+  prior_rpc text:=current_setting('app.cms_rpc',true); prior_role text:=current_setting('role');
+  before_rows jsonb:=pg_temp.s12pc_snapshot();
+begin
+  if to_regprocedure('platform_private.cms_frozen_dependencies_status(uuid,jsonb)') is null then
+    return next extensions.fail(p_label||': actual status signature available'); return;
+  end if;
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    execute 'select platform_private.cms_frozen_dependencies_status($1,$2)' into answer
+      using pg_temp.s12pl_rev(p_tag),p_manifest;
+  exception when others then get stacked diagnostics code=returned_sqlstate,message=message_text;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+  return next extensions.is(code||coalesce(':'||message,''),'00000',p_label||': malformed frozen input does not abort');
+  return next extensions.is(answer,'stale',p_label||': actual status fails closed');
+  return next extensions.is(pg_temp.s12pc_snapshot(),before_rows,p_label||': all persistent rows unchanged');
+  return next extensions.ok(current_setting('role')=prior_role
+    and coalesce(current_setting('app.cms_rpc',true),'')=coalesce(prior_rpc,''),p_label||': role/context preserved');
+end;
+$body$;
+
+create function pg_temp.s12pc_seed(p_label text,p_tag text,p_source uuid,p_patch jsonb default '{}')
+returns setof text language plpgsql as $body$
+declare source_row platform_private.cms_composition_instances;
+  candidate platform_private.cms_composition_instances; stamp timestamptz:=clock_timestamp();
+  prior_rpc text:=current_setting('app.cms_rpc',true); code text:='00000'; message text;
+begin
+  select * into source_row from platform_private.cms_composition_instances where id=p_source;
+  if source_row.id is null or pg_temp.s12pl_rev(p_tag) is null then
+    return next extensions.fail(p_label||': source row and owned destination revision exist'); return;
+  end if;
+  candidate:=jsonb_populate_record(null::platform_private.cms_composition_instances,
+    to_jsonb(source_row)||p_patch||jsonb_build_object('id',extensions.gen_random_uuid(),
+      'revision_id',pg_temp.s12pl_rev(p_tag),'owner_id',source_row.owner_id,
+      'created_at',stamp,'updated_at',stamp,'parent_instance_id',null));
+  select coalesce(max(version),0)+1 into candidate.version
+    from platform_private.cms_composition_instances
+    where revision_id=candidate.revision_id and path=candidate.path;
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    insert into platform_private.cms_composition_instances select (candidate).*;
+  exception when others then get stacked diagnostics code=returned_sqlstate,message=message_text;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+  return next extensions.is(code||coalesce(':'||message,''),'00000',p_label||': guarded read-fixture append succeeds');
+  return next extensions.is(pg_temp.s12pu_row(candidate.id),to_jsonb(candidate),p_label||': complete intended row stored');
+end;
+$body$;
+
+-- All expectations are supplied independently. Missing exact signatures yield
+-- TAP FAIL and return, never an undefined-function setup abort or fake report.
+create function pg_temp.s12pc_check(p_label text,p_tag text,p_reason text,p_current boolean,
+  p_patterns text[],p_blocks jsonb,p_phase text default 'submit',p_frozen jsonb default null,
+  p_control text default null,p_expected_count integer default 1) returns setof text language plpgsql as $body$
+declare required record; manifest jsonb; report jsonb; status text; observed jsonb;
+  categories jsonb; keys_valid boolean; before_rows jsonb:=pg_temp.s12pc_snapshot();
+  prior_rpc text:=current_setting('app.cms_rpc',true); prior_role text:=current_setting('role');
+  prior_user text:=current_user; code text:='00000'; message text; control_results jsonb; other_results jsonb;
+begin
+  for required in select * from (values
+    ('platform_private.cms_build_dependency_manifest(uuid)','jsonb'),
+    ('platform_private.cms_frozen_dependencies_status(uuid,jsonb)','text'),
+    ('platform_private.cms_evaluate_preflight(jsonb)','jsonb')) signatures(identity,result_type) loop
+    if not exists(select 1 from pg_catalog.pg_proc p where p.oid=to_regprocedure(required.identity)
+      and p.prokind='f' and not p.proretset and p.prorettype=to_regtype(required.result_type)) then
+      return next extensions.fail(p_label||': exact real signature available: '||required.identity); return;
+    end if;
+  end loop;
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    execute 'select platform_private.cms_build_dependency_manifest($1)' into manifest
+      using pg_temp.s12pl_rev(p_tag);
+    execute 'select platform_private.cms_frozen_dependencies_status($1,$2)' into status
+      using pg_temp.s12pl_rev(p_tag),coalesce(p_frozen,manifest);
+    execute 'select platform_private.cms_evaluate_preflight($1)' into report using jsonb_build_object(
+      'phase',p_phase,'revisionId',pg_temp.s12pl_rev(p_tag),'actingPartyId',pg_temp.s09d_id('ownerOrg'),
+      'actorPersonId',pg_temp.s09d_actor_id('owner','person'),
+      'frozenManifest',coalesce(p_frozen,manifest),
+      'effectiveAt',to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+  exception when others then get stacked diagnostics code=returned_sqlstate,message=message_text;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+  insert into s12pc_out values(p_label,p_tag,p_phase,manifest,report,status,code,message);
+  return next extensions.is(code||coalesce(':'||message,''),'00000',p_label||': actual manifest/status/evaluator execute');
+  return next extensions.is(manifest->'patterns',pg_temp.s12pc_patterns(p_patterns),p_label||': exact effective provenance/live membership');
+  return next extensions.is(manifest->'blocks',pg_temp.s12pc_blocks(p_blocks),p_label||': exact independent reachable block identities');
+  return next extensions.is(status,case when p_current then 'current' else 'stale' end,p_label||': actual revision-aware frozen status');
+  select coalesce(jsonb_agg(item order by ordinal),'[]'::jsonb),jsonb_agg(item->'category' order by ordinal)
+    into observed,categories from jsonb_array_elements(case when jsonb_typeof(report->'results')='array'
+      then report->'results' else '[]'::jsonb end) with ordinality items(item,ordinal);
+  return next extensions.is(categories,
+    '["contract","schema","template","block","pattern","taxonomy","settings","relation","privacy","security","accessibility","media","route","locale","migration","domain_binding","revocation"]'::jsonb,
+    p_label||': all seventeen actual results retained in registry order');
+  select coalesce(bool_and((select count(*)=6 and bool_and(key=any(array[
+    'category','outcome','providerKey','providerVersion','reasonCode','blockingCount']))
+    from jsonb_object_keys(case when jsonb_typeof(item)='object' then item else '{}'::jsonb end) key)),false)
+    into keys_valid from jsonb_array_elements(observed) item;
+  return next extensions.ok(keys_valid,p_label||': complete six-key objects, no extra findings');
+  return next extensions.is((select coalesce(jsonb_agg(item),'[]'::jsonb)
+    from jsonb_array_elements(observed) item where item->>'category'='pattern'),
+    jsonb_build_array(jsonb_build_object('category','pattern','providerKey','cms.pattern.active_digest',
+      'providerVersion','1','outcome',case when p_reason is null then 'passed' else 'failed' end,
+      'reasonCode',p_reason,'blockingCount',case when p_reason is null then 0 else p_expected_count end)),
+    p_label||': exact actual pattern provider outcome/reason/single-offender count');
+  return next extensions.is((select jsonb_agg(key order by key collate "C") from jsonb_object_keys(
+    case when jsonb_typeof(report)='object' then report else '{}'::jsonb end) key),
+    '["evaluatedAt","passed","results"]'::jsonb,p_label||': unchanged complete report envelope');
+  return next extensions.is(report->'passed',to_jsonb((select coalesce(bool_and(item->>'outcome'='passed'),false)
+    from jsonb_array_elements(observed) item)),p_label||': aggregate reflects every actual category');
+  if p_control is not null then
+    select jsonb_agg(item order by ordinal) into other_results from jsonb_array_elements(observed)
+      with ordinality items(item,ordinal) where item->>'category'<>'pattern';
+    select jsonb_agg(item order by ordinal) into control_results from s12pc_out c,
+      jsonb_array_elements(case when jsonb_typeof(c.report->'results')='array'
+        then c.report->'results' else '[]'::jsonb end) with ordinality items(item,ordinal)
+      where c.label=p_control and c.tag=p_tag and c.phase=p_phase and item->>'category'<>'pattern';
+    return next extensions.is(other_results,control_results,p_label||': other sixteen full results unchanged on same subject/phase');
+  end if;
+  return next extensions.is(pg_temp.s12pc_snapshot(),before_rows,p_label||': complete persistent CMS/audit/outbox/grant images unchanged');
+  return next extensions.ok(current_user=prior_user and current_setting('role')=prior_role
+    and coalesce(current_setting('app.cms_rpc',true),'')=coalesce(prior_rpc,''),p_label||': role and exact prior RPC context restored');
+end;
+$body$;
+
+create function pg_temp.s12pc_acl(p_identity text,p_role text) returns setof text
+language plpgsql as $body$
+declare prior_role text:=current_setting('role'); prior_user text:=current_user;
+  prior_rpc text:=current_setting('app.cms_rpc',true); called text; code text:='00000'; message text;
+  before_rows jsonb:=pg_temp.s12pc_snapshot(); proc oid:=to_regprocedure(p_identity);
+  revision_id uuid:=pg_temp.s12pl_rev('cs-detached');
+begin
+  if proc is null then return next extensions.fail('PC-ACL: exact signature available '||p_identity); return; end if;
+  return next extensions.ok(not has_function_privilege(p_role,proc,'execute'),'PC-ACL: '||p_role||' has no private EXECUTE '||p_identity);
+  perform set_config('role',p_role,true);
+  called:=current_user;
+  begin
+    if p_identity='platform_private.cms_evaluate_preflight(jsonb)' then
+      execute 'select platform_private.cms_evaluate_preflight($1)' using '{}'::jsonb;
+    else execute 'select platform_private.cms_frozen_dependencies_status($1,$2)' using revision_id,'{}'::jsonb;
+    end if;
+  exception when others then get stacked diagnostics code=returned_sqlstate,message=message_text;
+  end;
+  perform set_config('role',prior_role,true);
+  return next extensions.is(code,'42501','PC-ACL: actual '||called||' private call of '||p_identity||' refused before payload semantics');
+  return next extensions.is(pg_temp.s12pc_snapshot(),before_rows,'PC-ACL: refusal leaves all captured rows unchanged ('||p_role||' '||p_identity||')');
+  return next extensions.ok(current_user=prior_user and current_setting('role')=prior_role
+    and coalesce(current_setting('app.cms_rpc',true),'')=coalesce(prior_rpc,''),'PC-ACL: caller role/context restored ('||p_role||' '||p_identity||')');
+end;
+$body$;

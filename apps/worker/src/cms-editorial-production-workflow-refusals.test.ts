@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 import {} from '@wejammin/contracts';
 
@@ -7,6 +7,7 @@ import {
   hash,
   hash2,
   idempotencyKey,
+  instant,
   reviewId,
 } from './cms-editorial/workflow-fixtures.test-support';
 import {
@@ -22,6 +23,17 @@ import {
 } from './cms-editorial-production-workflow.test-support';
 import { json } from './cms-editorial-production.test-support';
 import { CMS_EDITORIAL_RPC } from './cms-editorial-production-types';
+
+// The production wiring reads the host clock. Pin only Date to the fixtures'
+// instant so their fixed schedule (2026-11-01T14:30Z) stays inside CMS-03B-07's
+// 60 s..366 d acceptance horizon whatever day the suite runs.
+beforeEach(() => {
+  vi.useFakeTimers({ toFake: ['Date'] });
+  vi.setSystemTime(Date.parse(instant));
+});
+afterEach(() => {
+  vi.useRealTimers();
+});
 
 /*
  * The Slice 11 operations through the real route -> production adapter chain:

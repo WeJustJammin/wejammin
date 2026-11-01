@@ -119,11 +119,11 @@ select throws_ok(
 select throws_ok(
   $$insert into platform_private.cms_related_content_rules(
       id, owner_id, version, source_entry_id, rule_key, rule_version,
-      mode, reason_code, created_by
+      mode, reason_code, max_candidates, created_by
     ) select 'a9140000-0000-4000-8000-000000000004',
       (select value::uuid from s10_ids where key = 'strangerPerson'),
       1, (select value::uuid from s10_ids where key = 'entryId'),
-      'same-tag', 1, 'derived', 'MATCHED_RULE',
+      'shared-terms', 1, 'derived', 'SHARED_TERMS', 4,
       (select value::uuid from s10_ids where key = 'creatorAuth')$$,
   '23503', null,
   'related-content source cannot claim another owner'

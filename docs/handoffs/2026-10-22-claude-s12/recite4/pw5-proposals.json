@@ -1,0 +1,534 @@
+[
+ {
+  "criterion": "P2-S12-AC-042",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "focus stays until navigation or named result heading",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-042] a successful successor save keeps focus off every other control while pending, then moves it to the named result",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:99-111 - while the held POST is pending no input/select/textarea/a has focus (toHaveCount(0)); after the 201 the status region carrying \"Draft version saved.\" toBeFocused (L114) and still is 500 ms later (L117). NOTE: the named result is a polite status region, not a heading element.",
+      "descriptionLine": 115
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   },
+   {
+    "index": 5,
+    "text": "Render authoritative response/version/provenance/next action",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-042] a successful successor save renders the authoritative version, the draft state and the next action, and the next action opens that very draft",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:121-133 - status text equals \"Template ID <response id>, version <response version>.\" (L137), \"This is not a published template.\", link \"Open latest draft\" href = the template page (L141); after following it the page edits the saved version and the latest read returns the same id/version. Parent-version provenance is not rendered (FE03 CMS-11 row names version and next action only).",
+      "descriptionLine": 137
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clause): \"scoped draft before commit\" (unit5 lane). Playwright proofs for focus and render written, pending root run; the result is a status region, not a named heading.",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-058",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "CMS-03C-04 is consumed by the protected `CmsLocaleVariantForm` at `/app/cms-content-modeling/entries/:entryId/locales/:locale`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-058] opens /entries/:entryId/locales/:locale and mounts the CmsLocaleVariantForm from the locale variant read",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:269-293 - the production-built locale page for an fr-FR-capable entry answers 200 no-store with h1 \"Translate\", mounts astro-island CmsLocaleVariantForm hydrated (L275); the Localizable fields group shows \"Source text (en-US)\" and the source title; Save translation is enabled.",
+      "descriptionLine": 275
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-075",
+  "clauses": [
+   {
+    "index": 8,
+    "text": "protected decision paths",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-protected-decision-real-route.spec.ts",
+      "title": "[P2-S12-AC-075] a protected review stays open after the base-slot approval, names the next required slot, and completes with the specialist approval",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "protected-decision:95-158 - protected vocabulary review (Risk class: Protected L124); base reviewer approves in the browser: State: Open and \"1 of 2 decisions recorded.\" (L127), policy lists cms.reviewer.policy; specialist approves in the browser: State: Approved and \"2 of 2 decisions recorded.\" (L147-149); database decision rows 1 then 2.",
+      "descriptionLine": 127
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-093",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "CMS-03C-10 is consumed by the protected `CmsGovernedReviewDetail` at `/app/cms-content-modeling/definition-reviews/:reviewId`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-093] opens /definition-reviews/:reviewId and mounts the CmsGovernedReviewDetail evidence for the owner",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:147-174 - the production-built review page answers 200 no-store, mounts astro-island CmsGovernedReviewDetailIsland hydrated (L152); [data-cms-governed-review-detail] shows the subject heading, State: Open, Subject: In review, the frozen subject hash and the policy section.",
+      "descriptionLine": 152
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-105",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "CMS-03C-12 is consumed by the protected `CmsPatternVersionDesigner` at `/app/cms-content-modeling/patterns/new` and `/app/cms-content-modeling/patterns/:patternKey`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-105] opens /patterns/new and mounts the CmsPatternVersionDesigner form for a template designer",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:176-192 - /patterns/new answers 200 no-store, h1 \"Pattern designer\", astro-island CmsPatternVersionDesigner hydrated (L179), \"Define a pattern\", Pattern definition group with an editable Pattern key, Block tree heading, no review panel.",
+      "descriptionLine": 179
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-105] [P2-S12-AC-176] opens /patterns/:patternKey and mounts the designer and the review panel from the latest read",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:194-223 - /patterns/:patternKey of a pattern SAVED through CMS-03C-12 answers 200, h1 \"Edit pattern draft\"; designer island (L203) and CmsGovernedPatternPanel island (L204) mounted; \"Edit <key>\", read-only key, \"Editing from version 1.\", facts \"Nodes after expansion\", \"Definition review\", \"Lifecycle: Draft\", Submit for review.",
+      "descriptionLine": 204
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-111",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "CMS-03C-13 is consumed by the protected `CmsPatternSelector` in the instance-insert form at `/app/cms-content-modeling/entries/:entryId/composition`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-111] opens /entries/:entryId/composition and mounts the CmsPatternSelector in the instance-insert form",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:247-267 - the production-built composition page of a real draft entry answers 200 no-store, h1 \"Composition\", astro-island CmsCompositionPage hydrated (L251); region \"Insert a pattern\" holds the native select labelled Pattern (never preselected, first option \"Choose a pattern\") and its \"<n> compatible patterns\" status.",
+      "descriptionLine": 251
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-129",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "CMS-03C-16 is consumed by the protected `CmsTaxonomyVersionDesigner` at `/app/cms-content-modeling/taxonomies/new` and `/app/cms-content-modeling/taxonomies/:taxonomyId`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-129] opens /taxonomies/new and mounts the CmsTaxonomyVersionDesigner form for a curator",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:86-103 - /taxonomies/new answers 200 no-store, h1 \"Vocabulary designer\", astro-island CmsTaxonomyVersionDesigner hydrated (L89), \"Define a vocabulary\", Vocabulary rules group, editable Vocabulary key, Create draft enabled.",
+      "descriptionLine": 89
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-129] [P2-S12-AC-182] opens /taxonomies/:taxonomyId and mounts the designer and the review panel from the versions read",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:105-145 - /taxonomies/:taxonomyId answers 200, h1 \"Govern a vocabulary\"; designer island (L114) and CmsGovernedTaxonomyPanel island (L115) mounted; \"Rules of <key>\", read-only key, version table caption \"Versions of this vocabulary, newest first (1)\", \"Definition review\", \"Lifecycle: Draft\", Submit for review.",
+      "descriptionLine": 115
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-164",
+  "clauses": [
+   {
+    "index": 3,
+    "text": "disable submission with the corresponding sign-in, capability, rate-wait or retry state when the context is missing, denied or degraded",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-164] without a protected form session the successor form is shown with submission disabled and says so",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:159-172 - no CSRF cookie: \"Reload to restore the protected form session.\" and Save successor draft toBeDisabled (L171).",
+      "descriptionLine": 171
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-164] a 401 answer shows the sign-in state, keeps the values and names the way on",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:203-243 (loop, 401) - alert with the state's fixed sentence, toBeFocused (L225), values kept, a second press sends again.",
+      "descriptionLine": 225
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-164] a 403 answer shows the capability state, keeps the values and names the way on",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:203-243 (loop, 403) - alert with the state's fixed sentence, toBeFocused (L225), values kept, a second press sends again.",
+      "descriptionLine": 225
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-164] a 503 answer shows the retry state, keeps the values and names the way on",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:203-243 (loop, 503) - alert with the state's fixed sentence, toBeFocused (L225), values kept, a second press sends again.",
+      "descriptionLine": 225
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-164] a 429 answer shows the rate-wait state, disables submission for the stated wait and then offers it again",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:245-274 - alert \"Wait at least 3 seconds before retrying.\", commit toBeDisabled (L268) then toBeEnabled within 15 s (L272).",
+      "descriptionLine": 268
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-164] a template key the protected read does not know is a closed page with no form",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:276-294 - 404 no-store (L285), \"Designer unavailable\", no form, no edit island.",
+      "descriptionLine": 285
+     }
+    ],
+    "staleExisting": [],
+    "gap": "BOUNDARY: page-level 403/429/5xx notices of new.astro and [templateKey].astro cannot be induced: the template Worker port is the test fixture cms-template-fixture.ts (fixed capability, no fault seam) and the page reads are server-side (not interceptable by the browser). Needs a seam in a file outside this lane's claim."
+   },
+   {
+    "index": 6,
+    "text": "verification covers each denied or degraded state",
+    "add": [],
+    "staleExisting": [],
+    "gap": "see clause 3: the form-level 401/403/429/503, missing-session and 404 states are covered; page-level 403/429/5xx are a BOUNDARY (fixture has no fault seam)."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited clause): page-level 403/429/5xx notices of the two template pages cannot be induced against the test-owned template fixture; the form-level sign-in, capability, rate-wait and retry states, the missing form session and the 404 closed page are proved in template-states.",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-176",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "cmsPatternLatestRead is consumed by the protected `CmsPatternVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/patterns/:patternKey`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-105] [P2-S12-AC-176] opens /patterns/:patternKey and mounts the designer and the review panel from the latest read",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:194-223 - /patterns/:patternKey of a pattern SAVED through CMS-03C-12 answers 200, h1 \"Edit pattern draft\"; designer island (L203) and CmsGovernedPatternPanel island (L204) mounted; \"Edit <key>\", read-only key, \"Editing from version 1.\", facts \"Nodes after expansion\", \"Definition review\", \"Lifecycle: Draft\", Submit for review.",
+      "descriptionLine": 204
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-176] a saved pattern is a 403 notice, not a form, for a session without the template designer capability",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:225-231 - a session without cms.template_designer gets 403 no-store, h1 \"Access denied\", the template-designer sentence, no designer/panel island, no form (L240).",
+      "descriptionLine": 240
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-182",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "cmsTaxonomyVersionsRead is consumed by the protected `CmsTaxonomyVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/taxonomies/:taxonomyId`",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-pages-real-route.spec.ts",
+      "title": "[P2-S12-AC-129] [P2-S12-AC-182] opens /taxonomies/:taxonomyId and mounts the designer and the review panel from the versions read",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-pages:105-145 - /taxonomies/:taxonomyId answers 200, h1 \"Govern a vocabulary\"; designer island (L114) and CmsGovernedTaxonomyPanel island (L115) mounted; \"Rules of <key>\", read-only key, version table caption \"Versions of this vocabulary, newest first (1)\", \"Definition review\", \"Lifecycle: Draft\", Submit for review.",
+      "descriptionLine": 115
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-265",
+  "clauses": [
+   {
+    "index": 2,
+    "text": "(a missing or expired session uses the allowlisted 303 sign-in redirect),",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-265] [P2-S12-AC-164] a missing session on the successor template page is the allowlisted 303 sign-in redirect and shows no form",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:14-75 (loop) - context.request.get(path, {maxRedirects:0}) status 303 (L317), Location /auth/sign-in with returnTo = the page path, no-store; the browser lands on /auth/sign-in with no template island.",
+      "descriptionLine": 317
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-265] [P2-S12-AC-164] an expired session on the successor template page is the allowlisted 303 sign-in redirect and shows no form",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:14-75 (loop) - context.request.get(path, {maxRedirects:0}) status 303 (L317), Location /auth/sign-in with returnTo = the page path, no-store; the browser lands on /auth/sign-in with no template island.",
+      "descriptionLine": 317
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-265] [P2-S12-AC-164] a missing session on the create template page is the allowlisted 303 sign-in redirect and shows no form",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:14-75 (loop) - context.request.get(path, {maxRedirects:0}) status 303 (L317), Location /auth/sign-in with returnTo = the page path, no-store; the browser lands on /auth/sign-in with no template island.",
+      "descriptionLine": 317
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-265] [P2-S12-AC-164] an expired session on the create template page is the allowlisted 303 sign-in redirect and shows no form",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:14-75 (loop) - context.request.get(path, {maxRedirects:0}) status 303 (L317), Location /auth/sign-in with returnTo = the page path, no-store; the browser lands on /auth/sign-in with no template island.",
+      "descriptionLine": 317
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   },
+   {
+    "index": 7,
+    "text": "`new` never resolve as `:templateKey`,",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-265] /templates/new is the create page and never resolves as a template key",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:330-339 - GET /templates/new answers 200, h1 \"Template designer\", not \"Not found\", create island hydrated, no successor island (L349), no request to /api/v1/cms/templates/new.",
+      "descriptionLine": 349
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   },
+   {
+    "index": 9,
+    "text": "and Back restores the form without serializing a definition.",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-template-states-real-route.spec.ts",
+      "title": "[P2-S12-AC-265] Back restores the template form without serializing a definition into the URL, history or storage",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "template-states:359-368 - fill Audience with a marker, navigate away, page.goBack (L373): the form is hydrated and enabled; location.search/hash empty, history.state/localStorage/sessionStorage and every visited URL free of the marker.",
+      "descriptionLine": 373
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "verified",
+  "proposedLimitation": "",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ },
+ {
+  "criterion": "P2-S12-AC-273",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "End-to-end journeys: Playwright, using the real routes and two people, ...",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-journeys-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J1 a vocabulary is defined, submitted, assigned, decided and scheduled in the browser by three people, and a second one is activated and retired",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-journeys:263-328 - vocabulary define (browser form L271), submit (L275), assign (L276), decide keyboard-only at 640x400 (L277), schedule (L281); second vocabulary activate and retire (L305-306); no person id or content hash in URLs, console or storage (L311).",
+      "descriptionLine": 311
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-definition-journeys-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J2 a pattern is saved, submitted, assigned, decided, activated and retired by the designer, the owner and the reviewer",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "definition-journeys:330-377 - pattern submit/decide/activate/retire in the browser with the same identifier scan (L368).",
+      "descriptionLine": 368
+     }
+    ],
+    "staleExisting": [],
+    "gap": "PARTIAL, do not cite as closing the clause: no template journey (template routes are test-owned fixtures), no dependency invalidation, no linked update accepted/detached, no term merge with convergence, no locale variant with a no_fallback block, no related content pinned/excluded, no telemetry capture beyond browser console/requests."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited): template journey, dependency invalidation, linked pattern update accepted and detached, term merge convergence, locale no_fallback variant, related content pinned and excluded; J1/J2 prove vocabulary and pattern lifecycle journeys only.",
+  "lane": "claude_s12_gaps_pw5",
+  "runStatus": "pending root run: Playwright may not be run by this lane"
+ }
+]

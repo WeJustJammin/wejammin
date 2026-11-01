@@ -1,0 +1,60 @@
+-- CMS-03C-14 on the states of an instance: a pending_diff row (what the linked-update scan appends), a superseded older version row of a path, and
+-- a row that is no pattern instance.  The diff is a read of the named row.  BE03c 1367, 1475; AC-112, AC-114, AC-258.
+select pg_temp.s12pu_pending('st1', '/hero', 2) as pending_row \gset
+select pg_temp.s12pu_diff('s-pending', :'pending_row'::uuid);
+select * from pg_temp.s12pdf_check('s-pending', 'st1', '/hero', 'pending_diff', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/hero', '{"title":"H1"}', '{"title":"H2"}', null, null, array['/hero/title', '/hero/note']),
+  pg_temp.s12pdf_path('/hero/title', '{"title":"T1"}', '{"title":"T2"}', '{"title":"MINE"}', 'props')), false, '/', pg_temp.s12pdf_badge());
+select is(pg_temp.s12pu_body('s-pending')#>>'{instance,version}', '2', 'the pending_diff row is the second version of its path and the diff names it [AC-112]');
+select is(pg_temp.s12pl_q(format($sql$select pending_pattern_version::text from platform_private.cms_composition_instances where id = %L$sql$, :'pending_row')), '2',
+  'the fixture row carries pending_pattern_version 2 and is pinned to the unchanged pattern version 1 [AC-258]');
+
+-- The first version row of the same path is still readable by id, but it is HISTORY: rows are immutable and append-only, so a newer row of the
+-- path (the pending_diff head) has been appended and this one is no longer the head.  The diff answers the named row as stored (version 1,
+-- active, pinned to 1) and offers it NO update: an accept of it would be refused 409 VERSION_MISMATCH, so a diff with paths and bulkEligible
+-- true for it would invite a command that cannot succeed.  Empty paths, target = pinned, bulkEligible false.  [AC-112, AC-114]
+select pg_temp.s12pu_diff('s-first', (select id from platform_private.cms_composition_instances
+  where revision_id = pg_temp.s12pl_rev('st1') and path = '/hero' and version = 1));
+select is(pg_temp.s12pu_body('s-first'), jsonb_build_object(
+  'instance', jsonb_build_object('id', (select id from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('st1')
+      and path = '/hero' and version = 1), 'version', '1', 'revisionId', pg_temp.s12pl_rev('st1'), 'path', '/hero', 'state', 'active',
+    'linkMode', 'linked', 'pinnedPatternVersion', 1),
+  'slotPath', '/', 'targetPatternVersion', 1, 'paths', '[]'::jsonb, 'newRoots', '[]'::jsonb, 'collisionCount', 0, 'bulkEligible', false),
+  'the older (non-head) version row is answered as itself with the empty no-update diff: no live update is offered on history [AC-112]');
+select ok(pg_temp.s12pu_unchanged('s-first'), 'the history read changed no store');
+-- and the head of the same path still gets its update
+select ok(jsonb_array_length(pg_temp.s12pu_body('s-pending')->'paths') = 2 and pg_temp.s12pu_body('s-pending')->>'targetPatternVersion' = '2',
+  'control: the head row (pending_diff) of the same path is still offered pattern version 2');
+
+-- a row that is not a pattern instance has no update-diff
+select pg_temp.s12pl_entry('st2');
+select pg_temp.s12pl_row('st2', '/plain', 'root', 0) as plain_row \gset
+select * from pg_temp.s12pu_refused('s-plain', 'platform_api.cms_get_instance_update_diff', pg_temp.s12pu_diff_request(:'plain_row'::uuid), 'NOT_FOUND');
+
+-- state of a retired row: no update is offered.
+-- LABELLED FIXTURE (not a CMS-03C-15 product): the row below is a direct guarded insert under app.cms_rpc of a `retired` copy of the /cta head,
+-- still pinned to pattern version 1.  CMS-03C-15 itself retires a root by pinning the retired row to the TARGET version, so this shape (retired
+-- and pinned below a newer active version) is the strictest case for "a retired row is offered no update": it has an update available by version
+-- number and must still be answered empty.  The real retire producer is exercised by the pattern-updates suite (010-accept: rm1 /gone).
+select set_config('app.cms_rpc', 'true', true);
+insert into platform_private.cms_composition_instances
+select (jsonb_populate_record(null::platform_private.cms_composition_instances, to_jsonb(r)
+  || jsonb_build_object('id', extensions.gen_random_uuid(), 'state', 'retired', 'version', r.version + 1,
+       'created_at', transaction_timestamp(), 'updated_at', transaction_timestamp()))).*
+  from platform_private.cms_composition_instances r where r.revision_id = pg_temp.s12pl_rev('st1') and r.path = '/cta';
+select pg_temp.s12pu_diff_head('s-retired', 'st1', '/cta');
+select * from pg_temp.s12pdf_check('s-retired', 'st1', '/cta', 'retired', 'linked', 1, 1, '[]'::jsonb, false);
+
+-- state of a draft head: no update is offered (fix pass 2, R4).  Accept refuses any head that is not active or pending_diff (BE03c 1476), so a diff
+-- that offered a draft head an update (paths, bulkEligible true) would invite a command that cannot succeed.
+-- LABELLED FIXTURE (not a CMS-03C-15 product): no producer writes a linked `draft` row; this guarded direct insert under app.cms_rpc copies the
+-- /item head of `ver3` (pinned to pattern h version 1, whose active newer version 3 would otherwise be offered: control d-ver1 in 010-diff) as the
+-- next version in state draft.  It becomes a real state when the linked-update scan / draft lane exists.  [AC-112, AC-114, AC-120]
+select set_config('app.cms_rpc', 'true', true);
+insert into platform_private.cms_composition_instances
+select (jsonb_populate_record(null::platform_private.cms_composition_instances, to_jsonb(r)
+  || jsonb_build_object('id', extensions.gen_random_uuid(), 'state', 'draft', 'version', r.version + 1,
+       'created_at', transaction_timestamp(), 'updated_at', transaction_timestamp()))).*
+  from platform_private.cms_composition_instances r where r.revision_id = pg_temp.s12pl_rev('ver3') and r.path = '/item';
+select pg_temp.s12pu_diff_head('s-draft-head', 'ver3', '/item');
+select * from pg_temp.s12pdf_check('s-draft-head', 'ver3', '/item', 'draft', 'linked', 1, 1, '[]'::jsonb, false);

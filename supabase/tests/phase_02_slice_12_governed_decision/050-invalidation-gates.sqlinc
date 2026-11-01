@@ -1,0 +1,127 @@
+-- CMS-03C-07: the effective-assignment gates (R8), the dead review after a revoked standing grant (R7), the committed
+-- dependency_changed invalidation (R6, last: the successor activation changes the bound type for every review) and the
+-- privilege boundary.
+
+-- ------------------------------------------------------ R8: expired and revoked assignments --
+select pg_temp.s12ga_assign('r8-short', 'owner', pg_temp.s12ga_review('r8'), 'rev2', interval '5 seconds');
+select pg_temp.s12ga_assign('r8-d2', 'owner', pg_temp.s12ga_review('r8'), 'designer2', interval '1 hour');
+select pg_temp.s12ga_revoke('r8-d2-revoke', 'owner', pg_temp.s12ga_review('r8'), pg_temp.s12ga_aid(pg_temp.s12ga_review('r8'), 'designer2'));
+select pg_sleep(6);
+select pg_temp.s12ga_mark('r8:gates', pg_temp.s12ga_review('r8'));
+select pg_temp.s12ga_decide('r8-expired', 'rev2', pg_temp.s12ga_review('r8'), 'approve');
+select pg_temp.s12ga_decide('r8-revoked', 'designer2', pg_temp.s12ga_review('r8'), 'approve');
+select ok(pg_temp.s12ga_out('r8-short') = 'ok' and pg_temp.s12ga_out('r8-d2') = 'ok' and pg_temp.s12ga_out('r8-d2-revoke') = 'ok'
+    and pg_temp.s12ga_out('r8-expired') = 'P0001:capability_missing',
+  'an assignment whose window has ended still reads the review but cannot decide: 403 capability_missing [P2-S12-AC-072]');
+select ok(pg_temp.s12ga_out('r8-revoked') = 'P0001:NOT_FOUND',
+  'a revoked assignee has lost the read scope with the decide authority: the review is concealed, 404 [P2-S12-AC-072]');
+select ok(pg_temp.s12ga_same('r8:gates', pg_temp.s12ga_review('r8')),
+  'the expired and revoked refusals leave the covered stores identical [P2-S12-AC-074]');
+
+-- ------------------------------------------- R7: a counted approval that no longer counts is dead --
+select pg_temp.s12ga_decide('r7-first', 'rev1', pg_temp.s12ga_review('r7'), 'approve');
+create temp table s12ga_r7_before on commit drop as select pg_temp.s12ga_approvals(pg_temp.s12ga_review('r7')) as counted;
+-- LAG FIXTURE (002-lapse-helpers): since P2-S12-AC-204 (BE03c G6) every authority loss that has an event (the CMS-03A-17 revocation, a
+-- grant or tenure UPDATE or DELETE) invalidates the review in its own transaction, so the stored `approved` state this suite proves the
+-- decision recount must catch lags only for a grant that ENDS BY THE CALENDAR (its term passes without any write; the fixture reproduces exactly that read).
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('rev1'), 'cms.reviewer');
+select ok(not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('rev1'), 'cms.reviewer'),
+  'control: the cms.reviewer grant of rev1 lapsed by the calendar, so its standing authority no longer holds in the owner party [P2-S12-AC-072]');
+select ok(pg_temp.s12ga_out('r7-first') = 'ok'
+    and (select counted from s12ga_r7_before) = 1 and pg_temp.s12ga_approvals(pg_temp.s12ga_review('r7')) = 0
+    and (select recorded_decision_count from platform_private.cms_governed_reviews where id = pg_temp.s12ga_review('r7')) = 1,
+  'control: the recorded approval of rev1 counted (live recount 1) and no longer counts after the grant lapsed (0 of 1 recorded) [P2-S12-AC-072]');
+select pg_temp.s12ga_decide('r7-dead', 'designer2', pg_temp.s12ga_review('r7'), 'approve');
+select pg_temp.s12ga_keep('r7-dead', 'r7-dead');
+select ok(pg_temp.s12ga_out('r7-dead') = 'ok'
+    and pg_temp.s12ga_body('r7-dead') = '{"kind": "refusal", "details": {}, "reasonCode": "review_not_open"}'::jsonb,
+  'when the approvals still possible can no longer reach the required count, the committed refusal review_not_open is returned [P2-S12-AC-074]');
+select ok(
+  (select review.state = 'invalidated' and review.invalidated_reason = 'reviewer_authority_changed' and review.version = 3
+          and review.decided_at is null and review.recorded_decision_count = 1
+     from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r7'))
+  and (select count(*) from platform_private.cms_governed_review_decisions where review_id = pg_temp.s12ga_review('r7')) = 1
+  and (select subject.state = 'draft' and subject.lifecycle_version = 3
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('r7'))
+  and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('r7')) = 1
+  and exists (select 1 from platform_private.idempotency_records record
+               where record.operation = 'CMS-03C-07' and record.key_hash = platform_private.cms_key_hash('s12ga-r7-dead')
+                 and record.state = 'completed' and record.response_ref->>'status' = '409'),
+  'the dead review is invalidated reviewer_authority_changed at version 3, the subject returns to draft, no decision is added '
+  || 'and the committed refusal is stored with status 409 [P2-S12-AC-074]');
+select pg_temp.s12ga_mark('r7:dead', pg_temp.s12ga_review('r7'));
+select pg_temp.s12ga_decide('r7-dead', 'designer2', pg_temp.s12ga_review('r7'), 'approve', 'Reviewed against the frozen policy basis.',
+  jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select ok(pg_temp.s12ga_body('r7-dead') = pg_temp.s12ga_kept('r7-dead') and pg_temp.s12ga_same('r7:dead', pg_temp.s12ga_review('r7')),
+  'an exact replay of the committed refusal returns the same envelope and writes nothing more [P2-S12-AC-073]');
+
+-- R8, the standing grant: the r7 lapse is lifted (the function is restored), then the real
+-- CMS-03A-17 command revokes its cms.reviewer grant; rev1 still holds an assignment on R8 but no longer the cms.reviewer grant.  The
+-- revocation also closes the live reviews rev1 counted in (BE03c G6, P2-S12-AC-204): the later sections do not read them.
+select pg_temp.s12fr_restore();
+select is(pg_temp.s09d_revoke_via_rpc('rev1', 'cms.reviewer'), 'OK',
+  'control: the real CMS-03A-17 command revokes the standing cms.reviewer grant of rev1 [P2-S12-AC-072]');
+select pg_temp.s12ga_mark('r8:nogrant', pg_temp.s12ga_review('r8'));
+select pg_temp.s12ga_decide('r8-nogrant', 'rev1', pg_temp.s12ga_review('r8'), 'approve');
+select ok(pg_temp.s12ga_out('r8-nogrant') = 'P0001:capability_missing' and pg_temp.s12ga_same('r8:nogrant', pg_temp.s12ga_review('r8')),
+  'an assignee without the standing cms.reviewer grant is refused capability_missing and nothing changes [P2-S12-AC-072]');
+
+-- ------------------------------------------ R6: a changed dependency commits the invalidation --
+select pg_temp.s09d_successor('ordnew', 's12govordinary');
+select pg_temp.s09d_to_active('ordnew', array['rev3']);
+select ok(pg_temp.s09d_outcome('ordnew:activate') = 'OK'
+    and (select version_row.id <> (select value::uuid from s12gov_ids where key = 'typeVersionA')
+           from platform_private.cms_content_type_versions version_row
+          where version_row.content_type_id = (select value::uuid from s12gov_ids where key = 'typeA') and version_row.state = 'active'),
+  'control: a real successor of the bound content type is activated through the DEC-108 chain, so R6 depends on a superseded version [P2-S12-AC-073]');
+select pg_temp.s12ga_decide('r6-changed', 'rev2', pg_temp.s12ga_review('r6'), 'approve');
+select pg_temp.s12ga_keep('r6-changed', 'r6-changed');
+select ok(pg_temp.s12ga_out('r6-changed') = 'ok'
+    and pg_temp.s12ga_body('r6-changed') = '{"kind": "refusal", "details": {}, "reasonCode": "dependency_changed"}'::jsonb,
+  'a changed frozen dependency commits the invalidation and returns the dependency_changed refusal envelope [P2-S12-AC-074]');
+select ok(
+  (select review.state = 'invalidated' and review.invalidated_reason = 'dependency_changed' and review.version = 2
+          and review.decided_at is null and review.recorded_decision_count = 0
+     from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('r6'))
+  and (select count(*) from platform_private.cms_governed_review_decisions where review_id = pg_temp.s12ga_review('r6')) = 0
+  and (select subject.state = 'draft' and subject.lifecycle_version = 3 and subject.version = 1
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('r6'))
+  and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('r6')) = 1
+  and exists (select 1 from platform_private.idempotency_records record
+               where record.operation = 'CMS-03C-07' and record.key_hash = platform_private.cms_key_hash('s12ga-r6-changed')
+                 and record.state = 'completed' and record.response_ref->>'status' = '409'),
+  'the invalidation is committed: review invalidated dependency_changed at version 2, no decision, the subject back to draft, '
+  || 'one audit record and status 409 [P2-S12-AC-074]');
+select pg_temp.s12ga_mark('r6:changed', pg_temp.s12ga_review('r6'));
+select pg_temp.s12ga_decide('r6-changed', 'rev2', pg_temp.s12ga_review('r6'), 'approve', 'Reviewed against the frozen policy basis.',
+  jsonb_build_object('expectedVersion', '1', 'ifMatch', '1'));
+select pg_temp.s12ga_decide('r6-after', 'rev2', pg_temp.s12ga_review('r6'), 'approve');
+select ok(pg_temp.s12ga_body('r6-changed') = pg_temp.s12ga_kept('r6-changed')
+    and pg_temp.s12ga_out('r6-after') = 'P0001:review_not_open' and pg_temp.s12ga_same('r6:changed', pg_temp.s12ga_review('r6')),
+  'the committed refusal replays identically and a later decision on the invalidated review is review_not_open [P2-S12-AC-074]');
+
+-- ------------------------------------------------------------------------ privileges and role --
+select is(
+  (select string_agg(r || '=' || pg_temp.s12ga_denied(r, 'select platform_api.cms_record_governed_decision(''{}''::jsonb)'),
+                     ';' order by r collate "C") from unnest(array['anon', 'authenticated']) r),
+  'anon=42501;authenticated=42501',
+  'anon and authenticated may not execute the platform API decision RPC [P2-S12-AC-070]');
+select is(pg_temp.s12ga_denied('service_role', 'select platform_private.cms_record_governed_decision(''{}''::jsonb)'), '42501',
+  'service_role may not execute the private implementation, only the platform API wrapper [P2-S12-AC-070]');
+select ok(has_function_privilege('service_role', 'platform_api.cms_record_governed_decision(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_api.cms_record_governed_decision(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_private.cms_record_governed_decision(jsonb)', 'EXECUTE')
+    and (select proc.prosecdef and proc.proconfig = array['search_path=""']
+           and pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer'
+           from pg_proc proc where proc.oid = to_regprocedure('platform_private.cms_record_governed_decision(jsonb)')),
+  'the wrapper is service_role only; the private body is SECURITY DEFINER, empty search_path and owned by the CMS definer [P2-S12-AC-070]');
+select ok((select count(*) >= 40 and bool_and(rpc_user = 'service_role' and before_user = after_user) from s12ga_rcpt),
+  'role control: every command of this suite really executed as service_role and restored the session role [P2-S12-AC-070]');
+
+-- Evidence emission (no assertion): the response bodies the contract-parse check reads from the TAP stream.
+select 'EVIDENCE d1 ' || coalesce(pg_temp.s12ga_kept('d1')::text, 'null');
+select 'EVIDENCE r3-policy ' || coalesce(pg_temp.s12ga_body('r3-policy')::text, 'null');
+select 'EVIDENCE r3-base ' || coalesce(pg_temp.s12ga_body('r3-base')::text, 'null');
+select 'EVIDENCE rej ' || coalesce(pg_temp.s12ga_body('rej')::text, 'null');
+select 'EVIDENCE r7-dead ' || coalesce(pg_temp.s12ga_body('r7-dead')::text, 'null');
+select 'EVIDENCE r6-changed ' || coalesce(pg_temp.s12ga_body('r6-changed')::text, 'null');

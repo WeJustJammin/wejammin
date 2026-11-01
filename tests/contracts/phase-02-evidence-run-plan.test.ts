@@ -282,6 +282,52 @@ describe('slice evidence run plan', () => {
     expect(ids(custom)).toEqual(['playwright:playwright.custom.config.ts']);
   });
 
+  it('passes a Playwright spec under a dynamic-route directory as a filter that matches only that path', () => {
+    // Playwright treats each positional argument as a regular expression, so an
+    // unescaped `[id]` is a character class that picks tests/e2e/i/ instead.
+    const specs = [
+      'tests/e2e/[id]/a.spec.ts',
+      'tests/e2e/[...slug]/b.spec.ts',
+      'tests/e2e/c+d/(e)/f.spec.ts',
+    ];
+    const p = plan(
+      cites(
+        ...specs.map((file): EvidenceCitation => ({
+          tool: 'playwright',
+          file,
+          title: 't',
+          project: 'chrome',
+        })),
+      ),
+      { playwrightConfigs: ['playwright.config.ts'] },
+    );
+    const args = (p.steps[0] as Step).args;
+    const decoys = [
+      'tests/e2e/i/a.spec.ts',
+      'tests/e2e/./b.spec.ts',
+      'tests/e2e/cd/e/f.spec.ts',
+    ];
+    for (const [index, file] of specs.entries()) {
+      const filters = args
+        .slice(args.indexOf('--pass-with-no-tests') + 1)
+        .map((arg) => new RegExp(arg));
+      expect(
+        filters.some((filter) => filter.test(file)),
+        file,
+      ).toBe(true);
+      expect(
+        filters.some((filter) => filter.test(decoys[index] as string)),
+        decoys[index],
+      ).toBe(false);
+    }
+  });
+
+  it('passes a vitest file under a dynamic-route directory by its exact path', () => {
+    const file = 'apps/web/src/pages/api/v1/cms/entries/[entryId]/x.test.ts';
+    const p = plan(cites(vitest(file)));
+    expect((p.steps[0] as Step).args).toContain(file);
+  });
+
   it('plans one database step per cited race runner and writes the output directory it is told to', () => {
     const p = plan(
       cites(

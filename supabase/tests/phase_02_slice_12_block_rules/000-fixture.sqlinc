@@ -1,0 +1,73 @@
+-- DEC-210 block composition rules (BE03c "Block composition rules (DEC-210)"): shared fixture.
+-- Every block is registered through the signed CMS-03A-05 producer with its own allowedChildren and slotRules; nothing
+-- is inserted into the registry.  Include after phase_02_slice_09_dec108/00-helpers, 01-actors, 02-chain,
+-- phase_02_slice_09_p240/01-block and phase_02_slice_12_pattern_definition/000-fixtures, 010-oracles (s12pd_*),
+-- phase_02_slice_12_pattern_placement/000-fixtures, 010-oracles (s12pl_*), phase_02_slice_12_pattern_updates_common/000-helpers.
+--
+--   br.root     allows br.mid and br.leaf              maxDepth 4  maxNodes 6
+--   br.mid      allows br.leaf                         maxDepth 2  maxNodes 3
+--   br.leaf     allows nothing (an empty allow-list)   maxDepth 1  maxNodes 1
+--   br.tight    allows br.leaf                         maxDepth 2  maxNodes 3   (node boundary: 2 leaves ok, 3 over)
+--   br.shallow  allows br.shallow and br.leaf          maxDepth 2  maxNodes 16  (depth boundary: shallow>leaf ok,
+--                                                                                 shallow>shallow>leaf over)
+--   br.pa       allows br.x                            maxDepth 2  maxNodes 4
+--   br.pb       allows br.z                            maxDepth 2  maxNodes 4
+--   br.x, br.z  leaves
+-- A block's allowedChildren may name only blocks that are already registered (the registry refuses an unknown child key), so
+-- the leaves register first and each parent after its children.
+select pg_temp.p_register('br:' || spec.block_key, pg_temp.p_block_request(spec.block_key, 1,
+  jsonb_build_object('allowedChildren', spec.children,
+    'slotRules', jsonb_build_object('maxDepth', spec.max_depth, 'maxNodes', spec.max_nodes))))
+from (values
+  (1, 'br.leaf', '[]'::jsonb, 1, 1),
+  (2, 'br.x', '[]'::jsonb, 1, 1),
+  (3, 'br.z', '[]'::jsonb, 1, 1),
+  (4, 'br.mid', '["br.leaf"]'::jsonb, 2, 3),
+  (5, 'br.tight', '["br.leaf"]'::jsonb, 2, 3),
+  (6, 'br.shallow', '["br.shallow","br.leaf"]'::jsonb, 2, 16),
+  (7, 'br.pa', '["br.x"]'::jsonb, 2, 4),
+  (8, 'br.pb', '["br.z"]'::jsonb, 2, 4),
+  (9, 'br.root', '["br.mid","br.leaf"]'::jsonb, 4, 6)) spec(ord, block_key, children, max_depth, max_nodes)
+order by spec.ord;
+select is((select string_agg(pg_temp.s09d_outcome('br:' || block_key), ',' order by block_key)
+    from unnest(array['br.root','br.mid','br.leaf','br.tight','br.shallow','br.pa','br.pb','br.x','br.z']) block_key),
+  'OK,OK,OK,OK,OK,OK,OK,OK,OK', 'BR-SETUP: the nine rule fixtures register through the signed CMS-03A-05 producer');
+select is((select count(*)::integer from platform_private.cms_block_definition_versions
+    where block_key like 'br.%' and block_version = 1 and state = 'registered'
+      and release_verified_at is not null and props_attestation_verified_at is not null), 9,
+  'BR-SETUP: every rule fixture carries real release and props-attestation receipts');
+
+-- One PatternNode block, and one nested pattern reference to an earlier created pattern (label of its draft).
+create or replace function pg_temp.brb(p_key text, p_block text, p_children jsonb default '[]'::jsonb,
+  p_version integer default 1) returns jsonb language sql immutable as $body$
+  select jsonb_build_object('kind', 'block', 'key', p_key, 'blockKey', p_block, 'blockVersion', p_version,
+    'props', jsonb_build_object('title', 'T'), 'children', p_children)
+$body$;
+create or replace function pg_temp.brr(p_label text, p_key text) returns jsonb language sql stable as $body$
+  select jsonb_build_object('kind', 'pattern', 'key', p_key, 'patternId', pg_temp.s12pd_body(p_label)->'patternId',
+    'patternVersion', pg_temp.s12pd_body(p_label)->'patternVersion')
+$body$;
+
+-- CMS-03C-12 save helpers: an accepted save, and a refusal block_rules_violated with the offending node's request pointer.
+create or replace function pg_temp.brs_ok(p_label text, p_key text, p_tree jsonb, p_expected text default null)
+returns setof text language plpgsql as $body$
+begin
+  perform pg_temp.s12pd_run(p_label, pg_temp.s12pd_request(p_key, p_tree, p_expected, 'br-' || p_label || '-idem',
+    null, p_expected));
+  return next extensions.is(pg_temp.s12pd_state(p_label), '00000', p_label || ': a rule-satisfying tree is saved as a draft');
+  if pg_temp.s12pd_state(p_label) <> '00000' then
+    return next extensions.diag(coalesce((select message || ' ' || coalesce(detail, '') from s12pd_out
+      where label = p_label), ''));
+  end if;
+end;
+$body$;
+create or replace function pg_temp.brs_refused(p_label text, p_key text, p_tree jsonb, p_pointer text,
+  p_expected text default null, p_digest text default null) returns setof text language plpgsql as $body$
+begin
+  return query select * from pg_temp.s12pd_refused(p_label, pg_temp.s12pd_request(p_key, p_tree, p_expected,
+    'br-' || p_label || '-idem', p_digest, p_expected), 'block_rules_violated');
+  return next extensions.is((select case when detail ~ '^\[' then detail::jsonb end from s12pd_out where label = p_label),
+    jsonb_build_array(p_pointer), p_label || ': DETAIL is the offending node''s request pointer');
+end;
+$body$;
+

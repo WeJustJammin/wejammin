@@ -1,17 +1,18 @@
 import type { EntryWorkflowResource } from '@wejammin/contracts';
 import * as React from 'react';
 
-import CmsEditorialPreviewForm from './CmsEditorialPreviewForm';
-import CmsEditorialPublishConfirmation from './CmsEditorialPublishConfirmation';
-import CmsEditorialReviewSubmitForm from './CmsEditorialReviewSubmitForm';
-import CmsEditorialScheduleForm from './CmsEditorialScheduleForm';
+import { readWorkflowLazily } from './cms-workflow-answer-machinery';
 import CmsEditorialWorkflowPanel from './CmsEditorialWorkflowPanel';
 import CmsWorkflowClosedState from './CmsWorkflowClosedState';
+import CmsWorkflowRateLimitNotice from './CmsWorkflowRateLimitNotice';
 import CmsWorkflowStatusRegion from './CmsWorkflowStatusRegion';
+import type { CanonicalReadResult } from './cms-workflow-canonical-read';
 import {
-  readCanonicalWorkflow,
-  type CanonicalReadResult,
-} from './cms-workflow-canonical-read';
+  PreviewFormView,
+  PublishConfirmationView,
+  ReviewSubmitFormView,
+  ScheduleFormView,
+} from './cms-workflow-form-views';
 import { disabledActionCopy } from './cms-workflow-labels';
 import { useCanonicalResource } from './use-cms-workflow-canonical';
 import type { WorkflowCommandEnvironment } from './use-cms-workflow-command';
@@ -55,7 +56,10 @@ const focusHeading = (headingId: string): void => {
  */
 export default function CmsEditorialWorkflowIsland({
   init,
-  readWorkflow = () => readCanonicalWorkflow(init.entryId, init.revisionId),
+  // A read happens only on a refetch (after a command or a lost answer), so the read, its retry
+  // policy and the client binding load then, not with the island (P2-S11-AC-106); if they cannot
+  // load the read is degraded, never rejected.
+  readWorkflow = () => readWorkflowLazily(init.entryId, init.revisionId),
   environment,
 }: CmsEditorialWorkflowIslandProps): React.ReactElement {
   const canonical = useCanonicalResource(
@@ -108,46 +112,55 @@ export default function CmsEditorialWorkflowIsland({
             Actions
           </h2>
           <CmsWorkflowStatusRegion text={confirmation.text} />
+          <CmsWorkflowRateLimitNotice rateLimit={canonical.rateLimit} />
           {notes.map((note) => (
             <p key={note}>{note}</p>
           ))}
           {permitted.has('submit_review') && preparation !== null ? (
-            <CmsEditorialReviewSubmitForm
-              {...shared}
-              entryId={workflow.entry.id}
-              entryVersion={workflow.entry.version}
-              revisionId={workflow.revision.id}
-              preparation={preparation}
-            />
+            <React.Suspense fallback={null}>
+              <ReviewSubmitFormView
+                {...shared}
+                entryId={workflow.entry.id}
+                entryVersion={workflow.entry.version}
+                revisionId={workflow.revision.id}
+                preparation={preparation}
+              />
+            </React.Suspense>
           ) : null}
           {permitted.has('schedule') && approved ? (
-            <CmsEditorialScheduleForm
-              {...shared}
-              revisionId={workflow.revision.id}
-              reviewVersion={review.version}
-              publishPermitted={permitted.has('publish')}
-            />
+            <React.Suspense fallback={null}>
+              <ScheduleFormView
+                {...shared}
+                revisionId={workflow.revision.id}
+                reviewVersion={review.version}
+                publishPermitted={permitted.has('publish')}
+              />
+            </React.Suspense>
           ) : null}
           {permitted.has('preview') && versionSet !== null ? (
-            <CmsEditorialPreviewForm
-              disabledReason={disabledReason}
-              refetch={refetch}
-              {...(environment === undefined ? {} : { environment })}
-              entryId={workflow.entry.id}
-              entryVersion={workflow.entry.version}
-              revisionId={workflow.revision.id}
-              locale={workflow.revision.locale}
-              versionSet={versionSet}
-            />
+            <React.Suspense fallback={null}>
+              <PreviewFormView
+                disabledReason={disabledReason}
+                refetch={refetch}
+                {...(environment === undefined ? {} : { environment })}
+                entryId={workflow.entry.id}
+                entryVersion={workflow.entry.version}
+                revisionId={workflow.revision.id}
+                locale={workflow.revision.locale}
+                versionSet={versionSet}
+              />
+            </React.Suspense>
           ) : null}
           {permitted.has('publish') && approved ? (
-            <CmsEditorialPublishConfirmation
-              {...shared}
-              entryId={workflow.entry.id}
-              revisionId={workflow.revision.id}
-              reviewVersion={review.version}
-              frozen={review.frozen}
-            />
+            <React.Suspense fallback={null}>
+              <PublishConfirmationView
+                {...shared}
+                entryId={workflow.entry.id}
+                revisionId={workflow.revision.id}
+                reviewVersion={review.version}
+                frozen={review.frozen}
+              />
+            </React.Suspense>
           ) : null}
         </section>
       </div>

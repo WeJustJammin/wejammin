@@ -36,6 +36,7 @@ const resource = {
   sourceRevisionId,
   fallbackChain: ['en-US'],
   noFallbackFieldIds: [],
+  staleFieldIds: [],
 };
 
 describe('first-party CMS locale endpoint (CMS-03C-04)', () => {

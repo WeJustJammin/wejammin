@@ -1,0 +1,190 @@
+-- Slice 12 related-content lane helpers (BE03c CMS-03C-05, CMS-03C-21).  Include AFTER the Slice 10 RPC
+-- prelude, the Slice 11 data-model prelude and phase_02_slice_11_helpers/000..002 + 004.  Everything
+-- resolves through pg_catalog or a probe, so an absent object yields a failing assertion instead of an abort.
+
+create temp table r12_world_errors(step text, err jsonb) on commit drop;
+
+-- Entry id -> tag registry so a result reads as a story ('c1,c2') instead of UUIDs.
+create temp table r12_tags(id uuid primary key, value text not null) on commit drop;
+
+-- Outcome of a statement: 'OK' on success, else '<sqlstate>:<message>'.
+create or replace function pg_temp.r12_try(p_sql text)
+returns text
+language plpgsql
+as $body$
+begin
+  execute p_sql;
+  return 'OK';
+exception when others then
+  return sqlstate || ':' || sqlerrm;
+end;
+$body$;
+
+create or replace function pg_temp.r12_text(p_sql text)
+returns text
+language plpgsql
+as $body$
+declare
+  result text;
+begin
+  execute p_sql into result;
+  return result;
+exception when others then
+  return '__error ' || sqlstate || ':' || sqlerrm;
+end;
+$body$;
+
+-- Calls a jsonb function by signature text; answers the resource or
+-- { "__error": "<message>", "__detail": <parsed DETAIL or the text>, "__state": "<sqlstate>" }.
+create or replace function pg_temp.r12_call(p_sql text)
+returns jsonb
+language plpgsql
+as $body$
+declare
+  result jsonb;
+  message text;
+  detail_text text;
+  state_text text;
+  detail_json jsonb;
+begin
+  execute p_sql into result;
+  return result;
+exception when others then
+  get stacked diagnostics message = message_text, detail_text = pg_exception_detail, state_text = returned_sqlstate;
+  begin
+    detail_json := detail_text::jsonb;
+  exception when others then
+    detail_json := to_jsonb(detail_text);
+  end;
+  return jsonb_build_object('__error', message, '__detail', detail_json, '__state', state_text);
+end;
+$body$;
+
+create or replace function pg_temp.r12_curate(p_request jsonb)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.r12_call(format('select platform_api.cms_curate_related_content(%L::jsonb)', p_request::text))
+$body$;
+
+-- The public projection as a jsonb array, or the error object.
+create or replace function pg_temp.r12_targets(p_source uuid, p_locale text default 'en-US', p_audience text default 'public')
+returns jsonb
+language sql
+as $body$
+  select pg_temp.r12_call(format(
+    'select platform_private.cms_related_content_public_targets(%L::uuid, %L, %L)', p_source, p_locale, p_audience))
+$body$;
+
+create or replace function pg_temp.r12_id(p_tag text)
+returns uuid language sql immutable as $body$ select pg_temp.h11w_uuid('r12:' || p_tag || ':entry') $body$;
+
+create or replace function pg_temp.r12_version(p_tag text)
+returns bigint language sql stable as $body$
+  select version from platform_private.cms_content_entries where id = pg_temp.r12_id(p_tag)
+$body$;
+
+-- A CMS-03C-05 request for entry p_tag built from the LIVE entry version (ifMatch = expectedVersion).
+create or replace function pg_temp.r12_req(
+  p_tag text, p_pins text[], p_exclusions text[], p_rule jsonb, p_key text, p_overrides jsonb default '{}'::jsonb
+)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'entryId', pg_temp.r12_id(p_tag),
+    'pins', coalesce((select jsonb_agg(pg_temp.r12_id(t) order by o) from unnest(p_pins) with ordinality u(t, o)), '[]'::jsonb),
+    'exclusions', coalesce((select jsonb_agg(pg_temp.r12_id(t) order by o) from unnest(p_exclusions) with ordinality u(t, o)), '[]'::jsonb),
+    'derivedRule', p_rule,
+    'expectedVersion', pg_temp.r12_version(p_tag)::text,
+    'ifMatch', pg_temp.r12_version(p_tag)::text,
+    'idempotencyKey', p_key
+  ) || p_overrides
+$body$;
+
+create or replace function pg_temp.r12_rule(p_key text, p_max integer default 8, p_version text default '1', p_reason text default null)
+returns jsonb
+language sql
+as $body$
+  select jsonb_build_object(
+    'key', p_key, 'version', p_version,
+    'reasonCode', coalesce(p_reason, case p_key when 'shared-terms' then 'shared_terms' when 'same-type-recent' then 'same_type_recent' else 'x_unknown' end),
+    'maxCandidates', p_max)
+$body$;
+
+-- Active (latest-version, state active) items of the stored rule set of one source, as 'mode:target-tag:position'.
+create or replace function pg_temp.r12_stored(p_tag text)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(string_agg(item, ',' order by item), '') from (
+    select distinct on (rule.mode, coalesce(rule.target_entry_id, '00000000-0000-0000-0000-000000000000'::uuid))
+           rule.mode || ':' || coalesce((select substr(tag.value, 1, 20) from pg_temp.r12_tags tag where tag.id = rule.target_entry_id), '-') || ':' ||
+           coalesce(rule.position::text, '-') || ':' || rule.state || ':' || rule.version as item, rule.state
+      from platform_private.cms_related_content_rules rule
+     where rule.source_entry_id = pg_temp.r12_id(p_tag)
+     order by rule.mode, coalesce(rule.target_entry_id, '00000000-0000-0000-0000-000000000000'::uuid), rule.version desc
+  ) latest
+  where state = 'active'
+$body$;
+
+-- Every row of one source in append order, as 'mode:target:state:version'.
+create or replace function pg_temp.r12_history(p_tag text)
+returns text
+language sql
+stable
+as $body$
+  select coalesce(string_agg(rule.mode || ':' || coalesce(tag.value, '-') || ':' || rule.state || ':' || rule.version, ','
+           order by rule.mode, tag.value nulls last, rule.version), '')
+    from platform_private.cms_related_content_rules rule
+    left join pg_temp.r12_tags tag on tag.id = rule.target_entry_id
+   where rule.source_entry_id = pg_temp.r12_id(p_tag)
+$body$;
+
+-- Names the entries of an id array (a response's pins or exclusions) by tag: 'tag,tag'.
+create or replace function pg_temp.r12_names(p_ids jsonb)
+returns text
+language sql
+stable
+as $body$
+  select case when jsonb_typeof(p_ids) = 'array' then
+    (select coalesce(string_agg(coalesce(tag.value, '?'), ',' order by item.ord), '')
+       from jsonb_array_elements_text(p_ids) with ordinality item(value, ord)
+       left join pg_temp.r12_tags tag on tag.id = item.value::uuid)
+    else '__not_an_array' end
+$body$;
+
+-- Names the targets of a projection by tag.
+create or replace function pg_temp.r12_target_names(p_targets jsonb)
+returns text
+language sql
+stable
+as $body$
+  select case when jsonb_typeof(p_targets) = 'array' then
+    (select coalesce(string_agg(coalesce(tag.value, '?'), ',' order by item.ord), '')
+       from jsonb_array_elements(p_targets) with ordinality item(value, ord)
+       left join pg_temp.r12_tags tag on tag.id = (item.value->>'entryId')::uuid)
+    else '__not_an_array:' || coalesce(p_targets::text, 'null') end
+$body$;
+
+-- Length of a JSON array, -1 for anything else (an error object in a RED run).
+create or replace function pg_temp.r12_len(p_value jsonb)
+returns integer
+language sql
+immutable
+as $body$
+  select case when jsonb_typeof(p_value) = 'array' then jsonb_array_length(p_value) else -1 end
+$body$;
+
+-- Runs one statement; a failure is recorded in r12_world_errors instead of aborting the whole suite.
+create or replace function pg_temp.r12_safe(p_step text, p_sql text)
+returns void
+language plpgsql
+as $body$
+begin
+  execute p_sql;
+exception when others then
+  insert into pg_temp.r12_world_errors values (p_step, jsonb_build_object('state', sqlstate, 'error', sqlerrm));
+end;
+$body$;

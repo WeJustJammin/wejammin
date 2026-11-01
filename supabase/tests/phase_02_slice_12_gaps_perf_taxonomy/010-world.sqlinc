@@ -1,0 +1,25 @@
+-- Perf world: one active flat vocabulary `vb` (field title) with 120 terms written by the real CMS-03C-03 command, two labels each.
+create or replace function pg_temp.g12px_w() returns jsonb language sql volatile as $body$ select pg_temp.s12ga_ctx('owner') $body$;
+create or replace function pg_temp.g12px_r(p_actor text) returns jsonb language sql volatile as $body$
+  select pg_temp.s12ga_ctx(p_actor, interval '1 minute', false) $body$;
+create or replace function pg_temp.g12px_require(p_op text, p_min integer) returns void language plpgsql as $body$
+begin
+  if not pg_temp.g12p_all_ok(p_op, p_min) then
+    raise exception 'perf bench: % needs at least % successful samples (has %, failures: %)',
+      p_op, p_min, pg_temp.g12p_n(p_op), pg_temp.g12p_failures(p_op);
+  end if;
+end;
+$body$;
+
+select vault.create_secret(repeat('c3', 32), 'cms_editorial_history_cursor_active', 'pgTAP transaction-only perf bench key');
+select pg_temp.s12tt_vocab('vb', 'flat');
+select pg_temp.s12tt_act('x-tb-' || lpad(n::text, 3, '0'), 'owner', pg_temp.s12tt_lineage('vb'), 'create', 'tb-' || lpad(n::text, 3, '0'),
+  jsonb_build_object('labels', jsonb_build_array(jsonb_build_object('locale', 'en-US', 'label', 'Term ' || n),
+                                                   jsonb_build_object('locale', 'fr-FR', 'label', 'Terme ' || n))))
+  from generate_series(1, 120) n;
+select is((select count(*)::integer from platform_private.cms_terms where taxonomy_id = pg_temp.s12tt_lineage('vb')), 120,
+  'fixture: the benchmark vocabulary holds 120 terms written through the real CMS-03C-03 command [P2-S12-AC-279]');
+select is((select count(*)::integer from generate_series(1, 120) n where pg_temp.s12tt_oc('x-tb-' || lpad(n::text, 3, '0')) = 'ok'), 120,
+  'fixture: every term command was accepted [P2-S12-AC-279]');
+-- a second curator of the owner party (for the actor-binding replay below)
+select is(pg_temp.s12ga_grant('rev2', 'cms.taxonomy_curator', 1), 'OK', 'fixture: rev2 holds a real taxonomy-curator grant in the owner party [P2-S12-AC-186]');

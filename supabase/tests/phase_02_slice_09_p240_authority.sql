@@ -231,7 +231,7 @@ select is((select count(*)::integer from pg_class c join pg_namespace n on n.oid
   'the one shared state enum is cms_definition_state, closed at eight members [P2-S09-AC-015]');
 select is((select count(*)::integer from pg_class c join pg_namespace n on n.oid = c.relnamespace join pg_attribute a on a.attrelid = c.oid
     where n.nspname = 'platform_private' and c.relkind = 'r' and c.relname like 'cms\_%' and a.attname = 'version' and a.attnum > 0
-      and not exists (select 1 from pg_constraint k where k.conrelid = c.oid and k.contype = 'c' and pg_get_constraintdef(k.oid) ~ 'version > 0|version >= 1')), 0, 'every version column is closed to non-positive values [P2-S09-AC-015]');
+      and not exists (select 1 from pg_constraint k where k.conrelid = c.oid and k.contype = 'c' and pg_get_constraintdef(k.oid) ~ 'version > 0|version >= 1|version = 1')), 0, 'every version column is closed to non-positive values [P2-S09-AC-015]');
 select is(pg_temp.p_call('own:authority', 'platform_api.cms_add_field_definition', 'other', pg_temp.p_a02('a', jsonb_build_object('contentTypeId', pg_temp.s09d_id('a:type')))), 'NOT_FOUND',
   'owner_id is an ownership reference, never a grant: a caller who simply names the owner''s identifiers acquires no authority [P2-S09-AC-015]');
 select ok(not exists (select 1 from pg_proc p where p.pronamespace in ('platform_private'::regnamespace, 'platform_api'::regnamespace) and p.proname in ('cms_require_capability', 'cms_require_read')

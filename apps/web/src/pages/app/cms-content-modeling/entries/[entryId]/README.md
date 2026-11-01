@@ -6,6 +6,12 @@ The protected Astro pages that hang below one entry, `/app/cms-content-modeling/
 
 - `revisions.astro` - CMS-03B-03 revision history, domain-grouped comparison, typed refusals and the CMS-03B-04 inline restore review.
 - `workflow.astro` - CMS-03B-15 entry workflow: the revision, the 17 checks, the review, schedules and publications, and exactly the command forms `permittedNextActions` allows (CMS-03B-05 submit, -07 schedule, -08 preview, -09 publish).
+- `related-content.astro` - CMS-03C-05 related content: ordered pins, exclusions and a derived rule for one entry; the draft page links here. Pins and exclusions are form state, so any query is a 400. The saved rule cannot be read yet (BOUNDARY SG-S12-03), so the page is read-only and sends nothing (`components/cms-related-content/README.md`).
+- `related-content-route.test.tsx` - composes the real loader, the real read proxies and the real form (only the platform binding replaced) and guards the response invariants of the Astro file.
+- `composition.astro` - CMS-03C-02, -13, -14 and -15 composition page: insert patterns into the current draft and resolve pattern updates. Any query is a 400; instance ids are row-local, never in the URL. The draft page links here.
+- `composition-route.test.tsx` - composes the real loader, the real read proxies and the real island with only the platform binding replaced, and guards the response invariants of the Astro file and the entry page's Composition link.
+- `locales/[locale].astro` - CMS-03C-04 locale variant: translate the localizable fields of one entry into one supported language; the fallback order is read-only text from the protected version detail; BOUNDARY SG-S12-05/06/07 (`components/cms-locale/README.md`). The draft page links here, one Translate link per supported language except the source.
+- `locales/locale-route.test.tsx` - the route test of the locale page (the real loader, reads and form; only the platform binding replaced).
 - `workflow-route.test.tsx` - composes the real workflow loader with the real island and asserts what a reader gets (only the proxy edge is replaced).
 - `conflicts/[conflictId].astro` - CMS-03B-12 conflict detail and CMS-03B-02 resolution (documented in the parent README).
 
@@ -28,5 +34,6 @@ A new sub-page gets a loader and a test of every status first; the `.astro` file
 - `../README.md` (the entries pages and their invariants)
 - `apps/web/src/components/cms-editorial-pages/README.md`
 - `apps/web/src/components/cms-editorial-workflow/README.md`
+- `apps/web/src/components/cms-related-content/README.md`
 - `.memory/wiki/specs/fe/03-cms-content-modeling.md`
 - `.memory/wiki/specs/be/03b-editorial-workflow-publication.md`

@@ -1,89 +1,17 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { forwardCmsPatternInstanceMutation } from './cms-composition-platform-pattern';
-
-const path = '/api/v1/cms/compositions/pattern-instances';
-const revisionId = 'd3000000-0000-4000-8000-000000000011';
-const patternId = 'd3000000-0000-4000-8000-000000000012';
-const body = {
-  revisionId,
+import {
+  binding,
+  body,
+  error,
+  path,
   patternId,
-  patternVersion: 1,
-  linkMode: 'linked',
-  slotPath: '/primary',
-  overrides: {},
-  expectedVersion: '1',
-};
-const resource = {
-  id: 'd3000000-0000-4000-8000-000000000013',
-  version: '1',
-  contentHash: 'a'.repeat(64),
-  createdAt: '2026-09-28T14:00:00.000Z',
-  updatedAt: '2026-09-28T14:00:00.000Z',
-  state: 'draft',
+  request,
+  resource,
   revisionId,
-  path: '/primary',
-  blockKey: 'profile.header',
-  blockVersion: 1,
-  patternId,
-  patternVersion: 1,
-  blockRegistryDigest: 'b'.repeat(64),
-  linkMode: 'linked',
-  conflictState: 'none',
-};
-const request = (
-  options: {
-    path?: string;
-    method?: string;
-    headers?: Record<string, string>;
-    body?: unknown;
-    rawBody?: string;
-  } = {},
-): Request =>
-  new Request(`https://app.example.test${options.path ?? path}`, {
-    method: options.method ?? 'POST',
-    headers: {
-      origin: 'https://app.example.test',
-      cookie: 'wj_access=protected; wj_csrf=csrf-token-123; unrelated=private',
-      'x-csrf-token': 'csrf-token-123',
-      'content-type': 'application/json',
-      'idempotency-key': 'pattern-command-0001',
-      'if-match': '"1"',
-      ...options.headers,
-    },
-    ...(options.method === 'GET'
-      ? {}
-      : { body: options.rawBody ?? JSON.stringify(options.body ?? body) }),
-  });
-const binding = (result: Response | unknown | Error) => {
-  const fetch = vi.fn(async (request: Request) => {
-    if (!(request instanceof Request))
-      throw new Error('Expected a forwarded Request.');
-    if (result instanceof Error) throw result;
-    return result;
-  });
-  return { fetch };
-};
-const success = (value: unknown = resource, status = 201, etag = '"1"') =>
-  new Response(JSON.stringify(value), {
-    status,
-    headers: { 'content-type': 'application/json', etag },
-  });
-const error = (
-  status: number,
-  code: string,
-  details: Record<string, unknown> = {},
-  headers: Record<string, string> = {},
-) =>
-  new Response(
-    JSON.stringify({
-      code,
-      message: `${code}: composition operation rejected or unavailable.`,
-      requestId: 'd3000000-0000-4000-8000-000000000014',
-      details,
-    }),
-    { status, headers },
-  );
+  success,
+} from './cms-composition-platform-pattern.test-support';
 
 describe('CMS-03C-02 first-party private forwarding', () => {
   it('rejects invalid binding, admission, and body before any Worker call', async () => {
@@ -128,7 +56,8 @@ describe('CMS-03C-02 first-party private forwarding', () => {
       [success({ ...resource, patternId: revisionId }), 502],
       [success({ ...resource, patternVersion: 2 }), 502],
       [success({ ...resource, linkMode: 'copied' }), 502],
-      [success(resource, 201, '"2"'), 502],
+      // A weak ETag is invalid (BE00); a different strong entry ETag is not.
+      [success(resource, 201, 'W/"2"'), 502],
     ] as const) {
       const response = await forwardCmsPatternInstanceMutation(
         request(),
@@ -180,8 +109,8 @@ describe('CMS-03C-02 first-party private forwarding', () => {
       [
         403,
         'COMPOSITION_FORBIDDEN',
-        { reasonCode: 'CAPABILITY_REQUIRED', secret: 'private' },
-        { reasonCode: 'CAPABILITY_REQUIRED' },
+        { reasonCode: 'capability_missing', secret: 'private' },
+        { reasonCode: 'capability_missing' },
       ],
       [
         403,
@@ -225,9 +154,9 @@ describe('CMS-03C-02 first-party private forwarding', () => {
       ],
       [
         502,
-        'DEPENDENCY_INVALID_RESPONSE',
+        'DEPENDENCY_UNAVAILABLE',
         { secret: 'private' },
-        { dependencyClass: 'cms_composition', retryable: false },
+        { dependencyClass: 'cms_composition', retryable: true },
       ],
       [
         503,
@@ -237,7 +166,7 @@ describe('CMS-03C-02 first-party private forwarding', () => {
       ],
       [
         504,
-        'DEPENDENCY_DEADLINE_EXCEEDED',
+        'DEPENDENCY_UNAVAILABLE',
         { secret: 'private' },
         { dependencyClass: 'cms_composition', retryable: true },
       ],
@@ -269,11 +198,13 @@ describe('CMS-03C-02 first-party private forwarding', () => {
     }
   });
 
-  it('forwards a valid response without disclosing local cookies or caller authority', async () => {
-    const b = binding(success());
+  it('forwards a valid list response with the entry ETag without disclosing cookies or authority', async () => {
+    const b = binding(success(resource, 201, '"42"'));
     const response = await forwardCmsPatternInstanceMutation(request(), b);
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual(resource);
+    expect(await response.json()).toEqual({ items: [resource] });
+    // The ETag is the entry aggregate version, distinct from the row version.
+    expect(response.headers.get('etag')).toBe('"42"');
     const forwarded = b.fetch.mock.calls[0]?.[0] as Request;
     expect(forwarded.url).toBe(`https://platform-api.internal${path}`);
     expect(await forwarded.json()).toEqual(body);

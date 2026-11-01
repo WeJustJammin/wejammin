@@ -21,18 +21,48 @@ const SSR_READ =
 
 const stepUpAware: readonly string[] = [
   'components/cms-editorial-workflow/cms-workflow-command-transport.ts',
+  'components/cms-governed-review/governed-review-command-transport.ts',
   'components/content-schema-registry/content-schema-registry-runtime.ts',
   'components/content-schema-registry/content-schema-registry-step-up-classify.ts',
   'components/identity-authority/step-up-mfa/mfa-failure-view.ts',
   'components/platform-configuration/admin-mfa-reset/admin-mfa-reset-failure.ts',
   'components/profile-ownership/profile-ownership-command-transport.ts',
   'components/step-up-required.ts',
+  'server/cms-governed-review-platform-error-details.ts',
   'server/cms-workflow-platform-errors.ts',
   'server/content-schema-registry-platform-error-details.ts',
 ];
 
 const exempt: Readonly<Record<string, string>> = {
+  // cmsPatternNestableRead (DEC-196): a GET read whose only 401 is UNAUTHENTICATED (BE03c 184, stepUp none).
+  'components/cms-pattern-designer/CmsPatternNestedPicker.tsx': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/CmsPatternStatus.tsx': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/load-pattern-designer-page.ts':
+    NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/pattern-designer-reasons.ts': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/pattern-designer-submit.ts': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/pattern-latest-read.ts': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/pattern-nestable-read.ts': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/pattern-status-copy.ts': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/use-pattern-conflict.ts': NO_STEP_UP_ROW,
+  'components/cms-related-content/CmsRelatedStatus.tsx': NO_STEP_UP_ROW,
+  'components/cms-related-content/related-candidates.ts': NO_STEP_UP_ROW,
+  'components/cms-related-content/related-content-submit.ts': NO_STEP_UP_ROW,
+  'components/cms-related-content/related-status-copy.ts': NO_STEP_UP_ROW,
+  'server/cms-pattern-platform-details.ts': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-designer/CmsTaxonomyStatus.tsx': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-designer/taxonomy-transport.ts': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-designer/taxonomy-versions-read.ts': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-designer/taxonomy-vocabulary.ts': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-designer/use-taxonomy-conflict.ts': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-pages/load-taxonomy-page.ts': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-terms/CmsTaxonomyTermStatus.tsx': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-terms/taxonomy-terms-read.ts': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-terms/term-status-copy.ts': NO_STEP_UP_ROW,
+  'server/cms-taxonomy-platform-details.ts': NO_STEP_UP_ROW,
   'components/cms-editorial-workflow/cms-workflow-canonical-read.ts':
+    WORKER_READ,
+  'components/cms-governed-review/governed-review-canonical-read.ts':
     WORKER_READ,
   'components/cms-capability-grants/cms-capability-grant-client.ts':
     'list GET (stepUp none); grant mutations route step-up in cms-capability-grant-commands.ts',
@@ -70,6 +100,22 @@ const exempt: Readonly<Record<string, string>> = {
     'AUTH-API-16 factor list read: BE01a step-up applies only to AUTH-API-17/19',
   'server/admin-workspace-context.ts':
     'CFG-05B inbox read for the workspace shell (GET, no step-up policy)',
+  // Slice 12 integration (2026-10-22): each file reads a 401 only as UNAUTHENTICATED. Only CMS-03C-07/-08/-09 carry
+  // STEP_UP_REQUIRED (BE03c 222, 1439); the cited error-catalog row of each file's operations has none.
+  // CMS-03C-02, -13, -14, -15 and cmsCompositionInstancesRead: BE03c 1434 and 1440.
+  'components/cms-composition-instances/composition-copy.ts': NO_STEP_UP_ROW,
+  'components/cms-composition-instances/composition-transport.ts':
+    NO_STEP_UP_ROW,
+  'server/cms-composition-instances-errors.ts': NO_STEP_UP_ROW,
+  // CMS-03C-17 selector and cmsTaxonomyTermsRead reads: BE03c 1441.
+  'components/cms-editorial-fields/cms-taxonomy-field-connection.ts':
+    NO_STEP_UP_ROW,
+  'components/cms-editorial-fields/cms-taxonomy-selector-read.ts':
+    NO_STEP_UP_ROW,
+  // CMS-03C-04 and cmsLocaleVariantRead: BE03c 1436 and 1437.
+  'components/cms-locale/CmsLocaleStatus.tsx': NO_STEP_UP_ROW,
+  'components/cms-locale/locale-variant-copy.ts': NO_STEP_UP_ROW,
+  'components/cms-locale/locale-variant-submit.ts': NO_STEP_UP_ROW,
   'server/cms-composition-platform-locale.ts': NO_STEP_UP_ROW,
   'server/cms-composition-platform-mutation.ts': NO_STEP_UP_ROW,
   'server/cms-composition-platform-pattern.ts': NO_STEP_UP_ROW,

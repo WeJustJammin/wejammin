@@ -12,6 +12,7 @@ Safe operational endpoint, job/outbox reconciliation, retention, and SLO procedu
 - [Sole administrator MFA lockout](./sole-admin-mfa-lockout.md) — recover the only administrator's authenticators through the Supabase dashboard with an audit note.
 - [CMS editorial entry authoring](./cms-editorial.md) — triage typed refusals, provision and rotate the signed-cursor Vault key, reconcile lost responses by idempotency key, and handle presence-sweep and restore-chain failures for the nine Slice 10 operations.
 - [CMS editorial publication](./cms-publication.md) — the Slice 11 review, scheduling, preview and publication operations: limits and deadlines, the closed typed-refusal catalog, the internal preview-token verifier, takedown RPC and schedule executor (stale proofs, entry-unavailable cancellation), the dependency recheck job, outbox poison rows, sealed history cursors, projection state, the reviewer-queue plan guard, job lease control, the pinned tz release, metrics and alerts.
+- [CMS taxonomy merge convergence job](./cms-taxonomy-merge-converge.md) — the `cms.taxonomy.merge_converge` job runbook: registered terminal error codes, retry pauses, metric and alert, safe checks, and the DEC-194 bounded recovery sweep that re-requests a failed job's unconverged assignments.
 
 ## Ownership
 

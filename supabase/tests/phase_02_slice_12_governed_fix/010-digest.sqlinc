@@ -1,0 +1,94 @@
+-- Defect 1: cms_governed_current_digest(pattern_version) must evaluate.  Live bytes raised 42P10 for every non-trivial
+-- tree.  Expected values are folded independently: reachable blocks, deduplicated, ordered by key (collate "C") then
+-- version, each as the registered tuple, hashed with the JCS SHA-256 the template digest uses.
+create temp table fix_owner(id uuid) on commit drop;
+insert into fix_owner select pg_temp.s09d_id('ownerOrg');
+-- The wrapper turns a raise into a comparable value so one defect cannot abort the transaction and hide the
+-- assertions after it (a RED failure is then an ordinary failing assertion with the SQLSTATE in its diagnostics).
+-- The registry tables are forced-RLS and answer only inside an RPC context (cms_rpc_context_valid), exactly the
+-- context the submit command sets first; the wrapper sets it for the one call and restores the prior value.
+create or replace function pg_temp.fix_digest(p_kind text, p_subject jsonb) returns text
+language plpgsql volatile as $body$
+declare prior text := coalesce(pg_catalog.current_setting('app.cms_rpc', true), ''); result text;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', true);
+  begin
+    result := platform_private.cms_governed_current_digest(p_kind, (select id from fix_owner), p_subject);
+  exception when others then
+    result := 'RAISED ' || sqlstate || ' ' || sqlerrm;
+  end;
+  perform pg_catalog.set_config('app.cms_rpc', prior, true);
+  return result;
+end;
+$body$;
+
+-- a nested tree that repeats fixa/1 (shared tuple) and reaches two versions of fix.b
+create temp table fix_tree(label text primary key, tree jsonb not null) on commit drop;
+insert into fix_tree values
+  ('mixed', jsonb_build_array(
+     pg_temp.fix_node('fixa', 1),
+     pg_temp.fix_node('fix.b', 2, jsonb_build_array(pg_temp.fix_node('fix-c', 1), pg_temp.fix_node('fixa', 1))),
+     pg_temp.fix_node('fix.b', 1))),
+  ('reversed', jsonb_build_array(
+     pg_temp.fix_node('fix.b', 1),
+     pg_temp.fix_node('fix.b', 2, jsonb_build_array(pg_temp.fix_node('fixa', 1), pg_temp.fix_node('fix-c', 1))),
+     pg_temp.fix_node('fixa', 1))),
+  ('legacy', jsonb_build_object('nodes', jsonb_build_array(
+     jsonb_build_object('blockKey', 'fixa', 'blockVersion', 1),
+     jsonb_build_object('blockKey', 'fix-c', 'blockVersion', 1)))),
+  ('missing', jsonb_build_array(pg_temp.fix_node('fixa', 1), pg_temp.fix_node('fix.nope', 1)));
+
+select matches(
+  pg_temp.fix_digest('pattern_version', jsonb_build_object('blockTree', (select tree from fix_tree where label = 'mixed'))),
+  '^[a-f0-9]{64}$',
+  'the pattern digest evaluates a multi-block tree instead of raising 42P10 [BE03c digest invariants]');
+select is(
+  pg_temp.fix_digest('pattern_version', jsonb_build_object('blockTree', (select tree from fix_tree where label = 'mixed'))),
+  platform_private.cms_jcs_sha256(jsonb_build_array(
+    pg_temp.fix_tuple('fix-c', 1), pg_temp.fix_tuple('fix.b', 1), pg_temp.fix_tuple('fix.b', 2), pg_temp.fix_tuple('fixa', 1))),
+  'the digest folds each reachable block once, ordered by key (byte order) then version [BE03c digest invariants]');
+select is(
+  pg_temp.fix_digest('pattern_version', jsonb_build_object('blockTree', (select tree from fix_tree where label = 'reversed'))),
+  pg_temp.fix_digest('pattern_version', jsonb_build_object('blockTree', (select tree from fix_tree where label = 'mixed'))),
+  'the digest is independent of node order in the tree [BE03c digest invariants]');
+select is(
+  pg_temp.fix_digest('pattern_version', jsonb_build_object('blockTree', (select tree from fix_tree where label = 'legacy'))),
+  platform_private.cms_jcs_sha256(jsonb_build_array(pg_temp.fix_tuple('fix-c', 1), pg_temp.fix_tuple('fixa', 1))),
+  'the grandfathered {"nodes": [...]} tree shape digests the same way [BE03c digest invariants]');
+select is(
+  pg_temp.fix_digest('pattern_version', jsonb_build_object('blockTree', '[]'::jsonb)),
+  platform_private.cms_jcs_sha256('[]'::jsonb),
+  'an empty tree digests to the JCS hash of the empty tuple list [BE03c digest invariants]');
+select is(
+  pg_temp.fix_digest('pattern_version', jsonb_build_object('blockTree', (select tree from fix_tree where label = 'missing'))),
+  'RAISED P0001 VALIDATION_FAILED',
+  'a reachable block with no registered version still raises VALIDATION_FAILED [BE03c digest invariants]');
+
+-- the other subject kinds keep their exact behavior
+select is(
+  pg_temp.fix_digest('template_version', jsonb_build_object('slots', '[]'::jsonb, 'typeIds', '[]'::jsonb)),
+  platform_private.cms_template_block_digest('[]'::jsonb, '[]'::jsonb, (select id from fix_owner)),
+  'the template branch still delegates to the 03c template block digest [BE03c digest invariants]');
+select is(pg_temp.fix_digest('taxonomy_version', jsonb_build_object('canonicalDomains', '[]'::jsonb)), null::text,
+  'a taxonomy version has no block digest [BE03c digest invariants]');
+
+-- the function keeps its catalog identity: owner, definer, empty search_path, no API-role execute
+select is(
+  (select proc.proowner::regrole::text || '|' || proc.prosecdef::text || '|' || proc.provolatile::text
+          || '|' || (proc.proconfig = array['search_path=""'])::text
+     from pg_catalog.pg_proc proc
+    where proc.oid = 'platform_private.cms_governed_current_digest(text,uuid,jsonb)'::regprocedure),
+  'wejammin_cms_definer|true|v|true',
+  'the digest function stays definer-owned, volatile and search_path-pinned');
+select ok(
+  not exists (
+    select 1 from pg_catalog.pg_proc proc
+      cross join lateral pg_catalog.aclexplode(coalesce(proc.proacl, pg_catalog.acldefault('f', proc.proowner))) acl
+     where proc.oid = 'platform_private.cms_governed_current_digest(text,uuid,jsonb)'::regprocedure
+       and acl.privilege_type = 'EXECUTE'
+       and (acl.grantee = 0 or acl.grantee in (
+         select role.oid from pg_catalog.pg_roles role where role.rolname in ('anon', 'authenticated', 'service_role'))))
+  and not pg_catalog.has_function_privilege('anon', 'platform_private.cms_governed_current_digest(text,uuid,jsonb)'::regprocedure, 'EXECUTE')
+  and not pg_catalog.has_function_privilege('authenticated', 'platform_private.cms_governed_current_digest(text,uuid,jsonb)'::regprocedure, 'EXECUTE')
+  and not pg_catalog.has_function_privilege('service_role', 'platform_private.cms_governed_current_digest(text,uuid,jsonb)'::regprocedure, 'EXECUTE'),
+  'no API role (public, anon, authenticated, service_role) can execute the digest function');

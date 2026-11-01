@@ -1,0 +1,139 @@
+-- CMS-03C-15 oracles.  The row contentHash is the D5 block comparison hash of cms_compare_revisions (blockKey, blockVersion,
+-- blockRegistryDigest, mode, patternRef, props, bindings; position is NOT an input, 20261005010400:877-891), assembled here from first
+-- principles: an RFC 8785 text with every object's keys in bytewise (= UTF-16 for ASCII) order, hashed with SHA-256 over its UTF-8 bytes.
+-- DEC-193 (BE03b receiving obligations 2026-10-15; BE03c Linked update): the D5 block side hash covers the canonical detached content of a row
+-- that carries a nonnull `detached_tree` as one more member `detachedTree`, and such a row's pattern pin is provenance only, so its
+-- `patternRef` is null in the hashed image; a row with a NULL tree keeps the seven-member image (dec193_consumers/010-comparison.sqlinc builds
+-- the same image independently).
+
+create or replace function pg_temp.s12puc_jcs(p_value jsonb) returns text language plpgsql immutable as $body$
+declare answer text;
+begin
+  case jsonb_typeof(p_value)
+    when 'null' then return 'null';
+    when 'boolean' then return p_value::text;
+    when 'number' then return p_value::text;
+    when 'string' then return to_json(p_value #>> '{}')::text;
+    when 'array' then
+      select '[' || coalesce(string_agg(pg_temp.s12puc_jcs(element.value), ',' order by element.ordinality), '') || ']' into answer
+        from jsonb_array_elements(p_value) with ordinality element(value, ordinality);
+      return answer;
+    else
+      select '{' || coalesce(string_agg(to_json(key)::text || ':' || pg_temp.s12puc_jcs(p_value -> key), ',' order by key collate "C"), '') || '}' into answer
+        from jsonb_object_keys(p_value) key;
+      return answer;
+  end case;
+end;
+$body$;
+create or replace function pg_temp.s12puc_resource(p_row platform_private.cms_composition_instances) returns jsonb language sql stable as $body$
+  select jsonb_build_object(
+    'id', p_row.id, 'version', p_row.version::text,
+    'contentHash', encode(extensions.digest(convert_to(pg_temp.s12puc_jcs(jsonb_build_object(
+      'bindings', p_row.bindings, 'blockKey', p_row.block_key, 'blockRegistryDigest', btrim(p_row.block_registry_digest::text),
+      'blockVersion', p_row.block_version, 'mode', p_row.link_mode,
+      'patternRef', case when p_row.pattern_id is null or p_row.detached_tree is not null then null
+        else jsonb_build_object('patternId', p_row.pattern_id, 'patternVersion', p_row.pattern_version) end,
+      'props', p_row.props) || case when p_row.detached_tree is null then '{}'::jsonb
+        else jsonb_build_object('detachedTree', p_row.detached_tree) end), 'UTF8'), 'sha256'), 'hex'),
+    'createdAt', to_char(p_row.created_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'updatedAt', to_char(p_row.updated_at at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'state', p_row.state, 'revisionId', p_row.revision_id, 'path', p_row.path, 'position', p_row.position,
+    'blockKey', p_row.block_key, 'blockVersion', p_row.block_version, 'patternId', p_row.pattern_id,
+    'patternVersion', p_row.pattern_version, 'blockRegistryDigest', btrim(p_row.block_registry_digest::text),
+    'linkMode', p_row.link_mode, 'conflictState', case p_row.link_mode when 'linked' then 'none' else null end)
+$body$;
+
+-- A detached local block tree (cms.detached_tree.v1, BE03c Canonical records and fields): preorder nodes, index 0 the sole root, each node's
+-- parent index, its key segment relative to its parent, the block identity of the test world and its exact effective props.
+create or replace function pg_temp.s12puc_tnode(p_parent integer, p_segment text, p_title text) returns jsonb language sql immutable as $body$
+  select jsonb_build_object('parent', p_parent, 'keySegments', jsonb_build_array(p_segment), 'blockKey', 's12pd.block', 'blockVersion', 1,
+    'props', jsonb_build_object('title', p_title)) $body$;
+create or replace function pg_temp.s12puc_tree(p_nodes jsonb[]) returns jsonb language sql immutable as $body$
+  select jsonb_build_object('format', 'cms.detached_tree.v1', 'nodes', to_jsonb(p_nodes)) $body$;
+
+-- The head (greatest version) composition row of a path in a captured image of the composition store.
+create or replace function pg_temp.s12puc_image_head(p_rows jsonb, p_revision uuid, p_path text) returns jsonb language sql stable as $body$
+  select e from jsonb_array_elements(p_rows) e where e->>'revision_id' = p_revision::text and e->>'path' = p_path
+   order by (e->>'version')::bigint desc limit 1 $body$;
+
+-- A successful update.  p_paths are the instance paths in REQUEST order; p_expect[i] is the expected appended row of path i:
+-- { state, linkMode, patternVersion, props [, blockKey, blockVersion, digest, tree] } (patternVersion null for a detach: the pin is kept; the block
+-- identity defaults to the prior row's and the digest to the one-block pattern digest).  `tree` is the expected `detached_tree` of the row (a
+-- detach, or an accept that kept `yours` on a structure or removed-root collision); without it the row carries no detached tree.  A `retired`
+-- row asserts no props: the retirement fixes visibility and the pin, not a tombstone-props representation (dec193_resolution/020).  The appended row carries the next
+-- version of its path, the position of the row it follows, the server digest, the entry CAS and the ETag.
+create or replace function pg_temp.s12puc_check(p_label text, p_tag text, p_paths text[], p_expect jsonb, p_action text default 'accept')
+returns setof text
+language plpgsql as $body$
+declare
+  items jsonb; n integer := cardinality(p_paths); i integer; one jsonb; stored platform_private.cms_composition_instances;
+  prior jsonb; expect jsonb; comp text := 'platform_private.cms_composition_instances'; entry_key text := 'platform_private.cms_content_entries';
+  revision_key text := 'platform_private.cms_entry_revisions'; before_version bigint; after_version bigint; action_name text;
+begin
+  return next extensions.is(pg_temp.s12pu_state(p_label), '00000', p_label || ': the update succeeds');
+  if pg_temp.s12pu_state(p_label) <> '00000' then
+    return next extensions.diag(p_label || ' refused: ' || coalesce((select message || ' ' || coalesce(detail, '') from s12pu_out where label = p_label), ''));
+    return;
+  end if;
+  items := pg_temp.s12pu_body(p_label)->'items';
+  return next extensions.is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.s12pu_body(p_label)) k), array['items'],
+    p_label || ': the 200 body is exactly { items } (the entry version travels in the ETag)');
+  return next extensions.is(jsonb_array_length(items), n, p_label || ': one appended row per listed instance');
+  return next extensions.is((select jsonb_agg(item->>'path' order by ordinality) from jsonb_array_elements(items) with ordinality t(item, ordinality)), to_jsonb(p_paths),
+    p_label || ': the items are in request order');
+  for i in 1..n loop
+    one := items -> (i - 1);
+    expect := p_expect -> (i - 1);
+    select * into stored from platform_private.cms_composition_instances where id = (one->>'id')::uuid;
+    prior := pg_temp.s12puc_image_head(pg_temp.s12pu_rows(p_label, 'before', comp), pg_temp.s12pl_rev(p_tag), p_paths[i]);
+    return next extensions.is(one, pg_temp.s12puc_resource(stored), p_label || ' [' || p_paths[i] || ']: the item equals the persisted row, contentHash from first principles');
+    return next extensions.is(stored.version, (prior->>'version')::bigint + 1, p_label || ' [' || p_paths[i] || ']: the next version of the path is appended');
+    return next extensions.is(stored.state || '/' || stored.link_mode || '/' || stored.pattern_version::text,
+      (expect->>'state') || '/' || (expect->>'linkMode') || '/' || coalesce(expect->>'patternVersion', prior->>'pattern_version'),
+      p_label || ' [' || p_paths[i] || ']: state, link mode and pinned pattern version');
+    if expect->>'state' <> 'retired' then
+      return next extensions.is(stored.props, expect->'props', p_label || ' [' || p_paths[i] || ']: the stored props');
+    end if;
+    return next extensions.is(coalesce(stored.detached_tree, 'null'::jsonb), coalesce(expect->'tree', 'null'::jsonb),
+      p_label || ' [' || p_paths[i] || ']: the detached local block tree (null unless the row materialized the resolved or pinned tree) [DEC-193]');
+    return next extensions.ok(stored.position = (prior->>'position')::integer and stored.revision_id = (prior->>'revision_id')::uuid
+        and stored.slot_key = prior->>'slot_key' and stored.path = prior->>'path' and stored.pattern_id = (prior->>'pattern_id')::uuid
+        and stored.bindings = prior->'bindings' and stored.owner_id = (prior->>'owner_id')::uuid,
+      p_label || ' [' || p_paths[i] || ']: position, revision, slot, path, lineage, bindings and owner are copied unchanged [DEC-185]');
+    return next extensions.ok(stored.pending_pattern_version is null and stored.updated_at = stored.created_at
+        and stored.created_by = (select auth_user_id from s09d_actor where key = 'owner'),
+      p_label || ' [' || p_paths[i] || ']: no pending version, updated_at = created_at, created by the acting human');
+    return next extensions.is(stored.block_key || '@' || stored.block_version::text,
+      coalesce(expect->>'blockKey', prior->>'block_key') || '@' || coalesce(expect->>'blockVersion', prior->>'block_version'),
+      p_label || ' [' || p_paths[i] || ']: the block identity (key and version) of the row [accept adopts the target root identity, detach keeps it]');
+    return next extensions.is(btrim(stored.block_registry_digest::text), coalesce(expect->>'digest', pg_temp.s12pd_expected_digest()),
+      p_label || ' [' || p_paths[i] || ']: the registry digest the server recomputes over the pinned tree (independent oracle; the target tree for an accept)');
+  end loop;
+  return next extensions.is(pg_temp.s12pu_count(p_label, 'after', comp) - pg_temp.s12pu_count(p_label, 'before', comp), n,
+    p_label || ': exactly ' || n || ' composition rows were appended');
+  return next extensions.is((select count(*)::integer from jsonb_array_elements(pg_temp.s12pu_rows(p_label, 'before', comp)) b
+    where not exists (select 1 from jsonb_array_elements(pg_temp.s12pu_rows(p_label, 'after', comp)) a where a = b)), 0,
+    p_label || ': every pre-existing composition row is byte-identical afterwards (append-only, nothing renumbered)');
+  before_version := (select (e->>'version')::bigint from jsonb_array_elements(pg_temp.s12pu_rows(p_label, 'before', entry_key)) e
+    where e->>'id' = pg_temp.s12pl_entry_id(p_tag)::text);
+  after_version := (select (e->>'version')::bigint from jsonb_array_elements(pg_temp.s12pu_rows(p_label, 'after', entry_key)) e
+    where e->>'id' = pg_temp.s12pl_entry_id(p_tag)::text);
+  return next extensions.is(after_version, before_version + 1, p_label || ': the entry aggregate version advanced by exactly one');
+  return next extensions.is((select headers from s12pu_out where label = p_label),
+    jsonb_build_array(jsonb_build_object('etag', '"' || after_version || '"'))::text,
+    p_label || ': the committed entry aggregate strong ETag is published through response.headers');
+  return next extensions.ok((select (select e from jsonb_array_elements(before_rows -> revision_key) e where e->>'id' = pg_temp.s12pl_rev(p_tag)::text)
+      = (select e from jsonb_array_elements(after_rows -> revision_key) e where e->>'id' = pg_temp.s12pl_rev(p_tag)::text)
+    from s12pu_out where label = p_label), p_label || ': the revision row, payload_hash included, is unchanged by the composition write [AC-219]');
+  action_name := case p_action when 'accept' then 'cms.composition.pattern.update' else 'cms.composition.pattern.detach' end;
+  return next extensions.is((select count(*)::integer from audit_private.audit_events where action = action_name and target_id = (items->0->>'id')::uuid), 1,
+    p_label || ': one audit record names the first appended row');
+  return next extensions.is((select count(*)::integer from audit_private.audit_events where action = action_name
+      and correlation_id = (select (request->'context'->>'correlationId')::uuid from s12pu_out where label = p_label)), 1,
+    p_label || ': exactly one audit record for the whole request');
+end;
+$body$;
+create or replace function pg_temp.s12pu_rows(p_label text, p_side text, p_store text) returns jsonb language sql stable as $body$
+  select case p_side when 'before' then before_rows else after_rows end -> p_store from s12pu_out where label = p_label $body$;
+create or replace function pg_temp.s12pu_count(p_label text, p_side text, p_store text) returns integer language sql stable as $body$
+  select jsonb_array_length(coalesce(pg_temp.s12pu_rows(p_label, p_side, p_store), '[]'::jsonb)) $body$;

@@ -1,0 +1,14 @@
+PASS | visible region loads at once (IntersectionObserver) | requests=1
+PASS | top hydrated | 
+PASS | below-the-fold text control is still read-only (server lock) | 
+PASS | hydrated region released its lock | 
+PASS | scrolling the second region into view arms it | requests 1->1
+PASS | typed value reaches the form state | ["typed after load"]
+PASS | without visibility, no chunk before intent | requests=0
+PASS | locked while waiting | 
+PASS | pointer over arms the region | requests=1
+PASS | locks released | 
+PASS | early submit did not navigate | http://127.0.0.1:34075/
+PASS | early submit armed the region | requests=1
+PASS | held submit replayed exactly once after hydration | [""]
+PASS | fill on a locked field waits, then its value is in the form state | ["robot text"]

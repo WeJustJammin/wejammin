@@ -1,0 +1,183 @@
+-- Read eligibility, positive provenance, privacy and exact wire bounds.
+-- LABELLED FIXTURE: append-only scan/history outputs, not an update producer.
+-- Existing RLS, RPC-context guards, constraints and append-only triggers stay on.
+create or replace function pg_temp.s12df_append(p_tag text, p_path text, p_patch jsonb)
+returns uuid language plpgsql as $body$
+declare source_row platform_private.cms_composition_instances; row_id uuid := extensions.gen_random_uuid();
+  stamp timestamptz := clock_timestamp(); prior_gate text := current_setting('app.cms_rpc', true);
+begin
+  select * into strict source_row from platform_private.cms_composition_instances
+    where id = pg_temp.s12pu_head(p_tag, p_path);
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_composition_instances
+  select (jsonb_populate_record(null::platform_private.cms_composition_instances,
+    to_jsonb(source_row) || p_patch || jsonb_build_object('id', row_id,
+      'version', source_row.version + 1, 'created_at', stamp, 'updated_at', stamp))).*;
+  perform set_config('app.cms_rpc', coalesce(prior_gate, ''), true);
+  return row_id;
+end;
+$body$;
+create temp table s12df_history(label text primary key, id uuid) on commit drop;
+insert into s12df_history values ('active', pg_temp.s12pu_head('df-history', '/panel'));
+insert into s12df_history values ('pending', pg_temp.s12pu_pending('df-history', '/panel', 2));
+select pg_temp.s12pu_pending('df-history', '/panel', 2);
+select pg_temp.s12pu_diff_head('df-pending-head', 'df-history', '/panel');
+select * from pg_temp.s12df_check('df-pending-head', pg_temp.s12pu_head('df-history', '/panel'),
+  2, pg_temp.s12df_panel_paths(false), pg_temp.s12df_roots());
+select pg_temp.s12pu_diff('df-old-' || label, id) from s12df_history;
+select check_row.* from s12df_history h cross join lateral
+  pg_temp.s12df_check('df-old-' || h.label, h.id, 1, '[]') check_row;
+select is((select count(*)::integer from s12df_history h
+  join platform_private.cms_composition_instances inst on inst.id = h.id
+  where inst.pattern_version = 1 and exists (select 1 from platform_private.cms_composition_instances newer
+    where newer.revision_id = inst.revision_id and newer.path = inst.path and newer.version > inst.version)), 2,
+  'both noncurrent active and noncurrent pending rows retain real positive provenance pins');
+
+select pg_temp.s12df_append('df-retired', '/quiet', '{"state":"retired"}');
+select pg_temp.s12df_append('df-draft', '/quiet', '{"state":"draft"}');
+select pg_temp.s12df_append('df-super', '/quiet', '{"state":"superseded"}');
+-- LABELLED detached-copy output: one real pattern-origin leaf, with an exact
+-- valid snapshot, positive provenance pin and empty props; no fake null pin.
+select pg_temp.s12df_append('df-copy', '/quiet', '{"state":"active","link_mode":"detached","props":{},
+  "detached_tree":{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["quiet"],
+    "blockKey":"s12pd.block","blockVersion":1,"props":{"title":"Q"}}]}}');
+select pg_temp.s12pu_diff_head('df-no-' || tag, tag, '/quiet')
+  from unnest(array['df-retired', 'df-draft', 'df-super', 'df-copy', 'df-detached']) tag;
+select check_row.* from unnest(array['df-retired', 'df-draft', 'df-super', 'df-copy', 'df-detached']) tag
+  cross join lateral pg_temp.s12df_check('df-no-' || tag, pg_temp.s12pu_head(tag, '/quiet'), 1, '[]') check_row;
+select ok((select bool_and(inst.pattern_id is not null and inst.pattern_version = 1)
+  from platform_private.cms_composition_instances inst where inst.id in (select
+    pg_temp.s12pu_head(tag, '/quiet') from unnest(array['df-retired', 'df-draft', 'df-super', 'df-copy', 'df-detached']) tag))
+  and (pg_temp.s12pu_row(pg_temp.s12pu_head('df-copy', '/quiet'))->'detached_tree') is distinct from 'null'::jsonb
+  and (pg_temp.s12pu_row(pg_temp.s12pu_head('df-detached', '/quiet'))->'detached_tree') = 'null'::jsonb,
+  'positive provenance controls distinguish materialized detached copy from legacy NULL-tree placement');
+select pg_temp.s12pu_diff_head('df-current-pin', 'df-current', '/quiet');
+select * from pg_temp.s12df_check('df-current-pin', pg_temp.s12pu_head('df-current', '/quiet'), 2, '[]', '[]', '/', 2);
+
+-- A third real active version proves latest-target selection, not cached v2.
+select * from pg_temp.s12pl_pattern('df-b3', 's12df-main',
+  jsonb_set(pg_temp.s12pd_row('df-b2')->'block_tree', '{2,props,title}', '"Q3"'), null, true, '2');
+select pg_temp.s12pu_diff_head('df-latest', 'df-local', '/main/quiet');
+select * from pg_temp.s12df_check('df-latest', pg_temp.s12pu_head('df-local', '/main/quiet'), 3,
+  jsonb_build_array(pg_temp.s12df_path('/quiet', pg_temp.s12df_node('{"title":"Q"}'),
+    pg_temp.s12df_node('{"title":"Q3"}'), null)), pg_temp.s12df_roots(), '/main');
+select ok(pg_temp.s12pd_row('df-b2')->>'state' = 'superseded'
+  and pg_temp.s12pd_row('df-b3')->>'state' = 'active'
+  and pg_temp.s12pu_row(pg_temp.s12pu_head('df-local', '/main/quiet'))->>'pattern_version' = '1',
+  'latest read uses active v3 while the unanswered instance remains pinned to v1');
+select * from pg_temp.s12pl_pattern('df-inc1', 's12df-incompatible', jsonb_build_array(pg_temp.s12pd_block()));
+select * from pg_temp.s12pu_place('df-inc', 'df-inc1');
+select * from pg_temp.s12pl_pattern('df-inc2', 's12df-incompatible',
+  jsonb_build_array(pg_temp.s12pd_block('hero', '[]', '{"title":"new"}')),
+  jsonb_build_array((select id from s12pd_types where ordinal = 2)), true, '1');
+select pg_temp.s12pu_diff_head('df-incompatible', 'df-inc', '/hero');
+select * from pg_temp.s12df_check('df-incompatible', pg_temp.s12pu_head('df-inc', '/hero'), 1, '[]');
+select * from pg_temp.s12pl_pattern('df-dv1', 's12df-draft-version', jsonb_build_array(pg_temp.s12pd_block()));
+select * from pg_temp.s12pu_place('df-dv', 'df-dv1');
+select * from pg_temp.s12pl_pattern('df-dv2', 's12df-draft-version',
+  jsonb_build_array(pg_temp.s12pd_block('hero', '[]', '{"title":"new"}')), null, false, '1');
+select pg_temp.s12pu_diff_head('df-draft-version', 'df-dv', '/hero');
+select * from pg_temp.s12df_check('df-draft-version', pg_temp.s12pu_head('df-dv', '/hero'), 1, '[]');
+
+-- Standalone fixture is explicitly unpinned; refusal must not fabricate pin 1.
+select pg_temp.s12pl_entry('df-plain');
+select pg_temp.s12pl_row('df-plain', '/plain', 'root', 0) as df_plain_id \gset
+select * from pg_temp.s12pu_refused('df-no-pin', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(:'df_plain_id'::uuid), 'NOT_FOUND');
+select ok(pg_temp.s12pu_row(:'df_plain_id'::uuid)->'pattern_id' = 'null'::jsonb
+  and pg_temp.s12pu_row(:'df_plain_id'::uuid)->'pattern_version' = 'null'::jsonb
+  and pg_temp.s12pu_body('df-no-pin') is null,
+  'standalone source has no provenance and the refused response invents no positive pin');
+select * from pg_temp.s12pu_refused('df-denied', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('df-local', '/main/quiet'), 'designer2'),
+  'capability_missing', null, 'designer2');
+select * from pg_temp.s12pu_refused('df-hidden', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('df-local', '/main/quiet'), 'other'), 'NOT_FOUND', null, 'other');
+select * from pg_temp.s12pu_refused('df-absent', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request('a9120000-0000-4000-8000-00000000df01'), 'NOT_FOUND');
+select ok((select hidden.state = absent.state and hidden.message = absent.message
+  and hidden.detail is not distinct from absent.detail and hidden.response is null and absent.response is null
+  from s12pu_out hidden, s12pu_out absent where hidden.label = 'df-hidden' and absent.label = 'df-absent'),
+  'hidden and absent instances expose identical refusal and no node, root, pin or slot metadata');
+select pg_temp.s12pu_diff('df-acl-anon', pg_temp.s12pu_head('df-local', '/main/quiet'), 'owner', 'anon');
+select pg_temp.s12pu_diff('df-acl-auth', pg_temp.s12pu_head('df-local', '/main/quiet'), 'owner', 'authenticated');
+select is(pg_temp.s12pu_state('df-acl-anon') || '/' || pg_temp.s12pu_state('df-acl-auth'), '42501/42501',
+  'actual anon/authenticated SQL roles cannot execute the current transport');
+
+-- Exact changed-path boundary: four changed branches plus 124 changed leaves.
+create or replace function pg_temp.s12df_count_tree(p_value text, p_root text default 'fixed')
+returns jsonb language sql immutable as $body$
+  select jsonb_build_array(pg_temp.s12pd_block('area', (select jsonb_agg(
+    pg_temp.s12pd_block('c' || c, (select jsonb_agg(pg_temp.s12pd_block('g' || g,
+      '[]', jsonb_build_object('title', p_value)) order by g) from generate_series(1, 31) g),
+      jsonb_build_object('title', p_value)) order by c) from generate_series(1, 4) c),
+    jsonb_build_object('title', p_root)))
+$body$;
+create or replace function pg_temp.s12df_count_paths(p_value text) returns jsonb
+language sql immutable as $body$
+  select jsonb_agg(pg_temp.s12df_path(path,
+    pg_temp.s12df_node('{"title":"old"}', children),
+    pg_temp.s12df_node(jsonb_build_object('title', p_value), children), null) order by path collate "C")
+  from (select '/area/c' || c as path, (select jsonb_agg('/area/c' || c || '/g' || g order by g)
+    from generate_series(1, 31) g) as children from generate_series(1, 4) c
+    union all select '/area/c' || c || '/g' || g, '[]'::jsonb
+      from generate_series(1, 4) c cross join generate_series(1, 31) g) expected
+$body$;
+select * from pg_temp.s12pl_pattern('df-count1', 's12df-count', pg_temp.s12df_count_tree('old'));
+select * from pg_temp.s12pu_place('df-count', 'df-count1');
+select * from pg_temp.s12pl_pattern('df-count2', 's12df-count', pg_temp.s12df_count_tree('new'), null, true, '1');
+select pg_temp.s12pu_diff_head('df-128', 'df-count', '/area');
+select * from pg_temp.s12df_check('df-128', pg_temp.s12pu_head('df-count', '/area'),
+  2, pg_temp.s12df_count_paths('new'));
+select is(jsonb_array_length(pg_temp.s12pu_body('df-128')->'paths'), 128,
+  'actual RPC returns all 128 complete typed changed-node values at the admitted boundary');
+select * from pg_temp.s12pl_pattern('df-count3', 's12df-count', pg_temp.s12df_count_tree('new3', 'changed'), null, true, '2');
+select * from pg_temp.s12pu_refused('df-129', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('df-count', '/area')), 'diff_too_large', '["/instanceId"]');
+select is(jsonb_array_length(pg_temp.s12df_count_paths('new3')) + 1, 129,
+  'independent topology: the unchanged-children root adds exactly the 129th props-change path');
+
+-- Exact byte boundary uses the INDEPENDENT complete expected resource, never a
+-- provider response, to calibrate title length. ASCII y adds one UTF-8 octet.
+select * from pg_temp.s12pl_pattern('df-byte1', 's12df-bytes', jsonb_build_array(
+  pg_temp.s12pd_block('big', '[]', jsonb_build_object('title', repeat('x', 130000)))));
+select * from pg_temp.s12pu_place('df-byte', 'df-byte1');
+create or replace function pg_temp.s12df_byte_paths(p_length integer) returns jsonb
+language sql immutable as $body$
+  select jsonb_build_array(pg_temp.s12df_path('/big',
+    pg_temp.s12df_node(jsonb_build_object('title', repeat('x', 130000))),
+    pg_temp.s12df_node(jsonb_build_object('title', repeat('y', p_length))), null))
+$body$;
+create temp table s12df_bytes on commit drop as select 1000 + 262144 - octet_length(
+  platform_private.cms_jcs(pg_temp.s12df_resource(pg_temp.s12pu_head('df-byte', '/big'),
+    2, pg_temp.s12df_byte_paths(1000)))) as exact_length;
+select ok((select exact_length between 1000 and 200000 from s12df_bytes),
+  'byte fixture calibration comes from independent typed values and actual immutable metadata');
+select * from pg_temp.s12pl_pattern('df-byte2', 's12df-bytes', jsonb_build_array(
+  pg_temp.s12pd_block('big', '[]', jsonb_build_object('title', repeat('y', 1000)))), null, true, '1');
+select pg_temp.s12pu_diff_head('df-byte-small', 'df-byte', '/big');
+select * from pg_temp.s12df_check('df-byte-small', pg_temp.s12pu_head('df-byte', '/big'),
+  2, pg_temp.s12df_byte_paths(1000));
+select * from pg_temp.s12pl_pattern('df-byte3', 's12df-bytes', jsonb_build_array(
+  pg_temp.s12pd_block('big', '[]', jsonb_build_object('title', repeat('y',
+    (select exact_length from s12df_bytes))))), null, true, '2');
+select is(octet_length(platform_private.cms_jcs(pg_temp.s12df_resource(
+  pg_temp.s12pu_head('df-byte', '/big'), 3,
+  pg_temp.s12df_byte_paths((select exact_length from s12df_bytes))))), 262144,
+  'independent full expected resource measures exactly 262144 UTF-8 octets');
+select pg_temp.s12pu_diff_head('df-byte-exact', 'df-byte', '/big');
+select * from pg_temp.s12df_check('df-byte-exact', pg_temp.s12pu_head('df-byte', '/big'), 3,
+  pg_temp.s12df_byte_paths((select exact_length from s12df_bytes)));
+select is(octet_length(platform_private.cms_jcs(pg_temp.s12pu_body('df-byte-exact'))), 262144,
+  'actual admitted response sits exactly on 256 KiB, not a smaller proxy case');
+select * from pg_temp.s12pl_pattern('df-byte4', 's12df-bytes', jsonb_build_array(
+  pg_temp.s12pd_block('big', '[]', jsonb_build_object('title', repeat('y',
+    (select exact_length + 1 from s12df_bytes))))), null, true, '3');
+select is(octet_length(platform_private.cms_jcs(pg_temp.s12df_resource(
+  pg_temp.s12pu_head('df-byte', '/big'), 4,
+  pg_temp.s12df_byte_paths((select exact_length + 1 from s12df_bytes))))), 262145,
+  'over-limit control differs by exactly one UTF-8 octet in the complete expected resource');
+select * from pg_temp.s12pu_refused('df-byte-over', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('df-byte', '/big')), 'diff_too_large', '["/instanceId"]');
+select ok((select bool_and(before_rows = after_rows and call_role = requested_role and role_restored)
+  from s12pu_out), 'every success/refusal preserves full stores and executes/restores the actual requested SQL role');

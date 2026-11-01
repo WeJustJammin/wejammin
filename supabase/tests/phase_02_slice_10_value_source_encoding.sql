@@ -142,8 +142,8 @@ select is(
 )
 from (values
   ('taxonomy', '{"termIds":[]}'::jsonb, '<none>', 'an empty taxonomy value has no producer dependency'),
-  ('taxonomy', '{"termIds":["a9100000-0000-4000-8000-0000000000f1"]}', 'taxonomy_source_unavailable', 'a non-empty taxonomy value fails closed with taxonomy_source_unavailable'),
-  ('taxonomy', jsonb_build_object('termIds', pg_temp.s10s_uuids(128)), 'taxonomy_source_unavailable', 'a full taxonomy value fails closed with taxonomy_source_unavailable'),
+  ('taxonomy', '{"termIds":["a9100000-0000-4000-8000-0000000000f1"]}', '<none>', 'a non-empty taxonomy value is not refused by kind: its terms are checked against the owner, type and field by cms_require_value_source_available (DEC-141 item 5)'),
+  ('taxonomy', jsonb_build_object('termIds', pg_temp.s10s_uuids(128)), '<none>', 'a full taxonomy value is not refused by kind either (DEC-141 item 5)'),
   ('media', '[]', '<none>', 'an empty media array has no producer dependency'),
   ('media', '{"assetId":"a9100000-0000-4000-8000-0000000000a1","assetVersion":"3"}', 'media_source_unavailable', 'a single media reference fails closed with media_source_unavailable'),
   ('media', '[{"assetId":"a9100000-0000-4000-8000-0000000000a1","assetVersion":"3"}]', 'media_source_unavailable', 'a non-empty media array fails closed with media_source_unavailable'),

@@ -1,0 +1,48 @@
+-- PAT-031 restore leg of the two platform_api entry points of this lane: CMS-03C-14 platform_api.cms_get_instance_update_diff and CMS-03C-15
+-- platform_api.cms_apply_pattern_update.  Each wrapper remembers the caller's value of the RPC-context flag `app.cms_rpc` and restores it before it
+-- returns (SEC-2: an RPC does not leave the flag set; the private command sets it to 'true' for its own reads).  Every call runs as the real
+-- service_role; the flag value is recorded just before and just after the call (s12pu_call).  Two caller states per wrapper: the flag cleared (how a
+-- PostgREST request starts) and a known sentinel that is neither 'true' nor empty.  A wrapper that skips the restore leaves 'true' behind and fails
+-- the "after" assertions.  [P2-S12-AC-112, AC-118, AC-258]
+select set_config('s12pu.rc_sentinel', 'caller-flag-not-true', true);
+
+-- CMS-03C-14 diff ------------------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12pu_call('rc-diff-clear', 'platform_api.cms_get_instance_update_diff', pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero')));
+select is(pg_temp.s12pu_state('rc-diff-clear'), '00000', 'rc-diff-clear: the diff is answered with the flag cleared');
+select is(pg_temp.s12pu_body('rc-diff-clear')->'instance'->>'id', pg_temp.s12pu_head('dif1', '/hero')::text,
+  'rc-diff-clear: the answer is the real, non-empty diff of the addressed instance');
+select is((select rpc_before || '|' || rpc_after from s12pu_out where label = 'rc-diff-clear'), '|',
+  'rc-diff-clear: the caller''s cleared flag is restored after the diff wrapper [PAT-031]');
+select pg_temp.s12pu_call('rc-diff-sentinel', 'platform_api.cms_get_instance_update_diff', pg_temp.s12pu_diff_request(pg_temp.s12pu_head('dif1', '/hero')),
+  'owner', 'service_role', current_setting('s12pu.rc_sentinel'));
+select is(pg_temp.s12pu_state('rc-diff-sentinel'), '00000', 'rc-diff-sentinel: the diff is answered with a caller flag set');
+select is(pg_temp.s12pu_body('rc-diff-sentinel'), pg_temp.s12pu_body('rc-diff-clear'),
+  'rc-diff-sentinel: the answer does not depend on the caller''s flag value');
+select is((select rpc_before || '|' || rpc_after from s12pu_out where label = 'rc-diff-sentinel'),
+  current_setting('s12pu.rc_sentinel') || '|' || current_setting('s12pu.rc_sentinel'),
+  'rc-diff-sentinel: the caller''s sentinel flag value is restored, not cleared and not left at true [PAT-031]');
+
+-- CMS-03C-15 update (ap14 is untouched by every earlier case: its only earlier request was refused and rolled back) ------------------------------
+select pg_temp.s12pu_call('rc-apply-sentinel', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('ap14', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap14', '/hero')), 's12pu-ap14-rc-0001', 2),
+  'owner', 'service_role', current_setting('s12pu.rc_sentinel'));
+select is(pg_temp.s12pu_state('rc-apply-sentinel'), '00000', 'rc-apply-sentinel: the accept is applied with a caller flag set');
+select is(jsonb_array_length(pg_temp.s12pu_body('rc-apply-sentinel')->'items'), 1, 'rc-apply-sentinel: the answer is the real, non-empty { items }');
+select is((select rpc_before || '|' || rpc_after from s12pu_out where label = 'rc-apply-sentinel'),
+  current_setting('s12pu.rc_sentinel') || '|' || current_setting('s12pu.rc_sentinel'),
+  'rc-apply-sentinel: the caller''s sentinel flag value is restored after the update wrapper [PAT-031]');
+select pg_temp.s12pu_call('rc-apply-clear', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('ap14', 'detach', jsonb_build_array(pg_temp.s12pu_target('ap14', '/cta')), 's12pu-ap14-rc-0002'));
+select is(pg_temp.s12pu_state('rc-apply-clear'), '00000', 'rc-apply-clear: the detach is applied with the flag cleared');
+select is(jsonb_array_length(pg_temp.s12pu_body('rc-apply-clear')->'items'), 1, 'rc-apply-clear: the answer is the real, non-empty { items }');
+select is((select rpc_before || '|' || rpc_after from s12pu_out where label = 'rc-apply-clear'), '|',
+  'rc-apply-clear: the caller''s cleared flag is restored after the update wrapper [PAT-031]');
+-- the idempotent replay path leaves the flag alone too
+select pg_temp.s12pu_call('rc-apply-replay', 'platform_api.cms_apply_pattern_update', (select request from s12pu_out where label = 'rc-apply-sentinel'),
+  'owner', 'service_role', current_setting('s12pu.rc_sentinel'));
+select is(pg_temp.s12pu_body('rc-apply-replay'), pg_temp.s12pu_body('rc-apply-sentinel'), 'rc-apply-replay: the replay returns the stored 200 body');
+select is((select rpc_before || '|' || rpc_after from s12pu_out where label = 'rc-apply-replay'),
+  current_setting('s12pu.rc_sentinel') || '|' || current_setting('s12pu.rc_sentinel'),
+  'rc-apply-replay: the caller''s sentinel flag value is restored on the replay path [PAT-031]');
+select ok((select bool_and(call_role = 'service_role' and role_restored) from s12pu_out where label like 'rc-%'),
+  'every restore-leg call ran under the real service_role and restored the prior role setting');

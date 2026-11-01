@@ -16,6 +16,7 @@ import {
   standardMutationSteps,
   type HttpState,
 } from '../be00-order.test-support';
+import { headersBeforeAuthorization } from '../be00-header-order.test-support';
 
 const origin = 'https://cms.example.test';
 const revisionId = 'd1200000-0000-4000-8000-000000000011';
@@ -31,7 +32,7 @@ const body = {
   overrides: {},
   expectedVersion: '1',
 } as const;
-const resource: CompositionInstanceResource = {
+const row: CompositionInstanceResource = {
   id: instanceId,
   version: '1',
   contentHash: 'a'.repeat(64),
@@ -39,7 +40,8 @@ const resource: CompositionInstanceResource = {
   updatedAt: '2026-09-28T14:00:00.000Z',
   state: 'draft',
   revisionId,
-  path: '/primary',
+  path: '/primary/header',
+  position: 0,
   blockKey: 'profile.header',
   blockVersion: 1,
   patternId,
@@ -48,6 +50,8 @@ const resource: CompositionInstanceResource = {
   linkMode: 'linked',
   conflictState: 'none',
 };
+const placement = { items: [row] };
+const entryEtag = '"7"';
 
 const request = (
   overrides: {
@@ -91,7 +95,7 @@ const deps = (
       resetAt: 2_000,
     },
   }),
-  insertPattern: async () => ({ ok: true, value: resource }),
+  insertPattern: async () => ({ ok: true, value: placement, etag: entryEtag }),
   telemetry: () => undefined,
   ...overrides,
 });
@@ -123,7 +127,7 @@ describe('CMS-03C-02 protected pattern instance route', () => {
       SUPABASE_URL: 'https://supabase.example.test',
     });
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual(resource);
+    expect(await response.json()).toEqual(placement);
   });
 
   it('returns the authoritative instance and forwards the exact precondition to the port', async () => {
@@ -134,8 +138,8 @@ describe('CMS-03C-02 protected pattern instance route', () => {
     ).request(request());
 
     expect(response.status).toBe(201);
-    expect(await response.json()).toEqual(resource);
-    expect(response.headers.get('etag')).toBe('"1"');
+    expect(await response.json()).toEqual(placement);
+    expect(response.headers.get('etag')).toBe(entryEtag);
     expect(response.headers.get('cache-control')).toBe('no-store');
     expect(insertPattern).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -204,14 +208,15 @@ describe('CMS-03C-02 protected pattern instance route', () => {
       deps({
         insertPattern: async () => ({
           ok: true,
-          value: { ...resource, revisionId: instanceId },
+          value: { items: [{ ...row, revisionId: instanceId }] },
+          etag: entryEtag,
         }),
       }),
     ).request(request());
     expect(response.status).toBe(502);
     expect((await response.json()) as { code: string }).toHaveProperty(
       'code',
-      'DEPENDENCY_INVALID_RESPONSE',
+      'DEPENDENCY_UNAVAILABLE',
     );
   });
 });
@@ -266,19 +271,21 @@ describe('BE00 middleware order on the CMS pattern instance route', () => {
         'idempotency-key': 'pattern-instance-0001',
         'if-match': '"1"',
       }),
-    steps: standardMutationSteps(
-      httpAdapter({
-        codes: {
-          forbidden: 'COMPOSITION_FORBIDDEN',
-          badRequest: 'INVALID_REQUEST',
-          unauthenticated: 'UNAUTHENTICATED',
-          validation: 'COMPOSITION_VALIDATION_FAILED',
-          rateLimited: 'RATE_LIMITED',
-        },
-        oversize: { status: 400, code: 'INVALID_REQUEST' },
-        badPath: null,
-        badBody: {},
-      }),
+    steps: headersBeforeAuthorization(
+      standardMutationSteps(
+        httpAdapter({
+          codes: {
+            forbidden: 'COMPOSITION_FORBIDDEN',
+            badRequest: 'INVALID_REQUEST',
+            unauthenticated: 'UNAUTHENTICATED',
+            validation: 'COMPOSITION_VALIDATION_FAILED',
+            rateLimited: 'RATE_LIMITED',
+          },
+          oversize: { status: 400, code: 'INVALID_REQUEST' },
+          badPath: null,
+          badBody: {},
+        }),
+      ),
     ),
     send: (state) =>
       Promise.resolve(

@@ -2314,6 +2314,18 @@ from a browser route, and runs under the plan's lease; each is
 CAS-checked against the plan version and cursor and refuses without side effect
 when the plan state, lease or transform pair is not the one it expects.
 
+**Job lease checkpoints (`cms.schema.dry_run` Job only).** The preparation effect receives the private BE00 lease control of the verified immutable-origin
+delivery and awaits one `checkpoint()` immediately before each of these worker RPCs: `cms_claim_schema_migration_lease`,
+`cms_process_schema_migration_dry_run_batch`, `cms_finalize_schema_migration_dry_run`, `cms_process_schema_migration_batch`,
+`cms_begin_schema_migration_verification`, `cms_verify_schema_migration`, `cms_complete_schema_migration` and `cms_rollback_schema_migration`. It makes no
+checkpoint before `cms_get_schema_migration_plan` (the claimed-job resolution is fenced in SQL on the Job's state, token, version and unexpired lease),
+`cms_heartbeat_schema_migration_lease` or `cms_read_schema_migration_source_rows`. A checkpoint that is not `current` (the lease was lost, or the checkpoint
+failed) stops the invocation before that RPC: that RPC and every worker RPC after it is not sent, the stages report the retryable stop `JOB_LEASE_LOST`,
+and the consumer settles the lost lease as a retry with no Job write and no processed-event marker (BE00 immutable-origin path). A `current`
+checkpoint is a candidate operational fact, not ownership: authority for every plan write remains the plan lease, plan version and cursor CAS above, and
+authority for the Job outcome remains the BE00 outcome CAS on token, version and unexpired lease. No worker RPC accepts or verifies a BE00 lease token.
+(Stage fence 2C of the B-08 design, `docs/handoffs/2026-10-12-claude-s12/b08-production-trigger-design.md` section 4; orchestrator decision, owner may override.)
+
 **Source read RPC** `cms_read_schema_migration_source_rows`. Request:
 `{ migrationPlanId: uuid, expectedVersion: decimal-string plan version, cursor:
 decimal-string counter, limit: integer 1..128, leaseToken: string }`. It is
@@ -2420,6 +2432,69 @@ codes `MIGRATION_COUNTER_ERROR`, `MIGRATION_SOURCE_DRIFT` and
 only. No log, metric, trace, event, outbox payload, error message or job record
 carries a document, a row, or any field value; the worker tests assert it across
 violating-row, throwing-transform and malformed-page runs.
+
+### Preparation Job disposition (DEC-183)
+
+The `cms.schema.dry_run` Job effect reports exactly one BE00 disposition per delivery: `queued`, `succeeded` or `failed`. It never reports
+`cancelled` or `pending_manual_review`: a manual-review answer writes no Job outcome and acknowledges the message, which would leave the Job `running`
+for good. A `succeeded` Job carries `resultRef = { "type": "cms_schema_dry_run_report", "id": <dryRunId> }` and
+`errorCode = null`, where `<dryRunId>` is the report id that `activationPreparation.dryRunRef.id` shows. A `queued` or `failed` Job carries
+`resultRef = null`. A `failed` Job carries a code of the `^[A-Z][A-Z0-9_]{0,63}$` grammar; when the attempt rolled its report to `failed`, that
+code equals the report's `failure_code`. "Reason code" below is the worker reason code when it matches that grammar, otherwise the named fallback.
+
+| Preparation result                                                  | Job state   | errorCode                                      |
+| ------------------------------------------------------------------- | ----------- | ---------------------------------------------- |
+| claim binding refused before any RPC                                | `failed`    | `PREPARATION_CLAIM_INVALID`                    |
+| claimed-job resolution failed, retryable                            | `queued`    | reason code, fallback `DEPENDENCY_UNAVAILABLE` |
+| claimed-job resolution failed, not retryable                        | `failed`    | reason code, fallback `DEPENDENCY_UNAVAILABLE` |
+| claimed-job resolution response refused                             | `failed`    | `DEPENDENCY_INVALID_RESPONSE`                  |
+| worker `completed`                                                  | `succeeded` | null                                           |
+| worker `progress`                                                   | `queued`    | null                                           |
+| worker `retry`                                                      | `queued`    | reason code, fallback `DEPENDENCY_UNAVAILABLE` |
+| worker `failed_retryable`                                           | `queued`    | reason code, fallback `MIGRATION_FAILED`       |
+| worker `blocked`                                                    | `failed`    | `MIGRATION_BLOCKED`                            |
+| worker `failed_terminal`                                            | `failed`    | reason code, fallback `MIGRATION_FAILED`       |
+| worker `stale`, `duplicate`, `dead_letter` (cannot occur for a claimed Job) | `failed` | `PREPARATION_OUTCOME_UNMAPPED`            |
+| exception, or an environment that fails validation                  | `queued`    | `DEPENDENCY_UNAVAILABLE`                       |
+
+1. A `succeeded` Job means the attempt's report is sealed `completed` with a sealed pass and its plan is `ready` or `completed`. A sealed failing
+   report, an unsealed report and a blocked plan are `failed` Jobs. The Job never states a pass or a count: the browser reads the result, counts and
+   hashes only from the sealed report (FE03 DEC-108 dry-run states).
+2. `blocked` is the BE00 "block discovered after acceptance": `failed` with a registered non-retryable safe code. The domain recovery reference is the
+   dry-run resource (`activationPreparation.dryRunRef`), and recovery is a new CMS-03A-10 attempt.
+3. A Job error code is limited to the grammar above and never contains a document, row or field value.
+4. A `queued` disposition after the final delivery is replaced by the exhaustion rule of "Preparation delivery budget".
+5. A `queued` Job whose `errorCode` is null is a healthy continuation (worker `progress`) and is redelivered at once; a `queued` Job that carries an
+   `errorCode` is a retry-type disposition and is redelivered on the BE00 schedule below. The Job status read shows any stored `errorCode` as
+   `error { code, retryable: false }`, so a retrying Job polls as `queued` with an `error` until it settles.
+
+(DEC-183, owner decision of 2026-10-12: a sealed failing scan is `failed` `MIGRATION_BLOCKED`; the report remains the only pass/fail authority.)
+
+### Preparation delivery budget (DEC-184)
+
+The `cms.schema.dry_run` Job runs on the BE00 `platform.job.execute` budget: at most four deliveries including the initial one. The delivery number is
+`max(1, queue message attempts)`. A `queued` continuation (a worker `progress`) and every retryable disposition each cost one delivery. Retry-type
+dispositions (not `progress`) are redelivered after 15 s, 60 s and 300 s for delivery numbers 1, 2 and 3; the lost-lease and pre-effect retries of
+the consumer follow the same schedule.
+
+One invocation is bounded by a deadline of `min(240000, remaining Job lease - 60000)` milliseconds and by `maxBatchesPerInvocation` batches of at most
+128 rows per stage. For N source rows and m batches per invocation the number of deliveries is `2 x ceil(ceil(N / 128) / m) - 1` (1 for N = 0); a
+preparation completes within the budget only when `N <= 256 x m` (256 source rows at the default m = 1).
+
+On the fourth delivery, a disposition that would be `queued` instead (a) rolls an in-flight plan (`dry_running`, `running`, `verifying`,
+`failed_retryable`) to its terminal failure through the terminal rollback with reason `MIGRATION_RETRIES_EXHAUSTED`, so a new CMS-03A-10 attempt is
+admitted, and (b) reports the Job `failed` with `errorCode = MIGRATION_RETRIES_EXHAUSTED` and `resultRef = null`. The sealed report, when it exists,
+stays the only authority for counts and row errors. The rollback reads the plan again through the Job-fenced claimed read, uses the plan lease it
+finds or claims a fresh one (a `verifying` plan cannot be re-leased), runs under its own 30,000 ms deadline, and is preceded by the Job lease
+checkpoints above. A `draft` or `ready` plan is left to the supersession of the next attempt, and a plan that cannot be rolled back (no live lease and
+none claimable, or an unreadable plan) is left as it was: the Job is `failed` all the same and the `migration retry >3` and DLQ alerts are the operator
+signal. A message that the queue dead-letters before the effect runs (a consumer retry decided before any effect) leaves its Job as it was; the DLQ alert
+is the safety net.
+
+The preparation effect is composed per Worker environment from that environment's validated service credentials; no credential, transport or worker identity is shared across environments or read from module state.
+
+(DEC-184, owner decision of 2026-10-12: the BE00 budget is shipped as the ceiling now; one batch's CPU is to be measured, `maxBatchesPerInvocation` raised
+where safe, and an early cap at CMS-03A-10 proposed with a measured number.)
 
 ### Workflow policy registry
 
@@ -2828,6 +2903,9 @@ None.
 | 2026-10-07 | Slice 10 gap resolutions (DEC-144, DEC-146, DEC-145; orchestrator, owner may override). DEC-144: an object property's `constraints` are a closed per-kind vocabulary mirroring the field-level members (scalar: `minLength`/`maxLength`/`minimum`/`maximum`; enum: required nonempty `enumValues` of 1–256 strings of at most 160 characters plus `minLength`/`maxLength`; rich_text: `minLength`/`maxLength`), checked against values; the BE03a object structure path is `constraints.objectStructure.properties[]` with 0–32 properties (the earlier `constraints.properties[]` 1–32 wording is superseded). DEC-146: the protected validator registry entry is a canonical immutable grammar descriptor with a JCS SHA-256 artifact hash and artifact reference, frozen into `editor_manifest.validators` of every artifact that uses the grammar (absent otherwise), checked at activation and revalidated before every editorial transition; a field-level validator pair must be the registered member and `rich_text.v1` pairs with a `rich_text` field only.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        |
 | 2026-10-07 | Slice 11/12 cascade (DEC-136, DEC-137; orchestrator, owner may override): the non-grantable capability keys now include `cms.editorial_review` (assignment-only, read/decide on one frozen editorial review) and `cms.editorial_review.assign` (owner-only; BE03b CMS-03B-18) and `cms.definition_review` (assignment-only) and `cms.definition_review.assign` (owner-only; BE03c governed reviews for template, pattern and taxonomy versions); the closed grantable set is unchanged and the platform capability registry gains the four keys by forward migration.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | write-be-spec (Slice 11/12 cascade) | Capability keys (non-grantable), CMS-03A-14/15 rows                                                                                |
 | 2026-10-07 | Slice 10 follow-up 2 (lane H round 2 items 1, 2 and 4; orchestrator, owner may override): added the activation lock order (authority rows first), the authority-fencing outcome of a revocation racing an activation and the typed retryable 409 `CONFLICT` for a deadlock outside the order in CMS-03A-04, the Worker activation and CMS-03A-17; the global order itself lives in 03b.                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      | write-be-spec (follow-up 2)         | Activation transaction rules, Operation error coverage                                                                             |
+| 2026-10-13 | DEC-183 (owner): defined the preparation Job disposition (worker-outcome to BE00 Job-state map, safe error codes, `resultRef` type `cms_schema_dry_run_report`); a sealed failing scan is `failed` `MIGRATION_BLOCKED`. | /implement-slice (B-08, #128) | Preparation Job disposition, Migration scan protocol, BE00 Consumer Registry |
+| 2026-10-13 | DEC-184 (owner): preparation delivery budget (four deliveries, BE00 15/60/300 s pacing, invocation deadline), last-delivery plan rollback with `MIGRATION_RETRIES_EXHAUSTED`, and the `256 x maxBatchesPerInvocation` source-row ceiling. | /implement-slice (B-08, #128) | Preparation delivery budget, Migration scan protocol, BE00 Consumer Registry |
+| 2026-10-13 | Preparation Job lease checkpoints placed before the eight state-advancing worker RPCs; the BE00 lease stays out of the worker RPC contracts (orchestrator decision, owner may override). | /implement-slice (B-08, #128) | Migration scan protocol |
 
 ## Dependency References
 

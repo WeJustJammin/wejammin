@@ -1,0 +1,77 @@
+-- CMS-03C-07 decision flows over real protected policy bases: the first rejection (R2), the policy slot then the base
+-- slot (R3), the unsatisfiable base approve then the policy slot (R4), a duplicate decision then a rejection (R5).
+
+-- ------------------------------------------------------------ R2: the first rejection ends the review --
+select pg_temp.s12ga_decide('rej', 'rev1', pg_temp.s12ga_review('r2'), 'reject', repeat(E'\u00e9', 1000) || repeat('x', 1000));
+select ok(pg_temp.s12ga_out('rej') = 'ok' and pg_temp.s12ga_body('rej')->>'state' = 'rejected'
+    and pg_temp.s12ga_body('rej')->>'version' = '2' and (pg_temp.s12ga_body('rej')->>'recordedDecisionCount')::integer = 1
+    and pg_temp.s12ga_body('rej')->>'decidedAt' is not null,
+  'a rejection sets the review rejected at version 2 with decidedAt, terminally [P2-S12-AC-073]');
+select ok(
+  (select decision.decision = 'reject' and decision.capability = 'cms.reviewer'
+     from platform_private.cms_governed_review_decisions decision where decision.review_id = pg_temp.s12ga_review('r2'))
+  and (select subject.state = 'draft' and subject.lifecycle_version = 3 and subject.version = 1
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('r2')),
+  'the reject decision satisfies the base slot and returns the subject to draft (lifecycle 3, definition version 1) [P2-S12-AC-073]');
+select ok((select decision.reason = repeat(E'\u00e9', 1000) || repeat('x', 1000) and char_length(decision.reason) = 2000
+          and octet_length(decision.reason) = 3000
+          and decision.comment_hash = encode(sha256(convert_to(decision.reason, 'UTF8')), 'hex')
+     from platform_private.cms_governed_review_decisions decision where decision.review_id = pg_temp.s12ga_review('r2')),
+  'a reason of exactly 2000 code points (3000 octets) is accepted and stored whole with the hash of its UTF-8 bytes [P2-S12-AC-071]');
+select pg_temp.s12ga_decide('rej-again', 'rev1', pg_temp.s12ga_review('r2'), 'approve');
+select is(pg_temp.s12ga_out('rej-again'), 'P0001:review_not_open',
+  'a decision on a rejected review is refused review_not_open [P2-S12-AC-074]');
+
+-- ---------------------------------- R3 protected: the policy slot first, the base slot second --
+select pg_temp.s12ga_decide('r3-policy', 'designer2', pg_temp.s12ga_review('r3'), 'approve');
+select ok(pg_temp.s12ga_out('r3-policy') = 'ok' and pg_temp.s12ga_body('r3-policy')->>'state' = 'open'
+    and pg_temp.s12ga_body('r3-policy')->>'version' = '2'
+    and (pg_temp.s12ga_body('r3-policy')->>'recordedDecisionCount')::integer = 1
+    and pg_temp.s12ga_body('r3-policy')->>'decidedAt' is null
+    and (select decision.capability = 'cms.reviewer.policy' from platform_private.cms_governed_review_decisions decision
+          where decision.review_id = pg_temp.s12ga_review('r3') and decision.reviewer_person_id = pg_temp.s12ga_person('designer2')),
+  'the first protected approval stays open: a specialist holder satisfies the policy slot [P2-S12-AC-073]');
+select pg_temp.s12ga_decide('r3-base', 'rev1', pg_temp.s12ga_review('r3'), 'approve');
+select ok(pg_temp.s12ga_out('r3-base') = 'ok' and pg_temp.s12ga_body('r3-base')->>'state' = 'approved'
+    and pg_temp.s12ga_body('r3-base')->>'version' = '3'
+    and (pg_temp.s12ga_body('r3-base')->>'recordedDecisionCount')::integer = 2
+    and (select decision.capability = 'cms.reviewer' from platform_private.cms_governed_review_decisions decision
+          where decision.review_id = pg_temp.s12ga_review('r3') and decision.reviewer_person_id = pg_temp.s12ga_person('rev1'))
+    and pg_temp.s12ga_approvals(pg_temp.s12ga_review('r3')) = 2
+    and (select subject.state = 'approved' and subject.lifecycle_version = 3
+           from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('r3')),
+  'the second distinct approval fills the base slot, approves the review at version 3 and moves the subject to approved [P2-S12-AC-073]');
+
+-- ----------- R4 protected: base slot first, an approve that cannot fill the policy slot, then the policy slot --
+select pg_temp.s12ga_decide('r4-base', 'rev1', pg_temp.s12ga_review('r4'), 'approve');
+select pg_temp.s12ga_mark('r4:slot', pg_temp.s12ga_review('r4'));
+select pg_temp.s12ga_decide('r4-unsat', 'rev2', pg_temp.s12ga_review('r4'), 'approve');
+select ok(pg_temp.s12ga_out('r4-base') = 'ok' and pg_temp.s12ga_body('r4-base')->>'state' = 'open'
+    and pg_temp.s12ga_out('r4-unsat') = 'P0001:specialist_slot_unsatisfiable'
+    and pg_temp.s12ga_same('r4:slot', pg_temp.s12ga_review('r4')),
+  'with the base slot filled, an approval by a human holding no specialist capability is specialist_slot_unsatisfiable and '
+  || 'changes nothing [P2-S12-AC-074]');
+select pg_temp.s12ga_decide('r4-policy', 'designer2', pg_temp.s12ga_review('r4'), 'approve');
+select ok(pg_temp.s12ga_out('r4-policy') = 'ok' and pg_temp.s12ga_body('r4-policy')->>'state' = 'approved'
+    and pg_temp.s12ga_body('r4-policy')->>'version' = '3'
+    and (select decision.capability = 'cms.reviewer.policy' from platform_private.cms_governed_review_decisions decision
+          where decision.review_id = pg_temp.s12ga_review('r4') and decision.reviewer_person_id = pg_temp.s12ga_person('designer2')),
+  'the specialist then fills the policy slot and approves the review [P2-S12-AC-073]');
+
+-- ---------------------------------------------- R5 protected: duplicate decision, then a rejection --
+select pg_temp.s12ga_decide('r5-first', 'rev1', pg_temp.s12ga_review('r5'), 'approve');
+select pg_temp.s12ga_mark('r5:dup', pg_temp.s12ga_review('r5'));
+select pg_temp.s12ga_decide('r5-dup', 'rev1', pg_temp.s12ga_review('r5'), 'reject');
+select ok(pg_temp.s12ga_out('r5-first') = 'ok' and pg_temp.s12ga_out('r5-dup') = 'P0001:duplicate_decision'
+    and pg_temp.s12ga_same('r5:dup', pg_temp.s12ga_review('r5')),
+  'one human records at most one decision per review: the second is duplicate_decision and writes nothing [P2-S12-AC-073]');
+select pg_temp.s12ga_decide('r5-reject', 'designer2', pg_temp.s12ga_review('r5'), 'reject', 'The protected policy is not satisfied.');
+select ok(pg_temp.s12ga_out('r5-reject') = 'ok' and pg_temp.s12ga_body('r5-reject')->>'state' = 'rejected'
+    and pg_temp.s12ga_body('r5-reject')->>'version' = '3'
+    and (pg_temp.s12ga_body('r5-reject')->>'recordedDecisionCount')::integer = 2
+    and (select decision.capability = 'cms.reviewer' from platform_private.cms_governed_review_decisions decision
+          where decision.review_id = pg_temp.s12ga_review('r5') and decision.reviewer_person_id = pg_temp.s12ga_person('designer2'))
+    and (select subject.state = 'draft' and subject.lifecycle_version = 3
+           from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('r5')),
+  'the first rejection ends a protected review early, even by a specialist: the reject satisfies the base slot and the subject '
+  || 'returns to draft [P2-S12-AC-073]');

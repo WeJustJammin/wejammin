@@ -1,0 +1,52 @@
+-- The guards that keep an otherwise eligible failed job from being re-requested: a queued Job, a running Job, and the 15-minute bound.  The
+-- history is X failed and C succeeded (020), a second party's failed Job O, and a queued Job Q.  Each refusal is made attributable by
+-- fixture assertions (what else is true), so it cannot pass through another guard.  [P2-S12-AC-226, DEC-194]
+select pg_temp.s12tt_seed_revision('dcd');
+select pg_temp.s12tt_seed_revision('dce');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('dcd'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-retire'), 1, 'active', 3);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('dce'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-retire'), 1, 'active', 4);
+select pg_temp.s12dc_job('o', 'other', pg_temp.s09d_id('otherOrg'), 2);
+select pg_temp.s12dc_settle('o', pg_temp.s12dc_id('job:o'), 'failed', 'DEPENDENCY_UNAVAILABLE');
+select pg_temp.s12dc_job('q', 'owner', pg_temp.s09d_id('ownerOrg'), 3);
+select pg_temp.s12dc_elapse(20);
+select ok(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 2
+          and (select state from platform_private.jobs where id = pg_temp.s12dc_id('job:x')) = 'failed'
+          and (select state from platform_private.jobs where id = pg_temp.s12dc_id('job:c')) = 'succeeded'
+          and (select state from platform_private.jobs where id = pg_temp.s12dc_id('job:q')) = 'queued'
+          and pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) >= 20 and pg_temp.s12dc_live(pg_temp.s09d_id('ownerOrg')) = 1
+          and (select state from platform_private.jobs where id = pg_temp.s12dc_id('job:o')) = 'failed'
+          and pg_temp.s12tt_work(pg_temp.s09d_id('otherOrg')) = 0,
+  'fixture: ownerOrg has 2 unconverged assignments, a failed X, a succeeded C and a queued Q, idle 20 minutes; otherOrg has a failed O and no work [P2-S12-AC-226]');
+
+select pg_temp.s12tt_mark('g-queued');
+select pg_temp.s12dc_sweep('g-queued');
+select is(pg_temp.s12dc_out('g-queued'), 'ok:{"requested": 0}',
+  'a party with a failed job, remaining work and a QUEUED job of the type is not re-requested (idle 20 minutes, so only the live job guards) [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12tt_same('g-queued'), 'and nothing is written, not even for the second party that has a failed job but no work [P2-S12-AC-226, DEC-194]');
+
+select pg_temp.s12tt_claim('dc-q', pg_temp.s12dc_id('job:q'), 1);
+select pg_temp.s12dc_elapse(20);
+select ok((select state from platform_private.jobs where id = pg_temp.s12dc_id('job:q')) = 'running'
+          and pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) >= 20 and pg_temp.s12dc_live(pg_temp.s09d_id('ownerOrg')) = 1,
+  'fixture: Q is claimed (running), idle 20 minutes again [P2-S12-AC-226]');
+select pg_temp.s12tt_mark('g-running');
+select pg_temp.s12dc_sweep('g-running');
+select is(pg_temp.s12dc_out('g-running'), 'ok:{"requested": 0}',
+  'a RUNNING job of the type also blocks the re-request [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12tt_same('g-running'), 'and writes nothing [P2-S12-AC-226, DEC-194]');
+
+-- Q fails just now: the party now has a failed head, work and no live job, so only the 15-minute bound can refuse
+select ok(pg_temp.s12tt_outcome('dc-q', 'failed', null, 'MERGE_CONVERGE_CONFLICT'), 'fixture: Q is recorded failed [P2-S12-AC-226]');
+select ok(pg_temp.s12dc_live(pg_temp.s09d_id('ownerOrg')) = 0 and pg_temp.s12dc_streak(pg_temp.s09d_id('ownerOrg')) = 1
+          and pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) = 0 and pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 2,
+  'fixture: no live job, one failed generation, 2 assignments remain, the last job activity is under a minute old [P2-S12-AC-226]');
+select pg_temp.s12tt_mark('g-fresh');
+select pg_temp.s12dc_sweep('g-fresh');
+select is(pg_temp.s12dc_out('g-fresh'), 'ok:{"requested": 0}', 'a failure recorded just now is not re-requested: the 15-minute bound holds [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12tt_same('g-fresh'), 'and writes nothing [P2-S12-AC-226, DEC-194]');
+select pg_temp.s12dc_elapse(14);
+select is(pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')), 14, 'fixture: the last job activity is 14 minutes old [P2-S12-AC-226]');
+select pg_temp.s12tt_mark('g-14');
+select pg_temp.s12dc_sweep('g-14');
+select is(pg_temp.s12dc_out('g-14'), 'ok:{"requested": 0}', 'still no request 14 minutes after the failure [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12tt_same('g-14'), 'and writes nothing [P2-S12-AC-226, DEC-194]');

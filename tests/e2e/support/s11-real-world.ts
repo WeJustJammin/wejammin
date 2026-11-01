@@ -15,7 +15,11 @@ import {
 } from '../../postgrest/support/stack';
 import { s10Session, type S10Principal, type S10World } from './s10-real-world';
 import { S10_CAPABILITIES_CLAIM, S10_PARTY_CLAIM } from './s10-session-claims';
-import { S11_PERSON_CLAIM, S11_STEP_UP_CLAIM } from './s11-session-claims';
+import {
+  S11_PERSON_CLAIM,
+  S11_STEP_UP_CLAIM,
+  S12_ACTING_CONTEXT_CLAIM,
+} from './s11-session-claims';
 
 /** The default life of a test grant, in days; a spec that needs more passes `grantDays`. */
 export const S11_GRANT_DAYS = 30;
@@ -89,6 +93,7 @@ export const s11Session = (
   capabilities: readonly string[],
   stepUpAt: Date | null,
   sessionNumber = 1,
+  actingContextId: string | null = null,
 ): ReturnType<typeof s10Session> => {
   const base = s10Session(world, principal, sessionNumber);
   return {
@@ -97,6 +102,9 @@ export const s11Session = (
       [S10_PARTY_CLAIM]: world.owner.organizationId,
       [S10_CAPABILITIES_CLAIM]: capabilities,
       [S11_PERSON_CLAIM]: principal.personId,
+      ...(actingContextId === null
+        ? {}
+        : { [S12_ACTING_CONTEXT_CLAIM]: actingContextId }),
       ...(stepUpAt === null
         ? {}
         : { [S11_STEP_UP_CLAIM]: stepUpAt.toISOString() }),

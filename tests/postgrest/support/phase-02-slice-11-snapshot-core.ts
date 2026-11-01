@@ -48,6 +48,31 @@ export type RowTextOverrides = Readonly<Record<string, string>>;
  */
 export type SnapshotOptions = Readonly<{ valueBlind?: boolean }>;
 
+/** The whole-row text the default digest hashes (table alias `t`). */
+export const DEFAULT_ROW_TEXT = 'pg_catalog.to_jsonb(t)::text';
+
+/**
+ * `<count>:<sha256>` for one table (or a parenthesised row source such as a scoped subselect), SQL-side, as a jsonb object. The whole
+ * ordered row text is hashed in the database by default (a changed value moves
+ * the digest even at an unchanged count); with `valueBlind` only the count is
+ * hashed, which is the boundary the projection control must detect as broken.
+ */
+export const tableDigestSql = (
+  table: string,
+  rowText: string,
+  valueBlind: boolean,
+): string =>
+  valueBlind
+    ? `select jsonb_build_object('count', count(*), 'sha',
+         pg_catalog.encode(pg_catalog.sha256(
+           pg_catalog.convert_to(count(*)::text, 'utf8')), 'hex'))
+       from ${table} t`
+    : `select jsonb_build_object('count', count(*), 'sha',
+         coalesce(pg_catalog.encode(pg_catalog.sha256(pg_catalog.convert_to(
+           coalesce(pg_catalog.string_agg(${rowText}, E'\n'
+             order by ${rowText}), ''), 'utf8')), 'hex'), ''))
+       from ${table} t`;
+
 const SHA256_HEX = /^[0-9a-f]{64}$/u;
 
 /**

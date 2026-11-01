@@ -1,0 +1,95 @@
+-- cmsLocaleVariantRead lane helpers (DEC-205).  Include AFTER the Slice 10 RPC fixtures,
+-- phase_02_slice_12_locale_variant/000-helpers.sqlinc and phase_02_slice_12_locale_resolution/001-world.sqlinc:
+-- they reuse pg_temp.l12_json, l12_entry, l12_author, l12_source_edit, l12r_req, l12r_fid and l12r_field_list.
+-- Everything resolves through a probe so an absent function yields a failing assertion, not an aborted run.
+
+-- The read as the Worker calls it: the private request carries the path entry id and locale.
+create or replace function pg_temp.l205_call(p_request jsonb)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.l12_json(format('select platform_api.cms_get_locale_variant(%L::jsonb)', p_request::text))
+$body$;
+
+create or replace function pg_temp.l205_read_id(p_entry_id text, p_locale text)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.l205_call(jsonb_build_object('entryId', p_entry_id, 'locale', p_locale))
+$body$;
+
+create or replace function pg_temp.l205_read(p_locale text)
+returns jsonb
+language sql
+as $body$
+  select pg_temp.l205_read_id(pg_temp.l12_entry()::text, p_locale)
+$body$;
+
+-- Acting as one of the Slice 10 fixture principals (creatorAuth, editorAuth, outsiderAuth, strangerAuth).
+create or replace function pg_temp.l205_as(p_key text)
+returns void
+language sql
+as $body$
+  select pg_temp.s10_rpc_as((select value::uuid from s10_ids where key = p_key),
+                            (select value::uuid from s10_ids where key = 'organization'))
+$body$;
+
+-- One resolution of a read answer as 'mode/outcome/provenance/resolvedFromLocale/stale/blocking/reasonCode'.
+create or replace function pg_temp.l205_res(p_read jsonb, p_field text)
+returns text
+language sql
+as $body$
+  select (item->>'mode') || '/' || (item->>'outcome') || '/' || (item->>'provenance') || '/'
+         || coalesce(item->>'resolvedFromLocale', '-') || '/' || (item->>'stale') || '/'
+         || (item->>'blocking') || '/' || coalesce(item->>'reasonCode', '-')
+    from jsonb_array_elements(p_read->'resolutions') item
+   where item->>'fieldId' = pg_temp.l12r_fid(p_field)::text
+$body$;
+
+-- The stored value of one field in a read answer (SQL null when the field is not listed).
+create or replace function pg_temp.l205_value(p_read jsonb, p_field text)
+returns jsonb
+language sql
+as $body$
+  select item->'value'
+    from jsonb_array_elements(p_read->'fields') item
+   where item->>'fieldId' = pg_temp.l12r_fid(p_field)::text
+$body$;
+
+-- The localizable (localized or no_fallback) active fields of the active version, ascending by field id.
+create or replace function pg_temp.l205_localizable()
+returns uuid[]
+language sql
+stable
+as $body$
+  select coalesce(array_agg(definition.stable_field_id order by definition.stable_field_id), array[]::uuid[])
+    from platform_private.cms_field_definition_versions definition
+   where definition.content_type_version_id = (select value::uuid from l12r_ids where key = 'versionId')
+     and definition.state = 'active'
+     and definition.localization_mode in ('localized', 'no_fallback')
+$body$;
+
+-- The CMS-03C-20 resolver, one call per localizable field: the delivery/gate/editorial truth the read must equal.
+create or replace function pg_temp.l205_resolver(p_locale text)
+returns jsonb
+language sql
+as $body$
+  select coalesce(jsonb_agg(platform_private.cms_resolve_locale_field(pg_temp.l12_entry(), p_locale, field_id)
+                            order by field_id), '[]'::jsonb)
+    from unnest(pg_temp.l205_localizable()) field_id
+$body$;
+
+-- Counts that a read must not move.
+create or replace function pg_temp.l205_evidence()
+returns text
+language sql
+stable
+as $body$
+  select (select count(*) from platform_private.cms_locale_variants)::text || '/'
+      || (select count(*) from platform_private.cms_entry_revisions)::text || '/'
+      || (select count(*) from platform_private.cms_entry_field_values)::text || '/'
+      || (select count(*) from audit_private.audit_events)::text || '/'
+      || (select count(*) from platform_private.idempotency_records)::text || '/'
+      || (select count(*) from platform_private.outbox_events)::text || '/'
+      || (select coalesce(sum(version), 0) from platform_private.cms_content_entries)::text
+$body$;

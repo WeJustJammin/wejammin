@@ -6,6 +6,10 @@ export interface DraftFields {
   readonly set: (name: string, value: string) => void;
   /** Forget everything typed and restored: the next values are the defaults. */
   readonly reset: () => void;
+  /** What has been typed so far: a command remembers it when it is sent. */
+  readonly typedValues: Readonly<Record<string, string>>;
+  /** After a verified success: forget the fields that still hold what was sent; a value typed since is kept. */
+  readonly clearSent: (sent: Readonly<Record<string, string>>) => void;
 }
 
 /**
@@ -21,10 +25,23 @@ export const useDraftFields = (
   const [typed, setTyped] = React.useState<Readonly<Record<string, string>>>(
     {},
   );
+  const clearSent = React.useCallback(
+    (sent: Readonly<Record<string, string>>) =>
+      setTyped((previous) =>
+        Object.fromEntries(
+          Object.entries(previous).filter(
+            ([name, value]) => sent[name] !== value,
+          ),
+        ),
+      ),
+    [],
+  );
   return {
     value: (name) => typed[name] ?? restored?.[name] ?? defaults[name] ?? '',
     set: (name, value) =>
       setTyped((previous) => ({ ...previous, [name]: value })),
     reset: () => setTyped({}),
+    typedValues: typed,
+    clearSent,
   };
 };

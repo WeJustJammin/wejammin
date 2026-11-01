@@ -104,14 +104,19 @@ as $body$
   select format($s$
     insert into platform_private.cms_composition_instances(
       owner_id, state, version, revision_id, path, slot_key, block_key,
-      block_version, block_registry_digest, link_mode, created_by
+      block_version, block_registry_digest, link_mode, created_by, position
     )
+    -- DEC-185 (BE03c 1463): a path keeps one position across its versions; distinct paths take consecutive
+    -- positions in path order after the slot's greatest (0 for an empty slot).
     select owner.value::uuid, 'active', %s, revision.value::uuid, %s,
            'primary', 'profile.header', 1, repeat('a', 64), 'detached',
-           creator.value::uuid
+           creator.value::uuid,
+           (select coalesce(max(e.position) + 1, 0) from platform_private.cms_composition_instances e
+             where e.revision_id = revision.value::uuid and e.slot_key = 'primary')
+             + (pg_catalog.dense_rank() over (order by %s) - 1)::integer
     from s10_ids owner, s10_ids revision, s10_ids creator,
          generate_series(1, %s) as n
     where owner.key = 'organization' and revision.key = 'entryRevisionId'
       and creator.key = 'creatorAuth';
-  $s$, case when p_distinct_versions then 'n' else '1' end, p_path_expr, p_count)
+  $s$, case when p_distinct_versions then 'n' else '1' end, p_path_expr, p_path_expr, p_count)
 $body$;

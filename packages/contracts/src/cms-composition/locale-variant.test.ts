@@ -38,6 +38,7 @@ const resource = {
   sourceRevisionId: SOURCE_REVISION_ID,
   fallbackChain: ['fr', 'en-US'],
   noFallbackFieldIds: [FIELD_ID],
+  staleFieldIds: [],
 };
 
 describe('CMS-03C-04 locale-variant wire contract', () => {

@@ -14,6 +14,8 @@ import { s11Session } from './s11-real-world';
 export type S11Actor = Readonly<{
   principal: S10Principal;
   capabilities: readonly string[];
+  /** The acting-context binding the session names (owner reads are binding-bound). */
+  actingContextId?: string;
 }>;
 
 /** A new context signed in as `actor`; `stepUpAt` null means no completed MFA. */
@@ -26,7 +28,14 @@ export const signInS11 = async (
   const context = await browser.newContext();
   await authenticateLocalSession(
     context,
-    s11Session(world, actor.principal, actor.capabilities, stepUpAt),
+    s11Session(
+      world,
+      actor.principal,
+      actor.capabilities,
+      stepUpAt,
+      1,
+      actor.actingContextId ?? null,
+    ),
   );
   const page = await context.newPage();
   const browserErrors: string[] = [];
@@ -52,6 +61,13 @@ export const completeStepUp = async (
 ): Promise<void> => {
   await authenticateLocalSession(
     context,
-    s11Session(world, actor.principal, actor.capabilities, new Date()),
+    s11Session(
+      world,
+      actor.principal,
+      actor.capabilities,
+      new Date(),
+      1,
+      actor.actingContextId ?? null,
+    ),
   );
 };

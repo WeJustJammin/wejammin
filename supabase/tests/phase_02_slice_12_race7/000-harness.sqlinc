@@ -1,0 +1,260 @@
+-- Slice 12 race7 harness: real two-session concurrency for pgTAP files (lane claude_s12_race7, P2-S12-AC-013/019/047/085/086/145/205/218/276/277/294).
+-- Include ONCE per file, after `create extension dblink with schema extensions;` and OUTSIDE any transaction:  \ir phase_02_slice_12_race7/000-harness.sqlinc
+--
+-- Method (the precedent of phase_02_slice_09_schema/000b-activation-lock.sqlinc and phase_02_slice_12_gaps_lock_position4_race.sql):
+--   * the world is built by the REAL producers inside one `begin; ... commit;` of this session and is therefore committed and visible to every
+--     dblink session; the harness snapshots every user table BEFORE the world and removes every row the world and the scenarios added AFTER them
+--     (r7_snapshot / r7_restore), so the file leaves the database as it found it;
+--   * a command session runs the real platform_api function exactly as the Worker transport does (`set local role service_role`, the verified actor
+--     settings as transaction-local GUCs) through the remote function pg_temp.r7_cmd(jsonb); the stashed jsonb carries {settings, fn, request};
+--   * a HELD command is the lock holder: `begin` then r7_cmd, the transaction stays open until r7_end; a SENT command is the contender: one
+--     statement sent asynchronously, observed blocked through pg_locks / pg_blocking_pids (live lock-manager state, no sleeps as evidence);
+--   * the outcome of every command is 'ok:<response>' or '<sqlstate>:<message>[|<detail>]'.
+-- Session-lifetime objects (they survive the world's commit): r7_result (a remote temp table), r7_stash, r7_pids, r7_tests, and in 005-snapshot.sqlinc r7_snap, r7_trig, r7_fk.
+-- The result notes live in the TEMP table of a dedicated connection (r7n), so a note survives the rollback of the sub-transaction of an exception
+-- handler (every plpgsql block with an EXCEPTION clause rolls back its own writes): r7_note / r7_get go through dblink to that session.
+do $r7n$ begin
+  begin perform extensions.dblink_disconnect('r7n'); exception when others then null; end;
+  perform extensions.dblink_connect('r7n', 'host=db port=5432 dbname=postgres user=postgres password=postgres');
+  perform extensions.dblink_exec('r7n', 'create temp table r7_result(key text primary key, value text)');
+end $r7n$;
+create temp table if not exists r7_stash(key text primary key, body text not null);
+create temp table if not exists r7_pids(conn text primary key, pid integer not null);
+
+-- TAP of this file.  pgTAP allows ONE plan per session and the committed world transaction already uses it (the producers' fixtures assert through
+-- pgTAP), so the assertions of a race7 file are emitted by these functions: r7_is / r7_ok record, r7_finish prints `ok N - ...` lines and `1..N`.
+create temp table if not exists r7_tests(n serial primary key, ok boolean not null, descr text not null, why text);
+create or replace function pg_temp.r7_is(p_got text, p_want text, p_descr text) returns void language sql as $b$
+  insert into r7_tests(ok, descr, why) values (p_got is not distinct from p_want, p_descr,
+    case when p_got is not distinct from p_want then null else format('got: %L, want: %L', p_got, p_want) end) $b$;
+create or replace function pg_temp.r7_ok(p_cond boolean, p_descr text) returns void language sql as $b$
+  insert into r7_tests(ok, descr, why) values (coalesce(p_cond, false), p_descr, case when coalesce(p_cond, false) then null else 'condition is false or null' end) $b$;
+create or replace function pg_temp.r7_diag(p_text text) returns void language sql as $b$
+  insert into r7_tests(ok, descr, why) values (true, '# ' || p_text, 'diag') $b$;
+create or replace function pg_temp.r7_finish() returns setof text language plpgsql as $b$
+declare t record; seq integer := 0;
+begin
+  return next '1..' || (select count(*) from r7_tests where why is distinct from 'diag');
+  for t in select * from r7_tests order by n loop
+    if t.why = 'diag' then
+      return next t.descr;
+    else
+      seq := seq + 1;
+      return next case when t.ok then 'ok ' else 'not ok ' end || seq || ' - ' || t.descr;
+      if not t.ok then return next '# ' || t.why; end if;
+    end if;
+  end loop;
+end;
+$b$;
+
+create or replace function pg_temp.r7_note(p_key text, p_value text) returns void language plpgsql as $b$
+begin
+  perform extensions.dblink_exec('r7n', format('insert into r7_result(key, value) values (%L, %L) on conflict (key) do update set value = excluded.value', p_key, p_value));
+end;
+$b$;
+create or replace function pg_temp.r7_get(p_key text) returns text language plpgsql volatile as $b$
+declare v text;
+begin
+  select r.v into v from extensions.dblink('r7n', format('select value from r7_result where key = %L', p_key)) as r(v text);
+  return v;
+end;
+$b$;
+create or replace function pg_temp.r7_pid(p_conn text) returns integer language sql stable as $b$ select pid from r7_pids where conn = p_conn $b$;
+
+-- ------------------------------------------------------------------------------------------------ connections
+-- The remote function every command session carries: it applies the verified actor settings (transaction-local, so a held transaction keeps them),
+-- switches to the real service_role and calls the named platform_api function with the request.
+create or replace function pg_temp.r7_conn(p_conn text) returns void language plpgsql as $b$
+begin
+  begin perform extensions.dblink_disconnect(p_conn); exception when others then null; end;
+  perform extensions.dblink_connect(p_conn, 'host=db port=5432 dbname=postgres user=postgres password=postgres');
+  perform extensions.dblink_exec(p_conn, 'set statement_timeout = ''60s''');
+  perform extensions.dblink_exec(p_conn, 'set app.cms_rpc = ''true''');
+  perform extensions.dblink_exec(p_conn, $r7remote$
+    create or replace function pg_temp.r7_cmd(p jsonb) returns text language plpgsql as $f$
+    declare k text; v text; res text;
+    begin
+      for k, v in select e.key, e.value from jsonb_each_text(p->'settings') e loop
+        perform set_config(k, v, true);
+      end loop;
+      execute 'set local role service_role';
+      execute format('select %s($1)::text', p->>'fn') into res using (p->'request');
+      return coalesce(res, '');
+    end
+    $f$
+  $r7remote$);
+  insert into r7_pids(conn, pid)
+  select p_conn, probe.pid from extensions.dblink(p_conn, 'select pg_backend_pid()') as probe(pid integer)
+  on conflict (conn) do update set pid = excluded.pid;
+end;
+$b$;
+create or replace function pg_temp.r7_close(p_conns text[]) returns void language plpgsql as $b$
+declare c text;
+begin
+  foreach c in array p_conns loop
+    begin perform extensions.dblink_exec(c, 'rollback'); exception when others then null; end;
+    begin perform extensions.dblink_disconnect(c); exception when others then null; end;
+  end loop;
+end;
+$b$;
+
+-- ------------------------------------------------------------------------------------------------ commands
+-- Stash one command: the verified actor (a row of the world's s09d_actor, so call it INSIDE the world transaction) and the request.  The context is
+-- the one the governed suites send (s12ga_ctx: step-up one minute old, which stays inside the -30 s .. 600 s window for nine minutes).
+create or replace function pg_temp.r7_stash_cmd(
+  p_key text, p_actor text, p_fn text, p_request jsonb, p_ctx jsonb default null, p_extra jsonb default '{}'::jsonb) returns void
+language plpgsql as $b$
+declare a record; ctx jsonb := p_ctx;
+begin
+  select * into a from s09d_actor where key = p_actor;
+  if ctx is null then execute 'select pg_temp.s12ga_ctx($1)' into ctx using p_actor; end if;
+  insert into r7_stash(key, body) values (p_key, jsonb_build_object(
+    'fn', p_fn,
+    'settings', jsonb_build_object(
+      'app.cms_session_actor', '', 'app.cms_session_party', '', 'app.mfa_session_subject', '', 'app.cms_rpc', '',
+      'request.jwt.claims', jsonb_build_object('role', 'service_role', 'sub', a.auth_user_id::text)::text,
+      'app.auth_user_id', a.auth_user_id::text, 'app.actor_auth_user_id', a.auth_user_id::text, 'app.actor_person_id', a.person_id::text,
+      'app.acting_party_id', coalesce(a.party_id::text, ''), 'app.acting_context_id', coalesce(a.binding_id::text, '')) || p_extra,
+    'request', p_request || jsonb_build_object('context', ctx))::text)
+  on conflict (key) do update set body = excluded.body;
+end;
+$b$;
+-- The same stashed command (same request bytes, same Idempotency-Key) with extra transaction-local settings, e.g. {"lock_timeout": "1s"}.
+create or replace function pg_temp.r7_stash_copy(p_key text, p_from text, p_extra jsonb) returns void language sql as $b$
+  insert into r7_stash(key, body)
+  select p_key, jsonb_set(body::jsonb, '{settings}', (body::jsonb->'settings') || p_extra)::text from r7_stash where key = p_from
+  on conflict (key) do update set body = excluded.body $b$;
+create or replace function pg_temp.r7_call_sql(p_key text) returns text language sql stable as $b$
+  select format('select pg_temp.r7_cmd(%L::jsonb)', body) from r7_stash where key = p_key $b$;
+
+-- A statement on a connection, synchronously: 'ok:<first value>' or '<sqlstate>:<message>[|<detail>]'.
+create or replace function pg_temp.r7_sql(p_conn text, p_sql text) returns text language plpgsql as $b$
+declare v text; d text;
+begin
+  select r.x into v from extensions.dblink(p_conn, p_sql) as r(x text) limit 1;
+  return 'ok:' || coalesce(v, '');
+exception when others then
+  get stacked diagnostics d = pg_exception_detail;
+  return sqlstate || ':' || sqlerrm || case when coalesce(d, '') <> '' then '|' || d else '' end;
+end;
+$b$;
+-- A raw statement that returns nothing (a lock, an update): '00000' or the SQLSTATE.
+create or replace function pg_temp.r7_do(p_conn text, p_sql text) returns text language plpgsql as $b$
+begin
+  perform extensions.dblink_exec(p_conn, format('do $r7do$ begin %s; end $r7do$', p_sql));
+  return '00000';
+exception when others then
+  return sqlstate;
+end;
+$b$;
+-- BEGIN and run the stashed command; the transaction stays open (the holder) unless the command failed (then it is rolled back).
+create or replace function pg_temp.r7_hold(p_conn text, p_key text) returns text language plpgsql as $b$
+declare outcome text;
+begin
+  perform extensions.dblink_exec(p_conn, 'begin');
+  outcome := pg_temp.r7_sql(p_conn, pg_temp.r7_call_sql(p_key));
+  if left(outcome, 3) <> 'ok:' then
+    begin perform extensions.dblink_exec(p_conn, 'rollback'); exception when others then null; end;
+  end if;
+  return outcome;
+end;
+$b$;
+-- BEGIN a raw holder transaction that runs p_sql (a lock statement) and stays open: '00000' or the SQLSTATE (rolled back on failure).
+create or replace function pg_temp.r7_hold_raw(p_conn text, p_sql text) returns text language plpgsql as $b$
+declare outcome text;
+begin
+  perform extensions.dblink_exec(p_conn, 'begin');
+  outcome := pg_temp.r7_do(p_conn, p_sql);
+  if outcome <> '00000' then
+    begin perform extensions.dblink_exec(p_conn, 'rollback'); exception when others then null; end;
+  end if;
+  return outcome;
+end;
+$b$;
+create or replace function pg_temp.r7_end(p_conn text, p_how text default 'commit') returns text language plpgsql as $b$
+begin
+  perform extensions.dblink_exec(p_conn, p_how);
+  return '00000';
+exception when others then
+  return sqlstate;
+end;
+$b$;
+-- Send the stashed command asynchronously as ONE statement (its own implicit transaction).
+create or replace function pg_temp.r7_send(p_conn text, p_key text) returns void language plpgsql as $b$
+begin
+  if extensions.dblink_send_query(p_conn, pg_temp.r7_call_sql(p_key)) <> 1 then
+    raise exception 'r7_send: dblink_send_query failed for %', p_conn;
+  end if;
+end;
+$b$;
+-- Send a raw statement asynchronously (a revocation UPDATE, a lock request).
+create or replace function pg_temp.r7_send_raw(p_conn text, p_sql text) returns void language plpgsql as $b$
+begin
+  if extensions.dblink_send_query(p_conn, p_sql) <> 1 then
+    raise exception 'r7_send_raw: dblink_send_query failed for %', p_conn;
+  end if;
+end;
+$b$;
+-- The outcome of a sent statement ('ok:<value>' | '<sqlstate>:<message>[|<detail>]' | 'TIMEOUT'); the connection is idle afterwards.
+create or replace function pg_temp.r7_collect(p_conn text, p_secs integer default 60) returns text language plpgsql as $b$
+declare v text; d text; outcome text; ignored integer;
+begin
+  for i in 1 .. p_secs * 20 loop
+    exit when extensions.dblink_is_busy(p_conn) = 0;
+    perform pg_catalog.pg_sleep(0.05);
+  end loop;
+  if extensions.dblink_is_busy(p_conn) = 1 then return 'TIMEOUT'; end if;
+  begin
+    select r.x into v from extensions.dblink_get_result(p_conn, true) as r(x text);
+    outcome := 'ok:' || coalesce(v, '');
+  exception when others then
+    get stacked diagnostics d = pg_exception_detail;
+    outcome := sqlstate || ':' || sqlerrm || case when coalesce(d, '') <> '' then '|' || d else '' end;
+  end;
+  begin
+    for i in 1 .. 4 loop
+      select pg_catalog.count(*) into ignored from extensions.dblink_get_result(p_conn, false) as r(x text);
+      exit when ignored = 0;
+    end loop;
+  exception when others then null;
+  end;
+  return outcome;
+end;
+$b$;
+
+-- ------------------------------------------------------------------------------------------------ observation
+-- True when p_waiter is blocked BY p_blocker (live lock manager state), polled up to p_secs.
+create or replace function pg_temp.r7_blocked_by(p_waiter text, p_blocker text, p_secs integer default 20) returns boolean language plpgsql as $b$
+begin
+  for i in 1 .. p_secs * 20 loop
+    if pg_temp.r7_pid(p_blocker) = any(pg_catalog.pg_blocking_pids(pg_temp.r7_pid(p_waiter))) then return true; end if;
+    perform pg_catalog.pg_sleep(0.05);
+  end loop;
+  return false;
+end;
+$b$;
+-- True when p_waiter is blocked by NO session (nothing the harness holds), after a short settle.
+create or replace function pg_temp.r7_not_blocked(p_waiter text) returns boolean language sql volatile as $b$
+  select pg_catalog.cardinality(pg_catalog.pg_blocking_pids(pg_temp.r7_pid(p_waiter))) = 0 $b$;
+-- The lock type p_waiter is waiting for ('advisory', 'transactionid', 'tuple', ...), NULL when it waits for none.
+create or replace function pg_temp.r7_waiting_for(p_conn text) returns text language sql volatile as $b$
+  select locktype from pg_catalog.pg_locks where pid = pg_temp.r7_pid(p_conn) and not granted limit 1 $b$;
+-- True when the waiter is idle-in-transaction or active; used to prove a connection is free again.
+create or replace function pg_temp.r7_idle(p_conn text) returns boolean language sql volatile as $b$
+  select extensions.dblink_is_busy(p_conn) = 0 $b$;
+-- Probe whether a row is locked by someone: FOR UPDATE NOWAIT on p_conn (a probe connection) in its own transaction.  '55P03' = locked, '00000' = free.
+create or replace function pg_temp.r7_row_locked(p_conn text, p_table text, p_where text) returns text language sql volatile as $b$
+  select pg_temp.r7_do(p_conn, format('perform 1 from %s where %s for update nowait', p_table, p_where)) $b$;
+-- Probe the lineage advisory lock: '55P03' = held by another session, '00000' = free.
+create or replace function pg_temp.r7_advisory_probe(p_conn text, p_key text) returns text language sql volatile as $b$
+  select pg_temp.r7_do(p_conn, format('if not pg_try_advisory_xact_lock(%s) then raise exception ''held'' using errcode = ''55P03''; end if', p_key)) $b$;
+
+-- snapshot / restore of the committed world (r7_snapshot, r7_restore_off / _delete / _on, r7_report)
+\ir 005-snapshot.sqlinc
+
+-- The end of every scenario block (also from its exception handler): close the sessions.  The restore itself is 090-restore.sqlinc, run as top-level statements.
+create or replace function pg_temp.r7_cleanup(p_conns text[]) returns void language plpgsql as $b$
+begin
+  perform pg_temp.r7_close(p_conns);
+end;
+$b$;

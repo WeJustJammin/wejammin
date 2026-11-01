@@ -1,0 +1,85 @@
+-- DEC-210 / CMS-03C-15: accept and detach keep every pinned block's allowedChildren and slotRules over the tree each new
+-- row carries.  422 block_rules_violated at /instances/{i}/choices (accept) or /instances/{i} (detach), nothing written.
+-- Only the s12pu_* helpers' real producers run here; the restored enforcement is in force.
+create or replace function pg_temp.bru_choices(p_root text, p_child text) returns jsonb language sql immutable as $body$
+  select jsonb_build_array(jsonb_build_object('path', '/r', 'choice', p_root),
+                           jsonb_build_object('path', '/r/c', 'choice', p_child)) $body$;
+create or replace function pg_temp.bru_accept(p_tag text, p_root text, p_child text, p_idem text) returns jsonb
+language sql volatile as $body$
+  select pg_temp.s12pu_update_request(p_tag, 'accept', jsonb_build_array(pg_temp.s12pu_target(p_tag, '/r',
+    pg_temp.bru_choices(p_root, p_child))), p_idem, 2) $body$;
+
+-- detach of a pre-rule pinned tree
+select * from pg_temp.s12pu_refused('U01', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('brd-detach', 'detach', jsonb_build_array(pg_temp.s12pu_target('brd-detach', '/t')),
+    'br-u01-idem'), 'block_rules_violated', '["/instances/0"]'::jsonb);
+
+-- accept whose resolved tree mixes a target ancestor with the author's descendant (and the mirror), both individually valid
+select * from pg_temp.s12pu_refused('U02', 'platform_api.cms_apply_pattern_update',
+  pg_temp.bru_accept('brq-a', 'theirs', 'yours', 'br-u02-idem'), 'block_rules_violated',
+  '["/instances/0/choices"]'::jsonb);
+select * from pg_temp.s12pu_refused('U03', 'platform_api.cms_apply_pattern_update',
+  pg_temp.bru_accept('brq-b', 'yours', 'theirs', 'br-u03-idem'), 'block_rules_violated',
+  '["/instances/0/choices"]'::jsonb);
+-- the consistent answers are accepted: the whole target (linked) and the whole author tree (detached resolved tree)
+select pg_temp.s12pu_update('U04', pg_temp.bru_accept('brq-c', 'theirs', 'theirs', 'br-u04-idem'));
+select is(pg_temp.s12pu_oc('U04'), 'ok', 'U04: a resolved tree that keeps every rule (all theirs) is accepted');
+select is((select link_mode from platform_private.cms_composition_instances
+    where revision_id = pg_temp.s12pl_rev('brq-c') and path = '/r' order by version desc limit 1), 'linked',
+  'U04: the accepted all-theirs row is linked to the target version');
+select pg_temp.s12pu_update('U05', pg_temp.bru_accept('brq-d', 'yours', 'yours', 'br-u05-idem'));
+select is(pg_temp.s12pu_oc('U05'), 'ok', 'U05: a resolved tree that keeps every rule (all yours) is accepted');
+select is((select link_mode from platform_private.cms_composition_instances
+    where revision_id = pg_temp.s12pl_rev('brq-d') and path = '/r' order by version desc limit 1), 'detached',
+  'U05: the accepted all-yours row is the detached resolved tree');
+
+-- a pre-rule TARGET tree: theirs is refused, keeping the author's own valid structure is accepted
+select * from pg_temp.s12pu_refused('U06', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('brx-a', 'accept', jsonb_build_array(pg_temp.s12pu_target('brx-a', '/r',
+    jsonb_build_array(jsonb_build_object('path', '/r/c', 'choice', 'theirs')))), 'br-u06-idem', 2),
+  'block_rules_violated', '["/instances/0/choices"]'::jsonb);
+select pg_temp.s12pu_update('U07', pg_temp.s12pu_update_request('brx-b', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('brx-b', '/r', jsonb_build_array(jsonb_build_object('path', '/r/c', 'choice', 'yours')))),
+  'br-u07-idem', 2));
+select is(pg_temp.s12pu_oc('U07'), 'ok', 'U07: keeping the author''s own rule-satisfying structure over a pre-rule target is accepted');
+
+-- V2-04 (a): the instance index in the pointer follows the offending instance, not a constant 0.  brd-multi is a pre-rule placement of two
+-- roots: /ok (a leaf, fine) and /bad (three leaves under a maxNodes-3 block).
+select * from pg_temp.s12pu_refused('U08', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('brd-multi', 'detach', jsonb_build_array(pg_temp.s12pu_target('brd-multi', '/ok'),
+    pg_temp.s12pu_target('brd-multi', '/bad')), 'br-u08-idem'), 'block_rules_violated', '["/instances/1"]'::jsonb);
+select * from pg_temp.s12pu_refused('U09', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('brd-multi', 'detach', jsonb_build_array(pg_temp.s12pu_target('brd-multi', '/bad'),
+    pg_temp.s12pu_target('brd-multi', '/ok')), 'br-u09-idem'), 'block_rules_violated', '["/instances/0"]'::jsonb);
+-- accept at an instance index above 0.  A bulk accept admits no collision, so brm-v2 (pre-rule) is a collision-free target that still carries
+-- the node-bound violation of /bad: /ok at index 0 is fine, /bad at index 1 is not, and the mirror puts the pointer at index 0.
+select * from pg_temp.s12pu_refused('U10', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('brm-a', 'accept', jsonb_build_array(pg_temp.s12pu_target('brm-a', '/ok'),
+    pg_temp.s12pu_target('brm-a', '/bad')), 'br-u10-idem', 2),
+  'block_rules_violated', '["/instances/1/choices"]'::jsonb);
+select * from pg_temp.s12pu_refused('U11', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('brm-a', 'accept', jsonb_build_array(pg_temp.s12pu_target('brm-a', '/bad'),
+    pg_temp.s12pu_target('brm-a', '/ok')), 'br-u11-idem', 2),
+  'block_rules_violated', '["/instances/0/choices"]'::jsonb);
+
+-- V2-04 (c): the empty allow-list and the depth bound through the real accept and detach wrappers (not only the pure check)
+select * from pg_temp.s12pu_refused('U12', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('brd-empty', 'detach', jsonb_build_array(pg_temp.s12pu_target('brd-empty', '/r')), 'br-u12-idem'),
+  'block_rules_violated', '["/instances/0"]'::jsonb);
+select * from pg_temp.s12pu_refused('U13', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('brd-deep', 'detach', jsonb_build_array(pg_temp.s12pu_target('brd-deep', '/s')), 'br-u13-idem'),
+  'block_rules_violated', '["/instances/0"]'::jsonb);
+-- accept of a pre-rule depth-3 successor (brz-v2: br.shallow > br.shallow > br.leaf, maxDepth 2), `theirs` on every flagged collision
+-- the answer of a single-instance accept: `theirs` on every collision the real CMS-03C-14 diff flags (the set is the spec'd one, not a guess)
+create or replace function pg_temp.bru_all_theirs(p_label text) returns jsonb language sql stable as $body$
+  select coalesce(jsonb_agg(jsonb_build_object('path', e->>'path', 'choice', 'theirs') order by e->>'path'), '[]'::jsonb)
+    from jsonb_array_elements(pg_temp.s12pu_body(p_label)->'paths') e where (e->>'collision')::boolean $body$;
+select pg_temp.s12pu_diff_head('U14-diff', 'brz-a', '/r');
+select ok(jsonb_array_length(pg_temp.bru_all_theirs('U14-diff')) > 0, 'U14: the pre-rule depth-3 target reports at least one collision to answer');
+select * from pg_temp.s12pu_refused('U14', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('brz-a', 'accept', jsonb_build_array(pg_temp.s12pu_target('brz-a', '/r', pg_temp.bru_all_theirs('U14-diff'))),
+    'br-u14-idem', 2), 'block_rules_violated', '["/instances/0/choices"]'::jsonb);
+-- the clean root of the pre-rule two-root placement detaches on its own
+select pg_temp.s12pu_update('U16', pg_temp.s12pu_update_request('brd-multi', 'detach', jsonb_build_array(pg_temp.s12pu_target('brd-multi', '/ok')),
+  'br-u16-idem'));
+select is(pg_temp.s12pu_oc('U16'), 'ok', 'U16: the rule-satisfying root of a pre-rule placement detaches on its own');

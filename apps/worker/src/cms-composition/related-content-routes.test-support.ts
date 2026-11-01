@@ -65,6 +65,12 @@ export const dependencies = (
     code: 'DEPENDENCY_UNAVAILABLE',
     message: 'curated authority unavailable',
   }),
+  readRelatedContent: async () => ({
+    ok: false,
+    status: 503,
+    code: 'DEPENDENCY_UNAVAILABLE',
+    message: 'saved rule unavailable',
+  }),
   telemetry: () => {},
   ...overrides,
 });

@@ -1,0 +1,44 @@
+-- Window validation (BE03c: VALIDATION_FAILED unless both bounds fall on a whole minute and the span is exactly 60 s).
+-- Refusal shape: P0001 + message token VALIDATION_FAILED + DETAIL {"violations":[{"pointer","message"}]} (the
+-- locale-configuration producer convention, 20261002164000).  Nothing is read or written.
+
+select is(pg_temp.l208_try('2026-10-22 12:00:00+00', '2026-10-22 12:01:00+00'), 'OK',
+  'control: a whole-minute 60 s window is accepted [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:00:30+00', '2026-10-22 12:01:30+00'), 'P0001:VALIDATION_FAILED',
+  'a start off a whole minute (30 s) is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:00:00.000001+00', '2026-10-22 12:01:00.000001+00'), 'P0001:VALIDATION_FAILED',
+  'a start one microsecond past the minute is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:00:00+00', '2026-10-22 12:01:00.5+00'), 'P0001:VALIDATION_FAILED',
+  'an end off a whole minute is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:00:00+00', '2026-10-22 12:00:59+00'), 'P0001:VALIDATION_FAILED',
+  'a span of 59 s is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:00:00+00', '2026-10-22 12:02:00+00'), 'P0001:VALIDATION_FAILED',
+  'a span of 120 s (two whole minutes) is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:00:00+00', '2026-10-22 12:00:00+00'), 'P0001:VALIDATION_FAILED',
+  'an empty window is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:01:00+00', '2026-10-22 12:00:00+00'), 'P0001:VALIDATION_FAILED',
+  'a reversed window (end before start) is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try(null, '2026-10-22 12:01:00+00'), 'P0001:VALIDATION_FAILED', 'a null start is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:00:00+00', null), 'P0001:VALIDATION_FAILED', 'a null end is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('-infinity', '2026-10-22 12:01:00+00'), 'P0001:VALIDATION_FAILED', 'a -infinity start is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:00:00+00', 'infinity'), 'P0001:VALIDATION_FAILED', 'an infinity end is refused [P2-S12-AC-052]');
+select is(pg_temp.l208_try('infinity', 'infinity'), 'P0001:VALIDATION_FAILED', 'two infinite bounds are refused [P2-S12-AC-052]');
+
+-- A whole minute is a whole minute in every session time zone and in any offset notation.
+select is(pg_temp.l208_try('2026-10-22 14:00:00+02', '2026-10-22 14:01:00+02'), 'OK',
+  'the same instants written with a +02 offset are accepted [P2-S12-AC-052]');
+select is(pg_temp.l208_try('2026-10-22 12:00:00+00', '2026-10-22 08:01:00-04'), 'OK',
+  'bounds in different offsets are compared as instants [P2-S12-AC-052]');
+
+-- DETAIL: the machine violations list, one pointer per refused bound, no data from the table.
+select is((select pg_temp.l208_detail('2026-10-22 12:00:30+00', '2026-10-22 12:01:30+00')->'violations'->0->>'pointer'),
+  '/p_window_start', 'a refused start names the /p_window_start pointer in DETAIL [P2-S12-AC-052]');
+select is((select pg_temp.l208_detail('2026-10-22 12:00:00+00', '2026-10-22 12:01:30+00')->'violations'->0->>'pointer'),
+  '/p_window_end', 'a refused end names the /p_window_end pointer in DETAIL [P2-S12-AC-052]');
+select is((select pg_temp.l208_detail('2026-10-22 12:00:00+00', '2026-10-22 12:00:59+00')->'violations'->0->>'pointer'),
+  '/p_window_end', 'a wrong span names the /p_window_end pointer in DETAIL [P2-S12-AC-052]');
+select ok((select coalesce((d->'violations'->0->>'message') is not null
+              and jsonb_array_length(d->'violations') = 1
+              and (select array_agg(k order by k) from jsonb_object_keys(d->'violations'->0) k) = array['message','pointer'], false)
+            from (select pg_temp.l208_detail('2026-10-22 12:00:00+00', '2026-10-22 12:00:59+00') as d) probe),
+  'DETAIL carries exactly one violation with exactly pointer and message [P2-S12-AC-052]');

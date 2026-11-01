@@ -1,0 +1,160 @@
+-- Actual CMS-03C-15 API, independent row/snapshot expectations. Deliberately do
+-- not load the old flat-props/contentHash oracles or the new typed-diff builders.
+create or replace function pg_temp.s12rs_check(p_label text, p_tag text, p_path text,
+  p_state text, p_mode text, p_pin integer, p_props jsonb, p_tree jsonb,
+  p_block text default 's12pd.block', p_block_version integer default 1)
+returns setof text language plpgsql as $body$
+declare row_value jsonb := pg_temp.s12pu_row(pg_temp.s12pu_head(p_tag,p_path));
+  prior jsonb; before_image jsonb; after_image jsonb; body jsonb; item jsonb;
+  before_entry jsonb; after_entry jsonb; comp text := 'platform_private.cms_composition_instances';
+begin
+  select before_rows, after_rows, response into before_image, after_image, body
+    from s12pu_out where label=p_label;
+  select r into prior from jsonb_array_elements(before_image->comp) r
+    where r->>'revision_id'=pg_temp.s12pl_rev(p_tag)::text and r->>'path'=p_path
+    order by (r->>'version')::bigint desc limit 1;
+  select r into before_entry from jsonb_array_elements(before_image->'platform_private.cms_content_entries') r
+    where r->>'id'=pg_temp.s12pl_entry_id(p_tag)::text;
+  select r into after_entry from jsonb_array_elements(after_image->'platform_private.cms_content_entries') r
+    where r->>'id'=pg_temp.s12pl_entry_id(p_tag)::text;
+  item := body#>'{items,0}';
+  return next extensions.is(pg_temp.s12pu_oc(p_label), 'ok', p_label || ': actual author API succeeds');
+  -- Retirement fixes visibility/pin, not a new tombstone-props representation.
+  return next extensions.is(jsonb_build_object('state',row_value->'state','mode',row_value->'link_mode',
+    'pin',row_value->'pattern_version','props',row_value->'props','tree',coalesce(row_value->'detached_tree','null'::jsonb),
+    'block',row_value->'block_key','blockVersion',row_value->'block_version')
+      - case when p_state='retired' then 'props' else '__not_a_field__' end,
+    jsonb_build_object('state',p_state,'mode',p_mode,'pin',p_pin,'props',p_props,
+      'tree',p_tree,'block',p_block,'blockVersion',p_block_version)
+      - case when p_state='retired' then 'props' else '__not_a_field__' end,
+    p_label || ': exact selected snapshot/overrides, disposition, root identity and provenance pin');
+  return next extensions.ok((row_value->>'version')::bigint=(prior->>'version')::bigint+1
+    and row_value->>'id'<>prior->>'id' and row_value->'pending_pattern_version'='null'::jsonb,
+    p_label || ': one fresh next-version row clears pending state');
+  return next extensions.ok(row_value->'position'=prior->'position' and row_value->'path'=prior->'path'
+    and row_value->'revision_id'=prior->'revision_id' and row_value->'slot_key'=prior->'slot_key'
+    and row_value->'owner_id'=prior->'owner_id' and row_value->'pattern_id'=prior->'pattern_id'
+    and row_value->'bindings'=prior->'bindings' and row_value->'created_at'=row_value->'updated_at',
+    p_label || ': position, path, slot, revision, owner, lineage and bindings remain unchanged');
+  return next extensions.is(jsonb_array_length(after_image->comp)-jsonb_array_length(before_image->comp), 1,
+    p_label || ': exactly one composition row appended; no added-root implicit placement');
+  return next extensions.ok(not exists (select 1 from jsonb_array_elements(before_image->comp) b
+    where not exists (select 1 from jsonb_array_elements(after_image->comp) a where a=b)),
+    p_label || ': every prior composition row stays byte-identical');
+  return next extensions.is((after_entry->>'version')::bigint,(before_entry->>'version')::bigint+1,
+    p_label || ': entry aggregate CAS advances exactly once');
+  return next extensions.is((select headers from s12pu_out where label=p_label),
+    jsonb_build_array(jsonb_build_object('etag','"'||(after_entry->>'version')||'"'))::text,
+    p_label || ': strong entry ETag matches the committed aggregate');
+  return next extensions.ok((select r from jsonb_array_elements(before_image->'platform_private.cms_entry_revisions') r
+    where r->>'id'=pg_temp.s12pl_rev(p_tag)::text) =
+    (select r from jsonb_array_elements(after_image->'platform_private.cms_entry_revisions') r
+    where r->>'id'=pg_temp.s12pl_rev(p_tag)::text), p_label || ': revision payload and recorded pins are unchanged');
+  return next extensions.is(body - 'items', '{}'::jsonb, p_label || ': response has only the existing items envelope');
+  return next extensions.is(case when jsonb_typeof(body->'items')='array' then jsonb_array_length(body->'items') end,
+    1,p_label || ': one public resource, never a full tree');
+  -- Independent complete non-hash resource projection. The detached D5 canonical
+  -- hash representation belongs to its receiving lane; do not invent a new one.
+  return next extensions.is(item - 'contentHash', jsonb_build_object(
+    'id',row_value->'id','version',row_value->>'version',
+    'createdAt',to_char((row_value->>'created_at')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'updatedAt',to_char((row_value->>'updated_at')::timestamptz at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+    'state',p_state,'revisionId',row_value->'revision_id','path',p_path,'position',prior->'position',
+    'blockKey',p_block,'blockVersion',p_block_version,'patternId',prior->'pattern_id','patternVersion',p_pin,
+    'blockRegistryDigest',row_value->>'block_registry_digest','linkMode',p_mode,
+    'conflictState',case when p_mode='linked' then 'none' else null end),
+    p_label || ': exact public projection, no detached-tree/private payload exposure');
+  return next extensions.ok(item->>'contentHash' ~ '^[0-9a-f]{64}$',p_label || ': contentHash remains a lowercase SHA-256');
+end;
+$body$;
+
+select pg_temp.s12pu_update('rs-api-yours',pg_temp.s12pu_update_request('rs-yours','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-yours','/panel','[{"path":"/panel","choice":"yours"},{"path":"/panel/leaf","choice":"theirs"}]')),
+  's12rs-yours-0001',2));
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_check('rs-api-yours','rs-yours','/panel',
+  'active','detached',1,'{}',yours_tree) check_line where name='main';
+select isnt((select pg_temp.s12pu_row(pg_temp.s12pu_head('rs-yours','/panel'))->'detached_tree'),
+  (select local_tree from s12rs_trees where name='main'),
+  'RESOLVE-API-01: ancestor yours is not permission to copy the unchanged L tree');
+select pg_temp.s12pu_update('rs-api-reverse',pg_temp.s12pu_update_request('rs-reverse','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-reverse','/panel','[{"path":"/panel/leaf","choice":"theirs"},{"path":"/panel","choice":"yours"}]')),
+  's12rs-reverse-0001',2));
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_check('rs-api-reverse','rs-reverse','/panel',
+  'active','detached',1,'{}',yours_tree) check_line where name='main';
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('rs-yours','/panel'))->'detached_tree',
+  pg_temp.s12pu_row(pg_temp.s12pu_head('rs-reverse','/panel'))->'detached_tree',
+  'RESOLVE-API-02: actual persisted topology and effective props are order-independent');
+select pg_temp.s12pu_update('rs-api-theirs',pg_temp.s12pu_update_request('rs-theirs','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-theirs','/panel','[{"path":"/panel/leaf","choice":"yours"},{"path":"/panel","choice":"theirs"}]')),
+  's12rs-theirs-0001',2));
+select * from pg_temp.s12rs_check('rs-api-theirs','rs-theirs','/panel','active','linked',2,
+  '{"/panel/leaf":{"title":"MY-LEAF"},"/panel/note":{"title":"MY-NOTE"}}','null','s12pd.block',2);
+select is(pg_temp.s12pu_chain('rs-yours','/quiet'),(select jsonb_agg(row_value order by (row_value->>'version')::bigint)
+  from s12rs_initial where tag='rs-yours' and row_value->>'path'='/quiet'),
+  'RESOLVE-API-03: another changed root is unanswered, so its entire old chain remains unchanged');
+select is((select count(*)::integer from platform_private.cms_composition_instances
+  where revision_id=pg_temp.s12pl_rev('rs-yours') and path='/badge'),0,
+  'RESOLVE-API-04: a newly offered root remains unplaced by an accept of /panel');
+
+select pg_temp.s12pu_update('rs-api-none',pg_temp.s12pu_update_request('rs-none','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-none','/panel','[{"path":"/panel","choice":"theirs"}]')),'s12rs-none-0001',2));
+select * from pg_temp.s12rs_check('rs-api-none','rs-none','/panel','active','linked',2,'{}','null','s12pd.block',2);
+select pg_temp.s12pu_update('rs-api-null',pg_temp.s12pu_update_request('rs-null','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-null','/panel','[{"path":"/panel","choice":"theirs"},{"path":"/panel/leaf","choice":"yours"}]')),
+  's12rs-null-0001',2));
+select * from pg_temp.s12rs_check('rs-api-null','rs-null','/panel','active','linked',2,'{"/panel/leaf":null}','null','s12pd.block',2);
+select pg_temp.s12pu_update('rs-api-equal',pg_temp.s12pu_update_request('rs-equal','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-equal','/panel','[{"path":"/panel","choice":"theirs"}]')),'s12rs-equal-0001',2));
+select * from pg_temp.s12rs_check('rs-api-equal','rs-equal','/panel','active','linked',2,
+  '{"/panel/note":{"title":"KEEP"}}','null','s12pd.block',2);
+
+select pg_temp.s12pu_update('rs-api-rm-y',pg_temp.s12pu_update_request('rs-rm-y','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-rm-y','/gone','[{"path":"/gone","choice":"yours"}]')),'s12rs-rmy-0001',2));
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_check('rs-api-rm-y','rs-rm-y','/gone',
+  'active','detached',1,'{}',local_tree) check_line where name='removed';
+select pg_temp.s12pu_update('rs-api-rm-t',pg_temp.s12pu_update_request('rs-rm-t','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-rm-t','/gone','[{"path":"/gone","choice":"theirs"}]')),'s12rs-rmt-0001',2));
+select * from pg_temp.s12rs_check('rs-api-rm-t','rs-rm-t','/gone','retired','linked',1,
+  null,'null');
+select * from pg_temp.s12pu_refused('rs-api-retired-accept','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-rm-t','accept',jsonb_build_array(pg_temp.s12pu_target('rs-rm-t','/gone',
+    '[{"path":"/gone","choice":"theirs"}]')),'s12rs-retired-accept-0001',2),
+  'VALIDATION_FAILED','["/instances/0/instanceId"]');
+
+-- LABELLED scan/history fixture: append a retired linked head under the normal
+-- write guard. It retains real placement provenance; no lifecycle guard disabled.
+create or replace function pg_temp.s12rs_retired_head() returns uuid language plpgsql as $body$
+declare head_row platform_private.cms_composition_instances; row_id uuid:=extensions.gen_random_uuid();
+  stamp timestamptz:=clock_timestamp();
+begin
+  select * into head_row from platform_private.cms_composition_instances
+    where id=pg_temp.s12pu_head('rs-retired','/gone');
+  perform set_config('app.cms_rpc','true',true);
+  insert into platform_private.cms_composition_instances
+  select (jsonb_populate_record(null::platform_private.cms_composition_instances,to_jsonb(head_row)||
+    jsonb_build_object('id',row_id,'state','retired','version',head_row.version+1,
+      'created_at',stamp,'updated_at',stamp))).*;
+  return row_id;
+end;
+$body$;
+select pg_temp.s12rs_retired_head() as s12rs_retired_id \gset
+select ok(pg_temp.s12pu_row(:'s12rs_retired_id'::uuid)->>'state'='retired'
+  and pg_temp.s12pu_row(:'s12rs_retired_id'::uuid)->>'pattern_version'='1',
+  'RESOLVE-API-05 prerequisite: newest linked retired row retains its actual positive prior pin');
+select pg_temp.s12pu_update('rs-api-retired',pg_temp.s12pu_update_request('rs-retired','detach',jsonb_build_array(
+  pg_temp.s12pu_target('rs-retired','/gone')),'s12rs-retired-0001'));
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_check('rs-api-retired','rs-retired','/gone',
+  'active','detached',1,'{}',local_tree) check_line where name='removed';
+select * from pg_temp.s12pu_refused('rs-api-detached-again','platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('rs-retired','detach',jsonb_build_array(pg_temp.s12pu_target('rs-retired','/gone')),
+    's12rs-retired-0002'),'VALIDATION_FAILED','["/instances/0/instanceId"]');
+select pg_temp.s12pu_update('rs-api-same',pg_temp.s12pu_update_request('rs-same','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-same','/same')),'s12rs-same-0001',2));
+select * from pg_temp.s12rs_check('rs-api-same','rs-same','/same','active','linked',2,'{}','null');
+select pg_temp.s12pu_update('rs-api-wide',pg_temp.s12pu_update_request('rs-wide','accept',jsonb_build_array(
+  pg_temp.s12pu_target('rs-wide','/wide')),'s12rs-wide-0001',2));
+select * from pg_temp.s12rs_check('rs-api-wide','rs-wide','/wide','active','linked',2,'{}','null');
+select pg_temp.s12pu_update('rs-api-copy',pg_temp.s12pu_update_request('rs-copy','detach',jsonb_build_array(
+  pg_temp.s12pu_target('rs-copy','/panel')),'s12rs-copy-0001'));
+select check_line.* from s12rs_trees f cross join lateral pg_temp.s12rs_check('rs-api-copy','rs-copy','/panel',
+  'active','detached',1,'{}',local_tree) check_line where name='main';

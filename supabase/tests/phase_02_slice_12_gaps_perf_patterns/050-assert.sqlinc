@@ -1,0 +1,39 @@
+-- The measurements against the clause targets (Tier p95) and the representative-size RPC target of 300 ms (AC-279).
+select diag(op || ' n=' || count(*) || ' p50=' || round((percentile_cont(0.5) within group (order by ms))::numeric, 1) || 'ms p95='
+            || round((percentile_cont(0.95) within group (order by ms))::numeric, 1) || 'ms max=' || round(max(ms), 1) || 'ms')
+  from g12p_timing where op !~ '^(shape|setup)' group by op order by op;
+
+select ok(pg_temp.g12p_all_ok('pat_create_512', 24) and pg_temp.g12p_p95('pat_create_512') < 1200,
+  'CMS-03C-12 save of a new lineage with a 512-node forest over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]');
+select ok(pg_temp.g12p_p95('pat_create_512') < 300,
+  'CMS-03C-12 save of a 512-node forest meets the RPC < 300 ms target (p95 of 24) [P2-S12-AC-279]');
+select ok(pg_temp.g12p_all_ok('pat_create_nested512', 24) and pg_temp.g12p_p95('pat_create_nested512') < 1200,
+  'CMS-03C-12 save of 32 references expanding to 512 nodes over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]');
+select ok(pg_temp.g12p_p95('pat_create_nested512') < 300,
+  'CMS-03C-12 save of 32 references expanding to 512 nodes meets the RPC < 300 ms target (p95 of 24) [P2-S12-AC-279]');
+select ok(pg_temp.g12p_all_ok('pat_create_succ512', 24) and pg_temp.g12p_p95('pat_create_succ512') < 1200,
+  'CMS-03C-12 successor save (expectedVersion = the parent) of a 512-node forest over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-103]');
+select ok(pg_temp.g12p_all_ok('selector_page1', 30) and pg_temp.g12p_p95('selector_page1') < 750,
+  'CMS-03C-13 first selector page at the maximum limit of 50 from 65 active versions: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]');
+select ok(pg_temp.g12p_all_ok('selector_cursor_page', 30) and pg_temp.g12p_p95('selector_cursor_page') < 750,
+  'CMS-03C-13 cursor page of the selector: p95 under the Tier 1 target of 750 ms [P2-S12-AC-109]');
+select ok(pg_temp.g12p_all_ok('diff128', 30) and pg_temp.g12p_p95('diff128') < 750,
+  'CMS-03C-14 update diff at the bound of 128 changed paths: p95 under the Tier 1 target of 750 ms [P2-S12-AC-115]');
+select ok(pg_temp.g12p_all_ok('update32_accept', 24) and pg_temp.g12p_p95('update32_accept') < 1200,
+  'CMS-03C-15 accept of 32 instances in one request over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-121]');
+select ok(pg_temp.g12p_all_ok('update32_detach', 24) and pg_temp.g12p_p95('update32_detach') < 1200,
+  'CMS-03C-15 detach of 32 instances in one request over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-121]');
+select ok(pg_temp.g12p_all_ok('latest_flat512', 30) and pg_temp.g12p_p95('latest_flat512') < 1200,
+  'cmsPatternLatestRead of a 512-node flat forest: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-174]');
+select ok(pg_temp.g12p_all_ok('latest_nested512', 30) and pg_temp.g12p_p95('latest_nested512') < 1200,
+  'cmsPatternLatestRead of 32 references expanding to 512 nodes: p95 under the Tier 2 target of 1,200 ms [P2-S12-AC-174]');
+select ok(pg_temp.g12p_all_ok('place512', 24) and pg_temp.g12p_p95('place512') < 1200,
+  'CMS-03C-02 placement of 512 rows over 24 real calls: every call succeeded and the RPC p95 is under the Tier 2 target of 1,200 ms [P2-S12-AC-279]');
+select ok(pg_temp.g12p_p95('place512') < 300,
+  'CMS-03C-02 placement of 512 rows meets the RPC < 300 ms target (p95 of 24) [P2-S12-AC-279]');
+select ok(pg_temp.g12p_all_ok('place32', 24) and pg_temp.g12p_p95('place32') < 300,
+  'CMS-03C-02 placement of 32 rows meets the RPC < 300 ms target (p95 of 24) [P2-S12-AC-279]');
+select ok(pg_temp.g12p_max('diff128') < 8000 and pg_temp.g12p_max('selector_page1') < 8000 and pg_temp.g12p_max('latest_nested512') < 8000,
+  'the worst sample of every pattern read is under the 8,000 ms read deadline [P2-S12-AC-115]');
+select ok(pg_temp.g12p_all_service_role(),
+  'every measured pattern call ran under the real service_role transport role [P2-S12-AC-103]');

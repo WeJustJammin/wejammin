@@ -124,7 +124,7 @@ select is(pg_temp.s10v_out('c-richtext'), 'rich_text_not_canonical ["/fields/' |
 select pg_temp.s10v_call('c-object', pg_temp.s10v_gc(jsonb_build_object('meta', jsonb_build_object('unknown', 1)), 's10-ptr-c-0016'));
 select is(pg_temp.s10v_out('c-object'), 'object_property_invalid ["/fields/' || pg_temp.s10g_fid('meta') || '"]', 'create: an invalid object value keeps its typed reason and names its field');
 select pg_temp.s10v_call('c-taxonomy', pg_temp.s10v_gc(jsonb_build_object('tags', jsonb_build_object('termIds', jsonb_build_array(extensions.gen_random_uuid()))), 's10-ptr-c-0017'));
-select is(pg_temp.s10v_out('c-taxonomy'), 'taxonomy_source_unavailable ["/fields/' || pg_temp.s10g_fid('tags') || '"]', 'create: an unavailable taxonomy source keeps its typed reason and names its field');
+select is(pg_temp.s10v_out('c-taxonomy'), 'term_unavailable ["/fields/' || pg_temp.s10g_fid('tags') || '"]', 'create: a taxonomy term that is not assignable is the typed term_unavailable reason and names its field (DEC-141 item 5)');
 select pg_temp.s10v_call('c-domain', pg_temp.s10v_rc(jsonb_build_object('people', pg_temp.s10r_rel(extensions.gen_random_uuid()::text)), 's10-ptr-c-0018'));
 select is(pg_temp.s10v_out('c-domain'), 'relation_target_unavailable ["/fields/' || pg_temp.s10r_fid('people') || '"]', 'create: a non-empty domain relation is relation_target_unavailable at its field');
 select pg_temp.s10v_call('c-hidden', pg_temp.s10v_rc(jsonb_build_object('related', pg_temp.s10r_rel('a9100000-0000-4000-8000-000000000331')), 's10-ptr-c-0019'));

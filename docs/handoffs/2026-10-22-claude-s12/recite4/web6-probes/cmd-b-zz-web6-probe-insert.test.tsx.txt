@@ -1,0 +1,94 @@
+// @vitest-environment jsdom
+import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+
+import {
+  buttonNamed,
+  byLabel,
+  choose,
+  click,
+  disableReactAct,
+  enableReactAct,
+  typeInto,
+} from '../cms-editorial-fields/cms-editor-dom.test-support';
+import {
+  answerHeld,
+  heldReply,
+  pattern,
+  resultHeading,
+  resultRegion,
+  resultText,
+  expectPendingLabel,
+  disabledBesides,
+} from './composition-command-states.test-support';
+import {
+  ENTRY,
+  PLACE,
+  entryDetail,
+  json,
+  mountPage,
+  refusal,
+  settle,
+} from './composition-page.test-support';
+import { entryFacts, row, selectorItem } from './composition.test-support';
+
+/*
+ * P2-S12-AC-271, `commandState` of FE03 "Slice 12 definition governance states", for CMS-03C-02 (place a pattern) on the
+ * composition page. The real island runs over a scripted wire; a refusal is the BE03c catalog answer.
+ */
+beforeAll(enableReactAct);
+afterAll(disableReactAct);
+
+const hero = selectorItem('hero-block', 2);
+const fill = async (container: HTMLElement) => {
+  await choose(pattern(container), hero.patternVersionId);
+  await click(byLabel<HTMLInputElement>(container, /^Linked/u));
+  await typeInto(byLabel<HTMLInputElement>(container, 'Slot path'), '/main');
+};
+const overrides = (container: HTMLElement) =>
+  byLabel<HTMLTextAreaElement>(container, 'Overrides (JSON, optional)');
+const place = (container: HTMLElement) =>
+  buttonNamed(container, 'Place pattern');
+const placed = () =>
+  json(
+    {
+      items: [
+        row(1, { path: '/main/hero1', patternVersion: 2, state: 'draft' }),
+      ],
+    },
+    201,
+    '"10"',
+  );
+const send = async (container: HTMLElement) => {
+  await fill(container);
+  await click(place(container));
+  await settle();
+};
+
+describe('probe C4/C5/C6 insert', () => {
+  it('C4 only the commit control is disabled while pending', async () => {
+    const held = heldReply();
+    const page = mountPage({ [PLACE]: [held.reply] });
+    await send(page.container);
+    expectPendingLabel(page.container, 'Placing the pattern…');
+    expect(disabledBesides(page.container, place(page.container))).toEqual([]);
+  });
+
+  it('C5 the entry or list is refetched after success', async () => {
+    const page = mountPage({ [PLACE]: [placed()], [ENTRY]: [entryDetail('10')] });
+    await send(page.container);
+    expect(resultHeading(page.container)).toBe('Pattern placed');
+    expect(page.calls.filter((call) => call.method === 'GET')).toHaveLength(1);
+  });
+
+  it('C6 a 403 renders the CapabilityGate', async () => {
+    const page = mountPage({ [PLACE]: [refusal(403, 'COMPOSITION_FORBIDDEN')] });
+    await send(page.container);
+    expect(page.container.querySelector('[data-cms-editorial-capability-gate]')).not.toBeNull();
+  });
+
+  it('OBS a STEP_UP_REQUIRED-coded 401 routes to /step-up', async () => {
+    const page = mountPage({ [PLACE]: [refusal(401, 'STEP_UP_REQUIRED', { recoveryAction: 'step_up', allowedMethods: ['totp'] })] });
+    await send(page.container);
+    expect(resultText(page.container)).toContain('step');
+  });
+});

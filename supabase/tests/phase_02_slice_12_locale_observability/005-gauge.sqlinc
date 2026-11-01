@@ -1,0 +1,35 @@
+-- The stale no_fallback gauge (BE03c: staleLegalFields is a point-in-time count, over every entry's CURRENT locale
+-- variant (newest row per entry and case-insensitive locale by version, created_at, id), of the stale_field_ids
+-- members whose policy is no_fallback in the entry's current schema: the predicate cms_resolve_locale_field applies).
+-- State here (continuing 003): fr-FR stale [title, legal], de-DE stale [title, legal], fr-CA stale [] (legacy).
+-- title is `localized`, legal is `no_fallback`.
+
+select is(pg_temp.l208_read('2026-10-22 12:00:00+00', '2026-10-22 12:01:00+00')->'staleLegalFields', '2'::jsonb,
+  'the gauge counts the no_fallback stale fields only: fr-FR legal and de-DE legal; the localized title is not counted [P2-S12-AC-052]');
+select is(pg_temp.l208_read('2030-01-01 00:00:00+00', '2030-01-01 00:01:00+00')->'staleLegalFields', '2'::jsonb,
+  'the gauge does not depend on the window: a window with no fan-out reads the same point-in-time count [P2-S12-AC-052]');
+
+-- The gauge counts what the CMS-03C-20 resolver also reports blocking by staleness on the stored stale fields.
+select is(pg_temp.l12r_res('fr-FR', 'legal') || '|' || pg_temp.l12r_res('de-DE', 'legal'),
+  'no_fallback/resolved/authored/-/true/true/no_fallback_stale|no_fallback/resolved/authored/-/true/true/no_fallback_stale',
+  'the resolver agrees: fr-FR legal and de-DE legal are stale and blocking (the two counted fields) [P2-S12-AC-052]');
+select is(pg_temp.l12r_res('fr-FR', 'title'), 'localized/resolved/authored/-/true/false/-',
+  'the stale fr-FR title is stale but not blocking: a localized field, not counted by the gauge [P2-S12-AC-052]');
+
+-- ---- a newer draft row supersedes an older stale row: it is no longer current, so no longer counted -----------------
+select pg_temp.l208_as('creatorAuth');
+select set_config('app.cms_rpc', 'true', true);
+create temp table l208_fr_revalidated on commit drop as
+select pg_temp.l12_author(pg_temp.l12r_req('fr-FR', pg_temp.l12r_field_list(jsonb_build_object(
+  'title', 'Titre FR 2', 'summary', 'Resume FR', 'legal', 'Mentions FR 2', 'terms', 'Conditions FR')), 'l208-fr-0002')) as response;
+select set_config('app.cms_rpc', 'true', true);
+select is((select response->>'state' from l208_fr_revalidated), 'draft',
+  'control: the explicit revalidation of fr-FR appends a newer draft row (version 3)');
+select is((select count(*)::integer from platform_private.cms_locale_variants
+            where entry_id = pg_temp.l12_entry() and locale = 'fr-FR' and state = 'stale'), 1,
+  'control: the old fr-FR stale row still exists (append-only) but is no longer the current row');
+select is(pg_temp.l208_read('2030-01-01 00:00:00+00', '2030-01-01 00:01:00+00')->'staleLegalFields', '1'::jsonb,
+  'the superseded fr-FR stale row is not counted: only de-DE legal remains [P2-S12-AC-052]');
+select is(pg_temp.l208_read('2026-10-22 12:00:00+00', '2026-10-22 12:01:00+00') - 'staleLegalFields',
+  '{"fanoutRows":2,"staleFieldsAppended":4}'::jsonb,
+  'but the past minute is unchanged: the window counts append history, including the now-superseded fr-FR row [P2-S12-AC-052]');

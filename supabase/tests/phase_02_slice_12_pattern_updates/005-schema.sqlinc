@@ -1,0 +1,20 @@
+-- CMS-03C-15 catalog and privilege facts (BE03c 1447, AC-261).
+select has_function('platform_api', 'cms_apply_pattern_update', array['jsonb'], 'CMS-03C-15 has a named platform API RPC (BE03c 1447, AC-261)');
+select has_function('platform_private', 'cms_apply_pattern_update', array['jsonb'], 'the private command is a named function');
+select ok(has_function_privilege('service_role', to_regprocedure('platform_api.cms_apply_pattern_update(jsonb)'), 'execute')
+    and coalesce((select bool_and(not has_function_privilege(r, to_regprocedure('platform_api.cms_apply_pattern_update(jsonb)'), 'execute'))
+                    from unnest(array['public', 'anon', 'authenticated']) r), false)
+    and coalesce((select bool_and(not has_function_privilege(r, to_regprocedure('platform_private.cms_apply_pattern_update(jsonb)'), 'execute'))
+                    from unnest(array['public', 'anon', 'authenticated', 'service_role']) r), false),
+  'only service_role executes the transport; the private command is closed to every API role [AC-261]');
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""']) from pg_proc p
+                     where p.oid in (to_regprocedure('platform_api.cms_apply_pattern_update(jsonb)'),
+                                     to_regprocedure('platform_private.cms_apply_pattern_update(jsonb)'))), false),
+  'both functions are SECURITY DEFINER with an empty search_path [AC-261]');
+select is((select pg_get_userbyid(p.proowner)::text from pg_proc p where p.oid = to_regprocedure('platform_private.cms_apply_pattern_update(jsonb)')),
+  'wejammin_cms_definer', 'the private command is owned by the CMS definer role (SEC-2), never the migration owner');
+-- R1-005: DEC-193 replaced the shortest-slot-suffix plan with the exact flat slot binding and the resolver; the two
+-- pre-DEC-193 helpers that carried that heuristic are dead code and must not survive into immutable history.
+select ok(to_regprocedure('platform_private.cms_pattern_update_view(uuid,platform_private.cms_composition_instances,platform_private.cms_pattern_versions,boolean,text)') is null
+    and to_regprocedure('platform_private.cms_pattern_update_effective_props(platform_private.cms_composition_instances)') is null,
+  'R1-005: the dead cms_pattern_update_view and cms_pattern_update_effective_props helpers are gone');

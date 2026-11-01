@@ -1,0 +1,52 @@
+-- Fixtures of the reads suites: more real active vocabularies and terms written only through the real CMS-03C-03 command.
+--   vr  flat, field title      seven terms tr-a .. tr-g, then deprecate tr-b, merge tr-c into tr-d, rename tr-e, alias tr-f
+--   vq  flat, field subtitle   two terms (a different field key: never listed for `title`)
+--   vh  hierarchical, title    hq-root, hq-child (below hq-root), hq-other
+--   vf  flat, title            vf-one
+--   vs  hierarchical, title    sv-a under version 1, then the successor version 2 (stable ids; the selector names the active version row)
+select pg_temp.s12tt_vocab('vr', 'flat');
+select pg_temp.s12tt_vocab('vq', 'flat', '[]'::jsonb, true, null, '["subtitle"]'::jsonb);
+select pg_temp.s12tt_vocab('vs', 'hierarchical');
+
+select pg_temp.s12tt_act('x-' || term.key, 'owner', pg_temp.s12tt_lineage('vr'), 'create', term.key, jsonb_build_object(
+  'labels', term.labels::jsonb, 'aliases', term.aliases::jsonb))
+from (values
+  ('tr-a', '[{"locale":"en-US","label":"Apple"},{"locale":"fr-FR","label":"Pomme"}]', '["fruit-a"]'),
+  ('tr-b', '[{"locale":"en-US","label":"Banana"}]', '[]'),
+  ('tr-c', '[{"locale":"en-US","label":"Cherry"}]', '[]'),
+  ('tr-d', '[{"locale":"en-US","label":"Date"},{"locale":"de-DE","label":"Dattel"}]', '[]'),
+  ('tr-e', '[{"locale":"en-US","label":"Elderberry"}]', '[]'),
+  ('tr-f', '[{"locale":"en-US","label":"Fig"}]', '[]'),
+  ('tr-g', '[{"locale":"en-US","label":"Grape"}]', '[]')) term(key, labels, aliases);
+select pg_temp.s12tt_act('x-deprecate-b', 'owner', pg_temp.s12tt_lineage('vr'), 'deprecate', 'tr-b');
+select pg_temp.s12tt_act('x-merge-c', 'owner', pg_temp.s12tt_lineage('vr'), 'merge', 'tr-c', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vr'), 'tr-d')));
+select pg_temp.s12tt_act('x-rename-e', 'owner', pg_temp.s12tt_lineage('vr'), 'rename', 'tr-e', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"Elderberry Prime"},{"locale":"es-ES","label":"Sauco"}]'::jsonb));
+select pg_temp.s12tt_act('x-alias-f', 'owner', pg_temp.s12tt_lineage('vr'), 'alias', 'tr-f', '{"aliases":["figs","common-fig"]}'::jsonb);
+
+select pg_temp.s12tt_act('x-q-one', 'owner', pg_temp.s12tt_lineage('vq'), 'create', 'q-one', '{"labels":[{"locale":"en-US","label":"Q One"}]}'::jsonb);
+select pg_temp.s12tt_act('x-q-two', 'owner', pg_temp.s12tt_lineage('vq'), 'create', 'q-two', '{"labels":[{"locale":"en-US","label":"Q Two"}]}'::jsonb);
+select pg_temp.s12tt_act('x-hq-root', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'hq-root', '{"labels":[{"locale":"en-US","label":"HQ Root"}]}'::jsonb);
+select pg_temp.s12tt_act('x-hq-child', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'hq-child', jsonb_build_object(
+  'labels', '[{"locale":"en-US","label":"HQ Child"},{"locale":"fr-FR","label":"HQ Enfant"}]'::jsonb,
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'hq-root')));
+select pg_temp.s12tt_act('x-hq-other', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'hq-other', '{"labels":[{"locale":"en-US","label":"HQ Other"}]}'::jsonb);
+select pg_temp.s12tt_act('x-vf-one', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'vf-one', '{"labels":[{"locale":"en-US","label":"VF One"}]}'::jsonb);
+select pg_temp.s12tt_act('x-sv-a', 'owner', pg_temp.s12tt_lineage('vs'), 'create', 'sv-a', '{"labels":[{"locale":"en-US","label":"SV A"}]}'::jsonb);
+create temp table s12tt_vs_before on commit drop as
+select pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vs'), 'sv-a') term_id, pg_temp.s12tt_active_id(pg_temp.s12tt_lineage('vs')) v1_id;
+select pg_temp.s12tt_vocab('vs2', 'hierarchical', '[]'::jsonb, true, 'vs');
+
+select ok((select count(*) = 7 from platform_private.cms_terms where taxonomy_id = pg_temp.s12tt_lineage('vr'))
+    and (select lifecycle = 'deprecated' from platform_private.cms_terms where taxonomy_id = pg_temp.s12tt_lineage('vr') and term_key = 'tr-b')
+    and (select lifecycle = 'merged' and successor_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vr'), 'tr-d') from platform_private.cms_terms where taxonomy_id = pg_temp.s12tt_lineage('vr') and term_key = 'tr-c')
+    and (select version = 2 from platform_private.cms_terms where taxonomy_id = pg_temp.s12tt_lineage('vr') and term_key = 'tr-e')
+    and (select aliases = '["figs", "common-fig"]'::jsonb and version = 2 from platform_private.cms_terms where taxonomy_id = pg_temp.s12tt_lineage('vr') and term_key = 'tr-f'),
+  'fixture: vr holds seven terms, one deprecated, one merged into tr-d, one renamed and one aliased, all through the real command [P2-S12-AC-183]');
+select ok((select bool_and(outcome = 'ok') from (select pg_temp.s12tt_oc(label) outcome from (values ('x-q-one'), ('x-q-two'), ('x-hq-root'), ('x-hq-child'),
+            ('x-hq-other'), ('x-vf-one'), ('x-sv-a'), ('x-deprecate-b'), ('x-merge-c'), ('x-rename-e'), ('x-alias-f')) labels(label)) outcomes),
+  'fixture: every fixture command was accepted [P2-S12-AC-183]');
+select ok(pg_temp.s12tt_active(pg_temp.s12tt_lineage('vs')) = '2'
+    and (select taxonomy_version_id = (select v1_id from s12tt_vs_before) from platform_private.cms_terms where id = (select term_id from s12tt_vs_before)),
+  'fixture: vs is at active version 2 and its term was written under version 1 [P2-S12-AC-130]');

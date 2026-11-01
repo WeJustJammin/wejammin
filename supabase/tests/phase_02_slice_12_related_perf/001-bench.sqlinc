@@ -1,0 +1,72 @@
+-- Representative-size related-content performance (BE03c 1633; tracker P2-S12-AC-279, related part).  124
+-- published, assigned entries b001 .. b124 are made through the same producers as the functional suites, the
+-- source srcK is published (so eligibleCount evaluates the derived candidates), and then:
+--   * ten CMS-03C-05 writes of 32 pins + 32 exclusions + a bounded shared-terms rule (the bound alternates
+--     63 / 64, ending on 64, so every write replaces the stored rule set rather than being a no-op), and
+--   * twenty CMS-03C-21 projections of the same source.
+-- Each budget is the p95 of its samples against the RPC < 300 ms target.  The functional results at this size
+-- (96 targets, no excluded entry) are asserted by phase_02_slice_12_related_public_targets/003-bound.sqlinc.
+
+do $bench$
+declare
+  n integer;
+begin
+  for n in 1..124 loop
+    perform pg_temp.r12_make('b' || lpad(n::text, 3, '0'));
+    perform pg_temp.r12_assign('b' || lpad(n::text, 3, '0'));
+    perform pg_temp.r12_publish('b' || lpad(n::text, 3, '0'));
+  end loop;
+end;
+$bench$;
+select is((select coalesce(string_agg(step, ', '), '') from pg_temp.r12_world_errors where step ~ ' b[0-9]{3}( |$)'), '', 'bench: all 124 extra publications succeeded');
+
+create or replace function pg_temp.r12_bnames(p_from integer, p_to integer)
+returns text[]
+language sql
+stable
+as $body$
+  select array_agg('b' || lpad(n::text, 3, '0') order by n) from generate_series(p_from, p_to) n
+$body$;
+
+select pg_temp.r12_publish('srcK');
+select is((select coalesce(string_agg(step, ', '), '') from pg_temp.r12_world_errors where step like '%srcK%'), '', 'bench fixture: srcK published');
+
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+                          (select value::uuid from s10_ids where key = 'organization'));
+select set_config('app.cms_rpc', 'true', true);
+
+create temp table r12p_ms(kind text, run integer, ms numeric, ok boolean) on commit drop;
+do $bench$
+declare
+  started timestamptz;
+  request jsonb;
+  result jsonb;
+begin
+  for run in 1..10 loop
+    request := pg_temp.r12_req('srcK', pg_temp.r12_bnames(1, 32), pg_temp.r12_bnames(33, 64),
+      pg_temp.r12_rule('shared-terms', case when run % 2 = 1 then 63 else 64 end), 'r12-srcK-perf-w' || lpad(run::text, 4, '0'));
+    started := clock_timestamp();
+    result := pg_temp.r12_curate(request);
+    insert into r12p_ms values ('write', run, extract(epoch from (clock_timestamp() - started)) * 1000, not (result ? '__error'));
+    perform set_config('app.cms_rpc', 'true', true);
+  end loop;
+  for run in 1..20 loop
+    started := clock_timestamp();
+    result := pg_temp.r12_targets(pg_temp.r12_id('srcK'));
+    insert into r12p_ms values ('project', run, extract(epoch from (clock_timestamp() - started)) * 1000,
+      pg_temp.r12_len(result) = 96);
+    perform set_config('app.cms_rpc', 'true', true);
+  end loop;
+end;
+$bench$;
+
+select is((select count(*)::integer from r12p_ms where kind = 'write' and ok), 10,
+  'bench: ten 64-target curations succeeded [P2-S12-AC-279]');
+select is((select count(*)::integer from r12p_ms where kind = 'project' and ok), 20,
+  'bench: twenty projections each returned 96 targets (32 pins plus 64 derived candidates) [P2-S12-AC-279]');
+select ok((select percentile_cont(0.95) within group (order by ms) < 300 from r12p_ms where kind = 'write'),
+  'curating 64 related targets meets the RPC < 300 ms target (p95 of 10) [P2-S12-AC-279]');
+select ok((select percentile_cont(0.95) within group (order by ms) < 300 from r12p_ms where kind = 'project'),
+  'projecting the 64-target rule set meets the RPC < 300 ms target (p95 of 20) [P2-S12-AC-279]');
+select diag('p95 ms write/project: ' || (select string_agg(kind || '=' || round(p::numeric, 1)::text, ', ' order by kind)
+  from (select kind, percentile_cont(0.95) within group (order by ms) as p from r12p_ms group by kind) t));

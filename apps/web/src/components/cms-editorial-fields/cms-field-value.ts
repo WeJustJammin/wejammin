@@ -5,6 +5,7 @@ import {
   type CmsFieldDescriptor,
 } from './cms-field-descriptor';
 import { cmsIssue, type CmsFieldIssue } from './cms-field-issue';
+import { registerCmsFieldValidation } from './cms-field-validation';
 import { validateCmsScalarValue } from './cms-field-value-scalar';
 import {
   cmsRichTextIsEmpty,
@@ -15,18 +16,23 @@ import {
   validateCmsRelation,
   validateCmsRichText,
 } from './cms-field-value-structured';
+import {
+  cmsTaxonomyIsEmpty,
+  validateCmsTaxonomyValue,
+} from './cms-field-taxonomy-value';
 
 export type { CmsFieldIssue } from './cms-field-issue';
-export { CMS_EMPTY_RICH_TEXT } from './cms-field-value-structured';
+export { CMS_EMPTY_RICH_TEXT } from './cms-field-basics';
 export {
   cmsDatetimeToLocalInput,
   cmsLocalInputToDatetime,
-} from './cms-field-value-scalar';
+} from './cms-field-basics';
 
 /**
  * True when the value is the absence of a value: null, empty text, an empty
- * list, an object with no keys, a relation with no targets, or rich text with
- * no characters. A boolean or a number (zero included) is always a value.
+ * list, an object with no keys, a relation with no targets, a taxonomy selection
+ * with no terms, or rich text with no characters. A boolean or a number (zero
+ * included) is always a value.
  */
 export const isCmsFieldValueEmpty = (
   descriptor: CmsFieldDescriptor,
@@ -47,6 +53,7 @@ export const isCmsFieldValueEmpty = (
         value.targets.length === 0
       );
     case 'taxonomy':
+      return cmsTaxonomyIsEmpty(value);
     case 'media':
     case 'unsupported':
       return true;
@@ -80,6 +87,8 @@ export const validateCmsFieldValue = (
       return validateCmsObject(descriptor, value);
     case 'relation':
       return validateCmsRelation(descriptor, value);
+    case 'taxonomy':
+      return validateCmsTaxonomyValue(value);
     default:
       return validateCmsScalarValue(
         descriptor.kind,
@@ -88,6 +97,10 @@ export const validateCmsFieldValue = (
       );
   }
 };
+
+// Evaluating this module is what makes the validators available to the entry editor's refusal display
+// (`cms-field-validation.ts`): the save loads this module, and a refused save is the only thing that shows local issues.
+registerCmsFieldValidation(validateCmsFieldValue);
 
 /** A stored value as the editor's starting point; absence stays absence. */
 export const initialCmsFieldValue = (

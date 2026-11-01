@@ -207,19 +207,48 @@ describe('submitCmsEditorialEntryCreate', () => {
   it.each([
     [401, 'UNAUTHENTICATED', 'Sign in again'],
     [403, 'FORBIDDEN', 'cannot create'],
-    [404, 'NOT_FOUND', 'not available'],
-    [409, 'CONFLICT', 'Reload'],
+    [404, 'NOT_FOUND', 'This entry cannot be created with the selected setup.'],
+    [
+      409,
+      'CONFLICT',
+      'The entry setup changed. Review the available options and try again.',
+    ],
   ])(
     'states a %i without leaking a server message',
     async (status, code, copy) => {
       const result = await submit(async () => apiError(status, code));
       expect(result.status).toBe('error');
       if (result.status !== 'error') return;
-      expect(result.message).toContain(copy);
+      if (status === 404 || status === 409) expect(result.message).toBe(copy);
+      else expect(result.message).toContain(copy);
       expect(result.outcomeUnknown).toBe(false);
       expect(result.idempotencyKey).not.toBe('create-key-1');
     },
   );
+
+  it('keeps a derived setup 422 non-field and uses the exact neutral setup copy', async () => {
+    const result = await submit(async () =>
+      apiError(422, 'VALIDATION_FAILED', {
+        violations: [
+          {
+            path: '/contentTypeVersionId',
+            code: 'invalid_value',
+            message: 'Untrusted setup diagnostic.',
+          },
+        ],
+      }),
+    );
+    expect(result.status).toBe('invalid');
+    if (result.status !== 'invalid') return;
+    expect(result.message).toBe(
+      'The entry setup could not be validated. Review the available options.',
+    );
+    expect(result.reasonCode).toBeNull();
+    expect(result.violations).toEqual([
+      { path: '/contentTypeVersionId', fieldId: null },
+    ]);
+    expect(result.idempotencyKey).not.toBe('create-key-1');
+  });
 
   it('keeps the key and the wait for a rate-limited create', async () => {
     const result = await submit(

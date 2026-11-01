@@ -59,6 +59,7 @@ describe('CMS-11 template designer interaction', () => {
             createdAt: '2026-09-27T12:00:00.000Z',
             updatedAt: '2026-09-27T12:00:00.000Z',
             state: 'draft',
+            templateId: '90000000-0000-4000-8000-000000000009',
             templateKey: 'release-note',
             templateVersion: 1,
             compatibleTypeIds: [TYPE_ID],
@@ -112,7 +113,15 @@ describe('CMS-11 template designer interaction', () => {
     );
     expect(keys).toEqual(['draft-attempt-001', 'draft-attempt-001']);
     expect(container.textContent).toContain(`Template ID ${TEMPLATE_ID}`);
-    root.unmount();
+    const errorSpy = vi.spyOn(console, 'error');
+    try {
+      await act(async () => {
+        root.unmount();
+      });
+      expect(errorSpy).not.toHaveBeenCalled();
+    } finally {
+      errorSpy.mockRestore();
+    }
   });
 
   it('keeps a rate-limited draft disabled until the verified Retry-After elapses', async () => {
@@ -142,6 +151,7 @@ describe('CMS-11 template designer interaction', () => {
               createdAt: '2026-09-27T12:00:00.000Z',
               updatedAt: '2026-09-27T12:00:00.000Z',
               state: 'draft',
+              templateId: '90000000-0000-4000-8000-000000000009',
               templateKey: 'release-note',
               templateVersion: 1,
               compatibleTypeIds: [TYPE_ID],

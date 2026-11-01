@@ -1,0 +1,129 @@
+-- CMS-03C-21 public projection (BE03c 190, 1385; tracker P2-S12-AC-153 .. AC-158).  Rules are written by the
+-- real command cms_curate_related_content; entries and publications by the Slice 11 producers.
+
+select set_config('app.cms_rpc', 'true', true);
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid,
+                          (select value::uuid from s10_ids where key = 'organization'));
+
+-- Contract invariants of RelatedPublicTargetsSchema, checked on every projection below.
+create or replace function pg_temp.r12_valid(p_targets jsonb)
+returns boolean
+language plpgsql
+stable
+as $body$
+begin
+  if jsonb_typeof(p_targets) is distinct from 'array' then
+    return false;
+  end if;
+  return jsonb_array_length(p_targets) <= 128
+     and (select count(distinct item->>'entryId') = count(*) from jsonb_array_elements(p_targets) item)
+     and not exists (
+       select 1 from jsonb_array_elements(p_targets) with ordinality item(value, ord)
+        where (select array_agg(k order by k) from jsonb_object_keys(item.value) k) <> array['entryId', 'position', 'reasonCode', 'source']
+           or (item.value->>'position')::integer <> item.ord - 1
+           or item.value->>'source' not in ('pin', 'derived')
+           or (item.value->>'source' = 'pin') <> (item.value->'reasonCode' = 'null'::jsonb))
+     and not exists (
+       select 1 from jsonb_array_elements(p_targets) with ordinality later(value, ord)
+         join jsonb_array_elements(p_targets) with ordinality earlier(value, ord) on earlier.ord < later.ord
+        where earlier.value->>'source' = 'derived' and later.value->>'source' = 'pin');
+end;
+$body$;
+
+create or replace function pg_temp.r12_sources(p_targets jsonb)
+returns text
+language sql
+stable
+as $body$
+  select case when jsonb_typeof(p_targets) = 'array' then
+    (select coalesce(string_agg(item->>'source' || ':' || coalesce(item->>'reasonCode', '-'), ',' order by ord), '')
+       from jsonb_array_elements(p_targets) with ordinality t(item, ord))
+    else '__not_an_array' end
+$body$;
+
+create temp table r12_counts_before on commit drop as
+select (select count(*)::integer from platform_private.cms_related_content_rules) as rules,
+       (select count(*)::integer from audit_private.audit_events) as audits,
+       (select count(*)::integer from platform_private.outbox_events) as outbox,
+       (select count(*)::integer from platform_private.idempotency_records) as receipts;
+
+-- ---------------------------------------------------------------------------
+-- Pins first, in position order, publicly eligible only.
+-- ---------------------------------------------------------------------------
+create temp table r12_p1 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcP', array['x2', 'c3', 'x3', 'x4', 'c1', 'x5', 'x6', 'c5'], array[]::text[], null, 'r12-srcP-proj-0001')) as written;
+select ok(not ((select written from r12_p1) ? '__error'), 'fixture: eight pins are write-eligible (got ' || coalesce((select written::text from r12_p1), 'null') || ') [P2-S12-AC-154]');
+
+create temp table r12_t1 on commit drop as select pg_temp.r12_targets(pg_temp.r12_id('srcP')) as targets;
+select is(pg_temp.r12_target_names((select targets from r12_t1)), 'c3,c1,x6,c5',
+  'only the pins whose lineage head is an active publish row for (en-US, public) are projected, in pin position order [P2-S12-AC-154]');
+select ok(pg_temp.r12_valid((select targets from r12_t1)), 'the projection satisfies the RelatedPublicTarget list contract [P2-S12-AC-153]');
+select is(pg_temp.r12_sources((select targets from r12_t1)), 'pin:-,pin:-,pin:-,pin:-', 'pins carry source pin and a null reason [P2-S12-AC-153]');
+select is((select targets->0 from r12_t1), jsonb_build_object('entryId', pg_temp.r12_id('c3'), 'source', 'pin', 'reasonCode', null, 'position', 0),
+  'the first target is exactly { entryId, source: pin, reasonCode: null, position: 0 } [P2-S12-AC-153]');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP'), 'fr-FR', 'public')), 'x3', 'the locale scopes the lineage head: fr-FR projects only the pin published in fr-FR [P2-S12-AC-154]');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP'), 'en-US', 'members')), 'x4', 'the audience scopes the lineage head: members projects only the members pin [P2-S12-AC-154]');
+select is(pg_temp.r12_targets(pg_temp.r12_id('srcP'), 'de-DE', 'public'), '[]'::jsonb, 'a locale with no publication projects nothing [P2-S12-AC-154]');
+select is(pg_temp.r12_targets(pg_temp.r12_id('srcP'), 'en-US', 'nobody'), '[]'::jsonb, 'an audience with no publication projects nothing [P2-S12-AC-154]');
+select is(pg_temp.r12_targets(extensions.gen_random_uuid()), '[]'::jsonb, 'an unknown source projects nothing [P2-S12-AC-154]');
+select is(pg_temp.r12_targets(pg_temp.r12_id('srcC')), '[]'::jsonb, 'a source with no rules projects nothing [P2-S12-AC-154]');
+
+-- ---------------------------------------------------------------------------
+-- shared-terms (OD-5): number of shared ACTIVE terms desc, head created_at desc, entry id asc.
+-- ---------------------------------------------------------------------------
+-- srcP2 is unpublished: an editorial preview ranks by its DRAFT revision's terms {term1, term2}.
+create temp table r12_q1 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcP2', array['c2'], array['c1'], pg_temp.r12_rule('shared-terms', 4), 'r12-srcP2-proj-0001')) as written;
+select ok(not ((select written from r12_q1) ? '__error'), 'fixture: pin c2, exclusion c1, shared-terms bounded to 4 [P2-S12-AC-231]');
+create temp table r12_q1t on commit drop as select pg_temp.r12_targets(pg_temp.r12_id('srcP2')) as targets;
+select is(pg_temp.r12_target_names((select targets from r12_q1t)), 'c2,srcp,c6,c5,c3',
+  'pin c2 first, then the four best-ranked eligible candidates (two shared terms: srcp, c6, c5 by head created_at desc; then c3 with one); the excluded c1 and the pinned c2 are not candidates [P2-S12-AC-231]');
+select is(pg_temp.r12_sources((select targets from r12_q1t)), 'pin:-,derived:shared_terms,derived:shared_terms,derived:shared_terms,derived:shared_terms',
+  'derived candidates carry source derived and the registry reason shared_terms [P2-S12-AC-231]');
+select ok(pg_temp.r12_valid((select targets from r12_q1t)), 'the projection satisfies the list contract [P2-S12-AC-231]');
+
+-- Exclusions always win and the vacated slot is refilled only from eligible candidates.
+create temp table r12_q2 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcP2', array['c2'], array[]::text[], pg_temp.r12_rule('shared-terms', 4), 'r12-srcP2-proj-0002')) as written;
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP2'))), 'c2,srcp,c6,c5,c1',
+  'without the exclusion, c1 (two shared terms, oldest head) takes the fourth derived slot [P2-S12-AC-154]');
+create temp table r12_q3 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcP2', array['c2'], array['c1'], pg_temp.r12_rule('shared-terms', 4), 'r12-srcP2-proj-0003')) as written;
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP2'))), 'c2,srcp,c6,c5,c3',
+  'with c1 excluded again the slot is refilled by the next eligible candidate c3, never by c1 [P2-S12-AC-154]');
+
+-- A PUBLISHED source ranks by its published revision (rev1 terms {term1, term2, termd}), not its newer draft
+-- (rev2 term3); a deprecated term (termd), a superseded assignment and a revoked assignment share nothing.
+create temp table r12_s1 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcp', array[]::text[], array[]::text[], pg_temp.r12_rule('shared-terms', 128), 'r12-srcp-proj-0001')) as written;
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcp'))), 'c6,c5,c1,c3,c2,xo,x7,x6,srcm,c7,c4',
+  'published-revision ranking: score 2 (c6 c5 c1 by head created_at desc), score 1 (c3 c2), score 0 (xo x7 x6 srcm c7 c4); a deprecated, superseded or revoked term counts for nothing; the draft''s term3 is ignored [P2-S12-AC-231]');
+select ok(pg_temp.r12_valid(pg_temp.r12_targets(pg_temp.r12_id('srcp'))), 'the projection satisfies the list contract for the curated shared-terms source srcp [P2-S12-AC-231]');
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcp'))) ~ '(^|,)(x2|x3|x4)(,|$)', false,
+  'an unpublished (tombstoned), other-locale and other-audience entry is never a candidate [P2-S12-AC-155]');
+
+-- A preview of an unpublished source with room for every candidate.
+create temp table r12_s2 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcP2', array[]::text[], array[]::text[], pg_temp.r12_rule('shared-terms', 128), 'r12-srcP2-proj-0004')) as written;
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP2'))), 'srcp,c6,c5,c1,c3,c2,xo,x7,x6,srcm,c7,c4',
+  'preview ranking uses the draft terms {term1, term2}: srcp joins the score-2 group at the top [P2-S12-AC-231]');
+
+-- ---------------------------------------------------------------------------
+-- same-type-recent (OD-5): the source's content type, head created_at desc, entry id asc.
+-- ---------------------------------------------------------------------------
+create temp table r12_r1 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcP3', array['c3'], array[]::text[], pg_temp.r12_rule('same-type-recent', 3), 'r12-srcP3-proj-0001')) as written;
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP3'))), 'c3,xo,x7,x6',
+  'pin c3 first (not repeated as a candidate), then the three most recent same-type candidates [P2-S12-AC-232]');
+select is(pg_temp.r12_sources(pg_temp.r12_targets(pg_temp.r12_id('srcP3'))), 'pin:-,derived:same_type_recent,derived:same_type_recent,derived:same_type_recent',
+  'derived candidates carry the registry reason same_type_recent [P2-S12-AC-232]');
+-- Exclusions always win: moving c3 from the pins to the exclusions removes it although it would be a candidate.
+create temp table r12_r2 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcP3', array[]::text[], array['c3'], pg_temp.r12_rule('same-type-recent', 128), 'r12-srcP3-proj-0002')) as written;
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcP3'))), 'xo,x7,x6,srcm,srcp,c7,c6,c4,c2,c1',
+  'all same-type eligible candidates by head created_at desc; the article-typed c5 and the excluded c3 are absent [P2-S12-AC-232]');
+select ok(pg_temp.r12_valid(pg_temp.r12_targets(pg_temp.r12_id('srcP3'))), 'the projection satisfies the list contract [P2-S12-AC-232]');
+create temp table r12_r3 on commit drop as
+select pg_temp.r12_curate(pg_temp.r12_req('srcart', array[]::text[], array[]::text[], pg_temp.r12_rule('same-type-recent', 8), 'r12-srcart-proj-0001')) as written;
+select is(pg_temp.r12_target_names(pg_temp.r12_targets(pg_temp.r12_id('srcart'))), 'c5',
+  'an article-typed source ranks only article-typed candidates [P2-S12-AC-232]');

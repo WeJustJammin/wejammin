@@ -1,0 +1,293 @@
+-- AC236 the 32-locale ceiling of CMS-03C-04, AC237 the per-locale event identity of the
+-- fan-out writer, AC235 per-field staleness and revalidation, AC234 derived state.
+
+-- Thirty-one further target locales hold a variant row (hand-written labelled fixtures:
+-- the schema configuration admits at most 32 supported locales, so no RPC path can
+-- author them).  With fr-FR the entry now has 32 distinct locale variants.
+create or replace function pg_temp.l12_fabricate_locales(p_count integer)
+returns integer
+language plpgsql
+as $body$
+declare
+  base platform_private.cms_locale_variants%rowtype;
+  base_revision platform_private.cms_entry_revisions%rowtype;
+  new_revision uuid;
+  target_locale text;
+  made integer := 0;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select * into base from platform_private.cms_locale_variants variant
+  where variant.entry_id = pg_temp.l12_entry() and variant.locale = 'fr-FR'
+  order by variant.version desc limit 1;
+  select * into base_revision from platform_private.cms_entry_revisions revision
+  where revision.id = base.revision_id;
+  for i in 1..p_count loop
+    target_locale := chr(97 + ((i - 1) / 5)) || chr(97 + ((i - 1) % 5));
+    new_revision := extensions.gen_random_uuid();
+    insert into platform_private.cms_entry_revisions(
+      id, owner_id, entry_id, revision_number, schema_version_id, template_version_id,
+      taxonomy_version_ids, parent_revision_ids, locale, payload_hash, author_person_id,
+      acting_party_id, state, version, validation_state, validation_report, created_at, updated_at
+    ) values (
+      new_revision, base_revision.owner_id, base_revision.entry_id, 1, base_revision.schema_version_id,
+      base_revision.template_version_id, base_revision.taxonomy_version_ids,
+      jsonb_build_array(base.source_revision_id), target_locale,
+      encode(extensions.digest(convert_to('l12:' || target_locale, 'utf8'), 'sha256'), 'hex')::char(64),
+      base_revision.author_person_id, base_revision.acting_party_id, 'draft', 1, 'valid', '{}'::jsonb,
+      base_revision.created_at, base_revision.created_at
+    );
+    insert into platform_private.cms_locale_variants(
+      id, owner_id, state, version, created_at, updated_at, entry_id, revision_id,
+      source_revision_id, locale, source_locale, source_hash, fallback_chain,
+      no_fallback_field_ids, created_by
+    ) values (
+      extensions.gen_random_uuid(), base.owner_id, 'draft', 1, base.created_at, base.created_at,
+      base.entry_id, new_revision, base.source_revision_id, target_locale, base.source_locale,
+      base.source_hash, '[]'::jsonb, '[]'::jsonb, base.created_by
+    );
+    made := made + 1;
+  end loop;
+  return made;
+end;
+$body$;
+
+select is(pg_temp.l12_fabricate_locales(31), 31, 'fixture: 31 further locale variants exist');
+select is(
+  (select count(distinct lower(locale))::integer from platform_private.cms_locale_variants
+   where entry_id = pg_temp.l12_entry()),
+  32, 'fixture: the entry holds 32 distinct locale variants');
+
+create temp table l12_before_cap on commit drop as
+select (select count(*) from platform_private.cms_locale_variants) as variants,
+       (select count(*) from platform_private.cms_entry_revisions) as revisions,
+       (select count(*) from platform_private.outbox_events) as events,
+       (select count(*) from platform_private.idempotency_records) as reservations,
+       (select version from platform_private.cms_content_entries where id = pg_temp.l12_entry()) as entry_version;
+
+select is(
+  pg_temp.l12_try(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    pg_temp.l12_req('de-DE', pg_temp.l12_title_field('Uebersetzter Titel'), 'l12-cap-0001',
+      '{"fallbackChain":["en-US"]}'::jsonb)::text)),
+  'P0001:VERSION_MISMATCH',
+  'a request that would create a 33rd distinct locale variant is the 409 conflict [P2-S12-AC-236]'
+);
+select is(
+  pg_temp.l12_detail(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    pg_temp.l12_req('de-DE', pg_temp.l12_title_field('Uebersetzter Titel'), 'l12-cap-0002',
+      '{"fallbackChain":["en-US"]}'::jsonb)::text))::jsonb,
+  '{"reasonCode":"locale_limit_reached"}'::jsonb,
+  'the 409 carries the machine reason locale_limit_reached [P2-S12-AC-236]'
+);
+select ok(
+  (select (select count(*) from platform_private.cms_locale_variants) = variants
+      and (select count(*) from platform_private.cms_entry_revisions) = revisions
+      and (select count(*) from platform_private.outbox_events) = events
+      and (select count(*) from platform_private.idempotency_records) = reservations
+      and (select version from platform_private.cms_content_entries where id = pg_temp.l12_entry()) = entry_version
+   from l12_before_cap),
+  'the refused 33rd locale writes no variant, revision, event or idempotency record and does not move the entry version [P2-S12-AC-236]'
+);
+select is(
+  pg_temp.l12_json(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    pg_temp.l12_req('fr-FR', pg_temp.l12_title_field('Titre revu'), 'l12-cap-0003')::text)) ->> 'state',
+  'draft',
+  'an existing locale can still be rewritten at the ceiling: only a new locale is refused [P2-S12-AC-236]'
+);
+select is(
+  (select count(*)::integer from platform_private.cms_locale_variants
+   where entry_id = pg_temp.l12_entry() and locale = 'fr-FR'),
+  2, 'the rewrite appended a second fr-FR version');
+
+-- Source change: one stale version per dependent locale, each its own aggregate.
+create temp table l12_old_hashes on commit drop as
+select field_source_hashes as hashes, version
+from platform_private.cms_locale_variants
+where entry_id = pg_temp.l12_entry() and locale = 'fr-FR' order by version desc limit 1;
+
+select pg_temp.l12_source_edit(jsonb_build_object(
+  pg_temp.l12_field('typeFieldId')::text, 'Edited source title'));
+
+select is(
+  (select count(*)::integer from platform_private.cms_locale_variants
+   where entry_id = pg_temp.l12_entry() and state = 'stale'),
+  32,
+  'a source-locale change appends a stale row for each of the 32 dependent locale variants [P2-S12-AC-236]'
+);
+select is(
+  (select count(*)::integer from platform_private.outbox_events
+   where event_type = 'cms.localization.changed.v1' and payload->>'entryId' = pg_temp.l12_entry()::text
+     and aggregate_version = 2 and aggregate_type = 'cms_locale_variant'
+     and aggregate_id <> pg_temp.l12_aggregate(pg_temp.l12_entry(), 'fr-FR')),
+  31,
+  'each of the 31 other dependent locales emits one stale event at version 2 of its own locale aggregate [P2-S12-AC-237]'
+);
+select is(
+  pg_temp.l12_events('fr-FR'),
+  'cms_locale_variant/' || pg_temp.l12_aggregate(pg_temp.l12_entry(), 'fr-FR') || '/1,'
+  || 'cms_locale_variant/' || pg_temp.l12_aggregate(pg_temp.l12_entry(), 'fr-FR') || '/2,'
+  || 'cms_locale_variant/' || pg_temp.l12_aggregate(pg_temp.l12_entry(), 'fr-FR') || '/3',
+  'fr-FR walks versions 1 (author), 2 (author rewrite) and 3 (fan-out stale) of one aggregate [P2-S12-AC-237]'
+);
+select is(
+  (select count(*)::integer from (
+     select aggregate_type, aggregate_id, aggregate_version
+     from platform_private.outbox_events
+     where event_type = 'cms.localization.changed.v1' and payload->>'entryId' = pg_temp.l12_entry()::text
+     group by 1, 2, 3 having count(*) > 1) duplicated),
+  0,
+  'the author RPC and the fan-out writer never share a dedupe key [P2-S12-AC-237]'
+);
+select is(
+  (select count(distinct aggregate_id)::integer from platform_private.outbox_events
+   where event_type = 'cms.localization.changed.v1' and payload->>'entryId' = pg_temp.l12_entry()::text),
+  32, 'one aggregate per locale: 32 locales, 32 aggregate ids [P2-S12-AC-237]'
+);
+select ok(
+  (select stale.field_source_hashes = old.hashes
+     and stale.version = old.version + 1 and stale.state = 'stale'
+   from l12_old_hashes old,
+        lateral (select * from platform_private.cms_locale_variants variant
+                 where variant.entry_id = pg_temp.l12_entry() and variant.locale = 'fr-FR'
+                 order by variant.version desc limit 1) stale),
+  'the stale row keeps the recorded field_source_hashes and is the next version of the locale [P2-S12-AC-235]'
+);
+select is(
+  pg_temp.l12_stored_stale('fr-FR'),
+  jsonb_build_array(pg_temp.l12_field('typeFieldId')),
+  'the stored stale_field_ids is exactly the changed translated field (title), not a superset [P2-S12-AC-235]'
+);
+select is(
+  pg_temp.l12_json(format($$select platform_private.cms_locale_stale_fields(%L::uuid, 'fr-FR')$$, pg_temp.l12_entry())),
+  jsonb_build_array(pg_temp.l12_field('typeFieldId')),
+  'the live per-field staleness lists exactly the translated field whose current source value hash differs [P2-S12-AC-235]'
+);
+select is(
+  pg_temp.l12_text(format($$select platform_private.cms_locale_variant_state(%L::uuid, 'fr-FR')$$, pg_temp.l12_entry())),
+  'stale', 'the derived state of a source-changed variant is stale [P2-S12-AC-234]');
+select is(
+  pg_temp.l12_text(format($$select platform_private.cms_locale_variant_state(%L::uuid, 'de-DE')$$, pg_temp.l12_entry())),
+  'untranslated', 'a locale with no variant is untranslated [P2-S12-AC-234]');
+
+-- Explicit revalidation: a new write with the current sourceHash appends a draft row.
+create temp table l12_v4 on commit drop as
+select pg_temp.l12_author(pg_temp.l12_req('fr-FR', jsonb_build_array(
+  jsonb_build_object('fieldId', pg_temp.l12_field('typeFieldId'), 'value', 'Titre revalide'),
+  jsonb_build_object('fieldId', pg_temp.l12_field('typeDateFieldId'), 'value', '2024-03-02')
+), 'l12-revalidate-0001')) as response;
+select is(
+  (select response->>'state' || '/' || (response->>'version') || '/' || (response->'staleFieldIds')::text from l12_v4),
+  'draft/4/[]',
+  'revalidation appends a draft version (4) with no stale fields [P2-S12-AC-235]'
+);
+select is(
+  pg_temp.l12_events('fr-FR') like '%/4',
+  true, 'the revalidation event is the next version of the same locale aggregate [P2-S12-AC-237]');
+select is(
+  pg_temp.l12_text(format($$select platform_private.cms_locale_variant_state(%L::uuid, 'fr-FR')$$, pg_temp.l12_entry())),
+  'draft', 'a revalidated variant is draft until the revision editorial review approves it [P2-S12-AC-234]');
+select is(
+  pg_temp.l12_json(format($$select platform_private.cms_locale_stale_fields(%L::uuid, 'fr-FR')$$, pg_temp.l12_entry())),
+  '[]'::jsonb, 'after revalidation no field is stale [P2-S12-AC-235]');
+
+-- A source change outside the translated fields: the row goes stale, the translated field does not.
+-- Written the way every revision writer writes: the revision row and its values first.  The fan-out must
+-- wait for the draft head move, because only then do the revision values exist (review F3; 20261014050310).
+create temp table l12_rows_before_edit on commit drop as
+select count(*)::integer as n from platform_private.cms_locale_variants
+where entry_id = pg_temp.l12_entry() and locale = 'fr-FR';
+create temp table l12_edit_b on commit drop as
+select pg_temp.l12_source_edit(jsonb_build_object(
+  pg_temp.l12_field('typeFieldId')::text, 'Edited source title',
+  pg_temp.l12_field('typeDateFieldId')::text, '2025-01-01'), false) as revision_id;
+select is(
+  (select count(*)::integer from platform_private.cms_locale_variants
+   where entry_id = pg_temp.l12_entry() and locale = 'fr-FR'),
+  (select n from l12_rows_before_edit),
+  'a source revision whose values are still being written appends no stale row: the fan-out waits for the draft head move [P2-S12-AC-235]'
+);
+select pg_temp.l12_move_head((select revision_id from l12_edit_b));
+select is(
+  (select state from platform_private.cms_locale_variants
+   where entry_id = pg_temp.l12_entry() and locale = 'fr-FR' order by version desc limit 1),
+  'stale', 'the source payload changed, so the variant row is appended stale');
+select is(
+  pg_temp.l12_json(format($$select platform_private.cms_locale_stale_fields(%L::uuid, 'fr-FR')$$, pg_temp.l12_entry())),
+  jsonb_build_array(pg_temp.l12_field('typeDateFieldId')),
+  'the date was translated against an absent source value, so only it differs now; the unchanged title keeps its approved state [P2-S12-AC-235]'
+);
+select is(
+  pg_temp.l12_stored_stale('fr-FR'),
+  jsonb_build_array(pg_temp.l12_field('typeDateFieldId')),
+  'the stored stale_field_ids lists the date and not the unchanged title: it was computed after the revision values existed (review F3) [P2-S12-AC-235]'
+);
+select is(
+  pg_temp.l12_stored_stale('fr-FR'),
+  pg_temp.l12_json(format($$select platform_private.cms_locale_stale_fields(%L::uuid, 'fr-FR')$$, pg_temp.l12_entry())),
+  'the stored snapshot equals the live per-field truth at the moment it was appended [P2-S12-AC-235]'
+);
+
+-- The same through the real revision writer: revalidate fr-FR against the current source, then edit the
+-- source with the production CMS-03B-01 command.  The title stays, only the date changes.
+-- Hand-written fixture (rolled back with the suite): the revision-write command resolves the editorial workflow
+-- policy of the active type version, and the Slice 10 RPC world pins a placeholder.  This is the pin
+-- phase_02_slice_10_locale_fanout_regression.sql applies to reach the same command.
+select set_config('app.cms_rpc', 'true', true);
+set local session_replication_role = replica;
+insert into platform_private.cms_workflow_policies(
+  id, owner_id, state, version, created_at, updated_at,
+  policy_key, policy_version, policy_hash, risk_class,
+  required_decision_count, required_capabilities
+)
+select extensions.gen_random_uuid(), '0d6a0d6a-0000-4000-8000-000000000108'::uuid,
+  'seeded', 1, pg_catalog.now(), pg_catalog.now(), 'cms.entry.author', 1,
+  platform_private.cms_workflow_policy_hash('cms.entry.author', 1, 'ordinary', 1, jsonb_build_array('cms.author')),
+  'ordinary', 1, jsonb_build_array('cms.author')
+where not exists (
+  select 1 from platform_private.cms_workflow_policies policy
+  where policy.policy_key = 'cms.entry.author' and policy.policy_version = 1
+);
+update platform_private.cms_content_type_versions
+set activation_workflow_policy_key = 'editorial',
+    activation_workflow_policy_version = 1,
+    activation_workflow_policy_hash = (
+      select policy.policy_hash from platform_private.cms_workflow_policies policy
+      where policy.policy_key = 'editorial' and policy.policy_version = 1)
+where id = (select value::uuid from s10_ids where key = 'draftVersionId');
+set local session_replication_role = origin;
+create temp table l12_v5 on commit drop as
+select pg_temp.l12_author(pg_temp.l12_req('fr-FR', jsonb_build_array(
+  jsonb_build_object('fieldId', pg_temp.l12_field('typeFieldId'), 'value', 'Titre v5'),
+  jsonb_build_object('fieldId', pg_temp.l12_field('typeDateFieldId'), 'value', '2024-05-05')
+), 'l12-revalidate-0005')) as response;
+select is((select response->>'state' from l12_v5), 'draft',
+  'the fr-FR variant is revalidated against the current source before the real-writer edit [P2-S12-AC-235]');
+create temp table l12_writer_edit on commit drop as
+select pg_temp.l12_json(format(
+  $$select platform_api.cms_create_revision(%L::jsonb)$$,
+  jsonb_build_object(
+    'entryId', pg_temp.l12_entry(),
+    'baseRevision', (select revision_number::text from platform_private.cms_entry_revisions
+                      where id = pg_temp.l12_source()),
+    'expectedVersion', (select version::text from platform_private.cms_content_entries
+                         where id = pg_temp.l12_entry()),
+    'ifMatch', (select version::text from platform_private.cms_content_entries
+                 where id = pg_temp.l12_entry()),
+    'locale', 'en-US',
+    'changedPaths', jsonb_build_array('/fields/' || pg_temp.l12_field('typeDateFieldId')::text),
+    'values', jsonb_build_object(pg_temp.l12_field('typeDateFieldId')::text, '2026-02-02'),
+    'idempotencyKey', 'l12-real-writer-0001')::text)) as response;
+select is(
+  (select coalesce(response->>'__error', response->>'locale') from l12_writer_edit), 'en-US',
+  'the production revision writer accepts the source edit that drives the real fan-out [P2-S12-AC-235]');
+select is(
+  (select state from platform_private.cms_locale_variants
+   where entry_id = pg_temp.l12_entry() and locale = 'fr-FR' order by version desc limit 1),
+  'stale', 'the real writer staled the revalidated fr-FR variant in its own transaction [P2-S12-AC-235]');
+select is(
+  pg_temp.l12_stored_stale('fr-FR'),
+  jsonb_build_array(pg_temp.l12_field('typeDateFieldId')),
+  'through the real writer the stored stale_field_ids is exactly the changed date, never the unchanged title [P2-S12-AC-235]');
+select is(
+  pg_temp.l12_stored_stale('fr-FR'),
+  pg_temp.l12_json(format($$select platform_private.cms_locale_stale_fields(%L::uuid, 'fr-FR')$$, pg_temp.l12_entry())),
+  'through the real writer the stored snapshot equals the live per-field truth [P2-S12-AC-235]');

@@ -1,0 +1,92 @@
+-- CMS-03C-12 pattern definition over real chains.  BE03c 1361: the producer "rejects a missing, withdrawn or
+-- incompatible block"; 396: "a registered, non-withdrawn version"; a deprecated block is admitted (1514-1515).
+-- A refusal is VALIDATION_FAILED at /blockTree and stores nothing.
+create or replace function pg_temp.bc_pattern(p_label text, p_block text, p_types jsonb) returns void
+language plpgsql as $body$
+begin
+  perform pg_temp.s09d_session('owner');
+  perform pg_temp.s09d_call('pat:' || p_label, 'platform_api.cms_create_pattern_version',
+    jsonb_build_object('patternKey', 'bcp-' || p_label,
+      'compatibleTypeIds', p_types,
+      'blockTree', jsonb_build_array(jsonb_build_object('kind', 'block', 'key', 'root',
+        'blockKey', p_block, 'blockVersion', 1,
+        'props', jsonb_build_object('title', 'Pattern title'), 'children', '[]'::jsonb)),
+      'expectedVersion', null, 'idempotencyKey', 'bcp-' || p_label || '-0001',
+      'context', pg_temp.s09d_context('owner', true)));
+end;
+$body$;
+create or replace function pg_temp.bc_pattern_rows() returns integer language sql stable as $body$
+  select count(*)::integer from platform_private.cms_pattern_versions $body$;
+
+-- In range.
+select pg_temp.bc_pattern('exact', 'bc.exact', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:exact'), 'OK',
+  'a block whose range 1..1 covers the real type compiler_version 1 is admitted [P2-S12-AC-101]');
+select pg_temp.bc_pattern('wide', 'bc.wide', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:wide'), 'OK',
+  'range 1.0.0..1.9 covers compiler_version 1: dotted-numeric order, 1 = 1.0.0, never string order [P2-S12-AC-101]');
+select pg_temp.bc_pattern('wide-both', 'bc.wide', pg_temp.bc_types(pg_temp.bc_t1(), pg_temp.bc_c19()));
+select is(pg_temp.s09d_outcome('pat:wide-both'), 'OK',
+  'range 1.0.0..1.9 covers a real type (1) and a 1.9 type together [P2-S12-AC-101]');
+select pg_temp.bc_pattern('exact-two-real', 'bc.exact',
+  pg_temp.bc_types(pg_temp.bc_t1(), pg_temp.bc_t2()));
+select is(pg_temp.s09d_outcome('pat:exact-two-real'), 'OK',
+  'two real compiled types that satisfy the range are both compatible [P2-S12-AC-101]');
+select pg_temp.bc_pattern('high-c19', 'bc.high', pg_temp.bc_types(pg_temp.bc_c19()));
+select is(pg_temp.s09d_outcome('pat:high-c19'), 'OK',
+  'range 1.9..1.9 covers a type compiled at 1.9 [P2-S12-AC-101]');
+
+-- Out of range, every other registry-covered case, and fail-closed ranges.
+create temp table bc_pattern_baseline(rows integer) on commit drop;
+insert into bc_pattern_baseline select pg_temp.bc_pattern_rows();
+select pg_temp.bc_pattern('high-t1', 'bc.high', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:high-t1'), 'VALIDATION_FAILED',
+  'range 1.9..1.9 does not cover compiler_version 1 [P2-S12-AC-104]');
+select is(pg_temp.s09d_detail('pat:high-t1'), '["/blockTree"]',
+  'an incompatible block points at /blockTree [P2-S12-AC-104]');
+select pg_temp.bc_pattern('exact-c19', 'bc.exact', pg_temp.bc_types(pg_temp.bc_c19()));
+select is(pg_temp.s09d_outcome('pat:exact-c19'), 'VALIDATION_FAILED',
+  'range 1..1 does not cover a type compiled at 1.9 [P2-S12-AC-104]');
+select pg_temp.bc_pattern('exact-one-of-two', 'bc.exact', pg_temp.bc_types(pg_temp.bc_t1(), pg_temp.bc_c19()));
+select is(pg_temp.s09d_outcome('pat:exact-one-of-two'), 'VALIDATION_FAILED',
+  'EVERY compatibleTypeIds member must be covered: one out-of-range type refuses the pattern [P2-S12-AC-104]');
+select pg_temp.bc_pattern('high-one-of-two', 'bc.high', pg_temp.bc_types(pg_temp.bc_c19(), pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:high-one-of-two'), 'VALIDATION_FAILED',
+  'the same refusal when the covered type is listed first [P2-S12-AC-104]');
+select pg_temp.bc_pattern('inverted', 'bc.inverted', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:inverted'), 'VALIDATION_FAILED',
+  'an inverted range 1.9..1 covers nothing [P2-S12-AC-104]');
+select pg_temp.bc_pattern('wide-c2', 'bc.wide', pg_temp.bc_types(pg_temp.bc_c2()));
+select is(pg_temp.s09d_outcome('pat:wide-c2'), 'VALIDATION_FAILED',
+  'an artifact compiler_version outside the closed compiler registry fails closed [P2-S12-AC-104]');
+select pg_temp.bc_pattern('badvalue', 'bc.badvalue', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:badvalue'), 'VALIDATION_FAILED',
+  'a range bound outside the closed compiler registry fails closed [P2-S12-AC-104]');
+select pg_temp.bc_pattern('minonly', 'bc.minonly', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:minonly'), 'VALIDATION_FAILED',
+  'a range lacking maxSchemaCompiler fails closed [P2-S12-AC-104]');
+select pg_temp.bc_pattern('empty', 'bc.empty', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:empty'), 'VALIDATION_FAILED',
+  'an empty range object fails closed [P2-S12-AC-104]');
+select is(pg_temp.bc_pattern_rows(), (select rows from bc_pattern_baseline),
+  'every refused pattern stored nothing [P2-S12-AC-104]');
+
+-- Lifecycle, unchanged by the range rule (BE03c 396, 1361, 1514-1515).
+select pg_temp.bc_pattern('deprecated', 'bc.dep', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:deprecated'), 'OK',
+  'a registered DEPRECATED block in range is admitted to a pattern [P2-S12-AC-101]');
+select pg_temp.bc_pattern('withdrawn', 'bc.wd', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:withdrawn'), 'VALIDATION_FAILED',
+  'a WITHDRAWN block is refused even in range [P2-S12-AC-101]');
+select pg_temp.bc_pattern('missing', 'bc.nonesuch', pg_temp.bc_types(pg_temp.bc_t1()));
+select is(pg_temp.s09d_outcome('pat:missing'), 'VALIDATION_FAILED',
+  'an unregistered block is refused [P2-S12-AC-101]');
+select is(pg_temp.bc_pattern_rows(), (select rows from bc_pattern_baseline) + 1,
+  'only the deprecated-block pattern was stored by the lifecycle cases [P2-S12-AC-104]');
+
+-- The stored digest of an admitted pattern is unchanged by the range rule: the same tuple form as before.
+select is(pg_temp.s09d_resp('pat:exact')->>'blockRegistryDigest',
+  platform_private.cms_jcs_sha256(jsonb_build_array(jsonb_build_object(
+    'blockKey', 'bc.exact', 'blockVersion', 1, 'releaseDigest', repeat('e', 64),
+    'propsSchemaHash', repeat('a', 64), 'rendererRef', 'cms/renderers/hero/1', 'lifecycle', 'supported'))),
+  'the admitted pattern digest is the unchanged server-derived safe tuple hash [P2-S12-AC-193]');

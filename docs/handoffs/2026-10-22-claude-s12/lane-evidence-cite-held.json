@@ -1,0 +1,1368 @@
+{
+  "generated": "2026-10-22",
+  "note": "Citations proposed but not applied. held: every clause of the entry would then be cited (the guard would require status verified, which this lane may not set); apply with lane-evidence-cite-apply-held.mjs after receipts exist and the entry is refutation-audited. blockedAmbiguous: identities that occur more than once in their test file, so a receipt would be ambiguous; apply after the titles are made unique.",
+  "held": [
+    {
+      "criterion": "P2-S12-AC-004",
+      "clauseIndex": 1,
+      "clauseText": "and complete the declared happy path",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-version.apispec.ts",
+          "title": "CMS-03C-01 define a template version through the real stack [P2-S12-AC-004] [P2-S12-AC-009] a first version is a strict 201 draft with a strong ETag, one audit event and no outbox event"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-version.apispec.ts",
+          "title": "CMS-03C-01 define a template version through the real stack [P2-S12-AC-004] [P2-S12-AC-007] a successor with the strong If-Match is version 2 in the same lineage and names its parent"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-005",
+      "clauseIndex": 1,
+      "clauseText": "and every invalid request value",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-version.apispec.ts",
+          "title": "CMS-03C-01 define a template version through the real stack [P2-S12-AC-005] [P2-S12-AC-189] a reserved key is a 422 whose reasonCode and pointer name /templateKey, and writes nothing"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-version.apispec.ts",
+          "title": "CMS-03C-01 define a template version through the real stack [P2-S12-AC-005] [P2-S12-AC-025] [P2-S12-AC-192] an audience outside ^[a-z0-9_-]{1,48}$ is a 422 at /audience and writes nothing"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-version.apispec.ts",
+          "title": "CMS-03C-01 define a template version through the real stack [P2-S12-AC-005] a value the contract accepts and the database refuses (a compatible type that is not the caller's active type, a reserved concept key) is a 422 with no row"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-template-key-audience.test.ts",
+          "title": "E4 audience grammar at the route refuses an audience of Public with 422 at /audience, before the port"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-006",
+      "clauseIndex": 3,
+      "clauseText": "and 404 boundary.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-version.apispec.ts",
+          "title": "CMS-03C-01 per-owner keys and concealment through the real stack [P2-S12-AC-006] [P2-S12-AC-190] a successor of a key only another owner holds is the same 404 as an unused key, and the database said NOT_FOUND for both"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-008",
+      "clauseIndex": 2,
+      "clauseText": "timeout",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts",
+          "title": "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-01 template define' the 15-second route deadline answers 504 DEPENDENCY_UNAVAILABLE"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-version.apispec.ts",
+          "title": "CMS-03C-01 authority through the real stack [P2-S12-AC-008] a dependency that never answers is 503 DEPENDENCY_UNAVAILABLE and writes nothing"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-011",
+      "clauseIndex": 1,
+      "clauseText": "and every invalid request value",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-instance.test.ts",
+          "title": "CMS-03C-02 pattern-instance wire contract rejects caller authority, unknown fields, bad ids, versions, mode, path, and digest"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-instance.test.ts",
+          "title": "CMS-03C-02 pattern-instance wire contract [P2-S12-AC-028] accepts only normalized node paths as override keys and reports any other key at /overrides"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-011",
+      "clauseIndex": 2,
+      "clauseText": "with the exact stable field violation",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-instance.test.ts",
+          "title": "CMS-03C-02 pattern-instance wire contract [P2-S12-AC-028] accepts only normalized node paths as override keys and reports any other key at /overrides"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-014",
+      "clauseIndex": 1,
+      "clauseText": "dependency",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts",
+          "title": "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-02 pattern instance' a port failure of 503 answers that status as DEPENDENCY_UNAVAILABLE with the bound message and closed details"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts",
+          "title": "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-02 pattern instance' a port that throws answers 503 DEPENDENCY_UNAVAILABLE without its prose"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts",
+          "title": "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-02 pattern instance' a malformed port envelope answers 502 DEPENDENCY_UNAVAILABLE"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-014",
+      "clauseIndex": 2,
+      "clauseText": "timeout",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts",
+          "title": "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-02 pattern instance' the 15-second route deadline answers 504 DEPENDENCY_UNAVAILABLE"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-instance-boundary.test.ts",
+          "title": "CMS-03C-02 Worker failure and availability boundaries returns a deadline when the private mutation does not settle"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition-production-pattern.test.ts",
+          "title": "CMS-03C-02 production pattern adapter applies the total deadline to both private error and success body reads"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-020",
+      "clauseIndex": 2,
+      "clauseText": "timeout",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts",
+          "title": "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-03 taxonomy term action' the 15-second route deadline answers 504 DEPENDENCY_UNAVAILABLE"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/taxonomy-routes.test.ts",
+          "title": "CMS-03C-03 taxonomy term actions route honors rate refusal, dependency failure, and the 15-second deadline"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition-production-taxonomy-act.test.ts",
+          "title": "CMS-03C-03 production port: response contract and transport (BE00 172, 592) aborts a nonsettling transport at the deadline without retrying"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-020",
+      "clauseIndex": 5,
+      "clauseText": "and preserve safe recovery.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition-production-taxonomy-act.test.ts",
+          "title": "CMS-03C-03 production port: response contract and transport (BE00 172, 592) a dependency that throws is a retryable 503 and the mutation is not retried"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/taxonomy-routes.test.ts",
+          "title": "CMS-03C-03 taxonomy term actions route publishes the BE00 429 contract with second-granularity reset and matching headers"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.refusals.test.tsx",
+          "title": "CmsTaxonomyTermForm: the other term action outcomes keeps the entries and says the service is unavailable for a dependency failure"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-022",
+      "clauseIndex": 1,
+      "clauseText": "not a reserved key (`context`, `versions`, `new`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/template-keys.test.ts",
+          "title": "CMS-03C-01 template keys, audience and lineage (E13, E4) [P2-S12-AC-189] refuses a reserved templateKey at /templateKey with the key_reserved reason"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-template-key-audience.test.ts",
+          "title": "E13 reserved template keys at the route refuses the reserved key context with 422, key_reserved and a /templateKey pointer, before the port"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-version.apispec.ts",
+          "title": "CMS-03C-01 define a template version through the real stack [P2-S12-AC-005] [P2-S12-AC-189] a reserved key is a 422 whose reasonCode and pointer name /templateKey, and writes nothing"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-025",
+      "clauseIndex": 2,
+      "clauseText": "audience `^[a-z0-9_-]{1,48}$` matched as submitted and never trimmed",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/template-keys.test.ts",
+          "title": "CMS-03C-01 template keys, audience and lineage (E13, E4) [P2-S12-AC-025] enforces the BE04c audience grammar ^[a-z0-9_-]{1,48}$ as submitted, never trimmed"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-template-key-audience.test.ts",
+          "title": "E4 audience grammar at the route refuses an audience of Public with 422 at /audience, before the port"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-version.apispec.ts",
+          "title": "CMS-03C-01 define a template version through the real stack [P2-S12-AC-005] [P2-S12-AC-025] [P2-S12-AC-192] an audience outside ^[a-z0-9_-]{1,48}$ is a 422 at /audience and writes nothing"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-033",
+      "clauseIndex": 1,
+      "clauseText": "source revision must exist and be readable",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-locale-variant.apispec.ts",
+          "title": "CMS-03C-04 author a locale variant through the real stack [P2-S12-AC-055] an absent source revision and an entry another owner holds are the same 404 LOCALE_SOURCE_NOT_FOUND"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-054",
+      "clauseIndex": 2,
+      "clauseText": "as 201 (`state` one of `untranslated`, `draft`, `review`, `approved`, `stale`; `entryId`, `revisionId`, `locale`, `sourceRevisionId`, `fallbackChain`, `noFallbackFieldIds` and `staleFieldIds`, which is empty unless `state` is `stale`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/locale-variant-stale.test.ts",
+          "title": "per-field staleness on the variant resource (DEC-121) [P2-S12-AC-235] carries staleFieldIds on the resource, required and never implied"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/locale-variant.test.ts",
+          "title": "CMS-03C-04 locale-variant wire contract accepts only the closed state and safe locale resource"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-locale-variant.apispec.ts",
+          "title": "CMS-03C-04 author a locale variant through the real stack [P2-S12-AC-054] [P2-S12-AC-056] a variant is a strict 201 draft with the aggregate ETag, an immutable target revision, one audit and one outbox event"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-057",
+      "clauseIndex": 8,
+      "clauseText": "a schema or RPC deadline (502/503/504 `DEPENDENCY_UNAVAILABLE`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts",
+          "title": "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-04 locale variant' the 15-second route deadline answers 504 DEPENDENCY_UNAVAILABLE"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts",
+          "title": "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-04 locale variant' a port failure of 503 answers that status as DEPENDENCY_UNAVAILABLE with the bound message and closed details"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/phase-02-slice-12-dependency-unavailable.test.ts",
+          "title": "[P2-S12-AC-008] CMS-03C dependency failures are DEPENDENCY_UNAVAILABLE 'CMS-03C-04 locale variant' a malformed port envelope answers 502 DEPENDENCY_UNAVAILABLE"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-locale-variant.apispec.ts",
+          "title": "CMS-03C-04 author a locale variant through the real stack [P2-S12-AC-057] a dependency that never answers is 503 DEPENDENCY_UNAVAILABLE and writes nothing"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-059",
+      "clauseIndex": 2,
+      "clauseText": "as 201 (`state` `active` or `revoked`, `sourceEntryId`, `pins`, `exclusions`, `derivedRule` of `key` and `version` or null, and `eligibleCount` 0-128);",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/related-content.test.ts",
+          "title": "CMS-03C-05 related-content wire contract exposes only the closed browser-safe rule and eligible count"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-related-content-openapi.test.ts",
+          "title": "Slice 12 CMS-03C-05 canonical API authority publishes required path, headers, body, 201 resource, and safe errors"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-070",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-07 registers POST /api/v1/cms/governed-reviews/{reviewId}/decision with the strict `GovernedDecisionRequest` (`reviewId`, `decision` `approve` or `reject`, `reason`, `expectedVersion`) and returns the strict `GovernedReviewResource` as 200 with the recorded decision counted; `capability` and `stepUpAt` are unknown keys (422); generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-decision.test.ts",
+          "title": "CMS-03C-07 governed decision contract [P2-S12-AC-070] accepts approve and reject with the review id, reason and review version"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-decision.test.ts",
+          "title": "CMS-03C-07 governed decision contract [P2-S12-AC-070] refuses capability and stepUpAt as unknown keys because both are server-derived"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision.test.ts",
+          "title": "CMS-03C-07 decision contract (BE03c row 169, field matrix 390) calls cms_record_governed_decision with the CAS operand, key and server context only"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-070] documents the decision body as strict with no capability or stepUpAt member"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-070] CMS-03C-07 registers POST /api/v1/cms/governed-reviews/{reviewId}/decision with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-070] CMS-03C-07 generates the documented parameters, request body, success statuses and error matrix"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision.test.ts",
+          "title": "CMS-03C-07 decision contract (BE03c row 169, field matrix 390) answers 200 with a strict review for approve leaving it approved"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision-input.test.ts",
+          "title": "CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses capability as an unknown key with 422"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision-input.test.ts",
+          "title": "CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses stepUpAt as an unknown key with 422"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-071",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-07 requires the path `reviewId` to equal the body `reviewId`, `decision` `approve` or `reject`, a `reason` of 1-2000 code points in NFC with no control, line or paragraph separator or bidirectional-formatting character and no `<>{}`, and an `expectedVersion` that is the review `version` with the strong `If-Match` equal to it exactly; a body `capability` or `stepUpAt` is refused as an unknown key.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-decision.test.ts",
+          "title": "CMS-03C-07 governed decision contract [P2-S12-AC-071] refuses a reason that is not NFC, carries a control, separator or bidirectional character, or has markup delimiters"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-decision.test.ts",
+          "title": "CMS-03C-07 governed decision contract [P2-S12-AC-071] bounds the reason at 1 to 2000 code points counted by character, not UTF-16 unit"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision-input.test.ts",
+          "title": "CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses a path and body reviewId that disagree with 422 at /reviewId"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-decision.test.ts",
+          "title": "CMS-03C-07 governed decision contract [P2-S12-AC-071] refuses a decision outside approve and reject, a bad review id and a bad review version"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-decision.test.ts",
+          "title": "CMS-03C-07 governed decision contract [P2-S12-AC-071] composes the review path, headers and body and reports each fault at the member that owns it"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision-input.test.ts",
+          "title": "CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses a different operand than expectedVersion If-Match with 400 before capability and quota"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision-input.test.ts",
+          "title": "CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses capability as an unknown key with 422"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-decision-input.test.ts",
+          "title": "CMS-03C-07 strict input (422 body, 400 transport) before any quota refuses stepUpAt as an unknown key with 422"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-076",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-08 registers POST /api/v1/cms/governed-reviews/{reviewId}/assignments with the strict discriminated `GovernedReviewAssignmentRequest` (`create` with `expectedVersion`, `reviewerPersonId`, `expiresAt` and an optional `reason`; `revoke` with `expectedVersion`, `assignmentId` and an optional `reason`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-assignment.test.ts",
+          "title": "CMS-03C-08 governed reviewer assignment contract [P2-S12-AC-076] accepts a create with a reviewer and expiry and a revoke with an assignment id"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-076",
+      "clauseIndex": 1,
+      "clauseText": "returns the strict `GovernedReviewAssignmentResource` as 201 for create and 200 for revoke, carrying `reviewId`, `state` `active` or `revoked`, `capability` `cms.definition_review`, `actions` exactly `read` and `decide`, `startsAt`, `expiresAt` and `reason`",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-assignment.test.ts",
+          "title": "CMS-03C-08 governed reviewer assignment contract [P2-S12-AC-076] answers 201 for a create and 200 for a revoke"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-assignment.test.ts",
+          "title": "GovernedReviewAssignmentResource (CMS-03C-08 201/200) [P2-S12-AC-076] carries the review, state, definition-review capability, read+decide actions and a window of at most seven days"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-assignment.test.ts",
+          "title": "CMS-03C-08 contract (BE03c row 170, field matrix 391) answers 201 with Location and the assignment version ETag for a create"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-076",
+      "clauseIndex": 2,
+      "clauseText": "generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-076] answers 201 with a Location for a created assignment and 200 for a revoked one"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-076] CMS-03C-08 registers POST /api/v1/cms/governed-reviews/{reviewId}/assignments with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-076] CMS-03C-08 generates the documented parameters, request body, success statuses and error matrix"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-082",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-09 registers POST /api/v1/cms/governed-reviews/{reviewId}/activation with the strict discriminated `GovernedActivationRequest` (`activate`; `schedule` with a `ScheduledInstant` `activateAt`; `retire` with an optional `reason`, each with `expectedVersion`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-activation.test.ts",
+          "title": "CMS-03C-09 governed activation request [P2-S12-AC-082] discriminates activate, schedule (with activateAt) and retire (with an optional reason)"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-activation.test.ts",
+          "title": "CMS-03C-09 governed activation request [P2-S12-AC-082] refuses an unknown action and a member the action does not name"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-activation.test.ts",
+          "title": "CMS-03C-09 activate (BE03c row 171, steps 1-6) calls cms_activate_governed_subject with exactly the members the SQL producer accepts"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-082] documents the activation body as a closed three-way choice of activate, schedule and retire"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-082",
+      "clauseIndex": 1,
+      "clauseText": "returns the strict `GovernedActivationResource` as 200 for `activate` and `retire` and 202 for `schedule`",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-activation.test.ts",
+          "title": "CMS-03C-09 governed activation request [P2-S12-AC-082] answers 200 for activate and retire and 202 for schedule"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-activation.test.ts",
+          "title": "CMS-03C-09 activate (BE03c row 171, steps 1-6) answers 200 with the strict resource, the review ETag and the review Location"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-activation.test.ts",
+          "title": "CMS-03C-09 schedule (202, no event) answers 202 with the unchanged review version as ETag and the review Location"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-082",
+      "clauseIndex": 2,
+      "clauseText": "carrying `reviewId`, `reviewVersion`, `subjectKind`, `subjectId`, `lineageId`, `subjectVersion`, `action`, `subjectState` `active`, `scheduled` or `retired`, `activatedAt`, `scheduledForUtc` and an `eventType` that is set only on a committed immediate activation or retirement",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-activation.test.ts",
+          "title": "GovernedActivationResource [P2-S12-AC-082] ties the action to the resulting subject state and the activation and schedule instants"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-activation.test.ts",
+          "title": "GovernedActivationResource [P2-S12-AC-082] sets eventType only on a committed immediate activation or retirement, matching the subject kind"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-activation.test.ts",
+          "title": "GovernedActivationResource [P2-S12-AC-082] carries the superseded definition version as a nullable positive integer (DEC-191)"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-082",
+      "clauseIndex": 3,
+      "clauseText": "generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-082] answers 202 with a Location for a scheduled activation and 200 for an activation or retirement"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-082] CMS-03C-09 registers POST /api/v1/cms/governed-reviews/{reviewId}/activation with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-082] CMS-03C-09 generates the documented parameters, request body, success statuses and error matrix"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-088",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-10 registers GET /api/v1/cms/governed-reviews/{reviewId}",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/governed-review-reads.test.ts",
+          "title": "CMS-03C-10 review detail (BE03c row 172) answers 200 with the strict detail, a strong review-version ETag and no-store"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-088] CMS-03C-10 registers GET /api/v1/cms/governed-reviews/{reviewId} with its auth, step-up, concurrency, rate and SLO policy"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-088",
+      "clauseIndex": 1,
+      "clauseText": "returns the strict `GovernedReviewDetailResource`: the review base fields, a nullable `blockRegistryDigest`, a `policyBasis` of at most 64 entries (`contentTypeLabel`, `policyKey`, `policyVersion`) sorted by label then policy key, `distinctApprovalCount` 0-8, at most 8 `decisions` (`id`, `decision`, `capability`, `decidedAt`, `mine`, `reason`), at most 32 `assignments`, a nullable `myAssignment`, `subjectState` and at most 6 `permittedNextActions`",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-review-read.test.ts",
+          "title": "CMS-03C-10 governed review detail contract [P2-S12-AC-088] accepts the review base fields, nullable digest, policy basis, decisions, assignments and next actions"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-review-read.test.ts",
+          "title": "CMS-03C-10 governed review detail contract [P2-S12-AC-088] bounds the policy basis at 64 entries of label, policy key and policy version"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-review-read.test.ts",
+          "title": "CMS-03C-10 governed review detail contract [P2-S12-AC-088] closes the next actions to the six the review may offer"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-review-read.test.ts",
+          "title": "CMS-03C-10 governed review detail contract [P2-S12-AC-088] limits subjectState to the eight definition states and an optional-nullable digest to a lowercase hash"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-review-read.test.ts",
+          "title": "CMS-03C-10 governed review detail contract [P2-S12-AC-088] keeps the review-base invariants on the detail"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-088",
+      "clauseIndex": 2,
+      "clauseText": "generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-088] CMS-03C-10 registers GET /api/v1/cms/governed-reviews/{reviewId} with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-088] CMS-03C-10 generates the documented parameters, request body, success statuses and error matrix"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-094",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-11 registers GET /api/v1/cms/governed-reviews with the strict `GovernedReviewQueueQuery`",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-094] CMS-03C-11 registers GET /api/v1/cms/governed-reviews with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+          "title": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-094] CMS-03C-11 generates the documented parameters, request body, success statuses and error matrix"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-review-queue.test.ts",
+          "title": "CMS-03C-11 governed review queue contract [P2-S12-AC-094] exposes the query as the sole member of the OpenAPI transport view"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-094",
+      "clauseIndex": 1,
+      "clauseText": "returns the strict `GovernedReviewQueuePage` (at most 50 `GovernedReviewQueueItem` rows of `reviewId`, `subjectKind`, `subjectKey`, `subjectVersion`, `state`, `riskClass`, `requiredDecisionCount`, `recordedDecisionCount`, `myDecision`, `assignmentEndsAt`, `submittedAt` and `updatedAt`, a `nextCursor` of at most 512 characters or null, and `pageVersion`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-review-queue.test.ts",
+          "title": "CMS-03C-11 governed review queue contract [P2-S12-AC-094] accepts the identifier-free queue item and refuses an inconsistent or extended one"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-094",
+      "clauseIndex": 2,
+      "clauseText": "ordered by the signed keyset `(updatedAt DESC, reviewId DESC)`.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/governed-review-queue.test.ts",
+          "title": "CMS-03C-11 governed review queue contract [P2-S12-AC-094] bounds a page at 50 rows in (updatedAt DESC, reviewId DESC) keyset order with one opaque cursor"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-100",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-12 registers POST /api/v1/cms/patterns/versions with the strict `PatternVersionRequest` (`patternKey`, `compatibleTypeIds`, `blockTree` of 1-32 root `PatternNode`s, an optional `blockRegistryDigest`, `expectedVersion` or null)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-version.test.ts",
+          "title": "CMS-03C-12 pattern version request [P2-S12-AC-100] accepts the exact draft request for a first version and for a successor"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-version.test.ts",
+          "title": "CMS-03C-12 pattern version request [P2-S12-AC-100] refuses any member that carries owner, authority or a server-computed value"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-node.test.ts",
+          "title": "pattern block tree (CMS-03C-12 blockTree) [P2-S12-AC-101] requires 1 to 32 root nodes"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-100] CMS-03C-12 registers POST /api/v1/cms/patterns/versions with its auth, step-up, concurrency, rate and SLO policy"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-100",
+      "clauseIndex": 1,
+      "clauseText": "returns the strict `PatternVersionResource` as 201 for a `draft` version (`patternId`, `patternKey`, `patternVersion`, `compatibleTypeIds`, `nodeCount` 1-512 and `blockRegistryDigest`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-version.test.ts",
+          "title": "PatternVersionResource and detail [P2-S12-AC-100] accepts the closed draft resource without any owner or release evidence"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-version.test.ts",
+          "title": "PatternVersionResource and detail [P2-S12-AC-100] bounds nodeCount 1 to 512, compatibleTypeIds 1 to 64 and the patternVersion"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-write.test.ts",
+          "title": "CMS-03C-12 pattern definition write contract creates the next draft from parent null without requiring step-up"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-write.test.ts",
+          "title": "CMS-03C-12 pattern definition write contract creates the next draft from parent 7 without requiring step-up"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-100",
+      "clauseIndex": 2,
+      "clauseText": "generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-100] CMS-03C-12 registers POST /api/v1/cms/patterns/versions with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-100] CMS-03C-12 generates the documented parameters, request body, success statuses and error matrix"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-admission.test.ts",
+          "title": "CMS-03C-12 and cmsPatternLatestRead Worker admission mounts CMS-03C-12 and rejects a valid anonymous first-version request with 401"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-112",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-14 registers GET /api/v1/cms/compositions/instances/{instanceId}/update-diff",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-112] CMS-03C-14 registers GET /api/v1/cms/compositions/instances/{instanceId}/update-diff with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-update-registry.test.ts",
+          "title": "operation table of CMS-03C-14 matches its registry row deadline, method and the write/read class"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-112",
+      "clauseIndex": 1,
+      "clauseText": "and returns the strict `CompositionUpdateDiffResource`: the `instance` (`id`, `version`, `revisionId`, `path`, `state`, `linkMode`, `pinnedPatternVersion`), the `targetPatternVersion`, at most 128 `paths` each with a `path` in the `ExpandedPatternNodePath` grammar (the row-path key grammar, 1–72 segments, at most 4680 ASCII characters, DEC-193), `base` (the pinned node value) and `theirs` (the target node value), each the node's `props`, block identity (`blockKey`, `blockVersion`) and `children`, or null for a node absent from that version (DEC-193), `yours` (the local override), a `collision` flag and a `collisionKind` (`removed_root`, `structure`, `props` or null), the instance's `slotPath`, at most 512 `newRoots` (`rootPath`, `blockKey`, `blockVersion`, the `rootPath` an `ExpandedPatternNodePath`), a `collisionCount` 0-128 and `bulkEligible`;",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-update-diff.test.ts",
+          "title": "CMS-03C-14 update diff contract [P2-S12-AC-112] accepts the instance, the target version, the three-way paths, the collision count and bulk eligibility"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-update-diff.test.ts",
+          "title": "CMS-03C-14 update diff contract [P2-S12-AC-112] refuses a malformed instance summary and any member beyond the closed set"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/dec193-contract-migration.test.ts",
+          "title": "DEC-193 typed diff node values and collision kinds [DEC-193][diff-1] roundtrips the typed node values, slotPath, newRoots and collisionKind"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/dec193-contract-migration.test.ts",
+          "title": "DEC-193 public address, stored caps and pattern roots [DEC-193][choice-1] accepts a 72-segment 4680-character address and refuses a 73-segment or malformed one"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-112",
+      "clauseIndex": 2,
+      "clauseText": "generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-112] CMS-03C-14 generates the documented parameters, request body, success statuses and error matrix"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-112] documents the diff paths as bounded to 128 with null-able three-way values"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-update-registry.test.ts",
+          "title": "operation table of CMS-03C-14 matches its registry row rate class, user and party ceilings and a 60-second window"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-118",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-15 registers POST /api/v1/cms/compositions/pattern-updates with the strict discriminated `CompositionUpdateRequest` (`accept` with a `targetPatternVersion`, or `detach`; each with 1-32 `instances` of `instanceId`, `expectedVersion` and up to 128 `choices`, plus the entry `expectedVersion`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-update.test.ts",
+          "title": "CMS-03C-15 pattern update request [P2-S12-AC-118] discriminates accept (with a target version) and detach, each with 1 to 32 instances"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-118] CMS-03C-15 registers POST /api/v1/cms/compositions/pattern-updates with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-118] documents the update body as a closed accept or detach choice of 1 to 32 instances"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-118",
+      "clauseIndex": 1,
+      "clauseText": "returns the strict `CompositionUpdateResource` as 200 with 1-32 `CompositionInstanceResource` items",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-update.test.ts",
+          "title": "CompositionUpdateResource (CMS-03C-15 200) [P2-S12-AC-118] answers 1 to 32 closed composition instance items"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-update-routes.test.ts",
+          "title": "CMS-03C-15 pattern-update route accepts: 200 { items } with the committed entry ETag and the exact precondition at the port"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-update-routes.test.ts",
+          "title": "CMS-03C-15 pattern-update route detaches 2 instances and accepts 32 in one request"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-118",
+      "clauseIndex": 2,
+      "clauseText": "generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-118] CMS-03C-15 generates the documented parameters, request body, success statuses and error matrix"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-update-registry.test.ts",
+          "title": "operation table of CMS-03C-15 matches its registry row deadline, method and the write/read class"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-124",
+      "clauseIndex": 0,
+      "clauseText": "CMS-03C-16 registers POST /api/v1/cms/taxonomies/versions with the strict `TaxonomyVersionRequest` (`taxonomyKey`, `shape` `flat` or `hierarchical`, 1-64 unique `allowedTypeKeys`, 1-64 unique `allowedFieldKeys`, 0-6 unique `canonicalOverlapDomains`, `expectedVersion` or null)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/taxonomy-version.test.ts",
+          "title": "CMS-03C-16 taxonomy version request (D10, OD-1, DEC-135) [P2-S12-AC-124] accepts the exact draft request for a first version and for a successor"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-taxonomy-version-openapi.test.ts",
+          "title": "Slice 12 taxonomy registry rows and generated OpenAPI (CMS-03C-16, CMS-03C-17 and the vocabulary reads) [P2-S12-AC-124] CMS-03C-16 registers POST /api/v1/cms/taxonomies/versions with its auth, step-up, concurrency, rate and SLO policy"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-124",
+      "clauseIndex": 1,
+      "clauseText": "returns the strict `TaxonomyVersionResource` as 201 for a `draft` version (`taxonomyId`, `taxonomyKey`, `taxonomyVersion`, `shape`, both allowlists and `canonicalOverlapDomains`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/taxonomy-version.test.ts",
+          "title": "TaxonomyVersionResource and cmsTaxonomyVersionsRead [P2-S12-AC-124] accepts the closed draft resource with its allowlists and declared domains"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/taxonomy-definition-write.test.ts",
+          "title": "taxonomy definition write isolated boundary creates a first draft with unbuilt declared domain and stale MFA allowed"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-124",
+      "clauseIndex": 2,
+      "clauseText": "generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-taxonomy-version-openapi.test.ts",
+          "title": "Slice 12 taxonomy registry rows and generated OpenAPI (CMS-03C-16, CMS-03C-17 and the vocabulary reads) [P2-S12-AC-124] CMS-03C-16 generates the documented parameters, request body, success statuses and error matrix"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/taxonomy-registry.test.ts",
+          "title": "transport table of CMS-03C-16 matches its registry row deadline, method and the write/read class"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/pages/api/v1/cms/taxonomies/taxonomies-routes.test.ts",
+          "title": "vocabulary routes sit at the BE03c registry paths has exactly the five routes"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-165",
+      "clauseIndex": 4,
+      "clauseText": "the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-template-openapi.test.ts",
+          "title": "Slice 12 CMS-03C-01 canonical OpenAPI authority registers a protected current-definition read for edit and conflict reconciliation"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/template-detail-routes.test.ts",
+          "title": "CMS-11 protected current-template detail HTTP route reads only the validated latest definition with a strong ETag and no-store"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-166",
+      "clauseIndex": 1,
+      "clauseText": "is not a reserved key (`context`, `versions`, `new`)",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-reads.apispec.ts",
+          "title": "cmsTemplateLatestRead through the real stack [P2-S12-AC-166] a malformed key and the reserved keys are 400 and never reach the database"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/template-detail-routes.test.ts",
+          "title": "CMS-11 protected current-template detail HTTP route rejects invalid selectors after authentication and before authorization or the read"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/key-grammar.test.ts",
+          "title": "BE03c key grammar (E13, E14, lineage ids) [P2-S12-AC-189] refuses a reserved template key with the key_reserved reason and keeps near-misses valid"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-166",
+      "clauseIndex": 2,
+      "clauseText": "resolves it only within the caller's owner scope",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-reads.apispec.ts",
+          "title": "cmsTemplateLatestRead through the real stack [P2-S12-AC-166] [P2-S12-AC-167] a key only another owner holds is the same 404 as an unused key, and each owner reads its own definition of a shared key"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-166",
+      "clauseIndex": 4,
+      "clauseText": "answers a hidden or absent key with the same 404.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-reads.apispec.ts",
+          "title": "cmsTemplateLatestRead through the real stack [P2-S12-AC-166] [P2-S12-AC-167] a key only another owner holds is the same 404 as an unused key, and each owner reads its own definition of a shared key"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/template-detail-routes.test.ts",
+          "title": "CMS-11 protected current-template detail HTTP route preserves concealed not-found and rejects malformed dependency data"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-167",
+      "clauseIndex": 1,
+      "clauseText": "in the caller's owner scope",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-reads.apispec.ts",
+          "title": "cmsTemplateLatestRead through the real stack [P2-S12-AC-166] [P2-S12-AC-167] a key only another owner holds is the same 404 as an unused key, and each owner reads its own definition of a shared key"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-167",
+      "clauseIndex": 3,
+      "clauseText": "resolves the key only within that scope so that a key held by another owner is the same 404 as an unused key",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/postgrest/phase-02-slice-12-template-reads.apispec.ts",
+          "title": "cmsTemplateLatestRead through the real stack [P2-S12-AC-166] [P2-S12-AC-167] a key only another owner holds is the same 404 as an unused key, and each owner reads its own definition of a shared key"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-171",
+      "clauseIndex": 0,
+      "clauseText": "cmsPatternLatestRead registers GET /api/v1/cms/patterns/{patternKey} with `PatternLatestQuery` (path) and returns the strict `PatternVersionDetail` of the caller owner's latest version of the key in any state: the `PatternVersionResource` plus the `blockTree` of 1-32 root nodes; generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-171] cmsPatternLatestRead registers GET /api/v1/cms/patterns/{patternKey} with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-pattern-openapi.test.ts",
+          "title": "Slice 12 pattern registry rows and generated OpenAPI (CMS-03C-12 to CMS-03C-15) [P2-S12-AC-171] cmsPatternLatestRead generates the documented parameters, request body, success statuses and error matrix"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/pattern-version.test.ts",
+          "title": "PatternVersionResource and detail [P2-S12-AC-171] adds the blockTree of 1 to 32 root nodes to the detail and keeps the tree rules"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-latest.test.ts",
+          "title": "cmsPatternLatestRead immutable definition projection returns latest draft with the definition version ETag"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-latest.test.ts",
+          "title": "cmsPatternLatestRead immutable definition projection returns latest review with the definition version ETag"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-latest.test.ts",
+          "title": "cmsPatternLatestRead immutable definition projection returns latest approved with the definition version ETag"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-latest.test.ts",
+          "title": "cmsPatternLatestRead immutable definition projection returns latest scheduled with the definition version ETag"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-latest.test.ts",
+          "title": "cmsPatternLatestRead immutable definition projection returns latest active with the definition version ETag"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-latest.test.ts",
+          "title": "cmsPatternLatestRead immutable definition projection returns latest superseded with the definition version ETag"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-latest.test.ts",
+          "title": "cmsPatternLatestRead immutable definition projection returns latest retired with the definition version ETag"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-latest.test.ts",
+          "title": "cmsPatternLatestRead immutable definition projection returns latest blocked with the definition version ETag"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-175",
+      "clauseIndex": 0,
+      "clauseText": "cmsPatternLatestRead maps a malformed path (400), a missing session (401), a missing designer capability (403), a hidden or absent key (404), an unsupported body (415), the read limit (429), a read dependency or deadline (502/503/504 `DEPENDENCY_UNAVAILABLE`) and an internal failure (500) to typed ApiError of catalog `cms.03c.composition.v1`.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-production.test.ts",
+          "title": "'cmsPatternLatestRead' existing-runtime transport boundary stops denied user quota before RPC"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-provider-fault.test.ts",
+          "title": "pattern definition 'latest': provider 4xx without a product token keeps the product answer for structured NOT_FOUND"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-provider-fault.test.ts",
+          "title": "pattern definition 'latest': a response-contract failure is a retryable 502 answers a malformed 2xx body as 502 with retryable true (BE00 172)"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-provider-fault.test.ts",
+          "title": "pattern definition 'latest': provider 4xx without a product token scrubs PGRST202 function not found to 500 INTERNAL_ERROR"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-admission.test.ts",
+          "title": "CMS-03C-12 and cmsPatternLatestRead Worker admission mounts cmsPatternLatestRead and rejects a valid anonymous key read with 401"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-admission.test.ts",
+          "title": "CMS-03C-12 and cmsPatternLatestRead Worker admission never promotes a provider HTTP 502 fault into a caller refusal"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-admission.test.ts",
+          "title": "CMS-03C-12 and cmsPatternLatestRead Worker admission never promotes a provider HTTP 503 fault into a caller refusal"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-admission.test.ts",
+          "title": "CMS-03C-12 and cmsPatternLatestRead Worker admission never promotes a provider HTTP 504 fault into a caller refusal"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/pattern-definition-latest.test.ts",
+          "title": "cmsPatternLatestRead immutable definition projection rejects malformed path or unexpected query /api/v1/cms/patterns/Invalid_Key"
+        }
+      ],
+      "ambiguousNotListed": 2
+    },
+    {
+      "criterion": "P2-S12-AC-176",
+      "clauseIndex": 0,
+      "clauseText": "cmsPatternLatestRead is consumed by the protected `CmsPatternVersionDesigner` and `CmsGovernedReviewPanel` at `/app/cms-content-modeling/patterns/:patternKey`, which address the owner's latest version by key, prefill the node list from it, send the read version as `expectedVersion` for a successor and show the version's lifecycle; verification covers the prefill, the successor `expectedVersion`, the 403/404 split and that the reserved keys never resolve as `:patternKey`.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.results.test.tsx",
+          "title": "CmsPatternVersionDesigner: editing a saved pattern prefills from the latest version, keeps the key read-only and sends the read version"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-pattern-designer/pattern-designer-request.test.ts",
+          "title": "buildPatternVersionRequest sends the read version as expectedVersion for a successor"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+          "title": "loadPatternDesignerPage: a saved pattern answers the key \"selector\" with a 400 before any read"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+          "title": "loadPatternDesignerPage: a saved pattern shows the disclosure-safe 404 for a concealed or absent key"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-governed-review/CmsGovernedPatternPanel.test.tsx",
+          "title": "readPatternSubject maps a loaded latest version to the panel subject"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-governed-review/CmsGovernedPatternPanel.test.tsx",
+          "title": "CmsGovernedPatternPanel submits the pattern version it was served and re-reads the latest pattern afterwards"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+          "title": "loadPatternDesignerPage: a saved pattern answers the key \"new\" with a 400 before any read"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+          "title": "loadPatternDesignerPage: a saved pattern answers the key \"context\" with a 400 before any read"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+          "title": "loadPatternDesignerPage: a saved pattern answers the key \"versions\" with a 400 before any read"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.results.test.tsx",
+          "title": "CmsPatternVersionDesigner: what the server answered shows a missing capability without a link"
+        }
+      ],
+      "ambiguousNotListed": 0
+    },
+    {
+      "criterion": "P2-S12-AC-177",
+      "clauseIndex": 0,
+      "clauseText": "cmsTaxonomyVersionsRead registers GET /api/v1/cms/taxonomies/{taxonomyId}/versions with `TaxonomyVersionsQuery` (path) and returns the strict `TaxonomyVersionsPage` of at most 50 `TaxonomyVersionResource` items, newest first, and `pageVersion`; generated OpenAPI and the discovered Hono route match the registry row.",
+      "citations": [
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-taxonomy-version-openapi.test.ts",
+          "title": "Slice 12 taxonomy registry rows and generated OpenAPI (CMS-03C-16, CMS-03C-17 and the vocabulary reads) [P2-S12-AC-177] cmsTaxonomyVersionsRead registers GET /api/v1/cms/taxonomies/{taxonomyId}/versions with its auth, step-up, concurrency, rate and SLO policy"
+        },
+        {
+          "tool": "vitest",
+          "file": "tests/contracts/phase-02-slice-12-taxonomy-version-openapi.test.ts",
+          "title": "Slice 12 taxonomy registry rows and generated OpenAPI (CMS-03C-16, CMS-03C-17 and the vocabulary reads) [P2-S12-AC-177] cmsTaxonomyVersionsRead generates the documented parameters, request body, success statuses and error matrix"
+        },
+        {
+          "tool": "vitest",
+          "file": "packages/contracts/src/cms-composition/taxonomy-version.test.ts",
+          "title": "TaxonomyVersionResource and cmsTaxonomyVersionsRead [P2-S12-AC-177] lists at most 50 versions of one vocabulary, newest first, with a page version"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/worker/src/cms-composition/taxonomy-definition-versions.test.ts",
+          "title": "taxonomy versions isolated boundary returns newest-first versions and a page-version strong ETag without MFA"
+        },
+        {
+          "tool": "vitest",
+          "file": "apps/web/src/pages/api/v1/cms/taxonomies/taxonomies-routes.test.ts",
+          "title": "vocabulary routes sit at the BE03c registry paths has exactly the five routes"
+        }
+      ],
+      "ambiguousNotListed": 0
+    }
+  ],
+  "blockedAmbiguous": [
+    {
+      "criterion": "P2-S12-AC-102",
+      "clauseIndex": 0,
+      "citation": {
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/pattern-definition-admission.test.ts",
+        "title": "CMS-03C-12 and cmsPatternLatestRead Worker admission uses real resolver authority bound to the original Request"
+      }
+    },
+    {
+      "criterion": "P2-S12-AC-102",
+      "clauseIndex": 3,
+      "citation": {
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/pattern-definition-admission.test.ts",
+        "title": "CMS-03C-12 and cmsPatternLatestRead Worker admission requires a designer capability before rate admission"
+      }
+    },
+    {
+      "criterion": "P2-S12-AC-104",
+      "clauseIndex": 0,
+      "citation": {
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/pattern-definition-admission.test.ts",
+        "title": "CMS-03C-12 and cmsPatternLatestRead Worker admission requires a designer capability before rate admission"
+      }
+    },
+    {
+      "criterion": "P2-S12-AC-104",
+      "clauseIndex": 3,
+      "citation": {
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/pattern-definition-admission.test.ts",
+        "title": "CMS-03C-12 and cmsPatternLatestRead Worker admission rejects unsupported request media before the session"
+      }
+    },
+    {
+      "criterion": "P2-S12-AC-108",
+      "clauseIndex": 0,
+      "citation": {
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/pattern-update-admission.test.ts",
+        "title": "'CMS-03C-13' admission a caller holding cms.author may use it"
+      }
+    },
+    {
+      "criterion": "P2-S12-AC-126",
+      "clauseIndex": 3,
+      "citation": {
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-definition-write.test.ts",
+        "title": "taxonomy definition write isolated boundary denies absent curator before quotas and mutation"
+      }
+    },
+    {
+      "criterion": "P2-S12-AC-128",
+      "clauseIndex": 0,
+      "citation": {
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-definition-write.test.ts",
+        "title": "taxonomy definition write isolated boundary denies absent curator before quotas and mutation"
+      }
+    },
+    {
+      "criterion": "P2-S12-AC-134",
+      "clauseIndex": 1,
+      "citation": {
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-selector-read.test.ts",
+        "title": "CMS-03C-17 selector route refuses a limit outside its grammar with a 422 pointer, before quota and port"
+      }
+    },
+    {
+      "criterion": "P2-S12-AC-134",
+      "clauseIndex": 1,
+      "citation": {
+        "tool": "vitest",
+        "file": "apps/worker/src/cms-composition/taxonomy-selector-read.test.ts",
+        "title": "CMS-03C-17 selector route refuses a typeKey outside its grammar with a 422 pointer, before quota and port"
+      }
+    }
+  ]
+}

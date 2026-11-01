@@ -1,0 +1,140 @@
+-- A nested pattern review is approved but not activated; the child pattern it pins gets an activated successor; the pattern recheck, called with
+-- the real cms.pattern.activated.v1 event, invalidates the nested review dependency_changed.
+create or replace function pg_temp.s12v4p_refs(p_label text, p_count integer) returns jsonb
+language sql stable as $body$
+  select jsonb_agg(jsonb_build_object('kind','pattern','key','nested' || n,
+    'patternId',pg_temp.s12pd_body(p_label)->'patternId',
+    'patternVersion',pg_temp.s12pd_body(p_label)->'patternVersion') order by n)
+  from generate_series(1,p_count) n
+$body$;
+
+-- submit, assign and approve a defined pattern version through the named producers, and activate it only when p_upto = 'activate'.
+create or replace function pg_temp.s12v4p_step(p_label text, p_upto text) returns void language plpgsql as $body$
+declare body jsonb := pg_temp.s12pd_body(p_label); review jsonb; decision jsonb;
+begin
+  perform pg_temp.s12pd_run(p_label || ':submit',
+    jsonb_build_object('subjectKind','pattern_version','subjectId',body->'id',
+      'subjectHash',body->'contentHash','idempotencyKey','s12pd-' || p_label || '-submit',
+      'context',pg_temp.s09d_context('owner',true)),'owner','service_role','submit');
+  review := pg_temp.s12pd_body(p_label || ':submit');
+  perform pg_temp.s12pd_run(p_label || ':assign',
+    jsonb_build_object('reviewId',review->'id','action','create',
+      'expectedVersion',review->'version','ifMatch',review->'version',
+      'reviewerPersonId',pg_temp.s09d_actor_id('rev1','person'),
+      'expiresAt',to_char((clock_timestamp()+interval '1 day') at time zone 'UTC',
+        'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),'reason','Governed recheck pattern fixture',
+      'idempotencyKey','s12pd-' || p_label || '-assign',
+      'context',pg_temp.s09d_context('owner',true)),'owner','service_role','assign');
+  perform pg_temp.s12pd_run(p_label || ':decide',
+    jsonb_build_object('reviewId',review->'id','decision','approve','reason','Governed recheck pattern fixture approved',
+      'expectedVersion',review->'version','ifMatch',review->'version',
+      'idempotencyKey','s12pd-' || p_label || '-decide',
+      'context',pg_temp.s09d_context('rev1',true)),'rev1','service_role','decide');
+  decision := pg_temp.s12pd_body(p_label || ':decide');
+  if p_upto = 'activate' then
+    perform pg_temp.s12pd_run(p_label || ':activate',
+      jsonb_build_object('reviewId',review->'id','action','activate',
+        'expectedVersion',decision->'version','ifMatch',decision->'version',
+        'idempotencyKey','s12pd-' || p_label || '-activate',
+        'context',pg_temp.s09d_context('owner',true)),'owner','service_role','activate');
+  end if;
+end;
+$body$;
+
+-- One platform_api call under the REAL service_role; only the RPC call is caught; the role is restored.
+create temp table s12v4p_call(label text primary key, body jsonb, state text not null, message text, ran_as text not null) on commit drop;
+create or replace function pg_temp.s12v4p_call(p_label text, p_sql text) returns void language plpgsql security invoker as $body$
+declare
+  v_role text := current_setting('role'); v_user text := current_user; v_ran text;
+  v_body jsonb; v_state text := '00000'; v_message text;
+begin
+  execute 'set local role service_role';
+  v_ran := current_user;
+  begin
+    execute p_sql into v_body;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_message = message_text;
+  end;
+  perform set_config('role', v_role, true);
+  if current_user is distinct from v_user then
+    raise exception 'role restoration failed';
+  end if;
+  insert into s12v4p_call(label, body, state, message, ran_as) values (p_label, v_body, v_state, v_message, v_ran);
+end;
+$body$;
+
+-- ------------------------------------------------------------------------------ fixtures
+select pg_temp.s12pd_run('child', pg_temp.s12pd_request('s12pd-child', pg_temp.s12pd_forest(2), null, 's12pd-child'));
+select pg_temp.s12v4p_step('child', 'activate');
+select pg_temp.s12pd_run('nested', pg_temp.s12pd_request('s12pd-nested', pg_temp.s12v4p_refs('child', 1), null, 's12pd-nested'));
+select pg_temp.s12v4p_step('nested', 'approve');
+select ok(pg_temp.s12pd_row('child')->>'state' = 'active'
+    and pg_temp.s12pd_row('nested')->>'state' = 'approved'
+    and (select review.state = 'approved' and review.activated_at is null
+           from platform_private.cms_governed_reviews review where review.id::text = pg_temp.s12pd_body('nested:submit')->>'id'),
+  'fixture: the child pattern is a real active version and the nested pattern that pins it is a real approved, unactivated governed review [P2-S12-AC-202]');
+select ok(exists (
+    select 1 from platform_private.cms_governed_review_dependencies dependency
+     where dependency.review_id::text = pg_temp.s12pd_body('nested:submit')->>'id'
+       and dependency.kind = 'pattern' and dependency.ref_id::text = pg_temp.s12pd_body('child')->>'id'),
+  'fixture: the nested review froze the child pattern version as a `pattern` dependency [P2-S12-AC-202]');
+
+create temp table s12v4p_pre on commit drop as
+select (select to_jsonb(review) from platform_private.cms_governed_reviews review where review.id::text = pg_temp.s12pd_body('nested:submit')->>'id') as review_row,
+       pg_temp.s12pd_row('nested') as subject_row,
+       (select count(*) from audit_private.audit_events where action = 'cms.governed.review.invalidate') as invalidation_audits;
+
+-- the nested child's successor, really authored, approved and activated: v1 is superseded
+select pg_temp.s12pd_run('child-successor', pg_temp.s12pd_request('s12pd-child', pg_temp.s12pd_forest(3), '1', 's12pd-child-successor', null, '1'));
+select pg_temp.s12v4p_step('child-successor', 'activate');
+select ok(pg_temp.s12pd_row('child-successor')->>'state' = 'active' and pg_temp.s12pd_row('child')->>'state' = 'superseded'
+    and (select review.state = 'approved' and review.activated_at is null
+           from platform_private.cms_governed_reviews review where review.id::text = pg_temp.s12pd_body('nested:submit')->>'id'),
+  'control: the successor of the nested child is active, the pinned child version is superseded, and the nested review is still approved (nothing invalidates it until the recheck runs) [P2-S12-AC-203]');
+
+-- ------------------------------------------------------------------ the producers' resolver over the real event
+create temp table s12v4p_event on commit drop as
+select event.id, event.correlation_id, event.payload
+  from platform_private.outbox_events event
+ where event.event_type = 'cms.pattern.activated.v1'
+   and event.aggregate_id::text = pg_temp.s12pd_body('child-successor')->>'id'
+ order by event.occurred_at desc, event.id desc limit 1;
+select ok((select count(*) = 1 and bool_and(correlation_id is not null) from s12v4p_event),
+  'fixture: the activation of the successor committed one cms.pattern.activated.v1 outbox event and it carries a correlation id [P2-S12-AC-202]');
+select pg_temp.s12v4p_call('resolve', format('select platform_api.cms_governed_recheck_resolve_event(%L::uuid)', (select id from s12v4p_event)));
+select is((select body from s12v4p_call where label = 'resolve'),
+  jsonb_build_object('found', true, 'kind', 'pattern', 'refId', (select payload->>'patternVersionId' from s12v4p_event)),
+  'a committed cms.pattern.activated.v1 resolves to the pattern dependency lookup of its pattern version [P2-S12-AC-202]');
+
+-- ------------------------------------------------------------------ the pattern recheck, called with the real event id
+select pg_temp.s12v4p_call('run-1', format('select platform_api.cms_recheck_governed_reviews(%L::jsonb)',
+  jsonb_build_object('eventId', (select id from s12v4p_event), 'kind', 'pattern',
+    'refId', (select payload->>'patternVersionId' from s12v4p_event), 'cursor', null)::text));
+select is((select body from s12v4p_call where label = 'run-1'),
+  jsonb_build_object('examined', 1, 'invalidated', 1, 'dependencyChanged', 1, 'reviewerAuthorityChanged', 0,
+    'unavailable', 0, 'nextCursor', null),
+  'a recheck of kind pattern over the successor''s identity reaches the nested review through the pattern lineage and invalidates it dependency_changed [P2-S12-AC-203]');
+select ok((select ran_as = 'service_role' and state = '00000' from s12v4p_call where label = 'run-1')
+    and (select review.state = 'invalidated' and review.invalidated_reason = 'dependency_changed' and review.decided_at is null
+                and review.version = (pre.review_row->>'version')::bigint + 1
+           from platform_private.cms_governed_reviews review, s12v4p_pre pre where review.id::text = pre.review_row->>'id')
+    and pg_temp.s12pd_row('nested')->>'state' = 'draft'
+    and (pg_temp.s12pd_row('nested')->>'lifecycle_version')::bigint = (select (subject_row->>'lifecycle_version')::bigint + 1 from s12v4p_pre),
+  'the nested review is invalidated dependency_changed at version + 1 and the nested pattern is back to draft one lifecycle step later [P2-S12-AC-203]');
+select ok((select count(*) = 1 and bool_and(event.correlation_id = (select correlation_id from s12v4p_event))
+             from audit_private.audit_events event
+            where event.action = 'cms.governed.review.invalidate' and event.target_id::text = pg_temp.s12pd_body('nested:submit')->>'id')
+    and (select count(*) from audit_private.audit_events where action = 'cms.governed.review.invalidate')
+        = (select invalidation_audits + 1 from s12v4p_pre),
+  'the invalidation audit record carries the correlation id of the source event (the outbox row found by the event id of the job), not a fresh one [P2-S12-AC-203]');
+
+select pg_temp.s12v4p_call('run-2', format('select platform_api.cms_recheck_governed_reviews(%L::jsonb)',
+  jsonb_build_object('eventId', (select id from s12v4p_event), 'kind', 'pattern',
+    'refId', (select payload->>'patternVersionId' from s12v4p_event), 'cursor', null)::text));
+select is((select body from s12v4p_call where label = 'run-2'),
+  jsonb_build_object('examined', 0, 'invalidated', 0, 'dependencyChanged', 0, 'reviewerAuthorityChanged', 0,
+    'unavailable', 0, 'nextCursor', null),
+  'a repeated run (the job is at least once) finds no live review: the invalidated review is skipped and nothing is audited twice [P2-S12-AC-203]');
+select ok((select count(*) from audit_private.audit_events where action = 'cms.governed.review.invalidate')
+        = (select invalidation_audits + 1 from s12v4p_pre),
+  'the repeated run wrote no second invalidation audit record [P2-S12-AC-203]');

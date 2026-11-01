@@ -1,0 +1,33 @@
+-- PAT-031: the provider reads forced-RLS tables through the CMS definer and must not depend on the caller's RPC flag.  Context-cleared
+-- call with a real non-zero result and a negative control proving the environment enforces the policy.  Include after 040-provider.sqlinc.
+
+create or replace function pg_temp.ti_rls_rows() returns bigint language plpgsql as $body$
+declare n bigint;
+begin
+  execute 'set local role wejammin_cms_definer';
+  select pg_catalog.count(*) into n from platform_private.cms_term_assignments;
+  execute 'reset role';
+  return n;
+exception when others then
+  execute 'reset role';
+  return -1;
+end;
+$body$;
+
+select set_config('app.cms_rpc', '', true);
+select is(pg_temp.ti_rls_rows(), 0::bigint,
+  'negative control: with the RPC flag cleared the CMS definer reads zero TermAssignment rows (the policy is enforced here) [P2-S12-AC-239]');
+create temp table ti_ctx on commit drop as
+select pg_temp.ti_gate((select id from ti_hrev where label = 'merged2')) as merged_gate,
+       pg_temp.ti_gate((select id from ti_hrev where label = 'newver')) as version_gate;
+select is((select merged_gate from ti_ctx), 'failed/term_merged_unconverged/1',
+  'with the RPC flag cleared the provider still reads the revision''s real assignments (a non-zero, failing answer) [P2-S12-AC-239]');
+select is((select version_gate from ti_ctx), 'failed/taxonomy_version_not_active/1',
+  'and its recorded version ids [P2-S12-AC-239]');
+select is(current_setting('app.cms_rpc', true), '', 'the provider restores the caller''s RPC flag value (empty stays empty) [P2-S12-AC-239]');
+select set_config('app.cms_rpc', 'true', true);
+select cmp_ok(pg_temp.ti_rls_rows(), '>', 0::bigint,
+  'negative control: with the flag set the same definer read sees the rows [P2-S12-AC-239]');
+select is(current_setting('app.cms_rpc', true), 'true', 'a flag that was set stays set after the provider call [P2-S12-AC-239]');
+select pg_temp.ti_gate((select id from ti_hrev where label = 'clean'));
+select is(current_setting('app.cms_rpc', true), 'true', 'and after a passing call too [P2-S12-AC-239]');

@@ -1,0 +1,39 @@
+-- Perf world, part 4: the timed CMS-03C-10 detail and CMS-03C-11 queue reads (30 samples each; the p95 is taken over at least
+-- twenty).  The pgTAP-transaction-only Vault key signs the queue cursors; it is never an operational value.
+select vault.create_secret(repeat('a1', 32), 'cms_editorial_history_cursor_active', 'pgTAP transaction-only perf bench key');
+
+-- Shape of the answers the targets are about (a refusal or an empty page is not a measurement).
+select pg_temp.g12p_call('shape_detail_owner', 'platform_api.cms_get_governed_review', 'owner',
+  jsonb_build_object('reviewId', pg_temp.s12ga_review('dtl')), pg_temp.g12pg_r('owner'));
+select pg_temp.g12p_call('shape_queue', 'platform_api.cms_list_governed_reviews', 'rev1',
+  jsonb_build_object('scope', 'assigned', 'limit', 50), pg_temp.g12pg_r('rev1'));
+select ok(pg_temp.g12p_out('shape_detail_owner#1') = 'ok'
+    and jsonb_array_length(pg_temp.g12p_body('shape_detail_owner#1')->'assignments') = 32
+    and jsonb_array_length(pg_temp.g12p_body('shape_detail_owner#1')->'decisions') = 2
+    and pg_temp.g12p_body('shape_detail_owner#1')->>'state' = 'approved',
+  'the detail read returns the 32 assignment summaries (the cap of 36 stored rows), the two decisions and the approved state [P2-S12-AC-091]');
+select ok(pg_temp.g12p_out('shape_queue#1') = 'ok'
+    and jsonb_array_length(pg_temp.g12p_body('shape_queue#1')->'items') = 50
+    and pg_temp.g12p_body('shape_queue#1')->>'nextCursor' is not null,
+  'the queue returns the maximum page of 50 items and a next cursor from the 111 reviews assigned to the reviewer [P2-S12-AC-097]');
+
+do $bench$
+declare v_run integer; v_cursor text := pg_temp.g12p_body('shape_queue#1')->>'nextCursor';
+begin
+  for v_run in 1..30 loop
+    perform pg_temp.g12p_call('detail_owner', 'platform_api.cms_get_governed_review', 'owner',
+      jsonb_build_object('reviewId', pg_temp.s12ga_review('dtl')), pg_temp.g12pg_r('owner'));
+    perform pg_temp.g12p_call('detail_reviewer', 'platform_api.cms_get_governed_review', 'rev1',
+      jsonb_build_object('reviewId', pg_temp.s12ga_review('dtl')), pg_temp.g12pg_r('rev1'));
+    perform pg_temp.g12p_call('queue_page1', 'platform_api.cms_list_governed_reviews', 'rev1',
+      jsonb_build_object('scope', 'assigned', 'limit', 50), pg_temp.g12pg_r('rev1'));
+    perform pg_temp.g12p_call('queue_cursor_page', 'platform_api.cms_list_governed_reviews', 'rev1',
+      jsonb_build_object('scope', 'assigned', 'limit', 50, 'cursor', v_cursor), pg_temp.g12pg_r('rev1'));
+    perform pg_temp.g12p_call('queue_owned', 'platform_api.cms_list_governed_reviews', 'owner',
+      jsonb_build_object('scope', 'owned', 'limit', 50), pg_temp.g12pg_r('owner'));
+  end loop;
+end;
+$bench$;
+select ok(pg_temp.g12p_out('queue_cursor_page#1') = 'ok'
+    and jsonb_array_length(pg_temp.g12p_body('queue_cursor_page#1')->'items') = 50,
+  'the cursor page returns a further 50 items [P2-S12-AC-097]');

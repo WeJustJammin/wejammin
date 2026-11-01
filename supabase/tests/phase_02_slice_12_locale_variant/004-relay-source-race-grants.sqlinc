@@ -1,0 +1,126 @@
+-- AC248 (locale tuple): the relay claims the locale aggregate; AC277: a locale source edit versus a translation
+-- has a deterministic outcome; AC261/AC150: the private locale functions are unreachable to every API role.
+-- Runs after 002, so the entry holds three source revisions and a long locale event history.
+
+create temp table l12_claim on commit drop as
+select * from platform_api.claim_outbox_batch('a9600000-0000-4000-8000-0000000000e1', 60, 100);
+
+select ok(
+  (select count(*) > 0 and bool_and(producer = 'cms.composition')
+   from l12_claim
+   where event_type = 'cms.localization.changed.v1' and aggregate_type = 'cms_locale_variant'),
+  'the outbox relay claims cms.localization.changed.v1 under aggregate cms_locale_variant with its registered producer [P2-S12-AC-248]'
+);
+select ok(
+  (select bool_and(aggregate_id = pg_temp.l12_aggregate(pg_temp.l12_entry(), 'fr-FR'))
+   from l12_claim
+   where event_type = 'cms.localization.changed.v1' and aggregate_type = 'cms_locale_variant'
+     and event_id in (select id from platform_private.outbox_events
+                       where payload->>'locale' = 'fr-FR' and payload->>'entryId' = pg_temp.l12_entry()::text)),
+  'a claimed fr-FR locale event keeps the UUIDv5 aggregate id of (entry, fr-FR) [P2-S12-AC-237]'
+);
+
+-- F1 (root ruling 2026-10-14): the aggregate type is the underscore token `cms_locale_variant`, which the
+-- deployed consumer grammar admits.  The grammar is read from the deployed dead-letter table, not restated.
+create temp table l12_consumer_grammar on commit drop as
+select substring(pg_get_constraintdef(c.oid) from '~ ''([^'']+)''') as re
+from pg_constraint c
+where c.conrelid = to_regclass('platform_private.consumer_dead_letters')
+  and c.contype = 'c' and pg_get_constraintdef(c.oid) like '%aggregate_type%';
+select is(
+  (select count(*)::integer from l12_consumer_grammar where re is not null), 1,
+  'the consumer dead-letter table pins exactly one aggregate_type grammar [P2-S12-AC-237]');
+select ok(
+  (select count(*) > 0 from platform_private.outbox_events
+   where event_type = 'cms.localization.changed.v1' and payload->>'entryId' = pg_temp.l12_entry()::text),
+  'control: the lane produced localization events for the aggregate-type grammar check [P2-S12-AC-237]');
+select is(
+  (select count(*)::integer from platform_private.outbox_events event, l12_consumer_grammar grammar
+   where event.event_type = 'cms.localization.changed.v1'
+     and event.payload->>'entryId' = pg_temp.l12_entry()::text
+     and event.aggregate_type !~ grammar.re),
+  0,
+  'every localization event carries an aggregate type the consumer dead-letter grammar admits: no dead letter, no retry loop [P2-S12-AC-237]');
+select is(
+  (select count(*)::integer from platform_private.outbox_events event
+   where event.event_type = 'cms.localization.changed.v1'
+     and event.payload->>'entryId' = pg_temp.l12_entry()::text
+     and event.aggregate_type <> 'cms_locale_variant'),
+  0, 'every localization event the lane produced is under the single aggregate type cms_locale_variant [P2-S12-AC-237]');
+
+-- A translation authored against a source revision that a later source edit superseded is refused.
+create temp table l12_before_race on commit drop as
+select (select count(*) from platform_private.cms_locale_variants) as variants,
+       (select count(*) from platform_private.cms_entry_revisions) as revisions,
+       (select count(*) from platform_private.outbox_events) as events;
+select is(
+  pg_temp.l12_try(format('select platform_api.cms_author_locale_variant(%L::jsonb)',
+    pg_temp.l12_req('fr-FR', pg_temp.l12_title_field('Titre perime'), 'l12-race-0001', jsonb_build_object(
+      'sourceRevisionId', (select value from s10_ids where key = 'entryRevisionId'),
+      'sourceHash', (select btrim(payload_hash::text) from platform_private.cms_entry_revisions
+                      where id = (select value::uuid from s10_ids where key = 'entryRevisionId'))))::text)),
+  'P0001:VERSION_MISMATCH',
+  'a translation of a superseded source revision is the 409 conflict: the source edit won [P2-S12-AC-277]'
+);
+select ok(
+  (select (select count(*) from platform_private.cms_locale_variants) = variants
+      and (select count(*) from platform_private.cms_entry_revisions) = revisions
+      and (select count(*) from platform_private.outbox_events) = events
+   from l12_before_race),
+  'the refused translation wrote no variant, revision or event [P2-S12-AC-277]'
+);
+
+select is(
+  (select count(*)::integer from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+   where ns.nspname = 'platform_private'
+     and proc.proname in ('cms_uuid_v5', 'cms_locale_aggregate_id', 'cms_locale_source_field_hash',
+       'cms_locale_stale_fields', 'cms_locale_variant_state', 'cms_locale_resolutions',
+       'cms_resolve_locale_field', 'cms_locale_no_fallback_gate', 'cms_locale_hashes_valid',
+       'cms_locale_stale_ids_valid')),
+  10, 'the ten locale functions of this slice exist');
+select is(
+  (select count(*)::integer from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+   where ns.nspname = 'platform_private'
+     and proc.proname in ('cms_uuid_v5', 'cms_locale_aggregate_id', 'cms_locale_source_field_hash',
+       'cms_locale_stale_fields', 'cms_locale_variant_state', 'cms_locale_resolutions',
+       'cms_resolve_locale_field', 'cms_locale_no_fallback_gate', 'cms_locale_hashes_valid',
+       'cms_locale_stale_ids_valid')
+     and (has_function_privilege('anon', proc.oid, 'execute')
+          or has_function_privilege('authenticated', proc.oid, 'execute')
+          or has_function_privilege('service_role', proc.oid, 'execute')
+          or exists (select 1 from aclexplode(coalesce(proc.proacl, acldefault('f', proc.proowner))) acl
+                      where acl.grantee = 0))),
+  0, 'no locale function is executable by PUBLIC, anon, authenticated or service_role [P2-S12-AC-261]');
+
+-- ---- lock order and typed deadlock (BE03c Slice 12 lock order 4; AC-276 locale part) -------------
+select ok(
+  (select pg_get_functiondef(to_regprocedure('platform_private.cms_author_locale_variant(jsonb)'))
+            ~ 'version\.state::text = ''active''\s+for share;'),
+  'the command takes the entry content-type version row FOR SHARE (lock position 4) [P2-S12-AC-276]'
+);
+create or replace function pg_temp.l12_injected_failure(p_sqlstate text)
+returns text
+language plpgsql
+as $body$
+begin
+  begin
+    execute format($f$create or replace function platform_private.cms_author_locale_variant(p_request jsonb)
+      returns jsonb language plpgsql as $b$ begin raise exception 'injected' using errcode = %L; end $b$$f$, p_sqlstate);
+    perform platform_api.cms_author_locale_variant('{}'::jsonb);
+    return 'no error';
+  exception when others then
+    -- the sub-transaction rolls the injected definition back
+    return sqlstate || ':' || sqlerrm;
+  end;
+end;
+$body$;
+select is(pg_temp.l12_injected_failure('40P01'), 'P0001:CONFLICT',
+  'a deadlock inside the author command is converted to the typed retryable CONFLICT (409) [P2-S12-AC-276]');
+select is(pg_temp.l12_injected_failure('55P03'), 'P0001:CONFLICT',
+  'a lock-acquisition failure inside the author command is converted to the typed retryable CONFLICT (409) [P2-S12-AC-276]');
+select is(pg_temp.l12_injected_failure('XX000'), 'XX000:injected',
+  'control: any other failure is not converted [P2-S12-AC-276]');
+select ok(
+  (select pg_get_functiondef(to_regprocedure('platform_private.cms_author_locale_variant(jsonb)')) ~ 'cms_locale_aggregate_id'),
+  'control: the injected definitions were rolled back with their sub-transaction'
+);

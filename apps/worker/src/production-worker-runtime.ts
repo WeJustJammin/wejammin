@@ -11,8 +11,12 @@ import { createProductionAuthenticationDependencies } from './authentication/pro
 import type { AuthenticationDependencies } from './authentication/types';
 import type { CmsLocaleDependencies } from './cms-composition/locale-routes';
 import type { CmsPatternInstanceDependencies } from './cms-composition/pattern-instance-routes';
+import type { CmsPatternDefinitionDependencies } from './cms-composition/pattern-definition-ports';
+import type { CmsGovernedReviewDependencies } from './cms-composition/governed-review-ports';
+import type { CmsPatternUpdateDependencies } from './cms-composition/pattern-update-ports';
 import type { CmsRelatedContentDependencies } from './cms-composition/related-content-routes';
 import type { CmsTaxonomyDependencies } from './cms-composition/taxonomy-routes';
+import type { CmsTaxonomyDefinitionDependencies } from './cms-composition/taxonomy-definition-shared';
 import type { CmsTemplateDependencies } from './cms-composition/template-routes';
 import type { CmsEditorialDependencies } from './cms-editorial/types';
 import type { ProductionCmsEditorialOptions } from './production-worker-runtime-cms';
@@ -92,6 +96,10 @@ export const createRuntimeDependencies = (
   cmsPatternInstance?: CmsPatternInstanceDependencies,
   cmsTaxonomy?: CmsTaxonomyDependencies,
   cmsRelatedContent?: CmsRelatedContentDependencies,
+  cmsPatternDefinition?: CmsPatternDefinitionDependencies,
+  cmsTaxonomyDefinition?: CmsTaxonomyDefinitionDependencies,
+  cmsGovernedReview?: CmsGovernedReviewDependencies,
+  cmsPatternUpdate?: CmsPatternUpdateDependencies,
 ): WorkerDependencies => ({
   captureException: () => {},
   createLogger: (bindings) =>
@@ -115,6 +123,10 @@ export const createRuntimeDependencies = (
   ...(cmsPatternInstance === undefined ? {} : { cmsPatternInstance }),
   ...(cmsTaxonomy === undefined ? {} : { cmsTaxonomy }),
   ...(cmsRelatedContent === undefined ? {} : { cmsRelatedContent }),
+  ...(cmsPatternDefinition === undefined ? {} : { cmsPatternDefinition }),
+  ...(cmsTaxonomyDefinition === undefined ? {} : { cmsTaxonomyDefinition }),
+  ...(cmsGovernedReview === undefined ? {} : { cmsGovernedReview }),
+  ...(cmsPatternUpdate === undefined ? {} : { cmsPatternUpdate }),
   ...(jobs === undefined ? {} : { jobs }),
   ...(uploadCompletion === undefined ? {} : { uploadCompletion }),
   now: Date.now,
@@ -166,6 +178,10 @@ export const createProductionWorkerAppRuntime = (
     cmsPatternInstance,
     cmsTaxonomy,
     cmsRelatedContent,
+    cmsPatternDefinition,
+    cmsTaxonomyDefinition,
+    cmsGovernedReview,
+    cmsPatternUpdate,
   } = createProductionCmsCompositionDependencies(
     environment,
     fetchImpl,
@@ -192,6 +208,10 @@ export const createProductionWorkerAppRuntime = (
       cmsPatternInstance,
       cmsTaxonomy,
       cmsRelatedContent,
+      cmsPatternDefinition,
+      cmsTaxonomyDefinition,
+      cmsGovernedReview,
+      cmsPatternUpdate,
     ),
   );
 };

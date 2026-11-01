@@ -1,0 +1,98 @@
+create or replace function pg_temp.s12rv_serial(p_label text, p_hide boolean)
+returns setof text language plpgsql as $body$
+declare
+  fixture jsonb;
+  response jsonb;
+  v_target_id uuid;
+  v_source_id uuid;
+  v_entry_id uuid;
+  v_restored_id uuid;
+  actor_id uuid := (select value::uuid from s10_ids where key = 'creatorAuth');
+  person_id uuid := (select value::uuid from s10_ids where key = 'creatorPerson');
+  party_id uuid := (select value::uuid from s10_ids where key = 'organization');
+  prior_flag text := current_setting('app.cms_rpc', true);
+  before_image jsonb;
+  after_image jsonb;
+  source_image text;
+  item record;
+begin
+  fixture := pg_temp.s12rv_prepare(p_label);
+  return next ok(fixture is not null, p_label || ': real public create and append succeed');
+  if fixture is null then
+    return next diag((select jsonb_agg(to_jsonb(c))::text from s12rv_calls c));
+    return;
+  end if;
+  return next is((select count(*) from s12rv_calls where label like p_label || '-%'
+    and transport_role = 'service_role' and state = '00000'), 2::bigint,
+    p_label || ': both authoring calls actually run as SQL service_role');
+  v_target_id := (fixture->>'targetId')::uuid;
+  v_source_id := (fixture->>'sourceId')::uuid;
+  v_entry_id := (fixture->>'entryId')::uuid;
+  return next is((select jsonb_agg(jsonb_build_array(target_kind, target_id::text,
+      expected_target_version, position) order by position)
+    from platform_private.cms_entry_relations where revision_id = v_source_id),
+    jsonb_build_array(jsonb_build_array('content', fixture->>'targetId', null, 0)),
+    p_label || ': real source contains exactly one unpinned external relation');
+  return next ok(platform_private.cms_relation_target_visible(actor_id, party_id,
+    v_target_id, 'article'), p_label || ': target initially visible under actual caller assignment');
+  if p_hide then
+    perform set_config('app.cms_rpc', 'true', true);
+    update platform_private.cms_entry_assignments set state = 'revoked',
+      version = version + 1, updated_at = clock_timestamp()
+      where entry_id = v_target_id and assignee_person_id = person_id;
+    perform set_config('app.cms_rpc', coalesce(prior_flag, ''), true);
+  end if;
+  return next ok(platform_private.cms_authority_origin(actor_id, party_id,
+    'cms.author', v_entry_id) is not null,
+    p_label || ': source remains readable/editable by the same bound actor');
+  return next is(platform_private.cms_relation_target_visible(actor_id, party_id,
+    v_target_id, 'article'), not p_hide, p_label || ': only target visibility differs');
+  return next is((select lifecycle || '/' || version::text
+    from platform_private.cms_content_entries where id = v_target_id), 'active/1',
+    p_label || ': target lifecycle and version cannot mask assignment visibility');
+  -- The target-only setup mutation is already complete. Nothing is excluded
+  -- from the serial refusal oracle, unlike a concurrently committed mutation.
+  before_image := pg_temp.s12rv_image(null::uuid);
+  source_image := pg_temp.s12rv_source_image(v_source_id);
+  response := pg_temp.s12rv_call(p_label || '-restore',
+    'select platform_api.cms_restore_revision(' || quote_literal((fixture->'request')::text) || '::jsonb)');
+  return next is((select transport_role from s12rv_calls where label = p_label || '-restore'),
+    'service_role', p_label || ': actual public restore transport role');
+  if p_hide then
+    return next is((select state from s12rv_calls where label = p_label || '-restore'),
+      'P0001', p_label || ': invisible carried target refuses the whole restore');
+    return next is((select message from s12rv_calls where label = p_label || '-restore'),
+      'migration_chain_incomplete', p_label || ': existing restore error token, not new public disclosure');
+    after_image := pg_temp.s12rv_image(null::uuid);
+    for item in select * from jsonb_each_text(before_image) loop
+      return next is(after_image->>item.key, item.value,
+        p_label || ': refusal preserves full rows in ' || item.key);
+    end loop;
+  else
+    return next is((select state from s12rv_calls where label = p_label || '-restore'),
+      '00000', p_label || ': visible unpinned carry has a successful zero-edge restore');
+    if response is null then
+      return next diag((select message from s12rv_calls where label = p_label || '-restore'));
+      return;
+    end if;
+    v_restored_id := (response->'resource'->>'id')::uuid;
+    return next is(response->'resource'->>'entryVersion', '3', p_label || ': one aggregate CAS advance');
+    return next is(response->'resource'->>'revisionNumber', '3', p_label || ': new revision, not source mutation');
+    return next is((select current_draft_revision_id from platform_private.cms_content_entries
+      where id = v_entry_id), v_restored_id, p_label || ': committed pointer names returned revision');
+    return next is(response->'resource'->>'contentHash', platform_private.cms_jcs_sha256(
+      jsonb_build_object('a9100000-0000-4000-8000-000000000d21', 'RRV source ' || p_label)),
+      p_label || ': independent literal restored field content hash');
+    return next is((select jsonb_agg(jsonb_build_array(target_kind, target_id::text,
+        expected_target_version, position) order by position)
+      from platform_private.cms_entry_relations where revision_id = v_restored_id),
+      jsonb_build_array(jsonb_build_array('content', fixture->>'targetId', null, 0)),
+      p_label || ': returned revision carries exactly the literal unpinned relation');
+  end if;
+  return next is(pg_temp.s12rv_source_image(v_source_id), source_image,
+    p_label || ': complete source revision, fields, relations and composition remain immutable');
+end;
+$body$;
+
+select * from pg_temp.s12rv_serial('visible', false);
+select * from pg_temp.s12rv_serial('hidden', true);

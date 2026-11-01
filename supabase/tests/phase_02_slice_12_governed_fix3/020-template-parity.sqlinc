@@ -1,0 +1,36 @@
+-- Parity: for every supported block and every bound-type set, the pattern recompute and the template recompute
+-- admit and refuse the same pairs (BE03c 1361 pattern, 1500 template: "only after exact compatibility checks").
+-- The template branch is cms_template_block_digest (compiler-range rule, 20261014090100).  Only the supported
+-- lifecycle is compared: a template admits supported blocks only, a pattern also deprecated ones (BE03c 396).
+create or replace function pg_temp.fix3_template(p_block text, p_types jsonb) returns text
+language sql volatile as $body$
+  select pg_temp.fix3_digest('template_version', jsonb_build_object(
+    'slots', jsonb_build_array(jsonb_build_object('key', 'primary', 'required', true,
+      'allowedBlocks', jsonb_build_array(jsonb_build_object('blockKey', p_block, 'blockVersion', 1)), 'maxCount', 1)),
+    'typeIds', p_types))
+$body$;
+create temp table fix3_matrix(block text, types jsonb, label text) on commit drop;
+insert into fix3_matrix select b.block, t.types, b.block || ' x ' || t.label
+  from (values ('bc.exact'), ('bc.wide'), ('bc.high'), ('bc.inverted'), ('bc.badvalue'), ('bc.minonly'), ('bc.empty')) b(block)
+  cross join (values
+    ('t1', pg_temp.bc_types(pg_temp.bc_t1())),
+    ('c19', pg_temp.bc_types(pg_temp.bc_c19())),
+    ('c2', pg_temp.bc_types(pg_temp.bc_c2())),
+    ('t1+t2', pg_temp.bc_types(pg_temp.bc_t1(), pg_temp.bc_t2())),
+    ('t1+c19', pg_temp.bc_types(pg_temp.bc_t1(), pg_temp.bc_c19())),
+    ('c19+t1', pg_temp.bc_types(pg_temp.bc_c19(), pg_temp.bc_t1()))) t(label, types);
+select is((select count(*)::integer from fix3_matrix), 42, 'parity matrix: 7 range shapes x 6 type sets');
+select is((select count(*)::integer from fix3_matrix m
+            where pg_temp.fix3_pattern(m.block, m.types) ~ '^[a-f0-9]{64}$'
+              <> (pg_temp.fix3_template(m.block, m.types) ~ '^[a-f0-9]{64}$')), 0,
+  'the pattern recompute admits and refuses exactly the (block, type set) pairs the template recompute does [BE03c 1361, 1500]');
+select is((select string_agg(m.label, ', ' order by m.label) from fix3_matrix m
+            where pg_temp.fix3_pattern(m.block, m.types) ~ '^[a-f0-9]{64}$'
+              <> (pg_temp.fix3_template(m.block, m.types) ~ '^[a-f0-9]{64}$')), null::text,
+  'parity diagnostic: the pairs on which pattern and template differ');
+select is((select count(*)::integer from fix3_matrix m
+            where pg_temp.fix3_pattern(m.block, m.types) ~ '^[a-f0-9]{64}$'), 8,
+  'exactly the eight in-range pairs are admitted (exact x t1, t1+t2; wide x t1, c19, t1+t2, t1+c19, c19+t1; high x c19)');
+select is((select count(*)::integer from fix3_matrix m
+            where pg_temp.fix3_pattern(m.block, m.types) ~ '^RAISED P0001 VALIDATION_FAILED \["/blockTree"\]$'), 34,
+  'every other pair raises the producer incompatible-block refusal [BE03c 1361]');

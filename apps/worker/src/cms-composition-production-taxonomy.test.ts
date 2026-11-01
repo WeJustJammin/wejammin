@@ -24,7 +24,7 @@ const body: TaxonomyTermActionRequest = {
 };
 
 describe('CMS-03C-03 production taxonomy boundary', () => {
-  it('admits a valid curator but refuses mutation while canonical source and RPC are absent', async () => {
+  it('fails closed before the RPC when the session was hand-supplied instead of resolved by the server', async () => {
     const fetchImpl = vi.fn(async () => Response.json({ unexpected: true }));
     const dependencies = createProductionCmsTaxonomyDependencies({
       environment,
@@ -64,23 +64,31 @@ describe('CMS-03C-03 production taxonomy boundary', () => {
         body: JSON.stringify(body),
       }),
     );
-    expect(response.status).toBe(503);
-    expect(await response.json()).toMatchObject({
-      code: 'DEPENDENCY_UNAVAILABLE',
-      details: { dependencyClass: 'cms_composition', retryable: true },
-    });
+    // The RPC context is rebuilt from the Request's server-resolved session (`contexts`); a resolver override
+    // that never recorded one is unauthenticated, never an implicit allow (BE03c 1478).
+    expect(response.status).toBe(401);
     expect(fetchImpl).not.toHaveBeenCalled();
   });
 
   it('has no implicit allow when production auth or rate dependencies are absent', async () => {
+    const fetchImpl = vi.fn(async () => Response.json({ unexpected: true }));
     const dependencies = createProductionCmsTaxonomyDependencies({
       environment,
+      fetchImpl: fetchImpl as typeof fetch,
     });
     expect(dependencies.humanOrigins).toEqual([]);
     const result = await dependencies.actTerm(
       {
         operationId: 'CMS-03C-03',
-        request: new Request(`https://api.example.test${path}`),
+        request: new Request(`https://api.example.test${path}`, {
+          method: 'POST',
+          headers: {
+            'content-type': 'application/json',
+            'idempotency-key': 'taxonomy-action-0001',
+            'if-match': '"1"',
+          },
+          body: JSON.stringify(body),
+        }),
         requestId: REQUEST_ID,
         session: {
           userId: USER_ID,
@@ -95,11 +103,18 @@ describe('CMS-03C-03 production taxonomy boundary', () => {
       },
       new AbortController().signal,
     );
-    expect(result).toMatchObject({ ok: false, status: 503 });
+    // A well-formed, authorised-looking POST reaches the authority step; with no server-resolved acting
+    // context recorded it is refused 401 before any network call, never an implicit allow (BE03c 1478).
+    expect(result).toMatchObject({
+      ok: false,
+      status: 401,
+      code: 'UNAUTHENTICATED',
+    });
     const session = await dependencies.resolveSession(
       new Request(`https://api.example.test${path}`),
       new AbortController().signal,
     );
     expect(session).toMatchObject({ ok: false, status: 503 });
+    expect(fetchImpl).not.toHaveBeenCalled();
   });
 });

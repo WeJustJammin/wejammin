@@ -24,6 +24,7 @@ select plan(17);
 \ir phase_02_slice_11_helpers/000-helpers.sqlinc
 \ir phase_02_slice_11_helpers/001-world.sqlinc
 \ir phase_02_slice_11_helpers/003-registry.sqlinc
+\ir phase_02_slice_11_pattern_forest.sqlinc
 
 -- ---------------------------------------------------------------------------
 -- Who may write the table.
@@ -103,9 +104,11 @@ insert into platform_private.cms_taxonomy_versions(
   allowlisted_type_keys, allowlisted_field_keys, content_hash, created_by
 ) values (pg_temp.h11w_uuid('tax1'), pg_temp.h11w_org(), 1, 'h11-genres', 'cms.taxonomy_curator',
   'flat', '[]'::jsonb, '[]'::jsonb, repeat('a', 64), (select value::uuid from s10_ids where key = 'creatorAuth'));
+-- taxonomy_id (BE03c 1371/1428; 20261014120000): h11_raw_exec disables the lineage-fill trigger, so the row names its lineage
+-- (the version-1 row's id) itself.
 select pg_temp.h11_raw_insert('platform_private.cms_terms', jsonb_build_object(
   'id', 'a9200000-0000-4000-8000-0000000e0001', 'owner_id', pg_temp.h11w_org(), 'lifecycle', 'active', 'version', 1,
-  'taxonomy_version_id', pg_temp.h11w_uuid('tax1'), 'term_key', 'jazz', 'aliases', '[]'::jsonb,
+  'taxonomy_id', pg_temp.h11w_uuid('tax1'), 'taxonomy_version_id', pg_temp.h11w_uuid('tax1'), 'term_key', 'jazz', 'aliases', '[]'::jsonb,
   'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
   'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z'));
 
@@ -114,7 +117,9 @@ select pg_temp.h11_raw_insert('platform_private.cms_terms', jsonb_build_object(
 select pg_temp.h11w_revision('all9src');
 select pg_temp.h11w_revision('all9', 'creatorPerson', 'fr-FR', jsonb_build_array(pg_temp.h11w_uuid('tax1')),
   'all9src', 2, 'a9200000-0000-4000-8000-0000000d0001');
-select pg_temp.h11m_instance('all9:i1', pg_temp.h11w_uuid('all9:revision'), '/a', 'h11.first',
+-- DEC-193 / BE03c 1511: the pinned row's path is a block-root key chain of its pattern version, below the template slot.
+select pg_temp.h11x_forest('a9200000-0000-4000-8000-0000000c0001', 'h11.first', array['a']);
+select pg_temp.h11m_instance('all9:i1', pg_temp.h11w_uuid('all9:revision'), '/primary/a', 'h11.first',
   'a9200000-0000-4000-8000-0000000c0001');
 select set_config('app.cms_rpc', 'true', true);
 insert into platform_private.cms_term_assignments(

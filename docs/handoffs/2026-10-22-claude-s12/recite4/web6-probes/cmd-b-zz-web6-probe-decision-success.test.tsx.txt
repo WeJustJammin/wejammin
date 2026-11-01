@@ -1,0 +1,122 @@
+// @vitest-environment jsdom
+import * as React from 'react';
+import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from '../cms-editorial-workflow/cms-workflow-answer-machinery.test-support';
+
+import { loadCmsValidators } from '../../lib/cms-contract-validators';
+import { MemoryStorage } from '../../lib/test-support/memory-storage';
+import {
+  buttonNamed,
+  byLabel,
+  click,
+  disableReactAct,
+  enableReactAct,
+  flush,
+  mountElement,
+  typeInto,
+} from '../cms-editorial-fields/cms-editor-dom.test-support';
+import {
+  INSTANT,
+  KEY,
+  LATER,
+  REVIEW_ID,
+  governedDetailFixture,
+  governedReviewFixture,
+  jsonResponse,
+} from '../../server/cms-governed-review-fixtures.test-support';
+import CmsGovernedDecisionForm from './CmsGovernedDecisionForm';
+import CmsGovernedReviewDetailIsland from './CmsGovernedReviewDetailIsland';
+import {
+  GATE,
+  RECONCILED,
+  WAITING,
+  alertOf,
+  conflictFor,
+  expectOnlyCommitDisabled,
+  expectStepUpRoute,
+  failureResponse,
+  forbiddenFor,
+  heldReread,
+  heldWire,
+  invalidFor,
+  statusOf,
+  stepUpRequired,
+} from './governed-command-states.test-support';
+import {
+  flushUntil,
+  governedEnvironment,
+  headersOf,
+  queuedFetcher,
+} from './governed-review-form-test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
+beforeAll(enableReactAct);
+beforeAll(async () => {
+  await loadCmsValidators();
+});
+afterAll(disableReactAct);
+
+const decided = () =>
+  jsonResponse(
+    200,
+    governedReviewFixture({
+      version: '3',
+      state: 'approved',
+      recordedDecisionCount: 1,
+      decidedAt: LATER,
+    }),
+    { etag: '"3"' },
+  );
+
+const mount = (
+  fetcher: ReturnType<typeof vi.fn>,
+  extra: Partial<React.ComponentProps<typeof CmsGovernedDecisionForm>> = {},
+  storage = new MemoryStorage(),
+) => {
+  const refetch = vi.fn(async () => true);
+  const onDone = vi.fn();
+  const navigate = vi.fn();
+  const mounted = mountElement(
+    <CmsGovernedDecisionForm
+      review={governedDetailFixture({ version: '2' })}
+      permitted
+      disabledReason={null}
+      refetch={refetch}
+      onDone={onDone}
+      environment={governedEnvironment(fetcher, storage, navigate)}
+      {...extra}
+    />,
+  );
+  return { ...mounted, refetch, onDone, navigate, storage };
+};
+
+const reason = (container: HTMLElement) =>
+  byLabel<HTMLTextAreaElement>(container, 'Reason');
+const radio = (container: HTMLElement, value: 'approve' | 'reject') =>
+  container.querySelector<HTMLInputElement>(
+    `input[type="radio"][value="${value}"]`,
+  ) as HTMLInputElement;
+const record = (container: HTMLElement) => buttonNamed(container, /Record/u);
+const fillAndRecord = async (container: HTMLElement) => {
+  await click(radio(container, 'approve'));
+  await typeInto(reason(container), 'Fine.');
+  await click(record(container));
+};
+
+describe('probe D1 decision success clears draft', () => {
+  it('[P2-S12-AC-271] commandState success: the named resource, the stored draft cleared and the review refetched', async () => {
+    const { container, refetch, onDone, storage } = mount(
+      queuedFetcher([decided()]),
+    );
+    await fillAndRecord(container);
+    await flush();
+    expect(statusOf(container)).toBe('Decision recorded.');
+    expect(refetch).toHaveBeenCalledTimes(1);
+    expect(onDone).toHaveBeenCalledWith('governed-decisions-title');
+    expect(storage.length).toBe(0);
+    // Clause "the form clears its draft": the typed decision and reason are gone from the form.
+    expect(reason(container).value).toBe('');
+    expect(radio(container, 'approve').checked).toBe(false);
+  });
+
+});

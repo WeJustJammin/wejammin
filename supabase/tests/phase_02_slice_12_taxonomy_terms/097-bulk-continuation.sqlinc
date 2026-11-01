@@ -1,0 +1,107 @@
+-- The 5,000 boundary of the REAL merge command (BE03c 1377: "up to 5,000 assignments converge in the same transaction, a larger set continues
+-- through the idempotent job cms.taxonomy.merge_converge from a durable cursor, and the retired id resolves permanently to the survivor
+-- throughout"; tracker 1613).  5,001 real assignment rows of the retired term are written set-based, the merge is the real
+-- platform_api.cms_act_taxonomy_term, and the continuation is the registered transport platform_api.cms_run_taxonomy_merge_converge: no
+-- test-only batch size, no helper that pre-sets the RPC context.  [P2-S12-AC-003, AC-019, AC-021]
+select pg_temp.s12tt_act('b-create-retire', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'bulk-retire');
+select pg_temp.s12tt_act('b-create-survivor', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'bulk-survivor');
+select ok(pg_temp.s12tt_oc('b-create-retire') = 'ok' and pg_temp.s12tt_oc('b-create-survivor') = 'ok', 'fixture: the retired and the surviving bulk term exist');
+select is(pg_temp.s12tt_seed_bulk('bulk', 5001, pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'bulk-retire')), 5001,
+  'fixture: 5,001 active assignments of the retired term are written (one per revision)');
+create temp table s12tt_bulk_jobs_before on commit drop as
+select id from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge';
+create temp table s12tt_bulk_counts_before on commit drop as
+select (select count(*) from platform_private.outbox_events where event_type = 'cms.taxonomy.changed.v1') events;
+
+select pg_temp.s12tt_act('b-merge', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'bulk-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'bulk-survivor')));
+select is(pg_temp.s12tt_oc('b-merge'), 'ok', 'merging a term that holds 5,001 active assignments is accepted in one command [P2-S12-AC-003]');
+select ok(pg_temp.s12ga_body('b-merge')->>'lifecycle' = 'merged' and pg_temp.s12ga_body('b-merge')->>'version' = '2'
+    and pg_temp.s12ga_body('b-merge')->>'successorId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'bulk-survivor')::text,
+  'the resource names the survivor immediately: the retired id resolves to it although the convergence is not complete [P2-S12-AC-003]');
+
+create temp table s12tt_bulk_ids on commit drop as
+select pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'bulk-retire') retired, pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'bulk-survivor') survivor;
+select is((select count(*)::integer from platform_private.cms_term_assignments a, s12tt_bulk_ids ids
+            where a.term_id = ids.survivor and a.state = 'active'), 5000,
+  'exactly 5,000 survivor assignments were appended in the merge transaction [P2-S12-AC-003]');
+select is((select count(*)::integer from platform_private.cms_term_assignments a, s12tt_bulk_ids ids
+            where a.term_id = ids.retired and a.state = 'superseded'), 5000,
+  'exactly 5,000 retired assignments were superseded in the merge transaction [P2-S12-AC-003]');
+select is((select count(*)::integer from platform_private.cms_term_assignments a, s12tt_bulk_ids ids
+            where a.term_id = ids.retired and a.state = 'active'
+              and not exists (select 1 from platform_private.cms_term_assignments later
+                               where later.revision_id = a.revision_id and later.field_definition_id = a.field_definition_id
+                                 and later.term_id = a.term_id and later.version > a.version)), 1,
+  'one retired assignment is left unconverged: the 5,001st [P2-S12-AC-003]');
+select is((select count(*)::integer from platform_private.jobs job where job.job_type = 'cms.taxonomy.merge_converge'
+            and job.id not in (select id from s12tt_bulk_jobs_before)), 1,
+  'the merge enqueued exactly one continuation job (the remaining > 0 branch of the real command) [P2-S12-AC-021]');
+select ok((select job.state = 'queued' and job.version = 1 and job.actor_id = pg_temp.s12ga_auth('owner') and job.acting_party_id = pg_temp.s09d_id('ownerOrg')
+             from platform_private.jobs job where job.job_type = 'cms.taxonomy.merge_converge' and job.id not in (select id from s12tt_bulk_jobs_before)),
+  'the job is a queued BE00 row bound to the actor and the acting party [P2-S12-AC-021]');
+select is((select count(*)::integer from platform_private.outbox_events event, s12tt_bulk_ids ids
+            where event.event_type = 'cms.taxonomy.changed.v1' and event.aggregate_id = ids.retired and event.aggregate_version = 2), 1,
+  'the merge emitted exactly one cms.taxonomy.changed.v1 for the retired term at its merge version 2, not one per batch [P2-S12-AC-021]');
+select is((select count(*) from platform_private.outbox_events where event_type = 'cms.taxonomy.changed.v1')
+          - (select events from s12tt_bulk_counts_before), 1::bigint, 'and no other taxonomy event was emitted by the merge command [P2-S12-AC-021]');
+select is((select count(*)::integer from audit_private.audit_events audit, s12tt_bulk_ids ids
+            where audit.action = 'cms.taxonomy.term.merge' and audit.target_id = ids.retired), 1,
+  'the merge command wrote exactly one cms.taxonomy.term.merge audit record for the retired term, not one per batch [P2-S12-AC-021]');
+
+-- the continuation: the registered transport, the context cleared first ---------------------------------------------------------------------
+create temp table s12tt_bulk_job on commit drop as
+select job.id from platform_private.jobs job
+ where job.job_type = 'cms.taxonomy.merge_converge' and job.id not in (select id from s12tt_bulk_jobs_before);
+select pg_temp.s12tt_claim('c-bulk', (select id from s12tt_bulk_job), 1);
+select pg_temp.s12tt_run('b-run', pg_temp.s12tt_claimed('c-bulk'));
+select is(pg_temp.s12tt_rout('b-run'), 'ok:{"converged": 1, "remaining": 0, "continuationJobId": null}',
+  'the handler converges the one remaining assignment through the platform_api transport and reports none left [P2-S12-AC-021]');
+select is((select count(*)::integer from platform_private.cms_term_assignments a, s12tt_bulk_ids ids where a.term_id = ids.survivor and a.state = 'active'), 5001,
+  'the survivor now holds 5,001 active assignments, one per revision, no duplicate [P2-S12-AC-003]');
+select is((select count(*)::integer from platform_private.cms_term_assignments a, s12tt_bulk_ids ids where a.term_id = ids.retired and a.state = 'superseded'), 5001,
+  'all 5,001 retired assignments are superseded [P2-S12-AC-003]');
+select is((select count(*)::integer from (select a.revision_id, a.field_definition_id from platform_private.cms_term_assignments a, s12tt_bulk_ids ids
+                                            where a.term_id = ids.survivor group by a.revision_id, a.field_definition_id having count(*) > 1) duplicated), 0,
+  'no (revision, field) holds two survivor rows: the convergence is exactly-once [P2-S12-AC-003]');
+select pg_temp.s12tt_run('b-run-again', pg_temp.s12tt_claimed('c-bulk'));
+select is(pg_temp.s12tt_rout('b-run-again'), 'ok:{"converged": 0, "remaining": 0, "continuationJobId": null}', 'a re-delivery of the job finds nothing to do [P2-S12-AC-021]');
+select is((select count(*)::integer from platform_private.cms_term_assignments a, s12tt_bulk_ids ids where a.term_id = ids.survivor), 5001,
+  'and appended no row [P2-S12-AC-021]');
+select is((select successor_id from platform_private.cms_terms, s12tt_bulk_ids ids where cms_terms.id = ids.retired), (select survivor from s12tt_bulk_ids),
+  'the retired id resolved to the survivor throughout [P2-S12-AC-003]');
+
+-- F4: the remaining-work predicate is index-supported.  The delta review reported that no index leads with term_id; one does:
+-- 20260927260000 creates cms_term_assignments_term_state_idx (term_id, state), which is exactly the lookup the predicate makes (merged term ->
+-- its ACTIVE assignments), so no further index is added (a second index over the same leading columns would only slow the append-only writes).
+-- The assertions pin the plan shape so that dropping or reshaping that index fails here.  The handler, the in-transaction batch and the remaining
+-- count all run cms_taxonomy_merge_work(owner, term).  The plan is taken from the function's own body text with its two parameters replaced by
+-- literals; seq scans are disabled so that a missing usable index shows as a Seq Scan of cms_term_assignments.
+select ok(exists (select 1 from pg_index i join pg_class c on c.oid = i.indexrelid join pg_class t on t.oid = i.indrelid
+                   where c.relname = 'cms_term_assignments_term_state_idx' and t.relname = 'cms_term_assignments' and i.indisvalid
+                     and pg_get_indexdef(i.indexrelid) ~ '\(term_id, state\)'),
+  'an index (term_id, state) on the assignment store supports the remaining-work predicate [P2-S12-AC-226]');
+analyze platform_private.cms_term_assignments;
+create or replace function pg_temp.s12tt_work_plan(p_owner uuid, p_term uuid) returns jsonb language plpgsql as $body$
+declare v_sql text; v_plan jsonb;
+begin
+  select replace(replace(p.prosrc, 'p_owner_id', quote_literal(p_owner) || '::uuid'), 'p_term_id', coalesce(quote_literal(p_term) || '::uuid', 'null::uuid'))
+    into v_sql from pg_proc p where p.oid = to_regprocedure('platform_private.cms_taxonomy_merge_work(uuid,uuid)');
+  perform set_config('enable_seqscan', 'off', true);
+  execute 'explain (format json) ' || v_sql into v_plan;
+  perform set_config('enable_seqscan', 'on', true);
+  return v_plan;
+end;
+$body$;
+select matches((select pg_temp.s12tt_work_plan(pg_temp.s09d_id('ownerOrg'), (select retired from s12tt_bulk_ids))::text),
+  '"Index Name": "cms_term_assignments_term_state_idx"',
+  'the per-term remaining-work lookup reads the assignments through cms_term_assignments_term_state_idx [P2-S12-AC-226]');
+select doesnt_match((select pg_temp.s12tt_work_plan(pg_temp.s09d_id('ownerOrg'), (select retired from s12tt_bulk_ids))::text),
+  '"Node Type": "Seq Scan"[^}]*"Relation Name": "cms_term_assignments"',
+  'and never by a Seq Scan of the assignment store [P2-S12-AC-226]');
+select matches((select pg_temp.s12tt_work_plan(pg_temp.s09d_id('ownerOrg'), null)::text),
+  '"Index Name": "cms_term_assignments_term_state_idx"',
+  'the whole-party remaining-work lookup (the handler) reaches the assignments through the same index [P2-S12-AC-226]');
+select doesnt_match((select pg_temp.s12tt_work_plan(pg_temp.s09d_id('ownerOrg'), null)::text),
+  '"Node Type": "Seq Scan"[^}]*"Relation Name": "cms_term_assignments"',
+  'and the whole-party lookup is never a Seq Scan of the assignment store [P2-S12-AC-226]');

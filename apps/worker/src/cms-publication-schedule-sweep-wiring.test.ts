@@ -4,8 +4,10 @@ const schedulerMocks = vi.hoisted(() => ({
   createProductionAsyncEntrypoint: vi.fn(),
   outbox: vi.fn(),
   runProductionCmsEditPresenceSweep: vi.fn(),
+  runProductionCmsGovernedActivationSweep: vi.fn(),
   runProductionCmsPublicationScheduleSweep: vi.fn(),
   runProductionCmsReviewAuthoritySweep: vi.fn(),
+  runProductionCmsTaxonomyMergeReconcileSweep: vi.fn(),
   runProductionIdempotencyExpirySweep: vi.fn(),
   runProductionOperationalAlerts: vi.fn(),
 }));
@@ -22,6 +24,18 @@ vi.mock('./production-cms-edit-presence-sweep', () => ({
 vi.mock('./cms-publication-schedule-sweep', () => ({
   runProductionCmsPublicationScheduleSweep:
     schedulerMocks.runProductionCmsPublicationScheduleSweep,
+}));
+// Slice 12 (CMS-03C-19): the governed activation sweep is one more scheduled job, mocked like its siblings;
+// its own behaviour is pinned in cms-governed-activation-sweep*.
+vi.mock('./cms-governed-activation-sweep', () => ({
+  runProductionCmsGovernedActivationSweep:
+    schedulerMocks.runProductionCmsGovernedActivationSweep,
+}));
+// DEC-194: the merge convergence recovery sweep is one more scheduled job, mocked like its siblings;
+// its own behaviour is pinned in cms-taxonomy-merge-reconcile-sweep*.
+vi.mock('./cms-taxonomy-merge-reconcile-sweep', () => ({
+  runProductionCmsTaxonomyMergeReconcileSweep:
+    schedulerMocks.runProductionCmsTaxonomyMergeReconcileSweep,
 }));
 vi.mock('./production-cms-review-authority-sweep', () => ({
   runProductionCmsReviewAuthoritySweep:
@@ -59,6 +73,8 @@ beforeEach(() => {
     schedulerMocks.runProductionCmsReviewAuthoritySweep,
     schedulerMocks.runProductionCmsEditPresenceSweep,
     schedulerMocks.runProductionCmsPublicationScheduleSweep,
+    schedulerMocks.runProductionCmsGovernedActivationSweep,
+    schedulerMocks.runProductionCmsTaxonomyMergeReconcileSweep,
     schedulerMocks.runProductionOperationalAlerts,
   ])
     mock.mockResolvedValue(undefined);

@@ -1,0 +1,83 @@
+-- DEC-210: the pure rule check platform_private.cms_block_rules_violation and the registry rules map.  Every case is a
+-- complete statement of one rule: allowed child, disallowed child, empty allow-list leaf, maxNodes at and over,
+-- maxDepth at and over, ordering, parent resolution (explicit index and key chain), and the fail-closed cases.
+create or replace function pg_temp.brp_rules() returns jsonb language sql immutable as $body$
+  select '{
+    "br.root:1":{"children":["br.mid","br.leaf"],"limits":{"maxNodes":6,"maxDepth":4}},
+    "br.mid:1":{"children":["br.leaf"],"limits":{"maxNodes":3,"maxDepth":2}},
+    "br.leaf:1":{"children":[],"limits":{"maxNodes":1,"maxDepth":1}},
+    "br.tight:1":{"children":["br.leaf"],"limits":{"maxNodes":3,"maxDepth":2}},
+    "br.shallow:1":{"children":["br.shallow","br.leaf"],"limits":{"maxNodes":16,"maxDepth":2}},
+    "br.open:1":{"children":["br.leaf"],"limits":{}}}'::jsonb
+$body$;
+-- A harness error (a missing function) is a value, never an abort: RED reports it as a failed assertion.
+create or replace function pg_temp.brp(p_nodes jsonb, p_rules jsonb default null) returns jsonb
+language plpgsql as $body$
+begin
+  return platform_private.cms_block_rules_violation(p_nodes, coalesce(p_rules, pg_temp.brp_rules()));
+exception when others then
+  return jsonb_build_object('error', sqlstate);
+end;
+$body$;
+create or replace function pg_temp.brn(p_chain text, p_block text) returns jsonb language sql immutable as $body$
+  select jsonb_build_object('chain', p_chain, 'blockKey', p_block, 'blockVersion', 1) $body$;
+
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.root'), pg_temp.brn('/a/b', 'br.mid'),
+    pg_temp.brn('/a/b/c', 'br.leaf'))), null::jsonb, 'BR-P01: an allowed child at an allowed depth and size is accepted');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.root'), pg_temp.brn('/a/b', 'br.root'))),
+  '{"index":0,"reason":"children","child":1}'::jsonb, 'BR-P02: a child whose blockKey is not listed violates its parent at the child');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.leaf'), pg_temp.brn('/a/b', 'br.leaf'))),
+  '{"index":0,"reason":"children","child":1}'::jsonb, 'BR-P03: an empty allow-list admits no child, not even its own key');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.tight'), pg_temp.brn('/a/b', 'br.leaf'),
+    pg_temp.brn('/a/c', 'br.leaf'))), null::jsonb, 'BR-P04: a subtree of exactly maxNodes nodes (3, the root counted) is accepted');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.tight'), pg_temp.brn('/a/b', 'br.leaf'),
+    pg_temp.brn('/a/c', 'br.leaf'), pg_temp.brn('/a/d', 'br.leaf'))),
+  '{"index":0,"reason":"nodes","child":null}'::jsonb, 'BR-P05: a subtree of maxNodes + 1 nodes violates the rule-bearing node');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.shallow'), pg_temp.brn('/a/b', 'br.leaf'))),
+  null::jsonb, 'BR-P06: exactly maxDepth levels (2, the node being level 1) is accepted');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.shallow'), pg_temp.brn('/a/b', 'br.shallow'),
+    pg_temp.brn('/a/b/c', 'br.leaf'))), '{"index":0,"reason":"depth","child":null}'::jsonb,
+  'BR-P07: maxDepth + 1 levels violates only the outer node (the inner subtree has exactly maxDepth levels)');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.root'), pg_temp.brn('/a/b', 'br.mid'),
+    pg_temp.brn('/a/b/c', 'br.mid'), pg_temp.brn('/z', 'br.tight'), pg_temp.brn('/z/y', 'br.leaf'),
+    pg_temp.brn('/z/x', 'br.leaf'), pg_temp.brn('/z/w', 'br.leaf'))),
+  '{"index":1,"reason":"children","child":2}'::jsonb, 'BR-P08: the first offending node by index is returned, not the largest violation');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.leaf'), pg_temp.brn('/a/b', 'br.root'),
+    pg_temp.brn('/a/c', 'br.root'), pg_temp.brn('/a/d', 'br.root'))),
+  '{"index":0,"reason":"children","child":1}'::jsonb, 'BR-P09: the children reason wins over nodes and depth, and names the first disallowed child');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.root'), pg_temp.brn('/b', 'br.tight'),
+    pg_temp.brn('/b/c', 'br.leaf'))), null::jsonb, 'BR-P10: roots carry no parent rule; sibling roots do not count against each other');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.tight'), pg_temp.brn('/a/ref/b', 'br.leaf'),
+    pg_temp.brn('/a/ref/c', 'br.leaf'), pg_temp.brn('/a/d', 'br.leaf'))),
+  '{"index":0,"reason":"nodes","child":null}'::jsonb,
+  'BR-P11: a node below a nested reference (the reference key is not a node) hangs off the nearest enclosing block');
+select is(pg_temp.brp(jsonb_build_array(
+    jsonb_build_object('parent', null, 'blockKey', 'br.tight', 'blockVersion', 1),
+    jsonb_build_object('parent', 0, 'blockKey', 'br.leaf', 'blockVersion', 1),
+    jsonb_build_object('parent', 0, 'blockKey', 'br.root', 'blockVersion', 1))),
+  '{"index":0,"reason":"children","child":2}'::jsonb, 'BR-P12: an explicit parent index is honoured when no chain is given');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.unknown'), pg_temp.brn('/a/b', 'br.leaf'))),
+  null::jsonb, 'BR-P13: a node whose version has no rule row is skipped (unregistered blocks are refused by the registry validators)');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.open'), pg_temp.brn('/a/b', 'br.leaf'))),
+  null::jsonb, 'BR-P14: a limit the rule row does not declare is no declared bound (only raw fixtures omit one); the children list is still enforced');
+select is(pg_temp.brp(jsonb_build_array(pg_temp.brn('/a', 'br.open'), pg_temp.brn('/a/b', 'br.root'))),
+  '{"index":0,"reason":"children","child":1}'::jsonb, 'BR-P14b: a rule row without limits still enforces its allowedChildren');
+select is(pg_temp.brp('[]'::jsonb), null::jsonb, 'BR-P15: an empty forest has no violation');
+select is(pg_temp.brp('{}'::jsonb), null::jsonb, 'BR-P16: a non-array node list is an empty forest');
+
+create or replace function pg_temp.brp_registry(p_nodes jsonb) returns jsonb language plpgsql as $body$
+begin
+  return platform_private.cms_block_rules_registry(p_nodes);
+exception when others then
+  return jsonb_build_object('error', sqlstate);
+end;
+$body$;
+select is(pg_temp.brp_registry(jsonb_build_array(pg_temp.brn('/a', 'br.tight'),
+    pg_temp.brn('/a/b', 'br.leaf'), pg_temp.brn('/a/c', 'br.leaf'), pg_temp.brn('/a/d', 'br.unknown'))),
+  '{"br.tight:1":{"children":["br.leaf"],"limits":{"maxDepth":2,"maxNodes":3}},
+    "br.leaf:1":{"children":[],"limits":{"maxDepth":1,"maxNodes":1}}}'::jsonb,
+  'BR-P17: the rules map is read from the immutable registered rows and holds only the distinct registered versions named');
+select ok(coalesce(not has_function_privilege('service_role', to_regprocedure('platform_private.cms_block_rules_violation(jsonb,jsonb)'), 'execute')
+  and not has_function_privilege('authenticated', to_regprocedure('platform_private.cms_block_rules_violation(jsonb,jsonb)'), 'execute')
+  and not has_function_privilege('anon', to_regprocedure('platform_private.cms_block_rules_registry(jsonb)'), 'execute'), false),
+  'BR-P18: the pure check and the registry map are private (no request role executes them)');

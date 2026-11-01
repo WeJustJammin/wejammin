@@ -1,6 +1,10 @@
 import { z } from 'zod';
 
 import {
+  CMS_LOCALE_NO_FALLBACK_GATE,
+  CMS_LOCALE_NO_FALLBACK_REASONS,
+} from '../cms-composition/locale-resolution.ts';
+import {
   CmsHashSchema,
   CmsInstantSchema,
   CmsUuidSchema,
@@ -67,7 +71,11 @@ export type CmsPreflightProviderKind = 'database' | 'worker' | 'reference_gate';
 
 export type CmsPreflightRegistryRow = Readonly<{
   category: PreflightCategory;
-  registryVersion: '1';
+  /**
+   * '1' is the DEC-134 seed; '2' is a strictly newer row by which a later slice registers its provider in
+   * place of `preflight.reference_gate` (BE03c "Preflight providers registered by Slice 12").
+   */
+  registryVersion: '1' | '2';
   /** The owning shard(s) of the category. */
   ownerSlice: string;
   providerKey: string;
@@ -122,8 +130,38 @@ export const CMS_PREFLIGHT_REGISTRY = [
     'template_changed',
   ]),
   databaseRow('block', '03a/03c', ['block_withdrawn', 'block_digest_changed']),
-  referenceGateRow('pattern', '03c'),
-  referenceGateRow('taxonomy', '03c'),
+  {
+    category: 'pattern',
+    registryVersion: '2',
+    ownerSlice: '03c',
+    providerKey: 'cms.pattern.active_digest',
+    providerVersion: '1',
+    providerKind: 'database',
+    referenceKind: null,
+    reasonCodes: [
+      'pattern_not_active',
+      'pattern_digest_changed',
+      'nested_pattern_not_active',
+      'pattern_block_rules_violated',
+    ],
+  },
+  // Slice 12 (BE03c "Preflight providers registered by Slice 12", DEC-141): `cms.taxonomy.assignment_integrity` v1 replaces the
+  // reference gate of the taxonomy category as registry version 2. Its three reasons are closed and listed in the order the
+  // provider reports them when several fail (BE03c lists them in this order).
+  {
+    category: 'taxonomy',
+    registryVersion: '2',
+    ownerSlice: '03c',
+    providerKey: 'cms.taxonomy.assignment_integrity',
+    providerVersion: '1',
+    providerKind: 'database',
+    referenceKind: null,
+    reasonCodes: [
+      'term_merged_unconverged',
+      'allowlist_changed',
+      'taxonomy_version_not_active',
+    ],
+  },
   databaseRow('settings', '05a', ['settings_changed']),
   databaseRow('relation', '03a/03b', [
     'relation_target_unavailable',
@@ -143,7 +181,18 @@ export const CMS_PREFLIGHT_REGISTRY = [
   },
   referenceGateRow('media', '04b'),
   referenceGateRow('route', '04a'),
-  referenceGateRow('locale', '03c'),
+  // Slice 12 (BE03c 1397-1399, DEC-121, DEC-138): `cms.locale.no_fallback_gate` v1 replaces the reference gate of
+  // the locale category as registry version 2; its three reasons are closed (DEC-160).
+  {
+    category: 'locale',
+    registryVersion: '2',
+    ownerSlice: '03c',
+    providerKey: CMS_LOCALE_NO_FALLBACK_GATE.providerKey,
+    providerVersion: CMS_LOCALE_NO_FALLBACK_GATE.providerVersion,
+    providerKind: 'database',
+    referenceKind: null,
+    reasonCodes: CMS_LOCALE_NO_FALLBACK_REASONS,
+  },
   databaseRow('migration', '03a', ['migration_in_progress']),
   databaseRow('domain_binding', '03a', ['binding_not_allowlisted']),
   databaseRow('revocation', '03b/BE01', [

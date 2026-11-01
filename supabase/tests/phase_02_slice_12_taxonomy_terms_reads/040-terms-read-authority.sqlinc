@@ -1,0 +1,20 @@
+-- cmsTaxonomyTermsRead authority and concealment: only a taxonomy curator of the owner organization reads; 403 for a visible scope without the
+-- capability; one indistinguishable 404 for an absent, foreign, non-member or non-lineage request.  BE03c 167, 1480, 1304.  [P2-S12-AC-185, AC-187]
+select pg_temp.s12tt_mark('before-read-authority');
+select pg_temp.s12tr_read('z-editor', 'designer2', pg_temp.s12tt_lineage('vr'));
+select pg_temp.s12tr_read('z-author', 'rev2', pg_temp.s12tt_lineage('vr'));
+select pg_temp.s12tr_read('z-reviewer', 'rev1', pg_temp.s12tt_lineage('vr'));
+select pg_temp.s12tr_read('z-nonmember', 'rev3', pg_temp.s12tt_lineage('vr'));
+select pg_temp.s12tr_read('z-absent', 'owner', 'a9186000-0000-4000-8000-0000000000f6');
+select pg_temp.s12tr_read('z-foreign', 'owner', pg_temp.s12tt_lineage('vo'));
+select pg_temp.s12tr_read('z-from-other', 'other', pg_temp.s12tt_lineage('vr'));
+select pg_temp.s12tr_read('z-nonroot', 'owner', (select id from platform_private.cms_taxonomy_versions where taxonomy_id = pg_temp.s12tt_lineage('vs') and version = 2));
+select is(array[pg_temp.s12tt_oc('z-editor'), pg_temp.s12tt_oc('z-author'), pg_temp.s12tt_oc('z-reviewer')], array_fill('P0001:capability_missing'::text, array[3]),
+  'a readable member without the curator capability (editor, author, reviewer) is 403 capability_missing [P2-S12-AC-185]');
+select is(pg_temp.s12tt_oc('z-nonmember'), 'P0001:NOT_FOUND', 'a caller outside the owner organization gets the concealing 404 [P2-S12-AC-185]');
+select is(array[pg_temp.s12tt_oc('z-foreign'), pg_temp.s12tt_oc('z-from-other'), pg_temp.s12tt_oc('z-nonroot')], array_fill(pg_temp.s12tt_oc('z-absent'), array[3]),
+  'a foreign vocabulary, a real curator of another organization and the id of a successor version row all give the very same complete refusal as an absent id [P2-S12-AC-185]');
+select is(pg_temp.s12tt_oc('z-absent'), 'P0001:NOT_FOUND', 'the hidden vocabulary refusal is 404 [P2-S12-AC-185]');
+select pg_temp.s12tt_anonymous('z-anon', 'platform_api.cms_list_taxonomy_terms', jsonb_build_object('taxonomyId', pg_temp.s12tt_lineage('vr')));
+select is(pg_temp.s12tt_oc('z-anon'), 'P0001:UNAUTHENTICATED', 'a request without a verified human is 401 UNAUTHENTICATED [P2-S12-AC-187]');
+select ok(pg_temp.s12tt_same('before-read-authority'), 'no refusal changed any store [P2-S12-AC-185]');

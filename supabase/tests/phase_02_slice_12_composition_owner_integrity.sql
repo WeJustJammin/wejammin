@@ -48,27 +48,29 @@ select ok(
 \ir phase_02_slice_10_rpc/001-fixtures.sqlinc
 
 select set_config('app.cms_rpc', 'true', true);
+-- PatternVersion shape (BE03c 1425): the ordered forest, one compatible type id and node_count; the guard derives the lineage id.
 insert into platform_private.cms_pattern_versions(
-  id, owner_id, version, pattern_key, block_tree, block_registry_digest,
-  content_hash, owner_capability, created_by
+  id, owner_id, version, pattern_key, block_tree, compatible_type_ids, node_count,
+  block_registry_digest, content_hash, owner_capability, created_by
 )
 select 'a9130000-0000-4000-8000-000000000001',
        (select value::uuid from s10_ids where key = 'strangerPerson'),
-       1, 'foreign-pattern', '{"nodes":[{"blockKey":"profile.header"}]}'::jsonb,
+       1, 'foreign-pattern', '[{"kind":"block","key":"root","blockKey":"profile.header","blockVersion":1,"props":{},"children":[]}]'::jsonb,
+       jsonb_build_array((select value from s10_ids where key = 'typeId')), 1,
        repeat('a', 64), repeat('b', 64), 'cms.template_designer',
        (select value::uuid from s10_ids where key = 'strangerAuth');
 
 select throws_ok(
   $$insert into platform_private.cms_composition_instances(
       id, owner_id, version, revision_id, path, slot_key,
-      block_key, block_version, block_registry_digest, link_mode, created_by
+      block_key, block_version, block_registry_digest, link_mode, created_by, position
     )
     select 'a9130000-0000-4000-8000-000000000002',
            (select value::uuid from s10_ids where key = 'strangerPerson'),
            1, (select value::uuid from s10_ids where key = 'entryRevisionId'),
            '/foreign-revision', 'primary', 'profile.header', 1,
            repeat('a', 64), 'detached',
-           (select value::uuid from s10_ids where key = 'strangerAuth')$$,
+           (select value::uuid from s10_ids where key = 'strangerAuth'), 0$$,
   '23503', null,
   'cross-owner revision cannot be used as a composition target'
 );
@@ -76,7 +78,7 @@ select throws_ok(
   $$insert into platform_private.cms_composition_instances(
       id, owner_id, version, revision_id, path, slot_key,
       block_key, block_version, pattern_id, pattern_version,
-      block_registry_digest, link_mode, created_by
+      block_registry_digest, link_mode, created_by, position
     )
     select 'a9130000-0000-4000-8000-000000000003',
            (select value::uuid from s10_ids where key = 'organization'),
@@ -84,7 +86,7 @@ select throws_ok(
            '/foreign-pattern', 'primary', 'profile.header', 1,
            'a9130000-0000-4000-8000-000000000001', 1,
            repeat('a', 64), 'linked',
-           (select value::uuid from s10_ids where key = 'creatorAuth')$$,
+           (select value::uuid from s10_ids where key = 'creatorAuth'), 0$$,
   '23503', null,
   'cross-owner pattern cannot be linked into a composition'
 );
@@ -106,19 +108,19 @@ where id = (select value::uuid from s10_ids where key = 'entryRevisionId');
 
 insert into platform_private.cms_composition_instances(
   id, owner_id, version, revision_id, path, slot_key,
-  block_key, block_version, block_registry_digest, link_mode, created_by
+  block_key, block_version, block_registry_digest, link_mode, created_by, position
 )
 select 'a9130000-0000-4000-8000-000000000011',
        (select value::uuid from s10_ids where key = 'organization'),
        1, (select value::uuid from s10_ids where key = 'entryRevisionId'),
        '/parent', 'primary', 'profile.header', 1, repeat('a', 64), 'detached',
-       (select value::uuid from s10_ids where key = 'creatorAuth');
+       (select value::uuid from s10_ids where key = 'creatorAuth'), 0;
 
 select throws_ok(
   $$insert into platform_private.cms_composition_instances(
       id, owner_id, version, revision_id, path, slot_key,
       block_key, block_version, block_registry_digest, link_mode,
-      parent_instance_id, created_by
+      parent_instance_id, created_by, position
     )
     select 'a9130000-0000-4000-8000-000000000012',
            (select value::uuid from s10_ids where key = 'organization'),
@@ -126,7 +128,7 @@ select throws_ok(
            '/parent/child', 'primary', 'profile.header', 1,
            repeat('a', 64), 'detached',
            'a9130000-0000-4000-8000-000000000011',
-           (select value::uuid from s10_ids where key = 'creatorAuth')$$,
+           (select value::uuid from s10_ids where key = 'creatorAuth'), 1$$,
   '23503', null,
   'same-owner composition parent from another revision is rejected'
 );
@@ -134,7 +136,7 @@ select throws_ok(
 insert into platform_private.cms_composition_instances(
   id, owner_id, version, revision_id, path, slot_key,
   block_key, block_version, block_registry_digest, link_mode,
-  parent_instance_id, created_by
+  parent_instance_id, created_by, position
 )
 select 'a9130000-0000-4000-8000-000000000013',
        (select value::uuid from s10_ids where key = 'organization'),
@@ -142,7 +144,7 @@ select 'a9130000-0000-4000-8000-000000000013',
        '/parent/valid-child', 'primary', 'profile.header', 1,
        repeat('a', 64), 'detached',
        'a9130000-0000-4000-8000-000000000011',
-       (select value::uuid from s10_ids where key = 'creatorAuth');
+       (select value::uuid from s10_ids where key = 'creatorAuth'), 1;
 select is(
   (select count(*)::int from platform_private.cms_composition_instances
    where id = 'a9130000-0000-4000-8000-000000000013'),

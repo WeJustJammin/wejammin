@@ -643,7 +643,7 @@ describe('[P2-S09-AC-242] [P2-S09-AC-243] protected routes guard on the server a
     ]) {
       const text = read(`../../pages/app/cms-content-modeling/${page}`);
       expect(text).toMatch(
-        /Astro\.redirect\(\s*`\/auth\/sign-in\?returnTo=\$\{encodeURIComponent\(safeContentSchemaRegistryReturnPath\(Astro\.url\)\)\}`,\s*303,?\s*\)/u,
+        /cmsRedirectResponse\(\s*`\/auth\/sign-in\?returnTo=\$\{encodeURIComponent\(safeContentSchemaRegistryReturnPath\(Astro\.url\)\)\}`,?\s*\)/u,
       );
       expect(text).toMatch(
         /result\.kind === 'forbidden'[\s\S]{0,160}new Response\('Forbidden', \{\s*status: 403/u,

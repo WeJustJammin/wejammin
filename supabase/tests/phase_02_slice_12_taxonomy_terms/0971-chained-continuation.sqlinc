@@ -1,0 +1,63 @@
+-- A merge that outgrows MORE than 32 continuation batches still converges (the stranding the delta review found).  BE00 caps a BE00 job at 32
+-- attempt summaries (platform_private.jobs.attempts, claim_job refuses a 33rd claim) and platform.job.execute allows 4 deliveries including the
+-- initial one, so a continuation that re-queued the SAME job after every batch would strand after at most 32 claims.  The handler therefore hands the
+-- rest of the work to a FRESH BE00 job bound to the same actor and acting party (the mechanism BE03c 1334 / 1377 already use for the first
+-- continuation: "a BE00 jobs row bound to the merge command's actor and acting party"), and answers the current job succeeded.
+-- The merge is the REAL command (5,040 assignments: 5,000 in the merge transaction, 40 left); the batch is lowered through the production
+-- parameter (batch 1, inside its 1 .. 5000 range), so the chain is 40 jobs, more than 32, each claimed once.  [P2-S12-AC-003, AC-021, AC-226]
+select pg_temp.s12tt_act('x-create-retire', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'chain-retire');
+select pg_temp.s12tt_act('x-create-survivor', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'chain-survivor');
+select ok(pg_temp.s12tt_oc('x-create-retire') = 'ok' and pg_temp.s12tt_oc('x-create-survivor') = 'ok', 'fixture: the retired and the surviving chain term exist');
+select is(pg_temp.s12tt_seed_bulk('chain', 5040, pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'chain-retire')), 5040,
+  'fixture: 5,040 active assignments of the retired term are written (one per revision)');
+create temp table s12tt_chain_jobs_before on commit drop as
+select id from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge';
+select pg_temp.s12tt_act('x-merge', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'chain-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'chain-survivor')));
+select is(pg_temp.s12tt_oc('x-merge'), 'ok', 'the real merge command accepts a term that holds 5,040 active assignments [P2-S12-AC-003]');
+create temp table s12tt_chain_ids on commit drop as
+select pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'chain-retire') retired, pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'chain-survivor') survivor,
+       (select job.id from platform_private.jobs job where job.job_type = 'cms.taxonomy.merge_converge' and job.id not in (select id from s12tt_chain_jobs_before)) first_job;
+select is((select count(*)::integer from platform_private.cms_term_assignments a, s12tt_chain_ids ids where a.term_id = ids.survivor and a.state = 'active'), 5000,
+  'the merge transaction converged exactly 5,000 and enqueued exactly one continuation job (40 assignments left) [P2-S12-AC-003]');
+
+create temp table s12tt_chain on commit drop as
+select pg_temp.s12tt_drain((select first_job from s12tt_chain_ids), 1) result;
+select ok((select (result->>'hops')::integer > 32 from s12tt_chain),
+  'the chain needed more than 32 jobs: a single BE00 job (at most 32 claims) could not have carried it [P2-S12-AC-226]');
+select is((select (result->>'hops')::integer from s12tt_chain), 40, 'exactly 40 chained jobs converged the 40 left, one assignment each [P2-S12-AC-226]');
+select is((select (result->>'converged')::integer from s12tt_chain), 40, 'and the chain converged all 40 [P2-S12-AC-226]');
+select is((select (result->>'remaining')::integer from s12tt_chain), 0, 'the last job reports nothing remaining and names no continuation [P2-S12-AC-226]');
+select is((select (result->>'maxAttempts')::integer from s12tt_chain), 1,
+  'every job in the chain was claimed exactly once: no job came near the 32-attempt cap [P2-S12-AC-226]');
+select is((select count(distinct job_id)::integer from s12tt_chain, jsonb_array_elements_text(result->'jobIds') job_id), 40,
+  'the 40 hops ran on 40 distinct jobs [P2-S12-AC-226]');
+select is((select count(*)::integer from platform_private.jobs job where job.job_type = 'cms.taxonomy.merge_converge'
+            and job.id not in (select id from s12tt_chain_jobs_before)), 40,
+  'the whole chain created exactly 40 jobs, no stray duplicate [P2-S12-AC-226]');
+select is((select count(*)::integer from platform_private.jobs job where job.job_type = 'cms.taxonomy.merge_converge'
+            and job.id not in (select id from s12tt_chain_jobs_before) and job.state = 'succeeded'), 40,
+  'all 40 are succeeded: none is left queued or running [P2-S12-AC-226]');
+select is((select count(*)::integer from platform_private.jobs job
+            where job.job_type = 'cms.taxonomy.merge_converge' and job.state in ('queued', 'running')
+              and job.id not in (select id from s12tt_chain_jobs_before)), 0,
+  'no job of the chain is left stranded queued or running [P2-S12-AC-226]');
+select is((select count(*)::integer from platform_private.jobs job
+            where job.job_type = 'cms.taxonomy.merge_converge' and job.id not in (select id from s12tt_chain_jobs_before)
+              and (job.actor_id <> pg_temp.s12ga_auth('owner') or job.acting_party_id <> pg_temp.s09d_id('ownerOrg'))), 0,
+  'every chained job is bound to the merge command''s actor and acting party [P2-S12-AC-226]');
+select is((select count(*)::integer from platform_private.outbox_events event
+            where event.event_type = 'job.requested' and event.aggregate_type = 'job'
+              and event.aggregate_id in (select job.id from platform_private.jobs job where job.job_type = 'cms.taxonomy.merge_converge'
+                                          and job.id not in (select id from s12tt_chain_jobs_before))), 40,
+  'each chained job carries its own job.requested outbox event, so the platform queue delivers it [P2-S12-AC-226]');
+select is((select count(*)::integer from platform_private.cms_term_assignments a, s12tt_chain_ids ids where a.term_id = ids.survivor and a.state = 'active'), 5040,
+  'the survivor holds 5,040 active assignments [P2-S12-AC-003]');
+select is((select count(*)::integer from platform_private.cms_term_assignments a, s12tt_chain_ids ids where a.term_id = ids.retired and a.state = 'superseded'), 5040,
+  'all 5,040 retired assignments are superseded [P2-S12-AC-003]');
+select is((select count(*)::integer from (select a.revision_id, a.field_definition_id from platform_private.cms_term_assignments a, s12tt_chain_ids ids
+                                            where a.term_id = ids.survivor group by a.revision_id, a.field_definition_id having count(*) > 1) duplicated), 0,
+  'no (revision, field) holds two survivor rows across the 41 transactions: the convergence is exactly-once [P2-S12-AC-003]');
+select is((select string_agg(event.aggregate_version::text, ',' order by event.aggregate_version) from platform_private.outbox_events event, s12tt_chain_ids ids
+            where event.event_type = 'cms.taxonomy.changed.v1' and event.aggregate_id = ids.retired), '1,2',
+  'the retired term has exactly its create event (version 1) and its merge event (version 2): the 40 continuation jobs emitted no taxonomy event [P2-S12-AC-021]');

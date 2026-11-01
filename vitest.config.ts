@@ -20,6 +20,9 @@ export default defineConfig({
       '@wejammin/contracts/cms-editorial/validators': workspacePath(
         './packages/contracts/src/cms-editorial/validators.ts',
       ),
+      '@wejammin/contracts/platform-configuration/validators': workspacePath(
+        './packages/contracts/src/platform-configuration/validators.ts',
+      ),
       '@wejammin/contracts/content-schema-registry/validators': workspacePath(
         './packages/contracts/src/content-schema-registry/validators.ts',
       ),

@@ -6,11 +6,14 @@ import {
   type EntryDraftDetailResource,
 } from '@wejammin/contracts';
 import { addClientBindingIdHeader } from '../../lib/client-binding';
+import {
+  rateLimitWaitSeconds,
+  retryingSafeRead,
+} from '../../lib/safe-read-retry';
 import { CmsEditorialEntryDraftDetailResourceSchema } from './cms-editorial-entry-draft-detail';
 import {
   cmsEditorialErrorCodeFrom,
   cmsEditorialErrorDetailsFrom,
-  cmsEditorialRetryAfterSecondsFrom,
 } from './cms-editorial-runtime';
 
 /**
@@ -167,13 +170,16 @@ export const executeCmsEditorialEntryDraftDetailRead = async (input: {
     baseFetcher(request, await addClientBindingIdHeader(request, init));
   let response: Response;
   try {
-    response = await fetcher(url, {
-      method: 'GET',
-      credentials: 'same-origin',
-      redirect: 'manual',
-      cache: 'no-store',
-      headers: { accept: 'application/json' },
-    });
+    // FE03 :1173: a 502/503/504 the BE declares safe is retried twice (250 ms, 750 ms).
+    response = await retryingSafeRead(() =>
+      fetcher(url, {
+        method: 'GET',
+        credentials: 'same-origin',
+        redirect: 'manual',
+        cache: 'no-store',
+        headers: { accept: 'application/json' },
+      }),
+    );
   } catch {
     return {
       outcome: 'degraded',
@@ -218,9 +224,10 @@ export const executeCmsEditorialEntryDraftDetailRead = async (input: {
     etag: null,
     errorCode: await cmsEditorialErrorCodeFrom(response),
     errorDetails: await cmsEditorialErrorDetailsFrom(response),
+    // FE03 :1172: only a stated, bounded whole-second wait is announced and honored.
     retryAfterSeconds:
       mapped.outcome === 'rate-limited'
-        ? cmsEditorialRetryAfterSecondsFrom(response.headers)
+        ? await rateLimitWaitSeconds(response)
         : null,
   };
 };

@@ -4,12 +4,21 @@
 
 This directory contains web-surface styles for infrastructure pages, jobs, the
 release/recovery status projection, and the CMS editorial surfaces
-(`cms-editorial.css`, imported by the editorial document shell).
+(`cms-editorial.css`, imported by the editorial document shell; `cms-danger-action.css`).
 
 ## Ownership
 
 These styles own presentation only. UI tokens remain the design authority;
 routes and components own semantics, authorization, and state decisions.
+
+CMS surfaces share one destructive-button treatment, `cms-danger-action.css`: add
+`class="cms-danger-action"` to a `<button>` whose label names the consequence and whose action is
+genuinely destructive (DESIGN.md, Components > Buttons). It keeps the 44px target, the focus ring and
+the disabled look. The sheet is unlayered, defines its own danger tokens and is scoped to the `<main>`
+of the three CMS layouts (`#cms-editorial-main`, `#content-schema-registry-main`,
+`#cms-template-main`); every CMS page loads it (the editorial document shell or its own import), and
+`cms-danger-action.test.ts` checks that coverage page by page, the cascade and the contrast. A new
+CMS layout adds its `<main>` id to the selector.
 
 ## Extension
 

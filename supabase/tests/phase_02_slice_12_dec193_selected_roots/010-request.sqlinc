@@ -1,0 +1,76 @@
+-- Guard probes isolate wire bounds; they do NOT prove public placement works.
+-- Semantic selector failures below also invoke the real public producer.
+select pg_temp.s12pl_entry('sr-env');
+create temp table s12sr_envelopes(label text primary key,patch jsonb,detail jsonb) on commit drop;
+insert into s12sr_envelopes values
+  ('null','{"roots":null}','["/roots"]'),
+  ('object','{"roots":{}}','["/roots"]'),
+  ('string','{"roots":"/a"}','["/roots"]'),
+  ('empty','{"roots":[]}','["/roots"]'),
+  ('duplicate','{"roots":["/a","/b","/a"]}','["/roots"]'),
+  ('number','{"roots":["/a",42]}','["/roots/1"]'),
+  ('null-item','{"roots":[null]}','["/roots/0"]'),
+  ('no-leading','{"roots":["a"]}','["/roots/0"]'),
+  ('empty-key','{"roots":["/"]}','["/roots/0"]'),
+  ('uppercase','{"roots":["/A"]}','["/roots/0"]'),
+  ('trailing','{"roots":["/a/"]}','["/roots/0"]'),
+  ('double-slash','{"roots":["/a//b"]}','["/roots/0"]'),
+  ('dot','{"roots":["/a/../b"]}','["/roots/0"]'),
+  ('unicode','{"roots":["/café"]}','["/roots/0"]');
+insert into s12sr_envelopes values
+  ('count513',jsonb_build_object('roots',(select jsonb_agg('/r' || n)
+    from generate_series(1,513) n)),'["/roots"]'),
+  ('segments73',jsonb_build_object('roots',jsonb_build_array(repeat('/x',73))),'["/roots/0"]'),
+  ('segment65',jsonb_build_object('roots',jsonb_build_array('/' || repeat('x',65))),'["/roots/0"]'),
+  ('length4681',jsonb_build_object('roots',jsonb_build_array(
+    repeat('/' || repeat('x',64),71) || '/' || repeat('x',65))),'["/roots/0"]'),
+  ('control',jsonb_build_object('roots',jsonb_build_array(E'/a\nb')),'["/roots/0"]');
+select checks.* from s12sr_envelopes e cross join lateral pg_temp.s12sr_guard(
+  'SR-GUARD-' || label,pg_temp.s12sr_request('guard-' || label,'sr-env') || patch,
+  'P0001:VALIDATION_FAILED#' || detail::text) checks;
+select checks.* from s12sr_envelopes e cross join lateral pg_temp.s12pl_refused(
+  'sr-wire-' || label,pg_temp.s12sr_request('wire-' || label,'sr-env') || patch,
+  'VALIDATION_FAILED',detail) checks;
+
+select * from pg_temp.s12sr_guard('SR-GUARD omitted',pg_temp.s12sr_request('omitted','sr-env'),'ok:root');
+select * from pg_temp.s12sr_guard('SR-GUARD one',pg_temp.s12sr_request('one','sr-env',
+  'sr-main','["/a"]'),'ok:root');
+select * from pg_temp.s12sr_guard('SR-GUARD 512 unique',pg_temp.s12sr_request('512','sr-env',
+  'sr-main',(select jsonb_agg('/r' || n) from generate_series(1,512) n)),'ok:root');
+select * from pg_temp.s12sr_guard('SR-GUARD 72 short segments',pg_temp.s12sr_request('72','sr-env',
+  'sr-main',jsonb_build_array(repeat('/x',72))),'ok:root');
+select * from pg_temp.s12sr_guard('SR-GUARD exact4680/72',pg_temp.s12sr_request('4680','sr-env',
+  'sr-main',jsonb_build_array((select path from s12sr_paths where name='expanded4680'))),'ok:root');
+select * from pg_temp.s12sr_guard('SR-GUARD real585 root shape',pg_temp.s12sr_request('585','sr-env',
+  'sr-long8',jsonb_build_array((select path from s12sr_paths where name='row585'))),'ok:root');
+-- >4680 cannot retain <=72 segments each <=64: the length4681 rejection above
+-- necessarily also violates segment length. No claim of independent dimensions.
+
+-- The new carrier does not widen stored slotPath or old overrides-key grammar.
+select * from pg_temp.s12sr_guard('SR-GUARD slot512',pg_temp.s12sr_request('slot512','sr-env',
+  'sr-main','["/a"]','{}','/main/' || repeat('x',506)),'ok:main');
+select * from pg_temp.s12sr_guard('SR-GUARD slot513',pg_temp.s12sr_request('slot513','sr-env',
+  'sr-main','["/a"]','{}','/main/' || repeat('x',507)),
+  'P0001:VALIDATION_FAILED#["/slotPath"]');
+select * from pg_temp.s12sr_guard('SR-GUARD override512',pg_temp.s12sr_request('o512','sr-env',
+  'sr-main','["/a"]',jsonb_build_object(repeat('/' || repeat('o',64),7) || '/' || repeat('p',56),null)),
+  'ok:root');
+select * from pg_temp.s12sr_guard('SR-GUARD override513',pg_temp.s12sr_request('o513','sr-env',
+  'sr-main','["/a"]',jsonb_build_object(repeat('/' || repeat('o',64),7) || '/' || repeat('p',57),null)),
+  'P0001:VALIDATION_FAILED#["/overrides"]');
+select * from pg_temp.s12pl_refused('sr-closed-envelope',pg_temp.s12sr_request('closed','sr-env',
+  'sr-main','["/a"]') || '{"ownerId":"forged"}', 'INVALID_REQUEST');
+select * from pg_temp.s12pl_refused('sr-ifmatch',pg_temp.s12sr_request('ifmatch','sr-env',
+  'sr-main','["/a"]') || '{"ifMatch":"2"}','INVALID_REQUEST');
+
+-- All wire-valid non-root chains fail at the actual offending array index,
+-- not /overrides or /slotPath; no invalid override or occupied path distracts.
+select checks.* from (values
+  ('missing','sr-main','["/a","/missing"]'::jsonb,'["/roots/1"]'::jsonb),
+  ('descendant','sr-main','["/a/leaf"]'::jsonb,'["/roots/0"]'::jsonb),
+  ('reference','pn','["/shared"]'::jsonb,'["/roots/0"]'::jsonb),
+  ('nested-descendant','pn','["/shared/a/title"]'::jsonb,'["/roots/0"]'::jsonb),
+  ('expanded-not-root','sr-main',jsonb_build_array(repeat('/x',72)),'["/roots/0"]'::jsonb)
+) c(label,pattern,roots,detail) cross join lateral pg_temp.s12pl_refused(
+  'sr-semantic-' || label,pg_temp.s12sr_request('semantic-' || label,'sr-env',pattern,roots),
+  'VALIDATION_FAILED',detail) checks;

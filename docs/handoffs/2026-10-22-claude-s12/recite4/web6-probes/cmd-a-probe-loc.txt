@@ -1,0 +1,10 @@
+     × D1 403 renders CapabilityGate 90ms
+     × D2 chain_mismatch refetches the entry source 20ms
+     × D3 unknown outcome refetches before retry 20ms
+     × D4 success refetches the source 15ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+AssertionError: expected null not to be null
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+AssertionError: expected "vi.fn()" to be called 1 times, but got 0 times
+      Tests  4 failed (4)

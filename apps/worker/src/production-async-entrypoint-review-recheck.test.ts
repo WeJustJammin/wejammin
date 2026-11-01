@@ -40,9 +40,11 @@ describe('[P2-S11-AC-113] production async entrypoint review recheck wiring', ()
       const operation = url.split('/rest/v1/rpc/')[1] ?? '';
       operations.push(operation);
       return Response.json(
-        operation === 'cms_dependency_recheck_resolve_event'
-          ? { found: true, kind: 'schema', refId: REF }
-          : { examined: 2, invalidated: 2, nextCursor: null },
+        operation === 'cms_governed_recheck_resolve_event'
+          ? { found: true, kind: 'content_type', refId: REF }
+          : operation === 'cms_dependency_recheck_resolve_event'
+            ? { found: true, kind: 'schema', refId: REF }
+            : { examined: 2, invalidated: 2, nextCursor: null },
       );
     });
     const entrypoint = createProductionAsyncEntrypoint(
@@ -60,12 +62,24 @@ describe('[P2-S11-AC-113] production async entrypoint review recheck wiring', ()
       expect(queued.ack).toHaveBeenCalledOnce();
       expect(queued.retry).not.toHaveBeenCalled();
     }
+    // Slice 12 (P2-S12-AC-202): a schema event is also consumed by the governed recheck producer, which rereads the
+    // event through its own resolver (cms_governed_recheck_resolve_event) before the editorial consumer does, and
+    // enqueues its own job, so each message resolves twice and sends twice.
     expect(operations).toEqual([
+      'cms_governed_recheck_resolve_event',
       'cms_dependency_recheck_resolve_event',
+      'cms_governed_recheck_resolve_event',
       'cms_dependency_recheck_resolve_event',
       'cms_dependency_recheck_run',
     ]);
-    expect(send).toHaveBeenCalledTimes(2);
+    expect(send).toHaveBeenCalledTimes(4);
+    expect(send).toHaveBeenCalledWith({
+      jobType: 'cms.governed_review.recheck',
+      schemaVersion: 1,
+      payload: { eventId: IDS.event, kind: 'content_type', refId: REF },
+      cursor: null,
+      correlationId: IDS.correlation,
+    });
     expect(send).toHaveBeenCalledWith({
       jobType: 'cms.review.dependency_recheck',
       schemaVersion: 1,

@@ -24,8 +24,7 @@ describe('content schema registry protected Astro routes', () => {
         "Astro.response.headers.set('Cache-Control', 'no-store')",
       );
       expect(source).toContain('resolveContentSchemaRegistryPage');
-      expect(source).toContain('Astro.redirect');
-      expect(source).toContain('303');
+      expect(source).toContain('cmsRedirectResponse(');
       expect(source).toContain('returnTo');
       expect(source).toContain('tabindex="-1"');
       expect(source).toContain('id="page-title"');

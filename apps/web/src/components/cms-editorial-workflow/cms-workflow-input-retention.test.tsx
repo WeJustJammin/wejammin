@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from './cms-workflow-answer-machinery.test-support';
 
 import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
@@ -37,6 +38,8 @@ import {
   versionSetFixture,
   workflowFixture,
 } from './cms-workflow-fixtures.test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
 
 /*
  * FE03 "Map exact ApiError; retain input; ... reconcile unknown mutation before

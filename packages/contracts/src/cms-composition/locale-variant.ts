@@ -1,6 +1,7 @@
 import { z } from 'zod';
 
 import { JsonValueSchema } from '../api-error.ts';
+import { refineIfMatchEqualsExpectedVersion } from '../cms-editorial/if-match.ts';
 import {
   CmsHashSchema,
   CmsLocaleSchema,
@@ -29,6 +30,14 @@ const noFallbackFieldIds = z
   .refine(
     (ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length,
     'no_fallback_field_duplicate',
+  );
+
+const staleFieldIds = z
+  .array(CmsUuidSchema)
+  .max(128)
+  .refine(
+    (ids) => new Set(ids.map((id) => id.toLowerCase())).size === ids.length,
+    'stale_field_duplicate',
   );
 
 export const LocaleVariantPathSchema = z.strictObject({
@@ -68,24 +77,42 @@ export const LocaleVariantHeadersSchema = z.strictObject({
   ifMatch: QuotedVersionSchema,
 });
 
-export const LocaleVariantApiRequestSchema = z.strictObject({
-  entryId: CmsUuidSchema,
-  locale: CmsLocaleSchema,
-  headers: LocaleVariantHeadersSchema,
-  body: LocaleVariantRequestSchema,
-});
+/** The strong `If-Match` is the entry aggregate `version`, the body `expectedVersion`. */
+export const LocaleVariantApiRequestSchema = z
+  .strictObject({
+    entryId: CmsUuidSchema,
+    locale: CmsLocaleSchema,
+    headers: LocaleVariantHeadersSchema,
+    body: LocaleVariantRequestSchema,
+  })
+  .superRefine(refineIfMatchEqualsExpectedVersion);
 
-/** Browser-safe variant status without owner or cross-locale source text. */
-export const LocaleVariantResourceSchema = z.strictObject({
-  ...resourceMetaShape,
-  state: z.enum(['untranslated', 'draft', 'review', 'approved', 'stale']),
-  entryId: CmsUuidSchema,
-  revisionId: CmsUuidSchema,
-  locale: CmsLocaleSchema,
-  sourceRevisionId: CmsUuidSchema,
-  fallbackChain: orderedFallbackChain,
-  noFallbackFieldIds,
-});
+/**
+ * Browser-safe variant status without owner or cross-locale source text.
+ * `staleFieldIds` (DEC-121) lists the translated fields whose source value hash
+ * changed since the variant was written, and is empty unless `state` is `stale`;
+ * unchanged fields keep their approved state.
+ */
+export const LocaleVariantResourceSchema = z
+  .strictObject({
+    ...resourceMetaShape,
+    state: z.enum(['untranslated', 'draft', 'review', 'approved', 'stale']),
+    entryId: CmsUuidSchema,
+    revisionId: CmsUuidSchema,
+    locale: CmsLocaleSchema,
+    sourceRevisionId: CmsUuidSchema,
+    fallbackChain: orderedFallbackChain,
+    noFallbackFieldIds,
+    staleFieldIds,
+  })
+  .superRefine((value, context) => {
+    if (value.state !== 'stale' && value.staleFieldIds.length > 0)
+      context.addIssue({
+        code: 'custom',
+        path: ['staleFieldIds'],
+        message: 'stale_fields_only_on_a_stale_variant',
+      });
+  });
 
 export type LocaleVariantPath = z.infer<typeof LocaleVariantPathSchema>;
 export type LocaleVariantRequest = z.infer<typeof LocaleVariantRequestSchema>;

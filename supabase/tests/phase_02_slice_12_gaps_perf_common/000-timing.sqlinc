@@ -1,0 +1,92 @@
+-- Slice 12 perf lane (claude_s12_gaps_perf): the shared timing kit of the RPC-share latency benches
+-- (supabase/tests/phase_02_slice_12_gaps_perf_*.sql).  Precedent: phase_02_slice_11_reads_bench128.sql
+-- (b11_timing / b11_p95): the wall time of every measured call is recorded in the database and the p95 per
+-- operation is asserted against the clause's target.  The estimator is percentile_cont(0.95), the same
+-- statistic the Slice 09, 11 and 12 benches and the apispec (tests/postgrest/support/phase-02-slice-11-latency-stats.ts) use.
+--
+-- Only the RPC statement is inside the timed region (the role switch, the receipt insert and the fixture builders are
+-- outside it); a refused or failed call is recorded with its outcome, so a measurement of an error path can never pass as
+-- a measurement of the success path (every bench asserts g12p_all_ok(op)).
+--
+-- Include AFTER phase_02_slice_09_dec108/00-helpers + 01-actors (s09d_session).  Self-contained: it owns its receipt table, so a
+-- world that has none of the governed helpers (s12ga_*) can use it.  The caller passes the verified-actor context the command needs.
+
+create temp table g12p_timing(
+  op text not null, n integer not null, ms numeric not null, outcome text not null, primary key (op, n)) on commit drop;
+
+create temp table g12p_rcpt(label text primary key, body jsonb, state text not null, message text, detail text,
+  rpc_user text) on commit drop;
+create or replace function pg_temp.g12p_body(p_label text) returns jsonb language sql stable as $body$
+  select body from g12p_rcpt where label = p_label $body$;
+-- 'ok' for a success, else '<sqlstate>:<message>'.
+create or replace function pg_temp.g12p_out(p_label text) returns text language sql stable as $body$
+  select case when state = '00000' then 'ok' else state || ':' || message end from g12p_rcpt where label = p_label $body$;
+
+create or replace function pg_temp.g12p_next(p_op text) returns integer language sql stable as $body$
+  select coalesce(max(n), 0) + 1 from g12p_timing where op = p_op $body$;
+
+-- One command or read under the REAL service_role, timed.  Same shape as pg_temp.s12ga_rpc (the verified-actor session, the
+-- context member, the role switch and its restoration outside the handler) except that the elapsed wall time of the RPC
+-- statement alone is recorded; the receipt is stored under '<op>#<n>' and read with g12p_body / g12p_out.  Returns the label.
+create or replace function pg_temp.g12p_call(
+  p_op text, p_function text, p_actor text, p_request jsonb, p_ctx jsonb
+) returns text language plpgsql security invoker as $body$
+declare
+  v_user text := current_user; v_role text := current_setting('role'); v_rpc_user text;
+  v_response jsonb; v_state text := '00000'; v_message text; v_detail text; v_request jsonb;
+  v_n integer := pg_temp.g12p_next(p_op); v_label text := p_op || '#' || pg_temp.g12p_next(p_op);
+  v_started timestamptz; v_ms numeric;
+begin
+  perform pg_temp.s09d_session(p_actor);
+  -- A PostgREST request starts with the RPC-context flag unset (PAT-031): fixtures that set it do not leak into the measurement.
+  perform set_config('app.cms_rpc', '', true);
+  v_request := p_request || jsonb_build_object('context', p_ctx);
+  execute 'set local role service_role';
+  v_rpc_user := current_user;
+  v_started := clock_timestamp();
+  begin
+    execute format('select %s($1)', p_function) into v_response using v_request;
+  exception when others then
+    get stacked diagnostics v_state = returned_sqlstate, v_message = message_text, v_detail = pg_exception_detail;
+  end;
+  v_ms := extract(epoch from (clock_timestamp() - v_started)) * 1000;
+  perform set_config('role', v_role, true);
+  if current_user is distinct from v_user or current_setting('role') is distinct from v_role then
+    raise exception 'perf bench RPC role restoration failed';
+  end if;
+  insert into g12p_rcpt(label, body, state, message, detail, rpc_user)
+  values (v_label, v_response, v_state, v_message, v_detail, v_rpc_user);
+  insert into g12p_timing(op, n, ms, outcome)
+  values (p_op, v_n, v_ms, case when v_state = '00000' then 'ok' else v_state || ':' || v_message end);
+  return v_label;
+end;
+$body$;
+
+-- A generic statement timer for the worlds that call the RPC under their own helpers: runs the SELECT text, discards the
+-- row, records the elapsed time and 'ok' (an exception propagates and fails the file loudly: a bench never swallows one).
+create or replace function pg_temp.g12p_time(p_op text, p_select text) returns numeric language plpgsql as $body$
+declare v_started timestamptz; v_ms numeric; v_n integer := pg_temp.g12p_next(p_op); v_sink text;
+begin
+  v_started := clock_timestamp();
+  execute p_select into v_sink;
+  v_ms := extract(epoch from (clock_timestamp() - v_started)) * 1000;
+  insert into g12p_timing(op, n, ms, outcome) values (p_op, v_n, v_ms, 'ok');
+  return v_ms;
+end;
+$body$;
+
+create or replace function pg_temp.g12p_p95(p_op text) returns numeric language sql stable as $body$
+  select (percentile_cont(0.95) within group (order by ms))::numeric from g12p_timing where op = p_op $body$;
+create or replace function pg_temp.g12p_max(p_op text) returns numeric language sql stable as $body$
+  select max(ms) from g12p_timing where op = p_op $body$;
+create or replace function pg_temp.g12p_n(p_op text) returns integer language sql stable as $body$
+  select count(*)::integer from g12p_timing where op = p_op $body$;
+-- True when the operation has at least p_min samples and every one succeeded.
+create or replace function pg_temp.g12p_all_ok(p_op text, p_min integer) returns boolean language sql stable as $body$
+  select count(*) >= p_min and bool_and(outcome = 'ok') from g12p_timing where op = p_op $body$;
+-- 'op=outcome xN' of every failed sample, for a failing assertion's diagnostics.
+create or replace function pg_temp.g12p_failures(p_op text) returns text language sql stable as $body$
+  select coalesce(string_agg(distinct outcome, '; '), 'none') from g12p_timing where op = p_op and outcome <> 'ok' $body$;
+-- True when every recorded call ran under the real service_role (the transport role of every platform_api command).
+create or replace function pg_temp.g12p_all_service_role() returns boolean language sql stable as $body$
+  select count(*) > 0 and bool_and(rpc_user = 'service_role') from g12p_rcpt $body$;

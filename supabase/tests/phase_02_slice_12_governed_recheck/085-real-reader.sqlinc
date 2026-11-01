@@ -1,0 +1,36 @@
+-- Review V4-01 (PAT-031 class): the lag fixture (002-lapse-helpers) is the only source of `false` for the four recount paths whose stored
+-- `approved` state can lag a loss of authority, so no governed test let the UNMODIFIED reader read a lapsed row.  This section is the real-reader
+-- witness: no stand-in, no disabled trigger, no clock shift.  The premise is the labelled direct write of the S11 preflight suite
+-- (phase_02_slice_11_helpers_preflight.sql: a counted approver's standing grant is rewritten so its term has ended); it fires the AFTER UPDATE
+-- trigger of P2-S12-AC-204 like any other write to the actor-grant projection.  Since AC-204 every authority loss with a write therefore
+-- invalidates the review in the same statement; what remains to prove, through the real reader on a real lapsed row, is that
+--   (1) the unmodified cms_person_holds_capability answers false for the lapsed term,
+--   (2) the trigger discovers the lapse of that write (a calendar lapse WRITE through the real reader is new coverage of the trigger), and
+--   (3) the recount every governed command runs (cms_governed_review_distinct_approvals) and the activation verdict built on it
+--       (cms_governed_activation_verdict, the recount of the activation and of the fire) answer from that same real reader: 0 live
+--       approvals and `approval_invalidated`.
+-- A STORED `approved` state that still lags, refused by each command, is proven with the stand-in in the guard suites.
+select pg_temp.s12gb_approved('rl1', array['typeA'], 'rev2');
+select pg_temp.s12gr_mark('rl1', 'rl1');
+select ok(platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('rev2'), 'cms.reviewer')
+    and pg_temp.s12ga_approvals(pg_temp.s12ga_review('rl1')) = 1
+    and (select review.state = 'approved' and review.activated_at is null
+           from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('rl1'))
+    and pg_temp.s09d_scalar(format('select platform_private.cms_governed_activation_verdict(%L)', pg_temp.s12ga_review('rl1'))) = 'current',
+  'control: before the term ends rev2 holds cms.reviewer (unmodified reader), rl1 counts one live approval and its activation verdict is current [P2-S12-AC-204]');
+
+-- FIXTURE WRITE (labelled, precedent phase_02_slice_11_helpers_preflight.sql): the term of the standing grant is rewritten as already ended.
+update identity_private.organization_actor_grant set valid_from = current_date - 5, valid_through = current_date - 1
+ where organization_id = pg_temp.s09d_id('ownerOrg') and person_id = pg_temp.s12ga_person('rev2') and capability_code = 'cms.reviewer';
+select ok(not platform_private.cms_person_holds_capability(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('rev2'), 'cms.reviewer')
+    and (select count(*) = 1 from identity_private.organization_actor_grant actor_grant
+          where actor_grant.person_id = pg_temp.s12ga_person('rev2') and actor_grant.capability_code = 'cms.reviewer'
+            and actor_grant.valid_through < current_date),
+  'the UNMODIFIED reader answers false for the lapsed term of a real grant row (no stand-in installed) [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_invalidated('rl1', 'rl1', 'reviewer_authority_changed')
+    and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('rl1')) = 1,
+  'the write that ends the term is discovered by the actor-grant trigger in its own statement: rl1 is invalidated reviewer_authority_changed (version + 1, subject back to draft), one audit record [P2-S12-AC-204]');
+select ok(pg_temp.s12ga_approvals(pg_temp.s12ga_review('rl1')) = 0,
+  'the recount of live qualifying approvals reads the real lapsed row: the recorded approve of rev2 no longer counts (0 of 1 recorded) [P2-S12-AC-204]');
+select is(pg_temp.s09d_scalar(format('select platform_private.cms_governed_activation_verdict(%L)', pg_temp.s12ga_review('rl1'))), 'approval_invalidated',
+  'the activation verdict, the recount of the activation and of the scheduled fire, answers approval_invalidated for the lapsed approver through the unmodified reader [P2-S12-AC-204]');

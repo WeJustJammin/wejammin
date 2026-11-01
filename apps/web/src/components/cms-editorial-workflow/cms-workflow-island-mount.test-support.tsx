@@ -4,7 +4,7 @@ import type {
 } from '@wejammin/contracts';
 import { vi } from 'vitest';
 
-import { mountElement } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import { mountWithIntent } from '../cms-editorial-fields/cms-editor-dom.test-support';
 import { CSRF } from '../../server/cms-workflow-platform-command.test-support';
 import CmsEditorialReviewDetailIsland from './CmsEditorialReviewDetailIsland';
 import CmsEditorialWorkflowIsland from './CmsEditorialWorkflowIsland';
@@ -55,7 +55,7 @@ export const mountWorkflowIsland = (
   const fetcher = vi.fn(
     seams.fetcher ?? (async () => answers.shift() as Response),
   );
-  const mounted = mountElement(
+  const mounted = mountWithIntent(
     <CmsEditorialWorkflowIsland
       init={{
         workflow: initial,
@@ -87,7 +87,7 @@ export const mountReviewIsland = (
   const fetcher = vi.fn(
     options.fetcher ?? (async () => answers.shift() as Response),
   );
-  const mounted = mountElement(
+  const mounted = mountWithIntent(
     <CmsEditorialReviewDetailIsland
       init={{ review: initial, reviewId: REVIEW_ID, verifiedAt: INSTANT }}
       readReview={readReview}

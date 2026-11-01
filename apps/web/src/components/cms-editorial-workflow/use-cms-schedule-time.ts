@@ -1,3 +1,4 @@
+import { retryable } from '../../lib/retryable-import';
 import type { TimeAuthority } from '@wejammin/contracts/time-authority';
 import * as React from 'react';
 
@@ -7,10 +8,12 @@ import * as React from 'react';
  * own lazy chunk and no other page pays for it (FE03, bundle budget). The
  * authority verifies the snapshot's SHA-256 before it answers.
  */
+const loadTimeAuthorityModule = retryable(
+  () => import('@wejammin/contracts/time-authority'),
+);
+
 export const loadTimeAuthority = async (): Promise<TimeAuthority> =>
-  (
-    await import('@wejammin/contracts/time-authority')
-  ).loadPinnedTimeAuthority();
+  (await loadTimeAuthorityModule()).loadPinnedTimeAuthority();
 
 export type TimeAuthorityStatus = 'idle' | 'loading' | 'ready' | 'failed';
 

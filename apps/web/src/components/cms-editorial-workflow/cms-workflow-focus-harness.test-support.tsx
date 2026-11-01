@@ -8,7 +8,7 @@ import {
   choose,
   click,
   flush,
-  mountElement,
+  mountWithIntent,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
 import {
@@ -95,7 +95,7 @@ export const FORM_HARNESSES: readonly FormHarness[] = [
     name: 'Submit for review',
     criterion: 'P2-S11-AC-037',
     mount: ({ fetcher, refetch, onDone }) =>
-      mountElement(
+      mountWithIntent(
         <CmsEditorialReviewSubmitForm
           entryId={ENTRY_ID}
           entryVersion="7"
@@ -121,7 +121,7 @@ export const FORM_HARNESSES: readonly FormHarness[] = [
     name: 'Record your decision',
     criterion: 'P2-S11-AC-037',
     mount: ({ fetcher, refetch, onDone }) =>
-      mountElement(
+      mountWithIntent(
         <CmsEditorialDecisionForm
           review={reviewDetailFixture({ version: '2' })}
           disabledReason={null}
@@ -152,7 +152,7 @@ export const FORM_HARNESSES: readonly FormHarness[] = [
     name: 'Schedule publication',
     criterion: 'P2-S11-AC-040',
     mount: ({ fetcher, refetch, onDone }) =>
-      mountElement(
+      mountWithIntent(
         <CmsEditorialScheduleForm
           revisionId={REVISION_ID}
           reviewVersion="5"
@@ -200,7 +200,7 @@ export const FORM_HARNESSES: readonly FormHarness[] = [
     name: 'Create a preview',
     criterion: 'P2-S11-AC-043',
     mount: ({ fetcher, refetch }) =>
-      mountElement(
+      mountWithIntent(
         <CmsEditorialPreviewForm
           entryId={ENTRY_ID}
           entryVersion="7"
@@ -231,7 +231,7 @@ export const FORM_HARNESSES: readonly FormHarness[] = [
     name: 'Confirm publication',
     criterion: 'P2-S11-AC-043',
     mount: ({ fetcher, refetch, onDone }) =>
-      mountElement(
+      mountWithIntent(
         <CmsEditorialPublishConfirmation
           entryId={ENTRY_ID}
           revisionId={REVISION_ID}
@@ -269,7 +269,7 @@ export const FORM_HARNESSES: readonly FormHarness[] = [
     name: 'Assign a reviewer',
     criterion: 'P2-S11-AC-072',
     mount: ({ fetcher, refetch, onDone }) =>
-      mountElement(
+      mountWithIntent(
         <CmsEditorialReviewAssignmentForm
           review={reviewDetailFixture({
             version: '2',
@@ -310,7 +310,7 @@ export const FORM_HARNESSES: readonly FormHarness[] = [
     name: 'Revoke an assignment',
     criterion: 'P2-S11-AC-072',
     mount: ({ fetcher, refetch, onDone }) =>
-      mountElement(
+      mountWithIntent(
         <CmsEditorialReviewAssignmentForm
           review={reviewDetailFixture({
             version: '2',

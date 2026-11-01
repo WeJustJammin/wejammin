@@ -1,0 +1,27 @@
+-- R1-006: carried_from_id means "immediate source row for revision carry" (BE03c 1578, DEC-198/200).
+-- A row appended by CMS-03C-15 accept or detach in the SAME revision has no cross-revision source, so it
+-- must not inherit the head's carry provenance. Real public append, then the real public writer.
+select pg_temp.s12cc_call('CV-APP','append',pg_temp.s12cc_request('cc-prov','append','s12cv-append-001'));
+select is((select state from s12cc_out where label='CV-APP'),'00000','CV-SETUP: real public append creates the carried revision');
+update s12pl_ids set value=pg_temp.s12cc_body('CV-APP')->>'id' where key='cc-prov:revision';
+select ok((select count(*)=3 and bool_and(carried_from_id is not null and version=1)
+    from platform_private.cms_composition_instances where revision_id=pg_temp.s12pl_rev('cc-prov')),
+  'CV-SETUP: every carried head of the new revision names its immediate source row');
+select pg_temp.s12pu_update('cv-detach',pg_temp.s12pu_update_request('cc-prov','detach',
+  jsonb_build_array(pg_temp.s12pu_target('cc-prov','/local')),'s12cv-detach-0001'));
+select is(pg_temp.s12pu_state('cv-detach'),'00000','CV-SETUP: real detach of a carried linked head succeeds');
+select pg_temp.s12pu_update('cv-accept',pg_temp.s12pu_update_request('cc-prov','accept',
+  jsonb_build_array(pg_temp.s12pu_target('cc-prov','/keep')),'s12cv-accept-0001',2));
+select is(pg_temp.s12pu_state('cv-accept'),'00000','CV-SETUP: real accept of a carried linked head succeeds');
+select is((select jsonb_agg(jsonb_build_object('path',path,'version',version,'state',state,
+    'carried',carried_from_id is not null) order by path,version)
+    from platform_private.cms_composition_instances
+    where revision_id=pg_temp.s12pl_rev('cc-prov') and path in ('/local','/keep')),
+  '[{"path":"/keep","version":1,"state":"active","carried":true},
+    {"path":"/keep","version":2,"state":"active","carried":false},
+    {"path":"/local","version":1,"state":"active","carried":true},
+    {"path":"/local","version":2,"state":"active","carried":false}]'::jsonb,
+  'CV-PROV001: the carried version-1 rows keep their source, the accept and detach rows appended after them carry none');
+select ok(not exists(select 1 from platform_private.cms_composition_instances
+    where revision_id=pg_temp.s12pl_rev('cc-prov') and path='/gone' and version<>1),
+  'CV-PROV002: the untouched carried root is not rewritten by either update');

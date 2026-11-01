@@ -1660,7 +1660,17 @@
 
 ## Structured Memory
 
+- decision: DEC-187: CompositionInstanceResource exposes the read-only position (2026-10-13) — 2026-10-13T03:52:27.839Z
+- decision: DEC-185: Composition rows carry an authored position (2026-10-13) — 2026-10-13T03:36:55.688Z
+- decision: DEC-186: Slice 12 implementation decisions for placement paths, digest status and spec drift (owner may override) (2026-10-13) — 2026-10-13T03:36:55.688Z
 - pattern: PAT-029: DOM test flush helpers must await lazy imports; probe with a deliberately slow loader (2026-10-12) — 2026-10-13T03:00:38.061Z
+- decision: DEC-184: Claimed dry-run preparation delivery budget; fail late now, measure, then cap (2026-10-12) — 2026-10-13T02:18:05.149Z
+- decision: DEC-183: Claimed CMS dry-run preparation Job disposition; a sealed failing scan polls failed MIGRATION_BLOCKED (2026-10-12) — 2026-10-13T02:17:04.058Z
+- decision: DEC-182: Slice 12 wording batch ratified, including G5 for Slice 10 AC030 (2026-10-12) — 2026-10-12T17:39:20.720Z
+- decision: DEC-181: A top-level nested pattern reference is expanded at placement (2026-10-12) — 2026-10-12T16:51:24.933Z
+- decision: DEC-179: Slice 12 mechanical reconciliations R1-R4 of BE03c and FE03 (2026-10-12) — 2026-10-12T10:30:14.997Z
+- decision: DEC-180: Slice 12 implementation decisions G2-G4, G6, G8, G9, G11 and R5 readings (owner may override) (2026-10-12) — 2026-10-12T10:30:14.997Z
+- decision: DEC-178: Slice 12 DEC-148 depth-floor cascade: floor 53 to 285, Phase 2 3314 authored / 3310 active (2026-10-12) — 2026-10-12T10:30:14.996Z
 - pattern: PAT-028: Closure guards must follow the ledger, never demand a claim it does not support (2026-10-12) — 2026-10-12T09:56:00.747Z
 - decision: DEC-177: P2-S11-AC-079 lists the executor cancelled (entry_unavailable) outcome (2026-10-12) — 2026-10-12T05:26:46.711Z
 - decision: DEC-176: Patterns apply to entry revisions only; template-draft wording is reworded (2026-10-12) — 2026-10-12T04:52:06.387Z

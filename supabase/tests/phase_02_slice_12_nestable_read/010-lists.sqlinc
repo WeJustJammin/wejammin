@@ -1,0 +1,95 @@
+-- cmsPatternNestableRead: the designer-facing list of ACTIVE pattern versions of the owner scope whose compatibleTypeIds contain EVERY
+-- requested content type, in the keyset order (patternKey ASC bytewise, patternVersion DESC).  BE03c 184, 413, 1528 (DEC-196).
+-- [P2-S12-AC-105, AC-261]
+
+select has_function('platform_api', 'cms_list_pattern_nestable', array['jsonb'], 'cmsPatternNestableRead has a named platform API RPC (BE03c 1633, AC-261)');
+select has_function('platform_private', 'cms_list_pattern_nestable', array['jsonb'], 'the unsigned keyset reader is a named private function');
+select has_function('platform_private', 'cms_list_pattern_nestable_signed', array['jsonb'], 'the signed-cursor wrapper is a named private function');
+select ok(has_function_privilege('service_role', to_regprocedure('platform_api.cms_list_pattern_nestable(jsonb)'), 'execute')
+    and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_api.cms_list_pattern_nestable(jsonb)'), 'execute'))
+                    from (values ('public'), ('anon'), ('authenticated')) roles(role_name)), false)
+    and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_private.cms_list_pattern_nestable(jsonb)'), 'execute')
+                                  and not has_function_privilege(role_name, to_regprocedure('platform_private.cms_list_pattern_nestable_signed(jsonb)'), 'execute'))
+                    from (values ('public'), ('anon'), ('authenticated'), ('service_role')) roles(role_name)), false),
+  'only service_role executes the transport; the private readers are closed to every API role [AC-261]');
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""']) from pg_proc p
+                     where p.oid in (to_regprocedure('platform_api.cms_list_pattern_nestable(jsonb)'), to_regprocedure('platform_private.cms_list_pattern_nestable(jsonb)'),
+                                     to_regprocedure('platform_private.cms_list_pattern_nestable_signed(jsonb)'))), false),
+  'the three functions are SECURITY DEFINER with an empty search_path [AC-261]');
+-- ownership and ACL mirror the CMS-03C-13 precedent exactly (the S09 inventory pins classify the new name the same way)
+select is((select p.proowner::regrole::text from pg_proc p where p.oid = to_regprocedure('platform_private.cms_list_pattern_nestable(jsonb)')),
+  'wejammin_cms_definer', 'the keyset reader that names the forced-RLS CMS tables is owned by the definer role [SEC-2]');
+select is((select array_agg(p.proowner::regrole::text order by p.proname) from pg_proc p
+            where p.oid in (to_regprocedure('platform_private.cms_list_pattern_nestable_signed(jsonb)'), to_regprocedure('platform_api.cms_list_pattern_nestable(jsonb)'))),
+  (select array_agg(p.proowner::regrole::text order by p.proname) from pg_proc p
+    where p.oid in (to_regprocedure('platform_private.cms_list_pattern_selector_signed(jsonb)'), to_regprocedure('platform_api.cms_list_pattern_selector(jsonb)'))),
+  'the signed wrapper and the transport stay with the owner the CMS-03C-13 pair has (the only role that reaches the Vault cursor helpers)');
+select is((select p.proacl::text from pg_proc p where p.oid = to_regprocedure('platform_api.cms_list_pattern_nestable(jsonb)')),
+  (select p.proacl::text from pg_proc p where p.oid = to_regprocedure('platform_api.cms_list_pattern_selector(jsonb)')),
+  'the transport ACL is identical to the CMS-03C-13 transport ACL [AC-261]');
+select is((select count(*)::integer from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+            where n.nspname = 'public_api' and p.proname like 'cms\_list\_pattern\_nestable%'), 0, 'public_api exposes no nestable function');
+
+-- the signing environment is part of the contract: no Vault key, no page ----------------------------------------------------------
+select pg_temp.s12nr_read('nokey', array[1]);
+select is(pg_temp.s12pu_oc('nokey'), 'P0001:DEPENDENCY_UNAVAILABLE',
+  'without a valid Vault signing key the read fails closed: DEPENDENCY_UNAVAILABLE, never an unsigned page');
+-- This fixed key exists only inside the rolled-back pgTAP transaction; it is never an operational signing value.
+select vault.create_secret(repeat('b2', 32), 'cms_editorial_history_cursor_active', 'pgTAP transaction-only nestable read test key');
+
+-- every-type compatibility, both ways ------------------------------------------------------------------------------------------------
+select pg_temp.s12nr_read('t1', array[1]);
+select is(pg_temp.s12pu_oc('t1'), 'ok', 'a cms.template_designer reads the nestable list');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.s12pu_body('t1')) k), array['items', 'nextCursor', 'pageVersion'],
+  'the page is exactly PatternSelectorPage (the same page shape as CMS-03C-13, BE03c 184)');
+select is((select array_agg(k order by k) from jsonb_object_keys(pg_temp.s12pu_body('t1')->'items'->0) k),
+  array['blockRegistryDigest', 'nodeCount', 'patternId', 'patternKey', 'patternVersion', 'patternVersionId'],
+  'each item is exactly PatternSelectorItem: no owner, capability, authority or state member');
+select is(pg_temp.s12nr_keys(pg_temp.s12pu_body('t1')), array['nx-1@1', 'nx-12@1', 'nx-all@1', 'nx-ret@1', 'nx-sup@2'],
+  'one type: every ACTIVE version listing it, in patternKey order; a version listing MORE types (nx-12, nx-all, nx-sup, nx-ret) is listed; '
+  || 'no superseded nx-sup@1, no draft nx-dra, no version without T1 (nx-2, nx-23)');
+select pg_temp.s12nr_read('t12', array[1, 2]);
+select is(pg_temp.s12nr_keys(pg_temp.s12pu_body('t12')), array['nx-12@1', 'nx-all@1', 'nx-ret@1', 'nx-sup@2'],
+  'two types: a version must list BOTH T1 and T2 - nx-1 (T1 only) and nx-2 (T2 only) are not listed [DEC-181 nested-node rule]');
+select pg_temp.s12nr_read('t21', array[2, 1]);
+select ok(pg_temp.s12pu_body('t21') = pg_temp.s12pu_body('t12'),
+  'the type set is a SET: T2,T1 answers exactly the page T1,T2 answers (same items, same pageVersion)');
+select pg_temp.s12nr_read('t123', array[1, 2, 3]);
+select is(pg_temp.s12nr_keys(pg_temp.s12pu_body('t123')), array['nx-all@1'],
+  'three types: only the version that lists all three is listed; nx-12 misses T3 and nx-23 misses T1');
+select pg_temp.s12nr_read('t23', array[2, 3]);
+select is(pg_temp.s12nr_keys(pg_temp.s12pu_body('t23')), array['nx-23@1', 'nx-all@1'], 'T2,T3: nx-23 and nx-all; nx-12 misses T3');
+select pg_temp.s12nr_read('t13', array[1, 3]);
+select is(pg_temp.s12nr_keys(pg_temp.s12pu_body('t13')), array['nx-all@1'], 'T1,T3: only nx-all lists both');
+select pg_temp.s12nr_read('t2', array[2]);
+select is(pg_temp.s12nr_keys(pg_temp.s12pu_body('t2')), array['nx-12@1', 'nx-2@1', 'nx-23@1', 'nx-all@1', 'nx-ret@1', 'nx-sup@2'], 'T2 alone');
+select pg_temp.s12nr_read('t3', array[3]);
+select is(pg_temp.s12nr_keys(pg_temp.s12pu_body('t3')), array['nx-23@1', 'nx-all@1'], 'T3 alone');
+-- the nested-node rule is the SAVE's rule: nothing listed is one the save would refuse as nested_pattern_not_active for that set
+select ok(not exists (select 1 from jsonb_array_elements(pg_temp.s12pu_body('t12')->'items') item
+                       join platform_private.cms_pattern_versions v on v.id = (item->>'patternVersionId')::uuid
+                      where v.state <> 'active' or v.owner_id <> pg_temp.s09d_id('ownerOrg')
+                         or not (v.compatible_type_ids ? lower(pg_temp.s12nr_type(1)::text) and v.compatible_type_ids ? lower(pg_temp.s12nr_type(2)::text))),
+  'every listed row is an active version of the caller''s owner party that lists T1 and T2');
+select is(pg_temp.s12pu_body('t12')->'items', (select jsonb_agg(pg_temp.s12nr_item(l) order by k collate "C") from (values
+    ('nx-12', 'p12'), ('nx-all', 'pall'), ('nx-ret', 'pret'), ('nx-sup', 'psup2')) t(k, l)),
+  'every item equals the independently built row: lineage id, the version ROW id, key, version, nodeCount and digest of the CMS-03C-12 response');
+select ok(pg_temp.s12pu_body('t12')->'nextCursor' = 'null'::jsonb and jsonb_typeof(pg_temp.s12pu_body('t12')->'pageVersion') = 'string'
+    and pg_temp.s12pu_body('t12')->>'pageVersion' ~ '^[1-9][0-9]*$' and pg_temp.s12pu_body('t12')->>'pageVersion' = pg_temp.s12nr_page_version(1, 2),
+  'a final page has no cursor and a decimal-string pageVersion equal to the high-water update instant of the versions compatible with every type');
+select ok(pg_temp.s12pu_body('t123')->>'pageVersion' = pg_temp.s12nr_page_version(1, 2, 3)
+    and pg_temp.s12pu_body('t1')->>'pageVersion' = pg_temp.s12nr_page_version(1),
+  'the pageVersion follows the requested type SET, not one type');
+select ok(pg_temp.s12pu_unchanged('t12') and pg_temp.s12pu_unchanged('t123') and pg_temp.s12pu_unchanged('t1'),
+  'the nestable read changed no store: no audit, no outbox, no idempotency record');
+-- a real owner content type no pattern lists: an empty page, not an error (the s12pd fixture clone of T1 with compiler 1.9)
+select pg_temp.s12nr_call('t-none', 'platform_api.cms_list_pattern_nestable', jsonb_build_object(
+  'contentTypeId', jsonb_build_array((select id from s12pd_variant_types where label = 'compiler-1-9')),
+  'context', pg_temp.s09d_context('owner', true), 'correlationId', 'a9120000-0000-4000-8000-00000000c0d3'));
+select ok(pg_temp.s12pu_oc('t-none') = 'ok' and pg_temp.s12pu_body('t-none') = '{"items":[],"nextCursor":null,"pageVersion":"1"}'::jsonb,
+  'a real content type no pattern lists is an empty page with pageVersion "1", not an error');
+select pg_temp.s12nr_call('t-none-mixed', 'platform_api.cms_list_pattern_nestable', jsonb_build_object(
+  'contentTypeId', pg_temp.s12nr_types(1) || to_jsonb((select id from s12pd_variant_types where label = 'compiler-1-9')),
+  'context', pg_temp.s09d_context('owner', true), 'correlationId', 'a9120000-0000-4000-8000-00000000c0d3'));
+select ok(pg_temp.s12pu_oc('t-none-mixed') = 'ok' and jsonb_array_length(pg_temp.s12pu_body('t-none-mixed')->'items') = 0,
+  'one listed type plus one nobody lists is empty: EVERY requested type must be listed, never any');

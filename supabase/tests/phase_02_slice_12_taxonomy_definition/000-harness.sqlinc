@@ -1,0 +1,153 @@
+-- Test-only harness. No product function is stubbed, replaced, or mocked.
+create temp table s12td_ids(key text primary key, value text not null) on commit drop;
+create temp table s12td_calls(
+  label text primary key, request jsonb, response jsonb, sqlstate text,
+  message text, detail text, call_role text, before_state jsonb, after_state jsonb
+) on commit drop;
+
+-- Every row and column, sorted by complete row text with a deterministic
+-- collation. Detects in-place mutations as well as inserts/deletes. Missing
+-- stores are explicit sentinels, never silently treated as empty arrays.
+create function pg_temp.s12td_snapshot() returns jsonb
+language plpgsql volatile as $body$
+declare relation text; rows jsonb; result jsonb := '{}'::jsonb;
+begin
+  foreach relation in array array[
+    'platform_private.cms_taxonomy_versions', 'platform_private.cms_terms',
+    'platform_private.cms_term_labels', 'platform_private.cms_term_assignments',
+    'platform_private.cms_governed_reviews',
+    'platform_private.cms_governed_review_dependencies',
+    'platform_private.cms_governed_review_assignments',
+    'platform_private.cms_governed_review_decisions',
+    'platform_private.cms_governed_activation_schedules',
+    'platform_private.cms_canonical_domain_registry',
+    'audit_private.audit_events', 'platform_private.outbox_events',
+    'platform_private.idempotency_records'
+  ] loop
+    if to_regclass(relation) is null then
+      rows := jsonb_build_object('missingRelation', relation);
+    else
+      execute format('select coalesce(jsonb_agg(to_jsonb(r) order by '
+        || 'to_jsonb(r)::text collate "C"), ''[]''::jsonb) from %s r',
+        to_regclass(relation)) into rows;
+    end if;
+    result := result || jsonb_build_object(relation, rows);
+  end loop;
+  return result;
+end;
+$body$;
+
+create function pg_temp.s12td_as(p_who text, p_owner text default 'A') returns void
+language plpgsql as $body$
+declare actor uuid; person uuid; party text;
+begin
+  select value::uuid into actor from s12td_ids where key = 'auth' || p_who;
+  select person_id into person from identity.auth_user_bindings where auth_user_id = actor;
+  select value into party from s12td_ids where key = 'org' || p_owner;
+  perform pg_temp.set_jwt_claim('role', case when actor is null then 'anon' else 'authenticated' end, true);
+  perform pg_temp.set_jwt_claim('sub', coalesce(actor::text, ''), true);
+  perform set_config('app.auth_user_id', coalesce(actor::text, ''), true);
+  perform set_config('app.actor_auth_user_id', coalesce(actor::text, ''), true);
+  perform set_config('app.actor_person_id', coalesce(person::text, ''), true);
+  perform set_config('app.acting_party_id', coalesce(party, ''), true);
+  perform set_config('app.acting_context_id', '', true);
+end;
+$body$;
+
+-- The private transport follows neighboring CMS commands: decoded ifMatch
+-- operand, request body, server context and key. HTTP quoted strong ETag
+-- validation remains the responsibility of separate Worker contract tests.
+-- SQL NULL here becomes JSON null, never the text "null".
+create function pg_temp.s12td_request(
+  p_key text, p_idem text, p_patch jsonb default '{}'::jsonb,
+  p_expected text default null
+) returns jsonb language sql stable as $body$
+  select jsonb_build_object(
+    'taxonomyKey', p_key, 'shape', 'flat',
+    'allowedTypeKeys', jsonb_build_array('s12td_type'),
+    'allowedFieldKeys', jsonb_build_array('s12td_field'),
+    'canonicalOverlapDomains', '[]'::jsonb, 'expectedVersion', p_expected,
+    'idempotencyKey', p_idem,
+    'context', jsonb_build_object(
+      'actingPartyId', nullif(current_setting('app.acting_party_id', true), ''),
+      'actingContextId', 'a9126000-0000-4000-8000-0000000000c1',
+      'correlationId', 'a9126000-0000-4000-8000-0000000000c2'))
+    || case when p_expected is null then '{}'::jsonb
+            else jsonb_build_object('ifMatch', p_expected) end || p_patch
+$body$;
+
+-- Failed product calls roll back their own subtransaction, as a rejected SQL
+-- RPC does. Successful effects stay available to the after-state oracle.
+-- The transport really runs as the selected database role, never postgres.
+create function pg_temp.s12td_run(
+  p_label text, p_request jsonb, p_operation text default 'create',
+  p_role text default 'service_role'
+) returns void language plpgsql as $body$
+declare
+  before_rows jsonb := pg_temp.s12td_snapshot(); answer jsonb;
+  state text := '00000'; msg text; det text; invoked_as text;
+  prior_role text := current_setting('role'); statement text;
+begin
+  statement := case p_operation
+    when 'create' then 'select platform_api.cms_create_taxonomy_version($1)'
+    when 'submit' then 'select platform_api.cms_submit_governed_review($1)'
+    when 'read' then 'select platform_api.cms_list_taxonomy_versions($1)'
+    else null end;
+  if statement is null or p_role not in ('service_role', 'authenticated', 'anon') then
+    raise exception 'unknown test operation or role';
+  end if;
+  begin
+    perform set_config('role', p_role, true);
+    invoked_as := current_user;
+    execute statement into answer using p_request;
+    perform set_config('role', prior_role, true);
+  exception when others then
+    get stacked diagnostics state = returned_sqlstate, msg = message_text,
+      det = pg_exception_detail;
+    perform set_config('role', prior_role, true);
+    answer := null;
+  end;
+  insert into s12td_calls values(p_label, p_request, answer, state, msg, det,
+    invoked_as, before_rows, pg_temp.s12td_snapshot());
+end;
+$body$;
+
+create function pg_temp.s12td_body(p_label text) returns jsonb
+language sql stable as $body$ select response from s12td_calls where label = p_label $body$;
+create function pg_temp.s12td_row(p_label text) returns jsonb
+language sql stable as $body$
+  select to_jsonb(t) from platform_private.cms_taxonomy_versions t
+  where t.id::text = pg_temp.s12td_body(p_label)->>'id'
+$body$;
+
+create function pg_temp.s12td_submit_request(p_created text, p_key text) returns jsonb
+language sql stable as $body$
+  select jsonb_build_object('subjectKind', 'taxonomy_version',
+    'subjectId', coalesce(pg_temp.s12td_body(p_created)->>'id',
+      'a9126000-0000-4000-8000-00000000dead'),
+    'subjectHash', coalesce(pg_temp.s12td_body(p_created)->>'contentHash', repeat('0', 64)),
+    'idempotencyKey', p_key, 'context', pg_temp.s12td_request('unused', p_key)->'context')
+$body$;
+
+-- Read request and always-rolled-back probe helpers shared by 070, 080 and the populated witness.
+create function pg_temp.s12td_read_request(p_id text, p_patch jsonb default '{}'::jsonb)
+returns jsonb language sql stable as $body$
+  select jsonb_build_object('taxonomyId', p_id,
+    'context', pg_temp.s12td_request('unused', 'unused-key')->'context') || p_patch
+$body$;
+
+create function pg_temp.s12td_attempt(p_sql text) returns text language plpgsql as $body$
+declare state text := '00000'; msg text := '';
+begin
+  begin
+    perform set_config('app.cms_rpc', 'true', true);
+    execute p_sql;
+    raise exception 'S12TD_UNDO';
+  exception when others then
+    get stacked diagnostics state = returned_sqlstate, msg = message_text;
+    if msg = 'S12TD_UNDO' then state := '00000'; msg := ''; end if;
+  end;
+  return state || ':' || msg;
+end;
+$body$;
+

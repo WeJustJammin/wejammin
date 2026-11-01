@@ -1,0 +1,107 @@
+-- Expected low-level tokens follow existing CMS RPC conventions. They are
+-- proposed bindings for the absent create producer; HTTP catalog mapping is
+-- not proven by SQL. Each SQLSTATE and message has its own assertion.
+create function pg_temp.s12td_refusal(
+  p_label text, p_message text, p_state text default 'P0001'
+) returns setof text language plpgsql as $body$
+declare c s12td_calls%rowtype;
+begin
+  select * into c from s12td_calls where label = p_label;
+  return next is(c.sqlstate, p_state, p_label || ': SQLSTATE');
+  return next is(c.message, p_message, p_label || ': exact refusal message');
+  return next is(c.response, null::jsonb, p_label || ': no response disclosure');
+  return next is(case when c.sqlstate = p_state and c.message = p_message
+    then c.after_state end, c.before_state,
+    p_label || ': correctly refused call preserves every full snapshot row');
+end;
+$body$;
+
+create function pg_temp.s12td_created(p_label text) returns setof text
+language plpgsql as $body$
+declare c s12td_calls%rowtype; stored jsonb; keys text; reservation jsonb;
+begin
+  select * into c from s12td_calls where label = p_label;
+  stored := pg_temp.s12td_row(p_label);
+  select string_agg(key, ',' order by key) into keys
+    from jsonb_object_keys(case when jsonb_typeof(c.response) = 'object'
+      then c.response else '{}'::jsonb end) member(key);
+  select value into reservation
+    from jsonb_array_elements(c.after_state->'platform_private.idempotency_records')
+    where value->>'operation' = 'CMS-03C-16'
+      and value->>'actor_id' = current_setting('app.actor_auth_user_id', true)
+      and value->>'key_hash' = to_jsonb(platform_private.cms_key_hash(c.request->>'idempotencyKey')) #>> '{}';
+  return next is(c.sqlstate, '00000', p_label || ': ordinary authorized create succeeds');
+  return next is(c.call_role, 'service_role', p_label || ': actual server transport role');
+  return next is(keys, 'allowedFieldKeys,allowedTypeKeys,canonicalOverlapDomains,contentHash,'
+    || 'createdAt,id,shape,state,taxonomyId,taxonomyKey,taxonomyVersion,updatedAt,version',
+    p_label || ': exact public resource; no owner, authority or lifecycle counter');
+  return next is(c.response->>'state', 'draft', p_label || ': creation cannot activate');
+  return next is(c.response->'version', '"1"'::jsonb, p_label || ': decimal-string definition version');
+  return next is(c.response->'taxonomyVersion', '1'::jsonb, p_label || ': numeric vocabulary version');
+  return next matches(c.response->>'id', '^[a-f0-9]{8}(-[a-f0-9]{4}){3}-[a-f0-9]{12}$',
+    p_label || ': generated row identifier');
+  return next is(c.response->'taxonomyId', c.response->'id', p_label || ': first row owns stable lineage');
+  return next is(c.response - array['id','version','contentHash','createdAt','updatedAt',
+      'state','taxonomyId','taxonomyVersion'],
+    c.request - array['idempotencyKey','context','expectedVersion'],
+    p_label || ': shape, key and all declared allowlists round trip');
+  return next matches(c.response->>'contentHash', '^[a-f0-9]{64}$', p_label || ': server content hash');
+  return next is(stored->'version', '1'::jsonb, p_label || ': persisted definition version one');
+  return next is(stored->'lifecycle_version', '1'::jsonb, p_label || ': independent lifecycle starts one');
+  return next is(stored->>'owner_id', c.request#>>'{context,actingPartyId}', p_label || ': derived owner');
+  return next is(stored->>'created_by', current_setting('app.actor_auth_user_id', true),
+    p_label || ': server-derived creator');
+  return next is(stored->>'taxonomy_id', c.response->>'taxonomyId', p_label || ': persisted lineage');
+  return next is(jsonb_build_object('taxonomyKey', stored->'taxonomy_key', 'shape', stored->'shape',
+      'allowedTypeKeys', stored->'allowlisted_type_keys',
+      'allowedFieldKeys', stored->'allowlisted_field_keys',
+      'canonicalOverlapDomains', stored->'canonical_overlap_domains'),
+    c.request - array['idempotencyKey','context','expectedVersion'], p_label || ': complete stored definition');
+  return next is(stored->>'content_hash', c.response->>'contentHash', p_label || ': persisted hash equals response');
+  return next is(stored->'updated_at', stored->'created_at', p_label || ': immutable initial timestamps');
+  return next is(jsonb_array_length(c.after_state->'platform_private.cms_taxonomy_versions'),
+    jsonb_array_length(c.before_state->'platform_private.cms_taxonomy_versions') + 1,
+    p_label || ': exactly one definition inserted');
+  return next is(jsonb_array_length(c.after_state->'audit_private.audit_events'),
+    jsonb_array_length(c.before_state->'audit_private.audit_events') + 1,
+    p_label || ': one atomic audit row');
+  return next is(reservation->>'state', 'completed', p_label || ': completed command reservation');
+  return next ok(c.response is not null
+    and reservation#>'{response_ref,safeHeaders,response}' = c.response,
+    p_label || ': reservation persists exact replay body');
+  return next is(jsonb_array_length(c.after_state->'platform_private.idempotency_records'),
+    jsonb_array_length(c.before_state->'platform_private.idempotency_records') + 1,
+    p_label || ': exactly one idempotency reservation');
+  return next ok((c.after_state->'platform_private.cms_taxonomy_versions')
+    @> (c.before_state->'platform_private.cms_taxonomy_versions'),
+    p_label || ': every preexisting taxonomy row remains byte-equivalent as JSON');
+  return next ok((c.after_state->'audit_private.audit_events')
+    @> (c.before_state->'audit_private.audit_events'),
+    p_label || ': every preexisting audit row remains intact');
+  return next ok((c.after_state->'platform_private.idempotency_records')
+    @> (c.before_state->'platform_private.idempotency_records'),
+    p_label || ': every preexisting reservation remains intact');
+  return next is(c.after_state - array['platform_private.cms_taxonomy_versions',
+      'audit_private.audit_events','platform_private.idempotency_records'],
+    c.before_state - array['platform_private.cms_taxonomy_versions',
+      'audit_private.audit_events','platform_private.idempotency_records'],
+    p_label || ': terms, reviews, dependencies, registry and outbox wholly untouched');
+end;
+$body$;
+
+-- A replay counts as no-effect only after a successful non-null result from the
+-- same original call. A missing producer cannot make this oracle pass.
+create function pg_temp.s12td_replay(p_label text, p_original text) returns setof text
+language plpgsql as $body$
+declare c s12td_calls%rowtype; original s12td_calls%rowtype;
+begin
+  select * into c from s12td_calls where label = p_label;
+  select * into original from s12td_calls where label = p_original;
+  return next is(original.sqlstate, '00000', p_label || ': original creation prerequisite');
+  return next is(c.sqlstate, '00000', p_label || ': replay succeeds');
+  return next ok(c.response is not null and c.response = original.response,
+    p_label || ': exact original resource, including hash and timestamps');
+  return next is(case when c.sqlstate = '00000' and c.response is not null
+    then c.after_state end, c.before_state, p_label || ': replay changes no complete store row');
+end;
+$body$;

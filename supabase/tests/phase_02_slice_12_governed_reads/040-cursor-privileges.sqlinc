@@ -1,0 +1,99 @@
+-- CMS-03C-11 signed cursor bound to the complete query and the acting scope (DEC-140 fault classes), and the privilege
+-- boundary of both reads.
+create or replace function pg_temp.s12ga_tampered_cursor(p_cursor text) returns text language plpgsql as $body$
+declare v_envelope jsonb := convert_from(decode(p_cursor, 'base64'), 'utf8')::jsonb;
+begin
+  return replace(encode(convert_to(platform_private.cms_jcs(
+    jsonb_set(v_envelope, '{signature}', to_jsonb(repeat('0', 64)))), 'utf8'), 'base64'), E'\n', '');
+end;
+$body$;
+-- A genuinely signed cursor whose absolute expiry has passed: opened and re-sealed with the shared Vault helpers.
+create or replace function pg_temp.s12ga_expired_cursor(p_cursor text) returns text language plpgsql as $body$
+declare
+  v_keys constant text[] := array['queryHash', 'lastUpdatedAt', 'lastReviewId', 'expiresAt'];
+  v_payload jsonb;
+begin
+  v_payload := convert_from(decode(platform_private.cms_signed_cursor_open('cms-03c-11', to_jsonb(p_cursor), v_keys), 'base64'), 'utf8')::jsonb
+    || jsonb_build_object('expiresAt', (floor(extract(epoch from clock_timestamp()))::bigint - 10)::text);
+  return platform_private.cms_signed_cursor_seal_page('cms-03c-11', jsonb_build_object('nextCursor',
+    replace(encode(convert_to(platform_private.cms_jcs(v_payload), 'utf8'), 'base64'), E'\n', '')), v_keys)->>'nextCursor';
+end;
+$body$;
+
+select pg_temp.s12ga_mark('r3:cursor', pg_temp.s12ga_review('r3'));
+select pg_temp.s12ga_list('cu-scope', 'owner', jsonb_build_object('scope', 'submitted', 'limit', 2, 'cursor', pg_temp.s12ga_body('w1')->>'nextCursor'));
+select pg_temp.s12ga_list('cu-state', 'owner', jsonb_build_object('scope', 'owned', 'limit', 2, 'state', 'open', 'cursor', pg_temp.s12ga_body('w1')->>'nextCursor'));
+select pg_temp.s12ga_list('cu-limit', 'owner', jsonb_build_object('scope', 'owned', 'limit', 3, 'cursor', pg_temp.s12ga_body('w1')->>'nextCursor'));
+select pg_temp.s12ga_list('cu-kind', 'owner', jsonb_build_object('scope', 'owned', 'limit', 2, 'subjectKind', 'template_version', 'cursor', pg_temp.s12ga_body('w1')->>'nextCursor'));
+select pg_temp.s12ga_list('cu-actor', 'designer2', jsonb_build_object('scope', 'owned', 'limit', 2, 'cursor', pg_temp.s12ga_body('w1')->>'nextCursor'));
+select pg_temp.s12ga_list('cu-tamper', 'owner', jsonb_build_object('scope', 'owned', 'limit', 2,
+  'cursor', pg_temp.s12ga_tampered_cursor(pg_temp.s12ga_body('w1')->>'nextCursor')));
+select pg_temp.s12ga_list('cu-expired', 'owner', jsonb_build_object('scope', 'owned', 'limit', 2,
+  'cursor', pg_temp.s12ga_expired_cursor(pg_temp.s12ga_body('w1')->>'nextCursor')));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['cu-scope', 'cu-state', 'cu-limit', 'cu-kind', 'cu-actor', 'cu-tamper', 'cu-expired']) l),
+  'cu-actor=P0001:CONFLICT;cu-expired=P0001:CONFLICT;cu-kind=P0001:CONFLICT;cu-limit=P0001:CONFLICT;cu-scope=P0001:CONFLICT;'
+    || 'cu-state=P0001:CONFLICT;cu-tamper=P0001:CONFLICT',
+  'a cursor replayed under another scope, state, subject kind, limit or actor, a tampered signature and an expired cursor are CONFLICT '
+  || '(the client restarts from the first page) [P2-S12-AC-098]');
+select pg_temp.s12ga_list('mf-text', 'owner', jsonb_build_object('scope', 'owned', 'cursor', 'not-a-cursor!!'));
+select pg_temp.s12ga_list('mf-json', 'owner', jsonb_build_object('scope', 'owned', 'cursor', encode(convert_to('hello', 'utf8'), 'base64')));
+select pg_temp.s12ga_list('mf-keys', 'owner', jsonb_build_object('scope', 'owned', 'cursor', encode(convert_to('{"a":1}', 'utf8'), 'base64')));
+select pg_temp.s12ga_list('mf-long', 'owner', jsonb_build_object('scope', 'owned', 'cursor', repeat('A', 513)));
+select pg_temp.s12ga_list('mf-type', 'owner', jsonb_build_object('scope', 'owned', 'cursor', 17));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['mf-text', 'mf-json', 'mf-keys', 'mf-long', 'mf-type']) l),
+  'mf-json=P0001:INVALID_REQUEST;mf-keys=P0001:INVALID_REQUEST;mf-long=P0001:INVALID_REQUEST;mf-text=P0001:INVALID_REQUEST;'
+    || 'mf-type=P0001:INVALID_REQUEST',
+  'a structurally malformed cursor (not base64, not JSON, wrong keys, over 512 characters, not a string) is INVALID_REQUEST [P2-S12-AC-098]');
+select ok(pg_temp.s12ga_same('r3:cursor', pg_temp.s12ga_review('r3')),
+  'every cursor refusal leaves the covered stores identical [P2-S12-AC-098]');
+
+-- ------------------------------------------------------------------------------ privileges --
+select is(
+  (select string_agg(r || '=' || pg_temp.s12ga_denied(r, 'select platform_api.cms_get_governed_review(''{}''::jsonb)') || '/'
+                       || pg_temp.s12ga_denied(r, 'select platform_api.cms_list_governed_reviews(''{}''::jsonb)'), ';' order by r collate "C")
+     from unnest(array['anon', 'authenticated']) r),
+  'anon=42501/42501;authenticated=42501/42501',
+  'anon and authenticated may not execute either platform API read RPC [P2-S12-AC-091]');
+select is(
+  pg_temp.s12ga_denied('service_role', 'select platform_private.cms_get_governed_review(''{}''::jsonb)') || '/'
+    || pg_temp.s12ga_denied('service_role', 'select platform_private.cms_list_governed_reviews(''{}''::jsonb)') || '/'
+    || pg_temp.s12ga_denied('service_role', 'select platform_private.cms_list_governed_reviews_signed(''{}''::jsonb)'),
+  '42501/42501/42501',
+  'service_role may not execute the private readers, only the platform API wrappers [P2-S12-AC-091]');
+select ok(has_function_privilege('service_role', 'platform_api.cms_get_governed_review(jsonb)', 'EXECUTE')
+    and has_function_privilege('service_role', 'platform_api.cms_list_governed_reviews(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_api.cms_get_governed_review(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_api.cms_list_governed_reviews(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_private.cms_get_governed_review(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_private.cms_list_governed_reviews(jsonb)', 'EXECUTE')
+    and not has_function_privilege('public', 'platform_private.cms_list_governed_reviews_signed(jsonb)', 'EXECUTE')
+    and (select bool_and(proc.prosecdef and proc.proconfig = array['search_path=""'])
+           from pg_proc proc where proc.oid in (
+             to_regprocedure('platform_private.cms_get_governed_review(jsonb)'),
+             to_regprocedure('platform_private.cms_list_governed_reviews(jsonb)'),
+             to_regprocedure('platform_private.cms_list_governed_reviews_signed(jsonb)'),
+             to_regprocedure('platform_api.cms_get_governed_review(jsonb)'),
+             to_regprocedure('platform_api.cms_list_governed_reviews(jsonb)'))),
+  'the wrappers are service_role only and every reader is SECURITY DEFINER with an empty search_path [P2-S12-AC-091]');
+select ok((select count(*) >= 60 and bool_and(rpc_user = 'service_role' and before_user = after_user) from s12ga_rcpt),
+  'role control: every command and read of this suite really executed as service_role and restored the session role [P2-S12-AC-091]');
+
+-- Evidence emission (no assertion): the response bodies the contract-parse check reads from the TAP stream.
+select 'EVIDENCE g-owner ' || coalesce(pg_temp.s12ga_body('g-owner')::text, 'null');
+select 'EVIDENCE g-rev1 ' || coalesce(pg_temp.s12ga_body('g-rev1')::text, 'null');
+select 'EVIDENCE g-d2 ' || coalesce(pg_temp.s12ga_body('g-d2')::text, 'null');
+select 'EVIDENCE g-rev2 ' || coalesce(pg_temp.s12ga_body('g-rev2')::text, 'null');
+select 'EVIDENCE s-r1-owner ' || coalesce(pg_temp.s12ga_body('s-r1-owner')::text, 'null');
+select 'EVIDENCE s-r1-rev1 ' || coalesce(pg_temp.s12ga_body('s-r1-rev1')::text, 'null');
+select 'EVIDENCE s-r5-owner ' || coalesce(pg_temp.s12ga_body('s-r5-owner')::text, 'null');
+select 'EVIDENCE s-r6-d2 ' || coalesce(pg_temp.s12ga_body('s-r6-d2')::text, 'null');
+select 'EVIDENCE q-rev1 ' || coalesce(pg_temp.s12ga_body('q-rev1')::text, 'null');
+select 'EVIDENCE q-owner-submitted ' || coalesce(pg_temp.s12ga_body('q-owner-submitted')::text, 'null');
+select 'EVIDENCE w1 ' || coalesce(pg_temp.s12ga_body('w1')::text, 'null');
+select 'EVIDENCE w4 ' || coalesce(pg_temp.s12ga_body('w4')::text, 'null');
+select 'EVIDENCE f-pattern ' || coalesce(pg_temp.s12ga_body('f-pattern')::text, 'null');
+select 'EVIDENCE q-nonmember ' || coalesce(pg_temp.s12ga_body('q-nonmember')::text, 'null');

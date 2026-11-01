@@ -11,7 +11,6 @@ import {
 } from './cms-field-value';
 import { allKindFields, fieldUuid } from './cms-field-fixtures.test-support';
 import { CMS_EDITORIAL_REASON_COPY } from '../cms-editorial/cms-editorial-reason-copy';
-import { editableCmsFieldIds } from '../cms-editorial/cms-editorial-entry-editor-state';
 
 const byKey = (key: string): CmsFieldDescriptor => {
   const found = describeCmsAuthoringFields(allKindFields()).find(
@@ -166,9 +165,23 @@ describe('validateCmsFieldValue: structured kinds', () => {
     ).toEqual(['invalid_target_version']);
   });
 
-  it('never reports an issue for the kinds that have no producer yet', () => {
+  it('reports no issue for an optional empty taxonomy, and never for a kind with no producer', () => {
     expect(codes(byKey('topics'), { termIds: [] })).toEqual([]);
     expect(codes(byKey('cover'), null)).toEqual([]);
+    expect(
+      codes(
+        {
+          kind: 'unsupported',
+          fieldId: fieldUuid(0x77),
+          key: 'mystery',
+          label: 'Mystery',
+          helpText: undefined,
+          required: false,
+          order: 99,
+        },
+        'anything',
+      ),
+    ).toEqual([]);
   });
 });
 
@@ -348,16 +361,6 @@ describe('validateCmsFieldValue: text PostgreSQL cannot store is refused client-
 
   it('reports the unstorable character before any length rule', () => {
     expect(codes(byKey('title'), '\uD800')).toEqual(['invalid_characters']);
-  });
-
-  it('has no editor, and so submits no free-text id, for taxonomy and media', () => {
-    const descriptors = describeCmsAuthoringFields(allKindFields());
-    const editable = editableCmsFieldIds(descriptors, { readOnlyNotices: {} });
-    const unavailable = descriptors
-      .filter((descriptor) => ['taxonomy', 'media'].includes(descriptor.kind))
-      .map((descriptor) => descriptor.fieldId);
-    expect(unavailable).toHaveLength(2);
-    for (const fieldId of unavailable) expect(editable).not.toContain(fieldId);
   });
 });
 

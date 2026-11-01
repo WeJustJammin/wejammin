@@ -1,0 +1,125 @@
+-- CMS-03C-09 `schedule` on gs1 / gs2 / gs3: acceptance (202) without an event, the schedule row, replay, the one-live-schedule rule,
+-- the 03b Time authority rules the database can check and the authority end.
+select pg_temp.s12gb_act('s1', 'owner', pg_temp.s12ga_review('gs1'), 'schedule');
+select pg_temp.s12ga_keep('s1', 's1');
+select is(pg_temp.s12ga_out('s1'), 'ok',
+  'the subject owner schedules an approved governed review with recent MFA [P2-S12-AC-142]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('s1')),
+  'action,activatedAt,eventType,lineageId,reviewId,reviewVersion,scheduledForUtc,subjectId,subjectKind,subjectState,subjectVersion,supersededVersion',
+  'the 202 body is exactly GovernedActivationResource (12 members, DEC-191 supersededVersion) [P2-S12-AC-142]');
+select ok(
+  pg_temp.s12ga_body('s1')->>'reviewId' = pg_temp.s12ga_review('gs1')::text
+    and pg_temp.s12ga_body('s1')->>'reviewVersion' = '2'
+    and pg_temp.s12ga_body('s1')->>'subjectState' = 'scheduled' and pg_temp.s12ga_body('s1')->>'action' = 'schedule'
+    and pg_temp.s12ga_body('s1')->'activatedAt' = 'null'::jsonb and pg_temp.s12ga_body('s1')->'eventType' = 'null'::jsonb
+    and pg_temp.s12ga_body('s1')->'subjectVersion' = '1'::jsonb
+    and pg_temp.s12ga_body('s1')->>'scheduledForUtc'
+        = platform_private.auth_iso_time((pg_temp.s12gb_sched('gs1')->>'resolved_at_utc')::timestamptz),
+  'a scheduled acceptance leaves the review version unchanged, names the scheduled state and instant, and has no activatedAt and no event type [P2-S12-AC-142]');
+select ok(
+  (select schedule.state = 'pending' and schedule.version = 1 and schedule.review_id = pg_temp.s12ga_review('gs1')
+          and schedule.subject_kind = 'template_version' and schedule.subject_id = pg_temp.s12ga_subject('gs1')
+          and schedule.owner_id = pg_temp.s12ga_org() and schedule.expected_version = 2
+          and schedule.attempt_count = 0 and schedule.next_attempt_at is null and schedule.lease_id is null
+          and schedule.lease_until is null and schedule.reason_code is null and schedule.actual_at_utc is null
+          and schedule.deviation_seconds is null and schedule.timezone = 'UTC'
+          and schedule.tzdb_version = platform_private.cms_tzdb_version() and schedule.disambiguation = 'none'
+          and schedule.created_by = pg_temp.s12ga_person('owner')
+          and schedule.local_datetime = (schedule.resolved_at_utc at time zone 'UTC')
+          and schedule.resolved_at_utc between clock_timestamp() + interval '60 seconds' and clock_timestamp() + interval '100 seconds'
+     from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('gs1'))
+  and (select count(*) = 1 from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('gs1')),
+  'exactly one pending schedule (version 1) exists with the approved review version, the time evidence as submitted, the creator and no lease [P2-S12-AC-142]');
+select ok(
+  (select subject.state = 'scheduled' and subject.lifecycle_version = 4 and subject.version = 1 and subject.activated_at is null
+     from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('gs1'))
+  and (select review.state = 'approved' and review.version = 2 and review.activated_at is null
+         from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('gs1'))
+  and pg_temp.s12gb_events('gs1') = 0
+  and pg_temp.s12gb_audits('cms.governed.schedule', 'gs1') = 1 and pg_temp.s12gb_audits('cms.governed.activate', 'gs1') = 0
+  and exists (select 1 from platform_private.idempotency_records record
+               where record.operation = 'CMS-03C-09' and record.key_hash = platform_private.cms_key_hash('s12ga-s1')
+                 and record.state = 'completed' and record.response_ref->>'status' = '202'),
+  'scheduling moves the subject approved -> scheduled (lifecycle 3 -> 4), emits NO event, writes one audit record and stores status 202 [P2-S12-AC-142]');
+select pg_temp.s12gb_mark('gs1:scheduled', 'gs1');
+-- ----------------------------------------------------------------------------- replay and the one live schedule --
+select pg_temp.s12gb_act('s1', 'owner', pg_temp.s12ga_review('gs1'), 'schedule', jsonb_build_object('expectedVersion', '2', 'ifMatch', '2'));
+select ok(pg_temp.s12ga_out('s1') = 'ok' and pg_temp.s12ga_body('s1') = pg_temp.s12ga_kept('s1')
+    and pg_temp.s12gb_same('gs1:scheduled', 'gs1')
+    and (select count(*) = 1 from platform_private.cms_governed_activation_schedules where review_id = pg_temp.s12ga_review('gs1')),
+  'an exact same-key replay returns the original 202 body and writes no second schedule, audit record or state change [P2-S12-AC-142]');
+select pg_temp.s12gb_act('s1-second', 'owner', pg_temp.s12ga_review('gs1'), 'schedule');
+select pg_temp.s12gb_act('s1-activate', 'owner', pg_temp.s12ga_review('gs1'), 'activate');
+select is(pg_temp.s12ga_out('s1-second') || '|' || pg_temp.s12ga_out('s1-activate'),
+  'P0001:schedule_exists|P0001:subject_not_activatable',
+  'a second live schedule of the subject is 409 schedule_exists; an immediate activation of a scheduled subject is 409 subject_not_activatable [P2-S12-AC-143]');
+select ok(pg_temp.s12gb_same('gs1:scheduled', 'gs1') and pg_temp.s12gb_events('gs1') = 0,
+  'both refusals leave the schedule, subject, review and append-only stores identical and emit no event [P2-S12-AC-143]');
+
+-- ------------------------------------------------------------- the 03b Time authority rules (gs2) --
+select pg_temp.s12gb_mark('gs2:time', 'gs2');
+select pg_temp.s12gb_act('t-tzdb', 'owner', pg_temp.s12ga_review('gs2'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '90 seconds', jsonb_build_object('tzdbVersion', 'tzdb-0.0'))));
+select pg_temp.s12gb_act('t-offset', 'owner', pg_temp.s12ga_review('gs2'), 'schedule',
+  jsonb_build_object('activateAt', (select a || jsonb_build_object('localDateTime',
+    to_char(((a->>'resolvedUtc')::timestamptz at time zone 'UTC') + interval '15 hours', 'YYYY-MM-DD"T"HH24:MI:SS.US'))
+    from (select pg_temp.s12gb_at() a) q)));
+select pg_temp.s12gb_act('t-soon', 'owner', pg_temp.s12ga_review('gs2'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '30 seconds')));
+select pg_temp.s12gb_act('t-past', 'owner', pg_temp.s12ga_review('gs2'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '-5 minutes')));
+select pg_temp.s12gb_act('t-far', 'owner', pg_temp.s12ga_review('gs2'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '367 days')));
+select pg_temp.s12gb_act('t-authority', 'owner', pg_temp.s12ga_review('gs2'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '3 days')));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['t-tzdb', 't-offset', 't-soon', 't-past', 't-far', 't-authority']) l),
+  't-authority=P0001:authority_ends_before_schedule;t-far=P0001:schedule_out_of_horizon;t-offset=P0001:resolved_utc_mismatch;'
+    || 't-past=P0001:schedule_out_of_horizon;t-soon=P0001:schedule_out_of_horizon;t-tzdb=P0001:tzdb_version_mismatch',
+  'the pinned tzdb, the local/UTC offset window (-12 h .. +14 h), the 60 s .. 366 d horizon and the activator grant day are enforced with the 03b time tokens [P2-S12-AC-144]');
+select ok(nullif(pg_temp.s12ga_det('t-tzdb'), '')::jsonb = jsonb_build_object('pinnedVersion', platform_private.cms_tzdb_version())
+    and nullif(pg_temp.s12ga_det('t-soon'), '')::jsonb ? 'minUtc' and nullif(pg_temp.s12ga_det('t-soon'), '')::jsonb ? 'maxUtc'
+    and (nullif(pg_temp.s12ga_det('t-soon'), '')::jsonb->>'minUtc')::timestamptz > clock_timestamp() + interval '30 seconds'
+    and (nullif(pg_temp.s12ga_det('t-soon'), '')::jsonb->>'maxUtc')::timestamptz > clock_timestamp() + interval '365 days',
+  'tzdb_version_mismatch names the pinned version; schedule_out_of_horizon names the minUtc and maxUtc of the horizon [P2-S12-AC-144]');
+-- resolved_utc_mismatch carries the contract-mandatory details.expectedUtc (CmsGovernedTimeRefusalDetailsSchema; BE03b 1846 step 7, 1934).
+-- The database has no tz rules (BE03b 1849): its member is the instant nearest the supplied resolvedUtc whose offset against the local
+-- time lies in its own -12 h .. +14 h window.  Fixed instants, so the expected strings are independent literals.
+select pg_temp.s12gb_act('t-off-hi', 'owner', pg_temp.s12ga_review('gs2'), 'schedule', jsonb_build_object('activateAt', jsonb_build_object(
+  'localDateTime', '2031-03-04T20:30:00.250', 'timezone', 'UTC', 'resolvedUtc', '2031-03-04T05:30:00.250Z',
+  'tzdbVersion', platform_private.cms_tzdb_version(), 'disambiguation', 'none')));
+select pg_temp.s12gb_act('t-off-lo', 'owner', pg_temp.s12ga_review('gs2'), 'schedule', jsonb_build_object('activateAt', jsonb_build_object(
+  'localDateTime', '2031-03-04T04:30:00.250', 'timezone', 'UTC', 'resolvedUtc', '2031-03-04T17:30:00.250Z',
+  'tzdbVersion', platform_private.cms_tzdb_version(), 'disambiguation', 'none')));
+select pg_temp.s12gb_act('t-edge-hi', 'owner', pg_temp.s12ga_review('gs2'), 'schedule', jsonb_build_object('activateAt', jsonb_build_object(
+  'localDateTime', '2031-03-04T19:30:00.250', 'timezone', 'UTC', 'resolvedUtc', '2031-03-04T05:30:00.250Z',
+  'tzdbVersion', platform_private.cms_tzdb_version(), 'disambiguation', 'none')));
+select pg_temp.s12gb_act('t-edge-lo', 'owner', pg_temp.s12ga_review('gs2'), 'schedule', jsonb_build_object('activateAt', jsonb_build_object(
+  'localDateTime', '2031-03-04T05:30:00.250', 'timezone', 'UTC', 'resolvedUtc', '2031-03-04T17:30:00.250Z',
+  'tzdbVersion', platform_private.cms_tzdb_version(), 'disambiguation', 'none')));
+select is(
+  pg_temp.s12gb_oc('t-off-hi') || '|' || pg_temp.s12gb_oc('t-off-lo'),
+  'P0001:resolved_utc_mismatch#{"expectedUtc": "2031-03-04T06:30:00.250Z"}|P0001:resolved_utc_mismatch#{"expectedUtc": "2031-03-04T16:30:00.250Z"}',
+  'a local time 15 h after (13 h before) the resolved UTC is resolved_utc_mismatch whose DETAIL expectedUtc is the nearest instant inside the -12 h .. +14 h window [P2-S12-AC-144]');
+select is(
+  pg_temp.s12ga_out('t-edge-hi') || '|' || pg_temp.s12ga_out('t-edge-lo'),
+  'P0001:schedule_out_of_horizon|P0001:schedule_out_of_horizon',
+  'a local time exactly +14 h after (12 h before) the resolved UTC is inside the window: it passes the offset rule and reaches the horizon rule [P2-S12-AC-144]');
+select ok(pg_temp.s12gb_same('gs2:time', 'gs2') and (select count(*) from platform_private.cms_governed_activation_schedules
+        where review_id = pg_temp.s12ga_review('gs2')) = 0 and pg_temp.s12gb_events('gs2') = 0,
+  'every time-rule and authority refusal commits nothing: no schedule, no state change, no event, no reservation [P2-S12-AC-144]');
+
+-- ---------------------------------------------------------- sub-microsecond precision of the instant (gs3) --
+create temp table s12gb_s3at on commit drop as
+  select a || jsonb_build_object('localDateTime', a->>'localDateTime' || '789',
+                                 'resolvedUtc', regexp_replace(a->>'resolvedUtc', 'Z$', '789Z')) as sent
+    from (select pg_temp.s12gb_at() a) q;
+select pg_temp.s12gb_act('s3', 'owner', pg_temp.s12ga_review('gs3'), 'schedule',
+  jsonb_build_object('activateAt', (select sent from s12gb_s3at)));
+select ok(pg_temp.s12ga_out('s3') = 'ok'
+    and (select to_char(schedule.resolved_at_utc at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.US') = left(sent->>'resolvedUtc', 26)
+            and to_char(schedule.local_datetime, 'YYYY-MM-DD"T"HH24:MI:SS.US') = left(sent->>'localDateTime', 26)
+       from platform_private.cms_governed_activation_schedules schedule, s12gb_s3at
+      where schedule.review_id = pg_temp.s12ga_review('gs3')),
+  'an instant with nanosecond digits is accepted and stored floored to the microsecond of the schedule column [P2-S12-AC-144]');

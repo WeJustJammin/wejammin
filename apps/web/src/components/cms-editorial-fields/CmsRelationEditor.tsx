@@ -5,7 +5,7 @@ import CmsFieldFrame from './CmsFieldFrame';
 import type { CmsRelationDescriptor } from './cms-field-descriptor';
 import { cmsFieldIds } from './cms-field-ids';
 import type { CmsFieldIssue } from './cms-field-issue';
-import { isJsonRecord } from './cms-field-value-structured';
+import { isJsonRecord } from './cms-field-basics';
 
 export interface CmsRelationEditorProps {
   readonly descriptor: CmsRelationDescriptor;

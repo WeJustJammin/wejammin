@@ -1,0 +1,198 @@
+-- DEC-200 TEST ONLY: guarded legacy row graphs, real parent successors and RPCs.
+-- No original fixture/oracle, activation, permission or production guard changes.
+create temp table s12cp_graph(tag text primary key,kind text,p1 uuid,p2 uuid,c0 uuid,c1 uuid) on commit drop;
+create temp table s12cp_donor(rows jsonb) on commit drop;
+select * from pg_temp.s12pl_pattern('cp-v1','s12cp-parent',jsonb_build_array(
+  pg_temp.s12pd_block('parent','[]','{"title":"PARENT-B"}'),
+  pg_temp.s12pd_block('spare','[]','{"title":"SPARE"}')));
+select pg_temp.s09d_session('owner','service_role');
+select pg_temp.s12cb_world('cp-donor');
+select pg_temp.s12pl_run('CP-DONOR',pg_temp.s12pl_request('cp-donor','cp-v1','/','{}','s12cp-donor'));
+select is(pg_temp.s12pl_state('CP-DONOR'),'00000','CP-DONOR: genuine public parent placement under isolated active lineage');
+insert into s12cp_donor select jsonb_agg(to_jsonb(i) order by path,version)
+  from platform_private.cms_composition_instances i where revision_id=pg_temp.s12pl_rev('cp-donor');
+
+create function pg_temp.s12cp_world(p_tag text,p_kind text) returns setof text language plpgsql as $body$
+declare donor platform_private.cms_composition_instances; child platform_private.cms_composition_instances;
+  parent_id uuid:=extensions.gen_random_uuid(); old_child uuid; child_id uuid; next_parent uuid;
+  stamp timestamptz:=clock_timestamp();
+begin
+  perform pg_temp.s09d_session('owner','service_role');
+  perform pg_temp.s12cb_world(p_tag);
+  -- DEC-209: a conflict-resolution world keeps its graph on the current draft (theirs).
+  if p_tag like '%-res' then perform pg_temp.s12cc_theirs_first(p_tag); end if;
+  -- Explicit legacy storage graph, not a claim that placement emits parents.
+  if p_kind='cycle' then old_child:=pg_temp.s12cb_row(p_tag,'/child',23); end if;
+  select * into donor from platform_private.cms_composition_instances
+    where id=pg_temp.s12pu_head('cp-donor','/parent');
+  perform set_config('app.cms_rpc','true',true);
+  insert into platform_private.cms_composition_instances select (jsonb_populate_record(
+    null::platform_private.cms_composition_instances,to_jsonb(donor)||jsonb_build_object(
+      'id',parent_id,'revision_id',pg_temp.s12pl_rev(p_tag),'parent_instance_id',old_child,
+      'created_at',stamp,'updated_at',stamp,'carried_from_id',null))).*;
+  if p_kind='cycle' then
+    select * into child from platform_private.cms_composition_instances where id=old_child;
+    child_id:=extensions.gen_random_uuid(); stamp:=clock_timestamp();
+    insert into platform_private.cms_composition_instances select (jsonb_populate_record(
+      null::platform_private.cms_composition_instances,to_jsonb(child)||jsonb_build_object(
+        'id',child_id,'version',2,'parent_instance_id',parent_id,'created_at',stamp,'updated_at',stamp))).*;
+  else
+    child_id:=pg_temp.s12cb_row(p_tag,'/child',23,parent_id);
+  end if;
+  insert into s12cp_graph values(p_tag,p_kind,parent_id,null,old_child,child_id);
+  if p_kind<>'excluded' then
+    perform pg_temp.s12pu_update('CP-DETACH-'||p_tag,pg_temp.s12pu_update_request(p_tag,'detach',
+      jsonb_build_array(pg_temp.s12pu_target(p_tag,'/parent')),'s12cp-detach-'||p_tag));
+    return next extensions.is(pg_temp.s12pu_state('CP-DETACH-'||p_tag),'00000',
+      p_tag||': actual public parent detach appends P2 without changing its legacy parent');
+    next_parent:=pg_temp.s12pu_head(p_tag,'/parent');
+    update s12cp_graph set p2=next_parent where tag=p_tag;
+    return next extensions.ok((select id<>parent_id and version=2 and state='active' and link_mode='detached'
+      and detached_tree is not null and parent_instance_id is not distinct from old_child
+      from platform_private.cms_composition_instances where id=next_parent),
+      p_tag||': P2 is a real fresh selected successor; P1 history remains the recorded child parent');
+  end if;
+  return next extensions.ok((select parent_instance_id=parent_id from platform_private.cms_composition_instances where id=child_id),
+    p_tag||': admitted selected child really records historical P1, not a guessed path');
+end;
+$body$;
+select fixture.* from (values('cp-app','positive'),('cp-res','positive'),
+  ('cp-excluded-app','excluded'),('cp-excluded-res','excluded'),
+  ('cp-cycle-app','cycle'),('cp-cycle-res','cycle')) worlds(tag,kind)
+  cross join lateral pg_temp.s12cp_world(tag,kind) fixture;
+
+-- Only this isolated pattern lineage advances. Frozen cc-v2 and restore020 stay intact.
+select * from pg_temp.s12pl_pattern('cp-v2','s12cp-parent',jsonb_build_array(
+  pg_temp.s12pd_block('spare','[]','{"title":"SPARE-T"}')),null,true,'1');
+select pg_temp.s12pu_update('CP-RETIRE-'||tag,pg_temp.s12pu_update_request(tag,'accept',jsonb_build_array(
+  pg_temp.s12pu_target(tag,'/parent','[{"path":"/parent","choice":"theirs"}]')),'s12cp-retire-'||tag,2))
+  from s12cp_graph where kind='excluded';
+select is(pg_temp.s12pu_state('CP-RETIRE-'||tag),'00000',tag||': actual removed-root theirs retires only the parent')
+  from s12cp_graph where kind='excluded';
+update s12cp_graph set p2=pg_temp.s12pu_head(tag,'/parent') where kind='excluded';
+select ok((select id<>g.p1 and state='retired' and version=2 and pattern_version=1
+  from platform_private.cms_composition_instances where id=g.p2)
+  and (select state='active' and parent_instance_id=g.p1 from platform_private.cms_composition_instances where id=g.c1),
+  tag||': newest parent is genuinely ineligible while its child and older active P1 remain')
+  from s12cp_graph g where kind='excluded';
+select ok((select count(*)=4 from platform_private.cms_composition_instances where revision_id=pg_temp.s12pl_rev(g.tag))
+  and (select parent_instance_id is null from platform_private.cms_composition_instances where id=g.c0)
+  and (select parent_instance_id=g.c0 from platform_private.cms_composition_instances where id=g.p1)
+  and (select parent_instance_id=g.p1 from platform_private.cms_composition_instances where id=g.c1)
+  and (select parent_instance_id=g.c0 from platform_private.cms_composition_instances where id=g.p2)
+  and g.c0<>g.c1 and g.p1<>g.p2,
+  tag||': actual row history is acyclic C0<-P1<-C1 and C0<-public P2; path-remapping alone forms C1<->P2')
+  from s12cp_graph g where kind='cycle';
+select pg_temp.s12cc_capture(tag) from s12cp_graph;
+
+create function pg_temp.s12cp_copied(p_label text,p_tag text) returns setof text language plpgsql as $body$
+declare expected jsonb; actual jsonb; g s12cp_graph; result jsonb:=pg_temp.s12cc_body(p_label);
+  generated text[]:=array['id','revision_id','version','created_at','updated_at','carried_from_id','parent_instance_id'];
+begin
+  select * into g from s12cp_graph where tag=p_tag;
+  select expected_heads into expected from s12cc_world where tag=p_tag;
+  select coalesce(jsonb_agg(to_jsonb(i) order by position,path),'[]') into actual
+    from platform_private.cms_composition_instances i where revision_id=(result->>'id')::uuid;
+  return next extensions.is((select state from s12cc_out where label=p_label),'00000',p_label||': real ordinary command succeeds');
+  return next extensions.is(jsonb_array_length(expected),2,p_label||': source really selects parent P2 and child C1');
+  return next extensions.is(jsonb_array_length(actual),2,p_label||': exactly two copies, no historical resurrection');
+  return next extensions.ok(not exists(select 1 from jsonb_array_elements(expected) e where not exists(
+    select 1 from jsonb_array_elements(actual) a where a-generated=e-generated and a->>'id'<>e->>'id'
+      and a->>'version'='1' and a->>'carried_from_id'=e->>'id')),
+    p_label||': every other semantic member and fresh identity/immediate provenance preserved');
+  return next extensions.ok((select child.parent_instance_id=parent.id and parent.id not in(g.p1,g.p2)
+    and child.id<>g.c1 and parent.revision_id=child.revision_id and parent.owner_id=child.owner_id
+    and to_jsonb(parent)->>'carried_from_id'=g.p2::text and to_jsonb(child)->>'carried_from_id'=g.c1::text
+    and parent.parent_instance_id is null and parent.position=0 and child.position=23
+    from platform_private.cms_composition_instances child join platform_private.cms_composition_instances parent
+      on parent.id=child.parent_instance_id where child.revision_id=(result->>'id')::uuid and child.path='/child'),
+    p_label||': historical P1 resolves by its path to fresh selected-P2 copy, with valid destination edge and exact gaps');
+  return next extensions.is((select jsonb_agg(to_jsonb(i) order by path,version)
+    from platform_private.cms_composition_instances i where revision_id=(select source_id from s12cc_world where tag=p_tag)),
+    (select source_rows from s12cc_world where tag=p_tag),p_label||': complete source row history remains immutable');
+  return next extensions.ok(not exists(select 1 from jsonb_array_elements((select before_rows->
+    'platform_private.cms_composition_instances' from s12cc_out where label=p_label)) old
+    where not exists(select 1 from platform_private.cms_composition_instances i where to_jsonb(i)=old)),
+    p_label||': every preexisting composition full row remains immutable');
+  return next extensions.ok((select current_draft_revision_id=(result->>'id')::uuid
+    and version=((select request->>'expectedVersion' from s12cc_out where label=p_label)::bigint+1)
+    from platform_private.cms_content_entries where id=pg_temp.s12pl_entry_id(p_tag)),
+    p_label||': new draft and exactly one aggregate CAS advance commit together');
+end;
+$body$;
+create function pg_temp.s12cp_conflict(p_tag text) returns setof text language plpgsql as $body$
+declare theirs_first boolean := p_tag like '%-res';
+begin
+  -- DEC-209: a *-res resolve world already holds its composition on the current draft (s12cc_theirs_first);
+  -- the restore worlds of 022 still get a composition-empty current draft here.
+  if not theirs_first then perform pg_temp.s12cc_current(p_tag); end if;
+  perform pg_temp.s12cc_call('CP-CONFLICT-'||p_tag,'append',
+    pg_temp.s12cc_request(p_tag,'append','s12cp-conflict-'||p_tag,'YOURS'));
+  return next extensions.is(pg_temp.s12cc_body('CP-CONFLICT-'||p_tag)->>'kind','conflict',p_tag||': actual public conflicting append');
+  return next extensions.ok((select count(*)=1 and bool_and(state='open' and yours_source='proposed')
+    from platform_private.cms_conflict_records where entry_id=pg_temp.s12pl_entry_id(p_tag)),
+    p_tag||': actual durable open conflict exists before resolve');
+  if theirs_first then
+    return next extensions.ok(not exists(select 1 from platform_private.cms_composition_instances i
+      join platform_private.cms_entry_revisions r on r.id=i.revision_id
+      where r.entry_id=pg_temp.s12pl_entry_id(p_tag) and r.revision_number=1)
+      and exists(select 1 from platform_private.cms_composition_instances where revision_id=pg_temp.s12pl_rev(p_tag)),
+      p_tag||': the conflict base is composition-empty; the current draft (theirs) is authoritative, DEC-209');
+  else
+    return next extensions.ok(not exists(select 1 from platform_private.cms_composition_instances
+      where revision_id=pg_temp.s12pl_rev(p_tag)),p_tag||': distinct current is composition-empty; base remains authoritative');
+  end if;
+end;
+$body$;
+select pg_temp.s12cc_call('CP-APP','append',pg_temp.s12cc_request('cp-app','append','s12cp-app'));
+select * from pg_temp.s12cp_copied('CP-APP','cp-app');
+select * from pg_temp.s12cp_conflict('cp-res');
+select pg_temp.s12cc_call('CP-RES','resolve',pg_temp.s12cc_request('cp-res','resolve','s12cp-res'));
+select * from pg_temp.s12cp_copied('CP-RES','cp-res');
+select ok((select state='resolved' and resolved_revision_id=(pg_temp.s12cc_body('CP-RES')->>'id')::uuid
+  from platform_private.cms_conflict_records where entry_id=pg_temp.s12pl_entry_id('cp-res')),
+  'CP-RES: actual conflict resolves durably to the exact returned revision');
+select is((select value from platform_private.cms_entry_field_values
+  where revision_id=(pg_temp.s12cc_body(label)->>'id')::uuid),to_jsonb(expected::text),
+  label||': ordinary field semantics remain independent of parent remapping')
+  from (values('CP-APP','EDITED'),('CP-RES','YOURS')) result(label,expected);
+select effect.* from (values('CP-APP'),('CP-RES')) result(label)
+  cross join lateral pg_temp.s12cc_effects(label) effect;
+select * from pg_temp.s12cc_replay('CP-APP','cp-app');
+select * from pg_temp.s12cc_replay('CP-RES','cp-res');
+
+-- Existing BE03b1930 semantic-refusal convention, confirmed for this DEC-200
+-- boundary: whole P0001 token and the existing /baseRevision DETAIL pointer.
+create function pg_temp.s12cp_refused(p_tag text,p_operation text,p_label text)
+returns setof text language plpgsql as $body$
+begin
+  if p_operation='resolve' then
+    return query select * from pg_temp.s12cp_conflict(p_tag);
+  end if;
+  perform pg_temp.s12pl_review(p_tag,clock_timestamp());
+  perform pg_temp.s12cc_call(p_label,p_operation,pg_temp.s12cc_request(p_tag,p_operation,'s12cp-'||p_label));
+  return next extensions.is((select state||':'||coalesce(message,'') from s12cc_out where label=p_label),
+    'P0001:VALIDATION_FAILED',p_label||': exact existing typed semantic refusal, not natural FK/error leakage');
+  return next extensions.is(pg_temp.s12cb_fault_image((select detail from s12cc_out where label=p_label)),
+    '["/baseRevision"]'::jsonb,p_label||': exact existing safe request-member DETAIL, no row identity or invented reason');
+  return next extensions.ok((select before_rows=after_rows from s12cc_out where label=p_label),
+    p_label||': whole durable image rolls back revision/composition/entry/review/conflict/reservation/audit/outbox');
+  return next extensions.ok((select count(*)=1 and bool_and(state='open') from platform_private.cms_editorial_reviews
+    where entry_id=pg_temp.s12pl_entry_id(p_tag)),p_label||': preexisting live review stays open after refusal');
+  return next extensions.is((select jsonb_agg(to_jsonb(i) order by path,version)
+    from platform_private.cms_composition_instances i where revision_id=(select source_id from s12cc_world where tag=p_tag)),
+    (select source_rows from s12cc_world where tag=p_tag),p_label||': source history is unchanged; no parent resurrection/drop/detach');
+  if p_operation='resolve' then
+    return next extensions.ok((select count(*)=1 and bool_and(state='open' and resolved_revision_id is null)
+      from platform_private.cms_conflict_records where entry_id=pg_temp.s12pl_entry_id(p_tag)),
+      p_label||': real conflict stays unresolved, not consumed by a partial copy');
+  end if;
+end;
+$body$;
+select refusal.* from (values
+  ('cp-excluded-app','append','CP-EXCLUDED-APP'),('cp-excluded-res','resolve','CP-EXCLUDED-RES'),
+  ('cp-cycle-app','append','CP-CYCLE-APP'),('cp-cycle-res','resolve','CP-CYCLE-RES')) cases(tag,operation,label)
+  cross join lateral pg_temp.s12cp_refused(tag,operation,label) refusal;
+select is((select jsonb_agg(to_jsonb(i) order by path,version)
+  from platform_private.cms_composition_instances i where revision_id=pg_temp.s12pl_rev('cp-donor')),
+  (select rows from s12cp_donor),'CP-DONOR: complete real public donor history remains immutable after every graph/copy/refusal');

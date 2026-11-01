@@ -2,6 +2,7 @@
 import { loadPinnedTimeAuthority } from '@wejammin/contracts/time-authority';
 import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from './cms-workflow-answer-machinery.test-support';
 
 import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
@@ -30,6 +31,8 @@ import {
   scheduleResourceFixture,
 } from './cms-workflow-fixtures.test-support';
 import { mountWorkflowIsland } from './cms-workflow-island-mount.test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
 
 // The tz snapshot is 218 KB; waits are conditions, not budgets.
 vi.setConfig({ testTimeout: 90_000 });

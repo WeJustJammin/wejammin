@@ -95,6 +95,7 @@ const authoringContextPayload = {
     {
       contentTypeId: '70000000-0000-4000-8000-000000000007',
       contentTypeVersionId: CONTENT_TYPE_VERSION_ID,
+      typeKey: 'article',
       label: 'Private article label',
       sourceLocale: 'en-US',
       defaultLocale: 'en-US',

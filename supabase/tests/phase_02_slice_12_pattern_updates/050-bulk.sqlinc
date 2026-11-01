@@ -1,0 +1,68 @@
+-- CMS-03C-15 bulk: 1-32 instances per request, all-or-nothing, admitted for accept only when none collides (409 diff_has_collisions, refused in
+-- 040); a placement of more rows (up to 512, DEC-181) is answered in successive requests of at most 32, each carrying the entry's then-current
+-- version, and a row not yet answered stays on its pinned version.  BE03c 1367, 1342; AC-119, AC-121, AC-122.
+
+-- two instances, request order preserved ---------------------------------------------------------------------------------------------------
+select pg_temp.s12pu_update('k-ap2', pg_temp.s12pu_update_request('ap2', 'accept', jsonb_build_array(
+  pg_temp.s12pu_target('ap2', '/cta'), pg_temp.s12pu_target('ap2', '/hero')), 's12pu-ap2-0001', 2));
+select * from pg_temp.s12puc_check('k-ap2', 'ap2', array['/cta', '/hero'], jsonb_build_array(
+  jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb),
+  jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)));
+
+-- all-or-nothing: a stale second instance leaves the first unanswered ---------------------------------------------------------------------------
+select * from pg_temp.s12pu_refused('k-ap14-atomic', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('ap14', 'accept', jsonb_build_array(pg_temp.s12pu_target('ap14', '/hero'),
+    pg_temp.s12puc_pick(pg_temp.s12pu_head('ap14', '/cta'), '9')), 's12pu-ap14-0001', 2),
+  'VERSION_MISMATCH', jsonb_build_object('expectedVersion', '9', 'currentVersion', '1', 'instanceId', pg_temp.s12pu_head('ap14', '/cta')));
+select is((select count(*)::integer from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('ap14')), 2,
+  'the refused bulk request wrote neither row: /hero is still unanswered on its pinned version');
+
+-- detach in bulk (the collision rule is for accept only) -------------------------------------------------------------------------------------------
+select pg_temp.s12pu_update('k-ap4-detach', pg_temp.s12pu_update_request('ap4', 'detach', jsonb_build_array(
+  pg_temp.s12pu_target('ap4', '/cta'), pg_temp.s12pu_target('ap4', '/hero')), 's12pu-ap4-0001'));
+select * from pg_temp.s12puc_check('k-ap4-detach', 'ap4', array['/cta', '/hero'], jsonb_build_array(
+  jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null, 'props', '{}'::jsonb,
+    'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'cta', 'C1')])),
+  jsonb_build_object('state', 'active', 'linkMode', 'detached', 'patternVersion', null, 'props', '{}'::jsonb,
+    'tree', pg_temp.s12puc_tree(array[pg_temp.s12puc_tnode(null, 'hero', 'H1'), pg_temp.s12puc_tnode(0, 'title', 'MINE'), pg_temp.s12puc_tnode(0, 'note', 'N1')]))), 'detach');
+
+-- DEC-181: a placement of 39 rows (31 roots and the 8 roots of a nested reference) is answered in successive requests --------------------------
+create or replace function pg_temp.s12puc_first32() returns text[] language sql stable as $body$
+  select array_agg(p order by o) from (select '/root' || n as p, n as o from generate_series(1, 31) n union all select '/more/extra1', 32) t $body$;
+create or replace function pg_temp.s12puc_targets(p_tag text, p_paths text[]) returns jsonb language sql stable as $body$
+  select jsonb_agg(pg_temp.s12pu_target(p_tag, p) order by o) from unnest(p_paths) with ordinality t(p, o) $body$;
+create or replace function pg_temp.s12puc_plain(p_count integer) returns jsonb language sql stable as $body$
+  select jsonb_agg(jsonb_build_object('state', 'active', 'linkMode', 'linked', 'patternVersion', '2', 'props', '{}'::jsonb)) from generate_series(1, p_count) $body$;
+select is((select count(*)::integer from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('big1')), 39,
+  'setup: the placement wrote 39 rows, more than one request can carry');
+select pg_temp.s12pu_update('k-33', pg_temp.s12pu_update_request('big1', 'accept',
+  pg_temp.s12puc_targets('big1', pg_temp.s12puc_first32() || array['/more/extra2']), 's12pu-big1-33', 2));
+select is(pg_temp.s12pu_oc('k-33'), 'P0001:VALIDATION_FAILED#["/instances"]', '33 instances are refused: the bound is per request, not per placement');
+select pg_temp.s12pl_version('big1') as before_a \gset
+select pg_temp.s12pu_update('k-a', pg_temp.s12pu_update_request('big1', 'accept', pg_temp.s12puc_targets('big1', pg_temp.s12puc_first32()), 's12pu-big1-a', 2));
+select * from pg_temp.s12puc_check('k-a', 'big1', pg_temp.s12puc_first32(), pg_temp.s12puc_plain(32));
+select ok((select bool_and(version = 1 and pattern_version = 1 and state = 'active') and count(*) = 7
+             from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('big1') and path like '/more/extra%' and path <> '/more/extra1'),
+  'the 7 rows not yet answered are still on their pinned version 1: an unanswered update overwrites nothing');
+select * from pg_temp.s12pu_refused('k-b-stale', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('big1', 'accept', pg_temp.s12puc_targets('big1', (select array_agg('/more/extra' || n order by n) from generate_series(2, 8) n)),
+    's12pu-big1-b0', 2, :'before_a'),
+  'VERSION_MISMATCH', jsonb_build_object('expectedVersion', :'before_a', 'currentVersion', pg_temp.s12pl_version('big1')));
+select pg_temp.s12pu_update('k-b', pg_temp.s12pu_update_request('big1', 'accept',
+  pg_temp.s12puc_targets('big1', (select array_agg('/more/extra' || n order by n) from generate_series(2, 8) n)), 's12pu-big1-b', 2));
+select * from pg_temp.s12puc_check('k-b', 'big1', (select array_agg('/more/extra' || n order by n) from generate_series(2, 8) n), pg_temp.s12puc_plain(7));
+select ok((select bool_and(h.pattern_version = 2) and count(*) = 39 from (select distinct on (path) pattern_version from platform_private.cms_composition_instances
+             where revision_id = pg_temp.s12pl_rev('big1') order by path, version desc) h),
+  'after the second request all 39 paths have a head pinned to version 2');
+
+-- exactly 32 in one request is all-or-nothing: one stale instance among them leaves all 32 unanswered ----------------------------------------------
+select * from pg_temp.s12pu_refused('k-32-atomic', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('big2', 'accept', (select jsonb_agg(case when o = 17 then pg_temp.s12puc_pick(pg_temp.s12pu_head('big2', p), '5')
+      else pg_temp.s12pu_target('big2', p) end order by o) from unnest(pg_temp.s12puc_first32()) with ordinality t(p, o)), 's12pu-big2-atomic', 2),
+  'VERSION_MISMATCH', jsonb_build_object('expectedVersion', '5', 'currentVersion', '1', 'instanceId', pg_temp.s12pu_head('big2', '/root17')));
+select is((select count(*)::integer from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('big2')), 39,
+  'the refused 32-instance request appended nothing: all 39 rows of the second placement are still version 1');
+select pg_temp.s12pu_update('k-32-ok', pg_temp.s12pu_update_request('big2', 'accept', pg_temp.s12puc_targets('big2', pg_temp.s12puc_first32()), 's12pu-big2-ok', 2));
+select ok(pg_temp.s12pu_state('k-32-ok') = '00000' and jsonb_array_length(pg_temp.s12pu_body('k-32-ok')->'items') = 32
+    and pg_temp.s12pu_count('k-32-ok', 'after', 'platform_private.cms_composition_instances') - pg_temp.s12pu_count('k-32-ok', 'before', 'platform_private.cms_composition_instances') = 32,
+  'the same 32 instances with current operands are accepted together: 32 rows appended in one request');

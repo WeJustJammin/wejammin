@@ -1,0 +1,152 @@
+-- AUTHORING ONLY / UNRUN. Isolated NEGATIVE resolver fault, never positive activation evidence.
+-- The test-admin temporarily replaces only one existing function's prosrc. No policy-row DML,
+-- grant, ownership change, trigger toggle, fake approval, permanent hook or fault-time COMMIT.
+-- Every setup/catalog/snapshot/restore error propagates to the outer transaction. Query cancellation
+-- and assertion failures are not caught; ON_ERROR_STOP/disconnect must roll back the whole test.
+create temp table s12gov_fault_receipt(
+  selected_null boolean not null, scope_refused boolean not null, metadata_only boolean not null, exact_refusal boolean not null,
+  data_unchanged boolean not null, restored boolean not null) on commit drop;
+
+create or replace function pg_temp.s12gov_fault_settings() returns jsonb language sql volatile as $body$
+  select jsonb_build_object('currentUser', current_user, 'sessionUser', session_user,
+    'settings', (select jsonb_object_agg(name, current_setting(name, true)) from unnest(array[
+      'role','search_path','request.jwt.claims','request.headers','app.cms_rpc','app.cfg_rpc',
+      'app.cms_governed_lifecycle','app.cms_session_actor','app.cms_session_party','app.mfa_session_subject',
+      'app.auth_user_id','app.actor_auth_user_id','app.actor_person_id','app.acting_party_id',
+      'app.acting_context_id','app.idempotency_key_hash','app.request_hash','app.correlation_id']) name))
+$body$;
+
+-- Full ordered rows, not counts. Scope includes every governed-submit write store plus the
+-- real authority/type/policy/evidence prerequisites that this fault must never alter.
+create or replace function pg_temp.s12gov_fault_data() returns jsonb language plpgsql security invoker as $body$
+declare relation_name text; relation_id regclass; rows jsonb; result jsonb := '{}'::jsonb;
+begin
+  foreach relation_name in array array[
+    'platform_private.cms_template_versions', 'platform_private.cms_governed_reviews',
+    'platform_private.cms_governed_review_dependencies', 'platform_private.idempotency_records',
+    'audit_private.audit_events', 'platform_private.outbox_events',
+    'platform_private.cms_content_types', 'platform_private.cms_content_type_versions',
+    'platform_private.cms_schema_artifacts', 'platform_private.cms_workflow_policies',
+    'platform_private.cms_schema_reviews', 'platform_private.cms_schema_review_assignments',
+    'platform_private.cms_schema_review_decisions', 'platform_private.cms_schema_dry_run_reports',
+    'platform_private.cms_schema_migration_plans', 'platform_private.cms_capability_grants',
+    'platform_private.cms_capability_grant_events', 'platform_private.cms_owner_initialization',
+    'platform_private.acting_context_binding', 'identity_private.membership_tenure',
+    'identity_private.organization_actor_grant'] loop
+    relation_id := to_regclass(relation_name);
+    if relation_id is null then raise exception 'missing fault-snapshot relation: %', relation_name; end if;
+    execute format('select coalesce(jsonb_agg(to_jsonb(row) order by to_jsonb(row)::text), ''[]''::jsonb) from %s row',
+      relation_id) into rows;
+    result := result || jsonb_build_object(relation_name, rows);
+  end loop;
+  return result;
+end;
+$body$;
+
+create or replace function pg_temp.s12gov_dependency_fault(p_request jsonb, p_version uuid)
+returns void language plpgsql security invoker as $body$
+declare
+  target oid := to_regprocedure('platform_private.cms_editorial_workflow_policy_evidence(uuid)');
+  original_proc jsonb; changed_proc jsonb; restored_proc jsonb;
+  original_definition text; original_source text; original_comment text; fault_source text; fault_definition text;
+  original_evidence jsonb; restored_evidence jsonb; settings_before jsonb; data_before jsonb; data_after jsonb;
+  selected_null boolean; scope_refused boolean; metadata_only boolean; exact_refusal boolean; restored boolean;
+  other_version uuid; probe_state text; probe_message text; probe_detail text;
+begin
+  if current_user <> 'postgres' or target is null or p_version is null then
+    raise exception 'fault installation requires the existing test-admin, target and selected UUID';
+  end if;
+  if not exists (select 1 from platform_private.cms_content_type_versions version_row
+      join platform_private.cms_content_types type_row on type_row.id = version_row.content_type_id
+      join platform_private.cms_template_versions subject on subject.id = (p_request->>'subjectId')::uuid
+      where version_row.id = p_version and version_row.state = 'active' and type_row.state = 'active'
+        and subject.owner_id = version_row.owner_id and subject.owner_id = pg_temp.s09d_id('ownerOrg')
+        and subject.state = 'draft' and subject.content_hash::text = p_request->>'subjectHash'
+        and subject.compatible_type_ids = jsonb_build_array(type_row.id))
+    or nullif(p_request->>'idempotencyKey', '') is null
+    or exists (select 1 from platform_private.idempotency_records idem
+      where idem.actor_id = pg_temp.s09d_actor_id('owner', 'auth')::uuid
+        and idem.operation = 'CMS-03C-06'
+        and idem.key_hash = platform_private.cms_key_hash(p_request->>'idempotencyKey')) then
+    raise exception 'dependency fault requires a fresh real owner draft, exact hash and request key';
+  end if;
+  select to_jsonb(proc), pg_get_functiondef(proc.oid), proc.prosrc,
+    obj_description(proc.oid, 'pg_proc')
+    into strict original_proc, original_definition, original_source, original_comment
+    from pg_proc proc where proc.oid = target;
+  if original_proc->>'prosecdef' <> 'true' or original_proc->>'provolatile' <> 's'
+    or pg_get_userbyid((original_proc->>'proowner')::oid) <> 'wejammin_cms_definer'
+    or original_proc->'proconfig' is distinct from '["search_path=\"\""]'::jsonb
+    or has_function_privilege('service_role', target, 'EXECUTE')
+    or has_function_privilege('authenticated', target, 'EXECUTE')
+    or has_function_privilege('anon', target, 'EXECUTE') then
+    raise exception 'unexpected resolver security/ACL metadata; no automatic repair';
+  end if;
+  settings_before := pg_temp.s12gov_fault_settings();
+  original_evidence := pg_temp.s12gov_evidence(p_version);
+  if original_evidence is null then raise exception 'positive policy evidence must precede the fault'; end if;
+  data_before := pg_temp.s12gov_fault_data();
+  -- The saved complete deparsed header is reused byte-for-byte. The body contains only a
+  -- typed, quoted UUID literal: no pg_temp lookup, GUC, dynamic dependency or positive fallback.
+  fault_source := format(E'\nbegin\n  if p_version_id = %L::uuid then return null; end if;\n  raise exception ''S12GOV_FAULT_SCOPE_VIOLATION'' using errcode = ''P0001'';\nend;\n', p_version::text);
+  if nullif(original_source, '') is null
+    or (length(original_definition) - length(replace(original_definition, original_source, '')))
+      <> length(original_source) then
+    raise exception 'resolver source does not occur exactly once in its saved definition';
+  end if;
+  fault_definition := replace(original_definition, original_source, fault_source);
+  if replace(fault_definition, fault_source, original_source) is distinct from original_definition then
+    raise exception 'fault source replacement is not mechanically invertible';
+  end if;
+  execute fault_definition;
+  select to_jsonb(proc) into strict changed_proc from pg_proc proc where proc.oid = target;
+  metadata_only := (changed_proc - 'prosrc') = (original_proc - 'prosrc')
+    and changed_proc->>'prosrc' = fault_source
+    and obj_description(target, 'pg_proc') is not distinct from original_comment;
+  if metadata_only is not true then raise exception 'fault changed non-source catalog metadata'; end if;
+  selected_null := pg_temp.s12gov_evidence(p_version) is null;
+  if selected_null is not true then raise exception 'selected resolver fault was not installed'; end if;
+  other_version := case when p_version = '00000000-0000-0000-0000-000000000000'::uuid
+    then '00000000-0000-0000-0000-000000000001'::uuid
+    else '00000000-0000-0000-0000-000000000000'::uuid end;
+  -- Setup-only negative probes: catch ONLY each resolver invocation, never metadata or snapshot work.
+  begin
+    perform platform_private.cms_editorial_workflow_policy_evidence(other_version);
+  exception when others then
+    get stacked diagnostics probe_state = returned_sqlstate, probe_message = message_text,
+      probe_detail = pg_exception_detail;
+  end;
+  scope_refused := coalesce(probe_state = 'P0001' and probe_message = 'S12GOV_FAULT_SCOPE_VIOLATION', false);
+  if scope_refused is not true then raise exception 'different-version fault probe failed: % % %', probe_state, probe_message, probe_detail; end if;
+  probe_state := null; probe_message := null; probe_detail := null;
+  begin
+    perform platform_private.cms_editorial_workflow_policy_evidence(null::uuid);
+  exception when others then
+    get stacked diagnostics probe_state = returned_sqlstate, probe_message = message_text,
+      probe_detail = pg_exception_detail;
+  end;
+  scope_refused := scope_refused and coalesce(probe_state = 'P0001'
+    and probe_message = 'S12GOV_FAULT_SCOPE_VIOLATION', false);
+  if scope_refused is not true then raise exception 'NULL fault probe failed: % % %', probe_state, probe_message, probe_detail; end if;
+  perform pg_temp.s12gov_submit(p_request);
+  -- Capture outcome and ALL relevant row bytes before any restoration or deliberate error.
+  -- An unexpected successful write remains visible to these comparisons, never rollback-masked.
+  data_after := pg_temp.s12gov_fault_data();
+  select state = 'P0001' and message = 'DEPENDENCY_UNAVAILABLE' and body is null
+      and detail = '{"dependencyClass":"policy"}'
+    into strict exact_refusal from pg_temp.s12gov_rpc_receipts order by ordinal desc limit 1;
+  execute original_definition;
+  select to_jsonb(proc) into strict restored_proc from pg_proc proc where proc.oid = target;
+  if restored_proc is distinct from original_proc
+    or pg_get_functiondef(target) is distinct from original_definition
+    or obj_description(target, 'pg_proc') is distinct from original_comment then
+    raise exception 'resolver catalog/source restoration failed';
+  end if;
+  restored_evidence := pg_temp.s12gov_evidence(p_version);
+  restored := restored_evidence is not null and restored_evidence = original_evidence
+    and pg_temp.s12gov_fault_settings() = settings_before;
+  if restored is not true then raise exception 'resolver evidence/settings/role restoration failed'; end if;
+  insert into pg_temp.s12gov_fault_receipt values (selected_null, scope_refused, metadata_only, coalesce(exact_refusal, false),
+    data_after = data_before and pg_temp.s12gov_fault_data() = data_before, restored);
+end;
+$body$;

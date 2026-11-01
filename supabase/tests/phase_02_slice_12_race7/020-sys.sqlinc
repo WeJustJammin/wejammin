@@ -1,0 +1,5 @@
+-- Slice 12 race7: a SYSTEM command (no actor, no context: the Worker `scheduled` sweep calls the CMS-03C-19 claim and execute as the bare
+-- service_role) for the remote r7_cmd.  Include after 000-harness.sqlinc, outside any transaction.
+create or replace function pg_temp.r7_stash_sys(p_key text, p_fn text, p_request jsonb, p_extra jsonb default '{}'::jsonb) returns void language sql as $b$
+  insert into r7_stash(key, body) values (p_key, jsonb_build_object('fn', p_fn, 'settings', p_extra, 'request', p_request)::text)
+  on conflict (key) do update set body = excluded.body $b$;

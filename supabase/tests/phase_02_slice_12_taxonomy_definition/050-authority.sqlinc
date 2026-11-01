@@ -1,0 +1,92 @@
+-- P2-S12-AC-126..128: live scope/capability on both new writes and cached replay.
+select pg_temp.s12td_as('Member');
+select pg_temp.s12td_run('readable-not-curator',
+  pg_temp.s12td_request('s12td-flat','s12td-member-edit','{}','1'));
+select * from pg_temp.s12td_refusal('readable-not-curator','capability_missing');
+select pg_temp.s12td_run('member-fresh-create',
+  pg_temp.s12td_request('s12td-member','s12td-member-create'));
+select * from pg_temp.s12td_refusal('member-fresh-create','capability_missing');
+
+select pg_temp.s12td_as('B','A');
+select pg_temp.s12td_run('hidden-existing',
+  pg_temp.s12td_request('s12td-flat','s12td-hidden-existing','{}','1'));
+select * from pg_temp.s12td_refusal('hidden-existing','NOT_FOUND');
+select pg_temp.s12td_run('hidden-unused',
+  pg_temp.s12td_request('s12td-unknown','s12td-hidden-unused','{}','1'));
+select * from pg_temp.s12td_refusal('hidden-unused','NOT_FOUND');
+select is((select jsonb_build_object('state',sqlstate,'message',message,'detail',detail)
+  from s12td_calls where label = 'hidden-existing'),
+  (select jsonb_build_object('state',sqlstate,'message',message,'detail',detail)
+  from s12td_calls where label = 'hidden-unused'),
+  'hidden existing and unused taxonomy expose the same complete refusal');
+
+select pg_temp.s12td_as('B','B');
+select pg_temp.s12td_run('other-owner-parent',
+  pg_temp.s12td_request('s12td-role','s12td-other-owner-parent','{}','1'));
+select * from pg_temp.s12td_refusal('other-owner-parent','NOT_FOUND');
+
+select pg_temp.s12td_as('anonymous');
+select pg_temp.s12td_run('anonymous',pg_temp.s12td_request('s12td-anon','s12td-anonymous'));
+select * from pg_temp.s12td_refusal('anonymous','UNAUTHENTICATED');
+select pg_temp.s12td_as('A');
+
+-- Authority changes are restricted to this fixture's single grant, restored
+-- from the saved row after each probe, and enclosed in the suite rollback.
+create temp table s12td_grant_before on commit drop as
+select * from identity_private.organization_actor_grant
+where organization_id = (select value::uuid from s12td_ids where key = 'orgA')
+  and person_id = (select value::uuid from s12td_ids where key = 'personA')
+  and capability_code = 'cms.taxonomy_curator';
+update identity_private.organization_actor_grant set active = false
+where organization_id = (select value::uuid from s12td_ids where key = 'orgA')
+  and person_id = (select value::uuid from s12td_ids where key = 'personA')
+  and capability_code = 'cms.taxonomy_curator';
+select ok(not platform_private.cms_person_holds_capability(
+  (select value::uuid from s12td_ids where key = 'orgA'),
+  (select value::uuid from s12td_ids where key = 'personA'),'cms.taxonomy_curator'),
+  'SETUP revocation is effective before replay and fresh-write probes');
+select pg_temp.s12td_run('revoked-replay',(select request from s12td_calls where label = 'flat-first'));
+select * from pg_temp.s12td_refusal('revoked-replay','capability_missing');
+select pg_temp.s12td_run('revoked-fresh',pg_temp.s12td_request('s12td-revoked','s12td-revoked-fresh'));
+select * from pg_temp.s12td_refusal('revoked-fresh','capability_missing');
+update identity_private.organization_actor_grant g set active = original.active,
+  valid_from = current_date - 2, valid_through = current_date - 1
+from s12td_grant_before original where g.organization_id = original.organization_id
+  and g.person_id = original.person_id and g.capability_code = original.capability_code;
+select ok(not platform_private.cms_person_holds_capability(
+  (select value::uuid from s12td_ids where key = 'orgA'),
+  (select value::uuid from s12td_ids where key = 'personA'),'cms.taxonomy_curator'),
+  'SETUP lapsed grant is inactive for authorization');
+select pg_temp.s12td_run('expired-replay',(select request from s12td_calls where label = 'flat-first'));
+select * from pg_temp.s12td_refusal('expired-replay','capability_missing');
+select pg_temp.s12td_run('expired-fresh',pg_temp.s12td_request('s12td-expired','s12td-expired-fresh'));
+select * from pg_temp.s12td_refusal('expired-fresh','capability_missing');
+update identity_private.organization_actor_grant g set active = original.active,
+  valid_from = original.valid_from, valid_through = original.valid_through
+from s12td_grant_before original where g.organization_id = original.organization_id
+  and g.person_id = original.person_id and g.capability_code = original.capability_code;
+select ok(platform_private.cms_person_holds_capability(
+  (select value::uuid from s12td_ids where key = 'orgA'),
+  (select value::uuid from s12td_ids where key = 'personA'),'cms.taxonomy_curator'),
+  'SETUP original curator authority restored');
+select pg_temp.s12td_run('restored-replay',(select request from s12td_calls where label = 'flat-first'));
+select * from pg_temp.s12td_replay('restored-replay','flat-first');
+
+-- Calling a browser-inaccessible command as the real role proves its grant
+-- boundary. SQLSTATE and message remain independent assertions.
+select pg_temp.s12td_run('browser-' || role,
+  pg_temp.s12td_request('s12td-browser','s12td-browser-' || role),'create',role)
+from (values ('anon'),('authenticated')) actors(role);
+select result from (values ('anon'),('authenticated')) actors(role)
+cross join lateral pg_temp.s12td_refusal('browser-' || role,
+  'permission denied for function cms_create_taxonomy_version','42501') result;
+select ok(coalesce((select bool_and(not has_function_privilege(role,p.oid,'EXECUTE'))
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname = 'platform_private' and p.proname = 'cms_create_taxonomy_version'),false),
+  role || ' cannot invoke the private taxonomy producer')
+from (values ('anon'),('authenticated'),('service_role')) actors(role);
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""'])
+  from pg_proc p join pg_namespace n on n.oid = p.pronamespace
+  where n.nspname in ('platform_api','platform_private')
+    and p.proname = 'cms_create_taxonomy_version'),false),
+  'new taxonomy RPCs pin an empty search_path and use a definer boundary');

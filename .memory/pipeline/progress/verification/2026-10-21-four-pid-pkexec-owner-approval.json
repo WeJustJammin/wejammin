@@ -1,0 +1,85 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-21-four-pid-pkexec-readonly",
+  "authority": "direct human",
+  "answer": "Approved.",
+  "answerContext": "Direct human reply in the orchestrator chat to Main's request for one fixed four-PID one-run pkexec inspection with before/after six-field process-identity checks and all existing exclusions",
+  "recordedAt": "2026-10-21T07:30:03Z",
+  "recordedAtIsNotExactUserSendTime": true,
+  "newApproval": true,
+  "notReuseOf": "2026-10-20-four-pid-readonly",
+  "consumptionClaimCreated": false,
+  "appliesToReplacementInstances": false,
+  "reusableOrAutoRenewable": false,
+  "scope": "One fixed-target pkexec inspection of the four executable links, with all six process identity fields (pid, ppid, group, session, startTime, uid) fenced before and after; at most two reads per PID, eight total",
+  "maximumReadsPerPid": 2,
+  "maximumTotalReads": 8,
+  "exclusions": [
+    "PID substitution",
+    "automatic renewal",
+    "privileged shell",
+    "secret or environment reads",
+    "signals",
+    "cleanup",
+    "services",
+    "host-policy changes",
+    "stack changes",
+    "native acceptance inference",
+    "database acceptance inference"
+  ],
+  "diagnosticOnly": true,
+  "targets": [
+    {
+      "pid": 729,
+      "ppid": 1,
+      "group": 729,
+      "session": 729,
+      "startTime": "677",
+      "uid": 1000
+    },
+    {
+      "pid": 739,
+      "ppid": 729,
+      "group": 729,
+      "session": 729,
+      "startTime": "679",
+      "uid": 1000
+    },
+    {
+      "pid": 2519,
+      "ppid": 2480,
+      "group": 2519,
+      "session": 2519,
+      "startTime": "1317",
+      "uid": 1000
+    },
+    {
+      "pid": 2566,
+      "ppid": 2542,
+      "group": 2566,
+      "session": 2566,
+      "startTime": "1322",
+      "uid": 1000
+    }
+  ],
+  "binaries": [
+    {
+      "path": "/usr/bin/pkexec",
+      "device": 37,
+      "inode": 139723,
+      "uid": 0,
+      "mode": 35309,
+      "size": 26720,
+      "sha256": "72cd770659617b11f0872bfac159cdd5e41b0e44bbc01f9d3cd88d18e89861cd"
+    },
+    {
+      "path": "/usr/bin/readlink",
+      "device": 37,
+      "inode": 9129108,
+      "uid": 0,
+      "mode": 33261,
+      "size": 76088,
+      "sha256": "092f87a1632ad9102757d676c85150556b71cc377642f2d55f04c9df9af63aa1"
+    }
+  ]
+}

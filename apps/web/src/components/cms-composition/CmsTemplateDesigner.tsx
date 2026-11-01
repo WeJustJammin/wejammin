@@ -5,17 +5,18 @@ import type { TemplateDesignerContext } from '@wejammin/contracts';
 import { warmCmsValidators } from '../../lib/cms-contract-validators';
 import CmsTemplateBindings from './CmsTemplateBindings';
 import CmsTemplateFields from './CmsTemplateFields';
+import CmsTemplateLeaveGuard from './CmsTemplateLeaveGuard';
 import CmsTemplateSlots from './CmsTemplateSlots';
 import CmsTemplateStatus, {
+  templateKeyError,
   type CmsTemplateFormStatus,
 } from './CmsTemplateStatus';
-import type {
-  EditableBinding,
-  EditableSlot,
-} from './cms-template-designer-form-types';
 import { buildCmsTemplateDraftRequest } from './cms-template-designer-request';
 import { submitCmsTemplateDraft } from './cms-template-designer-submit';
 import { useCmsTemplateRateWait } from './cms-template-rate-wait';
+import { focusCmsTemplateResult } from './cms-template-result-focus';
+import { useCmsTemplateDraftFields } from './use-cms-template-draft-fields';
+import { useCmsTemplateSentFields } from './use-cms-template-sent-fields';
 import {
   CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE,
   useCmsTemplateValidators,
@@ -24,22 +25,18 @@ import {
 interface Props {
   readonly context: TemplateDesignerContext;
   readonly csrfToken: string;
+  /** Leaves this page for a destination the person confirmed (default: assign the location). */
+  readonly navigate?: (href: string) => void;
 }
 
 /** One bounded island: only the draft form and its in-flight result hydrate. */
 export default function CmsTemplateDesigner({
   context,
   csrfToken,
+  navigate,
 }: Props): React.ReactElement {
-  const [templateKey, setTemplateKey] = useState('');
-  const [compatibleTypeIds, setCompatibleTypeIds] = useState<string[]>([]);
-  const [locale, setLocale] = useState(
-    context.contentTypes[0]?.sourceLocale ?? '',
-  );
-  const [audience, setAudience] = useState('');
-  const [extraRegions, setExtraRegions] = useState('');
-  const [slots, setSlots] = useState<EditableSlot[]>([]);
-  const [bindings, setBindings] = useState<EditableBinding[]>([]);
+  const draft = useCmsTemplateDraftFields(context);
+  const sent = useCmsTemplateSentFields();
   const [status, setStatus] = useState<CmsTemplateFormStatus>({ kind: 'idle' });
   const summaryRef = useRef<HTMLDivElement>(null);
   const attemptRef = useRef<{ body: string; key: string } | null>(null);
@@ -52,7 +49,7 @@ export default function CmsTemplateDesigner({
 
   useEffect(() => {
     if (status.kind !== 'idle' && status.kind !== 'pending')
-      summaryRef.current?.focus();
+      focusCmsTemplateResult(summaryRef.current);
   }, [status]);
 
   const submit = async (
@@ -77,15 +74,7 @@ export default function CmsTemplateDesigner({
     }
     const prepared = buildCmsTemplateDraftRequest(
       validators,
-      {
-        templateKey,
-        compatibleTypeIds,
-        locale,
-        audience,
-        extraRegions,
-        slots,
-        bindings,
-      },
+      draft.fields,
       context,
     );
     if (!prepared.ok) {
@@ -98,6 +87,7 @@ export default function CmsTemplateDesigner({
         ? attemptRef.current.key
         : crypto.randomUUID();
     attemptRef.current = { body: serialized, key };
+    sent.remember(draft.fields);
     setStatus({ kind: 'pending' });
     const result = await submitCmsTemplateDraft(
       validators,
@@ -119,21 +109,22 @@ export default function CmsTemplateDesigner({
   };
 
   const reset = (): void => {
-    setTemplateKey('');
-    setCompatibleTypeIds([]);
-    setLocale(context.contentTypes[0]?.sourceLocale ?? '');
-    setAudience('');
-    setExtraRegions('');
-    setSlots([]);
-    setBindings([]);
+    draft.reset();
     attemptRef.current = null;
     setStatus({ kind: 'idle' });
   };
 
+  const unsent = sent.unsent(
+    draft.fields,
+    status.kind === 'created',
+    draft.dirty,
+  );
+
   return (
-    <section
-      className="cms-template-designer"
-      aria-labelledby="cms-template-designer-title"
+    <CmsTemplateLeaveGuard
+      dirty={unsent.dirty}
+      lateEdits={unsent.late}
+      navigate={navigate}
     >
       <h2 id="cms-template-designer-title">Define template draft</h2>
       <p>
@@ -155,34 +146,40 @@ export default function CmsTemplateDesigner({
         onFocus={warmCmsValidators}
         noValidate
       >
-        <fieldset
-          disabled={status.kind === 'pending' || status.kind === 'created'}
-        >
+        {/* FE03 1048 `commandState` loading: only the commit control is withheld while pending. */}
+        <fieldset disabled={status.kind === 'created'}>
           <legend>Template definition</legend>
           <CmsTemplateFields
             contentTypes={context.contentTypes}
-            templateKey={templateKey}
-            setTemplateKey={setTemplateKey}
-            compatibleTypeIds={compatibleTypeIds}
-            setCompatibleTypeIds={setCompatibleTypeIds}
-            locale={locale}
-            setLocale={setLocale}
-            audience={audience}
-            setAudience={setAudience}
-            extraRegions={extraRegions}
-            setExtraRegions={setExtraRegions}
+            templateKey={draft.templateKey}
+            keyError={templateKeyError(status)}
+            setTemplateKey={draft.setTemplateKey}
+            compatibleTypeIds={draft.compatibleTypeIds}
+            setCompatibleTypeIds={draft.setCompatibleTypeIds}
+            locale={draft.locale}
+            setLocale={draft.setLocale}
+            audience={draft.audience}
+            setAudience={draft.setAudience}
+            extraRegions={draft.extraRegions}
+            setExtraRegions={draft.setExtraRegions}
           />
           <CmsTemplateSlots
             registeredBlocks={context.registeredBlocks}
-            slots={slots}
-            setSlots={setSlots}
+            slots={draft.slots}
+            setSlots={draft.setSlots}
           />
-          <CmsTemplateBindings bindings={bindings} setBindings={setBindings} />
+          <CmsTemplateBindings
+            bindings={draft.bindings}
+            setBindings={draft.setBindings}
+          />
           <p>
             A successful create produces a private draft, not publication or
             activation.
           </p>
-          <button type="submit" disabled={cannotSubmit}>
+          <button
+            type="submit"
+            disabled={cannotSubmit || status.kind === 'pending'}
+          >
             Create draft
           </button>
         </fieldset>
@@ -192,6 +189,6 @@ export default function CmsTemplateDesigner({
           Start another draft
         </button>
       ) : null}
-    </section>
+    </CmsTemplateLeaveGuard>
   );
 }

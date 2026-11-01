@@ -1,0 +1,140 @@
+-- CMS-03C-09 gates on the still-approved gg1 and the open gopen: step-up first, structure, retire on a non-active subject, the
+-- activateAt shape, concealment, the owner capability and the review CAS.  Every refusal must leave the covered stores
+-- identical and reserve nothing.
+select pg_temp.s12gb_mark('gg1:gates', 'gg1');
+select pg_temp.s12gb_mark('gopen:gates', 'gopen');
+
+-- ---------------------------------------------------------------- step-up before anything --
+select pg_temp.s12gb_act('su-none', 'owner', pg_temp.s12ga_review('gg1'), 'activate', '{}'::jsonb, array[]::text[],
+  pg_temp.s12ga_ctx('owner', interval '1 minute', false));
+select pg_temp.s12gb_act('su-stale', 'owner', pg_temp.s12ga_review('gg1'), 'activate', '{}'::jsonb, array[]::text[],
+  pg_temp.s12ga_ctx('owner', interval '11 minutes'));
+select pg_temp.s12gb_act('su-future', 'owner', pg_temp.s12ga_review('gg1'), 'schedule', '{}'::jsonb, array[]::text[],
+  pg_temp.s12ga_ctx('owner', interval '-2 minutes'));
+select pg_temp.s12ga_rpc('su-absent', 'platform_api.cms_activate_governed_subject', 'owner',
+  jsonb_build_object('reviewId', 'a12b0000-0000-4000-8000-0000000000e1', 'action', 'activate',
+    'expectedVersion', '1', 'ifMatch', '1', 'idempotencyKey', 's12ga-su-absent'),
+  pg_temp.s12ga_ctx('owner', interval '11 minutes'));
+select pg_temp.s12gb_act('su-stranger', 'designer2', pg_temp.s12ga_review('gg1'), 'activate', '{}'::jsonb, array[]::text[],
+  pg_temp.s12ga_ctx('designer2', interval '11 minutes'));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['su-none', 'su-stale', 'su-future', 'su-absent', 'su-stranger']) l),
+  'su-absent=P0001:STEP_UP_REQUIRED;su-future=P0001:STEP_UP_REQUIRED;su-none=P0001:STEP_UP_REQUIRED;'
+    || 'su-stale=P0001:STEP_UP_REQUIRED;su-stranger=P0001:STEP_UP_REQUIRED',
+  'a missing, stale (11 min) or future (+2 min) step-up is STEP_UP_REQUIRED before concealment, capability or any read, for activate and schedule [P2-S12-AC-082]');
+select ok((select count(*) from platform_private.idempotency_records where operation = 'CMS-03C-09') = 0
+    and pg_temp.s12gb_same('gg1:gates', 'gg1') and pg_temp.s12gb_same('gopen:gates', 'gopen'),
+  'the step-up refusal reserves no idempotency record and changes no state [P2-S12-AC-086]');
+
+-- ------------------------------------------------------------------------------- structure --
+select pg_temp.s12gb_act('st-capability', 'owner', pg_temp.s12ga_review('gg1'), 'activate', jsonb_build_object('capability', 'cms.template_designer'));
+select pg_temp.s12gb_act('st-stepup', 'owner', pg_temp.s12ga_review('gg1'), 'activate', jsonb_build_object('stepUpAt', '2026-10-14T00:00:00Z'));
+select pg_temp.s12gb_act('st-review', 'owner', pg_temp.s12ga_review('gg1'), 'activate', jsonb_build_object('reviewId', 'not-a-uuid'));
+select pg_temp.s12gb_act('st-ifmatch', 'owner', pg_temp.s12ga_review('gg1'), 'activate', jsonb_build_object('ifMatch', '3'));
+select pg_temp.s12gb_act('st-nokey', 'owner', pg_temp.s12ga_review('gg1'), 'activate', '{}'::jsonb, array['idempotencyKey']);
+select pg_temp.s12gb_act('st-expected', 'owner', pg_temp.s12ga_review('gg1'), 'activate', jsonb_build_object('expectedVersion', 'abc'));
+select pg_temp.s12gb_act('st-action', 'owner', pg_temp.s12ga_review('gg1'), 'activate', jsonb_build_object('action', 'explode'));
+select pg_temp.s12gb_act('st-noaction', 'owner', pg_temp.s12ga_review('gg1'), 'activate', '{}'::jsonb, array['action']);
+select pg_temp.s12gb_act('st-activate-at', 'owner', pg_temp.s12ga_review('gg1'), 'activate', jsonb_build_object('activateAt', pg_temp.s12gb_at()));
+select pg_temp.s12gb_act('st-reason', 'owner', pg_temp.s12ga_review('gg1'), 'activate', jsonb_build_object('reason', 'not for activation'));
+select pg_temp.s12gb_act('st-noat', 'owner', pg_temp.s12ga_review('gg1'), 'schedule', '{}'::jsonb, array['activateAt']);
+select is(
+  (select string_agg(l || '=' || pg_temp.s12gb_oc(l), ';' order by l collate "C")
+     from unnest(array['st-capability', 'st-stepup', 'st-review', 'st-ifmatch', 'st-nokey', 'st-expected', 'st-action',
+                       'st-noaction', 'st-activate-at', 'st-reason', 'st-noat']) l),
+  'st-action=P0001:VALIDATION_FAILED#["/action"];st-activate-at=P0001:INVALID_REQUEST;st-capability=P0001:INVALID_REQUEST;'
+    || 'st-expected=P0001:VALIDATION_FAILED#["/expectedVersion"];st-ifmatch=P0001:INVALID_REQUEST;'
+    || 'st-noaction=P0001:INVALID_REQUEST;st-noat=P0001:INVALID_REQUEST;st-nokey=P0001:INVALID_REQUEST;'
+    || 'st-reason=P0001:INVALID_REQUEST;st-review=P0001:INVALID_REQUEST;st-stepup=P0001:INVALID_REQUEST',
+  'a body capability or stepUpAt, a mismatched action member (activateAt on activate, reason, a missing activateAt), a malformed review id, '
+  || 'a missing key or If-Match disagreeing with expectedVersion is INVALID_REQUEST; a bad action or version is VALIDATION_FAILED at its pointer [P2-S12-AC-083]');
+
+-- --------------------------------------------- retire needs an ACTIVE subject (DEC-190, BE03c 392, 1326) --
+-- gg1's subject is approved and gopen's is in review: structurally valid retire requests reach the state check and are refused
+-- 409 subject_not_retirable; no approval, dependency or preflight question is asked of a retirement.
+select pg_temp.s12gb_act('retire-approved', 'owner', pg_temp.s12ga_review('gg1'), 'retire');
+select pg_temp.s12gb_act('retire-approved-reason', 'owner', pg_temp.s12ga_review('gg1'), 'retire', jsonb_build_object('reason', 'retired by the owner'));
+select pg_temp.s12gb_act('retire-open', 'owner', pg_temp.s12ga_review('gopen'), 'retire');
+select is(pg_temp.s12gb_oc('retire-approved') || '|' || pg_temp.s12gb_oc('retire-approved-reason') || '|' || pg_temp.s12gb_oc('retire-open'),
+  'P0001:subject_not_retirable|P0001:subject_not_retirable|P0001:subject_not_retirable',
+  'retire of an approved or in-review subject is 409 subject_not_retirable, with or without a reason [P2-S12-AC-087]');
+select pg_temp.s12gb_act('st-ret-at', 'owner', pg_temp.s12ga_review('gg1'), 'retire', jsonb_build_object('activateAt', pg_temp.s12gb_at()));
+select pg_temp.s12gb_act('st-ret-su', 'owner', pg_temp.s12ga_review('gg1'), 'retire', '{}'::jsonb, array[]::text[],
+  pg_temp.s12ga_ctx('owner', interval '11 minutes'));
+select pg_temp.s12gb_act('st-ret-256', 'owner', pg_temp.s12ga_review('gg1'), 'retire', jsonb_build_object('reason', repeat('a', 256)));
+select pg_temp.s12gb_act('st-ret-256cp', 'owner', pg_temp.s12ga_review('gg1'), 'retire', jsonb_build_object('reason', repeat(U&'\00E9', 256)));
+select pg_temp.s12gb_act('st-ret-257cp', 'owner', pg_temp.s12ga_review('gg1'), 'retire', jsonb_build_object('reason', repeat(U&'\00E9', 257)));
+select pg_temp.s12gb_act('st-ret-1', 'owner', pg_temp.s12ga_review('gg1'), 'retire', jsonb_build_object('reason', 'x'));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12gb_oc(l), ';' order by l collate "C")
+     from unnest(array['st-ret-at', 'st-ret-su', 'st-ret-256', 'st-ret-256cp', 'st-ret-257cp', 'st-ret-1']) l),
+  'st-ret-1=P0001:subject_not_retirable;st-ret-256=P0001:subject_not_retirable;st-ret-256cp=P0001:subject_not_retirable;'
+    || 'st-ret-257cp=P0001:VALIDATION_FAILED#["/reason"];st-ret-at=P0001:INVALID_REQUEST;st-ret-su=P0001:STEP_UP_REQUIRED',
+  'a retire reason of 1 and of 256 code points (256 two-byte characters included) passes the structure step, 257 code points is VALIDATION_FAILED at /reason, an '
+  || 'activateAt is INVALID_REQUEST and the step-up comes first [P2-S12-AC-083]');
+
+-- ---------------------------------------------------------------------- the activateAt shape --
+select pg_temp.s12gb_act('at-local', 'owner', pg_temp.s12ga_review('gg1'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '90 seconds', jsonb_build_object('localDateTime', '2026-13-45T25:61:00'))));
+select pg_temp.s12gb_act('at-zone', 'owner', pg_temp.s12ga_review('gg1'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '90 seconds', jsonb_build_object('timezone', '../etc/zone'))));
+select pg_temp.s12gb_act('at-resolved', 'owner', pg_temp.s12ga_review('gg1'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '90 seconds', jsonb_build_object('resolvedUtc', 'tomorrow'))));
+select pg_temp.s12gb_act('at-tzdb', 'owner', pg_temp.s12ga_review('gg1'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '90 seconds', jsonb_build_object('tzdbVersion', 'not a version!'))));
+select pg_temp.s12gb_act('at-disambiguation', 'owner', pg_temp.s12ga_review('gg1'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '90 seconds', jsonb_build_object('disambiguation', 'sometimes'))));
+select pg_temp.s12gb_act('at-multi', 'owner', pg_temp.s12ga_review('gg1'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '90 seconds',
+    jsonb_build_object('localDateTime', 'x', 'timezone', 'y y', 'disambiguation', 'z'))));
+select pg_temp.s12gb_act('at-missing', 'owner', pg_temp.s12ga_review('gg1'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '90 seconds') - 'disambiguation'));
+select pg_temp.s12gb_act('at-extra', 'owner', pg_temp.s12ga_review('gg1'), 'schedule',
+  jsonb_build_object('activateAt', pg_temp.s12gb_at(interval '90 seconds', jsonb_build_object('offset', '+01:00'))));
+select pg_temp.s12gb_act('at-scalar', 'owner', pg_temp.s12ga_review('gg1'), 'schedule', jsonb_build_object('activateAt', 'now'));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12gb_oc(l), ';' order by l collate "C")
+     from unnest(array['at-local', 'at-zone', 'at-resolved', 'at-tzdb', 'at-disambiguation', 'at-multi', 'at-missing',
+                       'at-extra', 'at-scalar']) l),
+  'at-disambiguation=P0001:VALIDATION_FAILED#["/activateAt/disambiguation"];'
+    || 'at-extra=P0001:VALIDATION_FAILED#["/activateAt"];'
+    || 'at-local=P0001:VALIDATION_FAILED#["/activateAt/localDateTime"];'
+    || 'at-missing=P0001:VALIDATION_FAILED#["/activateAt"];'
+    || 'at-multi=P0001:VALIDATION_FAILED#["/activateAt/localDateTime", "/activateAt/timezone", "/activateAt/disambiguation"];'
+    || 'at-resolved=P0001:VALIDATION_FAILED#["/activateAt/resolvedUtc"];'
+    || 'at-scalar=P0001:VALIDATION_FAILED#["/activateAt"];'
+    || 'at-tzdb=P0001:VALIDATION_FAILED#["/activateAt/tzdbVersion"];'
+    || 'at-zone=P0001:VALIDATION_FAILED#["/activateAt/timezone"]',
+  'a scheduled activation names an exact five-member activateAt; every malformed member is VALIDATION_FAILED at its own pointer, all reported together [P2-S12-AC-142]');
+
+-- ----------------------------------------------------------- concealment and 403 and the CAS --
+select pg_temp.s12ga_rpc('cn-absent', 'platform_api.cms_activate_governed_subject', 'owner',
+  jsonb_build_object('reviewId', 'a12b0000-0000-4000-8000-0000000000e2', 'action', 'activate',
+    'expectedVersion', '1', 'ifMatch', '1', 'idempotencyKey', 's12ga-cn-absent'));
+select pg_temp.s12gb_act('cn-other-org', 'other', pg_temp.s12ga_review('gg1'));
+select pg_temp.s12gb_act('cn-nonmember', 'rev3', pg_temp.s12ga_review('gg1'), 'activate', '{}'::jsonb, array[]::text[],
+  pg_temp.s12ga_ctx('rev3') || jsonb_build_object('actingPartyId', pg_temp.s12ga_org()));
+select pg_temp.s12gb_act('cn-noscope', 'designer2', pg_temp.s12ga_review('gg1'));
+select pg_temp.s12gb_act('fb-reviewer', 'rev1', pg_temp.s12ga_review('gg1'));
+select pg_temp.s12gb_act('fb-reviewer-schedule', 'rev1', pg_temp.s12ga_review('gg1'), 'schedule');
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['cn-absent', 'cn-other-org', 'cn-nonmember', 'cn-noscope', 'fb-reviewer', 'fb-reviewer-schedule']) l),
+  'cn-absent=P0001:NOT_FOUND;cn-nonmember=P0001:NOT_FOUND;cn-noscope=P0001:NOT_FOUND;cn-other-org=P0001:NOT_FOUND;'
+    || 'fb-reviewer=P0001:capability_missing;fb-reviewer-schedule=P0001:capability_missing',
+  'an absent, cross-owner, non-member or scope-less caller meets one concealed NOT_FOUND; an assigned reviewer who can read the review but '
+  || 'lacks the owner capability is 403 capability_missing [P2-S12-AC-084]');
+select pg_temp.s12gb_act('cas', 'owner', pg_temp.s12ga_review('gg1'), 'activate',
+  jsonb_build_object('expectedVersion', '1', 'ifMatch', '1'));
+select ok(pg_temp.s12ga_out('cas') = 'P0001:VERSION_MISMATCH'
+    and nullif(pg_temp.s12ga_det('cas'), '')::jsonb = '{"expectedVersion": "1", "currentVersion": "2"}'::jsonb,
+  'a stale review version is VERSION_MISMATCH naming the expected and the current version [P2-S12-AC-085]');
+select pg_temp.s12gb_act('open-activate', 'owner', pg_temp.s12ga_review('gopen'), 'activate');
+select pg_temp.s12gb_act('open-schedule', 'owner', pg_temp.s12ga_review('gopen'), 'schedule');
+select is(pg_temp.s12ga_out('open-activate') || '|' || pg_temp.s12ga_out('open-schedule'),
+  'P0001:subject_not_activatable|P0001:subject_not_activatable',
+  'a review that is still open (the subject in review) cannot be activated or scheduled: 409 subject_not_activatable [P2-S12-AC-085]');
+select ok((select count(*) from platform_private.idempotency_records where operation = 'CMS-03C-09') = 0
+    and pg_temp.s12gb_same('gg1:gates', 'gg1') and pg_temp.s12gb_same('gopen:gates', 'gopen'),
+  'every structure, retire, shape, concealment, 403, CAS and state refusal leaves the covered stores identical and reserves nothing [P2-S12-AC-086]');

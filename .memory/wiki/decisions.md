@@ -2,8 +2,8 @@
 
 ## Summary
 
-- **Total decisions**: 179
-- **Unique decision titles**: 179
+- **Total decisions**: 203
+- **Unique decision titles**: 203
 
 ## DEC-001: The rights stack is the thesis, not an adjacency (2026-07-16)
 
@@ -43,7 +43,7 @@
 
 - **Problem**: The sweep's synthesis asserted that a fan audience forces a multi-surface classification. This would have restructured the entire ideation folder tree.
 - **Options considered**: (1) Accept the synthesis and reclassify multi-surface. (2) Verify against the kit's own reference first.
-- **Decision**: **Verified and rejected the claim.** Per `prd-templates/references/surface-model.md`, a *surface* is a **deployment target** (web/mobile/desktop/cli/api/extension), not an audience. Fans + professionals on one Astro web app = one surface. Classification stays `single-surface`.
+- **Decision**: **Verified and rejected the claim.** Per `prd-templates/references/surface-model.md`, a _surface_ is a **deployment target** (web/mobile/desktop/cli/api/extension), not an audience. Fans + professionals on one Astro web app = one surface. Classification stays `single-surface`.
 - **Downstream**: Folder layout unchanged (domains stay top-level children of `ideation/`, no `surfaces/` folder). Real consequence is an expanded Role Matrix in all 24 domain indexes. The **mobile surface question remains genuinely open** and is now more pressing — see `meta/constraints.md`.
 - **Reversibility**: High — but reclassifying later means restructuring the tree, so getting it right pre-seeding mattered.
 - **See also**: PAT-001.
@@ -395,7 +395,7 @@
 - **Problem**: `07.08.01` advertises six recipient specs — mastering, mix, sync, live, remix, archive — but only two have real contents on disk. Authoring all six would have the handoff builder originate requirements that domains 11, 12 and 05 already own, and invent `live` from no source at all.
 - **Options considered**: (1) Define all six now. (2) Define the highest-frequency two first, others as follow-ons. (3) Ship a generic package with optional fields.
 - **Decision**: **Option 2, re-cut on authority rather than frequency.** `07.08.01` originates `mastering`, `mix`, and `archive`'s asset half — the specs it provably owns per `07.08.03` Q-02. It **references** every spec owned elsewhere: `sync` → domain 11, DSP destination → domain 12, engagement-purchased handover → `05.04.02`/`05.04.04`. Referencing validates presence and surfaces the owner's verdict; it never restates the requirement. `live` and `remix` get no invented contents and become an ownership question.
-- **Downstream**: Generalises `07.07.03` D-04 ("two copies of third-party requirements would drift, and one would be wrong") from destination specs to all referenced requirements. Preserves D-01 (specs are the product, not config) and D-02 (a spec is a least-privilege boundary — the mastering spec excludes stems *because the engineer should not have them*), both of which option 3 would have deleted. Severity is explicit: every requirement warns; integrity failure remains the sub-domain's only hard stop under domain D-04's "non-blocking is absolute". Also repaired a pre-existing contradiction where the no-canonical edge case asserted a second block citing a source that says the opposite. The Empty state now advertises only specs with contents behind them. Queue P-04 and ledger `r-46[0]` are resolved; `07.08.01` Q-01 is partly resolved and Q-04 opened for `live`/`remix` ownership. Recorded as ideation D-50.
+- **Downstream**: Generalises `07.07.03` D-04 ("two copies of third-party requirements would drift, and one would be wrong") from destination specs to all referenced requirements. Preserves D-01 (specs are the product, not config) and D-02 (a spec is a least-privilege boundary — the mastering spec excludes stems _because the engineer should not have them_), both of which option 3 would have deleted. Severity is explicit: every requirement warns; integrity failure remains the sub-domain's only hard stop under domain D-04's "non-blocking is absolute". Also repaired a pre-existing contradiction where the no-canonical edge case asserted a second block citing a source that says the opposite. The Empty state now advertises only specs with contents behind them. Queue P-04 and ledger `r-46[0]` are resolved; `07.08.01` Q-01 is partly resolved and Q-04 opened for `live`/`remix` ownership. Recorded as ideation D-50.
 - **Reversibility**: High for the set (adding a spec once a domain owns it is additive); Low for the ownership rule, which is now load-bearing across domains 05, 07, 11 and 12.
 
 ## DEC-029: Readiness targets follow the same ownership rule, and pin-vs-live is dissolved (2026-07-21)
@@ -406,7 +406,7 @@
 - **Sources**: ideate-validate
 - **Index**: [[index]]
 
-- **Problem**: The readiness score computes against four targets — mix-handoff, mastering, DSP-release, sync-pitch — but no file enumerated any target's facts or thresholds. Separately, the score needed a *live* target while the handoff package *pins* its contents, which looked like two lifetimes on one object.
+- **Problem**: The readiness score computes against four targets — mix-handoff, mastering, DSP-release, sync-pitch — but no file enumerated any target's facts or thresholds. Separately, the score needed a _live_ target while the handoff package _pins_ its contents, which looked like two lifetimes on one object.
 - **Options considered**: (1) Define every target fact now. (2) Evaluate externally owned specs only, deferring targets whose specs don't exist. (3) A generic score independent of target.
 - **Decision**: **Option 2, re-cut per target on authority.** This is DEC-028's rule applied again: the score's targets and the handoff builder's recipient specs are one list under two names. `07.08.01` authors mastering and mix-handoff; DSP-release references domain 12 and sync-pitch references domain 11, consuming their severity classes as this feature's weights rather than re-deriving them. An unowned target is **not offerable**. "Block shipping" is recorded as **feature sequencing, never user-blocking** — the latter would breach domain D-04's absolute non-blocking rule and contradict DEC-028's own handling of the identical condition.
 - **Downstream**: `07.08.03` D-07 records the ownership rule and D-08 dissolves pin-vs-live — one target-spec store with one version identity, the score a live **view**, the package a pinned **record** that now also pins the spec version it validated against. Domain 12 resolved the identical shape this way (`12.02.02` D-01, `12.01.02` D-07/DT-09); 07 does not inherit 12's authority to hold dispatch. Only `ready-for-DSP-release` is fully scoreable today. A set mismatch is recorded rather than hidden: eight recipient specs, four targets. Option 3 was foreclosed, not weighed — `07.08.03` DT-01 rejects a target-independent score "twice over". Also corrected a mis-routing: ISWC is `09.06.01`'s (captured, never issued), not domain 12's. Queue P-05 and ledger `r-47[0]` are resolved; whether readiness ever hard-blocks remains separately open. Recorded as ideation D-51.
@@ -451,7 +451,7 @@
 - **Problem**: A downgrade already notified the affected person, but no rule said whether anyone else is told. The queue's standing recommendation was to tell only the affected party.
 - **Options considered**: (1) Affected contributor only. (2) Affected person plus the roster. (3) Only when they encounter denial.
 - **Decision**: **Option 2, scoped.** A downgrade is an instance of D-09 ("every roster write is announced — to the named party, and to the existing roster"), not an exception to it. The roster audience is scoped by D-16 to members who can already see that person's entry, so a confidentiality-restricted roster discloses nothing it deliberately hides. Recorded as `07.03.01` D-18.
-- **Downstream**: **This reversed the queue's own prior recommendation on evidence** — its "sensitive demotion" premise has no source anywhere in the tree, and D-16 makes personnel default-visible. The coordination argument decides it: work is *rostered*, not assigned, so the roster is the team's only coordination record, and `07.03.03` D-04 has already killed the downgraded party's live URLs — under option 1 co-contributors keep routing stems to someone whose access is dead. Option 3 contradicts written `[DEEP]` behavior and locked copy, and makes the first notice a mid-work lockout. Audience only: cadence and batching stay with the notification cross-cut per the reference-never-restate rule. Queue P-07b and ledger `r-50[1]` are resolved; actorless band-derived downgrades became `07.03.01` Q-05. Recorded as ideation D-54.
+- **Downstream**: **This reversed the queue's own prior recommendation on evidence** — its "sensitive demotion" premise has no source anywhere in the tree, and D-16 makes personnel default-visible. The coordination argument decides it: work is _rostered_, not assigned, so the roster is the team's only coordination record, and `07.03.03` D-04 has already killed the downgraded party's live URLs — under option 1 co-contributors keep routing stems to someone whose access is dead. Option 3 contradicts written `[DEEP]` behavior and locked copy, and makes the first notice a mid-work lockout. Audience only: cadence and batching stay with the notification cross-cut per the reference-never-restate rule. Queue P-07b and ledger `r-50[1]` are resolved; actorless band-derived downgrades became `07.03.01` Q-05. Recorded as ideation D-54.
 - **Reversibility**: High — audience is a fan-out rule over an unchanged access model.
 
 ## DEC-033: Originality aggregates into a nominal enum for comp matching (2026-07-21)
@@ -518,7 +518,7 @@
 - **Sources**: ideate-validate
 - **Index**: [[index]]
 
-- **Problem**: What happens to a confirmed contributor's share when they leave or are erased — asked as a question about an *accruing* balance.
+- **Problem**: What happens to a confirmed contributor's share when they leave or are erased — asked as a question about an _accruing_ balance.
 - **Options considered**: (1) Escrow for future claim. (2) Redistribute among remaining. (3) Forfeit to seller/platform.
 - **Decision**: **Resolved as scoped.** `14.10.03` D-05: the confirmed split row survives unchanged — never zeroed, redistributed, or forfeited. **The accruing premise is out of scope**: pool funding and download attribution/accrual are both WONT, and the splits feature is explicitly decoupled from the pool, so no accrual exists to escrow.
 - **Downstream**: Both alternatives were already foreclosed elsewhere — `09.02.04` D-14 makes a 0% row the removal-without-consent loophole, and `10.04.03` D-01 with `royalties-collections-index.md` D-09 forbid unpayable money becoming platform float or revenue. No escrow contract was created, because the premise requiring one is cut. GDPR erasure versus payout retention is `14.10.03` Q-04, a security question. **If the WONT features are ever promoted, the accruing half returns.** Queue P-11 and ledger `r-63[0]` are resolved. Recorded as ideation D-59.
@@ -535,7 +535,7 @@
 - **Problem**: When a host update breaks a purchased preset bank, nothing said who owes remediation.
 - **Options considered**: (1) External compatibility, flag the entry, no default refund. (2) Vendor conformity defect. (3) Platform goodwill remedy.
 - **Decision**: **Option 1.** `14.04.02` D-04 ratifies into the preset catalogue the pattern already locked at `14.07.01` D-04 ("'perpetual' is a promise about the entitlement and the artifact, not a guarantee of function") and D-06 (third-party state change → permit + mandatory disclosure + never revoke).
-- **Downstream**: Gives OS drift, lapsed dependencies and host breaks one consistent story instead of three. Vendor-defect classification would assign liability for a third party's act against supply-time conformity scope; a goodwill remedy creates discretionary cost with no source-defined trigger on a low-value product. **What triggers the flag is undecided** (`14.04.02` Q-04): the compatibility matrix records *declared* host-version facts, not observed breakage, so only a buyer-reported path exists today, and asserting a break without evidence would be the platform judging a third party's product. Queue P-12 and ledger `r-64[0]` are resolved. Recorded as ideation D-60.
+- **Downstream**: Gives OS drift, lapsed dependencies and host breaks one consistent story instead of three. Vendor-defect classification would assign liability for a third party's act against supply-time conformity scope; a goodwill remedy creates discretionary cost with no source-defined trigger on a low-value product. **What triggers the flag is undecided** (`14.04.02` Q-04): the compatibility matrix records _declared_ host-version facts, not observed breakage, so only a buyer-reported path exists today, and asserting a break without evidence would be the platform judging a third party's product. Queue P-12 and ledger `r-64[0]` are resolved. Recorded as ideation D-60.
 - **Reversibility**: High — a detection mechanism can be added later without changing who owes what.
 
 ## DEC-039: Several queue entries were mis-framed, and the ratifications correct them (2026-07-21)
@@ -549,7 +549,7 @@
 - **Problem**: Across the marketplace block, four entries asked the owner to choose among options for questions that were already answered, mis-cited, or built on a cut premise — a pattern first seen in Domain 07's stale CX markers.
 - **Options considered**: Ratify as framed, or correct the framing and record why.
 - **Decision**: **Correct and record.** P-10a/P-10b were confirmations of contracts already locked in files the entries never cited; P-11's premise depends on two WONT features; P-08a cited the wrong CX (a flaw/evidence cross-cut, not the comp key) and the wrong sibling decision (P-08b's offer-void asymmetry); the P-08a interim rule suspended a locked comp key rather than describing the status quo.
-- **Downstream**: Each ratification names the defect it corrects, so the queue stops teaching a false open/closed state. Reinforces the standing check: verify a queue recommendation's *premise* exists in the tree, and read the child before treating a parent marker as open. Adjacent stale markers found but deliberately not folded in (grade auto-downgrade, post-purchase disclosure change, `14.04.02` Q-03 against `14.09.02` DT-05) are recorded as separate reconciliations.
+- **Downstream**: Each ratification names the defect it corrects, so the queue stops teaching a false open/closed state. Reinforces the standing check: verify a queue recommendation's _premise_ exists in the tree, and read the child before treating a parent marker as open. Adjacent stale markers found but deliberately not folded in (grade auto-downgrade, post-purchase disclosure change, `14.04.02` Q-03 against `14.09.02` DT-05) are recorded as separate reconciliations.
 - **Reversibility**: N/A — this is a record-keeping correction, not a product policy.
 
 ## DEC-040: The bulk-import quality bar does not bend — the evidence moment moves (2026-07-21)
@@ -562,7 +562,7 @@
 
 - **Problem**: Bulk gear import appeared to force a choice between relaxing the quality bar and failing the Operator persona. The queue collapsed four independently-locked axes into one scalar.
 - **Options considered**: (1) Keep the normal per-unit bar, no publish until complete. (2) Allow disclosed lower-evidence bulk publication. (3) Restrict to specified seller classes.
-- **Decision**: **Per-axis confirmation — the dilemma was false.** Model binding does not relax (bulk *raises* it); grading relaxes in a bounded, disclosed way with reduced comp weight and never an exemption; disclosure does not relax and admits no substitute; unit media does not relax but its capture moment moves to label print. In one line: the bar does not bend, the evidence moment moves, absence is disclosed and never gated.
+- **Decision**: **Per-axis confirmation — the dilemma was false.** Model binding does not relax (bulk _raises_ it); grading relaxes in a bounded, disclosed way with reduced comp weight and never an exemption; disclosure does not relax and admits no substitute; unit media does not relax but its capture moment moves to label print. In one line: the bar does not bend, the evidence moment moves, absence is disclosed and never gated.
 - **Downstream**: A scalar answer would have silently overwritten at least one axis and, per `13.03` CX-03, created the prohibited shadow listing tier. Option 2's wording ("lower-evidence", "two-tier") reversed the meaning of the decisions it claimed to confirm, and two of its stated costs were inventions — no "trust weight" exists anywhere, and "unit handling" is not a state or event. Also repaired the false-dilemma prose surviving in `gear-marketplace-index.md` Q-13 and `13.03-listings-inventory-cx.md` — the unapplied half of this finding's own prescribed fix. Queue DQ-MG-01 and ledger `r-57[0]` are resolved. Recorded as ideation D-61.
 - **Reversibility**: Medium per axis; the four are independently adjustable, which is the point of refusing the scalar.
 
@@ -706,7 +706,7 @@
   Territory, term and commission stay edge-level and do not vary per domain (accepted cost).
   `administer` does not reach naming a publisher over a share the party did not write (`09.01.04`
   D-06 stands over the mandate).
-- **Why the draft's Option A was rejected**: a 35-cell grid *is* the artefact DT-02 rejects by name;
+- **Why the draft's Option A was rejected**: a 35-cell grid _is_ the artefact DT-02 rejects by name;
   its cross-type asymmetry breaks the CX-03 union the sub-domain merge exists to protect; and its
   "book for live but not publishing" justification is only half-sourced — the verb half is real at
   `01.03.02`:16 ("my manager can book but not sign"), the domain half appears nowhere in 1,122 files.
@@ -719,8 +719,8 @@
 - **Reversibility**: Medium. The rename and the conjunction are cheap to revise; the eliminated
   options are not — B, C and G were each independently refuted against source.
 - **Left open (tracked)**: are the five domains identical to domain 17's ratified work-type enum, or
-  a fourth vocabulary? `01.03.02`:25 lists sync as publishing's *sibling*; `09.01.04`:102 carves sync
-  *inside* publishing as a right type. Tracked as `01.03.02` Q-03, targeted at `/create-prd`.
+  a fourth vocabulary? `01.03.02`:25 lists sync as publishing's _sibling_; `09.01.04`:102 carves sync
+  _inside_ publishing as a right type. Tracked as `01.03.02` Q-03, targeted at `/create-prd`.
 
 ## DEC-050: Opportunity post decide-by is derived by default and overridable (2026-07-30)
 
@@ -732,7 +732,7 @@
 
 - **Problem**: five decisions and two queue states across `04.04`/`04.05` treated a decide-by date as an
   established field on the opportunity post; `04.01.01`, which owns the post object, never defined it, and
-  its only expiry rule keyed on the *event* date instead.
+  its only expiry rule keyed on the _event_ date instead.
 - **Options considered**: mandatory field with type-scoped default; derived-by-default and overridable;
   derived only (no separate concept); leave it out and let dependents degrade.
 - **Decision**: **derived by default, always present, overridable**. Presence types default to the event
@@ -768,8 +768,8 @@
   position. A live quote is bilateral, post-request, and already discloses the seller's exact figure to that
   one buyer. Different exposure, different rule.
 - **Downstream**: `05.01.04` D-05 + Q-03 re-resolved and its stale-text note withdrawn; CX R-04 and R-06
-  scoped; below-*k* on an issued quote withholds from **both** parties (D-15's 'or to neither' branch made
-  operative); Q-01's minimum cohort *k* is now buyer-facing and harder — escalated, **no value picked**.
+  scoped; below-_k_ on an issued quote withholds from **both** parties (D-15's 'or to neither' branch made
+  operative); Q-01's minimum cohort _k_ is now buyer-facing and harder — escalated, **no value picked**.
 - **Reversibility**: Medium.
 
 ## DEC-052: Spec deals pre-commit a normal posture whose effect is deferred to a trigger (2026-07-30)
@@ -796,7 +796,7 @@
   hourly, half-day and retainer had no posture set at all; buyout got its own row per DT-13.
 - **Left open**: `05.06.01` **Q-08** — may a Points posture carry deferred effect? `05.06.02` D-02 has
   participation existing from execution regardless of earnings, the opposite of vesting on a trigger. Points
-  omitted from the Spec row until answered; if it resolves against, the spec *production* deal collapses to
+  omitted from the Spec row until answered; if it resolves against, the spec _production_ deal collapses to
   co-ownership. `05.01.03` Q-07 (who detects the trigger) promoted to **prerequisite**.
 - **Reversibility**: Low — it settles the shape of a closed vocabulary two other features enumerate.
 
@@ -840,10 +840,10 @@
   written, every content download failed verification and E-19 quarantined a correctly-delivered build.
   Both colliding units are in the MUST band, so it was not deferrable.
 - **Decision**: **move the metadata write upstream**. Embedded tempo/key/loop metadata is a property of the
-  *product*, not the buyer — written once at ingest in `14.08.03` audio QC into the stored master. Delivery
+  _product_, not the buyer — written once at ingest in `14.08.03` audio QC into the stored master. Delivery
   then has at most **one** writer. Unmarked products are byte-identical to the master, so the single published
   hash is simply correct. Watermarked products take a two-hash treatment (master + per-grant).
-- **Why this over two-hashes-for-everything**: a per-buyer hash is a number only *we* can vouch for. The
+- **Why this over two-hashes-for-everything**: a per-buyer hash is a number only _we_ can vouch for. The
   master hash is **corroborable** — two buyers of one build compare and agree. D-09's 'verify on a machine
   that has never met us' survives intact for the entire air-gapped Operator inventory.
 - **E-19 split**: a per-grant mismatch is a transfer or stamping fault; only a **master** mismatch quarantines.
@@ -2562,6 +2562,146 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: a contract test must parse exactly the five outcomes before the clause is cited.
 - **Reversibility**: Medium
 
+## DEC-178: Slice 12 DEC-148 depth-floor cascade: floor 53 to 285, Phase 2 3314 authored / 3310 active (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T10:30:14.996Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: Slice 12 kept its pre-DEC-148 floor of 53 although BE03c defines CMS-03C-04 to CMS-03C-21 and five supporting reads, and IA flows CMS-15/CMS-16 and feature rows 25.05.03/25.05.04 belonged to no slice.
+- **Options considered**: (A) apply DEC-148/DEC-149 per operation plus DEC-154 unowned obligations plus DEC-114 IA-level rows, keeping every judgement-call row; (B) the same without the judgement-call rows (five supporting reads, CMS-03C-04/-05 rows, six IA-level rows, six FE page rows).
+- **Decision**: (A). New ids P2-S12-AC-054..AC-285 contiguous after AC-053: 135 per-operation (AC054-AC188), 91 cascade obligations (AC189-AC279), 6 IA-level (AC280-AC285). Slice 12 = 285 authored/active, 0 checked. Phase 2 = 3314 authored / 3310 active (AC209, AC211, AC265, AC266 stay outside the active denominator). The owner standing rule "more work now" decides every judgement-call row; derivation in .memory/pipeline/progress/verification/2026-10-11-slice-12-depth-floor.md.
+- **Downstream**: phase-2.md Slice 12 section and coverage tables, Slice 12 tracker, progress index/phase/spec-pipeline totals, scripts/check-progress-consistency.mjs constants, the Slice 09 completion-policy and pre-traceability tests and their receipt rows, a Slice 12 evidence ledger over 285 rows.
+- **Reversibility**: Medium
+
+## DEC-179: Slice 12 mechanical reconciliations R1-R4 of BE03c and FE03 (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T10:30:14.997Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: BE03c and FE03 still carried text that DEC-172, DEC-158 and DEC-159 had corrected for Slice 11, and FE03 lists missed the 2026-10-07 cascade operations.
+- **Options considered**: (A) propagate the existing rulings verbatim; (B) leave the drift for the Slice 12 implementation lanes to reconcile.
+- **Decision**: (A). R1 response-contract failures are 502 DEPENDENCY_UNAVAILABLE (DEC-172); R2 decision reason char_length 1-2000 and assignment/retire reasons 1-256 NFC code points (DEC-158); R3 metric label subject_kind (DEC-159); R4 FE03 protected read lists include cmsPatternLatestRead, cmsTaxonomyVersionsRead and cmsTaxonomyTermsRead, the step-up command list includes CMS-03C-07/-08/-09, and the data-mapping row names CMS-03C-01..21.
+- **Downstream**: BE03c, FE03, Slice 12 rows that cite those lines.
+- **Reversibility**: High
+
+## DEC-180: Slice 12 implementation decisions G2-G4, G6, G8, G9, G11 and R5 readings (owner may override) (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T10:30:14.997Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: BE03c left implementation choices open and stated four statuses two ways (setup report sections 5 and 6).
+- **Options considered**: per item, the setup report recommendation versus leaving the item for the implementing lane.
+- **Decision**: G2 BE03c gains a lock-order paragraph placing every Slice 12 writer in the BE03b global order (extends DEC-157; BE03c no longer prescribes the order DEC-157 rejected); G3 activation and retirement events use the subject version row as outbox aggregate and term actions the term row; G4 CMS-03C-14 with no newer compatible version answers 200 with paths [], collisionCount 0, bulkEligible false, targetPatternVersion = pinnedPatternVersion; G6 cms_invalidate_governed_reviews_for_person mirrors BE03b:1872 and rule 7 of the BE03b lock order; G8 the exact impact set is compatibleTypeIds plus the block tuples behind blockRegistryDigest, and the undefined "approved impact-read scope" becomes the governed-review read scope; G9 cms.governed_review.recheck and cms.pattern.linked_update_scan are typed platform-queue messages (DEC-166), cms.taxonomy.merge_converge a BE00 jobs row; G11 submitting a taxonomy version with an unbuilt canonical domain is 422 canonical_source_unavailable with details.domain. R5: nested_pattern_not_active and pattern_version_not_active are 422 (request validation; 409 stays for stale CAS operands); every governed 409 is GOVERNED_REVIEW_VERSION_CONFLICT with the reason in details.reasonCode; the digest is an equality expectation the server recomputes and refuses on mismatch. Lane-derived drafts (non-node overrides key 422 at /overrides; PatternPlacementResource; G2 position 6 for cms_terms) stand until review. G5 is not applied: rewording BE03b:251/:1538 changes Slice 10 AC030 and goes to the owner wording batch.
+- **Downstream**: BE03c, FE03, IA03 consequences, Slice 12 rows AC065, AC068, AC073, AC085, AC114, AC201, AC202, AC204, AC212, AC226, AC248-AC250, AC261, AC262, AC276.
+- **Reversibility**: High
+
+## DEC-181: A top-level nested pattern reference is expanded at placement (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T16:51:24.933Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: DEC-175 stores one composition row per root node of a pattern forest, each with a NOT NULL block identity, but BE03c:676-713 lets a root node be a nested pattern reference (`kind: pattern`) with no block of its own.
+- **Options considered**: (A) expand a top-level nested reference into that pattern's own top-level blocks, recursively, so every row carries a block; (B) refuse 422 when a pattern version puts a nested pattern at the top level; (C) relax block_key/block_version to nullable for a reference row.
+- **Decision**: owner chose (A) on 2026-10-12. A placement writes one row per block root after recursively expanding top-level nested pattern references; every row stays pinned to the placed (patternId, patternVersion), whose pinned tree already fixes each nested version. The CMS-03C-02 items list may therefore exceed 32 rows; the existing bound of at most 512 nodes after expansion bounds it. Nested references below a block root stay inside that root's pinned tree.
+- **Downstream**: BE03c CMS-03C-02 contract (items bound), composition-row rule, path suffix of expanded roots, render plan and diff; Slice 12 rows AC216-AC219 and AC247.
+- **Reversibility**: Medium
+
+## DEC-182: Slice 12 wording batch ratified, including G5 for Slice 10 AC030 (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-12T17:39:20.720Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 setup cascade)
+- **Index**: [[index]]
+
+- **Problem**: eleven Slice 12 criterion texts (AC010, AC022, AC025, AC027, AC030, AC034, AC036, AC037, the AC004-AC039 source citations, the fuller AC026) disagreed with locked BE03c text or with DEC-175/DEC-181, and BE03b:251/:1543 plus Slice 10 AC030 still said `/blocks/...` is refused "until a composition write path exists" although Slice 12 ships that path.
+- **Options considered**: (A) approve all eleven items; (B) all except the optional W-10 fuller AC026; (C) review one by one.
+- **Decision**: owner chose (A) on 2026-10-12. Apply every item of docs/handoffs/2026-10-12-claude-s12/wording-batch-draft.md: W-01..W-10 to the Slice 12 plan and tracker, and G5 to Slice 10 AC030 (plan, tracker, evidence ledger text) and BE03b:251/:1543: `/blocks/...` stays refused because composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate version and are reported by comparison.
+- **Downstream**: Slice 12 rows and evidence; Slice 10 AC030 ledger text and receipts; BE03b.
+- **Reversibility**: High
+
+## DEC-183: Claimed CMS dry-run preparation Job disposition; a sealed failing scan polls failed MIGRATION_BLOCKED (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-13T02:17:04.058Z
+- **Agents**: claude
+- **Sources**: implement-slice (boundary #128 design)
+- **Index**: [[index]]
+
+- **Problem**: boundary #128 (finding B-08): the production callback of the claimed CMS schema dry-run preparation entry is absent, so every production dry-run Job that reaches the effect ends stuck `running` with its message acknowledged; no locked text maps the entry result to a BE00 Job state.
+- **Options considered**: (A) a sealed failing scan is Job `failed` with `MIGRATION_BLOCKED` (BE00:569 literal); (B) Job `succeeded` with the report as resultRef, keeping `failed` for infrastructure faults.
+- **Decision**: owner chose (A) on 2026-10-12. The total map of docs/handoffs/2026-10-12-claude-s12/b08-production-trigger-design.md section 3 (option 1A) applies: completed -> succeeded with resultRef {type: cms_schema_dry_run_report, id: reportId}; progress, retry and failed_retryable -> queued; blocked -> failed MIGRATION_BLOCKED; failed_terminal and invalid claim/resolution -> failed; unreachable outcomes fail closed with PREPARATION_OUTCOME_UNMAPPED; a thrown callback -> queued DEPENDENCY_UNAVAILABLE; never pending_manual_review or cancelled. The report stays the only pass/fail authority (FE03:952).
+- **Downstream**: production-job-effect-dispatcher and its claimed-preparation callback, BE03a/BE00 spec text, boundary #128 closure; the delivery-budget capacity policy (gap 3) is a separate owner decision.
+- **Reversibility**: Low (Job terminal states are irreversible once written)
+
+## DEC-184: Claimed dry-run preparation delivery budget; fail late now, measure, then cap (2026-10-12)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-13T02:18:05.149Z
+- **Agents**: claude
+- **Sources**: implement-slice (boundary #128 design)
+- **Index**: [[index]]
+
+- **Problem**: under BE00 (4 deliveries) and the 128-row batch with maxBatchesPerInvocation m (default 1, 1..32; CPU per batch against limits.cpu_ms 50 unmeasured) a preparation completes only when the content type has at most 256 x m source rows; no spec states a ceiling or what happens above it.
+- **Options considered**: (A) ship the BE00 budget now, an oversized type fails late with MIGRATION_RETRIES_EXHAUSTED and a rolled-back recoverable plan, then measure batch CPU, raise m where safe and propose an early cap; (B) also add an early 422 cap at CMS-03A-10 now; (C) re-enqueue continuations as fresh messages (no ceiling).
+- **Decision**: owner chose (A) on 2026-10-12. Implement option 3A of docs/handoffs/2026-10-12-claude-s12/b08-production-trigger-design.md section 5: deliveryAttempt = max(1, message.attempts); on delivery 4 a would-be queued result rolls the plan back terminally and fails the Job MIGRATION_RETRIES_EXHAUSTED; BE00 15/60/300 s backoff on retry-type outcomes (not on progress); per-invocation budget min(240000, lease remaining - 60000) ms; state the 256 x m ceiling in BE03a. Follow-up owed: measure one batch CPU, then bring the owner an early-cap decision (option B) with a measured number.
+- **Downstream**: production async entrypoint and claimed-preparation callback, BE03a spec text, runbook, boundary #128 closure.
+- **Reversibility**: Medium
+
+## DEC-185: Composition rows carry an authored position (2026-10-13)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-13T03:36:55.688Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 spec completion)
+- **Index**: [[index]]
+
+- **Problem**: cms_composition_instances has no order column; the render plan orders a slot by path bytewise, so a placement renders in node-key order rather than authored forest order and two placements in one slot interleave; document order changes accessibility verdicts (BE05c heading.first_level).
+- **Options considered**: (A) add position integer NOT NULL; (B) keep bytewise key order; (C) order by time-ordered ids.
+- **Decision**: owner chose (A) on 2026-10-13. A placement takes consecutive positions in forest order (after DEC-181 expansion), appended after the slot's current maximum under the existing revision/slot lock; the render plan orders by region, slot ordinal, position, path, id; accept, detach, linked-update scan, restore and carry-over copy the position unchanged; the D5 comparison hash is unchanged (insert order is immutable per path).
+- **Downstream**: forward migration on cms_composition_instances with a populated-table backfill, cms_revision_render_plan, BE03c/BE05c text, AC247 and the composition rows of Slice 12.
+- **Reversibility**: Medium
+
+## DEC-186: Slice 12 implementation decisions for placement paths, digest status and spec drift (owner may override) (2026-10-13)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-13T03:36:55.688Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 spec completion)
+- **Index**: [[index]]
+
+- **Problem**: DEC-175/DEC-181 and the ledger lanes left implementation details open and found code that diverges from locked text.
+- **Options considered**: per item, the researched recommendation versus leaving it to the implementing lane.
+- **Decision**: (1) a placement row path is the canonical slotPath joined with "/" and the root node key, and for an expanded nested root the key chain of the reference and its roots; a root slotPath contributes no extra separator; row paths stay within 248 octets or the placement is 422 at /slotPath. (2) blockRegistryDigest: malformed shape is 422 at its pointer; a differing digest is 409 with the new closed token block_registry_digest_mismatch (the shipped CMS-03C-01 SQL already behaves so) for CMS-03C-01, -02 and -12. (3) overrides keys address nodes by the same key chain inside expanded roots. (4) the successor guard for a term merge accepts an active or deprecated survivor as P2-S12-AC-225 states. (5) a malformed template key on the template pages answers 400 as P2-S12-AC-265 states. (6) template keys are unique per owner (E14) and a second owner's key never discloses another owner's row. (7) CMS-03C routes map 502, 503 and 504 to DEPENDENCY_UNAVAILABLE as the BE03c catalog states (the DEC-172 pattern). Remaining DEC-181 consequences (placement versus the CMS-03C-15 per-request bound, FE list size) are settled by the spec-completion lane and reported.
+- **Downstream**: BE03c/FE03 text, CMS-03C-01..05 code and tests, Slice 12 contracts and SQL.
+- **Reversibility**: High
+
+## DEC-187: CompositionInstanceResource exposes the read-only position (2026-10-13)
+
+- **Occurrences**: 1
+- **Latest timestamp**: 2026-10-13T03:52:27.839Z
+- **Agents**: claude
+- **Sources**: implement-slice (Slice 12 spec completion)
+- **Index**: [[index]]
+
+- **Problem**: DEC-185 adds position to cms_composition_instances, but the resource schema did not say whether clients see it; the placement list and the composition editor need authored order.
+- **Options considered**: (A) expose position read-only on CompositionInstanceResource; (B) keep it internal and rely on list order only.
+- **Decision**: (A), orchestrator implementation decision, owner may override: `position` integer 0..2147483647, immutable per path; lists stay in position order. Applied to BE03c CompositionInstanceResource.
+- **Downstream**: packages/contracts cms-composition resources, CMS-03C-02/-14/-15 responses, FE composition list.
+- **Reversibility**: High
+
 ## DEC-162: Narrow first-empty schema baseline representation
 
 - **Occurrences**: 1
@@ -2619,7 +2759,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 
 - **Problem**: The sweep's synthesis asserted that a fan audience forces a multi-surface classification. This would have restructured the entire ideation folder tree.
 - **Options considered**: (1) Accept the synthesis and reclassify multi-surface. (2) Verify against the kit's own reference first.
-- **Decision**: **Verified and rejected the claim.** Per `prd-templates/references/surface-model.md`, a *surface* is a **deployment target** (web/mobile/desktop/cli/api/extension), not an audience. Fans + professionals on one Astro web app = one surface. Classification stays `single-surface`.
+- **Decision**: **Verified and rejected the claim.** Per `prd-templates/references/surface-model.md`, a _surface_ is a **deployment target** (web/mobile/desktop/cli/api/extension), not an audience. Fans + professionals on one Astro web app = one surface. Classification stays `single-surface`.
 - **Downstream**: Folder layout unchanged (domains stay top-level children of `ideation/`, no `surfaces/` folder). Real consequence is an expanded Role Matrix in all 24 domain indexes. The **mobile surface question remains genuinely open** and is now more pressing — see `meta/constraints.md`.
 - **Reversibility**: High — but reclassifying later means restructuring the tree, so getting it right pre-seeding mattered.
 - **See also**: PAT-001.
@@ -2946,7 +3086,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 - **Problem**: `07.08.01` advertises six recipient specs — mastering, mix, sync, live, remix, archive — but only two have real contents on disk. Authoring all six would have the handoff builder originate requirements that domains 11, 12 and 05 already own, and invent `live` from no source at all.
 - **Options considered**: (1) Define all six now. (2) Define the highest-frequency two first, others as follow-ons. (3) Ship a generic package with optional fields.
 - **Decision**: **Option 2, re-cut on authority rather than frequency.** `07.08.01` originates `mastering`, `mix`, and `archive`'s asset half — the specs it provably owns per `07.08.03` Q-02. It **references** every spec owned elsewhere: `sync` → domain 11, DSP destination → domain 12, engagement-purchased handover → `05.04.02`/`05.04.04`. Referencing validates presence and surfaces the owner's verdict; it never restates the requirement. `live` and `remix` get no invented contents and become an ownership question.
-- **Downstream**: Generalises `07.07.03` D-04 ("two copies of third-party requirements would drift, and one would be wrong") from destination specs to all referenced requirements. Preserves D-01 (specs are the product, not config) and D-02 (a spec is a least-privilege boundary — the mastering spec excludes stems *because the engineer should not have them*), both of which option 3 would have deleted. Severity is explicit: every requirement warns; integrity failure remains the sub-domain's only hard stop under domain D-04's "non-blocking is absolute". Also repaired a pre-existing contradiction where the no-canonical edge case asserted a second block citing a source that says the opposite. The Empty state now advertises only specs with contents behind them. Queue P-04 and ledger `r-46[0]` are resolved; `07.08.01` Q-01 is partly resolved and Q-04 opened for `live`/`remix` ownership. Recorded as ideation D-50.
+- **Downstream**: Generalises `07.07.03` D-04 ("two copies of third-party requirements would drift, and one would be wrong") from destination specs to all referenced requirements. Preserves D-01 (specs are the product, not config) and D-02 (a spec is a least-privilege boundary — the mastering spec excludes stems _because the engineer should not have them_), both of which option 3 would have deleted. Severity is explicit: every requirement warns; integrity failure remains the sub-domain's only hard stop under domain D-04's "non-blocking is absolute". Also repaired a pre-existing contradiction where the no-canonical edge case asserted a second block citing a source that says the opposite. The Empty state now advertises only specs with contents behind them. Queue P-04 and ledger `r-46[0]` are resolved; `07.08.01` Q-01 is partly resolved and Q-04 opened for `live`/`remix` ownership. Recorded as ideation D-50.
 - **Reversibility**: High for the set (adding a spec once a domain owns it is additive); Low for the ownership rule, which is now load-bearing across domains 05, 07, 11 and 12.
 
 ### DEC-029: Readiness targets follow the same ownership rule, and pin-vs-live is dissolved (2026-07-21)
@@ -2956,7 +3096,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 - **Source**: ideate-validate
 - **Tags**: decision, ideation, remediation, recovered
 
-- **Problem**: The readiness score computes against four targets — mix-handoff, mastering, DSP-release, sync-pitch — but no file enumerated any target's facts or thresholds. Separately, the score needed a *live* target while the handoff package *pins* its contents, which looked like two lifetimes on one object.
+- **Problem**: The readiness score computes against four targets — mix-handoff, mastering, DSP-release, sync-pitch — but no file enumerated any target's facts or thresholds. Separately, the score needed a _live_ target while the handoff package _pins_ its contents, which looked like two lifetimes on one object.
 - **Options considered**: (1) Define every target fact now. (2) Evaluate externally owned specs only, deferring targets whose specs don't exist. (3) A generic score independent of target.
 - **Decision**: **Option 2, re-cut per target on authority.** This is DEC-028's rule applied again: the score's targets and the handoff builder's recipient specs are one list under two names. `07.08.01` authors mastering and mix-handoff; DSP-release references domain 12 and sync-pitch references domain 11, consuming their severity classes as this feature's weights rather than re-deriving them. An unowned target is **not offerable**. "Block shipping" is recorded as **feature sequencing, never user-blocking** — the latter would breach domain D-04's absolute non-blocking rule and contradict DEC-028's own handling of the identical condition.
 - **Downstream**: `07.08.03` D-07 records the ownership rule and D-08 dissolves pin-vs-live — one target-spec store with one version identity, the score a live **view**, the package a pinned **record** that now also pins the spec version it validated against. Domain 12 resolved the identical shape this way (`12.02.02` D-01, `12.01.02` D-07/DT-09); 07 does not inherit 12's authority to hold dispatch. Only `ready-for-DSP-release` is fully scoreable today. A set mismatch is recorded rather than hidden: eight recipient specs, four targets. Option 3 was foreclosed, not weighed — `07.08.03` DT-01 rejects a target-independent score "twice over". Also corrected a mis-routing: ISWC is `09.06.01`'s (captured, never issued), not domain 12's. Queue P-05 and ledger `r-47[0]` are resolved; whether readiness ever hard-blocks remains separately open. Recorded as ideation D-51.
@@ -2998,7 +3138,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 - **Problem**: A downgrade already notified the affected person, but no rule said whether anyone else is told. The queue's standing recommendation was to tell only the affected party.
 - **Options considered**: (1) Affected contributor only. (2) Affected person plus the roster. (3) Only when they encounter denial.
 - **Decision**: **Option 2, scoped.** A downgrade is an instance of D-09 ("every roster write is announced — to the named party, and to the existing roster"), not an exception to it. The roster audience is scoped by D-16 to members who can already see that person's entry, so a confidentiality-restricted roster discloses nothing it deliberately hides. Recorded as `07.03.01` D-18.
-- **Downstream**: **This reversed the queue's own prior recommendation on evidence** — its "sensitive demotion" premise has no source anywhere in the tree, and D-16 makes personnel default-visible. The coordination argument decides it: work is *rostered*, not assigned, so the roster is the team's only coordination record, and `07.03.03` D-04 has already killed the downgraded party's live URLs — under option 1 co-contributors keep routing stems to someone whose access is dead. Option 3 contradicts written `[DEEP]` behavior and locked copy, and makes the first notice a mid-work lockout. Audience only: cadence and batching stay with the notification cross-cut per the reference-never-restate rule. Queue P-07b and ledger `r-50[1]` are resolved; actorless band-derived downgrades became `07.03.01` Q-05. Recorded as ideation D-54.
+- **Downstream**: **This reversed the queue's own prior recommendation on evidence** — its "sensitive demotion" premise has no source anywhere in the tree, and D-16 makes personnel default-visible. The coordination argument decides it: work is _rostered_, not assigned, so the roster is the team's only coordination record, and `07.03.03` D-04 has already killed the downgraded party's live URLs — under option 1 co-contributors keep routing stems to someone whose access is dead. Option 3 contradicts written `[DEEP]` behavior and locked copy, and makes the first notice a mid-work lockout. Audience only: cadence and batching stay with the notification cross-cut per the reference-never-restate rule. Queue P-07b and ledger `r-50[1]` are resolved; actorless band-derived downgrades became `07.03.01` Q-05. Recorded as ideation D-54.
 - **Reversibility**: High — audience is a fan-out rule over an unchanged access model.
 
 ### DEC-033: Originality aggregates into a nominal enum for comp matching (2026-07-21)
@@ -3060,7 +3200,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 - **Source**: ideate-validate
 - **Tags**: decision, ideation, remediation, recovered
 
-- **Problem**: What happens to a confirmed contributor's share when they leave or are erased — asked as a question about an *accruing* balance.
+- **Problem**: What happens to a confirmed contributor's share when they leave or are erased — asked as a question about an _accruing_ balance.
 - **Options considered**: (1) Escrow for future claim. (2) Redistribute among remaining. (3) Forfeit to seller/platform.
 - **Decision**: **Resolved as scoped.** `14.10.03` D-05: the confirmed split row survives unchanged — never zeroed, redistributed, or forfeited. **The accruing premise is out of scope**: pool funding and download attribution/accrual are both WONT, and the splits feature is explicitly decoupled from the pool, so no accrual exists to escrow.
 - **Downstream**: Both alternatives were already foreclosed elsewhere — `09.02.04` D-14 makes a 0% row the removal-without-consent loophole, and `10.04.03` D-01 with `royalties-collections-index.md` D-09 forbid unpayable money becoming platform float or revenue. No escrow contract was created, because the premise requiring one is cut. GDPR erasure versus payout retention is `14.10.03` Q-04, a security question. **If the WONT features are ever promoted, the accruing half returns.** Queue P-11 and ledger `r-63[0]` are resolved. Recorded as ideation D-59.
@@ -3076,7 +3216,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 - **Problem**: When a host update breaks a purchased preset bank, nothing said who owes remediation.
 - **Options considered**: (1) External compatibility, flag the entry, no default refund. (2) Vendor conformity defect. (3) Platform goodwill remedy.
 - **Decision**: **Option 1.** `14.04.02` D-04 ratifies into the preset catalogue the pattern already locked at `14.07.01` D-04 ("'perpetual' is a promise about the entitlement and the artifact, not a guarantee of function") and D-06 (third-party state change → permit + mandatory disclosure + never revoke).
-- **Downstream**: Gives OS drift, lapsed dependencies and host breaks one consistent story instead of three. Vendor-defect classification would assign liability for a third party's act against supply-time conformity scope; a goodwill remedy creates discretionary cost with no source-defined trigger on a low-value product. **What triggers the flag is undecided** (`14.04.02` Q-04): the compatibility matrix records *declared* host-version facts, not observed breakage, so only a buyer-reported path exists today, and asserting a break without evidence would be the platform judging a third party's product. Queue P-12 and ledger `r-64[0]` are resolved. Recorded as ideation D-60.
+- **Downstream**: Gives OS drift, lapsed dependencies and host breaks one consistent story instead of three. Vendor-defect classification would assign liability for a third party's act against supply-time conformity scope; a goodwill remedy creates discretionary cost with no source-defined trigger on a low-value product. **What triggers the flag is undecided** (`14.04.02` Q-04): the compatibility matrix records _declared_ host-version facts, not observed breakage, so only a buyer-reported path exists today, and asserting a break without evidence would be the platform judging a third party's product. Queue P-12 and ledger `r-64[0]` are resolved. Recorded as ideation D-60.
 - **Reversibility**: High — a detection mechanism can be added later without changing who owes what.
 
 ### DEC-039: Several queue entries were mis-framed, and the ratifications correct them (2026-07-21)
@@ -3089,7 +3229,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 - **Problem**: Across the marketplace block, four entries asked the owner to choose among options for questions that were already answered, mis-cited, or built on a cut premise — a pattern first seen in Domain 07's stale CX markers.
 - **Options considered**: Ratify as framed, or correct the framing and record why.
 - **Decision**: **Correct and record.** P-10a/P-10b were confirmations of contracts already locked in files the entries never cited; P-11's premise depends on two WONT features; P-08a cited the wrong CX (a flaw/evidence cross-cut, not the comp key) and the wrong sibling decision (P-08b's offer-void asymmetry); the P-08a interim rule suspended a locked comp key rather than describing the status quo.
-- **Downstream**: Each ratification names the defect it corrects, so the queue stops teaching a false open/closed state. Reinforces the standing check: verify a queue recommendation's *premise* exists in the tree, and read the child before treating a parent marker as open. Adjacent stale markers found but deliberately not folded in (grade auto-downgrade, post-purchase disclosure change, `14.04.02` Q-03 against `14.09.02` DT-05) are recorded as separate reconciliations.
+- **Downstream**: Each ratification names the defect it corrects, so the queue stops teaching a false open/closed state. Reinforces the standing check: verify a queue recommendation's _premise_ exists in the tree, and read the child before treating a parent marker as open. Adjacent stale markers found but deliberately not folded in (grade auto-downgrade, post-purchase disclosure change, `14.04.02` Q-03 against `14.09.02` DT-05) are recorded as separate reconciliations.
 - **Reversibility**: N/A — this is a record-keeping correction, not a product policy.
 
 ### DEC-040: The bulk-import quality bar does not bend — the evidence moment moves (2026-07-21)
@@ -3101,7 +3241,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 
 - **Problem**: Bulk gear import appeared to force a choice between relaxing the quality bar and failing the Operator persona. The queue collapsed four independently-locked axes into one scalar.
 - **Options considered**: (1) Keep the normal per-unit bar, no publish until complete. (2) Allow disclosed lower-evidence bulk publication. (3) Restrict to specified seller classes.
-- **Decision**: **Per-axis confirmation — the dilemma was false.** Model binding does not relax (bulk *raises* it); grading relaxes in a bounded, disclosed way with reduced comp weight and never an exemption; disclosure does not relax and admits no substitute; unit media does not relax but its capture moment moves to label print. In one line: the bar does not bend, the evidence moment moves, absence is disclosed and never gated.
+- **Decision**: **Per-axis confirmation — the dilemma was false.** Model binding does not relax (bulk _raises_ it); grading relaxes in a bounded, disclosed way with reduced comp weight and never an exemption; disclosure does not relax and admits no substitute; unit media does not relax but its capture moment moves to label print. In one line: the bar does not bend, the evidence moment moves, absence is disclosed and never gated.
 - **Downstream**: A scalar answer would have silently overwritten at least one axis and, per `13.03` CX-03, created the prohibited shadow listing tier. Option 2's wording ("lower-evidence", "two-tier") reversed the meaning of the decisions it claimed to confirm, and two of its stated costs were inventions — no "trust weight" exists anywhere, and "unit handling" is not a state or event. Also repaired the false-dilemma prose surviving in `gear-marketplace-index.md` Q-13 and `13.03-listings-inventory-cx.md` — the unapplied half of this finding's own prescribed fix. Queue DQ-MG-01 and ledger `r-57[0]` are resolved. Recorded as ideation D-61.
 - **Reversibility**: Medium per axis; the four are independently adjustable, which is the point of refusing the scalar.
 
@@ -3236,7 +3376,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
   Territory, term and commission stay edge-level and do not vary per domain (accepted cost).
   `administer` does not reach naming a publisher over a share the party did not write (`09.01.04`
   D-06 stands over the mandate).
-- **Why the draft's Option A was rejected**: a 35-cell grid *is* the artefact DT-02 rejects by name;
+- **Why the draft's Option A was rejected**: a 35-cell grid _is_ the artefact DT-02 rejects by name;
   its cross-type asymmetry breaks the CX-03 union the sub-domain merge exists to protect; and its
   "book for live but not publishing" justification is only half-sourced — the verb half is real at
   `01.03.02`:16 ("my manager can book but not sign"), the domain half appears nowhere in 1,122 files.
@@ -3249,8 +3389,8 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 - **Reversibility**: Medium. The rename and the conjunction are cheap to revise; the eliminated
   options are not — B, C and G were each independently refuted against source.
 - **Left open (tracked)**: are the five domains identical to domain 17's ratified work-type enum, or
-  a fourth vocabulary? `01.03.02`:25 lists sync as publishing's *sibling*; `09.01.04`:102 carves sync
-  *inside* publishing as a right type. Tracked as `01.03.02` Q-03, targeted at `/create-prd`.
+  a fourth vocabulary? `01.03.02`:25 lists sync as publishing's _sibling_; `09.01.04`:102 carves sync
+  _inside_ publishing as a right type. Tracked as `01.03.02` Q-03, targeted at `/create-prd`.
 
 ### DEC-050: Opportunity post decide-by is derived by default and overridable (2026-07-30)
 
@@ -3261,7 +3401,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
 
 - **Problem**: five decisions and two queue states across `04.04`/`04.05` treated a decide-by date as an
   established field on the opportunity post; `04.01.01`, which owns the post object, never defined it, and
-  its only expiry rule keyed on the *event* date instead.
+  its only expiry rule keyed on the _event_ date instead.
 - **Options considered**: mandatory field with type-scoped default; derived-by-default and overridable;
   derived only (no separate concept); leave it out and let dependents degrade.
 - **Decision**: **derived by default, always present, overridable**. Presence types default to the event
@@ -3296,8 +3436,8 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
   position. A live quote is bilateral, post-request, and already discloses the seller's exact figure to that
   one buyer. Different exposure, different rule.
 - **Downstream**: `05.01.04` D-05 + Q-03 re-resolved and its stale-text note withdrawn; CX R-04 and R-06
-  scoped; below-*k* on an issued quote withholds from **both** parties (D-15's 'or to neither' branch made
-  operative); Q-01's minimum cohort *k* is now buyer-facing and harder — escalated, **no value picked**.
+  scoped; below-_k_ on an issued quote withholds from **both** parties (D-15's 'or to neither' branch made
+  operative); Q-01's minimum cohort _k_ is now buyer-facing and harder — escalated, **no value picked**.
 - **Reversibility**: Medium.
 
 ### DEC-052: Spec deals pre-commit a normal posture whose effect is deferred to a trigger (2026-07-30)
@@ -3323,7 +3463,7 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
   hourly, half-day and retainer had no posture set at all; buyout got its own row per DT-13.
 - **Left open**: `05.06.01` **Q-08** — may a Points posture carry deferred effect? `05.06.02` D-02 has
   participation existing from execution regardless of earnings, the opposite of vesting on a trigger. Points
-  omitted from the Spec row until answered; if it resolves against, the spec *production* deal collapses to
+  omitted from the Spec row until answered; if it resolves against, the spec _production_ deal collapses to
   co-ownership. `05.01.03` Q-07 (who detects the trigger) promoted to **prerequisite**.
 - **Reversibility**: Low — it settles the shape of a closed vocabulary two other features enumerate.
 
@@ -3365,10 +3505,10 @@ Owner approved fail-closed handling of missing legacy CMS settings until an exis
   written, every content download failed verification and E-19 quarantined a correctly-delivered build.
   Both colliding units are in the MUST band, so it was not deferrable.
 - **Decision**: **move the metadata write upstream**. Embedded tempo/key/loop metadata is a property of the
-  *product*, not the buyer — written once at ingest in `14.08.03` audio QC into the stored master. Delivery
+  _product_, not the buyer — written once at ingest in `14.08.03` audio QC into the stored master. Delivery
   then has at most **one** writer. Unmarked products are byte-identical to the master, so the single published
   hash is simply correct. Watermarked products take a two-hash treatment (master + per-grant).
-- **Why this over two-hashes-for-everything**: a per-buyer hash is a number only *we* can vouch for. The
+- **Why this over two-hashes-for-everything**: a per-buyer hash is a number only _we_ can vouch for. The
   master hash is **corroborable** — two buyers of one build compare and agree. D-09's 'verify on a machine
   that has never met us' survives intact for the entire air-gapped Operator inventory.
 - **E-19 split**: a per-grant mismatch is a transfer or stamping fault; only a **master** mismatch quarantines.
@@ -4964,6 +5104,162 @@ Owner approved the recommended architecture decomposition: 43 total IA shards co
 - **Downstream**: a contract test must parse exactly the five outcomes before the clause is cited.
 - **Reversibility**: Medium
 
+### DEC-178: Slice 12 DEC-148 depth-floor cascade: floor 53 to 285, Phase 2 3314 authored / 3310 active (2026-10-12)
+
+- **Timestamp**: 2026-10-12T10:30:14.996Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, depth-floor
+
+- **Problem**: Slice 12 kept its pre-DEC-148 floor of 53 although BE03c defines CMS-03C-04 to CMS-03C-21 and five supporting reads, and IA flows CMS-15/CMS-16 and feature rows 25.05.03/25.05.04 belonged to no slice.
+- **Options considered**: (A) apply DEC-148/DEC-149 per operation plus DEC-154 unowned obligations plus DEC-114 IA-level rows, keeping every judgement-call row; (B) the same without the judgement-call rows (five supporting reads, CMS-03C-04/-05 rows, six IA-level rows, six FE page rows).
+- **Decision**: (A). New ids P2-S12-AC-054..AC-285 contiguous after AC-053: 135 per-operation (AC054-AC188), 91 cascade obligations (AC189-AC279), 6 IA-level (AC280-AC285). Slice 12 = 285 authored/active, 0 checked. Phase 2 = 3314 authored / 3310 active (AC209, AC211, AC265, AC266 stay outside the active denominator). The owner standing rule "more work now" decides every judgement-call row; derivation in .memory/pipeline/progress/verification/2026-10-11-slice-12-depth-floor.md.
+- **Downstream**: phase-2.md Slice 12 section and coverage tables, Slice 12 tracker, progress index/phase/spec-pipeline totals, scripts/check-progress-consistency.mjs constants, the Slice 09 completion-policy and pre-traceability tests and their receipt rows, a Slice 12 evidence ledger over 285 rows.
+- **Reversibility**: Medium
+
+### DEC-179: Slice 12 mechanical reconciliations R1-R4 of BE03c and FE03 (2026-10-12)
+
+- **Timestamp**: 2026-10-12T10:30:14.997Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, spec-reconciliation
+
+- **Problem**: BE03c and FE03 still carried text that DEC-172, DEC-158 and DEC-159 had corrected for Slice 11, and FE03 lists missed the 2026-10-07 cascade operations.
+- **Options considered**: (A) propagate the existing rulings verbatim; (B) leave the drift for the Slice 12 implementation lanes to reconcile.
+- **Decision**: (A). R1 response-contract failures are 502 DEPENDENCY_UNAVAILABLE (DEC-172); R2 decision reason char_length 1-2000 and assignment/retire reasons 1-256 NFC code points (DEC-158); R3 metric label subject_kind (DEC-159); R4 FE03 protected read lists include cmsPatternLatestRead, cmsTaxonomyVersionsRead and cmsTaxonomyTermsRead, the step-up command list includes CMS-03C-07/-08/-09, and the data-mapping row names CMS-03C-01..21.
+- **Downstream**: BE03c, FE03, Slice 12 rows that cite those lines.
+- **Reversibility**: High
+
+### DEC-180: Slice 12 implementation decisions G2-G4, G6, G8, G9, G11 and R5 readings (owner may override) (2026-10-12)
+
+- **Timestamp**: 2026-10-12T10:30:14.997Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, implementation-decision
+
+- **Problem**: BE03c left implementation choices open and stated four statuses two ways (setup report sections 5 and 6).
+- **Options considered**: per item, the setup report recommendation versus leaving the item for the implementing lane.
+- **Decision**: G2 BE03c gains a lock-order paragraph placing every Slice 12 writer in the BE03b global order (extends DEC-157; BE03c no longer prescribes the order DEC-157 rejected); G3 activation and retirement events use the subject version row as outbox aggregate and term actions the term row; G4 CMS-03C-14 with no newer compatible version answers 200 with paths [], collisionCount 0, bulkEligible false, targetPatternVersion = pinnedPatternVersion; G6 cms_invalidate_governed_reviews_for_person mirrors BE03b:1872 and rule 7 of the BE03b lock order; G8 the exact impact set is compatibleTypeIds plus the block tuples behind blockRegistryDigest, and the undefined "approved impact-read scope" becomes the governed-review read scope; G9 cms.governed_review.recheck and cms.pattern.linked_update_scan are typed platform-queue messages (DEC-166), cms.taxonomy.merge_converge a BE00 jobs row; G11 submitting a taxonomy version with an unbuilt canonical domain is 422 canonical_source_unavailable with details.domain. R5: nested_pattern_not_active and pattern_version_not_active are 422 (request validation; 409 stays for stale CAS operands); every governed 409 is GOVERNED_REVIEW_VERSION_CONFLICT with the reason in details.reasonCode; the digest is an equality expectation the server recomputes and refuses on mismatch. Lane-derived drafts (non-node overrides key 422 at /overrides; PatternPlacementResource; G2 position 6 for cms_terms) stand until review. G5 is not applied: rewording BE03b:251/:1538 changes Slice 10 AC030 and goes to the owner wording batch.
+- **Downstream**: BE03c, FE03, IA03 consequences, Slice 12 rows AC065, AC068, AC073, AC085, AC114, AC201, AC202, AC204, AC212, AC226, AC248-AC250, AC261, AC262, AC276.
+- **Reversibility**: High
+
+### DEC-181: A top-level nested pattern reference is expanded at placement (2026-10-12)
+
+- **Timestamp**: 2026-10-12T16:51:24.933Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, owner-decision
+
+- **Problem**: DEC-175 stores one composition row per root node of a pattern forest, each with a NOT NULL block identity, but BE03c:676-713 lets a root node be a nested pattern reference (`kind: pattern`) with no block of its own.
+- **Options considered**: (A) expand a top-level nested reference into that pattern's own top-level blocks, recursively, so every row carries a block; (B) refuse 422 when a pattern version puts a nested pattern at the top level; (C) relax block_key/block_version to nullable for a reference row.
+- **Decision**: owner chose (A) on 2026-10-12. A placement writes one row per block root after recursively expanding top-level nested pattern references; every row stays pinned to the placed (patternId, patternVersion), whose pinned tree already fixes each nested version. The CMS-03C-02 items list may therefore exceed 32 rows; the existing bound of at most 512 nodes after expansion bounds it. Nested references below a block root stay inside that root's pinned tree.
+- **Downstream**: BE03c CMS-03C-02 contract (items bound), composition-row rule, path suffix of expanded roots, render plan and diff; Slice 12 rows AC216-AC219 and AC247.
+- **Reversibility**: Medium
+
+### DEC-182: Slice 12 wording batch ratified, including G5 for Slice 10 AC030 (2026-10-12)
+
+- **Timestamp**: 2026-10-12T17:39:20.720Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 setup cascade)
+- **Tags**: decision, slice-12, owner-decision, wording
+
+- **Problem**: eleven Slice 12 criterion texts (AC010, AC022, AC025, AC027, AC030, AC034, AC036, AC037, the AC004-AC039 source citations, the fuller AC026) disagreed with locked BE03c text or with DEC-175/DEC-181, and BE03b:251/:1543 plus Slice 10 AC030 still said `/blocks/...` is refused "until a composition write path exists" although Slice 12 ships that path.
+- **Options considered**: (A) approve all eleven items; (B) all except the optional W-10 fuller AC026; (C) review one by one.
+- **Decision**: owner chose (A) on 2026-10-12. Apply every item of docs/handoffs/2026-10-12-claude-s12/wording-batch-draft.md: W-01..W-10 to the Slice 12 plan and tracker, and G5 to Slice 10 AC030 (plan, tracker, evidence ledger text) and BE03b:251/:1543: `/blocks/...` stays refused because composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate version and are reported by comparison.
+- **Downstream**: Slice 12 rows and evidence; Slice 10 AC030 ledger text and receipts; BE03b.
+- **Reversibility**: High
+
+### DEC-183: Claimed CMS dry-run preparation Job disposition; a sealed failing scan polls failed MIGRATION_BLOCKED (2026-10-12)
+
+- **Timestamp**: 2026-10-13T02:17:04.058Z
+- **Agent**: claude
+- **Source**: implement-slice (boundary #128 design)
+- **Tags**: decision, owner-decision, boundary-128, jobs
+
+- **Problem**: boundary #128 (finding B-08): the production callback of the claimed CMS schema dry-run preparation entry is absent, so every production dry-run Job that reaches the effect ends stuck `running` with its message acknowledged; no locked text maps the entry result to a BE00 Job state.
+- **Options considered**: (A) a sealed failing scan is Job `failed` with `MIGRATION_BLOCKED` (BE00:569 literal); (B) Job `succeeded` with the report as resultRef, keeping `failed` for infrastructure faults.
+- **Decision**: owner chose (A) on 2026-10-12. The total map of docs/handoffs/2026-10-12-claude-s12/b08-production-trigger-design.md section 3 (option 1A) applies: completed -> succeeded with resultRef {type: cms_schema_dry_run_report, id: reportId}; progress, retry and failed_retryable -> queued; blocked -> failed MIGRATION_BLOCKED; failed_terminal and invalid claim/resolution -> failed; unreachable outcomes fail closed with PREPARATION_OUTCOME_UNMAPPED; a thrown callback -> queued DEPENDENCY_UNAVAILABLE; never pending_manual_review or cancelled. The report stays the only pass/fail authority (FE03:952).
+- **Downstream**: production-job-effect-dispatcher and its claimed-preparation callback, BE03a/BE00 spec text, boundary #128 closure; the delivery-budget capacity policy (gap 3) is a separate owner decision.
+- **Reversibility**: Low (Job terminal states are irreversible once written)
+
+### DEC-184: Claimed dry-run preparation delivery budget; fail late now, measure, then cap (2026-10-12)
+
+- **Timestamp**: 2026-10-13T02:18:05.149Z
+- **Agent**: claude
+- **Source**: implement-slice (boundary #128 design)
+- **Tags**: decision, owner-decision, boundary-128, jobs
+
+- **Problem**: under BE00 (4 deliveries) and the 128-row batch with maxBatchesPerInvocation m (default 1, 1..32; CPU per batch against limits.cpu_ms 50 unmeasured) a preparation completes only when the content type has at most 256 x m source rows; no spec states a ceiling or what happens above it.
+- **Options considered**: (A) ship the BE00 budget now, an oversized type fails late with MIGRATION_RETRIES_EXHAUSTED and a rolled-back recoverable plan, then measure batch CPU, raise m where safe and propose an early cap; (B) also add an early 422 cap at CMS-03A-10 now; (C) re-enqueue continuations as fresh messages (no ceiling).
+- **Decision**: owner chose (A) on 2026-10-12. Implement option 3A of docs/handoffs/2026-10-12-claude-s12/b08-production-trigger-design.md section 5: deliveryAttempt = max(1, message.attempts); on delivery 4 a would-be queued result rolls the plan back terminally and fails the Job MIGRATION_RETRIES_EXHAUSTED; BE00 15/60/300 s backoff on retry-type outcomes (not on progress); per-invocation budget min(240000, lease remaining - 60000) ms; state the 256 x m ceiling in BE03a. Follow-up owed: measure one batch CPU, then bring the owner an early-cap decision (option B) with a measured number.
+- **Downstream**: production async entrypoint and claimed-preparation callback, BE03a spec text, runbook, boundary #128 closure.
+- **Reversibility**: Medium
+
+### DEC-185: Composition rows carry an authored position (2026-10-13)
+
+- **Timestamp**: 2026-10-13T03:36:55.688Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 spec completion)
+- **Tags**: decision, slice-12, owner-decision, composition
+
+- **Problem**: cms_composition_instances has no order column; the render plan orders a slot by path bytewise, so a placement renders in node-key order rather than authored forest order and two placements in one slot interleave; document order changes accessibility verdicts (BE05c heading.first_level).
+- **Options considered**: (A) add position integer NOT NULL; (B) keep bytewise key order; (C) order by time-ordered ids.
+- **Decision**: owner chose (A) on 2026-10-13. A placement takes consecutive positions in forest order (after DEC-181 expansion), appended after the slot's current maximum under the existing revision/slot lock; the render plan orders by region, slot ordinal, position, path, id; accept, detach, linked-update scan, restore and carry-over copy the position unchanged; the D5 comparison hash is unchanged (insert order is immutable per path).
+- **Downstream**: forward migration on cms_composition_instances with a populated-table backfill, cms_revision_render_plan, BE03c/BE05c text, AC247 and the composition rows of Slice 12.
+- **Reversibility**: Medium
+
+### DEC-186: Slice 12 implementation decisions for placement paths, digest status and spec drift (owner may override) (2026-10-13)
+
+- **Timestamp**: 2026-10-13T03:36:55.688Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 spec completion)
+- **Tags**: decision, slice-12, implementation-decision
+
+- **Problem**: DEC-175/DEC-181 and the ledger lanes left implementation details open and found code that diverges from locked text.
+- **Options considered**: per item, the researched recommendation versus leaving it to the implementing lane.
+- **Decision**: (1) a placement row path is the canonical slotPath joined with "/" and the root node key, and for an expanded nested root the key chain of the reference and its roots; a root slotPath contributes no extra separator; row paths stay within 248 octets or the placement is 422 at /slotPath. (2) blockRegistryDigest: malformed shape is 422 at its pointer; a differing digest is 409 with the new closed token block_registry_digest_mismatch (the shipped CMS-03C-01 SQL already behaves so) for CMS-03C-01, -02 and -12. (3) overrides keys address nodes by the same key chain inside expanded roots. (4) the successor guard for a term merge accepts an active or deprecated survivor as P2-S12-AC-225 states. (5) a malformed template key on the template pages answers 400 as P2-S12-AC-265 states. (6) template keys are unique per owner (E14) and a second owner's key never discloses another owner's row. (7) CMS-03C routes map 502, 503 and 504 to DEPENDENCY_UNAVAILABLE as the BE03c catalog states (the DEC-172 pattern). Remaining DEC-181 consequences (placement versus the CMS-03C-15 per-request bound, FE list size) are settled by the spec-completion lane and reported.
+- **Downstream**: BE03c/FE03 text, CMS-03C-01..05 code and tests, Slice 12 contracts and SQL.
+- **Reversibility**: High
+
+### DEC-187: CompositionInstanceResource exposes the read-only position (2026-10-13)
+
+- **Timestamp**: 2026-10-13T03:52:27.839Z
+- **Agent**: claude
+- **Source**: implement-slice (Slice 12 spec completion)
+- **Tags**: decision, slice-12, implementation-decision
+
+- **Problem**: DEC-185 adds position to cms_composition_instances, but the resource schema did not say whether clients see it; the placement list and the composition editor need authored order.
+- **Options considered**: (A) expose position read-only on CompositionInstanceResource; (B) keep it internal and rely on list order only.
+- **Decision**: (A), orchestrator implementation decision, owner may override: `position` integer 0..2147483647, immutable per path; lists stay in position order. Applied to BE03c CompositionInstanceResource.
+- **Downstream**: packages/contracts cms-composition resources, CMS-03C-02/-14/-15 responses, FE composition list.
+- **Reversibility**: High
+
+### DEC-188: Immutable governed definition pins and a separate lifecycle counter (2026-10-13)
+
+- **Timestamp**: 2026-10-13T16:27:33Z
+- **Agent**: codex (gpt-6.1-sol / ultra orchestration)
+- **Source**: Direct owner instruction “approve both and resume”; approved recommendation recorded in docs/handoffs/2026-10-12-claude-s12/CODEX-APPROVED-DECISIONS.md
+- **Tags**: decision, slice-12, owner-approved, architecture-correction
+
+- **Problem**: Advancing the subject definition `version` for lifecycle changes collides with immutable definition numbers, historical pins and uniqueness constraints. DEC-180 G3's event wording did not distinguish those identities.
+- **Options considered**: Preserve immutable definitions/pins with a separate internal lifecycle counter; or redesign the public version/pin model and migrate every consumer.
+- **Decision**: Owner approves the first option. Template, pattern and taxonomy version rows retain immutable definition `version` and historical pins. A separate positive-bigint `lifecycle_version`, initially 1, advances exactly once per governed state transition under the existing guarded RPC/row-lock boundary. Activation, scheduled execution and retirement events use the committed subject `lifecycle_version` as aggregateVersion, correcting DEC-180 G3. Definition fields, edit operands, public pin identities and frozen review `subjectVersion` are unchanged. Existing governed-review `version`/`expectedVersion` CAS remains separate; no new public field or public version-model redesign is authorized. Term and locale event counters are unchanged.
+- **Downstream**: IA03, BE03c lifecycle/envelope/schema/event clauses, FE03 consequences, Phase 2 and Slice 12 AC249/AC250 and current depth matrix; contract-first runtime coverage must prove immutable pins and distinct lifecycle-event identities.
+- **Reversibility**: Requires a new owner decision and a coordinated correction/cascade; not an implementation-only override.
+
+### DEC-189: CMS03C02-only response ceiling of 1 MiB (2026-10-13)
+
+- **Timestamp**: 2026-10-13T16:27:33Z
+- **Agent**: codex (gpt-6.1-sol / ultra orchestration)
+- **Source**: Direct owner instruction “approve both and resume”; approved recommendation recorded in docs/handoffs/2026-10-12-claude-s12/CODEX-APPROVED-DECISIONS.md
+- **Tags**: decision, slice-12, owner-approved, architecture-correction
+
+- **Problem**: The locked 1–512-row placement contract can exceed BE00's ordinary 256 KiB response ceiling; the current 512-row fixture is 289473 bytes. Streaming alone does not resolve the conflicting limits.
+- **Options considered**: Preserve 512 rows with a narrowly scoped response exception; or keep 256 KiB and revise placement behavior/contract.
+- **Decision**: Owner approves the first option. Only the decoded JSON response of CMS-03C-02 (CMS03C02) may be at most 1048576 bytes (1 MiB). Requests and every unrelated response route retain their existing limits, ordinarily 262144 bytes (256 KiB). Placement cardinality remains 1–512, with no truncation, legacy single-row substitution or invented aggregate-version field. This approval does not prove the ceiling sufficient for every allowed producer output: derive the actual producer's maximum serialized response and verify maximum-sized success, over-budget refusal and applicable transaction/no-partial-effects guarantees before acceptance.
+- **Downstream**: BE00 ceiling exception, BE03c placement response rule, IA03/FE03 consequences, Worker and Web route-specific bounded adapters, producer/transport tests and Slice 12 acceptance evidence.
+- **Reversibility**: Requires owner-approved specification correction; never widen global limits silently.
+
 ### DEC-162: Narrow first-empty schema baseline representation
 
 - **Timestamp**: 2026-10-09T19:57:15.435Z
@@ -4981,3 +5277,165 @@ Owner approved allowing null source/active version IDs only for a genuinely veri
 - **Tags**: slice-11, owner-approved, contract-cascade
 
 Owner approved fail-closed handling of missing legacy CMS settings until an existing authorized settings save initializes them. GET/read/preflight must remain non-mutating. Do not add a bootstrap operation or implicit read-side repair, broad backfill, new roles/grants, or bypass CAS/idempotency/authorization/audit/outbox atomicity. Normal revision writes may materialize settings through their existing authorized transactional producer seam. Cascade affected locked BE03b/settings/error contracts and tests before implementation. External gates remain unchecked; Slice11 remains 0/122 and full phase incomplete.
+
+### DEC-190: CMS-03C-09 retirement is active-only with no fresh approval (2026-10-15)
+
+- **Problem**: BE03c 1326/1492 and FE03 877/1118 say retirement "needs no review", while AC083 and AC268 applied the approval/dependency/preflight gate to every CMS-03C-09 action, so the retire branch was contradictory (propagation scan `.memory/wiki/specs/audits/propagation-scan-governed-lifecycle-2026-10-13.md` §R).
+- **Options considered**: (A) retire through the existing review-addressed route with review `version` If-Match, unconditional recent MFA and current owner capability, requiring only an `active` subject; (B) gate retire like activation (approved/current evidence, dependency and preflight checks); (C) retirement without any persisted review record (new addressing model).
+- **Decision**: Owner chose A on 2026-10-15. Retire requires the resolved subject to be `active` (else 409 `subject_not_retirable`), keeps authentication, unconditional binding-bound recent MFA, disclosure-safe review resolution, current subject-kind owner capability proved under the existing locks, review-version If-Match/expectedVersion, idempotency and transactional audit; it needs no fresh approval and no dependency, policy, provider or preflight validity. It commits `retired`, lifecycle +1, the retirement timestamp, audit and exactly one subject-kind event; definition version and pins are unchanged. Activate and schedule keep the approval, hash, policy, dependency and preflight checks.
+- **Downstream**: cascade of the scan's §R edits — AC083, AC207, AC268 wording; BE03c 171, 1326, 1470, 1492, 1502; FE03 1069, 1798; IA03 267 — then the retire branch in the CMS-03C-09 SQL producer, the Worker route (already forwards retire) and the Web activation form.
+- **Reversibility**: Medium (forward migration plus spec cascade).
+
+### DEC-191: Expose superseded version and schedule outcome on governed resources (orchestrator resolution, 2026-10-15)
+
+- **Problem**: FE03 :882 and :1118 require the CMS-03C-09 200 to render the superseded version and blocked or cancelled schedules to show their closed reason; no 03c resource carried either (`GovernedActivationResource` has only `subjectVersion`; `GovernedReviewDetailResource` has no schedule member; CMS-03C-19 is internal). Source: review-web-activation.md F4.
+- **Options considered**: (A) additive nullable read members in BE03c: `GovernedActivationResource.supersededVersion` and `GovernedReviewDetailResource.activationSchedule {state, reasonCode}` projecting the stored schedule row and its existing closed `reason_code`; (B) amend FE03 to drop both displays; (C) leave both as tracked BOUNDARY stubs.
+- **Decision**: A, as an orchestrator resolution (owner may override). FE03 is the locked requirement and BE03c already stores the data and the closed vocabulary (`cms_governed_activation_schedules.reason_code`; BE03c "Scheduled activation (OD-6)" and the GovernedActivationSchedule table row), so only the read projection was missing. No new state, vocabulary, authority or write path.
+- **Downstream**: BE03c resource schemas and changelog; contracts `governed-activation.ts` and `governed-review-read.ts`; forward SQL for the CMS-03C-09 answer and the CMS-03C-10 detail read; Worker strict parsing; Web activation result and review detail rendering.
+- **Reversibility**: High (additive nullable members).
+
+### DEC-192: Locale variant approval gate applies at schedule, publish and execute, never at submit (2026-10-15)
+
+- **Problem**: BE03c states `locale_variant_not_approved` without a phase, while BE03b runs the locale preflight category at submit; read literally, a locale-variant revision (an effective draft at submit) would fail its own submission, so approval is unreachable (review-locale.md F4).
+- **Options considered**: (A) enforce only at schedule, publish and scheduled execution, admitting effective state `scheduled`; (B) also enforce at submit and require approved variants before review (needs an undefined separate variant-approval step); (C) advisory warning only (drops the hard gate).
+- **Decision**: Owner chose A on 2026-10-15. In the schedule, publish and execute phases a locale variant whose revision is not in effective state `approved`, `scheduled` or `published` fails `locale_variant_not_approved`; submit never applies the approval check. Missing still wins over stale, which wins over approval.
+- **Downstream**: BE03c locale gate rule and changelog; the affected Slice 12 acceptance criteria wording (owner-approved cascade); gate migrations 050600/050700 (execute phase added, `scheduled` admitted) and their tests; promotion of the parked locale-gate pair; Slice 11 helpers_preflight #14/#94 and criteria_publish_gates #32/#33.
+- **Reversibility**: Medium (forward migration plus spec cascade).
+
+### DEC-193: Linked pattern updates let the author decide every structural change (2026-10-15)
+
+- **Problem**: BE03c "Pattern versions and linked updates" leaves undefined how CMS-03C-14/15 treat a newer pattern version that changes structure under a linked instance: block type or children of a node, a removed root, added roots, and how detach stores a tree larger than the override bounds (review-pattern-updates.md, review-pattern-updates-f1.md §6: D-VALUE, D-RETIRE, B2, D-DETACH).
+- **Options considered**: (A) author decides: structural changes surface as collisions, never adopted silently; a removed root is retired on accept or kept as a detached local copy; added roots are listed as new for the author to place; detach stores the full subtree as a detached local block tree; (B) follow the pattern: structural changes adopted silently, removals forced, additions appended, per-node props map with a listed 422 over the bound; (C) block accept of any structural change for an instance with overrides.
+- **Decision**: Owner chose A on 2026-10-15. Text overrides keep the existing rule (an override replaces the node's props). Structural changes (block identity or children of a node) appear in the CMS-03C-14 diff as collisions the author must resolve; a root the target removes is retired on accept, and choosing `yours` makes it a detached local copy rather than a stuck linked row; roots the target adds are listed as new in this version and are placed only by the author; detach materializes the full subtree as a detached local block tree bounded by the pattern node limit, with no 128-key refusal.
+- **Owner clarification (2026-10-15 continuation)**: When asked whether keeping one structural change should preserve the choices for other changes in the same block, the owner answered **"Honor each choice (Recommended)"**. Every explicit per-path `yours`/`theirs` choice must apply. A structural `yours` choice must not replace those choices with an unchanged whole-block copy or silently ignore them. Any required detached materialization must reflect the resolved choices, rather than discard them. This clarifies option A; downstream contradictory whole-instance fallback text must be corrected through the propagation gate before implementation.
+- **Downstream**: BE03c "Pattern versions and linked updates", CMS-03C-14/15 resources and rows; contracts `pattern-update` and diff; held WIP SQL `20261014140000`-`140610` (plan, diff, apply, detach); Worker transport mapping; Web composition diff UI; FE03 and the affected Slice 12 acceptance criteria (owner-approved cascade).
+- **Reversibility**: Medium (unpromoted WIP SQL, spec cascade).
+
+### DEC-194: A bounded automatic sweep re-requests failed taxonomy merge convergence (2026-10-15)
+
+- **Problem**: BE03c defines no command or schedule that re-requests `cms.taxonomy.merge_converge` after a terminal `failed` Job, so assignments of a merged term can stay unconverged while P2-S12-AC-226 says merge re-points every active assignment (lane-worker-taxonomy-terms-report.md fix pass Open item 1; review-worker-taxonomy-terms-f1.md M2).
+- **Options considered**: (A) automatic sweep: a scheduled Worker tick re-requests convergence for an acting party with a failed job, remaining work and no live job, bounded; (B) audited operator re-request command; (C) no recovery, leftovers resolve through the redirect and AC-226/BE03c are reworded.
+- **Decision**: Owner chose A on 2026-10-15. A scheduled sweep (the CMS-03B-20 / CMS-03C-19 sweep pattern) requests a fresh convergence Job for an acting party that has a `failed` merge-convergence Job, remaining merged-term work and no `queued` or `running` Job of the type; at most once per party per 15 minutes and at most 3 consecutive failed generations, after which it stops and alerts `platform.on_call`.
+- **Downstream**: BE03c "Merge convergence Job disposition" (recovery reference, BE00 571), one private SECURITY DEFINER reconciliation function and a `service_role`-only `platform_api` wrapper, a scheduled Worker tick and adapter, the runbook, pgTAP and Worker tests; AC-226 stays as written.
+- **Reversibility**: High (additive).
+
+### DEC-195: Protected read of the saved related-content rule, editors only (2026-10-15)
+
+- **Problem**: BE03c offers only the CMS-03C-05 write for related content; no read returns the saved rule (FE03 :1473 gives the form a `rule` prop) and nothing proves edit authority for the page-level 403 (FE03 :1072, :1601). Boundaries SG-S12-03 and SG-S12-04 (review-web-related.md, review-web-related-f1.md); the page is read-only meanwhile.
+- **Options considered**: (A) a protected read `GET /api/v1/cms/entries/{entryId}/related-content` returning the current rule or none, authorized exactly like CMS-03C-05 (assigned author/editor with edit authority; 403 for a reader without it), stored target ids returned as stored; (B) the same read hiding unreadable targets, with CMS-03C-05 changed from replace to merge; (C) keep the page read-only and leave CMS-16 open.
+- **Decision**: Owner chose A on 2026-10-15. The read returns the source entry's current active RelatedContentRule (or none) to an assigned CMS author or editor who can edit the source, 403 to a visible source without edit authority, 404 for a hidden or absent source. Pins and exclusions are returned as stored; the form labels targets the viewer cannot open as an unavailable entry and keeps them on save. The read is the page's edit-authority gate (resolves SG-S12-04) and its saved-rule source (resolves SG-S12-03).
+- **Downstream**: BE03c route/validation/matrix/catalog/authority rows and resource for the read; contracts; SQL read function and `platform_api` wrapper; Worker route; Web related-content page (lift the read-only boundary, page-level 403); FE03 page/form rows; the affected Slice 12 acceptance criteria (owner-approved cascade).
+- **Reversibility**: High (additive read).
+
+### DEC-203: Build an isolated per-run native tracing adapter with reviewed bindings (2026-10-17)
+
+- **Human approval**: "Build an isolated per-run tracing adapter (recommended), with reviewed binding changes and no persistent services or default-stack changes."
+- **Problem**: DEC-197 upgrade validation has injected trace validators but no trusted native causal observation producer; owned CLI exit or Docker IDs alone cannot clear native upgrade acceptance.
+- **Decision**: Build the isolated per-run tracing adapter. Review and propagate necessary binding-contract changes before implementation; no silent socket/target substitution or validator weakening.
+- **Retained boundaries**: Exact authorized ALT project/database, four canonical locks, executable/source attestation, owned process/request attribution, independent descendant/daemon/backend drain, reset-only verified identity renewal, complete negative/positive 080 evidence and verified ordinary-baseline restoration. No persistent services or default-stack changes. No remote/hosted/provider, clone, secret-read, generic backend termination or acceptance-waiver authority is added.
+- **Alternatives considered**: Owner supplies an existing trusted tracer; retain fail-closed refusal while the producer is unavailable. Owner selected building the isolated adapter.
+- **Upstream**: DEC-197 target/reset protocol and approved identity-renewal amendment. Existing hard-coded direct Docker endpoint requires explicit binding review, not an implicit compatibility bypass.
+- **Downstream**: Native adapter/launcher and all-client drain contracts, meaningful RED tests, independent review, actual controlled native proof and tracking. Implementation mechanism remains subject to source-backed review within this approval; new persistent infrastructure or materially different authority still requires owner direction.
+- **Status**: Approval recorded; binding scan/design, TDD, native runtime and acceptance remain OPEN. No model, stack, production CMS behavior or external phase gate changes.
+
+#### DEC-203 fixed proc-locks diagnostic binding — root selection 2026-10-21
+
+The mandatory native FLOCK verifier opens `/proc/locks`, but the current private
+diagnostic target union refuses that metadata reader. Root selected an additive
+literal-only binding with read-only CLOEXEC/NOFOLLOW flags, root-owned regular
+mode, independent named device/inode/owner checks and compiler-phase refusal.
+No `/proc` wildcard, new read capability, public API, native authority, relaxed
+inventory or acceptance credit is selected. Contract/consumer discovery and
+RED-first migration tests precede source changes; original pins remain historical
+and immutable. Exact selection and holds:
+`docs/handoffs/2026-10-14-claude-s12/briefs/codex-dec203-proc-locks-metadata-selection.md`.
+
+### DEC-202: Initialize entry templates from the exact active schema default with resolver refusals (2026-10-17)
+
+- **Timestamp**: 2026-10-17T23:18:55Z
+- **Agent**: codex_root_61_20261015
+- **Source**: Direct owner answer "Use resolver policy (Recommended)" to the derived default-template initialization failure-policy question
+- **Tags**: decision, slice-12, entry-create, template, owner-approved
+
+- **Problem**: FE03:1274 specifies that new entries start from their schema's default template, but current create always writes SQL NULL and BE03b's create matrix omits the derived-template refusal mapping. A default may become withdrawn after schema activation.
+- **Decision**: Initial entry creation server-derives the first revision's template pin from the exact authorized active `ContentTypeVersion.default_template_version_id`; no default preserves SQL NULL. Apply the existing compatibility resolver's policy to that exact stored default: missing or concealed is404 `NOT_FOUND` without details; incompatible is422 `VALIDATION_FAILED` with machine DETAIL `["/contentTypeVersionId"]`; retired or blocked is409 `CONFLICT`. Superseded templates remain eligible under existing compatibility semantics; do not silently require active-only.
+- **Boundaries**: No new template request operand, latest/first-binding fallback, historical rebind, composition fabrication, authorization or public reason/status. Preserve exact completed replay before dependency revalidation, existing authority and response shapes; unexpected faults propagate. Dependencies are fenced before schema position4 and rechecked after waits, preserving the global relation2/dependency3/schema4 order.
+- **Downstream**: Cascade the explicit entry-create initialization/error/locking rules into BE/FE and affected Slice12 tracking, then contract-first actual-producer RED, forward-only implementation, independent review, atomicity/replay and actual lock-order validation. The previously authored default/NULL happy-path test remains valid; its author did not guess refusal policy. No acceptance tick or hosted evidence is granted by this decision.
+
+- **Propagation approval** (2026-10-17 23:38:29 UTC): Owner chose "Apply corrections and checks (Recommended)" after the DEC-202 scan. Apply the listed IA/BE/FE/tracking corrections and eleven independently testable receiving checks; keep SQL/Web fixes OPEN for TEST-first forward implementation. Authorization, exact replay and immutable history remain unchanged; no evidence or acceptance checkbox is cleared.
+
+### DEC-201: Remap historical composition parents by selected active path on restore (2026-10-16)
+
+- **Timestamp**: 2026-10-16T17:11:09Z
+- **Agent**: codex_root_61_20261015
+- **Source**: Direct owner answer "Remap by parent path for restore (Recommended)" to the restore-specific historical-parent question
+- **Tags**: decision, slice-12, composition, restore, parent, owner-approved
+
+- **Problem**: DEC-200 governs ordinary append/conflict carry only. A valid named restore source can also have an active child pointing to an older immutable parent row even when a newer active parent at that logical path is selected for restoration.
+- **Decision**: In `cms_restore_revision`, resolve each selected child's recorded parent within the named source owner/revision to its logical path and reconnect the child to the fresh destination copy of the newest active parent selected at that path. A historical P1 reference may reconnect to selected P2. Selection remains newest-before-active eligibility; this answer does not carry pending or draft heads.
+- **Refusal**: If no eligible active parent remains, or collapsing historical identities to the selected logical graph creates a cycle or otherwise cannot be represented, refuse the entire restore atomically. Never resurrect excluded history, drop or detach a child, fabricate a parent or retain a cross-revision edge. Use the existing restore validation/translation error boundary; no new transport status, permission or public error reason is authorized.
+- **Invariants**: Preserve the separately locked named-source translation policy, authored positions, complete local trees, source immutability, fresh identities, immediate `carried_from_id` provenance, parent-before-child destination insertion, registry/template checks, authority and authorization boundaries. DEC-198/200 ordinary active/pending carry is unchanged.
+
+### DEC-200: Remap historical composition parents by selected logical path on autosave (2026-10-16)
+
+- **Timestamp**: 2026-10-16T15:59:12Z
+- **Agent**: codex_root_61_20261015
+- **Source**: Direct owner answer "Remap by parent path (Recommended)" to the historical-parent autosave question
+- **Tags**: decision, slice-12, composition, carry-over, parent, owner-approved
+
+- **Problem**: Valid immutable legacy composition rows can reference an older parent P1 even after a real public update appends P2 at the same path. Owner/revision foreign keys and acyclicity do not require newest-parent closure. Exact-ID-only copying would reject otherwise preservable hierarchy.
+- **Decision**: In ordinary `cms_create_revision` and `cms_resolve_conflict` carry, resolve a selected child's recorded parent within the source owner/revision, find that parent's logical path, and reconnect the child to the fresh destination copy of the newest eligible parent selected at that path. Selection remains newest-before-active/pending eligibility (DEC-198). If no eligible parent remains, refuse the entire write atomically; never resurrect excluded history, drop the child, detach it, or retain a cross-revision parent edge.
+- **Invariants**: Preserve every other semantic member, fresh identities, immediate `carried_from_id` provenance, authored positions and parent-before-child destination insertion. Validate the remapped graph; refuse an unrepresentable cycle atomically rather than inventing topology. No new permission or transport status is authorized. Restore's separately locked translation/active-only policy is not widened by this autosave answer.
+- **Downstream**: Cascade BE03c ordinary-carry contract and AC245, add real historical-parent successor/remap and excluded-parent full-rollback controls, then implement carry420–422. No criterion or validation gate is cleared.
+
+### DEC-199: Recheck live nested patterns at entry publication (2026-10-16)
+
+- **Timestamp**: 2026-10-16T15:18:55Z
+- **Agent**: codex_root_61_20261015
+- **Source**: Direct owner answer "Also gate entry publication (Recommended)" to the AC211 versus publication-provider scope question
+- **Tags**: decision, slice-12, pattern, publication, provider, owner-approved
+
+- **Problem**: AC211 requires a nested-pattern graph recheck before publish, while BE03c's publication provider names root activity/digest checks and only two failure reasons. A live parent can remain active after a pinned nested version becomes superseded; that state is not unreachable.
+- **Decision**: Entry publication's pattern provider and corresponding revision-aware frozen/currentness checks must revalidate every pinned nested version reached through a live pattern, requiring active state and the existing pattern-graph compatibility rule. Use the existing token `nested_pattern_not_active` as a pattern-category failed reason for a missing, inactive or incompatible nested version. Preserve the provider's existing phase applicability, root `pattern_not_active` and digest `pattern_digest_changed` behavior; add no new authorization or transport status.
+- **Detached boundary**: A composition with a nonnull canonical `detached_tree` validates that tree's own reachable blocks/digest and never reopens its retained pattern provenance, nested pins included. A NULL-tree linked or legacy detached row retains live pinned behavior. Mixed provenance/live use of a pin must still validate its live use.
+- **Downstream**: Cascade BE/FE provider reason contracts, canonical registry, fixed Web copy, AC211/AC238/AC241 tracking and discriminating provider/currentness tests before SQL integration. Keep manifest provenance identities and existing no-disclosure/error boundaries. No gate or criterion is cleared by this decision.
+
+### DEC-198: Preserve unanswered pending compositions through autosave and conflict resolution (2026-10-16)
+
+- **Timestamp**: 2026-10-16T15:09:01Z
+- **Agent**: codex_root_61_20261015
+- **Source**: Direct owner answer "Preserve pending rows (Recommended)" to the active-only carry versus pending rendered-content question
+- **Tags**: decision, slice-12, composition, carry-over, owner-approved
+
+- **Problem**: BE03c's ordinary carry wording names only `active` instances, while its linked-update rule requires a newest `pending_diff` row to keep rendering its existing pin. Excluding that newest row, or falling back to its older active history, can drop visible composition or lose the unanswered update on autosave.
+- **Decision**: `cms_create_revision` and `cms_resolve_conflict` carry each selected newest `active` or `pending_diff` composition row from the base revision into the new draft. A copied pending row remains `pending_diff`, preserving its existing pin, `pending_pattern_version`, overrides, bindings, position, detached-tree value and unanswered update; copying never accepts the target or clears the pending state. Newest-per-path selection precedes eligibility, so retired/superseded heads do not resurrect older active history. Fresh row identities, immediate `carried_from_id` provenance and valid destination parent remapping remain required.
+- **Scope**: This answer governs ordinary autosave/conflict carry. It does not change restore translation's separately locked validation/active-row policy, authorize a scan/activation/provider bypass, widen permissions or clear any acceptance gate.
+- **Downstream**: Propagate the ordinary-carry contract, implementation/acceptance tracking and discriminating pending-head tests. Existing pinned pending rendering remains authoritative. No criterion is checked by this decision.
+
+### DEC-197: Complete the manifest receiving contract and projection relationship before Slice 11 closure (2026-10-16)
+
+- **Timestamp**: 2026-10-16T02:49:10Z
+- **Agent**: codex_root_61_20261015
+- **Source**: Direct owner answer "Complete contract and relationship now (Recommended)" to the Slice 11 boundary sequencing question
+- **Tags**: decision, slice-11, slice-13, slice-15, owner-approved, sequencing-correction
+
+- **Problem**: Slice 11 AC045 forbids unresolved implementation boundaries, while DEC-167 deferred projection_consumer_state.projection_id's receiving FK to Slices 13/15. PublicationProjection requires a route_manifest_version whose governing storage contract is incomplete, so adding only the projection table would relocate the missing dependency.
+- **Options considered**: Complete the missing manifest contract and receiving tables/relationship now; or explicitly permit named boundary #127 at Slice 11 closure while retaining later receiving obligations.
+- **Decision**: The owner selected "Complete contract and relationship now (Recommended)". Keep AC045's strict no-unresolved-boundary gate. Complete the route-manifest storage contract and pull forward only its receiving table, the fully specified PublicationProjection receiving table, and the real projection_consumer_state projection FK. Preserve DEC-167's mapping of publication_id to the existing publication-version row and every required FK; no ID-only placeholder, relaxed integrity, deletion or manufactured row may substitute for referential integrity. Default-deny premature access. Delivery endpoints, writers, pointer activation and consumer behavior remain in their planned Slices 13/15.
+- **Downstream**: Complete and cascade the governing IA/BE storage contracts and bounded sequencing notes, then contract-first RED/GREEN forward-only migrations, existing-row integrity checks, independent review and fresh closeout evidence. Replace the #127 sentinel only after the real FK exists. Reconcile stale #128 tracking under DEC-183/184. No completion waiver, acceptance tick, signature, delivery activation or external-evidence clearance is authorized by this choice.
+- **Reversibility**: Requires an owner-approved contract/sequencing correction; applied migrations remain immutable and any later schema correction is forward-only.
+
+#### DEC-197 local validation protocol amendment — owner approval 2026-10-16
+
+- **Evidence**: the normal four-lock local Supabase reset recreates both the container and PostgreSQL cluster; database OID5 remains5 and does not establish physical continuity. The initial fixed-identity implementation protocol cannot pass its own reset.
+- **Owner decision**: "Allow verified reset-only identity renewal (Recommended)". Renew physical identity only after the validation runner's own locked, verified reset; all unexpected identity changes remain fail-closed. This is not a migration acceptance waiver or authorization to adopt another database/project.
+- **Boundaries and next work**: exact local ALT target, executable/environment/daemon/source inventory, observed transition provenance, fresh clients and epochs, drained owned work, negative rollback/positive complete-catalog evidence, and verified ordinary-baseline restoration remain mandatory. Contract-first transition tests, implementation, independent review and actual native proof precede acceptance. No remote/default stack or clone authority added.
+- **Authoritative implementation addendum**: `docs/handoffs/2026-10-14-claude-s12/briefs/codex-dec197-upgrade-reset-identity-renewal.md`. Production CMS decisions and external phase gates unchanged.
+
+### DEC-196: Designer-only read of nestable patterns (2026-10-15)
+
+- **Problem**: the pattern designer (`cms.template_designer`) needs a picker of active patterns to nest, compatible with every content type the new pattern targets; CMS-03C-13 serves authors/editors and filters by one content type.
+- **Options considered**: (A) a new protected designer-only read of active owner-scope patterns compatible with every listed content type, paged like the selector; (B) widen CMS-03C-13 to designers with a multi-type intersection; (C) no picker, typed key verified by the latest read.
+- **Decision**: Owner chose A on 2026-10-15. CMS-03C-13 keeps its author/editor authority and single-type query unchanged; a separate read for `cms.template_designer` lists active patterns in the caller's owner scope whose compatible types include every requested content type, with the selector's paging conventions.
+- **Downstream**: BE03c rows and resource for the read; contracts; SQL read and `platform_api` wrapper; Worker route; Web pattern-designer nested picker; FE03 pattern designer row; affected acceptance criteria (owner-approved cascade).
+- **Reversibility**: High (additive read).

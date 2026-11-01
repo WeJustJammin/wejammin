@@ -180,7 +180,13 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_compare_lineage.sql',
             title:
-              'a non-empty recorded taxonomy list fails closed even when the version exists: no Slice 10 authority resolves it (DEC-141)',
+              "a recorded taxonomy version that exists in the caller's owner scope is resolved by identity and the comparison succeeds (BE03c Receiving obligations from Slice 10 (DEC-141) item 1; P2-S12-AC-242)",
+          },
+          {
+            tool: 'pgtap',
+            file: 'supabase/tests/phase_02_slice_10_compare_lineage.sql',
+            title:
+              'and the comparison is computed, not a partial answer (BE03c Receiving obligations from Slice 10 (DEC-141) item 1; P2-S12-AC-242)',
           },
           {
             tool: 'pgtap',
@@ -216,7 +222,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_ev_ea_lineage.sql',
             title:
-              'the restored draft records exactly the taxonomy version ids of its source revision',
+              'the restored draft records no taxonomy version id of a vocabulary its source holds no assignment for: the pin resolves, the restore proceeds and DEC-240 does not carry it',
           },
         ],
       },
@@ -716,7 +722,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-10-ev-ea-typed-reasons.apispec.ts',
             title:
-              "CMS-03B-01 typed value reasons through the real stack 'a non-empty taxonomy value' is the typed 422 'taxonomy_source_unavailable' at its field pointer and nothing is written",
+              "CMS-03B-01 typed value reasons through the real stack 'a non-empty taxonomy value naming an …' is the typed 422 'term_unavailable' at its field pointer and nothing is written",
           },
           {
             tool: 'vitest',
@@ -1500,7 +1506,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'vitest',
             file: 'tests/postgrest/phase-02-slice-10-ev-ea-typed-reasons.apispec.ts',
             title:
-              "CMS-03B-01 typed value reasons through the real stack 'a non-empty taxonomy value' is the typed 422 'taxonomy_source_unavailable' at its field pointer and nothing is written",
+              "CMS-03B-01 typed value reasons through the real stack 'a non-empty taxonomy value naming an …' is the typed 422 'term_unavailable' at its field pointer and nothing is written",
           },
           {
             tool: 'vitest',
@@ -1554,7 +1560,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_value_source_refusal.sql',
             title:
-              'cms_create_revision: tax_nonempty fails closed with the typed taxonomy_source_unavailable reason [BE03b]',
+              'cms_create_revision: tax_nonempty names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]',
           },
           {
             tool: 'pgtap',
@@ -2800,7 +2806,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
             tool: 'pgtap',
             file: 'supabase/tests/phase_02_slice_10_value_source_resolve.sql',
             title:
-              'cms_resolve_conflict: tax_nonempty fails closed with the typed taxonomy_source_unavailable reason [BE03b]',
+              'cms_resolve_conflict: tax_nonempty names a term that is not assignable: the uniform term_unavailable reason (DEC-141 item 5) [BE03b]',
           },
           {
             tool: 'pgtap',
@@ -5497,7 +5503,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
   },
   {
     criterion: 'P2-S10-AC-030',
-    text: 'Enforce CMS-03B-01: changedPaths; 1–128 unique JSON Pointers, each `/fields/{stableFieldId}` (lowercase UUID, 44 characters; every field kind including relation); `/blocks/...` and every other pointer is refused until a composition write path exists; 422. Relation changes are keyed by stable field ID rather than version-specific relation-definition ID.',
+    text: 'Enforce CMS-03B-01: changedPaths; 1–128 unique JSON Pointers, each `/fields/{stableFieldId}` (lowercase UUID, 44 characters; every field kind including relation); `/blocks/...` and every other pointer is refused (composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate `version` and are reported by comparison, never accepted as `changedPaths`); 422. Relation changes are keyed by stable field ID rather than version-specific relation-definition ID.',
     clauses: [
       {
         text: 'Enforce CMS-03B-01: changedPaths',
@@ -5581,7 +5587,7 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
         ],
       },
       {
-        text: '`/blocks/...` and every other pointer is refused until a composition write path exists',
+        text: '`/blocks/...` and every other pointer is refused',
         citations: [
           {
             tool: 'vitest',
@@ -5620,6 +5626,10 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
               'CMS-03B-01 request validation through the real stack a /blocks changed path is a 422 with its stable pointer and code and nothing is written',
           },
         ],
+      },
+      {
+        text: '(composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate `version` and are reported by comparison, never accepted as `changedPaths`)',
+        citations: [],
       },
       {
         text: '422.',
@@ -5674,8 +5684,9 @@ export const S10_EVIDENCE_LEDGER_001_035: readonly EvidenceLedgerEntry[] = [
         ],
       },
     ],
-    status: 'verified',
-    limitation: '',
+    status: 'partial',
+    limitation:
+      'Unproven: "(composition changes are written only by CMS-03C-02 and CMS-03C-15 under the entry aggregate `version` and are reported by comparison, never accepted as `changedPaths`)" (DEC-182). CMS-03C-02 and CMS-03C-15 are Slice 12 operations and Slice 10 ships no composition write path, so this entry cites no test for that clause until the Slice 12 evidence for those two operations exists. The refusal itself is proven: every `/blocks/...` and other non-field pointer is a 422 and nothing is written (the tests cited under the refusal clause).',
   },
   {
     criterion: 'P2-S10-AC-031',

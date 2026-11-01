@@ -1,0 +1,1374 @@
+[
+ {
+  "criterion": "P2-S12-AC-039",
+  "clauses": [
+   {
+    "index": 2,
+    "text": "Idempotency-Key 8–128 printable ASCII",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+      "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-06 a key of 129 characters is 400 INVALID_REQUEST before any quota or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:48 - a 129 character or control-character key is 400 INVALID_REQUEST before the capability check, MFA, any quota and the port",
+      "descriptionLine": 48
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+      "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-06 a key of a control character is 400 INVALID_REQUEST before any quota or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:48 - a 129 character or control-character key is 400 INVALID_REQUEST before the capability check, MFA, any quota and the port",
+      "descriptionLine": 48
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+      "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-07 a key of 129 characters is 400 INVALID_REQUEST before the capability check, any quota or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:48 - a 129 character or control-character key is 400 INVALID_REQUEST before the capability check, MFA, any quota and the port",
+      "descriptionLine": 48
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+      "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-07 a key of a control character is 400 INVALID_REQUEST before the capability check, any quota or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:48 - a 129 character or control-character key is 400 INVALID_REQUEST before the capability check, MFA, any quota and the port",
+      "descriptionLine": 48
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+      "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-09 a key of 129 characters is 400 INVALID_REQUEST before the capability check, MFA, any quota or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:48 - a 129 character or control-character key is 400 INVALID_REQUEST before the capability check, MFA, any quota and the port",
+      "descriptionLine": 48
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+      "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-09 a key of a control character is 400 INVALID_REQUEST before the capability check, MFA, any quota or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:48 - a 129 character or control-character key is 400 INVALID_REQUEST before the capability check, MFA, any quota and the port",
+      "descriptionLine": 48
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+      "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-12 a key of 129 characters is 400 INVALID_REQUEST before any quota or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:48 - a 129 character or control-character key is 400 INVALID_REQUEST before the capability check, MFA, any quota and the port",
+      "descriptionLine": 48
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+      "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-12 a key of a control character is 400 INVALID_REQUEST before any quota or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:48 - a 129 character or control-character key is 400 INVALID_REQUEST before the capability check, MFA, any quota and the port",
+      "descriptionLine": 48
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts",
+      "title": "CMS-03C-06, -07, -09 and -12 Idempotency-Key bounds [P2-S12-AC-039] CMS-03C-07 a 128 character printable key is inside the bound and reaches the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary-governed.test.ts:48 - a 128 character printable key reaches the port (status 200, one provider call)",
+      "descriptionLine": 48
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 missing Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:55 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 55
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 7 characters Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:55 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 55
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 129 characters Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:55 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 55
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a control character Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:55 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 55
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a DEL character Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:55 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 55
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a non-ASCII character Idempotency-Key is 400 INVALID_REQUEST before the capability check, any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:55 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 55
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a malformed Idempotency-Key from a caller without the capability is the 400, not the 403",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:70 - a short key from a caller without the capability is 400 with no quota and no port, not 403",
+      "descriptionLine": 70
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a 8 character printable key is inside the bound and reaches the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:82 - status 201 and the port called once for an 8 or 128 character printable key",
+      "descriptionLine": 82
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-08 Idempotency-Key 8-128 printable ASCII (BE03c 150, 422) [P2-S12-AC-039] CMS-03C-08 a 128 character printable key is inside the bound and reaches the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:82 - status 201 and the port called once for an 8 or 128 character printable key",
+      "descriptionLine": 82
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 missing Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:98 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 98
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 7 characters Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:98 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 98
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 129 characters Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:98 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 98
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a control character Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:98 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 98
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a DEL character Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:98 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 98
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a non-ASCII character Idempotency-Key is 400 INVALID_REQUEST before any quota token or the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:98 - a missing, 7, 129, control, DEL or non-ASCII key is 400 INVALID_REQUEST with no quota and no port",
+      "descriptionLine": 98
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a malformed Idempotency-Key from a caller without the capability is the 400, not the 403",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:111 - a short key from a caller without the capability is 400 with no quota and no port, not 403",
+      "descriptionLine": 111
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a 8 character printable key is inside the bound and reaches the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:124 - status 201 and the port called once for an 8 or 128 character printable key",
+      "descriptionLine": 124
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts",
+      "title": "CMS-03C-16 Idempotency-Key 8-128 printable ASCII (BE03c 150, 408, 422) [P2-S12-AC-039] CMS-03C-16 a 128 character printable key is inside the bound and reaches the port",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/idempotency-key-boundary.test.ts:124 - status 201 and the port called once for an 8 or 128 character printable key",
+      "descriptionLine": 124
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "closed-clause",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-095",
+  "clauses": [
+   {
+    "index": 2,
+    "text": "a body and any mutation header",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+      "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a request carrying a media type is 415 with the empty allowlist before any quota",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:33 - a media type on the queue is 415 with allowedMediaTypes [] and no quota",
+      "descriptionLine": 33
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+      "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a non-zero content-length is 400 INVALID_REQUEST before any quota",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:52 - a content-length, transfer-encoding, Idempotency-Key or If-Match on the queue is 400 INVALID_REQUEST before any quota",
+      "descriptionLine": 52
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+      "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a transfer-encoding is 400 INVALID_REQUEST before any quota",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:52 - a content-length, transfer-encoding, Idempotency-Key or If-Match on the queue is 400 INVALID_REQUEST before any quota",
+      "descriptionLine": 52
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+      "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 an Idempotency-Key is 400 INVALID_REQUEST before any quota",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:52 - a content-length, transfer-encoding, Idempotency-Key or If-Match on the queue is 400 INVALID_REQUEST before any quota",
+      "descriptionLine": 52
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+      "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 an If-Match is 400 INVALID_REQUEST before any quota",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:52 - a content-length, transfer-encoding, Idempotency-Key or If-Match on the queue is 400 INVALID_REQUEST before any quota",
+      "descriptionLine": 52
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts",
+      "title": "CMS-03C-11 review queue rejects a body and any mutation header [P2-S12-AC-095] CMS-03C-11 a plain query with none of them is answered 200 and charges the read quota",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-review-queue-no-body.test.ts:59 - the plain queue is 200 and charges the read quota",
+      "descriptionLine": 59
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "closed-clause",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-126",
+  "clauses": [
+   {
+    "index": 3,
+    "text": "is 404",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+      "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a hidden or absent taxonomy scope (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:46 - PostgREST 400 {code:P0001,message:NOT_FOUND} through the CMS-03C-16 createVersion route is 404 TAXONOMY_NOT_FOUND (SQL: 20261014030200_cms_create_taxonomy_version.sql:81,180)",
+      "descriptionLine": 46
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+      "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a successor over an absent lineage (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:58 - PostgREST 400 {code:P0001,message:NOT_FOUND} through the CMS-03C-16 createVersion route is 404 TAXONOMY_NOT_FOUND (SQL: 20261014030200_cms_create_taxonomy_version.sql:81,180)",
+      "descriptionLine": 58
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "closed-clause",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-128",
+  "clauses": [
+   {
+    "index": 1,
+    "text": "a hidden or absent taxonomy scope (404)",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+      "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a hidden or absent taxonomy scope (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:46 - real P0001 NOT_FOUND is 404 TAXONOMY_NOT_FOUND (SQL 20261014030200:81,180)",
+      "descriptionLine": 46
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+      "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-126] [P2-S12-AC-128] CMS-03C-16 a successor over an absent lineage (P0001 NOT_FOUND) is 404 TAXONOMY_NOT_FOUND",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:58 - real P0001 NOT_FOUND is 404 TAXONOMY_NOT_FOUND (SQL 20261014030200:81,180)",
+      "descriptionLine": 58
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   },
+   {
+    "index": 2,
+    "text": "a stale parent, key or version or an idempotency conflict (409 `TAXONOMY_VERSION_CONFLICT`)",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+      "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-128] CMS-03C-16 a stale parent version or key (P0001 CONFLICT) is 409 TAXONOMY_VERSION_CONFLICT",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:76 - real P0001 CONFLICT or IDEMPOTENCY_MISMATCH is 409 TAXONOMY_VERSION_CONFLICT (SQL 20261014030200:177,181,184,203; cms_reserve -> party_identity_aliases.sql:377)",
+      "descriptionLine": 76
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+      "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-128] CMS-03C-16 an idempotency conflict (P0001 IDEMPOTENCY_MISMATCH) is 409 TAXONOMY_VERSION_CONFLICT",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:76 - real P0001 CONFLICT or IDEMPOTENCY_MISMATCH is 409 TAXONOMY_VERSION_CONFLICT (SQL 20261014030200:177,181,184,203; cms_reserve -> party_identity_aliases.sql:377)",
+      "descriptionLine": 76
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts",
+      "title": "CMS-03C-16 database refusals as PostgREST relays them [P2-S12-AC-128] CMS-03C-16 a create over an existing lineage (P0001 CONFLICT) is 409 TAXONOMY_VERSION_CONFLICT",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-definition-real-tokens.test.ts:90 - real P0001 CONFLICT or IDEMPOTENCY_MISMATCH is 409 TAXONOMY_VERSION_CONFLICT (SQL 20261014030200:177,181,184,203; cms_reserve -> party_identity_aliases.sql:377)",
+      "descriptionLine": 90
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "closed-clause",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-134",
+  "clauses": [
+   {
+    "index": 4,
+    "text": "the read limit (429)",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts",
+      "title": "CMS-03C-17 selector read limit (429) [P2-S12-AC-134] CMS-03C-17 a denied user bucket is 429 RATE_LIMITED with Retry-After and the bucket ceiling, and the port is never called",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts:45 - 429 RATE_LIMITED with Retry-After 61, the bucket ceiling 300/600 and no-store; the selector port is never called",
+      "descriptionLine": 45
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts",
+      "title": "CMS-03C-17 selector read limit (429) [P2-S12-AC-134] CMS-03C-17 a denied party bucket is 429 RATE_LIMITED with Retry-After and the bucket ceiling, and the port is never called",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts:45 - 429 RATE_LIMITED with Retry-After 61, the bucket ceiling 300/600 and no-store; the selector port is never called",
+      "descriptionLine": 45
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   },
+   {
+    "index": 5,
+    "text": "a read dependency or deadline (502/503/504)",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts",
+      "title": "CMS-03C-17 selector production port: read dependency and deadline [P2-S12-AC-134] CMS-03C-17 a provider 5xx is a retryable 503 DEPENDENCY_UNAVAILABLE",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts:71 - provider 5xx is 503 DEPENDENCY_UNAVAILABLE",
+      "descriptionLine": 71
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts",
+      "title": "CMS-03C-17 selector production port: read dependency and deadline [P2-S12-AC-134] CMS-03C-17 a nonsettling transport is a 504 DEPENDENCY_UNAVAILABLE at the 8,000 ms read ceiling and not before",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/taxonomy-selector-faults.test.ts:90 - nonsettling transport is 504 DEPENDENCY_UNAVAILABLE only after the 8,000 ms ceiling",
+      "descriptionLine": 90
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "closed-clause",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-169",
+  "clauses": [
+   {
+    "index": 10,
+    "text": "while server, queue and job callers retry it at most three times at 15 s, 60 s and 300 s with jitter (DEC-211).",
+    "add": [],
+    "staleExisting": [],
+    "gap": "BOUNDARY: no queue or job caller of cmsTemplateLatestRead exists; the only server caller is the SSR page templates/[templateKey].astro:40 via readCmsTemplateDetail (apps/web/src/server/cms-composition-platform-detail.ts:20-65), a single pass-through fetch with no retry, and the 15/60/300 s schedule would exceed the 8,000 ms read ceiling (BE03c 1419); no shared retry constant exists (only linked-scan/retry.ts for queue consumers). Missing spec: a line naming the server/queue/job caller and the retry-versus-request-deadline rule."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven: \"while server, queue and job callers retry it at most three times at 15 s, 60 s and 300 s w\": BOUNDARY: no queue or job caller of cmsTemplateLatestRead exists; the only server caller is the SSR page templates/[templateKey].astro:40 via readCmsTemplateDetail (apps/web/src/server/cms-composition-platform-detail.ts:20-65), a single pass-through fetch with no retry, and the 15/60/300 s schedule would exceed the 8,000 ms read ceiling (BE03c 1419); no shared retry constant exists (only linked-scan/retry.ts for queue consumers). Missing spec: a line naming the server/queue/job caller and the retry-versus-request-deadline rule."
+ },
+ {
+  "criterion": "P2-S12-AC-042",
+  "clauses": [
+   {
+    "index": 12,
+    "text": "scoped draft before commit",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'create designer': a link outside the island (page header) [P2-S12-AC-042] a dirty form opens the inline confirmation for a page link outside the island, keeps the draft and moves focus to Keep editing",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:76 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 76
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'create designer': a link outside the island (page header) [P2-S12-AC-042] a clean form lets a page link outside the island navigate",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:90 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 90
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': a link outside the island (page header) [P2-S12-AC-042] a dirty form opens the inline confirmation for a page link outside the island, keeps the draft and moves focus to Keep editing",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:76 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 76
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': a link outside the island (page header) [P2-S12-AC-042] a clean form lets a page link outside the island navigate",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:90 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 90
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'create designer': an edit typed while the save is pending [P2-S12-AC-042] stays unsent after the verified 201: the guard stays armed, the late value is kept and a notice says it was not saved",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:116 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 116
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'create designer': an edit typed while the save is pending [P2-S12-AC-042] carries no late-edit notice and disarms the guard when nothing was typed during the save",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:129 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 129
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': an edit typed while the save is pending [P2-S12-AC-042] stays unsent after the verified 201: the guard stays armed, the late value is kept and a notice says it was not saved",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:116 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 116
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': an edit typed while the save is pending [P2-S12-AC-042] carries no late-edit notice and disarms the guard when nothing was typed during the save",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:129 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 129
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 successor designer: the baseline is the parent the form was rebased onto [P2-S12-AC-042] after \"Use version 3 as parent\" a form equal to the new parent is clean and one that differs is dirty",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:170 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 170
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] arms beforeunload only while the form holds unsent input",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:51 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 51
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] shows an inline confirmation instead of leaving, keeps the draft and returns focus on Keep editing",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:73 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 73
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] leaves only through the explicit discard, to the link the person chose",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:149 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 149
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] does not intercept a link while the form is clean",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:110 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 110
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'create designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] keeps the draft armed after a refusal and clears it only after a verified success",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:125 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 125
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] arms beforeunload only while the form holds unsent input",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:51 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 51
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] shows an inline confirmation instead of leaving, keeps the draft and returns focus on Keep editing",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:73 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 73
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] leaves only through the explicit discard, to the link the person chose",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:149 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 149
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] does not intercept a link while the form is clean",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:110 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 110
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': leaving with an unsent draft (FE03 \"Unsaved changes\") [P2-S12-AC-042] keeps the draft armed after a refusal and clears it only after a verified success",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:125 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 125
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 create designer: explicit discard [P2-S12-AC-042] Start another draft after success leaves a clean form with the guard disarmed",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:149 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 149
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 designer: the default destination [P2-S12-AC-042] without a navigate prop the explicit discard assigns the location the person chose",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:177 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 177
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx",
+      "title": "CMS-11 designer: no autosave [P2-S12-AC-042] the guard has nothing to save and always reports the draft as still unsent",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved.test.tsx:184 - FE03 927 Unsaved changes on the CMS-11 designers: beforeunload only while dirty, inline leave confirmation, explicit discard, cleared after verified success",
+      "descriptionLine": 184
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is clean for an identical copy, whatever the order of the content-type set and the row ui ids",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:21 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 21
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for templateKey",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for compatibleTypeIds",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for locale",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for audience",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for extraRegions",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot key",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot required flag",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot maxCount",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a slot block list",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a removed slot",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a binding key",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a binding projection",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a binding required flag",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts",
+      "title": "cmsTemplateDraftDirty [P2-S12-AC-042] is dirty for a removed binding",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/cms-template-draft-dirty.test.ts:62 - unsent work is a difference from the confirmed preimage (fields, set order and row ui ids)",
+      "descriptionLine": 62
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'create designer': a link outside the island (page header) [P2-S12-AC-042] a dirty form opens the inline confirmation for a page link outside the island, keeps the draft and moves focus to Keep editing",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:76 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 76
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'create designer': a link outside the island (page header) [P2-S12-AC-042] a clean form lets a page link outside the island navigate",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:90 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 90
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': a link outside the island (page header) [P2-S12-AC-042] a dirty form opens the inline confirmation for a page link outside the island, keeps the draft and moves focus to Keep editing",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:76 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 76
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': a link outside the island (page header) [P2-S12-AC-042] a clean form lets a page link outside the island navigate",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:90 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 90
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'create designer': an edit typed while the save is pending [P2-S12-AC-042] stays unsent after the verified 201: the guard stays armed, the late value is kept and a notice says it was not saved",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:116 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 116
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'create designer': an edit typed while the save is pending [P2-S12-AC-042] carries no late-edit notice and disarms the guard when nothing was typed during the save",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:129 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 129
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': an edit typed while the save is pending [P2-S12-AC-042] stays unsent after the verified 201: the guard stays armed, the late value is kept and a notice says it was not saved",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:116 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 116
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 'successor (edit) designer': an edit typed while the save is pending [P2-S12-AC-042] carries no late-edit notice and disarms the guard when nothing was typed during the save",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:129 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 129
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx",
+      "title": "CMS-11 successor designer: the baseline is the parent the form was rebased onto [P2-S12-AC-042] after \"Use version 3 as parent\" a form equal to the new parent is clean and one that differs is dirty",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-composition/CmsTemplateDesigner.unsaved-guard.test.tsx:170 - FE03 927 on the CMS-11 designers: a page link outside the island opens the inline confirmation with focus on Keep editing; a value typed while the save is pending stays unsent after the 201 (guard armed, notice); a rebased successor is measured against its new parent",
+      "descriptionLine": 170
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "closed-clause",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-164",
+  "clauses": [
+   {
+    "index": 4,
+    "text": "neither extend the general auth-session resource nor",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource is exactly the six authentication members and names no CMS, designer or capability member",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:72 - SessionResource is exactly six auth members and strict; TemplateDesignerContext exactly contentTypes and registeredBlocks, strict; the two share no member and only the context route carries the designer capability",
+      "descriptionLine": 72
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a capabilities member instead of extending itself",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:90 - SessionResource is exactly six auth members and strict; TemplateDesignerContext exactly contentTypes and registeredBlocks, strict; the two share no member and only the context route carries the designer capability",
+      "descriptionLine": 90
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a cmsCapabilities member instead of extending itself",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:90 - SessionResource is exactly six auth members and strict; TemplateDesignerContext exactly contentTypes and registeredBlocks, strict; the two share no member and only the context route carries the designer capability",
+      "descriptionLine": 90
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a templateDesigner member instead of extending itself",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:90 - SessionResource is exactly six auth members and strict; TemplateDesignerContext exactly contentTypes and registeredBlocks, strict; the two share no member and only the context route carries the designer capability",
+      "descriptionLine": 90
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a cmsTemplateContext member instead of extending itself",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:90 - SessionResource is exactly six auth members and strict; TemplateDesignerContext exactly contentTypes and registeredBlocks, strict; the two share no member and only the context route carries the designer capability",
+      "descriptionLine": 90
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the session resource refuses a contentTypes member instead of extending itself",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:90 - SessionResource is exactly six auth members and strict; TemplateDesignerContext exactly contentTypes and registeredBlocks, strict; the two share no member and only the context route carries the designer capability",
+      "descriptionLine": 90
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] authSessionRead and authSessionRefresh answer SessionResource and carry no designer capability, while the context read is the one protected route that does",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:102 - SessionResource is exactly six auth members and strict; TemplateDesignerContext exactly contentTypes and registeredBlocks, strict; the two share no member and only the context route carries the designer capability",
+      "descriptionLine": 102
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context is exactly its two selector members and shares no member with the session resource",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:118 - SessionResource is exactly six auth members and strict; TemplateDesignerContext exactly contentTypes and registeredBlocks, strict; the two share no member and only the context route carries the designer capability",
+      "descriptionLine": 118
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/template-context-session-isolation.test.ts",
+      "title": "GET /api/v1/auth/session beside the CMS-11 picker context [P2-S12-AC-164] renders a designer-capable session through the production session reader as exactly the six authentication members and no capability",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/template-context-session-isolation.test.ts:58 - the production readSession renders a capability-carrying resolved session as exactly the six authentication members (readSession is called with that session)",
+      "descriptionLine": 58
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/template-context-session-isolation.test.ts",
+      "title": "GET /api/v1/auth/session beside the CMS-11 picker context [P2-S12-AC-164] never serves a session reader that widens the resource with designer authority",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/template-context-session-isolation.test.ts:81 - a session reader widened with designer authority is never served (strict SessionResource parse)",
+      "descriptionLine": 81
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   },
+   {
+    "index": 5,
+    "text": "(see inventory)",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member capabilities so it can grant no designer authority in the browser",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:143 - TemplateDesignerContext is strict: an authority or session member is refused",
+      "descriptionLine": 143
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member canDefine so it can grant no designer authority in the browser",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:143 - TemplateDesignerContext is strict: an authority or session member is refused",
+      "descriptionLine": 143
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member designer so it can grant no designer authority in the browser",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:143 - TemplateDesignerContext is strict: an authority or session member is refused",
+      "descriptionLine": 143
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member authenticated so it can grant no designer authority in the browser",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:143 - TemplateDesignerContext is strict: an authority or session member is refused",
+      "descriptionLine": 143
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member actingPartyId so it can grant no designer authority in the browser",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:143 - TemplateDesignerContext is strict: an authority or session member is refused",
+      "descriptionLine": 143
+     },
+     {
+      "tool": "vitest",
+      "file": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts",
+      "title": "Slice 12 template picker context and the general auth-session resource [P2-S12-AC-164] the picker context refuses an authority or session member ownerId so it can grant no designer authority in the browser",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "tests/contracts/phase-02-slice-12-template-context-session-isolation.test.ts:143 - TemplateDesignerContext is strict: an authority or session member is refused",
+      "descriptionLine": 143
+     }
+    ],
+    "staleExisting": [],
+    "gap": null
+   }
+  ],
+  "proposedStatus": "closed-clause",
+  "proposedLimitation": ""
+ },
+ {
+  "criterion": "P2-S12-AC-271",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "Definition governance states: for `governedReviewState` (CMS-03C-10 and -11), `selectorState` and `latestReadState` (CMS-03C-13 and -17 and the template, pattern, vocabulary-version and term reads), `diffState` (CMS-03C-14) and `commandState` (CMS-03C-01 to -09, -12, -15 and -16) the island renders `idle`, `loading` (a skeleton after 250 ms and only the commit control disabled), `success`, `empty`, `error`, `degraded` and `disabled` exactly as the state table states, server-authoritative, no-store and never optimistic:",
+    "add": [],
+    "staleExisting": [],
+    "gap": "PARTIAL, not added: the loading/commandState half is proved for CMS-03C-01 only (CmsTemplateDesigner.pending.test.tsx \"[P2-S12-AC-271] shows the pending label at once, disables only the commit control, claims no success, then names the resource\", both designers; product fix: create designer fieldset no longer disabled while pending and its commit control is disabled). Other 250 ms skeleton tests already exist (CmsLoadingRegion, CmsLatestReadLoading, CmsGovernedReviewDetailIsland.loading, CmsGovernedReviewPanel.loading, CmsTaxonomyTermChoice.loading, CmsTaxonomyConflictPanel.loading, CmsCompositionPage.loading) but no test enumerates the seven states idle/loading/success/empty/error/degraded/disabled per island (governed queue/detail, selector, latest reads, diff, command forms). Same pending deviation (whole fieldset disabled while pending, FE03 1048 says only the commit control) is visible in CmsTaxonomyVersionDesigner.tsx:108, CmsTaxonomyTermAction.tsx:121, CmsLocaleVariantForm.tsx:128: not fixed here. Late-edit evidence (commandState success, not cited as the clause): CmsTemplateDesigner.unsaved-guard (both designers), CmsTaxonomyVersionDesigner.late-edit (flags the edit made after the verified attempt as not part of the saved draft), CmsLocaleVariantForm.late-edit (no saved mark for the new value while the second save is pending or after it fails)."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven: \"Definition governance states: for `governedReviewState` (CMS-03C-10 and -11), `selectorSta\": PARTIAL, not added: the loading/commandState half is proved for CMS-03C-01 only (CmsTemplateDesigner.pending.test.tsx \"[P2-S12-AC-271] shows the pending label at once, disables only the commit control, claims no success, then names the resource\", both designers; product fix: create designer fieldset no longer disabled while pending and its commit control is disabled). Other 250 ms skeleton tests already exist (CmsLoadingRegion, CmsLatestReadLoading, CmsGovernedReviewDetailIsland.loading, CmsGovernedReviewPanel.loading, CmsTaxonomyTermChoice.loading, CmsTaxonomyConflictPanel.loading, CmsCompositionPage.loading) but no test enumerates the seven states idle/loading/success/empty/error/degraded/disabled per island (governed queue/detail, selector, latest reads, diff, command forms). Same pending deviation (whole fieldset disabled while pending, FE03 1048 says only the commit control) is visible in CmsTaxonomyVersionDesigner.tsx:108, CmsTaxonomyTermAction.tsx:121, CmsLocaleVariantForm.tsx:128: not fixed here. Late-edit evidence (commandState success, not cited as the clause): CmsTemplateDesigner.unsaved-guard (both designers), CmsTaxonomyVersionDesigner.late-edit (flags the edit made after the verified attempt as not part of the saved draft), CmsLocaleVariantForm.late-edit (no saved mark for the new value while the second save is pending or after it fails)."
+ },
+ {
+  "criterion": "P2-S12-AC-272",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "Governed surface privacy: decision reasons, the policy basis, pattern diff values, canonical ids and every assignment identifier are re-derived by the server and never enter a public or private cache, an analytics event, a Realtime body, a URL or a log,",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+      "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-07 decision with a reason': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:171 - no-store on every governed response and no sentinel (reason, policy basis hash, assignment id, reviewer id, canonical id) in the ETag, any outbound URL or any structured log line",
+      "descriptionLine": 171
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+      "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-07 refusal carrying a canonic…': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:183 - no-store on every governed response and no sentinel (reason, policy basis hash, assignment id, reviewer id, canonical id) in the ETag, any outbound URL or any structured log line",
+      "descriptionLine": 183
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+      "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-08 assignment create naming a…': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:171 - no-store on every governed response and no sentinel (reason, policy basis hash, assignment id, reviewer id, canonical id) in the ETag, any outbound URL or any structured log line",
+      "descriptionLine": 171
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+      "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-10 review detail with a polic…': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:171 - no-store on every governed response and no sentinel (reason, policy basis hash, assignment id, reviewer id, canonical id) in the ETag, any outbound URL or any structured log line",
+      "descriptionLine": 171
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+      "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] 'CMS-03C-11 review queue': no-store response, and no sentinel in the ETag, an outbound URL or a log line",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:171 - no-store on every governed response and no sentinel (reason, policy basis hash, assignment id, reviewer id, canonical id) in the ETag, any outbound URL or any structured log line",
+      "descriptionLine": 171
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+      "title": "governed surface privacy sweep (Worker) [P2-S12-AC-272] every refusal of the governed surface is no-store too",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:183 - no-store on every governed response and no sentinel (reason, policy basis hash, assignment id, reviewer id, canonical id) in the ETag, any outbound URL or any structured log line",
+      "descriptionLine": 183
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts",
+      "title": "pattern diff values (CMS-03C-14, Worker) [P2-S12-AC-272] CMS-03C-14 serves a diff carrying a sentinel value no-store, with the instance version as the only validator and nothing of the diff in telemetry or the outbound request",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-surface-privacy.test.ts:216 - a sentinel diff value is in the body only: no-store, ETag is the instance version, no header, telemetry call or port input carries it",
+      "descriptionLine": 216
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-governed-review/governed-privacy.test.tsx",
+      "title": "governed detail island privacy sweep (browser) [P2-S12-AC-272] a decision with a sentinel reason leaves the browser only in the POST body: no URL, history, storage, broadcast, Realtime, beacon or console carries a sentinel",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/web/src/components/cms-governed-review/governed-privacy.test.tsx:172 - a decision with a sentinel reason: the reason is only in the POST body; no URL, header, location, history, storage, BroadcastChannel, WebSocket, EventSource, sendBeacon or console carries a sentinel",
+      "descriptionLine": 172
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-review-assignment-no-location.test.ts",
+      "title": "CMS-03C-08 names no assignment URL [P2-S12-AC-272] CMS-03C-08 a create answers 201 and carries no Location header",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-review-assignment-no-location.test.ts:22 - a CMS-03C-08 create answers 201 with no Location header and no header value carries the assignment id (DEC-239, BE03c row 176)",
+      "descriptionLine": 22,
+      "splitParts": [
+       2
+      ]
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/worker/src/cms-composition/governed-review-assignment-no-location.test.ts",
+      "title": "CMS-03C-08 names no assignment URL [P2-S12-AC-272] CMS-03C-08 a revoke answers 200 and carries no Location header",
+      "project": null,
+      "identitySource": "static",
+      "computed": false,
+      "evidence": "apps/worker/src/cms-composition/governed-review-assignment-no-location.test.ts:35 - a CMS-03C-08 revoke answers 200 with no Location header",
+      "descriptionLine": 35,
+      "splitParts": [
+       2
+      ]
+     }
+    ],
+    "staleExisting": [],
+    "gap": "Residual: the browser-side sweep covers the governed detail island (decision, assignments, policy basis); the pattern-diff browser surface (CmsDiffPath) is swept at the Worker only, and no Realtime emitter exists to inspect (the web test asserts no WebSocket/EventSource is created)."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven: \"Governed surface privacy: decision reasons, the policy basis, pattern diff values, canonic\": Residual: the browser-side sweep covers the governed detail island (decision, assignments, policy basis); the pattern-diff browser surface (CmsDiffPath) is swept at the Worker only, and no Realtime emitter exists to inspect (the web test asserts no WebSocket/EventSource is created)."
+ },
+ {
+  "criterion": "P2-S12-AC-076",
+  "clauses": [],
+  "proposedStatus": "unchanged",
+  "proposedLimitation": "",
+  "staleExisting": [
+   {
+    "criterion": "P2-S12-AC-076",
+    "file": "apps/worker/src/cms-composition/governed-review-assignment.test.ts",
+    "oldTitle": "CMS-03C-08 contract (BE03c row 170, field matrix 391) answers 201 with Location and the assignment version ETag for a create",
+    "newTitle": "CMS-03C-08 contract (BE03c row 170, field matrix 391) answers 201 with the assignment version ETag and no Location for a create"
+   },
+   {
+    "criterion": "P2-S12-AC-076",
+    "file": "tests/contracts/phase-02-slice-12-governed-review-openapi.test.ts",
+    "oldTitle": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-076] answers 201 with a Location for a created assignment and 200 for a revoked one",
+    "newTitle": "Slice 12 governed review registry rows and generated OpenAPI (CMS-03C-06 to CMS-03C-11) [P2-S12-AC-076] answers 201 with an ETag and no Location for a created assignment and 200 for a revoked one (DEC-239)"
+   }
+  ]
+ },
+ {
+  "criterion": "P2-S12-AC-079",
+  "clauses": [],
+  "proposedStatus": "unchanged",
+  "proposedLimitation": "",
+  "staleExisting": [
+   {
+    "criterion": "P2-S12-AC-079",
+    "file": "apps/worker/src/cms-composition/governed-review-assignment.test.ts",
+    "oldTitle": "CMS-03C-08 contract (BE03c row 170, field matrix 391) answers 201 with Location and the assignment version ETag for a create",
+    "newTitle": "CMS-03C-08 contract (BE03c row 170, field matrix 391) answers 201 with the assignment version ETag and no Location for a create"
+   }
+  ]
+ }
+]

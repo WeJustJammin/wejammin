@@ -32,6 +32,7 @@ const resource = {
   sourceRevisionId,
   fallbackChain: ['en-US'],
   noFallbackFieldIds: [],
+  staleFieldIds: [],
 };
 const request = (
   payload: unknown = body,
@@ -175,7 +176,7 @@ describe('CMS-03C-04 first-party locale authoring proxy', () => {
       );
       expect(response.status).toBe(502);
       expect(await response.json()).toMatchObject({
-        code: 'DEPENDENCY_INVALID_RESPONSE',
+        code: 'DEPENDENCY_UNAVAILABLE',
       });
       expect(fetch).toHaveBeenCalledTimes(1);
     }
@@ -195,7 +196,7 @@ describe('CMS-03C-04 first-party locale authoring proxy', () => {
     );
     expect(response.status).toBe(502);
     expect(await response.json()).toMatchObject({
-      code: 'DEPENDENCY_INVALID_RESPONSE',
+      code: 'DEPENDENCY_UNAVAILABLE',
     });
   });
 
@@ -230,6 +231,42 @@ describe('CMS-03C-04 first-party locale authoring proxy', () => {
     });
     expect(JSON.stringify(error)).not.toContain('private provider text');
     expect(JSON.stringify(error)).not.toContain('do-not-disclose');
+  });
+
+  it('relays DEPENDENCY_UNAVAILABLE retryable true on every 502/503/504, forged or upstream (BE00 172)', async () => {
+    // Each row pins the status the relay must answer: an upstream 502/503/504 keeps its own status, an
+    // oversized 201 is a local 502 (BE03c 408).
+    const responses: ReadonlyArray<readonly [Response, number]> = [
+      ...([502, 503, 504] as const).map(
+        (status) =>
+          [
+            new Response(
+              JSON.stringify({
+                code: 'DEPENDENCY_UNAVAILABLE',
+                message: 'private provider text',
+                requestId: '10000000-0000-4000-8000-000000000007',
+                details: { dependencyClass: 'private', retryable: false },
+              }),
+              { status, headers: { 'content-type': 'application/json' } },
+            ),
+            status,
+          ] as const,
+      ),
+      [success({ ...resource, padding: 'x'.repeat(262_145) }), 502],
+    ];
+    for (const [upstream, expectedStatus] of responses) {
+      const response = await forwardCmsLocaleVariantMutation(
+        request(),
+        entryId,
+        'fr-FR',
+        { fetch: vi.fn(async () => upstream) },
+      );
+      expect(response.status).toBe(expectedStatus);
+      expect(await response.json()).toMatchObject({
+        code: 'DEPENDENCY_UNAVAILABLE',
+        details: { dependencyClass: 'cms_composition', retryable: true },
+      });
+    }
   });
 
   it('carries the active fallback chain on a chain mismatch and nothing malformed', async () => {

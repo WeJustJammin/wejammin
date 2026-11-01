@@ -16,6 +16,27 @@ HTTPS staging origin by the validation workflow.
   scripts are charged to the route, a heavy static import fails the route and a
   dynamic one is a lazy chunk); `bundle-fixture.test-support.ts` builds its
   throw-away `dist` fixtures.
+- `cms-editorial-bundle-budget-mounted.test.ts` verifies that a route is charged for every lazy
+  chunk its islands fetch without the person doing anything (a form mounted at hydration, a read
+  made by a mount effect, the result a command left for the editor page), that only the chunks
+  named in `CMS_ON_DEMAND_CHUNKS` are exempt, and that each exemption is shown, not asserted: it
+  names the person's own event that loads it (`trigger`), the source files that hold its dynamic
+  `import()` (`importedBy`, and the test fails on any other call site), and a proof test with the
+  stem in its title that mounts the real surface, sees nothing requested by the mount, a scroll or
+  time, and sees the trigger request it. A chunk that loads without a trigger on some routes only
+  is charged on those (`chargedOn`). Nothing is exempt because of visibility or the size of the
+  viewport.
+- `bundle-provenance.test.ts` verifies what `pnpm bundle:check` refuses to measure: any Node but
+  the one `.node-version` pins (zlib changes the gzip bytes by 660 to 800 on every CMS route), a
+  `dist` built for a named environment, a development build, and a dist with no server build. The
+  evidence JSON records `measuredWith.node`. Run it on a fresh production build
+  (`pnpm --filter web build`) under the pinned Node.
+- `cms-page-actions-routes.test.ts` verifies that a CMS page loads the page-actions script exactly
+  when its markup holds a form the script serves.
+- `cms-editorial-bundle-budget-islands.test.ts` verifies a page that hydrates more
+  than one island (`extraIslands`: the pattern, taxonomy and template pages carry
+  a designer and a governed panel): the route is charged for every island and
+  each island is held to the island budget on its own.
 
 The bundle gate also measures the content schema registry route (the
 `ContentSchemaRegistryWorkbenchIsland` entry: at most 90 KB gzip initial and
@@ -27,7 +48,10 @@ The gate also measures every CMS editorial route (the table `CMS_EDITORIAL_ROUTE
 in the script): each island's static closure is at most 35 KB gzip and each
 route's initial JavaScript, including the scripts its document shell adds, at
 most 90 KB gzip, with the contract schemas in a lazy chunk. A page or island
-missing from the table fails `cms-editorial-bundle-budget.test.ts`.
+missing from the table fails `cms-editorial-bundle-budget.test.ts`. A page with
+`extraIslands` is charged for all of them. The source-level guard that a command
+form stays out of an island's static closure is
+`apps/web/src/cms-lazy-forms-closure.test.ts`.
 
 ## Ownership
 

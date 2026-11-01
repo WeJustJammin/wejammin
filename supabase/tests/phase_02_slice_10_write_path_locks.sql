@@ -78,7 +78,11 @@ select is(
     where c.signature in ('platform_private.cms_create_revision(jsonb)',
                           'platform_private.cms_resolve_conflict(jsonb)',
                           'platform_private.cms_restore_revision(jsonb)')
-      and (select p.prosrc !~ 'cms_lock_entry_rows_shared\('
+      -- DEC-201 / BE03b position 2 (BE03c 1571): the restore body fences each external relation target FOR SHARE through
+      -- cms_lock_relation_target (target entry row, then the caller's assignments over it) at position 2, before the schema
+      -- version, instead of the batch cms_lock_entry_rows_shared; append and resolve keep the batch lock.
+      and (select p.prosrc !~ case when c.signature = 'platform_private.cms_restore_revision(jsonb)'
+                                   then 'cms_lock_relation_target\(' else 'cms_lock_entry_rows_shared\(' end
              from pg_proc p where p.oid = to_regprocedure(c.signature))), null,
   'append, resolve and restore lock the external targets of the relations they carry before re-checking them');
 

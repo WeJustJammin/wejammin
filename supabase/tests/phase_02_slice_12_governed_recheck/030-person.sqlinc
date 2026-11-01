@@ -1,0 +1,138 @@
+-- AC-204 reviewer-authority invalidation: the transaction that revokes a standing capability grant invalidates, in that transaction,
+-- every open or approved governed review the person counted on under the revoked capability (BE03c "Reviewer-authority invalidation on revocation" G6, BE03b Review
+-- invalidation applied unchanged); the subject returns to draft, the review's pending schedule is cancelled, an audit record is
+-- written and no event is emitted.  The revoke is the real CMS-03A-17 command; nothing calls the invalidation by hand until the
+-- direct-call controls at the end.  The tenure end, the renewal, the DELETE branch and the cross-party cases are in 080-tenure.
+select ok(exists (
+  select 1 from pg_trigger trigger_row
+   where trigger_row.tgrelid = 'identity_private.organization_actor_grant'::regclass
+     and trigger_row.tgname = 'cms_organization_actor_grant_governed_authority' and not trigger_row.tgisinternal
+     and trigger_row.tgenabled = 'O'
+     and trigger_row.tgtype & 1 = 1 and trigger_row.tgtype & 2 = 0 and trigger_row.tgtype & 8 = 8
+     and trigger_row.tgtype & 16 = 16 and trigger_row.tgtype & 4 = 0),
+  'an AFTER UPDATE OR DELETE row trigger on the actor-grant projection (the table the CMS-03A-17 revocation writes) runs the person invalidation in the revoking transaction [P2-S12-AC-204]');
+
+select pg_temp.s12gr_mark('pa1', 'pa1');
+select pg_temp.s12gr_mark('pa2', 'pa2');
+select pg_temp.s12gr_mark('po1', 'po1');
+select pg_temp.s12gr_mark('pm1', 'pm1');
+select pg_temp.s12gr_mark('pc1', 'pc1');
+select pg_temp.s12gr_mark('pc2', 'pc2');
+select pg_temp.s12gr_mark('d1', 'd1');
+select pg_temp.s12gr_mark('dsch', 'dsch');
+select pg_temp.s12gr_mark('dctl', 'dctl');
+select pg_temp.s12gr_mark('dopen', 'dopen');
+select ok((select count(*) = 2 from platform_private.cms_governed_review_decisions
+            where reviewer_person_id = pg_temp.s12ga_person('x01') and decision = 'approve')
+    and pg_temp.s12ga_approvals(pg_temp.s12ga_review('pa1')) = 1 and pg_temp.s12ga_approvals(pg_temp.s12ga_review('pa2')) = 1,
+  'control: x01 has one counted approval in each of pa1 and pa2 before the revocation [P2-S12-AC-204]');
+
+-- ----------------------------------------------- x01: the standing cms.reviewer grant is revoked (CMS-03A-17)
+select pg_temp.s12gr_count_mark('x01:before');
+select is(pg_temp.s09d_revoke_via_rpc('x01', 'cms.reviewer'), 'OK',
+  'control: the real CMS-03A-17 command revokes the standing cms.reviewer grant of x01 [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_invalidated('pa1', 'pa1', 'reviewer_authority_changed')
+    and pg_temp.s12gr_invalidated('pa2', 'pa2', 'reviewer_authority_changed'),
+  'in the revoking transaction both approved reviews x01 counted on are invalidated reviewer_authority_changed (version + 1), decidedAt cleared, each subject back to draft [P2-S12-AC-204]');
+select ok((select schedule.state = 'cancelled' and schedule.reason_code = 'approval_invalidated' and schedule.version = 2
+                  and schedule.lease_id is null and schedule.next_attempt_at is null
+             from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('pa2')),
+  'the pending schedule of the scheduled subject is cancelled (cancelled, approval_invalidated, version 2) in the same transaction [P2-S12-AC-204]');
+select ok(pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('pa1')) = 1
+    and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('pa2')) = 1
+    and (select count(*) = 1 from audit_private.audit_events
+          where action = 'cms.governed.schedule.cancel'
+            and target_id = (select schedule.id from platform_private.cms_governed_activation_schedules schedule
+                              where schedule.review_id = pg_temp.s12ga_review('pa2'))),
+  'one invalidation audit record per review and one schedule cancellation audit record are written [P2-S12-AC-204]');
+select ok(not exists (select 1 from platform_private.outbox_events
+                       where aggregate_id in (pg_temp.s12ga_subject('pa1'), pg_temp.s12ga_subject('pa2'),
+                                              pg_temp.s12ga_review('pa1'), pg_temp.s12ga_review('pa2'))),
+  'a governed review state change emits no event (BE03c "Invalidation": CMS-03C-11 is the canonical queue) [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_untouched('po1', 'po1') and pg_temp.s12gr_untouched('pm1', 'pm1') and pg_temp.s12gr_untouched('pc1', 'pc1')
+    and pg_temp.s12gr_untouched('pc2', 'pc2') and pg_temp.s12gr_untouched('d1', 'd1') and pg_temp.s12gr_untouched('dsch', 'dsch')
+    and pg_temp.s12gr_untouched('dctl', 'dctl') and pg_temp.s12gr_untouched('dopen', 'dopen'),
+  'reviews x01 never counted on (other approvers, an open review of another reviewer, the dependency group) are untouched [P2-S12-AC-204]');
+
+-- -------------------------------------- x03: the only counted approval sits on an OPEN review (protected, one of two)
+select is(pg_temp.s09d_revoke_via_rpc('x03', 'cms.reviewer'), 'OK',
+  'control: the real CMS-03A-17 command revokes the standing cms.reviewer grant of x03 [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_invalidated('po1', 'po1', 'reviewer_authority_changed')
+    and (select review.recorded_decision_count = 1 from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('po1'))
+    and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('po1')) = 1,
+  'an OPEN review in which the person counted is invalidated too, the recorded decision rows are untouched [P2-S12-AC-204]');
+
+-- ------------------------------ x04: only the SPECIALIST capability is revoked; the review it satisfied under it dies
+select is(pg_temp.s09d_revoke_via_rpc('x04', 'cms.reviewer.policy'), 'OK',
+  'control: the real CMS-03A-17 command revokes the cms.reviewer.policy grant of x04 (it keeps cms.reviewer) [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_invalidated('pm1', 'pm1', 'reviewer_authority_changed'),
+  'the protected review whose specialist slot x04 satisfied under the revoked capability is invalidated reviewer_authority_changed [P2-S12-AC-204]');
+
+-- ------------------- x02: the grant lapses by the calendar (lag fixture 002-lapse-helpers: the loss no trigger covers) so the approved state of pc1 LAGS
+select pg_temp.s12fr_lapse(pg_temp.s09d_id('ownerOrg'), pg_temp.s12ga_person('x02'), 'cms.reviewer');
+select ok(pg_temp.s12gr_untouched('pc1', 'pc1')
+    and (select review.state = 'approved' from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('pc1'))
+    and pg_temp.s12ga_approvals(pg_temp.s12ga_review('pc1')) = 0,
+  'control: the stored approved state of pc1 lags the loss of its counted approver (live recount 0 of 1 recorded) [P2-S12-AC-204]');
+
+create or replace function pg_temp.s12gr_inv_person(p_person uuid, p_capability text) returns integer language plpgsql as $body$
+begin
+  return platform_private.cms_invalidate_governed_reviews_for_person(p_person, p_capability);
+exception when others then
+  return -1;
+end;
+$body$;
+
+create or replace function pg_temp.s12gr_err(p_call text) returns text language plpgsql as $body$
+declare v_state text; v_message text;
+begin
+  execute p_call;
+  return 'ok';
+exception when others then
+  get stacked diagnostics v_state = returned_sqlstate, v_message = message_text;
+  return v_state || ':' || v_message;
+end;
+$body$;
+
+-- called from a session of ANOTHER acting party: the function is not scoped to the revoker's party
+select pg_temp.s09d_session('other', 'authenticated');
+select is(pg_temp.s12gr_inv_person(pg_temp.s12ga_person('x02'), 'cms.reviewer.policy'), 0,
+  'a capability under which the person counted nothing invalidates nothing [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_untouched('pc1', 'pc1'), 'the review stays untouched after the capability-mismatched call [P2-S12-AC-204]');
+select is(pg_temp.s12gr_inv_person(pg_temp.s12ga_person('x02'), 'cms.reviewer'), 1,
+  'called from a stranger acting party, the definer function still reaches the owner party review whose counted approver lost the capability [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_invalidated('pc1', 'pc1', 'reviewer_authority_changed'),
+  'pc1 is invalidated reviewer_authority_changed (version + 1), its subject back to draft [P2-S12-AC-204]');
+select is(pg_temp.s12gr_inv_person(pg_temp.s12ga_person('x02'), 'cms.reviewer')
+          + pg_temp.s12gr_inv_person(pg_temp.s12ga_person('x02'), null), 0,
+  'a review already invalidated is skipped: repeating the call (with the capability and without) transitions nothing [P2-S12-AC-204]');
+select is(pg_temp.s12gr_inv_person(pg_temp.s12ga_person('x05'), 'cms.reviewer')
+          + pg_temp.s12gr_inv_person(pg_temp.s12ga_person('x05'), null), 0,
+  'a counted approver who still holds the capability invalidates nothing (the approval still counts) [P2-S12-AC-204]');
+select ok(pg_temp.s12gr_untouched('pc2', 'pc2') and pg_temp.s12gr_untouched('d1', 'd1') and pg_temp.s12gr_untouched('dsch', 'dsch')
+    and pg_temp.s12gr_untouched('dctl', 'dctl') and pg_temp.s12gr_untouched('dopen', 'dopen'),
+  'pc2 and the dependency group are untouched by every call of this section [P2-S12-AC-204]');
+select pg_temp.s12fr_restore();
+select pg_temp.s09d_session('owner', 'authenticated');
+select is(pg_temp.s12gr_err('select platform_private.cms_invalidate_governed_reviews_for_person(null, ''cms.reviewer'')'),
+  'P0001:INVALID_REQUEST', 'a null person is INVALID_REQUEST [P2-S12-AC-204]');
+select is(pg_temp.s12gr_err($q$select platform_private.cms_invalidate_governed_reviews_for_person(gen_random_uuid(), 'Not A Capability')$q$),
+  'P0001:INVALID_REQUEST', 'a capability outside the capability code grammar is INVALID_REQUEST [P2-S12-AC-204]');
+select ok((select prosrc !~* '(jwt|auth\.uid|request\.|current_setting\(''role'')' from pg_proc
+            where oid = to_regprocedure('platform_private.cms_invalidate_governed_reviews_for_person(uuid, text)')),
+  'the function reads no caller identity or request claim, so it is not scoped to the revoker [P2-S12-AC-204]');
+
+-- ------------------------------ the open-review assignment-revocation half of AC-204 (built by CMS-03C-08; proven here with the pool)
+select pg_temp.s12gr_mark('pr1', 'pr1');
+select ok((select review.state = 'open' and review.recorded_decision_count = 1
+             from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('pr1'))
+    and pg_temp.s12ga_approvals(pg_temp.s12ga_review('pr1')) = 1,
+  'control: pr1 is an open review with one counted approval of x06 before its assignment is revoked [P2-S12-AC-204]');
+select pg_temp.s12ga_revoke('pr1-revoke', 'owner', pg_temp.s12ga_review('pr1'),
+  pg_temp.s12ga_aid(pg_temp.s12ga_review('pr1'), 'x06'));
+select ok(pg_temp.s12ga_out('pr1-revoke') = 'ok'
+    and (select review.state = 'invalidated' and review.invalidated_reason = 'reviewer_authority_changed' and review.decided_at is null
+           from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('pr1'))
+    and (select subject.state = 'draft' from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('pr1'))
+    and pg_temp.s12ga_audit('cms.governed.review.invalidate', pg_temp.s12ga_review('pr1')) = 1,
+  'revoking the assignment of a counted approver while the review is open invalidates it reviewer_authority_changed and returns the subject to draft [P2-S12-AC-204]');

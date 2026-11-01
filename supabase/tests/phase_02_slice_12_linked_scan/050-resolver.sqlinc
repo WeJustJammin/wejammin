@@ -1,0 +1,31 @@
+-- Slice 12 linked-update scan: the producer's event resolver.  The queue envelope of cms.pattern.activated.v1 is identifier-only, so the
+-- producer rereads the committed outbox row and maps its published payload { patternId, patternVersionId } to the job payload
+-- (BE03c "Event schemas", "Job transport (DEC-166, DEC-180 G9)").  [P2-S12-AC-212]
+select id as activated_event from platform_private.outbox_events
+ where event_type = 'cms.pattern.activated.v1' and payload->>'patternVersionId' = pg_temp.s12pd_body('la2')->>'id' \gset
+select ok(:'activated_event' is not null, 'setup: the activation of ls-a v2 committed a real cms.pattern.activated.v1 outbox row');
+select pg_temp.s12ls_call('ev-activated', 'platform_api.cms_linked_scan_resolve_event', to_jsonb(:'activated_event'::text));
+select is(pg_temp.s12ls_state('ev-activated'), '00000', 'the resolver answers for the activation event as a context-cleared service_role call');
+select is(pg_temp.s12ls_body('ev-activated'),
+  jsonb_build_object('found', true, 'patternId', pg_temp.s12pd_body('la2')->'patternId', 'patternVersionId', pg_temp.s12pd_body('la2')->'id'),
+  'it resolves the published payload to { found, patternId (the lineage), patternVersionId (the version row) }');
+select is((select rpc_after from s12ls_out where label = 'ev-activated'), '', 'the wrapper restores the RPC context it found');
+select ok(pg_temp.s12ls_unchanged('ev-activated'), 'resolving an event writes nothing');
+select id as other_event from platform_private.outbox_events where event_type <> 'cms.pattern.activated.v1' order by id limit 1 \gset
+select ok(:'other_event' is not null, 'setup: an outbox row of another event type exists (the review-changed event of the invalidation)');
+select pg_temp.s12ls_call('ev-other', 'platform_api.cms_linked_scan_resolve_event', to_jsonb(:'other_event'::text));
+select is(pg_temp.s12ls_body('ev-other'), '{"found":false}'::jsonb, 'an event of another type is not a pattern activation: { found: false }');
+select pg_temp.s12ls_call('ev-absent', 'platform_api.cms_linked_scan_resolve_event', to_jsonb('a9120000-0000-4000-8000-0000000000fe'::text));
+select is(pg_temp.s12ls_body('ev-absent'), '{"found":false}'::jsonb, 'an absent event is { found: false }');
+select pg_temp.s12ls_call('ev-anon', 'platform_api.cms_linked_scan_resolve_event', to_jsonb(:'activated_event'::text), 'anon');
+select is(pg_temp.s12ls_state('ev-anon'), '42501', 'anon cannot resolve events (42501)');
+select pg_temp.s12ls_call('ev-auth', 'platform_api.cms_linked_scan_resolve_event', to_jsonb(:'activated_event'::text), 'authenticated');
+select is(pg_temp.s12ls_state('ev-auth'), '42501', 'authenticated cannot resolve events (42501)');
+-- the shape of the committed row the resolver reads (the published payload of CMS-03C-09 and the lineage the pair must name)
+select is((select payload->>'patternId' from platform_private.outbox_events where id = :'activated_event'::uuid), pg_temp.s12pd_body('la2')->>'patternId',
+  'the activation event publishes the lineage id as patternId');
+select is((select payload->>'patternVersionId' from platform_private.outbox_events where id = :'activated_event'::uuid), pg_temp.s12pd_body('la2')->>'id',
+  'the activation event publishes the version row id as patternVersionId');
+select is((select schema_version from platform_private.outbox_events where id = :'activated_event'::uuid), 1, 'the activation event is a version-1 event');
+select is((select count(*)::integer from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('la2')->>'id')::uuid
+    and pattern_id = (pg_temp.s12pd_body('la2')->>'patternId')::uuid), 1, 'the published pair names one stored version of that lineage');

@@ -27,6 +27,7 @@ select plan(52);
 \ir phase_02_slice_11_helpers/001-world.sqlinc
 \ir phase_02_slice_11_helpers/002-reviews.sqlinc
 \ir phase_02_slice_11_helpers/003-registry.sqlinc
+\ir phase_02_slice_11_pattern_forest.sqlinc
 
 -- A taxonomy version and three terms (as the manifest suite seeds them).
 insert into platform_private.cms_taxonomy_versions(
@@ -34,9 +35,11 @@ insert into platform_private.cms_taxonomy_versions(
   allowlisted_type_keys, allowlisted_field_keys, content_hash, created_by
 ) values (pg_temp.h11w_uuid('tax1'), pg_temp.h11w_org(), 1, 'h11-genres', 'cms.taxonomy_curator',
   'flat', '[]'::jsonb, '[]'::jsonb, repeat('a', 64), (select value::uuid from s10_ids where key = 'creatorAuth'));
+-- taxonomy_id (BE03c 1371/1428; 20261014120000): h11_raw_exec disables the lineage-fill trigger, so the row names its lineage
+-- (the version-1 row's id) itself.
 select pg_temp.h11_raw_insert('platform_private.cms_terms', jsonb_build_object(
   'id', t.id, 'owner_id', pg_temp.h11w_org(), 'lifecycle', 'active', 'version', t.version,
-  'taxonomy_version_id', pg_temp.h11w_uuid('tax1'), 'term_key', t.term_key, 'aliases', '[]'::jsonb,
+  'taxonomy_id', pg_temp.h11w_uuid('tax1'), 'taxonomy_version_id', pg_temp.h11w_uuid('tax1'), 'term_key', t.term_key, 'aliases', '[]'::jsonb,
   'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
   'created_at', timestamptz '2026-10-08T12:00:00Z', 'updated_at', timestamptz '2026-10-08T12:00:00Z'))
 from (values
@@ -136,6 +139,7 @@ select pg_temp.h11w_revision(t) from unnest(array['r1', 'r2', 'r3', 'r4', 'r5', 
 select pg_temp.h11m_instance('r5:i1', pg_temp.h11w_uuid('r5:revision'), '/a', 'h11.second');
 select pg_temp.h11m_instance('r6:i1', pg_temp.h11w_uuid('r6:revision'), '/a', 'h11.third');
 select pg_temp.rc_assign('r7:a1', pg_temp.h11w_uuid('r7:revision'), 'a9200000-0000-4000-8000-0000000e0001');
+select pg_temp.h11x_forest('a9200000-0000-4000-8000-0000000c0001', 'h11.first', array['a']);  -- DEC-193 / BE03c 1511
 select pg_temp.h11m_instance('r8:i1', pg_temp.h11w_uuid('r8:revision'), '/a', 'h11.first',
   'a9200000-0000-4000-8000-0000000c0001');
 select pg_temp.rc_review(t) from unnest(array['r1', 'r2', 'r3', 'r4', 'r5', 'r6', 'r7', 'r8']) t;
@@ -294,14 +298,13 @@ select is(pg_temp.rc_state('r7'), 'invalidated/dependency_changed/v2',
 -- ---------------------------------------------------------------------------
 -- Lineage: an activation names the new version, the stale review froze its predecessor.
 -- ---------------------------------------------------------------------------
-select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions', jsonb_build_object(
-  'id', 'a9200000-0000-4000-8000-0000000c0003', 'owner_id', pg_temp.h11w_org(), 'state', 'active', 'version', 2,
-  'pattern_key', 'h11-pattern-a', 'block_tree', '{"nodes":[{"blockKey":"h11.first"}]}'::jsonb,
-  'block_registry_digest', repeat('a', 64), 'content_hash', repeat('7', 64), 'owner_capability', 'cms.template_designer',
-  'created_by', (select value::uuid from s10_ids where key = 'creatorAuth'),
-  'created_at', timestamptz '2026-10-09T12:00:00Z', 'updated_at', timestamptz '2026-10-09T12:00:00Z'));
+-- the one-active-per-lineage index (E14) admits the successor only after its predecessor is superseded
 select pg_temp.h11_raw_exec('platform_private.cms_pattern_versions',
   'update platform_private.cms_pattern_versions set state = ''superseded'' where id = ''a9200000-0000-4000-8000-0000000c0001''::uuid');
+select pg_temp.h11_raw_insert('platform_private.cms_pattern_versions',
+  pg_temp.h11m_pattern_row('a9200000-0000-4000-8000-0000000c0003', 'h11-pattern-a', 2, repeat('7', 64), 'active',
+    'a9200000-0000-4000-8000-0000000c0001', 'a9200000-0000-4000-8000-0000000c0001',
+    timestamptz '2026-10-09T12:00:00Z'));
 select is(platform_private.cms_dependency_recheck_lineage('pattern', 'a9200000-0000-4000-8000-0000000c0003'),
   array['a9200000-0000-4000-8000-0000000c0001', 'a9200000-0000-4000-8000-0000000c0003']::uuid[],
   'lineage: a pattern version stands for every version of its pattern key [P2-S11-AC-113]');

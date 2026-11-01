@@ -74,7 +74,8 @@ const describeOne = (field: AuthoringContextField): CmsFieldDescriptor => {
   if (!constraints.success) return unsupported;
   const parsed = constraints.data;
   const kind: string = field.kind;
-  if (kind === 'taxonomy' || kind === 'media') return { ...base, kind };
+  if (kind === 'taxonomy') return { ...base, kind };
+  if (kind === 'media') return { ...base, kind };
   if (kind === 'rich_text')
     return { ...base, kind, constraints: scalarConstraints(parsed) };
   if (kind === 'object') {

@@ -8,6 +8,14 @@ import {
 } from '@wejammin/contracts';
 import type { ServerEnvironment } from '@wejammin/config/environment';
 
+import {
+  settleJobMessage,
+  type JobQueueMessageOutcome,
+} from './async-entrypoint-job-outcome';
+import type { GovernedRecheckMessage } from './cms-composition/governed-recheck/contract';
+import { isGovernedRecheckJobMessage } from './cms-composition/governed-recheck/message';
+import type { LinkedScanMessage } from './cms-composition/linked-scan/contract';
+import { isLinkedScanJobMessage } from './cms-composition/linked-scan/message';
 import { classifyReviewRecheckMessage } from './cms-editorial/review-recheck/message';
 import type { EventConsumerOutcome } from './event-consumers/types';
 import {
@@ -30,6 +38,8 @@ export type PlatformJobsQueue = Pick<
     | ConsumerQueueEnvelope
     | ReviewRecheckSourceEnvelope
     | ReviewDependencyRecheckMessage
+    | GovernedRecheckMessage
+    | LinkedScanMessage
   >,
   'send'
 >;
@@ -64,6 +74,7 @@ export type AsyncScheduledController = Pick<
 >;
 
 export type QueueMessageOutcome = 'ack' | 'retry';
+export type { JobQueueMessageOutcome };
 export type OutboxSweepOutcome = 'completed' | 'retry';
 
 export type QueueOrchestrationInput = Readonly<{
@@ -95,7 +106,7 @@ export type OutboxSweepInput = Readonly<{
 export type AsyncEntrypointDependencies = Readonly<{
   orchestrateQueueMessage?: (
     input: QueueOrchestrationInput,
-  ) => MaybePromise<QueueMessageOutcome>;
+  ) => MaybePromise<JobQueueMessageOutcome>;
   processSchemaMigration?: (
     input: SchemaMigrationOrchestrationInput,
   ) => MaybePromise<QueueMessageOutcome>;
@@ -111,7 +122,8 @@ export type AsyncEntrypointDependencies = Readonly<{
    * The Slice 11 dependency recheck (BE03b "Review invalidation"): the six
    * source events the outbox relay delivers as identifier-only envelopes, and
    * the `cms.review.dependency_recheck` job messages those consumers enqueue.
-   * Same outcome contract as the registered event consumers.
+   * It also receives the Slice 12 `cms.governed_review.recheck` job messages
+   * (BE03c "Job transport"). Same outcome contract as the registered event consumers.
    */
   processReviewRecheck?: (
     input: EventConsumerOrchestrationInput,
@@ -122,6 +134,13 @@ export type AsyncEntrypointDependencies = Readonly<{
    * observability only: a rejection is contained and never fails the sweep.
    */
   observeReconcilingAge?: (input: OutboxSweepInput) => MaybePromise<void>;
+  /**
+   * Reads the database-side locale observability window of the tick (BE03c
+   * "Database-side locale observability (DEC-208)"): the fan-out counters,
+   * the stale legal-field gauge and its alert. Observability only: a rejection
+   * is contained and never fails the sweep.
+   */
+  observeCmsLocaleActivity?: (input: OutboxSweepInput) => MaybePromise<void>;
 }>;
 
 export type AsyncEntrypoint = Readonly<{
@@ -175,7 +194,11 @@ export const createAsyncEntrypoint = (
       // Before the schema-migration branch: the relayed cms.schema.activated.v1
       // envelope is identifier-only and belongs to the recheck consumer, while
       // the full activation envelope (it carries a payload) stays with the worker.
-      if (classifyReviewRecheckMessage(message.body) !== null) {
+      if (
+        classifyReviewRecheckMessage(message.body) !== null ||
+        isGovernedRecheckJobMessage(message.body) ||
+        isLinkedScanJobMessage(message.body)
+      ) {
         if (dependencies.processReviewRecheck === undefined) {
           retryMessage(message);
           continue;
@@ -259,11 +282,7 @@ export const createAsyncEntrypoint = (
           executionContext,
           message,
         });
-        if (outcome === 'ack') {
-          message.ack();
-        } else {
-          retryMessage(message);
-        }
+        settleJobMessage(message, outcome);
       } catch {
         retryMessage(message);
       }
@@ -286,11 +305,19 @@ export const createAsyncEntrypoint = (
         // Observability only; the sweep outcome decides success.
       }
     })();
+    const localeSample = (async (): Promise<void> => {
+      try {
+        await dependencies.observeCmsLocaleActivity?.(input);
+      } catch {
+        // Observability only; the sweep outcome decides success.
+      }
+    })();
     let outcome: OutboxSweepOutcome;
     try {
       outcome = await dependencies.sweepOutbox(input);
     } finally {
       await sample;
+      await localeSample;
     }
     if (outcome !== 'completed') {
       throw new Error('Outbox sweep requested retry');

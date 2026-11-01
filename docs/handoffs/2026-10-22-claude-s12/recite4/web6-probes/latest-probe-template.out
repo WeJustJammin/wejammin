@@ -1,0 +1,43 @@
+ RUN  v4.1.11 /home/rob/.codex/worktrees/phase2-slice12/WeJammin
+stderr | apps/web/src/components/cms-composition/zz-web6-probe-template.test.tsx > PROBE template defects > degraded: the last verified latest panel is kept when the next read fails
+An update to CmsTemplateEditDesigner inside a test was not wrapped in act(...).
+When testing, code that causes React state updates should be wrapped into act(...):
+act(() => {
+  /* fire events that update state */
+});
+/* assert on the output */
+This ensures that you're testing the behavior the user would see in the browser. Learn more at https://react.dev/link/wrap-tests-with-act
+ ❯ apps/web/src/components/cms-composition/zz-web6-probe-template.test.tsx (2 tests | 2 failed) 571ms
+     × degraded: the last verified latest panel is kept when the next read fails 149ms
+     × disabled: an empty content-type prerequisite is named 9ms
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 2 ⎯⎯⎯⎯⎯⎯⎯
+ FAIL  apps/web/src/components/cms-composition/zz-web6-probe-template.test.tsx > PROBE template defects > degraded: the last verified latest panel is kept when the next read fails
+AssertionError: expected 'Edit template draftEditing version 2.…' to contain 'Latest version 3'
+Expected: "Latest version 3"
+Received: "Edit template draftEditing version 2. Your values remain in this form until you explicitly choose a newer parent version.The server reported a conflict. Check the latest version and explicitly reconcile your unsent values before another submit.Check latest versionThe latest version is unavailable. Wait and try again.Template definitionTemplate keyLowercase letters, numbers, and hyphens; immutable after creation.Compatible active content typesrelease_note · version 2LocaleAudienceReserved regionsThe first five regions are fixed: header, now, record, detail, provenance.Additional regions, comma separatedUse distinct lowercase region keys.SlotsSupported blocks: none available.Add slotProjection bindingsAdd bindingA saved successor is a private draft, not publication or activation.Save successor draft"
+ ❯ apps/web/src/components/cms-composition/zz-web6-probe-template.test.tsx:156:35
+    154|     await press(container);
+    155|     expect(alerts(container)).toContain('The latest version is unavail…
+    156|     expect(container.textContent).toContain('Latest version 3');
+       |                                   ^
+    157|   });
+    158|   it('disabled: an empty content-type prerequisite is named', async ()…
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/2]⎯
+ FAIL  apps/web/src/components/cms-composition/zz-web6-probe-template.test.tsx > PROBE template defects > disabled: an empty content-type prerequisite is named
+AssertionError: expected 'Edit template draftEditing version 2.…' to match /No active content types/u
+- Expected:
+/No active content types/u
++ Received:
+"Edit template draftEditing version 2. Your values remain in this form until you explicitly choose a newer parent version.Template definitionTemplate keyLowercase letters, numbers, and hyphens; immutable after creation.Compatible active content typesMarked \"no longer available\": the version you are editing names a content type that is no longer active. Clear it to save.Content type 018f0c45 · no longer availableLocaleAudienceReserved regionsThe first five regions are fixed: header, now, record, detail, provenance.Additional regions, comma separatedUse distinct lowercase region keys.SlotsSupported blocks: none available.Add slotProjection bindingsAdd bindingA saved successor is a private draft, not publication or activation.Save successor draft"
+ ❯ apps/web/src/components/cms-composition/zz-web6-probe-template.test.tsx:162:35
+    160|     const { container } = mountElement(element('csrf', { contentTypes:…
+    161|     expect(save(container).disabled).toBe(true);
+    162|     expect(container.textContent).toMatch(/No active content types/u);
+       |                                   ^
+    163|   });
+    164| });
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/2]⎯
+ Test Files  1 failed (1)
+      Tests  2 failed (2)
+   Start at  01:07:24
+   Duration  1.68s (transform 403ms, setup 0ms, import 260ms, tests 571ms, environment 675ms)

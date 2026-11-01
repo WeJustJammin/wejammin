@@ -1,0 +1,28 @@
+-- Support helpers of the DEC-212 recovery table and of the routing witness (010 posture, 080 routing).  Include AFTER 000-helpers (it uses
+-- s12dc_assoc_table) and BEFORE 010-surface.  Everything here is pg_temp and dies with the rolled-back transaction.
+
+-- The catalog oid of the association table (null if absent), by name, so posture assertions fail instead of aborting when the table is missing.
+create or replace function pg_temp.s12dc_assoc_oid() returns oid language sql stable as $body$
+  select c.oid from pg_class c join pg_namespace n on n.oid = c.relnamespace
+   where n.nspname = 'platform_private' and c.relname = 'taxonomy_merge_recoveries' and c.relkind = 'r' $body$;
+-- The labelled fixture forgery of the routing witness (080): one support row marking a failed Job as already recovered, inserted as the
+-- test administrator (the table's only writer in production is the definer sweep).  Returns false instead of aborting if the table is absent.
+create or replace function pg_temp.s12dc_assoc_forge(p_failed uuid, p_recovery uuid) returns boolean language plpgsql volatile as $body$
+begin
+  if not pg_temp.s12dc_assoc_table() then return false; end if;
+  execute 'insert into platform_private.taxonomy_merge_recoveries(failed_job_id, recovery_job_id) values ($1, $2)' using p_failed, p_recovery;
+  return true;
+exception when others then
+  return false;
+end;
+$body$;
+-- Whether THIS transaction holds the per-acting-party merge-enqueue mutex of the party (the transaction-scoped advisory lock taken by
+-- platform_private.cms_taxonomy_merge_enqueue_lock: key hashtextextended('cms.taxonomy.merge.enqueue:' || party, 0), split by pg_locks
+-- into classid (high 32 bits) and objid (low 32 bits) with objsubid 1).  Transaction locks last to commit, so after a sweep call this is
+-- the set of parties the sweep locked.
+create or replace function pg_temp.s12dc_party_lock_held(p_party uuid) returns boolean language sql stable as $body$
+  select exists (
+    select 1 from pg_locks l
+     where l.locktype = 'advisory' and l.pid = pg_backend_pid() and l.granted and l.objsubid = 1
+       and ((l.classid::oid::bigint << 32) | l.objid::oid::bigint)
+           = pg_catalog.hashtextextended('cms.taxonomy.merge.enqueue:' || p_party::text, 0)) $body$;

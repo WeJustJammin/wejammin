@@ -1,0 +1,42 @@
+-- UNAPPROVED DIAGNOSTIC -- NOT AN ACCEPTANCE SUITE AND NOT AUTO-COLLECTED.
+--
+-- This file is named `.proposal.sqlinc` (not `.sql`) so the Supabase pgTAP
+-- discovery does not collect it as a required database test.  It exercises the
+-- OPTIONAL, unapproved expired-verifying recovery extension (DEC-184:2659 outcome)
+-- as a diagnostic witness: an expired verifying plan re-leased through the normal
+-- fenced claim path and then terminally rolled back.
+--
+-- Locked authority (BE03a 2484-2491): the rollback "uses the plan lease it finds or
+-- claims a fresh one (a `verifying` plan cannot be re-leased)", and a plan that
+-- cannot be rolled back (no live lease and none claimable, or an unreadable plan)
+-- "is left as it was: the Job is `failed` all the same and the `migration retry >3`
+-- and DLQ alerts are the operator signal."  The extension is NOT a required Phase 2
+-- completion gate and awaits owner approval.
+--
+-- Last diagnostic run (2026-10-13, alt stack, runner-owned locks): 44 assertions,
+-- 21 failures -- including 4 oracle/fixture defects in this harness (the sealed-report
+-- control predicate; the wrong-sourceHash and stale-token reason codes).  It is not
+-- acceptance evidence.  The private implementation is not edited here; the harness
+-- is built on the real producer chain (CMS-03A-10 + the worker RPCs).
+
+\ir support/jwt-claims.sqlinc
+commit;
+create extension if not exists pgtap with schema extensions;
+commit;
+
+begin;
+select no_plan();
+
+\ir phase_02_slice_09_dec108/00-helpers.sqlinc
+\ir phase_02_slice_09_dec108/01-actors.sqlinc
+\ir phase_02_slice_09_dec108/02-chain.sqlinc
+\ir phase_02_slice_09_dec108/03-support.sqlinc
+\ir phase_02_slice_09_dec108/04-worker.sqlinc
+\ir phase_02_slice_09_dec119/00-support.sqlinc
+\ir phase_02_slice_12_preparation_exhaustion/010-fixtures.sqlinc
+\ir phase_02_slice_12_preparation_exhaustion/020-recovery.sqlinc
+\ir phase_02_slice_12_preparation_exhaustion/030-security.sqlinc
+
+select * from finish();
+rollback;
+

@@ -1,0 +1,147 @@
+-- cmsCompositionInstancesRead helpers (DEC-206).  Include AFTER the DEC-108 prelude, the pattern-definition and
+-- placement fixtures/oracles and phase_02_slice_12_pattern_updates_common/000-helpers.sqlinc: they reuse s12pl_*, s12pu_* and s09d_*.
+
+create temp table s12ci_out(label text primary key, request jsonb, response jsonb, state text, message text, detail text,
+  before_rows jsonb, after_rows jsonb, requested_role text, call_role text, role_restored boolean) on commit drop;
+
+-- One call of the Worker transport as the named actor and database role, with a full before/after image of every store a
+-- composition, pattern or entry write touches (a read must leave all of them byte-identical).
+create or replace function pg_temp.s12ci_call(
+  p_label text, p_request jsonb, p_actor text default 'owner', p_role text default 'service_role')
+returns void
+language plpgsql as $body$
+declare before_rows jsonb; answer jsonb; code text := '00000'; msg text; details text;
+  prior_role text := current_setting('role'); prior_user text := current_user; invoked_as text; restored boolean;
+begin
+  if p_role not in ('service_role', 'anon', 'authenticated') then raise exception 'unknown database role %', p_role; end if;
+  perform pg_temp.s09d_session(p_actor, p_role);
+  if p_actor = 'anonymous' then
+    perform pg_temp.set_jwt_claim('sub', '', true);
+    perform set_config('app.auth_user_id', '', true);
+    perform set_config('app.actor_auth_user_id', '', true);
+    perform set_config('app.actor_person_id', '', true);
+    perform set_config('app.acting_party_id', '', true);
+    perform set_config('app.acting_context_id', '', true);
+  end if;
+  before_rows := pg_temp.s12pl_snapshot();
+  begin
+    perform set_config('role', p_role, true);
+    invoked_as := current_user;
+    if invoked_as is distinct from p_role then raise exception 'composition-instances test effective role mismatch'; end if;
+    begin
+      select platform_api.cms_list_composition_instances(p_request) into answer;
+    exception when others then
+      get stacked diagnostics code = returned_sqlstate, msg = message_text, details = pg_exception_detail;
+      answer := null;
+    end;
+    perform set_config('role', prior_role, true);
+  exception when others then
+    perform set_config('role', prior_role, true);
+    raise;
+  end;
+  restored := current_user::text = prior_user and current_setting('role') = prior_role;
+  if restored is not true then raise exception 'composition-instances test role restoration failed'; end if;
+  insert into s12ci_out values (p_label, p_request, answer, code, msg, details, before_rows, pg_temp.s12pl_snapshot(),
+    p_role, invoked_as, restored)
+  on conflict (label) do update set request = excluded.request, response = excluded.response, state = excluded.state,
+    message = excluded.message, detail = excluded.detail, before_rows = excluded.before_rows, after_rows = excluded.after_rows;
+end;
+$body$;
+create or replace function pg_temp.s12ci_state(p_label text) returns text language sql stable as $body$
+  select coalesce((select state from s12ci_out where label = p_label), 'UNRUN') $body$;
+create or replace function pg_temp.s12ci_body(p_label text) returns jsonb language sql stable as $body$
+  select response from s12ci_out where label = p_label $body$;
+create or replace function pg_temp.s12ci_unchanged(p_label text) returns boolean language sql stable as $body$
+  select coalesce((select before_rows = after_rows from s12ci_out where label = p_label), false) $body$;
+-- Row paths of a page in answered order, and the page's own items.
+create or replace function pg_temp.s12ci_paths(p_label text) returns jsonb language sql stable as $body$
+  select coalesce(jsonb_agg(item->>'path' order by ordinality), '[]'::jsonb)
+    from s12ci_out, jsonb_array_elements(response->'items') with ordinality item(item, ordinality) where label = p_label $body$;
+
+-- The private request exactly as the Worker adapter builds it: the path entry id, the optional query cursor and page size, the server context.
+create or replace function pg_temp.s12ci_request(p_entry uuid, p_cursor text default null, p_actor text default 'owner', p_limit integer default null)
+returns jsonb language sql volatile as $body$
+  select jsonb_build_object('entryId', p_entry, 'context', pg_temp.s09d_context(p_actor, true),
+    'correlationId', 'a9120000-0000-4000-8000-00000000c0e6')
+    || case when p_cursor is null then '{}'::jsonb else jsonb_build_object('cursor', p_cursor) end
+    || case when p_limit is null then '{}'::jsonb else jsonb_build_object('limit', p_limit) end $body$;
+create or replace function pg_temp.s12ci_read(
+  p_label text, p_tag text, p_cursor text default null, p_actor text default 'owner', p_role text default 'service_role', p_limit integer default null)
+returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12ci_call(p_label, pg_temp.s12ci_request(pg_temp.s12pl_entry_id(p_tag), p_cursor, p_actor, p_limit), p_actor, p_role);
+end;
+$body$;
+
+-- A refusal: SQLSTATE P0001, the exact message token, the exact DETAIL when given, and no effect on any captured store.
+create or replace function pg_temp.s12ci_refused(
+  p_label text, p_request jsonb, p_token text, p_actor text default 'owner', p_role text default 'service_role')
+returns setof text
+language plpgsql as $body$
+begin
+  perform pg_temp.s12ci_call(p_label, p_request, p_actor, p_role);
+  return next extensions.is(pg_temp.s12ci_state(p_label), 'P0001', p_label || ': SQLSTATE is the application refusal');
+  return next extensions.is((select message from s12ci_out where label = p_label), p_token, p_label || ': exact SQL message token ' || p_token);
+  return next extensions.is(coalesce((select detail from s12ci_out where label = p_label), ''), '', p_label || ': a read refusal carries no DETAIL pointer');
+  return next extensions.ok(pg_temp.s12ci_unchanged(p_label), p_label || ': the refusal preserves every captured full row of every store');
+end;
+$body$;
+
+-- ORACLES -------------------------------------------------------------------------------------------------------------------
+-- The head (greatest version) row of a path of a tag's revision, and its CompositionInstanceResource as the write producers
+-- answer it (the same private builder CMS-03C-02 and CMS-03C-15 use: "read == write answer").
+create or replace function pg_temp.s12ci_resource(p_tag text, p_path text) returns jsonb language sql stable as $body$
+  select platform_private.cms_composition_instance_resource(r)
+    from platform_private.cms_composition_instances r
+   where r.revision_id = pg_temp.s12pl_rev(p_tag) and r.path = p_path order by r.version desc limit 1 $body$;
+-- The expected items for a list of paths, in the order given.
+create or replace function pg_temp.s12ci_expect(p_tag text, p_paths text[]) returns jsonb language sql stable as $body$
+  select coalesce(jsonb_agg(pg_temp.s12ci_resource(p_tag, p.path) order by p.ordinality), '[]'::jsonb)
+    from unnest(p_paths) with ordinality p(path, ordinality) $body$;
+-- The block order of the BE05c render plan of a revision (the one derivation of document order): the first plan row of each
+-- composition instance, in plan order.
+create or replace function pg_temp.s12ci_plan_paths(p_tag text) returns jsonb language plpgsql volatile as $body$
+begin
+  -- The plan reads forced-RLS tables through its definer: it needs the RPC context flag, as every platform function sets it.
+  perform set_config('app.cms_rpc', 'true', true);
+  return (select coalesce(jsonb_agg(planned.path order by planned.first_position), '[]'::jsonb)
+    from (select inst.path, min(plan.plan_position) as first_position
+            from platform_private.cms_revision_render_plan(pg_temp.s12pl_rev(p_tag)) plan
+            join platform_private.cms_composition_instances inst on inst.id = plan.instance_id
+           where plan.plan_kind = 'block' group by inst.path) planned);
+end;
+$body$;
+-- Every captured store a read must not move, as one image (used around a burst of reads).
+create or replace function pg_temp.s12ci_evidence() returns text language sql stable as $body$
+  select (select count(*) from platform_private.cms_composition_instances)::text || '/'
+      || (select count(*) from audit_private.audit_events)::text || '/'
+      || (select count(*) from platform_private.idempotency_records)::text || '/'
+      || (select count(*) from platform_private.outbox_events)::text || '/'
+      || (select coalesce(sum(version), 0) from platform_private.cms_content_entries)::text $body$;
+-- The opaque cursor a page answered, or null.
+create or replace function pg_temp.s12ci_next(p_label text) returns text language sql stable as $body$
+  select response->>'nextCursor' from s12ci_out where label = p_label $body$;
+-- A cursor's decoded envelope, and an envelope re-encoded from JSON text (an edited or forged cursor).
+create or replace function pg_temp.s12ci_cursor_json(p_cursor text) returns jsonb language sql immutable as $body$
+  select convert_from(decode(p_cursor, 'base64'), 'utf8')::jsonb $body$;
+create or replace function pg_temp.s12ci_cursor_make(p_json jsonb) returns text language sql immutable as $body$
+  select replace(encode(convert_to(p_json::text, 'utf8'), 'base64'), E'\n', '') $body$;
+-- The shared signed-cursor domain and payload members of this read (BE00 collection rules; the helper of CMS-03C-13).
+create or replace function pg_temp.s12ci_domain() returns text language sql immutable as $body$ select 'cms-03c-instances'::text $body$;
+create or replace function pg_temp.s12ci_keys() returns text[] language sql immutable as $body$
+  select array['queryHash', 'lastInstanceId', 'expiresAt']::text[] $body$;
+-- A GENUINELY signed cursor whose payload was changed (patch merged into the verified payload, then re-sealed by the shared helpers): a
+-- validly signed cursor for another context or another expiry.  Needs the Vault key (created in 002).
+create or replace function pg_temp.s12ci_resigned(p_cursor text, p_patch jsonb) returns text language plpgsql as $body$
+declare payload jsonb;
+begin
+  if p_cursor is null then return null; end if;
+  payload := convert_from(decode(platform_private.cms_signed_cursor_open(pg_temp.s12ci_domain(), to_jsonb(p_cursor), pg_temp.s12ci_keys()), 'base64'), 'utf8')::jsonb
+    || p_patch;
+  return platform_private.cms_signed_cursor_seal_page(pg_temp.s12ci_domain(), jsonb_build_object('nextCursor',
+    replace(encode(convert_to(platform_private.cms_jcs(payload), 'utf8'), 'base64'), E'\n', '')), pg_temp.s12ci_keys())->>'nextCursor';
+end;
+$body$;
+-- A sealed cursor whose envelope member was edited WITHOUT re-signing (a tampered cursor).
+create or replace function pg_temp.s12ci_tampered(p_cursor text, p_patch jsonb) returns text language sql immutable as $body$
+  select pg_temp.s12ci_cursor_make(pg_temp.s12ci_cursor_json(p_cursor) || p_patch) $body$;

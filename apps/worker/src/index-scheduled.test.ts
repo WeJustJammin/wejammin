@@ -33,6 +33,12 @@ describe('Worker scheduled operational boundaries', () => {
           String(input).includes('/rest/v1/rpc/cms_expire_edit_presence_leases')
         )
           return Response.json({ expiredLeases: 0 });
+        if (
+          String(input).includes(
+            '/rest/v1/rpc/cms_reconcile_taxonomy_merge_converge',
+          )
+        )
+          return Response.json({ requested: 0 });
         return Response.json([], { status: 200 });
       },
     );
@@ -62,9 +68,11 @@ describe('Worker scheduled operational boundaries', () => {
     // The outbox sweep, the idempotency expiry sweep, the [P2-S09-AC-1135]
     // reviewer-authority expiry sweep, the BE03b advisory edit-presence expiry
     // sweep, the Slice 11 publication schedule claim (CMS-03B-20, nothing due
-    // here) and the [P2-S09-AC-908] reconciling-age gauge sample each make one
-    // protected RPC per tick.
-    expect(fetchImpl).toHaveBeenCalledTimes(6);
+    // here), the Slice 12 governed activation claim (CMS-03C-19, nothing due
+    // here), the DEC-194 merge convergence recovery sweep (nothing to re-request),
+    // the [P2-S09-AC-908] reconciling-age gauge sample and the DEC-208 database-side
+    // locale observability read each make one protected RPC per tick.
+    expect(fetchImpl).toHaveBeenCalledTimes(9);
     expect(
       fetchImpl.mock.calls
         .map(([input]) => String(input).split('/rest/v1/rpc/')[1])
@@ -72,8 +80,11 @@ describe('Worker scheduled operational boundaries', () => {
     ).toEqual([
       'auth_mfa_reconciling_age',
       'claim_outbox_batch',
+      'cms_claim_due_governed_activations',
       'cms_claim_due_publication_schedules',
       'cms_expire_edit_presence_leases',
+      'cms_locale_observability_read',
+      'cms_reconcile_taxonomy_merge_converge',
       'cms_sweep_expired_review_authority',
       'idempotency_expiry_sweep',
     ]);
@@ -168,7 +179,13 @@ describe('Worker scheduled operational boundaries', () => {
           return Response.json({ expiredLeases: 0 });
         }
         if (
-          target.includes('/rest/v1/rpc/cms_claim_due_publication_schedules')
+          target.includes('/rest/v1/rpc/cms_reconcile_taxonomy_merge_converge')
+        ) {
+          return Response.json({ requested: 0 });
+        }
+        if (
+          target.includes('/rest/v1/rpc/cms_claim_due_publication_schedules') ||
+          target.includes('/rest/v1/rpc/cms_claim_due_governed_activations')
         ) {
           return Response.json([]);
         }
@@ -226,7 +243,8 @@ describe('Worker scheduled operational boundaries', () => {
         String(input).includes('/rest/v1/rpc/auth_mfa_reconciling_age'),
       ),
     ).toHaveLength(1);
-    // The six earlier jobs plus the Slice 11 publication schedule claim.
-    expect(fetchImpl).toHaveBeenCalledTimes(7);
+    // The six earlier jobs plus the Slice 11 publication schedule claim, the Slice 12 governed activation claim and the
+    // DEC-194 merge convergence recovery sweep and the DEC-208 locale observability read.
+    expect(fetchImpl).toHaveBeenCalledTimes(10);
   });
 });

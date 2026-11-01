@@ -13,7 +13,8 @@ CMS-03A-16 (renew), CMS-03A-17 (revoke) and the CMS-03A-18 list, per FE03
   capability/state URL filters and the island-local person filter.
 - `CmsCapabilityGrantForm.tsx`, `CmsCapabilityGrantRenewForm.tsx` and
   `CmsCapabilityGrantRevokeConfirmation.tsx` are the three native forms;
-  `CmsCapabilityGrantFields.tsx` holds the shared labelled controls.
+  `CmsCapabilityGrantFields.tsx` holds the shared labelled controls. The revoke commit button
+  carries `cms-danger-action` (`styles/cms-danger-action.css`).
 - `CmsCapabilityGrantCommandResult.tsx` shows the latest outcome (result
   heading focus on success; step-up, filter and retry actions on failure).
 - `cms-capability-grant-validation.ts` owns the exact FE03 field copy and the

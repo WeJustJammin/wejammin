@@ -1,0 +1,151 @@
+-- BE03c 1543/1545: restore's composition authority is the named SOURCE, not
+-- the current draft. The source stays immutable; all new rows are appended.
+select pg_temp.s12cc_current('cc-restore');
+select pg_temp.s12pl_run('cc-restore-current-placement',pg_temp.s12pl_request('cc-restore','cc-v2','/',
+  '{}','s12cc-restore-current-placement'));
+select is(pg_temp.s12pl_state('cc-restore-current-placement'),'00000',
+  'CC-RST-SETUP: current draft has different real linked target content, not source local snapshot');
+select ok((select count(*)=2 and bool_and(link_mode='linked' and detached_tree is null and pattern_version=2)
+  from platform_private.cms_composition_instances where revision_id=(select current_id from s12cc_world where tag='cc-restore')),
+  'CC-RST-SETUP: current rows discriminate wrong-base copy from source copy');
+select * from pg_temp.s12cc_refused('CC-RST-CAS','restore',
+  pg_temp.s12cc_request('cc-restore','restore','s12cc-restore-stale',null,'1'),'VERSION_MISMATCH');
+select pg_temp.s12cc_call('CC-RST001','restore',pg_temp.s12cc_request('cc-restore','restore','s12cc-restore-001'));
+select * from pg_temp.s12cc_copied('CC-RST001','cc-restore');
+select is(pg_temp.s12cc_body('CC-RST001')->'parentRevisionIds',
+  (select jsonb_build_array(current_id,source_id) from s12cc_world where tag='cc-restore'),
+  'CC-RST002: restore parents are current draft then named source');
+select is((select value from platform_private.cms_entry_field_values where revision_id=
+  (pg_temp.s12cc_body('CC-RST001')->>'id')::uuid),'"SOURCE"'::jsonb,
+  'CC-RST003: source field copied, never current field or new invented value');
+select is((select detached_tree from platform_private.cms_composition_instances
+  where revision_id=(pg_temp.s12cc_body('CC-RST001')->>'id')::uuid and path='/local'),
+  (select tree from s12cc_literal),'CC-RST004: source local full subtree wins over current linked target');
+select * from pg_temp.s12cc_effects('CC-RST001');
+select * from pg_temp.s12cc_replay('CC-RST001','cc-restore');
+
+-- The EXACT restore exception in 1543 is "unless the instance is detached".
+-- It does not require a nonnull tree. Both detached forms ignore inactive
+-- pattern provenance here; this does not exempt either form's block checks.
+select is(pg_temp.s12pd_row('cc-v1')->>'state','superseded',
+  'CC-RST005 premise: v1 pattern is genuinely inactive after governed v2 activation');
+select pg_temp.s12cc_current('cc-linked-inactive');
+select * from pg_temp.s12cc_refused('CC-RST005','restore',
+  pg_temp.s12cc_request('cc-linked-inactive','restore','s12cc-restore-linked-inactive'),'migration_chain_incomplete');
+select ok((select bool_and(link_mode='detached' and detached_tree is null and pattern_version=1)
+  from platform_private.cms_composition_instances where revision_id=(select source_id from s12cc_world where tag='cc-legacy-inactive')),
+  'CC-RST006 premise: real plain detached rows have SQL NULL tree and positive inactive prior pins');
+select pg_temp.s12cc_current('cc-legacy-inactive');
+select pg_temp.s12cc_call('CC-RST006','restore',pg_temp.s12cc_request('cc-legacy-inactive','restore','s12cc-restore-legacy-inactive'));
+select * from pg_temp.s12cc_copied('CC-RST006','cc-legacy-inactive');
+select ok((select count(*)=3 and bool_and(link_mode='detached' and detached_tree is null and pattern_version=1)
+  from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('CC-RST006')->>'id')::uuid),
+  'CC-RST006: legacy SQL NULL tree is retained, not fabricated from pattern or mistaken for nonnull snapshot');
+select * from pg_temp.s12cc_effects('CC-RST006');
+select * from pg_temp.s12cc_replay('CC-RST006','cc-legacy-inactive');
+select ok((select count(*)=1 and bool_and(link_mode='detached' and detached_tree is not null and pattern_version=1)
+  from platform_private.cms_composition_instances where revision_id=(pg_temp.s12cc_body('CC-RST001')->>'id')::uuid and path='/local'),
+  'CC-RST007: nonnull detached tree restores despite inactive positive prior pattern pin');
+
+-- Historical compatible-template transition FIXTURE ONLY. Both templates were
+-- produced by CMS-03C-01; original /main composition was produced while valid.
+-- A guarded appended historical revision binds the second compatible template,
+-- which has /side but no /main. No immutable revision is edited, no template
+-- definition/activation is forged, and this is NOT a schema-migration proof.
+do $body$
+declare w s12cc_world; old_revision platform_private.cms_entry_revisions;
+  new_source uuid := extensions.gen_random_uuid(); side_id uuid := (pg_temp.s09d_resp('cc-template-side')->>'id')::uuid;
+begin
+  perform set_config('app.cms_rpc','true',true);
+  select * into w from s12cc_world where tag='cc-slot';
+  select * into old_revision from platform_private.cms_entry_revisions where id=w.source_id;
+  insert into platform_private.cms_entry_revisions select (jsonb_populate_record(
+    null::platform_private.cms_entry_revisions,to_jsonb(old_revision) || jsonb_build_object(
+      'id',new_source,'revision_number',2,'template_version_id',side_id,
+      'parent_revision_ids',jsonb_build_array(old_revision.id)))).*;
+  insert into platform_private.cms_entry_field_values select (jsonb_populate_record(
+    null::platform_private.cms_entry_field_values,to_jsonb(f) || jsonb_build_object('id',extensions.gen_random_uuid(),'revision_id',new_source))).*
+    from platform_private.cms_entry_field_values f where revision_id=old_revision.id;
+  insert into platform_private.cms_composition_instances select (jsonb_populate_record(
+    null::platform_private.cms_composition_instances,to_jsonb(i) || jsonb_build_object('id',extensions.gen_random_uuid(),'revision_id',new_source))).*
+    from platform_private.cms_composition_instances i where revision_id=old_revision.id;
+  update s12cc_world set source_id=new_source,current_id=new_source where tag='cc-slot';
+  update s12pl_ids set value=new_source::text where key='cc-slot:revision';
+  update platform_private.cms_content_entries set current_draft_revision_id=new_source,version=version+1
+    where id=pg_temp.s12pl_entry_id('cc-slot');
+end;
+$body$;
+select pg_temp.s12cc_capture('cc-slot');
+select pg_temp.s12cc_current('cc-slot',(pg_temp.s09d_resp('cc-template-side')->>'id')::uuid);
+select ok((select r.template_version_id=(pg_temp.s09d_resp('cc-template-side')->>'id')::uuid
+  from platform_private.cms_entry_revisions r where id=(select source_id from s12cc_world where tag='cc-slot'))
+  and (select slots @> '[{"key":"side"}]'::jsonb and not slots @> '[{"key":"main"}]'::jsonb
+    from platform_private.cms_template_versions where id=(pg_temp.s09d_resp('cc-template-side')->>'id')::uuid),
+  'CC-RST008 premise: current compatible bound template exists but cannot supply historical /main slot');
+select * from pg_temp.s12cc_refused('CC-RST008','restore',
+  pg_temp.s12cc_request('cc-slot','restore','s12cc-restore-missing-slot'),'template_incompatible');
+
+-- Reachable child is deprecated through the SIGNED lifecycle command. Restore
+-- may carry it, but must re-pin the reachable safe tuple digest to current state.
+select pg_temp.p_advance('cc-child-deprecated',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('cc-child')->>'id')::uuid,'supported','deprecated'));
+select is(pg_temp.s09d_outcome('cc-child-deprecated'),'OK','CC-RST009 premise: signed child deprecation succeeds');
+create temp table s12cc_repin_digest(tuples jsonb,value text,linked_value text) on commit drop;
+insert into s12cc_repin_digest(tuples) values(
+  '[{"blockKey":"s12cc.child","blockVersion":1,"releaseDigest":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","propsSchemaHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","rendererRef":"cms/renderers/hero/1","lifecycle":"deprecated"},
+    {"blockKey":"s12cc.root","blockVersion":1,"releaseDigest":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee","propsSchemaHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","rendererRef":"cms/renderers/hero/1","lifecycle":"supported"}]'::jsonb);
+update s12cc_repin_digest set value=platform_private.cms_jcs_sha256(tuples),
+  linked_value=platform_private.cms_jcs_sha256(tuples || '[{"blockKey":"s12pd.block","blockVersion":1,
+    "releaseDigest":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee",
+    "propsSchemaHash":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "rendererRef":"cms/renderers/hero/1","lifecycle":"supported"}]'::jsonb);
+select pg_temp.s12cc_current('cc-tree-withdraw');
+select ok((select block_registry_digest::text<>(select value from s12cc_repin_digest)
+  from platform_private.cms_composition_instances where revision_id=(select source_id from s12cc_world where tag='cc-tree-withdraw')
+    and path='/local' order by version desc limit 1),
+  'CC-RST009 premise: old supported digest differs from independent current deprecated tuples');
+-- Only expected repinning changes; original source_rows remain exact history.
+update s12cc_world set expected_heads=(select jsonb_agg(e || jsonb_build_object('block_registry_digest',
+  case when e->>'path'='/local' then (select value from s12cc_repin_digest)
+    else (select linked_value from s12cc_repin_digest) end) order by (e->>'position')::integer)
+  from jsonb_array_elements(expected_heads) e) where tag='cc-tree-withdraw';
+select pg_temp.s12cc_call('CC-RST009','restore',pg_temp.s12cc_request('cc-tree-withdraw','restore','s12cc-restore-deprecated-child'));
+select * from pg_temp.s12cc_copied('CC-RST009','cc-tree-withdraw');
+select is((select block_registry_digest::text from platform_private.cms_composition_instances
+  where revision_id=(pg_temp.s12cc_body('CC-RST009')->>'id')::uuid and path='/local'),
+  (select value from s12cc_repin_digest),'CC-RST009: registry digest recomputed from current reachable tuples, not copied old digest/whole pattern');
+select * from pg_temp.s12cc_effects('CC-RST009');
+select * from pg_temp.s12cc_replay('CC-RST009','cc-tree-withdraw');
+
+-- One unsupported reachable child must refuse the WHOLE restore, despite a
+-- supported root and supported sibling. The child is not a composition row.
+select pg_temp.p_advance('cc-child-withdrawn',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('cc-child')->>'id')::uuid,'deprecated','withdrawn','1'));
+select is(pg_temp.s09d_outcome('cc-child-withdrawn'),'OK','CC-RST010 premise: signed reachable child withdrawal succeeds');
+select is((select to_lifecycle from platform_private.cms_block_definition_lifecycle_events
+  where block_definition_version_id=(pg_temp.s09d_resp('cc-child')->>'id')::uuid order by created_at desc,id desc limit 1),
+  'withdrawn','CC-RST010 premise: actual latest signed child lifecycle is withdrawn');
+select ok((select detached_tree#>>'{nodes,1,blockKey}'='s12cc.child' and block_key='s12cc.root'
+  from platform_private.cms_composition_instances where revision_id=(select source_id from s12cc_world where tag='cc-tree-withdraw')
+    and path='/local' order by version desc limit 1),
+  'CC-RST010 premise: withdrawn identity reachable only inside detached tree, not pinned root');
+select * from pg_temp.s12cc_refused('CC-RST010','restore',
+  pg_temp.s12cc_request('cc-tree-withdraw','restore','s12cc-restore-withdrawn-child'),'migration_chain_incomplete');
+
+-- Legacy SQL NULL tree still has its pinned block authority. Detached mode's
+-- inactive-pattern exception is not an exemption for a withdrawn pinned block.
+select pg_temp.s12cc_current('cc-legacy-withdraw');
+select pg_temp.p_advance('cc-root-deprecated',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('cc-root')->>'id')::uuid,'supported','deprecated'));
+select pg_temp.p_advance('cc-root-withdrawn',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('cc-root')->>'id')::uuid,'deprecated','withdrawn','1'));
+select is(pg_temp.s09d_outcome('cc-root-deprecated') || pg_temp.s09d_outcome('cc-root-withdrawn'),'OKOK',
+  'CC-RST011 premise: real signed pinned root reaches withdrawn lifecycle');
+select is((select to_lifecycle from platform_private.cms_block_definition_lifecycle_events
+  where block_definition_version_id=(pg_temp.s09d_resp('cc-root')->>'id')::uuid order by created_at desc,id desc limit 1),
+  'withdrawn','CC-RST011 premise: actual latest signed root lifecycle is withdrawn');
+select ok((select detached_tree is null and link_mode='detached' and block_key='s12cc.root'
+  from platform_private.cms_composition_instances where revision_id=(select source_id from s12cc_world where tag='cc-legacy-withdraw')
+    and path='/local'),'CC-RST011 premise: plain legacy detached source has withdrawn pinned block');
+select * from pg_temp.s12cc_refused('CC-RST011','restore',
+  pg_temp.s12cc_request('cc-legacy-withdraw','restore','s12cc-restore-withdrawn-pinned'),'migration_chain_incomplete');

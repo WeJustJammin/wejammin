@@ -182,6 +182,22 @@ begin
     (select value::uuid from s10_ids where key = 'creatorAuth'),
     snapshot_time, snapshot_time
   );
+  -- BE03b 1750 rule 2 (Codex H3), applied to restore by DEC-201 / BE03c 1571 (position 2): a relation target the caller cannot
+  -- read is refused first with migration_chain_incomplete, so a same-party target that restore must carry needs the caller's
+  -- draft-read authority over it, exactly like the forged source entry (s10r_forge).  A foreign target stays unassigned: the
+  -- tenant/party rule alone refuses it.
+  if not p_foreign then
+    insert into platform_private.cms_entry_assignments(
+      owner_id, entry_id, assignee_person_id, capability_key, state, version,
+      created_at, updated_at
+    ) values
+      (organization_id, target_id,
+       (select value::uuid from s10_ids where key = 'creatorPerson'), 'cms.author', 'active', 1,
+       snapshot_time, snapshot_time),
+      (organization_id, target_id,
+       (select value::uuid from s10_ids where key = 'editorPerson'), 'cms.editor', 'active', 1,
+       snapshot_time, snapshot_time);
+  end if;
   return target_id;
 end;
 $body$;

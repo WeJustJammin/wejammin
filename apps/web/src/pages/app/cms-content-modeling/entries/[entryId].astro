@@ -8,6 +8,10 @@ import CmsEditorialEntryEditUnavailable from '../../../../components/cms-editori
 import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
 import { createCmsEditorialPageReads } from '../../../../components/cms-editorial-pages/cms-editorial-page-reads';
 import { loadEntryEditPage } from '../../../../components/cms-editorial-pages/load-entry-edit-page';
+import { compositionPagePath } from '../../../../components/cms-composition-instances/composition-path';
+import CmsEntryTranslateLinks from '../../../../components/cms-locale/CmsEntryTranslateLinks';
+import { relatedContentPagePath } from '../../../../components/cms-related-content/related-content-path';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
 
 export const prerender = false;
 
@@ -25,13 +29,15 @@ const outcome = await loadEntryEditPage({
   entryId: Astro.params.entryId ?? '',
   reads: createCmsEditorialPageReads(env.PLATFORM_API),
 });
-if (outcome.kind === 'redirect') return Astro.redirect(outcome.location, 303);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
 Astro.response.status =
   outcome.kind === 'view' ? outcome.status : outcome.notice.status;
 const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
 const heading =
   outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
 const workflowPath = cmsEditorialAppWorkflowPath(Astro.params.entryId ?? '');
+const relatedPath = relatedContentPagePath(Astro.params.entryId ?? '');
+const compositionPath = compositionPagePath(Astro.params.entryId ?? '');
 ---
 
 <CmsEditorialDocument
@@ -50,6 +56,17 @@ const workflowPath = cmsEditorialAppWorkflowPath(Astro.params.entryId ?? '');
             <a href={workflowPath}>Review and publish</a>
           </p>
         )}
+        {relatedPath !== null && (
+          <p>
+            <a href={relatedPath}>Related content</a>
+          </p>
+        )}
+        {compositionPath !== null && (
+          <p>
+            <a href={compositionPath}>Composition</a>
+          </p>
+        )}
+        <CmsEntryTranslateLinks links={outcome.view.translateLinks} />
         <CmsEditorialEntryEditorIsland init={outcome.view.init} client:load />
       </>
     ) : (

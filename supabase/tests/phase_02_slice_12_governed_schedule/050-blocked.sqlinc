@@ -1,0 +1,38 @@
+-- CMS-03C-19 terminal block dependency_changed on e3: the bound content type gets a real successor between acceptance and fire.
+select pg_temp.s09d_successor('ordnew', 's12govordinary');
+select pg_temp.s09d_to_active('ordnew', array['rev3']);
+select ok(pg_temp.s09d_outcome('ordnew:activate') = 'OK'
+    and (select version_row.id <> (select value::uuid from s12gov_ids where key = 'typeVersionA')
+           from platform_private.cms_content_type_versions version_row
+          where version_row.content_type_id = (select value::uuid from s12gov_ids where key = 'typeA') and version_row.state = 'active'),
+  'control: a real successor of the bound content type is activated through the DEC-108 chain after e3 was scheduled [P2-S12-AC-146]');
+select pg_temp.s12gb_exec('x-e3', pg_temp.s12gb_sid('e3'), pg_temp.s12gb_cver('e3'), pg_temp.s12gb_lease('e3'));
+select ok(pg_temp.s12gb_sout('x-e3') = 'ok'
+    and pg_temp.s12gb_sbody('x-e3') = jsonb_build_object('scheduleId', pg_temp.s12gb_sid('e3'), 'outcome', 'blocked',
+          'reasonCode', 'dependency_changed', 'actualUtc', null, 'deviationSeconds', null)
+    and (select schedule.state = 'blocked' and schedule.reason_code = 'dependency_changed' and schedule.version = 3
+            and schedule.lease_id is null and schedule.actual_at_utc is null and schedule.deviation_seconds is null
+       from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('e3'))
+  and (select subject.state = 'blocked' and subject.lifecycle_version = 5 and subject.activated_at is null
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('e3'))
+  and (select review.state = 'approved' and review.version = 2 and review.activated_at is null
+         from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('e3'))
+  and pg_temp.s12gb_events('e3') = 0
+  and (select count(*) = 1 from audit_private.audit_events
+        where action = 'cms.governed.schedule.block' and target_id = pg_temp.s12gb_sid('e3')),
+  'a changed frozen dependency at fire time blocks the schedule dependency_changed: schedule blocked, subject blocked (lifecycle 5), the review untouched, no event, one audit record [P2-S12-AC-146]');
+-- blocked -> draft through a new activation command: the dependency is still changed, so the review is invalidated
+select pg_temp.s12gb_act('e3-reactivate', 'owner', pg_temp.s12ga_review('e3'), 'activate');
+select ok(pg_temp.s12ga_out('e3-reactivate') = 'ok'
+    and pg_temp.s12ga_body('e3-reactivate') = '{"kind": "refusal", "details": {}, "reasonCode": "dependency_changed"}'::jsonb
+    and (select review.state = 'invalidated' and review.invalidated_reason = 'dependency_changed' and review.version = 3
+         from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('e3'))
+    and (select subject.state = 'draft' and subject.lifecycle_version = 6
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('e3'))
+    and pg_temp.s12gb_events('e3') = 0,
+  'a blocked subject whose dependency is still changed returns to draft through the committed invalidation of its review (blocked -> draft, lifecycle 6) [P2-S12-AC-146]');
+select ok(
+  (select string_agg(state || ':' || n, ',' order by state collate "C") from (
+     select schedule.state, count(*) n from platform_private.cms_governed_activation_schedules schedule group by schedule.state) s)
+  = 'blocked:2,cancelled:1,completed:3,pending:1',
+  'the schedule store ends with three completed, two blocked, one cancelled and one still pending schedule [P2-S12-AC-148]');

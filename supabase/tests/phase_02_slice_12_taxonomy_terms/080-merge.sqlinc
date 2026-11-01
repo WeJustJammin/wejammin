@@ -1,0 +1,149 @@
+-- CMS-03C-03 merge in vf and vh: survivor rules, the permanent redirect, merged terms refusing every action, assignment convergence by
+-- appended superseding versions (up to 5,000 in the transaction, the rest through the continuation), the continuation job.
+-- BE03c 1377 ("merge locks the survivor and the retired term (FOR UPDATE in id order), requires a survivor that is active or deprecated
+-- and a retired term that is not already merged, sets the retired term merged with successor_id, and re-points every active
+-- TermAssignment of the retired term to the survivor by appending superseding assignment versions"), 1334, 1351, 1489, 1539.
+-- [P2-S12-AC-003, AC-016, AC-019, AC-021]
+select pg_temp.s12tt_act('m-create-retire', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'm-retire');
+select pg_temp.s12tt_act('m-create-survivor', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'm-survivor');
+select ok(pg_temp.s12tt_oc('m-create-retire') = 'ok' and pg_temp.s12tt_oc('m-create-survivor') = 'ok', 'fixture: the retired and the surviving term exist');
+select pg_temp.s12tt_seed_revision('r1');
+select pg_temp.s12tt_seed_revision('r2');
+select pg_temp.s12tt_seed_revision('r3');
+-- r1: only the retired term; r2: the retired term and the survivor; r3: the retired term, later revoked (not an active assignment)
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r1'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire'), 1, 'active', 3, 'authored');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r2'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire'), 1, 'active', 1, 'inherited');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r2'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-survivor'), 1, 'active', 0, 'authored');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r3'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire'), 1, 'active', 0);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('r3'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire'), 2, 'revoked', 0);
+select is(pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r1')) || '#' || pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r2')) || '#' || pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r3')),
+  'm-retire:active:1:3#m-retire:active:1:1|m-survivor:active:1:0#m-retire:active:1:0|m-retire:revoked:2:0',
+  'fixture: the assignment rows before the merge are the three intended shapes');
+
+select pg_temp.s12tt_mark('before-merge');
+select pg_temp.s12tt_act('m-merge', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'm-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-survivor')));
+select is(pg_temp.s12tt_oc('m-merge'), 'ok', 'merge of an active term into an active survivor is accepted [P2-S12-AC-016]');
+select ok(
+  pg_temp.s12ga_body('m-merge')->>'id' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire')::text
+  and pg_temp.s12ga_body('m-merge')->>'lifecycle' = 'merged' and pg_temp.s12ga_body('m-merge')->>'version' = '2'
+  and pg_temp.s12ga_body('m-merge')->>'successorId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-survivor')::text
+  and pg_temp.s12ga_body('m-merge')->>'termKey' = 'm-retire' and pg_temp.s12ga_body('m-merge')->'parentId' = 'null'::jsonb
+  and pg_temp.s12ga_body('m-merge')->>'contentHash' = platform_private.cms_jcs_sha256(jsonb_build_object(
+        'id', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire'), 'termKey', 'm-retire', 'lifecycle', 'merged', 'version', '2',
+        'successorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-survivor'))),
+  'the resource is the RETIRED term, now merged at version 2, naming the survivor: the retired id is a permanent redirect [P2-S12-AC-003]');
+select ok(
+  (select retired.lifecycle = 'merged' and retired.successor_id = survivor.id and retired.version = 2 and survivor.lifecycle = 'active' and survivor.version = 1
+     from platform_private.cms_terms retired, platform_private.cms_terms survivor
+    where retired.id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire') and survivor.id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-survivor')),
+  'the retired row is merged with the survivor as successor and the survivor row itself is untouched [P2-S12-AC-003]');
+select is(pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r1')),
+  'm-retire:active:1:3|m-retire:superseded:2:3|m-survivor:active:1:3',
+  'an assignment of the retired term is superseded and re-pointed: the survivor gets an active row at the same position [P2-S12-AC-003]');
+select is(pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r2')),
+  'm-retire:active:1:1|m-retire:superseded:2:1|m-survivor:active:1:0',
+  'where the survivor was already assigned the retired assignment is superseded and no duplicate survivor row is appended (convergence) [P2-S12-AC-003]');
+select is(pg_temp.s12tt_assignments(pg_temp.s12tt_rev('r3')), 'm-retire:active:1:0|m-retire:revoked:2:0',
+  'a revoked assignment is not an active one: it is neither superseded nor re-pointed [P2-S12-AC-003]');
+select ok(
+  (select assignment.state = 'active' and assignment.version = 1 and assignment.position = 3 and assignment.provenance = 'authored'
+          and assignment.owner_id = pg_temp.s09d_id('ownerOrg') and assignment.created_by = pg_temp.s12ga_auth('owner')
+          and assignment.field_definition_id = (select field_definition_id from platform_private.cms_term_assignments
+                                                  where revision_id = pg_temp.s12tt_rev('r1') and term_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire') and version = 1)
+          and assignment.taxonomy_version_id = survivor.taxonomy_version_id
+     from platform_private.cms_term_assignments assignment join platform_private.cms_terms survivor on survivor.id = assignment.term_id
+    where assignment.revision_id = pg_temp.s12tt_rev('r1') and survivor.term_key = 'm-survivor'),
+  'the appended survivor row copies the field, position and provenance, is owner-bound and pairs with the survivor''s own write-version [P2-S12-AC-003]');
+select ok(
+  (select count(*) = 1 from platform_private.outbox_events where aggregate_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire')
+      and event_type = 'cms.taxonomy.changed.v1' and aggregate_version = 2)
+  and (select count(*) = 2 from platform_private.outbox_events where aggregate_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire'))
+  and (select count(*) = 1 from audit_private.audit_events where action = 'cms.taxonomy.term.merge' and target_id = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire'))
+  and (select count(*) = 0 from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge'),
+  'the merge committed ONE taxonomy event (not one per assignment) and one audit record, and needed no continuation job [P2-S12-AC-021]');
+select is(pg_temp.s12tt_converge(pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire'), 5000),
+  '{"converged": 0, "remaining": 0}'::jsonb, 'running the convergence again finds nothing to do: it is idempotent [P2-S12-AC-003]');
+select pg_temp.s12tt_mark('after-merge');
+select pg_temp.s12tt_act('m-merge-replay', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'm-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-survivor'), 'idempotencyKey', 's12tt-m-merge'));
+select ok(pg_temp.s12ga_body('m-merge-replay') = pg_temp.s12ga_body('m-merge') and pg_temp.s12tt_same('after-merge'),
+  'a same-key merge replay returns the original response and converges nothing twice [P2-S12-AC-019]');
+
+-- a merged term refuses every action; it cannot be revived ---------------------------------------------------------------------------
+select pg_temp.s12tt_act('mm-rename', 'owner', pg_temp.s12tt_lineage('vf'), 'rename', 'm-retire');
+select pg_temp.s12tt_act('mm-alias', 'owner', pg_temp.s12tt_lineage('vf'), 'alias', 'm-retire', '{"aliases":["x"]}'::jsonb);
+select pg_temp.s12tt_act('mm-deprecate', 'owner', pg_temp.s12tt_lineage('vf'), 'deprecate', 'm-retire');
+select pg_temp.s12tt_act('mm-merge-again', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'm-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'ab')));
+select pg_temp.s12tt_act('mm-create', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'm-retire');
+select is(array[pg_temp.s12tt_oc('mm-rename'), pg_temp.s12tt_oc('mm-alias'), pg_temp.s12tt_oc('mm-deprecate'),
+                pg_temp.s12tt_oc('mm-merge-again'), pg_temp.s12tt_oc('mm-create')],
+  array_fill('P0001:CONFLICT'::text, array[5]),
+  'rename, alias, deprecate, a second merge and a re-create of a merged term are all 409: a merged id never reactivates [P2-S12-AC-003]');
+select ok(pg_temp.s12tt_same('after-merge'), 'the refusals on a merged term changed nothing [P2-S12-AC-003]');
+
+-- survivor and retired-term rules --------------------------------------------------------------------------------------------------
+select pg_temp.s12tt_act('s-create-a', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 's-retire-a');
+select pg_temp.s12tt_act('s-create-b', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 's-retire-b');
+select pg_temp.s12tt_act('s-create-c', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 's-retire-c');
+select pg_temp.s12tt_act('s-create-d', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 's-retire-d');
+select pg_temp.s12tt_mark('before-survivor-rules');
+select pg_temp.s12tt_act('s-self', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 's-retire-a', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 's-retire-a')));
+select pg_temp.s12tt_act('s-unknown', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 's-retire-a', jsonb_build_object(
+  'survivorId', 'a9186000-0000-4000-8000-0000000000f3'));
+select pg_temp.s12tt_act('s-other-vocabulary', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 's-retire-a', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'root-a')));
+select pg_temp.s12tt_act('s-merged-survivor', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 's-retire-a', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'm-retire')));
+select pg_temp.s12tt_act('s-has-inbound', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'm-survivor', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 's-retire-a')));
+select is(pg_temp.s12tt_oc('s-self'), 'P0001:VALIDATION_FAILED#["/survivorId"]', 'a term cannot be merged into itself [P2-S12-AC-017]');
+select is(pg_temp.s12tt_oc('s-unknown'), 'P0001:VALIDATION_FAILED#["/survivorId"]', 'an unknown survivor is 422 at /survivorId [P2-S12-AC-017]');
+select is(pg_temp.s12tt_oc('s-other-vocabulary'), pg_temp.s12tt_oc('s-unknown'),
+  'a survivor of another vocabulary is refused exactly like an unknown one [P2-S12-AC-017]');
+select is(pg_temp.s12tt_oc('s-merged-survivor'), 'P0001:CONFLICT', 'a merged redirect cannot be a survivor: no redirect chains [P2-S12-AC-003]');
+select is(pg_temp.s12tt_oc('s-has-inbound'), 'P0001:CONFLICT',
+  'a term that other terms were merged into cannot itself be retired while those redirects point at it [P2-S12-AC-003]');
+select ok(pg_temp.s12tt_same('before-survivor-rules'), 'the survivor-rule refusals changed nothing [P2-S12-AC-003]');
+-- a deprecated term can be a survivor and can be retired (BE03c 1377: the survivor is active OR deprecated)
+select pg_temp.s12tt_act('s-deprecate-b', 'owner', pg_temp.s12tt_lineage('vf'), 'deprecate', 's-retire-b');
+select pg_temp.s12tt_act('s-into-deprecated', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 's-retire-a', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 's-retire-b')));
+select pg_temp.s12tt_act('s-deprecated-retired', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 's-retire-c', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 's-retire-d')));
+select ok(pg_temp.s12tt_oc('s-into-deprecated') = 'ok' and pg_temp.s12ga_body('s-into-deprecated')->>'successorId' = pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 's-retire-b')::text,
+  'a deprecated term is an accepted survivor [P2-S12-AC-003]');
+select pg_temp.s12tt_act('s-deprecate-c', 'owner', pg_temp.s12tt_lineage('vf'), 'deprecate', 's-retire-d');
+select pg_temp.s12tt_act('s-retire-deprecated', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 's-retire-d', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'ab')));
+select ok(pg_temp.s12tt_oc('s-deprecated-retired') = 'ok' and pg_temp.s12tt_oc('s-deprecate-c') = 'ok'
+    and pg_temp.s12tt_oc('s-retire-deprecated') = 'P0001:CONFLICT',
+  'control: s-retire-c merges into s-retire-d; d can then be deprecated, but - holding an inbound redirect - can no longer be retired [P2-S12-AC-003]');
+select pg_temp.s12tt_act('s-deprecate-e', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 's-retire-e');
+select pg_temp.s12tt_act('s-deprecate-e2', 'owner', pg_temp.s12tt_lineage('vf'), 'deprecate', 's-retire-e');
+select pg_temp.s12tt_act('s-deprecated-into-active', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 's-retire-e', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'ab')));
+select ok(pg_temp.s12tt_oc('s-deprecated-into-active') = 'ok' and pg_temp.s12ga_body('s-deprecated-into-active')->>'lifecycle' = 'merged'
+    and pg_temp.s12ga_body('s-deprecated-into-active')->>'version' = '3',
+  'a deprecated term can be merged: active to deprecated to merged, one version per action (1, 2, 3) [P2-S12-AC-003]');
+
+-- hierarchy: a parent with children cannot be retired; a merged term is no parent -------------------------------------------------------
+select pg_temp.s12tt_act('hm-leaf-retire', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'leaf-retire');
+select pg_temp.s12tt_act('hm-leaf-survive', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'leaf-survive');
+select pg_temp.s12tt_mark('before-hierarchy-merge');
+select pg_temp.s12tt_act('hm-with-children', 'owner', pg_temp.s12tt_lineage('vh'), 'merge', 'root-a', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'leaf-survive')));
+select is(pg_temp.s12tt_oc('hm-with-children'), 'P0001:CONFLICT', 'a parent that still has children cannot be merged away [P2-S12-AC-003]');
+select ok(pg_temp.s12tt_same('before-hierarchy-merge'), 'the refused parent merge changed nothing [P2-S12-AC-003]');
+select pg_temp.s12tt_act('hm-merge-leaf', 'owner', pg_temp.s12tt_lineage('vh'), 'merge', 'leaf-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'leaf-survive')));
+select pg_temp.s12tt_act('hm-child-of-merged', 'owner', pg_temp.s12tt_lineage('vh'), 'create', 'under-merged', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'leaf-retire')));
+select pg_temp.s12tt_act('hm-move-under-merged', 'owner', pg_temp.s12tt_lineage('vh'), 'rename', 'leaf-survive', jsonb_build_object(
+  'parentId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'leaf-retire')));
+select ok(pg_temp.s12tt_oc('hm-merge-leaf') = 'ok'
+    and pg_temp.s12tt_oc('hm-child-of-merged') = 'P0001:VALIDATION_FAILED#["/parentId"]'
+    and pg_temp.s12tt_oc('hm-move-under-merged') = 'P0001:VALIDATION_FAILED#["/parentId"]',
+  'a merged redirect is not a usable parent: create and rename below it are refused at /parentId [P2-S12-AC-003]');

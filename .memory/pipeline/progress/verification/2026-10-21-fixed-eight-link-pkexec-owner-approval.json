@@ -1,0 +1,208 @@
+{
+  "version": 1,
+  "approvalId": "2026-10-21-fixed-eight-link-pkexec",
+  "authority": "direct human",
+  "answer": "Approved.",
+  "answerContext": "Direct human reply to Main's immediately preceding question: To resume, approve eight read-only pkexec reads: executable and working-directory links once each for PIDs 712, 723, 4377, 4630, with before/after identity checks, no substitutions, and all existing exclusions preserved.",
+  "observationTimestamp": "2026-10-21T16:17:07.980Z",
+  "timestampSource": "Fresh native preflight timestamp; not an exact user send time",
+  "newApproval": true,
+  "notUnprivilegedAuthority": true,
+  "notReuseOf": [
+    "consumed sudo approval 2026-10-20-four-pid-readonly",
+    "old-tuple pkexec approval 2026-10-21-four-pid-pkexec-readonly"
+  ],
+  "consumption": "A new exclusive consumption claim is required before the first privileged call; this record makes no claim about current consumption status and creates no consumption or result file.",
+  "scope": "Eight fixed read-only pkexec reads: one executable link and one working-directory link per PID for PIDs 712, 723, 4377 and 4630, with six-field identity and binary pin checks before and after each invocation",
+  "maximumReadlinkInvocationsPerPid": 2,
+  "maximumTotalReadlinkInvocations": 8,
+  "oneExeOneCwdPerPid": true,
+  "targets": [
+    {
+      "pid": 712,
+      "ppid": 1,
+      "group": 712,
+      "session": 712,
+      "startTime": "567",
+      "uid": 1000
+    },
+    {
+      "pid": 723,
+      "ppid": 712,
+      "group": 712,
+      "session": 712,
+      "startTime": "569",
+      "uid": 1000
+    },
+    {
+      "pid": 4377,
+      "ppid": 4335,
+      "group": 4377,
+      "session": 4377,
+      "startTime": "2069",
+      "uid": 1000
+    },
+    {
+      "pid": 4630,
+      "ppid": 4579,
+      "group": 4630,
+      "session": 4630,
+      "startTime": "2087",
+      "uid": 1000
+    }
+  ],
+  "expectedTupleCheck": "All four expected six-field tuples matched at the 2026-10-21T16:17:07.980Z preflight",
+  "binaries": [
+    {
+      "path": "/usr/bin/pkexec",
+      "device": 37,
+      "inode": 139723,
+      "uid": 0,
+      "mode": 35309,
+      "size": 26720,
+      "sha256": "72cd770659617b11f0872bfac159cdd5e41b0e44bbc01f9d3cd88d18e89861cd"
+    },
+    {
+      "path": "/usr/bin/readlink",
+      "device": 37,
+      "inode": 9129108,
+      "uid": 0,
+      "mode": 33261,
+      "size": 76088,
+      "sha256": "092f87a1632ad9102757d676c85150556b71cc377642f2d55f04c9df9af63aa1"
+    },
+    {
+      "path": "/home/rob/.cache/chrome-gate-runtime/node-v22.23.1-linux-x64/bin/node",
+      "device": 52,
+      "inode": 77902051,
+      "uid": 1000,
+      "mode": 33261,
+      "size": 124835376,
+      "sha256": "93956de2e59480474a7b46571da1651180b1a050cdf32641ebec4ce6e478e068"
+    }
+  ],
+  "binaryPinsNote": "All three paths canonical regular non-symlink",
+  "transport": {
+    "outer": "purpose-built exec_command invoking a fixed shell command",
+    "shell": "/bin/sh",
+    "loginShell": false,
+    "tty": false,
+    "fixedCommand": "/usr/bin/env -i PATH=/usr/bin:/bin LANG=C LC_ALL=C TZ=UTC /usr/bin/pkexec /usr/bin/readlink -- /proc/PID/LINK",
+    "literalCombinationsOnly": true,
+    "outerToolShellUnprivileged": true,
+    "privilegedTargetProgram": "/usr/bin/readlink",
+    "privilegedShell": false,
+    "noVariablesGlobsLoopsShellPayloadUnderPkexec": true,
+    "preserveOutputExitAndSessions": true,
+    "noTimeoutSignalOrStreamDestruction": true,
+    "noAutomaticRetryOrFallback": true,
+    "mayPollSameLiveHandleNaturally": true,
+    "authPromptMayNeedOwner": true,
+    "noRouteWorksClaim": true,
+    "stopConditions": [
+      "any nonzero exit",
+      "identity mismatch",
+      "truncated output",
+      "uncertain closure"
+    ]
+  },
+  "transportFilePins": {
+    "observedAt": "2026-10-21T16:19:12.500Z",
+    "entries": [
+      {
+        "path": "/usr/bin/env",
+        "kind": "canonical regular non-symlink",
+        "owner": "root",
+        "device": 37,
+        "inode": 9129071,
+        "mode": 33261,
+        "size": 88792,
+        "sha256": "bc1b2685defc2b10409bb2d9d3ed2c0b7ea51eea6431988d10677e4ddd44f109"
+      },
+      {
+        "path": "/bin/sh",
+        "kind": "root-owned symlink; realpath /usr/bin/bash",
+        "target": {
+          "path": "/usr/bin/bash",
+          "kind": "root regular non-symlink",
+          "device": 37,
+          "inode": 5760164,
+          "mode": 33261,
+          "size": 1277104,
+          "sha256": "a8ce2b3c38c818534d093009d08df58977878b86a0497d3f207eff57fec595f5"
+        }
+      }
+    ]
+  },
+  "commandVectors": [
+    {
+      "pid": 712,
+      "link": "exe",
+      "program": "/usr/bin/pkexec",
+      "args": ["/usr/bin/readlink", "--", "/proc/712/exe"]
+    },
+    {
+      "pid": 712,
+      "link": "cwd",
+      "program": "/usr/bin/pkexec",
+      "args": ["/usr/bin/readlink", "--", "/proc/712/cwd"]
+    },
+    {
+      "pid": 723,
+      "link": "exe",
+      "program": "/usr/bin/pkexec",
+      "args": ["/usr/bin/readlink", "--", "/proc/723/exe"]
+    },
+    {
+      "pid": 723,
+      "link": "cwd",
+      "program": "/usr/bin/pkexec",
+      "args": ["/usr/bin/readlink", "--", "/proc/723/cwd"]
+    },
+    {
+      "pid": 4377,
+      "link": "exe",
+      "program": "/usr/bin/pkexec",
+      "args": ["/usr/bin/readlink", "--", "/proc/4377/exe"]
+    },
+    {
+      "pid": 4377,
+      "link": "cwd",
+      "program": "/usr/bin/pkexec",
+      "args": ["/usr/bin/readlink", "--", "/proc/4377/cwd"]
+    },
+    {
+      "pid": 4630,
+      "link": "exe",
+      "program": "/usr/bin/pkexec",
+      "args": ["/usr/bin/readlink", "--", "/proc/4630/exe"]
+    },
+    {
+      "pid": 4630,
+      "link": "cwd",
+      "program": "/usr/bin/pkexec",
+      "args": ["/usr/bin/readlink", "--", "/proc/4630/cwd"]
+    }
+  ],
+  "commandVectorOrder": "712 exe, 712 cwd, 723 exe, 723 cwd, 4377 exe, 4377 cwd, 4630 exe, 4630 cwd",
+  "identityAndBinaryPinBracketBeforeAfterEachInvocation": true,
+  "exclusions": [
+    "PID substitution",
+    "automatic renewal",
+    "privileged shell",
+    "other path or program",
+    "command lines",
+    "environment reads",
+    "secret reads",
+    "signals",
+    "cleanup",
+    "services",
+    "host-policy changes",
+    "stack changes",
+    "database actions",
+    "native acceptance inference"
+  ],
+  "exclusiveConsumptionRequiredBeforeFirstPrivilegedCall": true,
+  "diagnosticOnly": true,
+  "nativeOrDatabaseOrPhaseCompletionAuthority": false
+}

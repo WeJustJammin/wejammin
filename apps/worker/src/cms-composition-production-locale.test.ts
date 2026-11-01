@@ -56,6 +56,7 @@ const resource = {
   sourceRevisionId,
   fallbackChain: ['en-US'],
   noFallbackFieldIds: [],
+  staleFieldIds: [],
 };
 const create = (fetchImpl: typeof fetch) =>
   createProductionCmsLocaleDependencies({
@@ -406,6 +407,72 @@ describe('CMS-03C-04 production locale adapter', () => {
     ).authorLocale(input(), new AbortController().signal);
     expect(JSON.stringify(withExtra)).not.toContain('never-leak');
     expect(withExtra).toMatchObject({ details: mismatch });
+  });
+
+  it('[P2-S12-AC-236] carries locale_limit_reached on the 33rd-locale conflict and nothing else', async () => {
+    const rpcError = (details: unknown) =>
+      vi.fn(
+        async () =>
+          new Response(
+            JSON.stringify({
+              code: 'P0001',
+              message: 'VERSION_MISMATCH',
+              details,
+            }),
+            { status: 400, headers: { 'content-type': 'application/json' } },
+          ),
+      ) as typeof fetch;
+    for (const details of [
+      JSON.stringify({ reasonCode: 'locale_limit_reached' }),
+      { reasonCode: 'locale_limit_reached' },
+    ]) {
+      const result = await create(rpcError(details)).authorLocale(
+        input(),
+        new AbortController().signal,
+      );
+      expect(result).toMatchObject({
+        ok: false,
+        status: 409,
+        code: 'LOCALE_VERSION_CONFLICT',
+        details: { reasonCode: 'locale_limit_reached' },
+      });
+    }
+    const withExtra = await create(
+      rpcError(
+        JSON.stringify({
+          reasonCode: 'locale_limit_reached',
+          secret: 'never-leak',
+        }),
+      ),
+    ).authorLocale(input(), new AbortController().signal);
+    expect(JSON.stringify(withExtra)).not.toContain('never-leak');
+    expect(withExtra).toMatchObject({
+      status: 409,
+      details: { reasonCode: 'locale_limit_reached' },
+    });
+    const unknown = await create(
+      rpcError(JSON.stringify({ reasonCode: 'something_else' })),
+    ).authorLocale(input(), new AbortController().signal);
+    expect(
+      (unknown as { details?: Record<string, unknown> }).details?.reasonCode,
+    ).toBeUndefined();
+  });
+
+  it('[P2-S12-AC-276] maps the typed retryable CONFLICT of a residual deadlock to the 409 locale catalog code', async () => {
+    const result = await create(
+      vi.fn(
+        async () =>
+          new Response(JSON.stringify({ code: 'P0001', message: 'CONFLICT' }), {
+            status: 400,
+            headers: { 'content-type': 'application/json' },
+          }),
+      ) as typeof fetch,
+    ).authorLocale(input(), new AbortController().signal);
+    expect(result).toMatchObject({
+      ok: false,
+      status: 409,
+      code: 'LOCALE_VERSION_CONFLICT',
+    });
   });
 
   it('maps a locale outside supportedLocales to the 422 catalog code without a chain', async () => {

@@ -1,0 +1,90 @@
+-- CMS-03C-17 (GET /api/v1/cms/taxonomies/selector): the author-facing list of ACTIVE terms of the owner's ACTIVE vocabularies whose
+-- allowlists name the requested content type key and field key, with the label for the requested locale (null when the term has none;
+-- there is no fallback), never a merged or deprecated term, in the keyset order (taxonomyKey ASC, termKey ASC).  BE03c 179, 373, 1146-1164,
+-- 1377, 1478.  [P2-S12-AC-130, AC-131, AC-132, AC-133, AC-135]
+select has_function('platform_api', 'cms_list_taxonomy_selector', array['jsonb'], 'CMS-03C-17 has a named platform API RPC (BE03c 1447) [P2-S12-AC-130]');
+select has_function('platform_private', 'cms_list_taxonomy_selector', array['jsonb'], 'the unsigned keyset reader is a named private function [P2-S12-AC-130]');
+select has_function('platform_private', 'cms_list_taxonomy_selector_signed', array['jsonb'], 'the signed-cursor wrapper is a named private function [P2-S12-AC-133]');
+select ok(has_function_privilege('service_role', to_regprocedure('platform_api.cms_list_taxonomy_selector(jsonb)'), 'execute')
+    and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_api.cms_list_taxonomy_selector(jsonb)'), 'execute'))
+                    from (values ('public'), ('anon'), ('authenticated')) roles(role_name)), false)
+    and coalesce((select bool_and(not has_function_privilege(role_name, to_regprocedure('platform_private.cms_list_taxonomy_selector(jsonb)'), 'execute')
+                                  and not has_function_privilege(role_name, to_regprocedure('platform_private.cms_list_taxonomy_selector_signed(jsonb)'), 'execute'))
+                    from (values ('public'), ('anon'), ('authenticated'), ('service_role')) roles(role_name)), false),
+  'only service_role executes the transport; the private readers are closed to every API role [P2-S12-AC-132]');
+select ok(coalesce((select bool_and(p.prosecdef and p.proconfig @> array['search_path=""']) from pg_proc p
+                     where p.oid in (to_regprocedure('platform_api.cms_list_taxonomy_selector(jsonb)'), to_regprocedure('platform_private.cms_list_taxonomy_selector(jsonb)'),
+                                     to_regprocedure('platform_private.cms_list_taxonomy_selector_signed(jsonb)'))), false),
+  'the three functions are SECURITY DEFINER with an empty search_path [P2-S12-AC-132]');
+
+select pg_temp.s12tt_mark('before-selector');
+select pg_temp.s12tr_sel('s-all', 'rev2');
+select is(pg_temp.s12tt_oc('s-all'), 'ok', 'a verified human holding cms.author reads the selector [P2-S12-AC-132]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('s-all')), 'items,nextCursor,pageVersion', 'the page is exactly TaxonomySelectorPage [P2-S12-AC-130]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('s-all')->'items'->0), 'label,parentId,shape,taxonomyId,taxonomyKey,taxonomyVersionId,termId,termKey',
+  'each item is exactly TaxonomySelectorTerm (8 members, no owner or authority member) [P2-S12-AC-130]');
+select is(pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('s-all')),
+  array['s12tt-vf/vf-one', 's12tt-vh/hq-child', 's12tt-vh/hq-other', 's12tt-vh/hq-root', 's12tt-vr/tr-a', 's12tt-vr/tr-d', 's12tt-vr/tr-e', 's12tt-vr/tr-f',
+        's12tt-vr/tr-g', 's12tt-vr/tr-h', 's12tt-vs/sv-a'],
+  'the list is the active terms of the active vocabularies that allow type s12govordinary and field title, ordered (taxonomyKey, termKey): '
+  || 'no deprecated tr-b, no merged tr-c, no draft vd or vo, no vq (field subtitle) [P2-S12-AC-132]');
+select is(pg_temp.s12ga_body('s-all')->'items', pg_temp.s12tr_selector_oracle('s12govordinary', 'title', 'en-US'),
+  'every item equals the independently built row: lineage id, ACTIVE version row id, key, shape, term id and key, parent and the en-US label [P2-S12-AC-130]');
+select ok(pg_temp.s12ga_body('s-all')->'nextCursor' = 'null'::jsonb and pg_temp.s12ga_body('s-all')->>'pageVersion' ~ '^[1-9][0-9]*$'
+    and pg_temp.s12ga_body('s-all')->>'pageVersion' = pg_temp.s12tr_selector_version('s12govordinary', 'title'),
+  'a final page has no cursor and a decimal pageVersion equal to the high-water update instant of the listed terms [P2-S12-AC-133]');
+select is((select item->>'parentId' from jsonb_array_elements(pg_temp.s12ga_body('s-all')->'items') item where item->>'termKey' = 'hq-child'),
+  pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vh'), 'hq-root')::text, 'a hierarchical vocabulary lists the parent of a child [P2-S12-AC-130]');
+select ok((select bool_and(item->'parentId' = 'null'::jsonb) from jsonb_array_elements(pg_temp.s12ga_body('s-all')->'items') item where item->>'shape' = 'flat'),
+  'a flat vocabulary lists no parent [P2-S12-AC-130]');
+select is((select item->>'taxonomyVersionId' from jsonb_array_elements(pg_temp.s12ga_body('s-all')->'items') item where item->>'termKey' = 'sv-a'),
+  pg_temp.s12tt_active_id(pg_temp.s12tt_lineage('vs'))::text,
+  'a term written under version 1 is listed under the ACTIVE version 2 of its vocabulary: term ids are stable across taxonomy versions [P2-S12-AC-130]');
+select isnt((select item->>'taxonomyVersionId' from jsonb_array_elements(pg_temp.s12ga_body('s-all')->'items') item where item->>'termKey' = 'sv-a'),
+  (select v1_id::text from s12tt_vs_before), 'the superseded version 1 row id is never reported [P2-S12-AC-130]');
+
+-- labels: the requested locale only, never a fallback -------------------------------------------------------------------------------------
+select pg_temp.s12tr_sel('s-fr', 'rev2', '{"locale":"fr-FR"}'::jsonb);
+select pg_temp.s12tr_sel('s-en', 'rev2', '{"locale":"en"}'::jsonb);
+select pg_temp.s12tr_sel('s-de', 'rev2', '{"locale":"de-DE"}'::jsonb);
+select is((select jsonb_object_agg(item->>'termKey', item->'label') filter (where item->'label' <> 'null'::jsonb) from jsonb_array_elements(pg_temp.s12ga_body('s-fr')->'items') item),
+  '{"tr-a":"Pomme","hq-child":"HQ Enfant"}'::jsonb, 'fr-FR lists the French labels and null for every term without one: no fallback to en-US [P2-S12-AC-131]');
+select ok(pg_temp.s12ga_body('s-fr')->'items' = pg_temp.s12tr_selector_oracle('s12govordinary', 'title', 'fr-FR')
+    and jsonb_array_length(pg_temp.s12ga_body('s-fr')->'items') = 11,
+  'the fr-FR page still lists all eleven terms, each with its fr-FR label or null [P2-S12-AC-131]');
+select ok((select bool_and(item->'label' = 'null'::jsonb) from jsonb_array_elements(pg_temp.s12ga_body('s-en')->'items') item),
+  'the bare language "en" matches no label: only the exact requested locale is used, never en-US [P2-S12-AC-131]');
+select is((select jsonb_object_agg(item->>'termKey', item->'label') filter (where item->'label' <> 'null'::jsonb) from jsonb_array_elements(pg_temp.s12ga_body('s-de')->'items') item),
+  '{"tr-d":"Dattel"}'::jsonb, 'de-DE lists the one German label [P2-S12-AC-131]');
+select pg_temp.s12tr_sel('s-fr-lower', 'rev2', '{"locale":"fr-fr"}'::jsonb);
+select pg_temp.s12tr_sel('s-fr-upper', 'rev2', '{"locale":"FR-FR"}'::jsonb);
+select pg_temp.s12tr_sel('s-en-lower', 'rev2', '{"locale":"en-us"}'::jsonb);
+select ok(pg_temp.s12ga_body('s-fr-lower')->'items' = pg_temp.s12ga_body('s-fr')->'items' and pg_temp.s12ga_body('s-fr-upper')->'items' = pg_temp.s12ga_body('s-fr')->'items'
+    and pg_temp.s12ga_body('s-en-lower')->'items' = pg_temp.s12ga_body('s-all')->'items',
+  'the requested locale is matched in its canonical case: fr-fr, FR-FR and fr-FR (and en-us and en-US) list the same labels, never an empty fallback [P2-S12-AC-131]');
+select is((select item->>'label' from jsonb_array_elements(pg_temp.s12ga_body('s-all')->'items') item where item->>'termKey' = 'tr-e'), 'Elderberry Prime',
+  'a renamed term lists its newest en-US label [P2-S12-AC-131]');
+
+-- other allowlist keys and unknown types -------------------------------------------------------------------------------------------------
+select pg_temp.s12tr_sel('s-subtitle', 'rev2', '{"fieldKey":"subtitle"}'::jsonb);
+select pg_temp.s12tr_sel('s-other-type', 'rev2', '{"typeKey":"no_such_type"}'::jsonb);
+select pg_temp.s12tr_sel('s-other-field', 'rev2', '{"fieldKey":"no_such_field"}'::jsonb);
+select is(pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('s-subtitle')), array['s12tt-vq/q-one', 's12tt-vq/q-two'],
+  'the field key selects the vocabularies that allow it: subtitle lists only vq [P2-S12-AC-132]');
+select ok(pg_temp.s12ga_body('s-other-type') = '{"items":[],"nextCursor":null,"pageVersion":"1"}'::jsonb
+    and pg_temp.s12ga_body('s-other-field') = '{"items":[],"nextCursor":null,"pageVersion":"1"}'::jsonb,
+  'a type or field no vocabulary allows is an empty page with pageVersion "1", not an error [P2-S12-AC-132]');
+select ok(pg_temp.s12tt_same('before-selector'), 'the selector reads changed no store [P2-S12-AC-133]');
+
+-- the list follows the data: a merged or deprecated term leaves the selector ------------------------------------------------------------
+select pg_temp.s12tt_act('y-merge-e', 'owner', pg_temp.s12tt_lineage('vr'), 'merge', 'tr-e', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vr'), 'tr-d')));
+select pg_temp.s12tt_act('y-deprecate-one', 'owner', pg_temp.s12tt_lineage('vf'), 'deprecate', 'vf-one');
+select pg_temp.s12tr_sel('s-after', 'rev2');
+select ok(pg_temp.s12tt_oc('y-merge-e') = 'ok' and pg_temp.s12tt_oc('y-deprecate-one') = 'ok'
+    and pg_temp.s12tr_sel_keys(pg_temp.s12ga_body('s-after')) = array['s12tt-vh/hq-child', 's12tt-vh/hq-other', 's12tt-vh/hq-root', 's12tt-vr/tr-a', 's12tt-vr/tr-d',
+                                                                      's12tt-vr/tr-f', 's12tt-vr/tr-g', 's12tt-vr/tr-h', 's12tt-vs/sv-a']
+    and pg_temp.s12ga_body('s-after')->'items' = pg_temp.s12tr_selector_oracle('s12govordinary', 'title', 'en-US'),
+  'after a merge and a deprecate the retired terms are gone from the selector and the oracle agrees; a vocabulary with no active term is just absent [P2-S12-AC-132]');
+select is(pg_temp.s12ga_body('s-after')->>'pageVersion', pg_temp.s12tr_selector_version('s12govordinary', 'title'),
+  'the page version is the high-water update instant of the terms the page now lists [P2-S12-AC-133]');

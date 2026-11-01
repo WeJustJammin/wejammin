@@ -1,0 +1,70 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsCompositionPage from '../../../../../components/cms-composition-instances/CmsCompositionPage';
+import '../../../../../components/cms-composition-instances/cms-composition-instances.css';
+import { createCompositionPageReads } from '../../../../../components/cms-composition-instances/composition-page-reads';
+import { loadCompositionPage } from '../../../../../components/cms-composition-instances/load-composition-page';
+import CmsEditorialDocument from '../../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import { cmsEditorialAppEntryPath } from '../../../../../components/cms-editorial/cms-editorial-app-routes';
+import CmsEditorialPageNotice from '../../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import { cmsRedirectResponse } from '../../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (Astro.request.method !== 'GET') {
+  return new Response('Method not allowed', {
+    status: 405,
+    headers: { allow: 'GET', 'cache-control': 'no-store' },
+  });
+}
+
+/*
+ * Protected composition page for CMS-03C-02, -13, -14 and -15 (FE03 :1072). All behavior lives in the tested loader
+ * and island: the loader verifies the entry draft (CMS-03B-11), its content type (CMS-03B-14) and the compatible
+ * patterns (CMS-03C-13) and returns one view, one closed state or a sign-in redirect. Instance ids are row-local and a
+ * diff is read on every open, so any query on this address is a 400.
+ */
+const entryId = Astro.params.entryId ?? '';
+const outcome = await loadCompositionPage({
+  request: Astro.request,
+  entryId,
+  reads: createCompositionPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+const entryPath = cmsEditorialAppEntryPath(entryId);
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Insert patterns and resolve pattern updates for the current draft."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <>
+        {entryPath !== null && (
+          <p>
+            <a href={entryPath}>Back to the draft</a>
+          </p>
+        )}
+        <CmsCompositionPage
+          entry={outcome.view.entry}
+          selector={outcome.view.selector}
+          instances={outcome.view.instances}
+          csrfToken={outcome.view.csrfToken}
+          client:load
+        />
+      </>
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

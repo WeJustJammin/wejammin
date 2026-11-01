@@ -1,0 +1,26 @@
+-- Four real signed block registrations (CMS-03A-05).  Keys are chosen so that the byte (collate "C") order differs
+-- from any locale order that ignores punctuation:  C order is fix-c < fix.b < fixa  ('-' 0x2d, '.' 0x2e, letters later).
+select is(pg_temp.s09d_grant_via_rpc('owner', 'cms.template_designer'), 'OK',
+  'setup: owner holds the designer authority the registered blocks are owned under');
+select pg_temp.p_register('fix:a1', pg_temp.p_block_request('fixa', 1));
+select pg_temp.p_register('fix:b1', pg_temp.p_block_request('fix.b', 1));
+select pg_temp.p_register('fix:b2', pg_temp.p_block_request('fix.b', 2));
+select pg_temp.p_register('fix:c1', pg_temp.p_block_request('fix-c', 1));
+select is((select string_agg(pg_temp.s09d_outcome(label), ',' order by label)
+             from (values ('fix:a1'), ('fix:b1'), ('fix:b2'), ('fix:c1')) v(label)),
+  'OK,OK,OK,OK', 'setup: four signed block versions register through the production command');
+
+-- The tuple the digest folds, built independently from the stored rows (not from the function under test).
+create or replace function pg_temp.fix_tuple(p_key text, p_version integer) returns jsonb
+language sql stable as $body$
+  select jsonb_build_object('blockKey', b.block_key, 'blockVersion', b.block_version,
+    'releaseDigest', pg_catalog.btrim(b.release_digest::text), 'propsSchemaHash', pg_catalog.btrim(b.props_schema_hash::text),
+    'rendererRef', b.renderer_ref, 'lifecycle', 'supported')
+    from platform_private.cms_block_definition_versions b
+   where b.block_key = p_key and b.block_version = p_version
+$body$;
+create or replace function pg_temp.fix_node(p_key text, p_version integer, p_children jsonb default '[]'::jsonb)
+returns jsonb language sql immutable as $body$
+  select jsonb_build_object('kind', 'block', 'key', 'k' || p_key || p_version, 'blockKey', p_key,
+    'blockVersion', p_version, 'children', p_children)
+$body$;

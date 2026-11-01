@@ -1,0 +1,236 @@
+-- DEC-199 root-owned integration units: one distinct live pin / bad canonical
+-- row; frozen identity anomalies merge into those units. No producer forgery.
+select * from pg_temp.s12pl_pattern('pca-a1','s12pca-a',jsonb_build_array(
+ pg_temp.s12cs_block('left','s12cs.root',1,'PA-LEFT'),pg_temp.s12cs_block('right','s12cs.root',1,'PA-RIGHT')));
+select * from pg_temp.s12pl_pattern('pca-b1','s12pca-b',jsonb_build_array(pg_temp.s12cs_block('third','s12cs.root',2,'PB')));
+select setup.* from (values ('pca-shared'),('pca-distinct'),('pca-donor'),('pca-mixed')) cases(tag)
+ cross join lateral pg_temp.s12pu_place(tag,'pca-a1') setup;
+select pg_temp.s12pl_run('pca-distinct-b',pg_temp.s12pl_request('pca-distinct','pca-b1','/','{}','s12pca-distinct-b','linked'));
+select is(pg_temp.s12pl_state('pca-distinct-b'),'00000','PA-F01: second distinct real live pin placed in the same revision');
+select pg_temp.s12pu_update('pca-detach-donor',pg_temp.s12pu_update_request('pca-donor','detach',
+ jsonb_build_array(pg_temp.s12pu_target('pca-donor','/left'),pg_temp.s12pu_target('pca-donor','/right')),'s12pca-detach-donor'));
+select pg_temp.s12pu_update('pca-detach-mixed',pg_temp.s12pu_update_request('pca-mixed','detach',
+ jsonb_build_array(pg_temp.s12pu_target('pca-mixed','/left')),'s12pca-detach-mixed'));
+select is(pg_temp.s12pu_oc(label),'ok',label||': actual canonical producer succeeds')
+ from (values ('pca-detach-donor'),('pca-detach-mixed')) calls(label);
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('pca-donor','/left'))->'detached_tree',
+ '{"format":"cms.detached_tree.v1","nodes":[{"parent":null,"keySegments":["left"],
+ "blockKey":"s12cs.root","blockVersion":1,"props":{"title":"PA-LEFT","accessible_name":"PA-LEFT"}}]}'::jsonb,
+ 'PA-F02: actual detached donor is the independent literal canonical tree');
+select is(pg_temp.s12pu_row(pg_temp.s12pu_head('pca-donor','/left'))->>'block_registry_digest',
+ platform_private.cms_jcs_sha256(jsonb_build_array(jsonb_build_object('blockKey','s12cs.root','blockVersion',1,
+ 'releaseDigest',repeat('e',64),'propsSchemaHash',repeat('a',64),'rendererRef','cms/renderers/hero/1','lifecycle','supported'))),
+ 'PA-F03: actual one-block donor digest equals independent literal safe tuple');
+select pg_temp.s12pl_entry('pca-double-bad');
+select * from pg_temp.s12pc_seed('PA-F04-left','pca-double-bad',pg_temp.s12pu_head('pca-donor','/left'),
+ jsonb_build_object('block_registry_digest',repeat('0',64)));
+select * from pg_temp.s12pc_seed('PA-F04-right','pca-double-bad',pg_temp.s12pu_head('pca-donor','/right'),
+ jsonb_build_object('block_registry_digest',repeat('0',64)));
+select * from pg_temp.s12pc_seed('PA-F05-mixed','pca-mixed',pg_temp.s12pu_head('pca-mixed','/left'),
+ jsonb_build_object('block_registry_digest',repeat('0',64)));
+
+-- Independent nested-only offender and root/nested/digest precedence worlds.
+select * from pg_temp.s12pl_pattern('pca-child1','s12pca-child',jsonb_build_array(pg_temp.s12cs_block('leaf','s12cs.leaf',2,'PC1')));
+select * from pg_temp.s12pl_pattern('pca-parent','s12pca-parent',jsonb_build_array(
+ pg_temp.s12cs_block('nested','s12cs.root',1,'PARENT',jsonb_build_array(jsonb_build_object(
+ 'kind','pattern','key','child','patternId',pg_temp.s12pd_body('pca-child1')->'patternId','patternVersion',1)))));
+select * from pg_temp.s12pu_place('pca-nested-bad','pca-parent');
+select * from pg_temp.s12pu_place('pca-priority','pca-parent');
+select pg_temp.s12pl_run('pca-priority-b',pg_temp.s12pl_request('pca-priority','pca-b1','/','{}','s12pca-priority-b','linked'));
+select is(pg_temp.s12pl_state('pca-priority-b'),'00000','PA-F06: real second live pin for root/nested/digest priority');
+select seeded.* from (values ('pca-nested-bad'),('pca-priority')) cases(tag)
+ cross join lateral pg_temp.s12pc_seed('PA-F07-'||tag,tag,pg_temp.s12pu_head('pca-donor','/left'),
+ jsonb_build_object('block_registry_digest',repeat('0',64),'position',10)) seeded;
+select * from pg_temp.s12pl_pattern('pca-fault-pattern','s12pca-fault',jsonb_build_array(pg_temp.s12cs_block('fault','s12cs.root',2,'FAULT')));
+select * from pg_temp.s12pu_place('pca-fault','pca-fault-pattern');
+select * from pg_temp.s12pc_seed('PA-F08','pca-fault',pg_temp.s12pu_head('pca-donor','/left'),
+ jsonb_build_object('block_registry_digest',repeat('0',64),'position',1));
+select * from pg_temp.s12pl_pattern('pca-a2','s12pca-a',jsonb_build_array(
+ pg_temp.s12cs_block('left','s12cs.root',1,'PA2-LEFT'),pg_temp.s12cs_block('right','s12cs.root',1,'PA2-RIGHT')),null,true,'1');
+select * from pg_temp.s12pl_pattern('pca-b2','s12pca-b',jsonb_build_array(pg_temp.s12cs_block('third','s12cs.root',2,'PB2')),null,true,'1');
+select * from pg_temp.s12pl_pattern('pca-child2','s12pca-child',jsonb_build_array(pg_temp.s12cs_block('leaf','s12cs.leaf',2,'PC2')),null,true,'1');
+select is((select jsonb_agg(p.state order by k) from (values (1,'pca-a1'),(2,'pca-b1'),(3,'pca-child1')) wanted(k,label)
+ join platform_private.cms_pattern_versions p on p.id=(pg_temp.s12pd_body(label)->>'id')::uuid),
+ '["superseded","superseded","superseded"]'::jsonb,'PA-F09: real governed successors supply inactive roots and child');
+select is(pg_temp.s12pu_pattern_row('pca-parent')->>'state','active','PA-F10: nested-only offender has an active parent');
+
+-- Bulk READ fixture, not1001 public writes or1001 assertions. Valid canonical
+-- content remains exact; only copied identity/path/order and known wrong digest differ.
+create function pg_temp.s12pa_bulk() returns setof text language plpgsql as $body$
+declare donor platform_private.cms_composition_instances; target uuid; stamp timestamptz:=clock_timestamp();
+ prior_rpc text:=current_setting('app.cms_rpc',true); source_before jsonb:=pg_temp.s12pu_row(pg_temp.s12pu_head('pca-donor','/left'));
+begin
+ perform set_config('app.cms_rpc','true',true); target:=pg_temp.s12pl_entry('pca-cap');
+ select * into strict donor from platform_private.cms_composition_instances where id=(source_before->>'id')::uuid;
+ insert into platform_private.cms_composition_instances
+ select (jsonb_populate_record(null::platform_private.cms_composition_instances,to_jsonb(donor)||jsonb_build_object(
+ 'id',extensions.gen_random_uuid(),'revision_id',target,'version',1,'path','/bulk/r'||lpad(n::text,4,'0'),
+ 'position',n-1,'block_registry_digest',repeat('0',64),'created_at',stamp,'updated_at',stamp))).*
+ from generate_series(1,1001) n;
+ perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+ return next extensions.is((select count(*)::integer from platform_private.cms_composition_instances where revision_id=target),1001,
+  'PA-CAP01: exactly1001 guarded canonical READ rows, not a producer-count claim');
+ return next extensions.is((select count(distinct path)::integer from platform_private.cms_composition_instances where revision_id=target),1001,
+  'PA-CAP02: every canonical offender occupies a distinct path/head');
+ return next extensions.is((select count(*)::integer from platform_private.cms_composition_instances c where c.revision_id=target
+  and c.state='active' and c.version=1 and c.link_mode='detached' and c.props='{}'::jsonb
+  and c.detached_tree=donor.detached_tree and c.bindings=donor.bindings and c.pattern_id=donor.pattern_id
+  and c.pattern_version=1 and c.block_registry_digest=repeat('0',64) and c.position between 0 and 1000),1001,
+  'PA-CAP03: all rows retain the independently checked canonical donor and literal bad digest');
+ return next extensions.is(pg_temp.s12pu_row(donor.id),source_before,'PA-CAP04: actual producer source remains byte-identical');
+ return next extensions.is(coalesce(current_setting('app.cms_rpc',true),''),coalesce(prior_rpc,''),'PA-CAP05: exact fixture RPC context restored');
+exception when others then
+ perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+ return next extensions.fail('PA-CAP guarded bulk fixture succeeds'); return next extensions.diag(sqlstate||':'||sqlerrm);
+end;
+$body$;
+select * from pg_temp.s12pa_bulk();
+select * from pg_temp.s12pc_check('PA-A01-dedup-live','pca-shared','pattern_not_active',false,
+ array['pca-a1'],'[["s12cs.root",1]]','submit',null,null,1);
+select * from pg_temp.s12pc_check('PA-A02-two-pins','pca-distinct','pattern_not_active',false,
+ array['pca-a1','pca-b1'],'[["s12cs.root",1],["s12cs.root",2]]','submit',null,null,2);
+select * from pg_temp.s12pc_check('PA-A03-two-canonical','pca-double-bad','pattern_digest_changed',false,
+ array['pca-a1'],'[["s12cs.root",1]]','submit',null,null,2);
+select * from pg_temp.s12pc_check('PA-A04-mixed-units','pca-mixed','pattern_not_active',false,
+ array['pca-a1'],'[["s12cs.root",1]]','submit',null,null,2);
+select * from pg_temp.s12pc_check('PA-A05-clamp','pca-cap','pattern_digest_changed',false,
+ array['pca-a1'],'[["s12cs.root",1]]','submit',null,null,1000);
+select * from pg_temp.s12pc_check('PA-A06-frozen-live-merge','pca-shared','pattern_not_active',false,
+ array['pca-a1'],'[["s12cs.root",1]]','submit',jsonb_set((select manifest from s12pc_out where label='PA-A01-dedup-live'),
+ '{patterns,0,hash}',to_jsonb(repeat('0',64))),null,1);
+select * from pg_temp.s12pc_check('PA-A07-frozen-canonical-merge','pca-double-bad','pattern_digest_changed',false,
+ array['pca-a1'],'[["s12cs.root",1]]','submit',jsonb_set((select manifest from s12pc_out where label='PA-A03-two-canonical'),
+ '{patterns,0,hash}',to_jsonb(repeat('0',64))),null,2);
+select * from pg_temp.s12pc_check('PA-A08-nested-over-digest','pca-nested-bad','nested_pattern_not_active',false,
+ array['pca-parent','pca-a1'],'[["s12cs.root",1],["s12cs.leaf",2]]','submit',null,null,2);
+select * from pg_temp.s12pc_check('PA-A09-root-over-nested-digest','pca-priority','pattern_not_active',false,
+ array['pca-parent','pca-b1','pca-a1'],'[["s12cs.root",1],["s12cs.root",2],["s12cs.leaf",2]]','submit',null,null,3);
+select * from pg_temp.s12pc_check('PA-FLT-control','pca-fault','pattern_digest_changed',false,
+ array['pca-fault-pattern','pca-a1'],'[["s12cs.root",1],["s12cs.root",2]]');
+
+-- TEST-OWNED dependency substitution only. Never replace a writer/evaluator,
+-- add a grant, or manufacture the report. The inner subtransaction rolls back
+-- all temporary DDL if installation, invocation or exact restoration fails.
+create function pg_temp.s12pa_fault() returns setof text language plpgsql as $body$
+declare identity constant text:='platform_private.cms_pattern_registry_digest_readonly(uuid,jsonb)';
+ original pg_catalog.pg_proc%rowtype; installed pg_catalog.pg_proc%rowtype; actual pg_catalog.pg_proc%rowtype;
+ definition text; fault_definition text; comment_text text; report jsonb; restored_report jsonb; observed jsonb; categories jsonb;
+ fault_source constant text:=$fault$select ('PRIVATE_TEST_SENTINEL_' || coalesce($1::text,''))::integer::text$fault$;
+ probe_code text:='00000'; probe_message text; call_code text:='00000'; call_message text;
+ sequence_code text:='00000'; sequence_message text; keys_valid boolean; manifest jsonb;
+ checked_role text; role_private boolean; all_private boolean:=true; restored_code text:='NOT_RUN'; restored_message text;
+ before_rows jsonb:=pg_temp.s12pc_snapshot(); prior_rpc text:=current_setting('app.cms_rpc',true);
+ prior_role text:=current_setting('role'); prior_user text:=current_user;
+begin
+ select p.* into original from pg_catalog.pg_proc p where p.oid=to_regprocedure(identity);
+ if not found then return next extensions.fail('PA-FLT01: exact future440 read-only dependency signature available'); return; end if;
+ if original.proowner<>'wejammin_cms_definer'::regrole or original.prosecdef or original.prokind<>'f'
+  or original.provolatile<>'s' or original.proretset or original.prorettype<>'text'::regtype
+  or original.proconfig is distinct from array['search_path=""']::text[]
+  or original.prolang<>(select oid from pg_language where lanname='sql') then
+  return next extensions.fail('PA-FLT01: exact future440 SQL/STABLE/invoker/private dependency attributes'); return;
+ end if;
+ foreach checked_role in array array['anon','authenticated','service_role'] loop
+  role_private:=not coalesce(has_function_privilege(to_regrole(checked_role),original.oid,'EXECUTE'),true);
+  return next extensions.ok(role_private,'PA-FLT-ACL-'||checked_role||': exact dependency denies EXECUTE including PUBLIC/inherited grants');
+  all_private:=all_private and role_private;
+ end loop;
+ if not all_private then return; end if;
+ definition:=pg_get_functiondef(original.oid); comment_text:=obj_description(original.oid,'pg_proc');
+ if definition is null or length(original.prosrc)=0
+  or (length(definition)-length(replace(definition,original.prosrc,'')))/length(original.prosrc)<>1
+  or strpos(original.prosrc,'PRIVATE_TEST_SENTINEL_')<>0 then
+  return next extensions.fail('PA-FLT01: exact unique original dependency source is safely substitutable'); return;
+ end if;
+ perform set_config('app.cms_rpc','true',true);
+ begin
+  manifest:=platform_private.cms_build_dependency_manifest(pg_temp.s12pl_rev('pca-fault'));
+  fault_definition:=replace(definition,original.prosrc,fault_source);
+  if replace(fault_definition,fault_source,original.prosrc) is distinct from definition then
+   raise exception 'test dependency substitution is not reversible'; end if;
+  execute fault_definition;
+  select p.* into installed from pg_catalog.pg_proc p where p.oid=to_regprocedure(identity);
+  if installed.oid is distinct from original.oid or installed.prosrc is distinct from fault_source
+   or to_jsonb(installed)-'prosrc' is distinct from to_jsonb(original)-'prosrc'
+   or obj_description(installed.oid,'pg_proc') is distinct from comment_text then
+   raise exception 'test dependency substitution changed attributes'; end if;
+  begin
+   execute 'select platform_private.cms_pattern_registry_digest_readonly($1,$2)'
+    using pg_temp.s09d_id('ownerOrg'),pg_temp.s12pu_pattern_row('pca-fault-pattern')->'block_tree';
+  exception when others then get stacked diagnostics probe_code=returned_sqlstate,probe_message=message_text;
+  end;
+  begin
+   execute 'select platform_private.cms_evaluate_preflight($1)' into report using jsonb_build_object(
+    'phase','submit','revisionId',pg_temp.s12pl_rev('pca-fault'),'actingPartyId',pg_temp.s09d_id('ownerOrg'),
+    'actorPersonId',pg_temp.s09d_actor_id('owner','person'),'frozenManifest',manifest,
+    'effectiveAt',to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+  exception when others then get stacked diagnostics call_code=returned_sqlstate,call_message=message_text;
+  end;
+  select p.* into actual from pg_catalog.pg_proc p where p.oid=to_regprocedure(identity);
+  if to_jsonb(actual) is distinct from to_jsonb(installed)
+   or obj_description(actual.oid,'pg_proc') is distinct from comment_text then
+   raise exception 'test refuses to overwrite changed dependency binding'; end if;
+  execute definition;
+  select p.* into actual from pg_catalog.pg_proc p where p.oid=to_regprocedure(identity);
+  if to_jsonb(actual) is distinct from to_jsonb(original) or pg_get_functiondef(actual.oid) is distinct from definition
+   or obj_description(actual.oid,'pg_proc') is distinct from comment_text then
+   raise exception 'test dependency restoration mismatch'; end if;
+  begin
+   restored_code:='00000';
+   execute 'select platform_private.cms_evaluate_preflight($1)' into restored_report using jsonb_build_object(
+    'phase','submit','revisionId',pg_temp.s12pl_rev('pca-fault'),'actingPartyId',pg_temp.s09d_id('ownerOrg'),
+    'actorPersonId',pg_temp.s09d_actor_id('owner','person'),'frozenManifest',manifest,
+    'effectiveAt',to_char(clock_timestamp() at time zone 'UTC','YYYY-MM-DD"T"HH24:MI:SS.US"Z"'));
+  exception when others then get stacked diagnostics restored_code=returned_sqlstate,restored_message=message_text;
+  end;
+ exception when others then get stacked diagnostics sequence_code=returned_sqlstate,sequence_message=message_text;
+ end;
+ -- No TAP is emitted while the fault source is installed. On any exception the
+ -- subtransaction above has already restored its original catalog state.
+ perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+ select p.* into actual from pg_catalog.pg_proc p where p.oid=to_regprocedure(identity);
+ return next extensions.is(sequence_code,'00000','PA-FLT02: guarded dependency substitution/call/restoration sequence completed');
+ return next extensions.ok(to_jsonb(actual)=to_jsonb(original) and pg_get_functiondef(actual.oid)=definition
+  and obj_description(actual.oid,'pg_proc') is not distinct from comment_text,
+  'PA-FLT03: exact dependency OID/source/all attributes including ACL and comment restored before TAP');
+ return next extensions.is(probe_code,'22P02','PA-FLT04: actual substituted SQL dependency raises the private bad-cast fault');
+ return next extensions.ok(strpos(coalesce(probe_message,''),'PRIVATE_TEST_SENTINEL_')>0,
+  'PA-FLT05: private probe proves the actual argument-dependent fault body ran');
+ return next extensions.is(call_code,'00000','PA-FLT06: actual evaluator contains dependency exception instead of leaking it');
+ select coalesce(jsonb_agg(item order by ordinal),'[]'::jsonb),jsonb_agg(item->'category' order by ordinal)
+  into observed,categories from jsonb_array_elements(case when jsonb_typeof(report->'results')='array'
+  then report->'results' else '[]'::jsonb end) with ordinality e(item,ordinal);
+ return next extensions.is(categories,
+  '["contract","schema","template","block","pattern","taxonomy","settings","relation","privacy","security","accessibility","media","route","locale","migration","domain_binding","revocation"]'::jsonb,
+  'PA-FLT07: dependency fault preserves the complete seventeen-category sequence');
+ select coalesce(bool_and((select count(*)=6 and bool_and(key=any(array[
+  'category','outcome','providerKey','providerVersion','reasonCode','blockingCount']))
+  from jsonb_object_keys(case when jsonb_typeof(item)='object' then item else '{}'::jsonb end) key)),false)
+  into keys_valid from jsonb_array_elements(observed) item;
+ return next extensions.ok(keys_valid,'PA-FLT08: all actual result objects retain the exact six-key contract');
+ return next extensions.is((select jsonb_agg(item) from jsonb_array_elements(observed) item where item->>'category'='pattern'),
+  '[{"category":"pattern","providerKey":"cms.pattern.active_digest","providerVersion":"1","outcome":"unavailable",
+    "reasonCode":"provider_unavailable","blockingCount":0}]'::jsonb,
+  'PA-FLT09: actual dependency fault is unavailable/provider_unavailable/count0, never a partial offender result');
+ return next extensions.is((select jsonb_agg(key order by key collate "C") from jsonb_object_keys(
+  case when jsonb_typeof(report)='object' then report else '{}'::jsonb end) key),
+  '["evaluatedAt","passed","results"]'::jsonb,'PA-FLT10: complete report envelope is unchanged');
+ return next extensions.is(report->'passed',to_jsonb((select coalesce(bool_and(item->>'outcome'='passed'),false)
+  from jsonb_array_elements(observed) item)),'PA-FLT11: aggregate is derived from every actual category');
+ return next extensions.ok(report is not null and strpos(report::text,'PRIVATE_TEST_SENTINEL_')=0
+  and strpos(report::text,'22P02')=0,'PA-FLT12: actual report discloses no raw private dependency fault');
+ return next extensions.is((select jsonb_agg(item order by ordinal) from jsonb_array_elements(observed)
+  with ordinality e(item,ordinal) where item->>'category'<>'pattern'),
+  (select jsonb_agg(item order by ordinal) from s12pc_out c,jsonb_array_elements(c.report->'results')
+  with ordinality e(item,ordinal) where c.label='PA-FLT-control' and item->>'category'<>'pattern'),
+  'PA-FLT13: same subject/phase retains every other full provider result');
+ return next extensions.is(restored_code,'00000','PA-FLT16: actual post-restoration evaluator executes without the injected fault');
+ return next extensions.is(restored_report-'evaluatedAt',
+  (select c.report-'evaluatedAt' from s12pc_out c where c.label='PA-FLT-control'),
+  'PA-FLT17: actual post-restoration evaluator matches the pre-fault full control except observation time');
+ return next extensions.is(pg_temp.s12pc_snapshot(),before_rows,'PA-FLT14: full persistent CMS/audit/outbox/grant images unchanged');
+ return next extensions.ok(current_user=prior_user and current_setting('role')=prior_role
+  and coalesce(current_setting('app.cms_rpc',true),'')=coalesce(prior_rpc,''),'PA-FLT15: exact caller role/RPC context restored');
+end;
+$body$;
+select * from pg_temp.s12pa_fault();

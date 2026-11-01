@@ -1,0 +1,135 @@
+-- DEC-210 legacy state.  A pattern saved BEFORE the rule exists only as a state the pre-rule producer wrote, and a block
+-- version is immutable, so no registry change can make a saved tree violate its rules.  The legacy state is therefore
+-- produced by the REAL producers (CMS-03C-12, the governed activation, CMS-03C-02, CMS-03C-15) while ONE named DEC-210
+-- enforcement function is replaced by a no-op INSIDE THIS ROLLED-BACK TRANSACTION, and is then restored from its saved
+-- pg_get_functiondef with the full pg_proc image asserted identical.  Every refusal assertion runs on the restored
+-- functions.  No trigger is disabled, no row is inserted into a pattern or composition store, no approval is forged.
+create temp table brt_defs(name text primary key, identity text not null, def text not null, image jsonb not null)
+on commit drop;
+insert into brt_defs
+select spec.name, spec.identity, pg_catalog.pg_get_functiondef(proc.oid), pg_catalog.to_jsonb(proc)
+  from (values
+    ('save', 'platform_private.cms_pattern_block_rules_enforce_save(uuid,jsonb,uuid[])'),
+    ('plan', 'platform_private.cms_pattern_block_rules_enforce_plan(jsonb,text)'),
+    ('detached', 'platform_private.cms_detached_tree_block_rules(jsonb,jsonb)')) spec(name, identity)
+  join pg_catalog.pg_proc proc on proc.oid = pg_catalog.to_regprocedure(spec.identity);
+select is((select count(*)::integer from brt_defs), 3, 'BR-L00: the three DEC-210 enforcement functions exist');
+
+create or replace function pg_temp.brt_stub(p_name text) returns void language plpgsql as $body$
+begin
+  if p_name = 'save' then
+    execute $s$create or replace function platform_private.cms_pattern_block_rules_enforce_save(
+      p_owner_id uuid, p_forest jsonb, p_visited uuid[]) returns void language plpgsql volatile
+      security definer set search_path = '' as $f$ begin return; end; $f$$s$;
+  elsif p_name = 'plan' then
+    execute $s$create or replace function platform_private.cms_pattern_block_rules_enforce_plan(
+      p_plan jsonb, p_pointer text) returns void language plpgsql volatile
+      security definer set search_path = '' as $f$ begin return; end; $f$$s$;
+  elsif p_name = 'detached' then
+    execute $s$create or replace function platform_private.cms_detached_tree_block_rules(
+      p_tree jsonb, p_rules jsonb default null) returns jsonb language plpgsql stable
+      security definer set search_path = '' as $f$ begin return null; end; $f$$s$;
+  else
+    raise exception 'unknown enforcement function %', p_name;
+  end if;
+end;
+$body$;
+create or replace function pg_temp.brt_restore(p_name text, p_step text default '') returns setof text language plpgsql as $body$
+begin
+  if not exists (select 1 from brt_defs where name = p_name) then
+    return next extensions.fail('BR-L: ' || p_name || ' enforcement function was saved and can be restored');
+    return;
+  end if;
+  execute (select def from brt_defs where name = p_name);
+  return next extensions.ok(coalesce((select pg_catalog.to_jsonb(proc) from pg_catalog.pg_proc proc
+      where proc.oid = pg_catalog.to_regprocedure((select identity from brt_defs where name = p_name)))
+    = (select image from brt_defs where name = p_name), false),
+    'BR-L: ' || p_name || ' enforcement is restored with a pg_proc image identical to the installed function'
+      || case when p_step = '' then '' else ' (' || p_step || ')' end);
+end;
+$body$;
+
+-- valid patterns and their placements, written with the real enforcement in place
+select * from pg_temp.s12pl_pattern('brn-three', 'brn-three', jsonb_build_array(pg_temp.brb('a', 'br.leaf'),
+  pg_temp.brb('b', 'br.leaf'), pg_temp.brb('c', 'br.leaf')));
+select * from pg_temp.s12pl_pattern('brq-v1', 'brq', jsonb_build_array(pg_temp.brb('r', 'br.pa',
+  jsonb_build_array(pg_temp.brb('c', 'br.x')))));
+select * from pg_temp.s12pl_pattern('brx-v1', 'brx', jsonb_build_array(pg_temp.brb('r', 'br.root',
+  jsonb_build_array(pg_temp.brb('c', 'br.leaf')))));
+select * from pg_temp.s12pu_place('brq-a', 'brq-v1');
+select * from pg_temp.s12pu_place('brq-b', 'brq-v1');
+select * from pg_temp.s12pu_place('brq-c', 'brq-v1');
+select * from pg_temp.s12pu_place('brq-d', 'brq-v1');
+select * from pg_temp.s12pu_place('brx-a', 'brx-v1');
+select * from pg_temp.s12pu_place('brx-b', 'brx-v1');
+select * from pg_temp.s12pu_place('brv-ok', 'brn-three');
+-- A valid first version whose second version is saved before the rule (below): brz is a depth-2 tree whose successor is a depth-3 tree.
+-- (brm, the two-root family for an accept at an instance index above 0, is wholly pre-rule: see below.)
+select * from pg_temp.s12pl_pattern('brz-v1', 'brz', jsonb_build_array(pg_temp.brb('r', 'br.shallow',
+  jsonb_build_array(pg_temp.brb('c', 'br.shallow')))));
+select * from pg_temp.s12pu_place('brz-a', 'brz-v1');
+
+-- the pre-rule patterns
+select pg_temp.brt_stub('save');
+select * from pg_temp.s12pl_pattern('brl-nodes', 'brl-nodes', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))));
+select * from pg_temp.s12pl_pattern('brl-child', 'brl-child', jsonb_build_array(pg_temp.brb('r', 'br.root',
+  jsonb_build_array(pg_temp.brb('c', 'br.root')))));
+select * from pg_temp.s12pl_pattern('brl-multi', 'brl-multi', jsonb_build_array(pg_temp.brb('ok', 'br.leaf'),
+  pg_temp.brb('bad', 'br.tight', jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'),
+    pg_temp.brb('l3', 'br.leaf')))));
+select * from pg_temp.s12pl_pattern('brl-nested', 'brl-nested', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brr('brn-three', 'ref')))));
+select * from pg_temp.s12pl_pattern('brl-sup', 'brl-sup', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))));
+select * from pg_temp.s12pl_pattern('brx-v2', 'brx', jsonb_build_array(pg_temp.brb('r', 'br.root',
+  jsonb_build_array(pg_temp.brb('c', 'br.root')))), null, true, '1');
+-- an empty allow-list (a br.leaf parent) and a depth over maxDepth, as saved trees and as second versions
+select * from pg_temp.s12pl_pattern('brl-empty', 'brl-empty', jsonb_build_array(pg_temp.brb('r', 'br.leaf',
+  jsonb_build_array(pg_temp.brb('c', 'br.leaf')))));
+select * from pg_temp.s12pl_pattern('brl-deep', 'brl-deep', jsonb_build_array(pg_temp.brb('s', 'br.shallow',
+  jsonb_build_array(pg_temp.brb('t', 'br.shallow', jsonb_build_array(pg_temp.brb('u', 'br.leaf')))))));
+-- brm: two roots, /ok fine and /bad over its maxNodes.  A bulk accept (2+ instances) admits no collision (diff_has_collisions), so the
+-- accept at an instance index above 0 needs a collision-free target that still breaks the rule: v1 is pre-rule, and v2 (saved below, after
+-- the placement) differs from it only in the props of /ok.
+select * from pg_temp.s12pl_pattern('brm-v1', 'brm', jsonb_build_array(pg_temp.brb('ok', 'br.leaf'),
+  pg_temp.brb('bad', 'br.tight', jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))));
+select * from pg_temp.s12pl_pattern('brz-v2', 'brz', jsonb_build_array(pg_temp.brb('r', 'br.shallow',
+  jsonb_build_array(pg_temp.brb('c', 'br.shallow', jsonb_build_array(pg_temp.brb('d', 'br.leaf')))))), null, true, '1');
+select * from pg_temp.brt_restore('save');
+select * from pg_temp.s12pd_refused('BR-L01', pg_temp.s12pd_request('br-l01-again', jsonb_build_array(
+  pg_temp.brb('t', 'br.tight', jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'),
+    pg_temp.brb('l3', 'br.leaf')))), null, 'br-l01-idem'), 'block_rules_violated');
+
+-- placements of the pre-rule trees (CMS-03C-02 with its enforcement off), then restored
+select pg_temp.brt_stub('plan');
+select * from pg_temp.s12pu_place('brd-detach', 'brl-nodes');
+select * from pg_temp.s12pu_place('brd-prov-live', 'brl-nodes');
+select * from pg_temp.s12pu_place('brd-prov-canon', 'brl-nodes');
+select * from pg_temp.s12pu_place('brd-prov-sup', 'brl-sup');
+select * from pg_temp.s12pu_place('brd-multi', 'brl-multi');
+select * from pg_temp.s12pu_place('brm-a', 'brm-v1');
+select * from pg_temp.s12pu_place('brd-empty', 'brl-empty');
+select * from pg_temp.s12pu_place('brd-deep', 'brl-deep');
+select * from pg_temp.s12pu_place('brd-prov-empty', 'brl-empty');
+select * from pg_temp.s12pu_place('brd-prov-deep', 'brl-deep');
+select * from pg_temp.brt_restore('plan');
+select pg_temp.brt_stub('save');
+select * from pg_temp.s12pl_pattern('brm-v2', 'brm', jsonb_build_array(
+  pg_temp.brb('ok', 'br.leaf') || jsonb_build_object('props', jsonb_build_object('title', 'T2')),
+  pg_temp.brb('bad', 'br.tight', jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf'), pg_temp.brb('l3', 'br.leaf')))),
+  null, true, '1');
+select * from pg_temp.brt_restore('save', 'after brm-v2');
+
+-- a canonical detached tree that breaks its rules (CMS-03C-15 detach with the writer rule check off), then restored
+select pg_temp.brt_stub('detached');
+select pg_temp.s12pu_update('BR-L02', pg_temp.s12pu_update_request('brd-prov-canon', 'detach',
+  jsonb_build_array(pg_temp.s12pu_target('brd-prov-canon', '/t')), 'br-l02-idem'));
+select is(pg_temp.s12pu_oc('BR-L02'), 'ok', 'BR-L02: the pre-rule canonical detached tree is written by the real CMS-03C-15 producer');
+select * from pg_temp.brt_restore('detached');
+
+-- valid successors written with the real enforcement
+select * from pg_temp.s12pl_pattern('brq-v2', 'brq', jsonb_build_array(pg_temp.brb('r', 'br.pb',
+  jsonb_build_array(pg_temp.brb('c', 'br.z')))), null, true, '1');
+select * from pg_temp.s12pl_pattern('brl-sup-v2', 'brl-sup', jsonb_build_array(pg_temp.brb('t', 'br.tight',
+  jsonb_build_array(pg_temp.brb('l1', 'br.leaf'), pg_temp.brb('l2', 'br.leaf')))), null, true, '1');

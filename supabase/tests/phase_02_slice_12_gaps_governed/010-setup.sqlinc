@@ -1,0 +1,15 @@
+-- Setup of the claude_s12_gaps_db2 governed suites: real standing grants through the CMS-03A-15 command.
+--   rev1 / rev2 / designer2 hold cms.reviewer in the owner organization (designer2 also holds cms.reviewer.policy from 005 and
+--   cms.template_designer here, so it can be the CREATOR of a subject whose SUBMITTER is the owner); the owner holds the curator
+--   authority for the taxonomy subjects.  rev1 and rev2 are seated in the owner party only now: the type chains above had them
+--   in their own person parties as DEC-108 schema reviewers.
+create temp table g2_setup(key text primary key, outcome text not null) on commit drop;
+insert into g2_setup(key, outcome) values
+  ('rev1:reviewer', pg_temp.s12ga_grant('rev1', 'cms.reviewer', 1)),
+  ('rev2:reviewer', pg_temp.s12ga_grant('rev2', 'cms.reviewer', 1)),
+  ('designer2:reviewer', pg_temp.s12ga_grant('designer2', 'cms.reviewer', 1)),
+  ('designer2:designer', pg_temp.s12ga_grant('designer2', 'cms.template_designer', 1)),
+  ('owner:curator', pg_temp.s12ga_grant('owner', 'cms.taxonomy_curator', 1));
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key in ('rev1', 'rev2');
+select ok((select count(*) = 5 and bool_and(outcome = 'OK') from g2_setup),
+  'fixture: rev1, rev2 and designer2 hold cms.reviewer, designer2 cms.template_designer and the owner cms.taxonomy_curator through the real CMS-03A-15 command [P2-S12-AC-252]');

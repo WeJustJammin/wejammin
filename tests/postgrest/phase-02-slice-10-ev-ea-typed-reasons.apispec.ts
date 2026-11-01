@@ -88,8 +88,8 @@ const REASONS: readonly Reason[] = [
     value: () => ({ label: 'x', extra: 1 }),
   },
   {
-    label: 'a non-empty taxonomy value',
-    reason: 'taxonomy_source_unavailable',
+    label: 'a non-empty taxonomy value naming an unknown term',
+    reason: 'term_unavailable',
     field: 'tags',
     value: () => ({ termIds: [randomUUID()] }),
   },

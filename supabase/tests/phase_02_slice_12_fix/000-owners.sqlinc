@@ -1,0 +1,179 @@
+-- Slice 12 FIX lane fixtures (BE03c E13/E14/E4, lineage ids). Include AFTER the Slice 10
+-- fixtures (phase_02_slice_10_rpc/000-helpers.sqlinc and 001-fixtures.sqlinc):
+--   owner A = the Slice 10 organization (acting as the creator, auth user ...0001) with the
+--             active compiled type s10_ids.typeId;
+--   owner B = a SECOND organization created by the stranger (auth user ...0004) through the same
+--             production function, holding its own cms.template_designer grant and one active
+--             content type of its own.
+-- Every row lives in the caller's rolled-back transaction.
+
+create temp table s12fix_ids(key text primary key, value text not null) on commit drop;
+
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000004'::uuid, null);
+select set_config('app.correlation_id', 'a9130000-0000-4000-8000-000000000091', true);
+select set_config('app.idempotency_key_hash', 's12fix-org-b-create-0001', true);
+select set_config('app.request_hash', 's12fix-org-b-create-request-0001', true);
+create temp table s12fix_org_b on commit drop as
+select (result->>'organizationId')::uuid as organization_id
+from lateral (
+  select platform_api.rpc_create_organization('self_member', '{}'::text[]) as result
+) created;
+
+insert into s12fix_ids(key, value)
+values ('orgA', (select value from s10_ids where key = 'organization')),
+       ('orgB', (select organization_id::text from s12fix_org_b)),
+       ('typeA', (select value from s10_ids where key = 'typeId')),
+       ('authA', 'a9100000-0000-4000-8000-000000000001'),
+       ('authB', 'a9100000-0000-4000-8000-000000000004'),
+       ('typeB', 'a9130000-0000-4000-8000-000000000303');
+
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active
+)
+select (select value::uuid from s12fix_ids where key = 'orgB'),
+       (select value::uuid from s10_ids where key = 'strangerPerson'),
+       'cms.template_designer', current_date, current_date + 1, true;
+insert into identity_private.organization_actor_grant(
+  organization_id, person_id, capability_code, valid_from, valid_through, active
+)
+select (select value::uuid from s10_ids where key = 'organization'),
+       (select value::uuid from s10_ids where key = 'creatorPerson'),
+       'cms.template_designer', current_date, current_date + 1, true;
+
+-- Owner B's own active content type (a template may only name its caller's active types).
+select set_config('app.cms_rpc', 'true', true);
+insert into platform_private.cms_content_types(
+  id, owner_id, state, type_key, owner_capability, created_by
+)
+select 'a9130000-0000-4000-8000-000000000303',
+       (select value::uuid from s12fix_ids where key = 'orgB'),
+       'retired', 's12fix_b_type', 'cms.schema_designer',
+       'a9100000-0000-4000-8000-000000000004';
+insert into platform_private.cms_content_type_versions(
+  id, owner_id, state, content_type_id, version_no, labels,
+  workflow_key, workflow_version, source_locale, default_locale,
+  supported_locales, fallback_chains, locale_config_hash,
+  schema_artifact_id, definition_hash, compatibility, created_by
+)
+select 'a9130000-0000-4000-8000-000000000304',
+       (select value::uuid from s12fix_ids where key = 'orgB'),
+       'draft', 'a9130000-0000-4000-8000-000000000303', 1, '{}'::jsonb,
+       'editorial', 1, 'en-US', 'en-US',
+       '["en-US"]'::jsonb, '{}'::jsonb,
+       '604d53ba01396a82109c25c8a156b96d1ccf3af7cda0777b55579ef6d1a38860',
+       'a9130000-0000-4000-8000-000000000305', repeat('c', 64),
+       'additive', 'a9100000-0000-4000-8000-000000000004';
+insert into platform_private.cms_schema_artifacts(
+  id, owner_id, content_type_version_id, compiler_version,
+  zod_contract_ref, editor_manifest, renderer_manifest, artifact_hash,
+  compiled_at
+)
+select 'a9130000-0000-4000-8000-000000000305',
+       (select value::uuid from s12fix_ids where key = 'orgB'),
+       'a9130000-0000-4000-8000-000000000304', 's12fix-test',
+       'cms/s12fix-b', '{}'::jsonb, '{}'::jsonb, repeat('c', 64),
+       clock_timestamp();
+update platform_private.cms_content_type_versions
+set state = 'active', version = version + 1,
+    activation_workflow_policy_key = 'cms.entry.author',
+    activation_workflow_policy_version = 1,
+    activation_workflow_policy_hash = repeat('a', 64),
+    activation_required_decision_count = 1,
+    activation_required_capabilities = jsonb_build_array('cms.author'),
+    activation_approval_evidence_hash = repeat('b', 64),
+    updated_at = clock_timestamp()
+where id = 'a9130000-0000-4000-8000-000000000304';
+update platform_private.cms_content_types
+set state = 'active', version = version + 1, updated_at = clock_timestamp()
+where id = 'a9130000-0000-4000-8000-000000000303';
+
+-- One CMS-03C-01 request: owner = 'A' or 'B'; p_expected null creates a lineage.
+create or replace function pg_temp.s12fix_req(
+  p_owner text, p_key text, p_idem text,
+  p_expected text default null, p_audience text default 'public'
+) returns jsonb language sql as $body$
+  select jsonb_build_object(
+    'templateKey', p_key,
+    'compatibleTypeIds', jsonb_build_array(
+      (select value from s12fix_ids where key = 'type' || p_owner)),
+    'slots', '[]'::jsonb,
+    'reservedRegions', jsonb_build_array('header', 'now', 'record', 'detail', 'provenance'),
+    'bindings', '{}'::jsonb,
+    'locale', 'en-US',
+    'audience', p_audience,
+    'expectedVersion', p_expected,
+    'idempotencyKey', p_idem,
+    'context', jsonb_build_object(
+      'actingPartyId', (select value from s12fix_ids where key = 'org' || p_owner),
+      'actingContextId', 'a9130000-0000-4000-8000-000000000001',
+      'correlationId', 'a9130000-0000-4000-8000-000000000002')
+  ) || case when p_expected is null then '{}'::jsonb
+            else jsonb_build_object('ifMatch', p_expected) end
+$body$;
+
+create or replace function pg_temp.s12fix_as(p_owner text) returns void
+language sql as $body$
+  select pg_temp.s10_rpc_as(
+    (select value::uuid from s12fix_ids where key = 'auth' || p_owner),
+    (select value::uuid from s12fix_ids where key = 'org' || p_owner))
+$body$;
+
+-- Runs one statement in a subtransaction. Returns {state, response} on success and
+-- {state, message, detail, constraint} on failure, so an assertion can compare the WHOLE
+-- observable refusal (SQLSTATE, message, DETAIL, constraint) rather than only its message.
+create or replace function pg_temp.s12fix_try(p_sql text) returns jsonb
+language plpgsql as $body$
+declare
+  result jsonb; msg text; det text; cons text;
+begin
+  begin
+    execute p_sql into result;
+    return jsonb_build_object('state', '00000', 'response', result);
+  exception when others then
+    get stacked diagnostics msg = message_text, det = pg_exception_detail,
+      cons = constraint_name;
+    return jsonb_build_object('state', sqlstate, 'message', msg,
+      'detail', coalesce(det, ''), 'constraint', coalesce(cons, ''));
+  end;
+end;
+$body$;
+
+create or replace function pg_temp.s12fix_define(p_request jsonb) returns jsonb
+language sql as $body$
+  select pg_temp.s12fix_try(format('select platform_api.cms_define_template(%L::jsonb)', p_request::text))
+$body$;
+
+create or replace function pg_temp.s12fix_latest(p_owner text, p_key text) returns jsonb
+language sql as $body$
+  select pg_temp.s12fix_try(format('select platform_api.cms_template_latest(%L::jsonb)',
+    jsonb_build_object('templateKey', p_key, 'context', jsonb_build_object(
+      'actingPartyId', (select value from s12fix_ids where key = 'org' || p_owner),
+      'actingContextId', 'a9130000-0000-4000-8000-000000000001',
+      'correlationId', 'a9130000-0000-4000-8000-000000000003'))::text))
+$body$;
+
+-- A direct insert of a copy of an existing template row (bypassing the RPC), with overrides.
+-- template_id is named only when p_lineage is given, so the helper also runs against a schema
+-- that has no lineage column yet.
+create or replace function pg_temp.s12fix_clone(
+  p_from uuid, p_key text, p_audience text default null, p_version bigint default 1,
+  p_supersedes uuid default null, p_lineage uuid default null
+) returns jsonb language plpgsql as $body$
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  return pg_temp.s12fix_try(format($q$
+    insert into platform_private.cms_template_versions(
+      owner_id, state, version, template_key, compatible_type_ids, slots, reserved_regions,
+      bindings, locale, audience, content_hash, block_registry_digest, supersedes_id,
+      created_by%s)
+    select owner_id, 'draft', %s, %L, compatible_type_ids, slots, reserved_regions,
+           bindings, locale, coalesce(%L, audience), content_hash, block_registry_digest,
+           %L::uuid, created_by%s
+      from platform_private.cms_template_versions where id = %L::uuid
+    returning jsonb_build_object('id', id)$q$,
+    case when p_lineage is null then '' else ', template_id' end,
+    p_version, p_key, p_audience, p_supersedes,
+    case when p_lineage is null then '' else format(', %L::uuid', p_lineage) end,
+    p_from));
+end;
+$body$;

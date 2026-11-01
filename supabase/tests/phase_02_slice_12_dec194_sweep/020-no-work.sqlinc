@@ -1,0 +1,62 @@
+-- Phase 1, no job; phase 2, a failed job whose batch actually converged: a continuation already exists, then no work is left.
+-- BE03c "Merge convergence recovery": the sweep requests only for an acting party that "has a failed Job, still has merged-term work, and has
+-- no queued or running Job of the type".  [P2-S12-AC-226, DEC-194]
+select pg_temp.s12tt_act('dc-create-1', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'dc-retire');
+select pg_temp.s12tt_act('dc-create-2', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'dc-survivor');
+select pg_temp.s12tt_act('dc-merge', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'dc-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-survivor')));
+select is(pg_temp.s12tt_oc('dc-merge'), 'ok', 'fixture: the retired term is merged through the real command while it holds no assignment [P2-S12-AC-226]');
+select pg_temp.s12tt_seed_revision('dca');
+select pg_temp.s12tt_seed_revision('dcb');
+select pg_temp.s12tt_seed_revision('dcc');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('dca'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-retire'), 1, 'active', 0);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('dcb'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-retire'), 1, 'active', 1);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('dcc'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'dc-retire'), 1, 'active', 2);
+select is(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')), 3, 'fixture: the merged term leaves 3 unconverged assignments [P2-S12-AC-226]');
+select is((select count(*)::integer from platform_private.jobs where job_type = 'cms.taxonomy.merge_converge'), 0,
+  'fixture: no merge convergence job has ever existed [P2-S12-AC-226]');
+
+-- phase 1: work but no job at all
+select pg_temp.s12tt_mark('p1');
+select pg_temp.s12dc_sweep('p1');
+select is(pg_temp.s12dc_out('p1'), 'ok:{"requested": 0}',
+  'no job at all: the sweep answers { requested: 0 } although merged-term work exists (nothing failed, nothing to re-request) [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12tt_same('p1'), 'the empty sweep writes nothing: jobs, outbox, audit, idempotency and every term store are byte-identical [P2-S12-AC-226, DEC-194]');
+select pg_temp.s12dc_sweep('p1-flag', 'sentinel');
+select is(pg_temp.s12dc_flag('p1-flag'), 'sentinel', 'the wrapper restores the RPC context flag a caller had set [P2-S12-AC-226, DEC-194]');
+select is((select rpc_user from s12dc_rcpt where label = 'p1'), 'service_role', 'the sweep ran as the real service_role [P2-S12-AC-226, DEC-194]');
+
+-- phase 2: X's batch converged one assignment and requested a continuation C, then X was recorded failed (a timeout after the commit)
+select pg_temp.s12dc_job('x', 'owner', pg_temp.s09d_id('ownerOrg'), 1);
+select pg_temp.s12tt_claim('dc-x', pg_temp.s12dc_id('job:x'), 1);
+select pg_temp.s12tt_run('dc-x-run', pg_temp.s12tt_claimed('dc-x', 1));
+select ok(pg_temp.s12gb_sout('dc-x-run') = 'ok' and (pg_temp.s12gb_sbody('dc-x-run') - 'continuationJobId') = '{"converged": 1, "remaining": 2}'::jsonb
+          and pg_temp.s12gb_sbody('dc-x-run')->>'continuationJobId' is not null,
+  'fixture: the real handler converges 1 of 3 and names a continuation (the batch committed) [P2-S12-AC-226]');
+insert into s12dc_ids(key, value) values ('job:c', (pg_temp.s12gb_sbody('dc-x-run')->>'continuationJobId')::uuid);
+select ok(pg_temp.s12tt_outcome('dc-x', 'failed', null, 'DEPENDENCY_UNAVAILABLE'),
+  'fixture: the job X is then recorded failed although its batch converged (the false negative of the runbook) [P2-S12-AC-226]');
+select pg_temp.s12dc_elapse(20);
+select ok((select state from platform_private.jobs where id = pg_temp.s12dc_id('job:c')) = 'queued'
+          and (select state from platform_private.jobs where id = pg_temp.s12dc_id('job:x')) = 'failed'
+          and pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')) = 2 and pg_temp.s12dc_idle_minutes(pg_temp.s09d_id('ownerOrg')) >= 20,
+  'fixture: X failed 20 minutes ago, its continuation C is queued, 2 assignments remain [P2-S12-AC-226]');
+select pg_temp.s12tt_mark('p2-live');
+select pg_temp.s12dc_sweep('p2-live');
+select is(pg_temp.s12dc_out('p2-live'), 'ok:{"requested": 0}',
+  'a failed job with remaining work but a continuation already queued requests nothing [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12tt_same('p2-live'), 'and writes nothing [P2-S12-AC-226, DEC-194]');
+
+-- the continuation drains the rest; no work is left although X is still the party's failed job
+select pg_temp.s12tt_claim('dc-c', pg_temp.s12dc_id('job:c'), 1);
+select pg_temp.s12tt_run('dc-c-run', pg_temp.s12tt_claimed('dc-c', 5000));
+select ok(pg_temp.s12gb_sout('dc-c-run') = 'ok' and pg_temp.s12gb_sbody('dc-c-run') = '{"converged": 2, "remaining": 0, "continuationJobId": null}'::jsonb,
+  'fixture: the continuation converges the last 2 assignments [P2-S12-AC-226]');
+select ok(pg_temp.s12tt_outcome('dc-c', 'succeeded', pg_temp.s12gb_sbody('dc-c-run'), null), 'fixture: the continuation is recorded succeeded [P2-S12-AC-226]');
+select pg_temp.s12dc_elapse(20);
+select is(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')), 0, 'fixture: no merged-term work is left [P2-S12-AC-226]');
+select pg_temp.s12tt_mark('p2-done');
+select pg_temp.s12dc_sweep('p2-done');
+select is(pg_temp.s12dc_out('p2-done'), 'ok:{"requested": 0}',
+  'a failed job whose party has no merged-term work left requests nothing [P2-S12-AC-226, DEC-194]');
+select ok(pg_temp.s12tt_same('p2-done'), 'and writes nothing [P2-S12-AC-226, DEC-194]');

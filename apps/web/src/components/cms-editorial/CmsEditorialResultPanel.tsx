@@ -1,7 +1,7 @@
 import * as React from 'react';
 
 import { cmsEditorialAppRevisionsPath } from './cms-editorial-app-routes';
-import type { CmsEditorialResultSummary } from './cms-editorial-result-handoff';
+import type { CmsEditorialResultSummary } from './cms-editorial-result-types';
 
 const HEADING: Readonly<Record<CmsEditorialResultSummary['kind'], string>> = {
   created: 'Entry created',

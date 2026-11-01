@@ -1,0 +1,174 @@
+-- Storage and guard witnesses of the lineage, forest and per-owner key rules (BE03c 215-219, 1425; E13, E14,
+-- DEC-188).  Rows are written through the table's own guard (no trigger is disabled), outside the producer, so
+-- each rule is proven at the storage boundary as well as through the command.
+create or replace function pg_temp.s12pd_error(p_sql text) returns text language plpgsql as $body$
+declare code text; msg text;
+begin
+  begin
+    execute p_sql;
+  exception when others then
+    get stacked diagnostics code = returned_sqlstate, msg = message_text;
+    return code || ':' || msg;
+  end;
+  return '00000:';
+end;
+$body$;
+create or replace function pg_temp.s12pd_raw_row(p_id uuid, p_owner uuid, p_key text, p_version integer,
+  p_tree jsonb, p_types jsonb, p_nodes integer, p_supersedes uuid default null, p_lineage uuid default null)
+returns text language sql stable as $body$
+  select format($f$insert into platform_private.cms_pattern_versions(
+      id, owner_id, version, pattern_key, block_tree, block_registry_digest, content_hash, owner_capability,
+      created_by, compatible_type_ids, node_count, supersedes_id, pattern_id)
+    values (%L, %L, %s, %L, %L::jsonb, %L, %L, 'cms.template_designer', %L, %L::jsonb, %s, %L, %L)$f$,
+    p_id, p_owner, p_version, p_key, p_tree::text, repeat('a',64), repeat('b',64),
+    pg_temp.s09d_actor_id('owner','auth')::uuid, p_types::text, p_nodes, p_supersedes, p_lineage)
+$body$;
+select set_config('app.cms_rpc','true',true);
+
+-- BE03c 1425: the forest, the 1..64 compatible types and 1..512 nodes bind EVERY row.  There is no
+-- grandfathered legacy shape: the migration (20261014020100) converts or refuses legacy rows, never keeps them.
+select alike(pg_temp.s12pd_error(format($f$insert into platform_private.cms_pattern_versions(
+    id, owner_id, version, pattern_key, block_tree, block_registry_digest, content_hash, owner_capability,
+    created_by, compatible_type_ids, node_count)
+  values ('a9120000-0000-4000-8000-0000000012a1', %L, 1, 's12pd-legacy',
+    '{"nodes":[{"blockKey":"profile.header"}]}'::jsonb, repeat('a',64), repeat('b',64), 'cms.template_designer', %L,
+    %L::jsonb, 1)$f$,
+  pg_temp.s09d_id('ownerOrg'),pg_temp.s09d_actor_id('owner','auth'),
+  jsonb_build_array((select id from s12pd_types where ordinal=1))::text)),'23514:%block_tree_valid%',
+  'a legacy object-tree row is refused even with a valid type list and node count (no grandfathering, BE03c 1425)');
+select is((select count(*)::integer from platform_private.cms_pattern_versions
+  where id = 'a9120000-0000-4000-8000-0000000012a1'),0,'the refused legacy row left nothing behind');
+select alike(pg_temp.s12pd_error(format($f$insert into platform_private.cms_pattern_versions(
+    id, owner_id, version, pattern_key, block_tree, block_registry_digest, content_hash, owner_capability,
+    created_by, node_count)
+  values ('a9120000-0000-4000-8000-0000000012a2', %L, 1, 's12pd-legacy',
+    %L::jsonb, repeat('a',64), repeat('b',64), 'cms.template_designer', %L, 1)$f$,
+  pg_temp.s09d_id('ownerOrg'),pg_temp.s12pd_forest(1)::text,pg_temp.s09d_actor_id('owner','auth'))),
+  '23502:%compatible_type_ids%',
+  'a row that omits its compatible type list is refused: there is no empty-list default');
+select alike(pg_temp.s12pd_error(format($f$insert into platform_private.cms_pattern_versions(
+    id, owner_id, version, pattern_key, block_tree, block_registry_digest, content_hash, owner_capability,
+    created_by, compatible_type_ids)
+  values ('a9120000-0000-4000-8000-0000000012a3', %L, 1, 's12pd-legacy',
+    %L::jsonb, repeat('a',64), repeat('b',64), 'cms.template_designer', %L, %L::jsonb)$f$,
+  pg_temp.s09d_id('ownerOrg'),pg_temp.s12pd_forest(1)::text,pg_temp.s09d_actor_id('owner','auth'),
+  jsonb_build_array((select id from s12pd_types where ordinal=1))::text)),
+  '23502:%node_count%',
+  'a row that omits its node count is refused: there is no zero default');
+
+select alike(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012b1',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-raw',1,pg_temp.s12pd_forest(1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),0)),'23514:%node_count_valid%',
+  'a forest row must store 1..512 nodes [P2-S12-AC-211]');
+select alike(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012b2',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-raw',1,pg_temp.s12pd_forest(1),'[]'::jsonb,1)),
+  '23514:%compatible_types_valid%','a forest row must list 1..64 compatible types [P2-S12-AC-101]');
+select alike(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012b3',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-raw',1,
+  jsonb_build_array(pg_temp.s12pd_block('same'),pg_temp.s12pd_block('same')),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),2)),'23514:%block_tree_valid%',
+  'the table rejects duplicate sibling keys of a forest');
+select alike(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012b4',
+  pg_temp.s09d_id('ownerOrg'),'selector',1,pg_temp.s12pd_forest(1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),1)),'23514:%not_reserved%',
+  'the table rejects a reserved route key [P2-S12-AC-100]');
+select is(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012b5',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-raw',1,pg_temp.s12pd_forest(1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),1,null,
+  'a9120000-0000-4000-8000-0000000012ff')),'P0001:VALIDATION_FAILED',
+  'a lineage id other than the row''s own (or its parent''s) is refused [P2-S12-AC-103]');
+
+select is(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012c1',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-raw',1,pg_temp.s12pd_forest(1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),1)),'00000:',
+  'a valid first forest row is accepted through the guard');
+select is((select pattern_id from platform_private.cms_pattern_versions
+  where id = 'a9120000-0000-4000-8000-0000000012c1'),'a9120000-0000-4000-8000-0000000012c1'::uuid,
+  'the first forest row is its own lineage [P2-S12-AC-103]');
+select alike(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012c2',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-raw',1,pg_temp.s12pd_forest(1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),1)),'23505:%key_version_key%',
+  'one owner cannot hold a key version twice [P2-S12-AC-100]');
+select is(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012c3',
+  pg_temp.s09d_actor_id('other','party')::uuid,'s12pd-raw',1,pg_temp.s12pd_forest(1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),1)),'00000:',
+  'another owner may hold the same key and version: uniqueness is per owner, never disclosed as a conflict (E14)');
+select is(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012c4',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-raw',2,pg_temp.s12pd_forest(2),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),2,
+  'a9120000-0000-4000-8000-0000000012c1')),'00000:',
+  'a successor naming its exact parent is accepted [P2-S12-AC-103]');
+select is((select pattern_id from platform_private.cms_pattern_versions
+  where id = 'a9120000-0000-4000-8000-0000000012c4'),'a9120000-0000-4000-8000-0000000012c1'::uuid,
+  'the successor carries its parent''s lineage id [P2-S12-AC-103]');
+select is(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012c5',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-raw',3,pg_temp.s12pd_forest(1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),1,
+  'a9120000-0000-4000-8000-0000000012c1')),'P0001:VALIDATION_FAILED',
+  'a successor must directly follow its parent version [P2-S12-AC-103]');
+select is(pg_temp.s12pd_error($sql$update platform_private.cms_pattern_versions
+  set content_hash = repeat('9',64) where id = 'a9120000-0000-4000-8000-0000000012c1'$sql$),'P0001:CONFLICT',
+  'a draft''s definition hash is immutable in place [P2-S12-AC-100]');
+select is(pg_temp.s12pd_error($sql$update platform_private.cms_pattern_versions
+  set pattern_id = 'a9120000-0000-4000-8000-0000000012fe' where id = 'a9120000-0000-4000-8000-0000000012c1'$sql$),
+  'P0001:CONFLICT','the lineage id of a stored row never changes [P2-S12-AC-103]');
+select is(pg_temp.s12pd_error($sql$update platform_private.cms_pattern_versions
+  set compatible_type_ids = '[]'::jsonb where id = 'a9120000-0000-4000-8000-0000000012c1'$sql$),'P0001:CONFLICT',
+  'the compatible type list is immutable in place [P2-S12-AC-101]');
+
+-- The nested-graph walk over legitimate DRAFT rows (a chain d3 -> d2 -> d1): no active row is forged; the
+-- producer's active/compatible/acyclic/count rules are exercised through real governed activation in 050.
+create or replace function pg_temp.s12pd_ref_tree(p_lineage uuid, p_version integer) returns jsonb
+language sql immutable as $body$
+  select jsonb_build_array(jsonb_build_object('kind','pattern','key','ref','patternId',p_lineage,
+    'patternVersion',p_version))
+$body$;
+select is(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012d1',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-chain1',1,pg_temp.s12pd_forest(1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),1)),'00000:','closure fixture: d1 is a draft block pattern');
+select is(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012d2',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-chain2',1,
+  pg_temp.s12pd_ref_tree('a9120000-0000-4000-8000-0000000012d1',1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),1)),'00000:','closure fixture: d2 references d1');
+select is(pg_temp.s12pd_error(pg_temp.s12pd_raw_row('a9120000-0000-4000-8000-0000000012d3',
+  pg_temp.s09d_id('ownerOrg'),'s12pd-chain3',1,
+  pg_temp.s12pd_ref_tree('a9120000-0000-4000-8000-0000000012d2',1),
+  jsonb_build_array((select id from s12pd_types where ordinal=1)),1)),'00000:','closure fixture: d3 references d2');
+select is((select array_agg(nested_pattern_id order by nested_depth) from platform_private.cms_pattern_nested_closure(
+    pg_temp.s09d_id('ownerOrg'),pg_temp.s12pd_ref_tree('a9120000-0000-4000-8000-0000000012d3',1))),
+  array['a9120000-0000-4000-8000-0000000012d3','a9120000-0000-4000-8000-0000000012d2',
+    'a9120000-0000-4000-8000-0000000012d1']::uuid[],
+  'the closure walks the pinned lineage transitively with its chain depth [P2-S12-AC-211]');
+select is((select array_agg(nested_depth order by nested_depth) from platform_private.cms_pattern_nested_closure(
+    pg_temp.s09d_id('ownerOrg'),pg_temp.s12pd_ref_tree('a9120000-0000-4000-8000-0000000012d3',1))),
+  array[1,2,3],'direct references have chain depth 1 [P2-S12-AC-211]');
+select ok((select nested_row_id is null and nested_depth = 1 from platform_private.cms_pattern_nested_closure(
+    pg_temp.s09d_id('ownerOrg'),pg_temp.s12pd_ref_tree('a9120000-0000-4000-8000-0000000012d1',9))),
+  'a reference to a version that does not exist has no pinned row [P2-S12-AC-211]');
+select is((select count(*)::integer from platform_private.cms_pattern_nested_closure(
+    pg_temp.s09d_actor_id('other','party')::uuid,pg_temp.s12pd_ref_tree('a9120000-0000-4000-8000-0000000012d3',1)) c
+  where c.nested_row_id is not null),0,
+  'pins resolve only within the owner scope: another owner sees no pinned row [P2-S12-AC-101]');
+select set_config('app.cms_rpc','',true);
+
+select ok(to_regclass('platform_private.cms_pattern_versions_active_lineage_idx') is not null
+  and to_regclass('platform_private.cms_pattern_versions_lineage_version_key') is not null
+  and to_regclass('platform_private.cms_pattern_versions_key_version_key') is not null,
+  'one active version per lineage and the lineage and per-owner unique keys exist [P2-S12-AC-100]');
+select ok((select pg_get_constraintdef(oid) from pg_constraint
+  where conname = 'cms_pattern_versions_key_version_key') like 'UNIQUE (owner_id, pattern_key, version)',
+  'the key uniqueness is per owner (E14), under its original constraint name');
+select ok(exists (select 1 from pg_constraint where conname = 'cms_composition_instances_pattern_owner_fkey'
+    and pg_get_constraintdef(oid) like '%(pattern_id, version, owner_id)%')
+  and not exists (select 1 from pg_constraint
+    where conname = 'cms_composition_instances_pattern_version_fkey'),
+  'a placement pins the stable lineage and definition version, never a version row id [P2-S12-AC-103]');
+select ok((select pg_get_userbyid(proowner) from pg_proc
+    where oid = 'platform_private.cms_create_pattern_version(jsonb)'::regprocedure) = 'wejammin_cms_definer'
+  and (select prosecdef from pg_proc where oid = 'platform_private.cms_create_pattern_version(jsonb)'::regprocedure)
+  and (select prosecdef from pg_proc where oid = 'platform_api.cms_create_pattern_version(jsonb)'::regprocedure)
+  and not has_function_privilege('service_role','platform_private.cms_create_pattern_version(jsonb)'::regprocedure,'execute')
+  and not has_function_privilege('authenticated','platform_private.cms_pattern_latest(jsonb)'::regprocedure,'execute'),
+  'the producer is a definer-owned SECURITY DEFINER body reachable only through the service wrapper [P2-S12-AC-102]');
+select ok(pg_temp.s09d_service_only('platform_api.cms_pattern_latest(jsonb)'),
+  'only the service transport may execute the latest-read wrapper [P2-S12-AC-176]');

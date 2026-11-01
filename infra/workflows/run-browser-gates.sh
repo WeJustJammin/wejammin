@@ -5,15 +5,16 @@
 # this checkout's migrations. Both self-hosted runners share one stack on this
 # host, so the run holds the same lock as infra/verify-database.sh and always
 # stops the stack afterwards. The database job usually takes the lock first and
-# holds it for its whole db:verify (41 min in run 41267061612, 25.5 min of it
-# spent with this step waiting), so the wait outlasts a full database job.
+# holds it for its whole db:verify (41 min in run 41267061612 for Slice 11; past 90 min
+# in run 41349654121 for Slice 12: pgTAP 49 min, PostgREST 35 min, then the races), so
+# the wait outlasts a full database job.
 
 set -euo pipefail
 
 lock_file="${WEJAMMIN_SUPABASE_CI_LOCK:-/tmp/wejammin-supabase-ci.lock}"
 
 exec 9>"${lock_file}"
-flock --wait 3600 9
+flock --wait 10800 9
 
 cleanup() {
   pnpm db:stop >/dev/null 2>&1 || true

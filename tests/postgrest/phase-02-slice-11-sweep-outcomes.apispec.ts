@@ -1,4 +1,11 @@
-/** CMS20 typed failures and real-clock retry ladder; no schedule/lease/time row edits. */
+/**
+ * CMS20 typed failures and real-clock retry ladder; no schedule/lease/time row edits.
+ *
+ * Shared-database rule: the sweep claims EVERY due schedule and `db:api-test` commits fixtures across files
+ * without a reset, so a schedule another suite left due can be claimed by a tick below (the retry ladder
+ * sleeps up to 300 s). Claims and effect digests are therefore judged only over THIS file's own schedules
+ * (`worldIds`), never over the whole database. See tests/postgrest/README.md "Shared database".
+ */
 import { beforeAll, describe, expect, it } from 'vitest';
 import {
   ExecuteScheduleRequestSchema,
@@ -40,6 +47,10 @@ import {
   prepareS11World,
   type S11World,
 } from './support/phase-02-slice-11-world';
+import {
+  expectWorldClaims,
+  scopedSnapshotDigest,
+} from './support/phase-02-slice-11-world-scope';
 import { psql } from './support/stack';
 
 type Subject = Readonly<{
@@ -52,6 +63,10 @@ let noHead: Subject;
 let priorPublicationId: string;
 let world: S11World;
 let stack: S11Stack;
+/** Every schedule this file created; the only schedules whose claims and rows these tests judge. */
+const worldIds: string[] = [];
+/** Effect digest over this file's own rows: another suite's due schedule cannot move it. */
+const ownDigest = () => scopedSnapshotDigest(worldIds);
 
 beforeAll(async () => {
   world = await prepareS11World();
@@ -86,6 +101,7 @@ beforeAll(async () => {
   expectStatus(response, 202);
   const accepted = PublicationScheduleResourceSchema.parse(response.body);
   retry = { draft, id: accepted.id, resolvedUtc: accepted.resolvedUtc };
+  worldIds.push(retry.id);
 
   const absent = await approvedDraft(stack, world, 'Absent publication head');
   stack.as(world.publisher, 'fresh');
@@ -101,6 +117,7 @@ beforeAll(async () => {
     id: resource.id,
     resolvedUtc: resource.resolvedUtc,
   };
+  worldIds.push(noHead.id);
 }, 120_000);
 
 /** Only safe closed tokens, numeric values and booleans leave the database. */
@@ -127,14 +144,13 @@ describe('CMS-03B-20 retryable and blocked outcomes', () => {
     await sleepUntil(
       [retry.resolvedUtc, noHead.resolvedUtc].sort().at(-1) as string,
     );
-    const before = snapshotDigest();
+    const before = ownDigest();
     const trace = await tick([retry.id]);
     expectOperandChain(trace);
-    expectSafeEqual(
-      claimsOf(trace)
-        .map((claim) => claim.scheduleId)
-        .sort(),
-      [retry.id, noHead.id].sort(),
+    expectWorldClaims(
+      claimsOf(trace),
+      worldIds,
+      [retry.id, noHead.id],
       'exact due retry and absent-head subjects',
     );
     expectSafeEqual(
@@ -176,16 +192,21 @@ describe('CMS-03B-20 retryable and blocked outcomes', () => {
       'first failure exact CAS and delay',
     );
     expect(typeof nextAttemptAt === 'string').toBe(true);
-    expectScheduleEffects(before, snapshotDigest(), {
+    expectScheduleEffects(before, ownDigest(), {
       'platform_private.cms_publication_schedules': 0,
       'platform_private.cms_command_accessibility_evidence': 1,
       'audit_private.audit_events': 2,
     });
-    const after = snapshotDigest();
-    expect(claimsOf(await tick([retry.id])).length).toBe(0);
+    const after = ownDigest();
+    expectWorldClaims(
+      claimsOf(await tick([retry.id])),
+      worldIds,
+      [],
+      'no schedule of this file is due before the first retry deadline',
+    );
     expectUnchanged(
       after,
-      snapshotDigest(),
+      ownDigest(),
       'tick before first retry deadline is effect-free',
     );
   }, 150_000);
@@ -200,11 +221,12 @@ describe('CMS-03B-20 retryable and blocked outcomes', () => {
       if (next === null)
         throw new Error('retry deadline missing before exhaustion');
       await sleepUntil(next);
-      const before = snapshotDigest();
+      const before = ownDigest();
       const trace = await tick([retry.id]);
       expectOperandChain(trace);
-      expectSafeEqual(
-        claimsOf(trace).map((claim) => claim.scheduleId),
+      expectWorldClaims(
+        claimsOf(trace),
+        worldIds,
         [retry.id],
         'one real due retry',
       );
@@ -235,7 +257,7 @@ describe('CMS-03B-20 retryable and blocked outcomes', () => {
         'retry ladder exact row transition',
       );
       expect(nextAttemptAt === null).toBe(exhausted);
-      expectScheduleEffects(before, snapshotDigest(), {
+      expectScheduleEffects(before, ownDigest(), {
         'platform_private.cms_publication_schedules': 0,
         'audit_private.audit_events': 1,
       });
@@ -243,11 +265,16 @@ describe('CMS-03B-20 retryable and blocked outcomes', () => {
         psql(`select count(*) from platform_private.cms_publication_versions
         where id = '${priorPublicationId}' and state = 'active'`),
       ).toBe('1');
-      const unchanged = snapshotDigest();
-      expect(claimsOf(await tick([retry.id])).length).toBe(0);
+      const unchanged = ownDigest();
+      expectWorldClaims(
+        claimsOf(await tick([retry.id])),
+        worldIds,
+        [],
+        'not-due or exhausted schedules never reclaim',
+      );
       expectUnchanged(
         unchanged,
-        snapshotDigest(),
+        ownDigest(),
         'not-due or exhausted schedules never reclaim',
       );
     }
@@ -281,6 +308,7 @@ describe('CMS-03B-20 retryable and blocked outcomes', () => {
     const [expired, fresh] = subjects;
     if (expired === undefined || fresh === undefined)
       throw new Error('lease subjects missing');
+    worldIds.push(expired.id, fresh.id);
     await sleepUntil(
       subjects
         .map((item) => item.resolvedUtc)
@@ -290,9 +318,10 @@ describe('CMS-03B-20 retryable and blocked outcomes', () => {
     // Execute-only transport failure leaves the actual claimed row and lease intact.
     const trace = await tick([], undefined, [expired.id]);
     const claims = claimsOf(trace);
-    expectSafeEqual(
-      claims.map((claim) => claim.scheduleId).sort(),
-      subjects.map((item) => item.id).sort(),
+    expectWorldClaims(
+      claims,
+      worldIds,
+      subjects.map((item) => item.id),
       'exact lease witness claim set',
     );
     const claim = claims.find((item) => item.scheduleId === expired.id);

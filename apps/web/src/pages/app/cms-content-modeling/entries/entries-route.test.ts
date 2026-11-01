@@ -66,8 +66,8 @@ describe('cms editorial entries routes', () => {
     });
 
     it('turns a sign-in outcome into the allowlisted 303 redirect and nothing else', () => {
-      expect(source).toContain('Astro.redirect(outcome.location, 303)');
-      expect(source).not.toContain('Astro.redirect(`');
+      expect(source).toContain('cmsRedirectResponse(outcome.location)');
+      expect(source).not.toContain('cmsRedirectResponse(`');
     });
 
     it('never echoes the requested entry id into the document', () => {

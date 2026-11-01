@@ -33,6 +33,8 @@ the worker/API and `apps/web/src/server/`.
 - `[entryId]/workflow.astro` — the workflow panel (revision, 17 checks, review,
   schedules, publications) and exactly the command forms `permittedNextActions`
   allows; the draft page and every list row link here.
+- `[entryId]/related-content.astro` — CMS-03C-05 related content (ordered pins, exclusions, derived
+  rule); the draft page links here. Documented in `[entryId]/README.md`.
 - The document shell is
   `apps/web/src/components/cms-editorial/CmsEditorialDocument.astro`: processed
   Astro markup so the `route-heading-focus`, `auth-scope-sync` and

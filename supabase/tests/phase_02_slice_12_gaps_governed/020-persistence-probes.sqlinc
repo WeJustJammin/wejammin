@@ -1,0 +1,196 @@
+-- BE03c "Persistence" of the governed set, behaviour (the catalog half is phase_02_slice_12_gaps_persistence.sql):
+-- P2-S12-AC-251 (cms_governed_reviews), AC-252 (decisions, including the separation trigger), AC-253 (assignments), AC-254
+-- (dependencies), AC-255 (schedules).  Every probe is a direct statement as the test administrator inside the CMS RPC context
+-- (or outside it where the context is the point), rolled back by g2_try; the API roles are probed with real SET ROLE.
+-- Subjects: pa open (typeA), pb open (created by designer2, submitted by owner, one rev1 assignment), pd approved by rev1.
+select pg_temp.s12ga_open('pa', 'owner', array['typeA'], 'owner');
+select pg_temp.s12ga_open('pb', 'designer2', array['typeA'], 'owner');
+select pg_temp.s12ga_assign('as-pb-rev1', 'owner', pg_temp.s12ga_review('pb'), 'rev1', interval '20 hours');
+select pg_temp.s12gb_approved('pd');
+select ok(pg_temp.s12ga_out('mint:pa') = 'ok' and pg_temp.s12ga_out('submit:pa') = 'ok' and pg_temp.s12ga_out('submit:pb') = 'ok'
+    and pg_temp.s12ga_out('as-pb-rev1') = 'ok'
+    and (select r.state = 'open' and r.version = 1 from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('pa'))
+    and (select r.state = 'open' and r.submitted_by = pg_temp.s12ga_person('owner')
+           and s.created_by = pg_temp.s12ga_auth('designer2')
+         from platform_private.cms_governed_reviews r
+         join platform_private.cms_template_versions s on s.id = r.subject_id where r.id = pg_temp.s12ga_review('pb'))
+    and (select r.state = 'approved' from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('pd')),
+  'fixture: pa and pb are real open reviews (pb created by designer2, submitted by the owner), pd is a real approved review [P2-S12-AC-251]');
+
+-- ================================================================================== cms_governed_reviews (AC-251) ==
+select is(pg_temp.g2_try(pg_temp.g2_copy_review(pg_temp.s12ga_review('pa')), false), 'P0001:DIRECT_CMS_TABLE_WRITE',
+  'a review row cannot be inserted outside the RPC context: only the named governed RPC writes it [P2-S12-AC-251]');
+select alike(pg_temp.g2_try(pg_temp.g2_copy_review(pg_temp.s12ga_review('pa'))), '23505:%cms_governed_reviews_live_subject_unique%',
+  'a second live review of the same (subject_kind, subject_id) is refused by the partial unique index itself [P2-S12-AC-251]');
+select is(pg_temp.g2_try(pg_temp.g2_copy_review(pg_temp.s12ga_review('pa'),
+    jsonb_build_object('approval_evidence_hash', repeat('a', 64)))), 'P0001:VALIDATION_FAILED',
+  'the BEFORE INSERT trigger refuses an approval_evidence_hash that is not the JCS SHA-256 of { policyBasisHash, subjectHash, subjectId, subjectKind } [P2-S12-AC-251]');
+select is(pg_temp.g2_try(pg_temp.g2_copy_review(pg_temp.s12ga_review('pa'),
+    jsonb_build_object('subject_id', extensions.gen_random_uuid()))), 'P0001:VALIDATION_FAILED',
+  'the BEFORE INSERT trigger refuses a polymorphic subject_id that cms_governed_subject_resolve does not resolve [P2-S12-AC-251]');
+select is(pg_temp.g2_try(pg_temp.g2_copy_review(pg_temp.s12ga_review('pa'), jsonb_build_object('state', 'approved'))), 'P0001:VALIDATION_FAILED',
+  'a review is inserted open at version 1 with no decision: an inserted approved review is refused [P2-S12-AC-251]');
+select is(pg_temp.g2_try(pg_temp.g2_copy_review(pg_temp.s12ga_review('pa'), jsonb_build_object('subject_hash', repeat('b', 64)))), 'P0001:VALIDATION_FAILED',
+  'the INSERT trigger ties subject_hash to the resolved subject: a forged hash is refused [P2-S12-AC-251]');
+select is((select r.approval_evidence_hash::text from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('pa')),
+  platform_private.cms_jcs_sha256(jsonb_build_object(
+    'policyBasisHash', (select r.policy_basis_hash::text from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('pa')),
+    'subjectHash', (select r.subject_hash::text from platform_private.cms_governed_reviews r where r.id = pg_temp.s12ga_review('pa')),
+    'subjectId', pg_temp.s12ga_subject('pa'), 'subjectKind', 'template_version')),
+  'the stored approval_evidence_hash is the JCS SHA-256 of { policyBasisHash, subjectHash, subjectId, subjectKind } recomputed here [P2-S12-AC-251]');
+select is(pg_temp.g2_try(format('update platform_private.cms_governed_reviews set subject_hash = %L where id = %L', repeat('b', 64), pg_temp.s12ga_review('pa'))),
+  'P0001:IMMUTABLE_RECORD', 'the frozen subject_hash of a review never changes [P2-S12-AC-251]');
+select is(pg_temp.g2_try(format('update platform_private.cms_governed_reviews set required_decision_count = 2, required_capabilities = %L::jsonb where id = %L', '["cms.reviewer","x"]', pg_temp.s12ga_review('pa'))),
+  'P0001:IMMUTABLE_RECORD', 'the frozen decision count and capability slots of a review never change [P2-S12-AC-251]');
+select is(pg_temp.g2_try(format('update platform_private.cms_governed_reviews set state = %L where id = %L', 'approved', pg_temp.s12ga_review('pa'))),
+  'P0001:CONFLICT', 'state does not advance without the CAS version + 1 the RPCs write [P2-S12-AC-251]');
+select is(pg_temp.g2_try(format('update platform_private.cms_governed_reviews set state = %L, version = version + 1, recorded_decision_count = 1, decided_at = clock_timestamp(), updated_at = clock_timestamp() where id = %L', 'approved', pg_temp.s12ga_review('pa'))),
+  'P0001:CONFLICT', 'an approval with no decision rows behind it is refused even under the CAS version [P2-S12-AC-251]');
+select is(pg_temp.g2_try(format('delete from platform_private.cms_governed_reviews where id = %L', pg_temp.s12ga_review('pa'))),
+  'P0001:IMMUTABLE_RECORD', 'a review row is never deleted [P2-S12-AC-251]');
+select is(pg_temp.g2_denied_states(array[
+    'update platform_private.cms_governed_reviews set version = version where false',
+    'delete from platform_private.cms_governed_reviews where false',
+    'insert into platform_private.cms_governed_reviews select * from platform_private.cms_governed_reviews where false',
+    'select 1 from platform_private.cms_governed_reviews limit 1']),
+  array['42501'], 'anon, authenticated and service_role get a permission denial for every direct statement on cms_governed_reviews [P2-S12-AC-251]');
+
+-- ========================================================================== cms_governed_review_decisions (AC-252) ==
+select ok((select d.state = 'recorded' and d.version = 1 and d.updated_at = d.created_at and d.decision = 'approve'
+      from platform_private.cms_governed_review_decisions d where d.id = (pg_temp.s12ga_drow(pg_temp.s12ga_review('pd'), 'rev1')).id),
+  'a recorded decision row stores state recorded, version 1 and updated_at = created_at [P2-S12-AC-252]');
+select is(pg_temp.g2_try(format('update platform_private.cms_governed_review_decisions set reason = %L where id = %L', 'rewritten',
+    (pg_temp.s12ga_drow(pg_temp.s12ga_review('pd'), 'rev1')).id)), 'P0001:IMMUTABLE_RECORD',
+  'a recorded decision row cannot be updated [P2-S12-AC-252]');
+select is(pg_temp.g2_try(format('delete from platform_private.cms_governed_review_decisions where id = %L',
+    (pg_temp.s12ga_drow(pg_temp.s12ga_review('pd'), 'rev1')).id)), 'P0001:IMMUTABLE_RECORD',
+  'a recorded decision row cannot be deleted [P2-S12-AC-252]');
+select is(pg_temp.g2_try(pg_temp.g2_decision_insert(pg_temp.s12ga_review('pb'), pg_temp.s12ga_person('owner'))), 'P0001:separation_of_duties',
+  'the BEFORE INSERT trigger refuses a decision whose reviewer is the review submitter [P2-S12-AC-252]');
+select is(pg_temp.g2_try(pg_temp.g2_decision_insert(pg_temp.s12ga_review('pb'), pg_temp.s12ga_person('designer2'))), 'P0001:separation_of_duties',
+  'the BEFORE INSERT trigger refuses a decision whose reviewer is the creator of the subject version [P2-S12-AC-252]');
+select alike(pg_temp.g2_try(pg_temp.g2_decision_insert(pg_temp.s12ga_review('pb'), pg_temp.s12ga_person('rev1'))), '23503:%',
+  'control: the same insert for an eligible reviewer passes the separation trigger and stops at the assignment foreign key [P2-S12-AC-252]');
+select is(pg_temp.g2_denied_states(array[
+    'update platform_private.cms_governed_review_decisions set reason = reason where false',
+    'delete from platform_private.cms_governed_review_decisions where false',
+    'insert into platform_private.cms_governed_review_decisions select * from platform_private.cms_governed_review_decisions where false',
+    'select 1 from platform_private.cms_governed_review_decisions limit 1']),
+  array['42501'], 'anon, authenticated and service_role get a permission denial for every direct statement on cms_governed_review_decisions [P2-S12-AC-252]');
+
+-- ======================================================================= cms_governed_review_assignments (AC-253) ==
+select is(pg_temp.g2_try(format('update platform_private.cms_governed_review_assignments set reason = %L where id = %L', 'rewritten',
+    pg_temp.s12ga_aid(pg_temp.s12ga_review('pb'), 'rev1'))), 'P0001:IMMUTABLE_RECORD',
+  'an assignment keeps its identity: only state, version and updated_at may change [P2-S12-AC-253]');
+select is(pg_temp.g2_try(format('delete from platform_private.cms_governed_review_assignments where id = %L',
+    pg_temp.s12ga_aid(pg_temp.s12ga_review('pb'), 'rev1'))), 'P0001:IMMUTABLE_RECORD',
+  'an assignment is never deleted: it is revoked [P2-S12-AC-253]');
+select is(pg_temp.g2_try(format('update platform_private.cms_governed_review_assignments set version = version + 1, updated_at = clock_timestamp() where id = %L',
+    pg_temp.s12ga_aid(pg_temp.s12ga_review('pb'), 'rev1'))), 'P0001:CONFLICT',
+  'an assignment can only move active to revoked: a version bump that keeps it active is refused [P2-S12-AC-253]');
+select is(pg_temp.g2_try(format('update platform_private.cms_governed_review_assignments set state = %L, version = version + 1, updated_at = clock_timestamp() where id = %L',
+    'revoked', pg_temp.s12ga_aid(pg_temp.s12ga_review('pb'), 'rev1'))), '00000:',
+  'control: the one legal move, active to revoked at version + 1, is accepted by the table [P2-S12-AC-253]');
+select alike(pg_temp.g2_try(format($f$insert into platform_private.cms_governed_review_assignments
+      select (jsonb_populate_record(null::platform_private.cms_governed_review_assignments,
+        to_jsonb(a) || jsonb_build_object('id', extensions.gen_random_uuid()))).*
+        from platform_private.cms_governed_review_assignments a where a.id = %L$f$, pg_temp.s12ga_aid(pg_temp.s12ga_review('pb'), 'rev1'))),
+  '23505:%cms_governed_review_assignments_active_reviewer_unique%',
+  'a second active assignment of one reviewer on one review is refused by the partial unique index [P2-S12-AC-253]');
+select is(pg_temp.g2_denied_states(array[
+    'update platform_private.cms_governed_review_assignments set reason = reason where false',
+    'delete from platform_private.cms_governed_review_assignments where false',
+    'insert into platform_private.cms_governed_review_assignments select * from platform_private.cms_governed_review_assignments where false',
+    'select 1 from platform_private.cms_governed_review_assignments limit 1']),
+  array['42501'], 'anon, authenticated and service_role get a permission denial for every direct statement on cms_governed_review_assignments [P2-S12-AC-253]');
+
+-- ====================================================================== cms_governed_review_dependencies (AC-254) ==
+select is(pg_temp.g2_try(format('update platform_private.cms_governed_review_dependencies set kind = %L where review_id = %L', 'block', pg_temp.s12ga_review('pb'))),
+  'P0001:IMMUTABLE_RECORD', 'a frozen dependency row cannot be updated [P2-S12-AC-254]');
+select is(pg_temp.g2_try(format('delete from platform_private.cms_governed_review_dependencies where review_id = %L', pg_temp.s12ga_review('pb'))),
+  'P0001:IMMUTABLE_RECORD', 'a frozen dependency row cannot be deleted [P2-S12-AC-254]');
+select alike(pg_temp.g2_try(format($f$insert into platform_private.cms_governed_review_dependencies
+      select (jsonb_populate_record(null::platform_private.cms_governed_review_dependencies,
+        to_jsonb(d) || jsonb_build_object('id', extensions.gen_random_uuid()))).*
+        from platform_private.cms_governed_review_dependencies d where d.review_id = %L limit 1$f$, pg_temp.s12ga_review('pb'))),
+  '23505:%cms_governed_review_dependencies_review_kind_ref_key%',
+  'UNIQUE (review_id, kind, ref_id) refuses a dependency identity frozen twice [P2-S12-AC-254]');
+select is(pg_temp.g2_try(format($f$insert into platform_private.cms_governed_review_dependencies
+      select (jsonb_populate_record(null::platform_private.cms_governed_review_dependencies,
+        to_jsonb(d) || jsonb_build_object('id', extensions.gen_random_uuid(), 'ref_id', extensions.gen_random_uuid()))).*
+        from platform_private.cms_governed_review_dependencies d where d.review_id = %L limit 1$f$, pg_temp.s12ga_review('pd'))),
+  'P0001:CONFLICT', 'a dependency row can be added only while its review is still open at its submission version [P2-S12-AC-254]');
+select is(pg_temp.g2_try(format($f$insert into platform_private.cms_governed_review_dependencies
+      select (jsonb_populate_record(null::platform_private.cms_governed_review_dependencies,
+        to_jsonb(d) || jsonb_build_object('id', extensions.gen_random_uuid(), 'kind', 'unknown_kind', 'ref_id', extensions.gen_random_uuid()))).*
+        from platform_private.cms_governed_review_dependencies d where d.review_id = %L limit 1$f$, pg_temp.s12ga_review('pb'))),
+  '23514:new row for relation "cms_governed_review_dependencies" violates check constraint "cms_governed_review_dependencies_kind_check"',
+  'a dependency kind outside block, pattern, content_type and canonical_domain is refused by the CHECK [P2-S12-AC-254]');
+select ok((select count(*) filter (where d.kind = 'content_type') = 1 and count(*) = 1
+      from platform_private.cms_governed_review_dependencies d where d.review_id = pg_temp.s12ga_review('pb')),
+  'the one dependency a submit wrote for pb is the frozen content_type identity [P2-S12-AC-254]');
+select is(pg_temp.g2_denied_states(array[
+    'update platform_private.cms_governed_review_dependencies set kind = kind where false',
+    'delete from platform_private.cms_governed_review_dependencies where false',
+    'insert into platform_private.cms_governed_review_dependencies select * from platform_private.cms_governed_review_dependencies where false',
+    'select 1 from platform_private.cms_governed_review_dependencies limit 1']),
+  array['42501'], 'anon, authenticated and service_role get a permission denial for every direct statement on cms_governed_review_dependencies [P2-S12-AC-254]');
+
+-- ==================================================================== cms_governed_activation_schedules (AC-255) ==
+select pg_temp.s12gb_approved('ps');
+select pg_temp.s12gb_act('ps-sched', 'owner', pg_temp.s12ga_review('ps'), 'schedule');
+select ok(pg_temp.s12ga_out('ps-sched') = 'ok' and pg_temp.s12gb_sched('ps')->>'state' = 'pending'
+    and (pg_temp.s12gb_sched('ps')->>'attempt_count')::integer = 0 and pg_temp.s12gb_sched('ps')->'reason_code' = 'null'::jsonb,
+  'fixture: ps is a real approved review with one pending schedule written by CMS-03C-09 [P2-S12-AC-255]');
+create or replace function pg_temp.g2_sched_update(p_set text) returns text language sql stable as $body$
+  select pg_catalog.format('update platform_private.cms_governed_activation_schedules set %s where id = %L', p_set, pg_temp.s12gb_sid('ps'))
+$body$;
+select alike(pg_temp.g2_try(pg_temp.g2_sched_update('state = ''cancelled'', version = version + 1, updated_at = clock_timestamp()')),
+  '23514:%cms_governed_activation_schedules_reason_state_check%',
+  'a cancelled schedule without a reason_code is refused: reason_code is non-null exactly for blocked and cancelled [P2-S12-AC-255]');
+select alike(pg_temp.g2_try(pg_temp.g2_sched_update('state = ''executing'', lease_id = extensions.gen_random_uuid(), lease_until = clock_timestamp() + interval ''1 minute'', reason_code = ''dependency_changed'', version = version + 1, updated_at = clock_timestamp()')),
+  '23514:%cms_governed_activation_schedules_reason_state_check%',
+  'an executing schedule that carries a reason_code is refused [P2-S12-AC-255]');
+select alike(pg_temp.g2_try(pg_temp.g2_sched_update('state = ''cancelled'', reason_code = ''dependency_changed'', version = version + 1, updated_at = clock_timestamp()')),
+  '23514:%cms_governed_activation_schedules_cancelled_reason_check%',
+  'a cancelled schedule is always approval_invalidated [P2-S12-AC-255]');
+create or replace function pg_temp.g2_to_blocked(p_reason text) returns text language sql stable as $body$
+  select pg_catalog.format($f$do $x$ begin
+    %s;
+    update platform_private.cms_governed_activation_schedules set state = 'blocked', reason_code = %L, lease_id = null, lease_until = null,
+      version = version + 1, updated_at = clock_timestamp() where id = %L;
+  end $x$$f$,
+    pg_temp.g2_sched_update('state = ''executing'', lease_id = extensions.gen_random_uuid(), lease_until = clock_timestamp() + interval ''1 minute'', version = version + 1, updated_at = clock_timestamp()'),
+    p_reason, pg_temp.s12gb_sid('ps'))
+$body$;
+select alike(pg_temp.g2_try(pg_temp.g2_to_blocked('bogus_reason')), '23514:%cms_governed_activation_schedules_reason_code_check%',
+  'a blocked schedule refuses a reason_code outside the five closed reasons [P2-S12-AC-255]');
+select is(pg_temp.g2_try(pg_temp.g2_to_blocked('canonical_source_unavailable')), '00000:',
+  'a blocked schedule accepts canonical_source_unavailable [P2-S12-AC-255]');
+select is(array[pg_temp.g2_try(pg_temp.g2_to_blocked('approval_invalidated')), pg_temp.g2_try(pg_temp.g2_to_blocked('dependency_changed')),
+    pg_temp.g2_try(pg_temp.g2_to_blocked('activation_authority_ended'))],
+  array['00000:', '00000:', '00000:'], 'a blocked schedule accepts approval_invalidated, dependency_changed and activation_authority_ended [P2-S12-AC-255]');
+create or replace function pg_temp.g2_retry_cycles(p_cycles integer) returns text language sql stable as $body$
+  select pg_catalog.format($f$do $x$ declare i integer; begin
+    for i in 1 .. %s loop
+      update platform_private.cms_governed_activation_schedules set state = 'executing', lease_id = extensions.gen_random_uuid(),
+        lease_until = clock_timestamp() + interval '1 minute', version = version + 1, updated_at = clock_timestamp() where id = %L;
+      update platform_private.cms_governed_activation_schedules set state = 'failed_retryable', lease_id = null, lease_until = null,
+        attempt_count = attempt_count + 1, next_attempt_at = clock_timestamp() + interval '15 seconds',
+        version = version + 1, updated_at = clock_timestamp() where id = %L;
+    end loop;
+  end $x$$f$, p_cycles, pg_temp.s12gb_sid('ps'), pg_temp.s12gb_sid('ps'))
+$body$;
+select is(pg_temp.g2_try(pg_temp.g2_retry_cycles(3)), '00000:', 'attempt_count reaches 3 through three retryable failures [P2-S12-AC-255]');
+select alike(pg_temp.g2_try(pg_temp.g2_retry_cycles(4)), '23514:%cms_governed_activation_schedules_attempt_count_check%',
+  'a fourth retryable failure (attempt_count 4) is refused by the 0..3 CHECK [P2-S12-AC-255]');
+select is(pg_temp.g2_try(format('delete from platform_private.cms_governed_activation_schedules where id = %L', pg_temp.s12gb_sid('ps'))),
+  'P0001:IMMUTABLE_RECORD', 'a schedule row is never deleted [P2-S12-AC-255]');
+select is(pg_temp.g2_try(pg_temp.g2_sched_update('timezone = ''Europe/Paris''')), 'P0001:IMMUTABLE_RECORD',
+  'a schedule keeps its identity and time evidence: only the state, lease, attempt and reason columns move [P2-S12-AC-255]');
+select is(pg_temp.g2_denied_states(array[
+    'update platform_private.cms_governed_activation_schedules set state = state where false',
+    'delete from platform_private.cms_governed_activation_schedules where false',
+    'insert into platform_private.cms_governed_activation_schedules select * from platform_private.cms_governed_activation_schedules where false',
+    'select 1 from platform_private.cms_governed_activation_schedules limit 1']),
+  array['42501'], 'anon, authenticated and service_role get a permission denial for every direct statement on cms_governed_activation_schedules [P2-S12-AC-255]');

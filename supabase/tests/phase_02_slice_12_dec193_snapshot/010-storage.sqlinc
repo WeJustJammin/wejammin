@@ -1,0 +1,191 @@
+-- Storage assertions deliberately do not prescribe a future validator name.
+select ok(exists(select 1 from pg_catalog.pg_attribute
+  where attrelid = 'platform_private.cms_composition_instances'::regclass
+    and attname = 'detached_tree' and not attisdropped and not attnotnull
+    and atttypid = 'jsonb'::regtype),
+  'DEC-193 storage: detached_tree is nullable jsonb');
+select ok(exists(select 1
+  from pg_catalog.pg_constraint constraint_row
+  join pg_catalog.pg_attribute attr on attr.attrelid = constraint_row.conrelid
+    and attr.attnum = any(constraint_row.conkey) and attr.attname = 'detached_tree'
+  join pg_catalog.pg_depend dep on dep.classid = 'pg_constraint'::regclass
+    and dep.objid = constraint_row.oid and dep.refclassid = 'pg_proc'::regclass
+  join pg_catalog.pg_proc validator on validator.oid = dep.refobjid
+  where constraint_row.conrelid = 'platform_private.cms_composition_instances'::regclass
+    and constraint_row.contype = 'c' and constraint_row.convalidated
+    and validator.provolatile = 'i' and validator.prorettype = 'boolean'::regtype),
+  'DEC-193 storage: a validated CHECK depends on an immutable boolean validator');
+
+select * from pg_temp.s12dt_assert('minimal snapshot', pg_temp.s12dt_one());
+select * from pg_temp.s12dt_assert('root effective props stays JSON null', pg_temp.s12dt_one('null'));
+select * from pg_temp.s12dt_assert('legacy NULL permits old linked props', null, '00000',
+  jsonb_build_object('link_mode', 'linked', 'props',
+    '{"/shared1/hero":{"title":"Legacy local title"}}'::jsonb));
+select is(jsonb_array_length(pg_temp.s12dt_fanout(512)->'nodes'), 512,
+  '512-node premise: complete snapshot contains exactly 512 nodes');
+select ok(octet_length(pg_temp.s12dt_fanout(512)::text) > 262144,
+  '512-node premise: aggregate snapshot exceeds 256 KiB');
+select * from pg_temp.s12dt_assert('512 nodes, namespaces, scalar/null props, over 256 KiB',
+  pg_temp.s12dt_fanout(512));
+
+-- An open ancestor can close a completed branch. The same relative leaf key is
+-- legal under different parents; parent indices and node order are not sorted.
+select * from pg_temp.s12dt_assert('ordered preorder with a closed left branch',
+  pg_temp.s12dt_tree(jsonb_build_array(
+    pg_temp.s12dt_node(null, '["shared1","hero"]'),
+    pg_temp.s12dt_node(0, '["left"]'), pg_temp.s12dt_node(1, '["leaf"]'),
+    pg_temp.s12dt_node(0, '["right"]'), pg_temp.s12dt_node(3, '["leaf"]'))));
+with chain as (
+  select pg_temp.s12dt_tree(jsonb_agg(pg_temp.s12dt_node(
+    case when n = 0 then null else n - 1 end,
+    case when n = 0 then '["shared1","hero"]'::jsonb
+      else jsonb_build_array(repeat('a', 64)) end) order by n)) as tree
+  from generate_series(0, 10) n
+)
+select result from chain
+cross join lateral pg_temp.s12dt_assert(
+  '11 block levels and descendant address beyond 512 characters', chain.tree) result;
+select ok(length('/shared1/hero' || repeat('/' || repeat('a', 64), 10)) > 512,
+  'expanded address premise: valid descendants need not fit the stored row path cap');
+
+-- These are per-VALUE limits, not limits on nodes, aggregate property count, or
+-- tree depth. Whole-node overrides can be scalar, null, array, or a 128-key object.
+select * from pg_temp.s12dt_assert('per-value 128 object members', pg_temp.s12dt_one(
+  (select jsonb_object_agg('p' || n, n) from generate_series(1, 128) n)));
+select * from pg_temp.s12dt_assert('per-value 128 array items', pg_temp.s12dt_one(
+  (select jsonb_agg(n) from generate_series(1, 128) n)));
+select * from pg_temp.s12dt_assert('per-value eight container levels',
+  pg_temp.s12dt_one(pg_temp.s12dt_depth(8)));
+select is(octet_length(to_jsonb(repeat('x', 262142))::text), 262144,
+  'per-value byte premise: quoted scalar is exactly 256 KiB');
+select * from pg_temp.s12dt_assert('per-value exactly 256 KiB',
+  pg_temp.s12dt_one(to_jsonb(repeat('x', 262142))));
+select * from pg_temp.s12dt_assert('canonical child block identity upper bounds',
+  pg_temp.s12dt_tree(jsonb_build_array(
+    pg_temp.s12dt_node(null, '["shared1","hero"]'),
+    pg_temp.s12dt_node(0, '["child"]') || jsonb_build_object(
+      'blockKey', 'a' || repeat('b', 95), 'blockVersion', 2147483647))));
+
+create temp table s12dt_bad(label text primary key, tree jsonb,
+  row_patch jsonb not null default '{}'::jsonb) on commit drop;
+insert into s12dt_bad(label, tree) values
+  ('JSON null is not SQL NULL', 'null'),
+  ('outer array', '[]'), ('outer scalar', 'true'), ('outer empty object', '{}'),
+  ('missing format', pg_temp.s12dt_one() - 'format'),
+  ('wrong format', pg_temp.s12dt_one() || '{"format":"cms.detached_tree.v2"}'),
+  ('nonstring format', pg_temp.s12dt_one() || '{"format":1}'),
+  ('unknown outer field', pg_temp.s12dt_one() || '{"extra":null}'),
+  ('missing nodes', pg_temp.s12dt_one() - 'nodes'),
+  ('nodes null', pg_temp.s12dt_tree('null')),
+  ('nodes object', pg_temp.s12dt_tree('{}')),
+  ('zero nodes', pg_temp.s12dt_tree('[]')),
+  ('513 nodes', pg_temp.s12dt_fanout(513)),
+  ('node null', pg_temp.s12dt_tree('[null]')),
+  ('node array', pg_temp.s12dt_tree('[[]]')),
+  ('null child after valid matching root', pg_temp.s12dt_tree(jsonb_build_array(
+    pg_temp.s12dt_node(null, '["shared1","hero"]'), 'null'::jsonb))),
+  ('array child after valid matching root', pg_temp.s12dt_tree(jsonb_build_array(
+    pg_temp.s12dt_node(null, '["shared1","hero"]'), '[]'::jsonb))),
+  ('missing root parent is not explicit null', pg_temp.s12dt_tree(jsonb_build_array(
+    (pg_temp.s12dt_one()->'nodes'->0) - 'parent'))),
+  ('missing root props is not JSON null', pg_temp.s12dt_tree(jsonb_build_array(
+    (pg_temp.s12dt_one()->'nodes'->0) - 'props'))),
+  ('unknown node field', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,children}', '[]')),
+  ('root parent is zero', jsonb_set(pg_temp.s12dt_one(), '{nodes,0,parent}', '0')),
+  ('root parent is a string', jsonb_set(pg_temp.s12dt_one(), '{nodes,0,parent}', '"null"')),
+  ('segments not array', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '"hero"')),
+  ('segments empty', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '[]')),
+  ('segment null', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '[null]')),
+  ('segment numeric', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '[1]')),
+  ('segment boolean must not become text', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '[true]')),
+  ('empty segment', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '[""]')),
+  ('segment 65 characters', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}',
+    jsonb_build_array(repeat('a', 65)))),
+  ('uppercase key', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '["Hero"]')),
+  ('digit-leading key', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '["1hero"]')),
+  ('non-ASCII key', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '["héro"]')),
+  ('slash inside segment', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '["a/b"]')),
+  ('dot segment', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}', '[".."]')),
+  ('key trailing newline', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,keySegments}',
+    jsonb_build_array(E'hero\n'))),
+  ('block key empty', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockKey}', '""')),
+  ('block key boolean must not become text', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockKey}', 'true')),
+  ('block key uppercase', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockKey}', '"Hero"')),
+  ('block key 97 characters', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockKey}',
+    to_jsonb(repeat('a', 97)))),
+  ('block key trailing newline', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockKey}', to_jsonb(E's12pd.block\n'::text))),
+  ('block version zero', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockVersion}', '0')),
+  ('block version negative', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockVersion}', '-1')),
+  ('block version above int32', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockVersion}', '2147483648')),
+  ('block version fractional', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockVersion}', '1.5')),
+  ('block version string', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockVersion}', '"1"')),
+  ('block version null', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockVersion}', 'null')),
+  ('block version boolean', jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,blockVersion}', 'true')),
+  ('per-value above 256 KiB', pg_temp.s12dt_one(to_jsonb(repeat('x', 262143)))),
+  ('per-value 129 object members', pg_temp.s12dt_one(
+    (select jsonb_object_agg('p' || n, n) from generate_series(1, 129) n))),
+  ('per-value 129 array items', pg_temp.s12dt_one(
+    (select jsonb_agg(n) from generate_series(1, 129) n))),
+  ('per-value nine container levels', pg_temp.s12dt_one(pg_temp.s12dt_depth(9)));
+
+insert into s12dt_bad(label, tree)
+select 'missing node field ' || field,
+  jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1}',
+    (pg_temp.s12dt_fanout(2)->'nodes'->1) - field)
+from unnest(array['parent','keySegments','blockKey','blockVersion','props']) field;
+insert into s12dt_bad(label, tree)
+select 'child parent ' || label, jsonb_set(pg_temp.s12dt_fanout(2), '{nodes,1,parent}', value)
+from (values ('null / second root', 'null'::jsonb), ('negative', '-1'::jsonb),
+  ('self', '1'::jsonb), ('future', '2'::jsonb), ('fraction', '0.5'::jsonb),
+  ('string', '"0"'::jsonb), ('boolean', 'false'::jsonb)) invalid(label, value);
+insert into s12dt_bad(label, tree) values
+  ('closed parent reopened [null,0,0,1]', pg_temp.s12dt_tree(jsonb_build_array(
+    pg_temp.s12dt_node(null, '["shared1","hero"]'),
+    pg_temp.s12dt_node(0, '["left"]'), pg_temp.s12dt_node(0, '["right"]'),
+    pg_temp.s12dt_node(1, '["late"]')))),
+  ('duplicate reconstructed address', pg_temp.s12dt_tree(jsonb_build_array(
+    pg_temp.s12dt_node(null, '["shared1","hero"]'),
+    pg_temp.s12dt_node(0, '["ref","child"]'), pg_temp.s12dt_node(0, '["ref","child"]')))),
+  ('address ancestry contradicts parent', pg_temp.s12dt_tree(jsonb_build_array(
+    pg_temp.s12dt_node(null, '["shared1","hero"]'),
+    pg_temp.s12dt_node(0, '["branch"]'), pg_temp.s12dt_node(0, '["branch","leaf"]')))),
+  ('closed reference namespace reopened between siblings', pg_temp.s12dt_tree(jsonb_build_array(
+    pg_temp.s12dt_node(null, '["shared1","hero"]'),
+    pg_temp.s12dt_node(0, '["ref","left"]'), pg_temp.s12dt_node(0, '["other"]'),
+    pg_temp.s12dt_node(0, '["ref","right"]'))));
+insert into s12dt_bad(label, tree, row_patch) values
+  ('nonnull snapshot cannot be linked', pg_temp.s12dt_one(), '{"link_mode":"linked"}'),
+  ('nonnull snapshot requires empty row props', pg_temp.s12dt_one(), '{"props":{"/shared1/hero":null}}'),
+  ('root block key differs from row', jsonb_set(pg_temp.s12dt_one(), '{nodes,0,blockKey}', '"s12pd.high"'), '{}'),
+  ('root block version differs from row', jsonb_set(pg_temp.s12dt_one(), '{nodes,0,blockVersion}', '2'), '{}');
+
+-- One exact CHECK violation plus one complete no-effects oracle per bad candidate.
+-- BEFORE images include prior candidates, so rejected writes cannot mutate history.
+select result from s12dt_bad bad
+cross join lateral pg_temp.s12dt_assert(bad.label, bad.tree, '23514', bad.row_patch) result;
+select ok((select assigned_tree_is_sql_null is false and assigned_tree_kind = 'null'
+    from s12dt_out where label = 'JSON null is not SQL NULL')
+  and (select assigned_tree_is_sql_null is true and assigned_tree_kind is null
+    from s12dt_out where label = 'legacy NULL permits old linked props'),
+  'fixture premise: typed detached_tree assignment distinguishes JSONB null from SQL NULL');
+-- With app.cms_rpc=false the earlier derived-state guard can refuse a real
+-- target first. A single labelled missing revision naturally bypasses only its
+-- target-exists branch; gate=true must reach the FK before gate=false isolates
+-- the exact named write guard. No trigger or valid-target fixture is changed.
+create temp table s12dt_write_guard_missing_revision on commit drop as
+select extensions.gen_random_uuid() as id;
+select ok((select not exists(select 1 from platform_private.cms_entry_revisions revision_row
+    where revision_row.id = missing.id) from s12dt_write_guard_missing_revision missing),
+  'write guard premise: labelled missing revision UUID has no persisted parent');
+select result from s12dt_write_guard_missing_revision missing
+cross join lateral pg_temp.s12dt_assert('missing revision reaches FK with write gate enabled',
+  pg_temp.s12dt_one(), '23503', jsonb_build_object('revision_id', missing.id), true) result;
+select result from s12dt_write_guard_missing_revision missing
+cross join lateral pg_temp.s12dt_assert('direct write guard remains active',
+  pg_temp.s12dt_one(), 'P0001', jsonb_build_object('revision_id', missing.id), false) result;
+select is((select message from s12dt_out where label = 'direct write guard remains active'),
+  'DIRECT_CMS_TABLE_WRITE', 'direct write guard: exact existing token, not a snapshot refusal');
+select ok((select to_jsonb(inst) = src.row_value
+  from s12dt_source src join platform_private.cms_composition_instances inst
+    on inst.id::text = src.row_value->>'id'),
+  'legacy NULL source remains byte-identical after every storage probe');

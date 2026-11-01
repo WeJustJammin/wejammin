@@ -113,7 +113,7 @@ describe('entries/[entryId]/workflow.astro response invariants', () => {
   });
 
   it('maps a sign-in outcome to the allowlisted 303 only', () => {
-    expect(source).toContain('Astro.redirect(outcome.location, 303)');
-    expect(source).not.toContain('Astro.redirect(`');
+    expect(source).toContain('cmsRedirectResponse(outcome.location)');
+    expect(source).not.toContain('cmsRedirectResponse(`');
   });
 });

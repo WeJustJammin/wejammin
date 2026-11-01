@@ -1,0 +1,80 @@
+-- Defect 6 (governed-fix2): the governed recompute must ADMIT a registered deprecated block and refuse only a
+-- missing or withdrawn one.  BE03c 396 and 1361: CMS-03C-12 "rejects a missing, withdrawn or incompatible block"
+-- and admits a deprecated one; "the digest is recomputed again at activation and at 03b publication preflight".
+-- The pattern producer folds a deprecated block as `deprecated` (cms_pattern_registry_digest); before this fix the
+-- recompute raised CONFLICT, so a draft over a deprecated block was created but could never be submitted.  Real
+-- signed registration and lifecycle commands only (CMS-03A-05, CMS-03A-08); nothing is forged.
+select pg_temp.p_register('fixd:1', pg_temp.p_block_request('fixd', 1));
+select pg_temp.p_register('fixd:2', pg_temp.p_block_request('fixd', 2));
+select is((select string_agg(pg_temp.s09d_outcome(label), ',' order by label)
+             from (values ('fixd:1'), ('fixd:2')) v(label)),
+  'OK,OK', 'setup: two signed block versions register for the deprecated-block cases');
+
+-- The tuple the digest folds with an explicit lifecycle, built from the stored rows (not from the function under test).
+create or replace function pg_temp.fix_tuple_lc(p_key text, p_version integer, p_lifecycle text) returns jsonb
+language sql stable as $body$
+  select pg_temp.fix_tuple(p_key, p_version) || jsonb_build_object('lifecycle', p_lifecycle)
+$body$;
+create or replace function pg_temp.fix_tree_of(variadic p_versions integer[]) returns jsonb
+language sql immutable as $body$
+  select jsonb_build_object('blockTree', coalesce(jsonb_agg(pg_temp.fix_node('fixd', v) order by v), '[]'::jsonb))
+    from unnest(p_versions) v
+$body$;
+
+-- Control: before any lifecycle event, both blocks are supported and fold `supported` (unchanged behavior).
+select is(pg_temp.fix_digest('pattern_version', pg_temp.fix_tree_of(1, 2)),
+  platform_private.cms_jcs_sha256(jsonb_build_array(
+    pg_temp.fix_tuple_lc('fixd', 1, 'supported'), pg_temp.fix_tuple_lc('fixd', 2, 'supported'))),
+  'control: supported blocks fold `supported` before any lifecycle event [BE03c digest invariants]');
+
+select pg_temp.p_advance('fixd:1:deprecate', pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('fixd:1')->>'id')::uuid, 'supported', 'deprecated'));
+select is(pg_temp.s09d_outcome('fixd:1:deprecate'), 'OK',
+  'setup: the ordinary signed lifecycle command deprecates fixd v1');
+
+select is(pg_temp.fix_digest('pattern_version', pg_temp.fix_tree_of(1)),
+  platform_private.cms_jcs_sha256(jsonb_build_array(pg_temp.fix_tuple_lc('fixd', 1, 'deprecated'))),
+  'a deprecated block is admitted and folded as `deprecated` [BE03c 396, 1361]');
+select is(pg_temp.fix_digest('pattern_version', pg_temp.fix_tree_of(1, 2)),
+  platform_private.cms_jcs_sha256(jsonb_build_array(
+    pg_temp.fix_tuple_lc('fixd', 1, 'deprecated'), pg_temp.fix_tuple_lc('fixd', 2, 'supported'))),
+  'a deprecated and a supported block fold side by side, each with its own lifecycle [BE03c 1361]');
+select isnt(pg_temp.fix_digest('pattern_version', pg_temp.fix_tree_of(1, 2)),
+  platform_private.cms_jcs_sha256(jsonb_build_array(
+    pg_temp.fix_tuple_lc('fixd', 1, 'supported'), pg_temp.fix_tuple_lc('fixd', 2, 'supported'))),
+  'the lifecycle is a digest member: deprecating a block changes the digest [BE03c 306-313]');
+select is(pg_temp.fix_digest('pattern_version', pg_temp.fix_tree_of(2)),
+  platform_private.cms_jcs_sha256(jsonb_build_array(pg_temp.fix_tuple_lc('fixd', 2, 'supported'))),
+  'a tree that does not reach the deprecated block still folds `supported` [BE03c digest invariants]');
+
+select pg_temp.p_advance('fixd:1:withdraw', pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('fixd:1')->>'id')::uuid, 'deprecated', 'withdrawn'));
+select is(pg_temp.s09d_outcome('fixd:1:withdraw'), 'OK',
+  'setup: the ordinary signed lifecycle command withdraws fixd v1');
+select is(pg_temp.fix_digest('pattern_version', pg_temp.fix_tree_of(1)), 'RAISED P0001 CONFLICT',
+  'a withdrawn block is still refused by the recompute [BE03c 396, 1361]');
+select is(pg_temp.fix_digest('pattern_version', pg_temp.fix_tree_of(1, 2)), 'RAISED P0001 CONFLICT',
+  'a withdrawn block anywhere in the tree refuses the whole digest [BE03c 1361]');
+select is(pg_temp.fix_digest('pattern_version', pg_temp.fix_tree_of(2)),
+  platform_private.cms_jcs_sha256(jsonb_build_array(pg_temp.fix_tuple_lc('fixd', 2, 'supported'))),
+  'a tree that does not reach the withdrawn block is unaffected [BE03c digest invariants]');
+
+-- The template and taxonomy branches, and everything outside the pattern branch, are byte-identical to the applied
+-- body: the digest function source before the pattern branch and after it hashes to the applied bytes
+-- (md5 of the 300400 text before `elsif p_kind = 'pattern_version' then` and of the closing `return null` block).
+create temp table fix_digest_src(src text not null) on commit drop;
+insert into fix_digest_src
+select proc.prosrc from pg_catalog.pg_proc proc
+ where proc.oid = 'platform_private.cms_governed_current_digest(text,uuid,jsonb)'::regprocedure;
+select is(
+  (select md5(substr(src, 1, strpos(src, 'elsif p_kind = ''pattern_version'' then') - 1)) from fix_digest_src),
+  '28ad23e75b0b273a89e9e72c092f8422',
+  'the template branch and declarations are byte-identical to the applied body [BE03c digest invariants]');
+select is(
+  (select md5(substr(src, strpos(src, '    return platform_private.cms_jcs_sha256(tuples);'))) from fix_digest_src),
+  'd3efc21946cb1889ea6a07b482c5b9af',
+  'the fold return and the taxonomy fall-through are byte-identical to the applied body [BE03c digest invariants]');
+select ok((select src ~ 'if coalesce\(current_lifecycle, ''supported''\) = ''withdrawn'' then\s+raise exception ''CONFLICT'' using errcode = ''P0001'';'
+                  and src !~ 'current_lifecycle, ''supported''\) <> ''supported'''
+             from fix_digest_src),
+  'catalog source: only a withdrawn block raises; the supported-only guard is gone [BE03c 396, 1361]');

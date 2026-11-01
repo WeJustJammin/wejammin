@@ -1,0 +1,102 @@
+-- Contract of the two functions: they exist, the request is strict, the privilege boundary holds.  Nothing here writes a governed row.
+select has_function('platform_api', 'cms_recheck_governed_reviews', array['jsonb'],
+  'the recheck job has a named platform API RPC cms_recheck_governed_reviews(request) (BE03c "Internal RPCs": the closed RPC list) [P2-S12-AC-203]');
+select has_function('platform_private', 'cms_recheck_governed_reviews', array['jsonb'],
+  'the recheck job has an atomic private implementation [P2-S12-AC-203]');
+select has_function('platform_private', 'cms_invalidate_governed_reviews_for_person', array['uuid', 'text'],
+  'cms_invalidate_governed_reviews_for_person(person_id, capability) exists (BE03c "Reviewer-authority invalidation on revocation" G6) [P2-S12-AC-204]');
+
+select pg_temp.s12gr_count_mark('contract');
+-- a well-formed request that selects nothing (no review depends on a random block identity)
+select pg_temp.s12gr_run('v-empty', 'block', extensions.gen_random_uuid());
+select is(pg_temp.s12gb_sbody('v-empty'), pg_temp.s12gr_result(0, 0, 0, 0, null),
+  'a recheck over an identity no live review froze answers { examined, invalidated, dependencyChanged, reviewerAuthorityChanged, unavailable: 0, nextCursor: null } [P2-S12-AC-203]');
+select pg_temp.s12gr_run('v-batch-500', 'canonical_domain', extensions.gen_random_uuid(), null, 500);
+select pg_temp.s12gr_run('v-batch-1', 'pattern', extensions.gen_random_uuid(), null, 1);
+select is(pg_temp.s12gb_sout('v-batch-500') || '|' || pg_temp.s12gb_sout('v-batch-1'), 'ok|ok',
+  'the four dependency kinds are accepted and batch 1 and batch 500 are the bounds of a run [P2-S12-AC-203]');
+
+select pg_temp.s12gr_run('v-kind-schema', 'schema', extensions.gen_random_uuid());
+select pg_temp.s12gr_run('v-kind-unknown', 'template', extensions.gen_random_uuid());
+select pg_temp.s12gr_run('v-ref', 'block', null, null, null, jsonb_build_object('refId', 'not-a-uuid'));
+select pg_temp.s12gr_run('v-cursor', 'block', extensions.gen_random_uuid(), null, null, jsonb_build_object('cursor', 'not-a-uuid'));
+select pg_temp.s12gr_run('v-extra', 'block', extensions.gen_random_uuid(), null, null, jsonb_build_object('actorId', extensions.gen_random_uuid()));
+select pg_temp.s12gr_run('v-no-event', 'block', extensions.gen_random_uuid(), null, null, '{}'::jsonb, array['eventId']);
+select pg_temp.s12gr_run('v-no-cursor', 'block', extensions.gen_random_uuid(), null, null, '{}'::jsonb, array['cursor']);
+select pg_temp.s12gr_run('v-batch-0', 'block', extensions.gen_random_uuid(), null, 0);
+select pg_temp.s12gr_run('v-batch-501', 'block', extensions.gen_random_uuid(), null, 501);
+select pg_temp.s12gr_run('v-batch-text', 'block', extensions.gen_random_uuid(), null, null, jsonb_build_object('batch', '5'));
+select pg_temp.s12gr_run('v-batch-frac', 'block', extensions.gen_random_uuid(), null, null, jsonb_build_object('batch', 1.5));
+select is(
+  (select string_agg(label || '=' || pg_temp.s12gb_sout(label), ';' order by label collate "C")
+     from unnest(array['v-kind-schema', 'v-kind-unknown', 'v-ref', 'v-cursor', 'v-extra', 'v-no-event', 'v-no-cursor',
+       'v-batch-0', 'v-batch-501', 'v-batch-text', 'v-batch-frac']) label),
+  'v-batch-0=P0001:INVALID_REQUEST;v-batch-501=P0001:INVALID_REQUEST;v-batch-frac=P0001:INVALID_REQUEST;v-batch-text=P0001:INVALID_REQUEST;'
+  || 'v-cursor=P0001:INVALID_REQUEST;v-extra=P0001:INVALID_REQUEST;v-kind-schema=P0001:INVALID_REQUEST;v-kind-unknown=P0001:INVALID_REQUEST;'
+  || 'v-no-cursor=P0001:INVALID_REQUEST;v-no-event=P0001:INVALID_REQUEST;v-ref=P0001:INVALID_REQUEST',
+  'a request outside { eventId, kind in block|pattern|content_type|canonical_domain, refId, cursor, batch 1..500 } is INVALID_REQUEST, a run never exceeds 500 reviews [P2-S12-AC-203]');
+select ok((select audits = (select count(*) from audit_private.audit_events) and events = (select count(*) from platform_private.outbox_events)
+             from s12gr_counts where label = 'contract'),
+  'rejected and empty runs write no audit record and emit no event [P2-S12-AC-203]');
+
+select is(
+  (select string_agg(r || '=' || pg_temp.s12ga_denied(r, 'select platform_api.cms_recheck_governed_reviews(''{}''::jsonb)'),
+                     ';' order by r collate "C") from unnest(array['anon', 'authenticated']) r),
+  'anon=42501;authenticated=42501', 'anon and authenticated may not execute the recheck RPC [P2-S12-AC-202]');
+select is(pg_temp.s12ga_denied('service_role', 'select platform_private.cms_recheck_governed_reviews(''{}''::jsonb)'), '42501',
+  'service_role may not execute the private recheck implementation, only the platform API wrapper [P2-S12-AC-202]');
+select ok(pg_temp.s12gr_priv('service_role', 'platform_api.cms_recheck_governed_reviews(jsonb)')
+    and not pg_temp.s12gr_priv('public', 'platform_api.cms_recheck_governed_reviews(jsonb)')
+    and to_regprocedure('platform_private.cms_recheck_governed_reviews(jsonb)') is not null
+    and not pg_temp.s12gr_priv('public', 'platform_private.cms_recheck_governed_reviews(jsonb)')
+    and to_regprocedure('platform_private.cms_invalidate_governed_reviews_for_person(uuid, text)') is not null
+    and not pg_temp.s12gr_priv('service_role', 'platform_private.cms_invalidate_governed_reviews_for_person(uuid, text)')
+    and not pg_temp.s12gr_priv('authenticated', 'platform_private.cms_invalidate_governed_reviews_for_person(uuid, text)')
+    and not pg_temp.s12gr_priv('anon', 'platform_private.cms_invalidate_governed_reviews_for_person(uuid, text)')
+    and not pg_temp.s12gr_priv('public', 'platform_private.cms_invalidate_governed_reviews_for_person(uuid, text)'),
+  'the recheck wrapper is service_role only; the private recheck and the person invalidation are executable by no API role [P2-S12-AC-202]');
+select has_function('platform_private', 'cms_governed_invalidate_review_if_live', array['uuid', 'text', 'uuid', 'uuid', 'uuid'],
+  'the per-candidate step of the person invalidation exists: it locks the subject, re-reads the review and invalidates it only if it is still live (DEC-221) [P2-S12-AC-204]');
+select ok(
+  (select count(*) = 7 and bool_and(proc.prosecdef and proc.proconfig = array['search_path=""']
+            and pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer')
+     from pg_proc proc
+    where proc.oid in (to_regprocedure('platform_api.cms_recheck_governed_reviews(jsonb)'),
+                       to_regprocedure('platform_private.cms_recheck_governed_reviews(jsonb)'),
+                       to_regprocedure('platform_private.cms_invalidate_governed_reviews_for_person(uuid, text)'),
+                       to_regprocedure('platform_private.cms_governed_recheck_verdict(uuid)'),
+                       to_regprocedure('platform_private.cms_governed_invalidate_review_if_live(uuid, text, uuid, uuid, uuid)'),
+                       to_regprocedure('platform_private.cms_governed_authority_trigger()'),
+                       to_regprocedure('platform_private.cms_governed_tenure_authority_trigger()'))),
+  'all seven functions (the recheck pair, the verdict, the person invalidation and its per-candidate step, and the two trigger functions) are SECURITY DEFINER, empty search_path and owned by the CMS definer role [P2-S12-AC-202]');
+select ok(
+  (select count(*) = 3 from pg_proc proc
+    where proc.oid in (to_regprocedure('platform_private.cms_governed_invalidate_review_if_live(uuid, text, uuid, uuid, uuid)'),
+                       to_regprocedure('platform_private.cms_governed_authority_trigger()'),
+                       to_regprocedure('platform_private.cms_governed_tenure_authority_trigger()')))
+  and not exists (
+    select 1
+      from unnest(array['service_role', 'authenticated', 'anon', 'public']) role_name,
+           unnest(array['platform_private.cms_governed_invalidate_review_if_live(uuid, text, uuid, uuid, uuid)',
+                        'platform_private.cms_governed_authority_trigger()',
+                        'platform_private.cms_governed_tenure_authority_trigger()']) signature
+     where pg_temp.s12gr_priv(role_name, signature)),
+  'the per-candidate step and both trigger functions are executable by no API role (service_role, authenticated, anon, public) [P2-S12-AC-202]');
+select ok((select count(*) >= 12 and bool_and(rpc_user = 'service_role' and before_user = after_user) from s12gb_sys),
+  'role control: every recheck of this suite really executed as service_role and restored the session role [P2-S12-AC-202]');
+
+-- The event resolver the producers call (reuses the Slice 11 identity lookup; maps it to the governed kind).
+select has_function('platform_api', 'cms_governed_recheck_resolve_event', array['uuid'],
+  'the producers have a named platform API RPC cms_governed_recheck_resolve_event(event_id) [P2-S12-AC-202]');
+select ok(pg_temp.s12gr_priv('service_role', 'platform_api.cms_governed_recheck_resolve_event(uuid)')
+    and not pg_temp.s12gr_priv('public', 'platform_api.cms_governed_recheck_resolve_event(uuid)')
+    and not pg_temp.s12gr_priv('anon', 'platform_api.cms_governed_recheck_resolve_event(uuid)')
+    and not pg_temp.s12gr_priv('authenticated', 'platform_api.cms_governed_recheck_resolve_event(uuid)')
+    and to_regprocedure('platform_private.cms_governed_recheck_event_ref(uuid)') is not null
+    and not pg_temp.s12gr_priv('service_role', 'platform_private.cms_governed_recheck_event_ref(uuid)')
+    and (select count(*) = 2 and bool_and(proc.prosecdef and proc.proconfig = array['search_path=""']
+                and pg_get_userbyid(proc.proowner) = 'wejammin_cms_definer')
+           from pg_proc proc
+          where proc.oid in (to_regprocedure('platform_api.cms_governed_recheck_resolve_event(uuid)'),
+                             to_regprocedure('platform_private.cms_governed_recheck_event_ref(uuid)'))),
+  'the resolver wrapper is service_role only; both functions are SECURITY DEFINER with an empty search_path owned by the CMS definer role [P2-S12-AC-202]');

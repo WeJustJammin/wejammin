@@ -1,0 +1,263 @@
+-- DEC-202 policy TEST support. No production row is fabricated or guard disabled.
+create temp table s12edp_saved(key text primary key, value jsonb) on commit drop;
+create temp table s12edp_setup(label text primary key, code text, message text) on commit drop;
+create temp table s12edp_calls(label text primary key, request jsonb, response jsonb,
+  code text, message text, detail text, headers text, call_role text, restored boolean,
+  before_image jsonb, after_image jsonb) on commit drop;
+create function pg_temp.s12edp_context() returns jsonb language plpgsql as $body$
+declare name text; answer jsonb := '{}'::jsonb;
+begin
+  foreach name in array array[
+    'request.jwt.claims','request.jwt.claim.role','request.jwt.claim.sub',
+    'app.auth_user_id','app.actor_auth_user_id','app.actor_person_id',
+    'app.acting_party_id','app.acting_context_id','app.cms_session_actor','app.cms_session_party',
+    'app.mfa_session_subject','app.step_up_verified','app.cms_rpc','app.cfg_rpc',
+    'app.correlation_id','app.idempotency_key_hash','app.request_hash','app.release_principal_id',
+    'response.headers','response.status','role','app.cms_governed_lifecycle','search_path','request.headers'] loop
+    answer := answer || jsonb_build_object(name, coalesce(current_setting(name, true), ''));
+  end loop;
+  return answer;
+end;
+$body$;
+create function pg_temp.s12edp_restore(p_context jsonb) returns void language plpgsql as $body$
+declare item record;
+begin
+  perform set_config('role', p_context->>'role', true);
+  for item in select key, value from jsonb_each_text(p_context) where key <> 'role' loop
+    perform set_config(item.key, item.value, true);
+  end loop;
+end;
+$body$;
+-- Hardcoded test SQL only. Producer failures remain explicit premise failures.
+create function pg_temp.s12edp_step(p_label text, p_sql text) returns void language plpgsql as $body$
+declare prior jsonb := pg_temp.s12edp_context(); code text := '00000'; message text;
+begin
+  begin execute p_sql;
+  exception when others then get stacked diagnostics code = returned_sqlstate, message = message_text;
+  end;
+  perform pg_temp.s12edp_restore(prior);
+  if pg_temp.s12edp_context() <> prior then raise exception 'policy setup context not restored'; end if;
+  insert into s12edp_setup values (p_label, code, message);
+exception when others then perform pg_temp.s12edp_restore(prior); raise;
+end;
+$body$;
+create function pg_temp.s12edp_inventory() returns jsonb language sql stable as $body$
+  select coalesce(jsonb_agg(jsonb_build_object('schema', n.nspname, 'table', c.relname,
+    'oid', c.oid::bigint) order by n.nspname collate "C", c.relname collate "C"), '[]'::jsonb)
+  from pg_class c join pg_namespace n on n.oid = c.relnamespace
+  where c.relkind in ('r', 'p') and ((n.nspname = 'platform_private'
+    and (left(c.relname, 4) = 'cms_' or c.relname in ('idempotency_records','outbox_events','jobs')))
+    or (n.nspname = 'audit_private' and c.relname = 'audit_events'))
+$body$;
+insert into s12edp_saved values ('inventory', pg_temp.s12edp_inventory());
+create function pg_temp.s12edp_image() returns jsonb language plpgsql as $body$
+declare item jsonb; rows jsonb; answer jsonb := '{}'::jsonb;
+begin
+  for item in select value from jsonb_array_elements((select value from s12edp_saved where key = 'inventory')) loop
+    execute format('select coalesce(jsonb_agg(to_jsonb(t) order by to_jsonb(t)::text collate "C"), ''[]''::jsonb) from %I.%I t',
+      item->>'schema', item->>'table') into rows;
+    answer := answer || jsonb_build_object((item->>'schema') || '.' || (item->>'table'), rows);
+  end loop;
+  return jsonb_build_object('inventory', pg_temp.s12edp_inventory(), 'stores', answer);
+end;
+$body$;
+create function pg_temp.s12edp_receipt(p_request jsonb) returns jsonb language sql stable as $body$
+  select to_jsonb(r) from platform_private.idempotency_records r
+  where r.actor_id = (p_request#>>'{context,authUserId}')::uuid and r.operation = 'CMS-03B-10'
+    and r.key_hash = platform_private.cms_key_hash(p_request->>'idempotencyKey')
+$body$;
+create function pg_temp.s12edp_request(p_tag text, p_title text, p_key text) returns jsonb language plpgsql as $body$
+declare prior jsonb := pg_temp.s12edp_context(); answer jsonb;
+begin
+  answer := pg_temp.s12edt_request(p_tag, p_title) || jsonb_build_object(
+    'idempotencyKey', p_key, 'context', pg_temp.s09d_context('owner', true));
+  perform pg_temp.s12edp_restore(prior);
+  return answer;
+exception when others then perform pg_temp.s12edp_restore(prior); raise;
+end;
+$body$;
+-- Only the real RPC is caught. The exact supplied request is never regenerated.
+create function pg_temp.s12edp_call(p_label text, p_request jsonb) returns void language plpgsql as $body$
+declare prior jsonb := pg_temp.s12edp_context(); prior_user text := current_user;
+  answer jsonb; code text := '00000'; message text; detail text; headers text; invoked text;
+  before_image jsonb; before_metadata jsonb; entries bigint; revisions bigint;
+begin
+  perform pg_temp.s09d_session('owner', 'service_role');
+  before_image := pg_temp.s12edp_image(); before_metadata := pg_temp.s12edt_metadata();
+  select count(*) into entries from platform_private.cms_content_entries;
+  select count(*) into revisions from platform_private.cms_entry_revisions;
+  perform set_config('response.headers', '', true); perform set_config('response.status', '', true);
+  set local role service_role; invoked := current_user;
+  begin answer := platform_api.cms_create_entry(p_request);
+  exception when others then
+    get stacked diagnostics code = returned_sqlstate, message = message_text, detail = pg_exception_detail;
+  end;
+  headers := current_setting('response.headers', true);
+  perform pg_temp.s12edp_restore(prior);
+  if current_user <> prior_user or pg_temp.s12edp_context() <> prior then
+    raise exception 'policy RPC context not restored';
+  end if;
+  insert into s12edp_calls values (p_label, p_request, answer, code, message, detail, headers, invoked,
+    true, before_image, pg_temp.s12edp_image());
+  insert into s12edt_out values (p_label, p_request, answer, code, message, invoked, entries, revisions,
+    before_metadata, pg_temp.s12edt_metadata());
+exception when others then perform pg_temp.s12edp_restore(prior); raise;
+end;
+$body$;
+create function pg_temp.s12edp_added(p_before jsonb, p_after jsonb, p_table text)
+returns jsonb language sql immutable as $body$
+  select coalesce(jsonb_agg(value order by value::text collate "C"), '[]'::jsonb) from (
+    select value from jsonb_array_elements(p_after->'stores'->p_table)
+    except all select value from jsonb_array_elements(p_before->'stores'->p_table)) added
+$body$;
+create function pg_temp.s12edp_schema_chain(p_tag text, p_initial boolean) returns boolean language sql stable as $body$
+  select count(*) = 10 and bool_and(coalesce(p.state = '00000' and p.response is not null, false))
+  from unnest(array['draft','dryRun','plan.get','plan.claim','plan.batch','plan.seal',
+    'submit','assignment','decision','activate']) step
+  left join s09d_probe p on p.label = p_tag || ':' || case step
+    when 'draft' then case when p_initial then 'create' else 'successor' end
+    when 'assignment' then 'assign:rev3' when 'decision' then 'decide:rev3' else step end
+$body$;
+create function pg_temp.s12edp_template_chain(p_tag text, p_activate boolean) returns boolean language sql stable as $body$
+  select count(*) = case when p_activate then 5 else 4 end
+    and bool_and(coalesce(r.state = '00000' and r.rpc_user = 'service_role' and r.before_user = r.after_user, false))
+  from unnest(array['mint:' || p_tag,'submit:' || p_tag,'as-' || p_tag,'ap-' || p_tag]
+    || case when p_activate then array[p_tag || '-activate'] else array[]::text[] end) expected(label)
+  left join s12ga_rcpt r on r.label = expected.label
+$body$;
+-- Full old rows must survive; ONLY these exact appended units are allowed.
+create function pg_temp.s12edp_delta(p_label text) returns boolean language plpgsql as $body$
+declare c s12edp_calls; item record; added jsonb; expected integer;
+  entry_id text; revision_id text; owner_id text := pg_temp.s09d_id('ownerOrg')::text;
+  actor_id text := pg_temp.s09d_actor_id('owner', 'auth'); effect jsonb; receipt jsonb;
+  wire_time text := pg_catalog.to_char(pg_catalog.transaction_timestamp() at time zone 'UTC',
+    'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'); wire_wrong boolean;
+begin
+  select * into c from s12edp_calls where label = p_label;
+  if c.code is distinct from '00000' or c.restored is distinct from true
+    or c.before_image->'inventory' is distinct from c.after_image->'inventory'
+    or c.after_image->'inventory' is distinct from (select value from s12edp_saved where key = 'inventory') then return false; end if;
+  entry_id := c.response#>>'{entry,id}'; revision_id := c.response#>>'{revision,id}';
+  wire_wrong := c.response#>>'{entry,createdAt}' is distinct from wire_time
+    or c.response#>>'{entry,updatedAt}' is distinct from wire_time
+    or c.response#>>'{revision,createdAt}' is distinct from wire_time
+    or c.response#>>'{revision,updatedAt}' is distinct from wire_time;
+  for item in select key, value from jsonb_each(c.before_image->'stores') loop
+    if not (c.after_image->'stores'->item.key @> item.value) then return false; end if;
+    added := pg_temp.s12edp_added(c.before_image, c.after_image, item.key);
+    expected := case when item.key in ('platform_private.cms_content_entries','platform_private.cms_entry_revisions',
+      'platform_private.cms_entry_field_values','platform_private.cms_entry_assignments',
+      'platform_private.idempotency_records','platform_private.outbox_events','audit_private.audit_events') then 1 else 0 end;
+    if item.key = 'platform_private.cms_publication_settings_snapshots' then
+      expected := case when exists (select 1 from jsonb_array_elements(item.value) v
+        where v->>'owner_id' = owner_id and v->'effective_values' = '[]'::jsonb) then 0 else 1 end;
+    end if;
+    if jsonb_array_length(added) <> expected
+      or jsonb_array_length(c.after_image->'stores'->item.key) <> jsonb_array_length(item.value) + expected then return false; end if;
+    if expected = 0 then continue; end if;
+    effect := added->0;
+    if item.key in ('platform_private.cms_content_entries','platform_private.cms_entry_revisions',
+      'platform_private.cms_entry_field_values','platform_private.cms_entry_assignments') and not wire_wrong then
+      if (effect->>'created_at')::timestamptz is distinct from (c.response#>>'{revision,createdAt}')::timestamptz then
+        raise notice 'EDP_DELTA_TIME label=% table=% legacy_mismatch=% stored_tx=% wire_format=% updated_equal=%',
+          p_label,item.key,true,(effect->>'created_at')::timestamptz is not distinct from pg_catalog.transaction_timestamp(),
+          not wire_wrong,(effect->>'updated_at')::timestamptz is not distinct from (effect->>'created_at')::timestamptz;
+      end if;
+    end if;
+    if item.key in ('platform_private.cms_content_entries','platform_private.cms_entry_revisions',
+      'platform_private.cms_entry_field_values','platform_private.cms_entry_assignments') and (
+      effect->>'owner_id' is distinct from owner_id or effect->>'version' is distinct from '1'
+      or (effect->>'created_at')::timestamptz is distinct from pg_catalog.transaction_timestamp()
+      or (effect->>'updated_at')::timestamptz is distinct from (effect->>'created_at')::timestamptz
+      or wire_wrong) then return false; end if;
+    if item.key = 'platform_private.cms_content_entries' and effect->>'id' is distinct from entry_id then return false;
+    elsif item.key = 'platform_private.cms_entry_revisions' and (effect->>'id' is distinct from revision_id or effect->>'entry_id' is distinct from entry_id) then return false;
+    elsif item.key = 'platform_private.cms_entry_field_values' and (effect->>'revision_id' is distinct from revision_id
+      or effect->>'state' is distinct from 'active' or effect->>'provenance' is distinct from 'authored'
+      or effect->>'locale' is distinct from 'en-US'
+      or effect->>'value_hash' is distinct from platform_private.cms_jcs_sha256(effect->'value')
+      or effect->>'field_definition_id' is distinct from (select id::text from platform_private.cms_field_definition_versions
+        where content_type_version_id = (c.request->>'contentTypeVersionId')::uuid and stable_field_id = (effect->>'field_id')::uuid)
+      or jsonb_build_object(effect->>'field_id', effect->'value') is distinct from c.request->'values') then return false;
+    elsif item.key = 'platform_private.cms_entry_assignments' and (effect->>'entry_id' is distinct from entry_id
+      or effect->>'owner_id' is distinct from owner_id or effect->>'assignee_person_id' is distinct from pg_temp.s09d_actor_id('owner', 'person')
+      or effect->>'capability_key' is distinct from 'cms.author' or effect->>'state' is distinct from 'active' or effect->>'version' is distinct from '1') then return false;
+    elsif item.key = 'platform_private.idempotency_records' then
+      receipt := pg_temp.s12edp_receipt(c.request);
+      if effect is distinct from receipt or effect->>'state' is distinct from 'completed' or effect#>>'{response_ref,status}' is distinct from '201'
+        or effect#>>'{response_ref,resourceRef}' is distinct from entry_id
+        or effect#>'{response_ref,safeHeaders,response}' is distinct from c.response then return false; end if;
+    elsif item.key = 'platform_private.outbox_events' and (effect->>'event_type' is distinct from 'cms.entry.revision-created.v1'
+      or effect->>'schema_version' is distinct from '1' or effect->>'aggregate_type' is distinct from 'cms_content_entry'
+      or effect->>'aggregate_id' is distinct from entry_id or effect->>'aggregate_version' is distinct from '1'
+      or effect->'payload' is distinct from jsonb_build_object('entryId', entry_id, 'revisionId', revision_id)
+      or effect->>'correlation_id' is distinct from c.request#>>'{context,correlationId}') then return false;
+    elsif item.key = 'audit_private.audit_events' and (effect->>'action' is distinct from 'cms.entry.revision.create'
+      or effect->>'actor_id' is distinct from actor_id or effect->>'acting_party_id' is distinct from owner_id
+      or effect->>'target_type' is distinct from 'cms_content_entry' or effect->>'target_id' is distinct from entry_id
+      or effect->>'decision' is distinct from 'allowed' or effect->>'reason_code' is distinct from 'CMS_ENTRY_REVISION_CREATED'
+      or effect->>'correlation_id' is distinct from c.request#>>'{context,correlationId}') then return false;
+    elsif item.key = 'platform_private.cms_publication_settings_snapshots' and (effect->>'owner_id' is distinct from owner_id
+      or effect->>'state' is distinct from 'active' or effect->>'version' is distinct from '1' or effect->>'registry_version' is distinct from '1'
+      or (effect->>'ordinal')::bigint is distinct from (select coalesce(max((v->>'ordinal')::bigint),0)+1
+        from jsonb_array_elements(item.value) v where v->>'owner_id' = owner_id)
+      or effect->'effective_values' is distinct from '[]'::jsonb or effect->>'snapshot_hash' is distinct from platform_private.cms_jcs_sha256('[]'::jsonb)) then return false;
+    end if;
+  end loop;
+  return entry_id is not null and revision_id is not null and receipt is not null;
+end;
+$body$;
+-- Exact original twelve comparisons; ONLY name and the producer invocation differ.
+create function pg_temp.s12edp_check_saved(p_tag text, p_title text, p_template uuid, p_slots jsonb,
+  p_actor text default 'owner', p_assignment text default 'cms.author')
+returns setof text language plpgsql as $body$
+declare result s12edt_out; entry_row platform_private.cms_content_entries;
+  revision_row platform_private.cms_entry_revisions; field_id uuid; expected_hash text;
+  case_label text := p_tag || case when p_actor = 'owner' then '' else ':' || p_actor end;
+begin
+  select * into result from s12edt_out where label = case_label;
+  select * into entry_row from platform_private.cms_content_entries where id = (result.response->'entry'->>'id')::uuid;
+  select * into revision_row from platform_private.cms_entry_revisions where id = (result.response->'revision'->>'id')::uuid;
+  select stable_field_id into field_id from platform_private.cms_field_definition_versions
+    where content_type_version_id = pg_temp.s09d_id(p_tag || ':version') and field_key = 'title';
+  expected_hash := platform_private.cms_jcs_sha256(jsonb_build_object(field_id::text, p_title));
+  return next ok(not result.request ?| array['templateVersionId', 'defaultTemplateVersionId', 'templateBindings'],
+    case_label || ': strict create request has no client template operand');
+  return next is(result.call_role, 'service_role', case_label || ': actual public SQL service-role transport');
+  return next is(result.state, '00000', case_label || ': real public bootstrap succeeds with all evidence');
+  if result.state is distinct from '00000' then return next diag(coalesce(result.message, 'missing call outcome')); end if;
+  return next is((select array_agg(k order by k) from jsonb_object_keys(
+    case when jsonb_typeof(result.response) = 'object' then result.response else '{}'::jsonb end) k),
+    array['contentHash', 'entry', 'lifecycle', 'locale', 'revision', 'revisionNumber', 'state', 'validationState'],
+    case_label || ': unchanged strict EntryCreateResource, no added public template field');
+  return next ok((select count(*) from platform_private.cms_content_entries) = result.before_entries + 1
+    and (select count(*) from platform_private.cms_entry_revisions) = result.before_revisions + 1,
+    case_label || ': exactly one entry and its one first revision appear together');
+  return next ok(entry_row.owner_id = pg_temp.s09d_id('ownerOrg') and entry_row.owner_party_id = entry_row.owner_id
+    and entry_row.content_type_id = pg_temp.s09d_id(p_tag || ':type') and entry_row.lifecycle = 'active'
+    and entry_row.version = 1 and entry_row.current_draft_revision_id = revision_row.id
+    and entry_row.created_by = pg_temp.s09d_actor_id(p_actor, 'auth')::uuid
+    and (select count(*) = 1 from platform_private.cms_entry_assignments a where a.entry_id = entry_row.id
+      and a.owner_id = entry_row.owner_id and a.assignee_person_id = pg_temp.s09d_actor_id(p_actor, 'person')::uuid
+      and a.capability_key = p_assignment and a.state = 'active' and a.version = 1),
+    case_label || ': persisted first head/owner/creator assignment are server-derived');
+  return next ok(revision_row.owner_id = entry_row.owner_id and revision_row.entry_id = entry_row.id
+    and revision_row.revision_number = 1 and revision_row.version = 1
+    and revision_row.schema_version_id = pg_temp.s09d_id(p_tag || ':version') and revision_row.locale = 'en-US'
+    and revision_row.parent_revision_ids = '[]'::jsonb and revision_row.state = 'draft'
+    and revision_row.author_person_id = pg_temp.s09d_actor_id(p_actor, 'person')::uuid
+    and revision_row.acting_party_id = entry_row.owner_id,
+    case_label || ': actual immutable first revision binds the exact active schema and creator context');
+  return next is(revision_row.template_version_id::text, p_template::text,
+    case_label || ': FIRST revision server-derives the exact expected default template, preserving SQL NULL when absent');
+  return next is((select slots from platform_private.cms_template_versions where id = revision_row.template_version_id), p_slots,
+    case_label || ': literal slot readback follows the FIRST revision pin, never a direct default-template lookup');
+  return next is((select jsonb_object_agg(v.field_id::text, v.value) from platform_private.cms_entry_field_values v
+    where v.revision_id = revision_row.id), jsonb_build_object(field_id::text, p_title),
+    case_label || ': literal initial field map is preserved exactly');
+  return next ok(result.response->>'contentHash' = expected_hash and revision_row.payload_hash::text = expected_hash,
+    case_label || ': response and persisted hash match independent literal field preimage');
+  return next is(result.metadata_after, result.metadata_before,
+    case_label || ': bootstrap never mutates existing type/version/artifact/template full rows');
+end;
+$body$;

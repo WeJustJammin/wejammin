@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import * as React from 'react';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { preloadWorkflowAnswerMachinery } from './cms-workflow-answer-machinery.test-support';
 
 import { loadCmsValidators } from '../../lib/cms-contract-validators';
 import { MemoryStorage } from '../../lib/test-support/memory-storage';
@@ -25,6 +26,8 @@ import {
   jsonResponse,
   reviewDetailFixture,
 } from './cms-workflow-fixtures.test-support';
+
+beforeAll(preloadWorkflowAnswerMachinery);
 
 beforeAll(enableReactAct);
 // The form checks run synchronously once the lazily loaded validators are in.

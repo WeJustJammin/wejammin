@@ -1,0 +1,122 @@
+-- Principal reuse history comes from real placements and real public accepts,
+-- not a fabricated retired head. Unrelated guarded rows only establish authored
+-- positions0/12/20. No tree/state/version of a public writer result is edited.
+select * from pg_temp.s12pl_pattern('sr-c1','s12sr-c',jsonb_build_array(pg_temp.s12pd_block('c')));
+select * from pg_temp.s12pl_pattern('sr-a1','s12sr-a',jsonb_build_array(pg_temp.s12pd_block('a')));
+select pg_temp.s12pl_entry('sr-mix');
+select pg_temp.s12pl_row('sr-mix','/before-c','root',0);
+select pg_temp.s12pl_run('sr-mix-c1',pg_temp.s12sr_request('mix-c1','sr-mix','sr-c1'));
+select * from pg_temp.s12sr_check('sr-mix-c1','sr-mix','sr-c1','[["/c","1",1,"s12pd.block",1]]');
+select pg_temp.s12pl_row('sr-mix','/before-a','root',12);
+select pg_temp.s12pl_run('sr-mix-a1',pg_temp.s12sr_request('mix-a1','sr-mix','sr-a1'));
+select * from pg_temp.s12sr_check('sr-mix-a1','sr-mix','sr-a1','[["/a","1",13,"s12pd.block",1]]');
+
+-- Three newer active versions with unchanged c content are real bulk-eligible
+-- targets. They produce c:v2/v3/v4 before removed-root accept produces v5.
+create function pg_temp.s12sr_advance_c() returns setof text language plpgsql as $body$
+declare n integer; label text;
+begin
+  for n in 2..4 loop
+    label:='sr-c' || n;
+    return query select * from pg_temp.s12pl_pattern(label,'s12sr-c',
+      jsonb_build_array(pg_temp.s12pd_block('c')),null,true,(n-1)::text);
+    perform pg_temp.s12pu_update(label,pg_temp.s12pu_update_request('sr-mix','accept',
+      jsonb_build_array(pg_temp.s12pu_target('sr-mix','/c')),'s12sr-advance-c' || n,n));
+    return next extensions.is(pg_temp.s12pu_state(label),'00000',label || ': public no-change newer-target accept');
+    return next extensions.ok((select version=n and state='active' and position=1
+      and pattern_version=n and detached_tree is null from platform_private.cms_composition_instances
+      where id=pg_temp.s12pu_head('sr-mix','/c')),label || ': exact real c successor and unchanged position');
+  end loop;
+end;
+$body$;
+select * from pg_temp.s12sr_advance_c();
+select * from pg_temp.s12pl_pattern('sr-c5','s12sr-c',jsonb_build_array(pg_temp.s12pd_block('quiet')),null,true,'4');
+select * from pg_temp.s12pl_pattern('sr-a2','s12sr-a',jsonb_build_array(pg_temp.s12pd_block('quiet')),null,true,'1');
+select pg_temp.s12pu_update('sr-retire-c',pg_temp.s12pu_update_request('sr-mix','accept',
+  jsonb_build_array(pg_temp.s12pu_target('sr-mix','/c','[{"path":"/c","choice":"theirs"}]')),
+  's12sr-retire-c',5));
+select pg_temp.s12pu_update('sr-retire-a',pg_temp.s12pu_update_request('sr-mix','accept',
+  jsonb_build_array(pg_temp.s12pu_target('sr-mix','/a','[{"path":"/a","choice":"theirs"}]')),
+  's12sr-retire-a',2));
+select is(pg_temp.s12pu_state('sr-retire-c'),'00000','SR-REUSE-PRE: real removed-root accept retires c');
+select is(pg_temp.s12pu_state('sr-retire-a'),'00000','SR-REUSE-PRE: real removed-root accept retires a');
+select is((select jsonb_agg(jsonb_build_array(path,version,position,state,pattern_version) order by path)
+  from platform_private.cms_composition_instances where id in
+    (pg_temp.s12pu_head('sr-mix','/a'),pg_temp.s12pu_head('sr-mix','/c'))),
+  '[["/a",2,13,"retired",1],["/c",5,1,"retired",4]]'::jsonb,
+  'SR-REUSE-PRE: exact retired versions/positions and prior provenance pins');
+select pg_temp.s12pl_row('sr-mix','/history-maximum','root',20,'retired');
+select pg_temp.s12pl_run('sr-mixed',pg_temp.s12sr_request('mixed','sr-mix','sr-main',
+  '["/d","/c","/b","/a"]','{"/a":null,"/b":42}'));
+select * from pg_temp.s12sr_check('sr-mixed','sr-mix','sr-main',
+  '[["/c","6",1,"s12pd.block",1],["/a","3",13,"s12pd.block",1],
+    ["/b","1",21,"s12pd.block",1],["/d","1",22,"s12pd.wide",1]]',
+  '{"/a":{"/a":null},"/b":{"/b":42}}',true);
+select is((select count(*)::integer from platform_private.cms_composition_instances
+  where revision_id=pg_temp.s12pl_rev('sr-mix') and path in ('/a','/c')),9,
+  'SR-REUSE: full a/c history retained, including both retired tombstones');
+select * from pg_temp.s12pl_refused('sr-replaced-is-occupied',pg_temp.s12sr_request('occupied-again',
+  'sr-mix','sr-main','["/a"]'),'CONFLICT','["/slotPath"]');
+
+-- Labelled legacy state/head-selection fixtures. These assert receiving rules,
+-- not that placement or an update produces draft/superseded states.
+select pg_temp.s12pl_entry('sr-head-' || state) from unnest(array['active','draft','superseded']) state;
+select pg_temp.s12pl_row('sr-head-' || state,'/a','root',7,state)
+  from unnest(array['active','draft','superseded']) state;
+select checks.* from unnest(array['active','draft','superseded']) state cross join lateral
+  pg_temp.s12pl_refused('sr-occupied-' || state,pg_temp.s12sr_request('occupied-' || state,
+    'sr-head-' || state,'sr-main','["/a"]'),'CONFLICT','["/slotPath"]') checks;
+select pg_temp.s12pl_entry('sr-head-pending');
+select pg_temp.s12pl_run('sr-pending-place',pg_temp.s12sr_request('pending-place','sr-head-pending','sr-main'));
+select is(pg_temp.s12pl_state('sr-pending-place'),'00000','SR-PENDING-PRE: actual linked placement before scan fixture');
+-- Existing helper is the explicitly guarded linked-scan output fixture, not a
+-- replacement public writer. It appends pending_version2 and retains prior pin.
+select pg_temp.s12pu_pending('sr-head-pending','/a',2);
+select * from pg_temp.s12pl_refused('sr-occupied-pending',pg_temp.s12sr_request('occupied-pending',
+  'sr-head-pending','sr-main','["/a"]'),'CONFLICT','["/slotPath"]');
+
+-- An older retired version never frees a newest active path. No state filter
+-- may run before newest-version selection. Guarded legacy rows remain immutable.
+select pg_temp.s12pl_entry('sr-old-retired');
+select pg_temp.s12pl_row('sr-old-retired','/a','root',8,'retired',1);
+select pg_temp.s12pl_row('sr-old-retired','/a','root',8,'active',2);
+select * from pg_temp.s12pl_refused('sr-old-retired',pg_temp.s12sr_request('old-retired',
+  'sr-old-retired','sr-main','["/a"]'),'CONFLICT','["/slotPath"]');
+
+-- Reuse alone remains possible at the int32 maximum: no new position is needed.
+select pg_temp.s12pl_entry('sr-position-max');
+select pg_temp.s12pl_row('sr-position-max','/a','root',2147483647,'retired',1);
+select pg_temp.s12pl_run('sr-position-max',pg_temp.s12sr_request('position-max',
+  'sr-position-max','sr-main','["/a"]'));
+select * from pg_temp.s12sr_check('sr-position-max','sr-position-max','sr-main',
+  '[["/a","2",2147483647,"s12pd.block",1]]','{}',true);
+select * from pg_temp.s12pl_refused('sr-position-overflow',pg_temp.s12sr_request('position-overflow',
+  'sr-position-max','sr-main','["/b"]'),'CONFLICT','["/slotPath"]');
+
+-- Omission still places all roots AND follows the same retired-path rule.
+-- This is a labelled guarded legacy tombstone, separate from the real chains.
+select pg_temp.s12pl_entry('sr-omitted-retired');
+select pg_temp.s12pl_row('sr-omitted-retired','/a','root',9,'retired',1);
+select pg_temp.s12pl_run('sr-omitted-retired',pg_temp.s12sr_request('omitted-retired','sr-omitted-retired'));
+select * from pg_temp.s12sr_check('sr-omitted-retired','sr-omitted-retired','sr-main',
+  '[["/a","2",9,"s12pd.block",1],["/b","1",10,"s12pd.block",1],
+    ["/c","1",11,"s12pd.block",1],["/d","1",12,"s12pd.wide",1]]','{}',true);
+
+-- Version storage is bigint WITH the existing int32-valued CHECK, not an
+-- unbounded bigint counter (20260927290000_cms_composition_authority.sql:78).
+-- Labelled valid legacy tombstones isolate the last storable next version and
+-- exhaustion. No guard/check is disabled, no storage bound is widened.
+select pg_temp.s12pl_entry('sr-version-last');
+select pg_temp.s12pl_row('sr-version-last','/a','root',7,'retired',2147483646);
+select is(pg_temp.s12pu_hv('sr-version-last','/a'),'2147483646',
+  'SR-VERSION-PRE: real guarded legacy retired head is one below stored maximum');
+select pg_temp.s12pl_run('sr-version-last',pg_temp.s12sr_request('version-last',
+  'sr-version-last','sr-main','["/a"]'));
+select * from pg_temp.s12sr_check('sr-version-last','sr-version-last','sr-main',
+  '[["/a","2147483647",7,"s12pd.block",1]]','{}',true);
+select pg_temp.s12pl_entry('sr-version-exhausted');
+select pg_temp.s12pl_row('sr-version-exhausted','/a','root',9,'retired',2147483647);
+select is(pg_temp.s12pu_hv('sr-version-exhausted','/a'),'2147483647',
+  'SR-VERSION-PRE: actual existing CHECK admits its exact stored maximum');
+select * from pg_temp.s12pl_refused('sr-version-exhausted',pg_temp.s12sr_request('version-exhausted',
+  'sr-version-exhausted','sr-main','["/a"]'),'CONFLICT','["/slotPath"]');

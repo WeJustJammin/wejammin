@@ -1,0 +1,41 @@
+-- The read on a request that begins the way a real PostgREST request does: NO RPC-context flag (V3 F-1, F-2; DEC-216;
+-- SEC-2).  The four tables the reader selects are FORCE RLS with the single policy USING (cms_rpc_context_valid()) and the
+-- reader's owner is NOBYPASSRLS, so a reader that does not set app.cms_rpc itself sees zero rows and answers
+-- {0,0,0} forever with no error.  Every earlier fragment runs under a flag the fixtures left set, which is why none of
+-- them could see it (precedent: 20261013100500 and phase_02_slice_12_fix_template_reads_rpc_context.sql).
+-- Continues 003: the window [12:00, 12:01) holds fr-FR and de-DE stale rows, the gauge is 2.
+
+-- Control: with the flag cleared the forced policy hides every variant row from the definer role itself.
+select set_config('app.cms_rpc', '', true);
+select is(pg_temp.l208_as_role('wejammin_cms_definer', 'select count(*)::text from platform_private.cms_locale_variants'), '0',
+  'control: without the RPC flag the forced policy hides every variant row from the definer role [P2-S12-AC-052]');
+
+-- The real caller path: service_role, flag cleared, real non-zero counts.
+select is(pg_temp.l208_as_role('service_role', $q$select platform_api.cms_locale_observability_read(
+    '2026-10-22 12:00:00+00'::timestamptz, '2026-10-22 12:01:00+00'::timestamptz)::text$q$),
+  '{"fanoutRows": 2, "staleLegalFields": 2, "staleFieldsAppended": 4}',
+  'the real caller path (service_role, flag cleared) returns the real counts, not zeros [P2-S12-AC-052]');
+select is(pg_temp.l208_as_role('service_role', $q$select platform_api.cms_locale_observability_read(
+    '2026-10-22 11:59:00+00'::timestamptz, '2026-10-22 12:00:00+00'::timestamptz)::text$q$),
+  '{"fanoutRows": 0, "staleLegalFields": 2, "staleFieldsAppended": 0}',
+  'a quiet window still reads the real gauge on the real caller path (the gauge is not window-bound) [P2-S12-AC-052]');
+select is(current_setting('app.cms_rpc', true), '',
+  'and the call leaves the flag as it found it (cleared): an RPC does not leave the RPC-context flag set [P2-S12-AC-052]');
+
+-- The caller's own value is restored, whatever it was.
+select set_config('app.cms_rpc', 'true', true);
+select pg_temp.l208_read('2026-10-22 12:00:00+00', '2026-10-22 12:01:00+00');
+select is(current_setting('app.cms_rpc', true), 'true', 'a caller that already held the flag still holds it [P2-S12-AC-052]');
+select set_config('app.cms_rpc', 'false', true);
+select is(pg_temp.l208_read('2026-10-22 12:00:00+00', '2026-10-22 12:01:00+00')->'staleLegalFields', '2'::jsonb,
+  'a caller whose flag reads false still gets the real gauge [P2-S12-AC-052]');
+select is(current_setting('app.cms_rpc', true), 'false', 'and its false value is restored exactly [P2-S12-AC-052]');
+
+-- A refused window never sets the context, so there is nothing to restore and nothing leaks.
+select set_config('app.cms_rpc', '', true);
+select is(pg_temp.l208_try('2026-10-22 12:00:30+00', '2026-10-22 12:01:30+00'), 'P0001:VALIDATION_FAILED',
+  'control: a malformed window is refused on the cleared-flag path [P2-S12-AC-052]');
+select is(current_setting('app.cms_rpc', true), '', 'and a refused call leaves the flag as it found it [P2-S12-AC-052]');
+
+-- Later fragments expect the fixtures' flag.
+select set_config('app.cms_rpc', 'true', true);

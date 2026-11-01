@@ -1,0 +1,205 @@
+-- Ordinary producer prerequisites, all UNRUN in this authoring lane.
+-- S09 01-actors documents account provisioning, membership-only forgery, and
+-- the other-owner negative-control grant. Owner receipt, binding, positive CMS
+-- grants, block, type, review, approval and activation use named producers.
+-- Shared helpers define time-warp utilities; this suite never invokes them.
+select is(pg_temp.s09d_grant_via_rpc('owner', 'cms.template_designer'), 'OK',
+  'setup: owner grants its pattern-designer authority through CMS-03A-15');
+select is(pg_temp.s09d_grant_via_rpc('rev1', 'cms.reviewer'), 'OK',
+  'setup: independent governed reviewer receives a real reviewer grant');
+
+select pg_temp.p_register('s12pd:block', pg_temp.p_block_request('s12pd.block', 1,
+  jsonb_build_object('allowedChildren', jsonb_build_array('s12pd.block'),
+    'slotRules', jsonb_build_object('maxDepth', 16, 'maxNodes', 512))));
+select is(pg_temp.s09d_outcome('s12pd:block'), 'OK',
+  'setup: signed CMS-03A-05 registers the supported block');
+select ok(exists(select 1 from platform_private.cms_block_definition_versions
+  where id = (pg_temp.s09d_resp('s12pd:block')->>'id')::uuid
+    and block_key = 's12pd.block' and block_version = 1
+    and props_attestation_verified_at is not null and release_verified_at is not null),
+  'setup: registered block carries real release and props-attestation receipts');
+
+-- Range fixtures for 047 (BE03a 1098-1101): `s12pd.high` is registered for 1.9..1.9 and `s12pd.wide` for
+-- 1.0.0..1.9, both through the signed CMS-03A-05 producer.  `s12pd.block` above is registered for 1..1, the
+-- compiler_version every real chain type carries.
+select pg_temp.p_register('s12pd:high', pg_temp.p_block_request('s12pd.high', 1,
+  jsonb_build_object('compatibility',
+    jsonb_build_object('minSchemaCompiler', '1.9', 'maxSchemaCompiler', '1.9'))));
+select pg_temp.p_register('s12pd:wide', pg_temp.p_block_request('s12pd.wide', 1,
+  jsonb_build_object('compatibility',
+    jsonb_build_object('minSchemaCompiler', '1.0.0', 'maxSchemaCompiler', '1.9'))));
+select is(pg_temp.s09d_outcome('s12pd:high') || pg_temp.s09d_outcome('s12pd:wide'), 'OKOK',
+  'setup: signed CMS-03A-05 registers the 1.9..1.9 and 1.0.0..1.9 range blocks');
+
+-- Fixture size: the GUC s12pd.type_count (default 65) lets the populated-lineage witness reuse this file with
+-- fewer types.  65 types isolate the accepted 64 and refused 65 compatibility bounds; repeated copies of one UUID
+-- would exercise duplicates, not the 64 boundary.
+create or replace function pg_temp.s12pd_type_count() returns integer language sql stable as $body$
+  select coalesce(nullif(pg_catalog.current_setting('s12pd.type_count', true), '')::integer, 65)
+$body$;
+-- s12pd_chain_types: real CMS-03A chain types (create, dry run, seal, submit, assign, decide, activate).
+-- s12pd_types: the types the patterns name.  BE03c 1361 rejects a block that is not compatible with every
+-- compatibleTypeIds member; compatibility is the block's registered schema-compiler range covering the
+-- compiler_version of the type's active artifact (BE03a 1098-1101), and the compiler writes `blocks` into no
+-- manifest.  The real chain types therefore ARE the pattern types (compiler_version 1, covered by s12pd.block).
+-- s12pd_variant_types: one fixture clone of chain type 1 whose artifact carries compiler_version 1.9, so a range
+-- can cover one compatibleTypeIds member and exclude another (the clone is built under app.cms_rpc, no trigger
+-- disabled, with the chain's own workflow policy and activation evidence).
+create temp table s12pd_chain_types(ordinal integer primary key, id uuid, version_id uuid)
+on commit drop;
+create temp table s12pd_types(ordinal integer primary key, id uuid, version_id uuid)
+on commit drop;
+create temp table s12pd_variant_types(label text primary key, id uuid, version_id uuid)
+on commit drop;
+do $body$
+declare n integer; tag text;
+begin
+  for n in 1..pg_temp.s12pd_type_count() loop
+    tag := 's12pd-type-' || n;
+    perform pg_temp.s09d_create_type(tag, 's12pdtype' || n);
+    perform pg_temp.s09d_to_active(tag);
+    insert into s12pd_chain_types values
+      (n, pg_temp.s09d_id(tag || ':type'), pg_temp.s09d_id(tag || ':version'));
+  end loop;
+end;
+$body$;
+select is((select count(*)::integer from s12pd_chain_types), pg_temp.s12pd_type_count(),
+  'setup: every compatibility-bound fixture was attempted');
+select is((select count(*)::integer from s12pd_chain_types t
+  join platform_private.cms_content_types c on c.id = t.id
+  join platform_private.cms_content_type_versions v on v.id = t.version_id
+  where c.owner_id = pg_temp.s09d_id('ownerOrg') and c.state = 'active'
+    and v.state = 'active' and v.schema_artifact_id is not null
+    and v.activation_approval_evidence_hash is not null), pg_temp.s12pd_type_count(),
+  'setup: all compatible types are compiled and activated through review');
+select is((select count(*)::integer from s09d_probe where label like 's12pd-type-%'
+  and state <> '00000'), 0,
+  'setup: create/dry-run/seal/submit/assign/decide/activate all succeeded');
+
+create or replace function pg_temp.s12pd_make_compatible_type(
+  p_key text, p_compiler text, out o_type uuid, out o_version uuid)
+language plpgsql as $body$
+declare
+  src_type platform_private.cms_content_types%rowtype;
+  src_version platform_private.cms_content_type_versions%rowtype;
+  src_artifact platform_private.cms_schema_artifacts%rowtype;
+  new_artifact uuid := extensions.gen_random_uuid();
+  stamp timestamptz := clock_timestamp();
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  o_type := extensions.gen_random_uuid();
+  o_version := extensions.gen_random_uuid();
+  select c.* into src_type from platform_private.cms_content_types c
+   where c.id = (select id from s12pd_chain_types where ordinal = 1);
+  select v.* into src_version from platform_private.cms_content_type_versions v
+   where v.id = (select version_id from s12pd_chain_types where ordinal = 1);
+  select a.* into src_artifact from platform_private.cms_schema_artifacts a
+   where a.id = src_version.schema_artifact_id;
+  insert into platform_private.cms_content_types
+    select (jsonb_populate_record(null::platform_private.cms_content_types, to_jsonb(src_type)
+      || jsonb_build_object('id', o_type, 'type_key', p_key, 'state', 'retired', 'version', 1,
+        'created_at', stamp, 'updated_at', stamp))).*;
+  insert into platform_private.cms_content_type_versions
+    select (jsonb_populate_record(null::platform_private.cms_content_type_versions, to_jsonb(src_version)
+      || jsonb_build_object('id', o_version, 'content_type_id', o_type,
+        'schema_artifact_id', new_artifact, 'state', 'draft', 'version', 1, 'version_no', 1,
+        'created_at', stamp, 'updated_at', stamp, 'supersedes_id', null, 'dry_run_id', null,
+        'approved_at', null, 'definition_hash', md5(p_key || 'd') || md5(p_key || 'e'),
+        'activation_workflow_policy_key', null, 'activation_workflow_policy_version', null,
+        'activation_workflow_policy_hash', null, 'activation_required_decision_count', null,
+        'activation_required_capabilities', null, 'activation_approval_evidence_hash', null))).*;
+  insert into platform_private.cms_schema_artifacts
+    select (jsonb_populate_record(null::platform_private.cms_schema_artifacts, to_jsonb(src_artifact)
+      || jsonb_build_object('id', new_artifact, 'content_type_version_id', o_version,
+        'compiler_version', p_compiler, 'created_at', stamp, 'updated_at', stamp, 'compiled_at', stamp,
+        'artifact_hash', md5(p_key || 'a') || md5(p_key || 'b')))).*;
+  update platform_private.cms_content_type_versions version_row
+     set state = 'active', version = version_row.version + 1, updated_at = clock_timestamp(),
+         activation_workflow_policy_key = src_version.activation_workflow_policy_key,
+         activation_workflow_policy_version = src_version.activation_workflow_policy_version,
+         activation_workflow_policy_hash = src_version.activation_workflow_policy_hash,
+         activation_required_decision_count = src_version.activation_required_decision_count,
+         activation_required_capabilities = src_version.activation_required_capabilities,
+         activation_approval_evidence_hash = src_version.activation_approval_evidence_hash
+   where version_row.id = o_version;
+  update platform_private.cms_content_types type_row
+     set state = 'active', version = type_row.version + 1, updated_at = clock_timestamp()
+   where type_row.id = o_type;
+end;
+$body$;
+insert into s12pd_types select ordinal, id, version_id from s12pd_chain_types;
+do $body$
+declare made record;
+begin
+  select * into made from pg_temp.s12pd_make_compatible_type('s12pdc19', '1.9');
+  insert into s12pd_variant_types values ('compiler-1-9', made.o_type, made.o_version);
+end;
+$body$;
+select is((select count(*)::integer from s12pd_types t
+  join platform_private.cms_content_types c on c.id = t.id
+  join platform_private.cms_content_type_versions v on v.id = t.version_id
+  join platform_private.cms_schema_artifacts a on a.id = v.schema_artifact_id
+  where c.owner_id = pg_temp.s09d_id('ownerOrg') and c.state = 'active' and v.state = 'active'
+    and a.compiler_version = '1' and not (a.renderer_manifest ? 'blocks')
+    and not (a.renderer_manifest ? 'blockDefinitions')), pg_temp.s12pd_type_count(),
+  'setup: every pattern type is a real active compiled type, compiler_version 1, with no renderer-manifest block member');
+select is((select count(*)::integer from s12pd_variant_types t
+  join platform_private.cms_content_types c on c.id = t.id and c.state = 'active'
+  join platform_private.cms_content_type_versions v on v.id = t.version_id and v.state = 'active'
+  join platform_private.cms_schema_artifacts a on a.id = v.schema_artifact_id
+  where a.compiler_version = '1.9'), 1,
+  'setup: the variant type is active and its artifact carries compiler_version 1.9');
+select pg_temp.s09d_create_type('s12pd-draft-type', 's12pddraft');
+select is(pg_temp.s09d_outcome('s12pd-draft-type:create'), 'OK',
+  'setup: inactive type control is a real unactivated draft');
+
+-- rev1 reviews inside the owner organization, exactly as phase_02_slice_12_governed_decision/010-setup does for
+-- its reviewers (the CMS-03C-07 decision resolves the reviewer's standing grant in the acting party).  Labelled
+-- test provisioning of the S09 actor row; the grant above is the real CMS-03A-15 command.  Applied after the
+-- CMS-03A type chains, which seat rev1 in its own party as their schema reviewer.
+update s09d_actor set party_id = pg_temp.s09d_id('ownerOrg') where key = 'rev1';
+
+create or replace function pg_temp.s12pd_block(p_key text default 'hero',
+  p_children jsonb default '[]'::jsonb, p_props jsonb default '{"title":"Pattern title"}'::jsonb)
+returns jsonb language sql immutable as $body$
+  select jsonb_build_object('kind','block','key',p_key,'blockKey','s12pd.block',
+    'blockVersion',1,'props',p_props,'children',p_children)
+$body$;
+create or replace function pg_temp.s12pd_forest(p_count integer) returns jsonb
+language sql immutable as $body$
+  select coalesce(jsonb_agg(pg_temp.s12pd_block('root' || n) order by n), '[]'::jsonb)
+  from generate_series(1,p_count) n
+$body$;
+create or replace function pg_temp.s12pd_expected_digest() returns text
+language sql immutable as $body$
+  select platform_private.cms_jcs_sha256(jsonb_build_array(jsonb_build_object(
+    'blockKey','s12pd.block','blockVersion',1,'releaseDigest',repeat('e',64),
+    'propsSchemaHash',repeat('a',64),'rendererRef','cms/renderers/hero/1','lifecycle','supported')))
+$body$;
+
+-- The same digest for a block whose current lifecycle is p_lifecycle (supported, deprecated): the tuple records
+-- the lifecycle the registry holds when the pattern is defined.
+create or replace function pg_temp.s12pd_expected_digest(p_lifecycle text) returns text
+language sql immutable as $body$
+  select platform_private.cms_jcs_sha256(jsonb_build_array(jsonb_build_object(
+    'blockKey','s12pd.block','blockVersion',1,'releaseDigest',repeat('e',64),
+    'propsSchemaHash',repeat('a',64),'rendererRef','cms/renderers/hero/1','lifecycle',p_lifecycle)))
+$body$;
+
+-- Body contract plus server transport envelope. SQL NULL becomes JSON null;
+-- a non-null parent remains the decimal string required by CmsVersionSchema.
+-- If-Match is the unquoted RPC operand, following cms_define_template; HTTP
+-- quoting belongs to the route and is not asserted by these SQL tests.
+create or replace function pg_temp.s12pd_request(
+  p_key text, p_tree jsonb, p_expected text, p_idem text,
+  p_digest text default null, p_ifmatch text default null)
+returns jsonb language sql stable as $body$
+  select jsonb_build_object('patternKey',p_key,
+    'compatibleTypeIds',jsonb_build_array((select id from s12pd_types where ordinal=1)),
+    'blockTree',p_tree,'expectedVersion',p_expected,'idempotencyKey',p_idem,
+    'context',pg_temp.s09d_context('owner',true))
+    || case when p_digest is null then '{}'::jsonb
+         else jsonb_build_object('blockRegistryDigest',p_digest) end
+    || case when p_ifmatch is null then '{}'::jsonb
+         else jsonb_build_object('ifMatch',p_ifmatch) end
+$body$;

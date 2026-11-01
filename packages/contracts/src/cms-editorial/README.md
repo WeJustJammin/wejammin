@@ -32,7 +32,7 @@ and they are never browser routes, registry rows or OpenAPI operations.
 | `entry-draft-detail.ts`             | CMS-03B-11 path/query/resource plus the draft-detail seam checklist                                                                              |
 | `conflict-detail.ts`                | CMS-03B-12 path/query/resource: the bounded three-way preimages of an open conflict                                                              |
 | `entry-list.ts`                     | CMS-03B-13 query/item/page; each item carries `entryId`, `entryLifecycle` and `entryUpdatedAt` (no owner or assignee identity)                   |
-| `authoring-context.ts`              | CMS-03B-14 query, creatable types, author-safe field definitions and the combined read                                                           |
+| `authoring-context.ts`              | CMS-03B-14 query, creatable types (each with the required, server-derived `typeKey`), author-safe field definitions and the combined read        |
 | `conflict-resolution.ts`            | CMS-03B-02 request/path/headers, the caller-authority guard, and the seam names                                                                  |
 | `conflict-choice.ts`                | `ConflictChoiceSchema` and the bounded `ConflictChoiceValueSchema`                                                                               |
 | `conflict-verification.ts`          | `ConflictYoursSourceEvidenceSchema`; the canonical yours-source enum lives in `models.ts`                                                        |
@@ -151,6 +151,31 @@ and the preview mint keep `750`.
   `cms-entry-read`, `cms-review-write` (CMS-03B-05, -06), `cms-review-assignment`
   (CMS-03B-18), `cms-schedule-write`, `cms-preview-write` and `cms-publish-write`;
   CMS-03B-02 is the only row on the conflict class. BE03b names actor-keyed classes (author/review/schedule/preview/publish) but locks no literal token, so these eight are this directory canonical runtime tokens.
+
+## Contract status
+
+`AuthoringContextType` (CMS-03B-14) carries a required, response-only
+`typeKey`: the stable key of the owning content type, derived server-side and
+never the surface label, an ownership identifier or a caller-supplied member.
+Because the member is required, this is a coordinated strict-response-parser
+migration of the first-party stack — the schema, the database projection and
+every consumer are promoted together, never as a compatible mixed-version
+release. The projection migration (`20261020203606` in `supabase/migrations/`)
+and its pgTAP coverage are **UNRUN** (native/database prerequisites blocked), so
+this directory claims no database, gate or acceptance-criteria pass; the
+CMS-03B-14 RPC identity and signature are unchanged.
+
+`authoring-context-field.ts` owns the field-definition projection and its private
+editor-config schema. `authoring-context.ts` re-exports the same field-schema
+object and retains every existing runtime export and inferred type; the split
+adds no package entry point or wire-contract member. Both schema files stay
+within the 150-line schema cap.
+
+The authoring-context tests keep query/type/field/resource cases in
+`authoring-context.test.ts` and query/resource precedence cases in
+`authoring-context-read.test.ts`. Their unchanged shared projections and
+evidence live in `authoring-context-fixtures.test-support.ts`, which is test-only
+and never re-exported from the runtime contracts.
 
 ## Related Links
 

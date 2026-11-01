@@ -1,0 +1,125 @@
+-- Independent complete node-value oracles. No production plan/view/resolver is
+-- called to construct expected props, identities, topology or collision kinds.
+select pg_temp.s12pu_diff_head('df-panel', 'df-local', '/main/panel');
+select * from pg_temp.s12df_check('df-panel', pg_temp.s12pu_head('df-local', '/main/panel'),
+  2, pg_temp.s12df_panel_paths(), pg_temp.s12df_roots(), '/main');
+select ok((select jsonb_array_length(response->'paths') = 7
+  and not exists (select 1 from jsonb_array_elements(response->'paths') item
+    where item->>'path' in ('/panel/add/deep', '/panel/remove/deep'))
+  from s12pu_out where label = 'df-panel'),
+  'highest added/removed subtree is listed once; its descendants are suppressed');
+select is((select item->>'collisionKind' from s12pu_out,
+  lateral jsonb_array_elements(response->'paths') item
+  where label = 'df-panel' and item->>'path' = '/panel'), 'structure',
+  'children and props both change with a local override: structure precedes props');
+select is((select item->>'collisionKind' from s12pu_out,
+  lateral jsonb_array_elements(response->'paths') item
+  where label = 'df-panel' and item->>'path' = '/panel/version'), 'structure',
+  'block-version and props both change with an override: identity is structural');
+select ok((select (item->>'collision')::boolean and item->>'collisionKind' = 'props'
+  and item->'yours' = 'null'::jsonb from s12pu_out,
+  lateral jsonb_array_elements(response->'paths') item
+  where label = 'df-panel' and item->>'path' = '/panel/nully'),
+  'a stored JSON-null override is present, not silently confused with no override');
+select pg_temp.s12pu_diff_head('df-gone', 'df-local', '/main/gone');
+select * from pg_temp.s12df_check('df-gone', pg_temp.s12pu_head('df-local', '/main/gone'), 2,
+  jsonb_build_array(pg_temp.s12df_path('/gone', pg_temp.s12df_node('{"title":"G"}',
+    '["/gone/deep"]'), null, '{"title":"G-LOCAL"}', 'removed_root')),
+  pg_temp.s12df_roots(), '/main');
+select is(jsonb_array_length(pg_temp.s12pu_body('df-gone')->'paths'), 1,
+  'removed instance root suppresses its entire descendant subtree; removed_root wins');
+select pg_temp.s12pu_diff_head('df-identity', 'df-local', '/main/identity');
+select * from pg_temp.s12df_check('df-identity', pg_temp.s12pu_head('df-local', '/main/identity'), 2,
+  jsonb_build_array(pg_temp.s12df_path('/identity', pg_temp.s12df_node('{"title":"I1"}'),
+    pg_temp.s12df_node('{"title":"I2"}', '[]', 's12pd.wide'), null, 'structure')),
+  pg_temp.s12df_roots(), '/main');
+select pg_temp.s12pu_diff_head('df-quiet', 'df-local', '/main/quiet');
+select * from pg_temp.s12df_check('df-quiet', pg_temp.s12pu_head('df-local', '/main/quiet'),
+  2, '[]', pg_temp.s12df_roots(), '/main');
+select ok(pg_temp.s12pu_body('df-quiet')->>'bulkEligible' = 'true'
+  and pg_temp.s12pu_body('df-quiet')->>'targetPatternVersion' = '2',
+  'newer target with no changed instance paths still offers bulk acceptance and new roots');
+
+-- A legal depth-eight literal has a 65-character root row path but expanded
+-- descendant addresses of 455 and 520 characters. Neither is an override key.
+create or replace function pg_temp.s12df_long(p_title text) returns jsonb
+language plpgsql immutable as $body$
+declare node jsonb; level integer;
+begin
+  node := pg_temp.s12pd_block(repeat('a', 64), '[]', jsonb_build_object('title', p_title));
+  for level in reverse 7..1 loop
+    node := pg_temp.s12pd_block(repeat('a', 64), jsonb_build_array(node),
+      jsonb_build_object('title', case when level = 7 then p_title else 'fixed' end));
+  end loop;
+  return jsonb_build_array(node);
+end;
+$body$;
+select * from pg_temp.s12pl_pattern('df-long1', 's12df-long', pg_temp.s12df_long('old'));
+select * from pg_temp.s12pu_place('df-long', 'df-long1');
+select * from pg_temp.s12pl_pattern('df-long2', 's12df-long', pg_temp.s12df_long('new'), null, true, '1');
+select pg_temp.s12pu_diff_head('df-long', 'df-long', '/' || repeat('a', 64));
+select * from pg_temp.s12df_check('df-long', pg_temp.s12pu_head('df-long', '/' || repeat('a', 64)), 2,
+  jsonb_build_array(
+    pg_temp.s12df_path(repeat('/' || repeat('a', 64), 7),
+      pg_temp.s12df_node('{"title":"old"}', jsonb_build_array(repeat('/' || repeat('a', 64), 8))),
+      pg_temp.s12df_node('{"title":"new"}', jsonb_build_array(repeat('/' || repeat('a', 64), 8))), null),
+    pg_temp.s12df_path(repeat('/' || repeat('a', 64), 8),
+      pg_temp.s12df_node('{"title":"old"}'), pg_temp.s12df_node('{"title":"new"}'), null)));
+select ok((select max(length(item->>'path')) = 520
+  and max(length(item#>>'{base,children,0}')) = 520
+  from s12pu_out, lateral jsonb_array_elements(response->'paths') item where label = 'df-long'),
+  'actual diff paths AND ordered child addresses exceed 512 intact, within ExpandedPatternNodePath');
+
+-- Sixteen authored reference children expand to 511 actual children: 15*32+31.
+-- With their block parent this is exactly the 512 expanded-node cap, not 513.
+select * from pg_temp.s12pl_pattern('df-f32', 's12df-f32', (select
+  jsonb_agg(pg_temp.s12pd_block('node' || n) order by n) from generate_series(1, 32) n));
+select * from pg_temp.s12pl_pattern('df-f31', 's12df-f31', (select
+  jsonb_agg(pg_temp.s12pd_block('node' || n) order by n) from generate_series(1, 31) n));
+create or replace function pg_temp.s12df_fan(p_title text) returns jsonb
+language sql stable as $body$
+  select jsonb_build_array(pg_temp.s12pd_block('fan', (select jsonb_agg(
+    jsonb_build_object('kind', 'pattern', 'key', 'ref' || n,
+      'patternId', pg_temp.s12pd_body(case when n = 16 then 'df-f31' else 'df-f32' end)->'patternId',
+      'patternVersion', 1) order by n) from generate_series(1, 16) n), jsonb_build_object('title', p_title)))
+$body$;
+create or replace function pg_temp.s12df_fan_children() returns jsonb
+language sql immutable as $body$
+  select jsonb_agg('/fan/ref' || r || '/node' || n order by r, n)
+  from generate_series(1, 16) r cross join lateral
+    generate_series(1, case when r = 16 then 31 else 32 end) n
+$body$;
+select * from pg_temp.s12pl_pattern('df-fan1', 's12df-fan', pg_temp.s12df_fan('old'));
+select * from pg_temp.s12pu_place('df-fan', 'df-fan1');
+select * from pg_temp.s12pl_pattern('df-fan2', 's12df-fan', pg_temp.s12df_fan('new'), null, true, '1');
+-- The direct diagnostic enters the same CMS-context RLS gate as its private
+-- callee. Save/restore only here; real RPC reads below keep their own boundary.
+create or replace function pg_temp.s12df_expanded_count(
+  p_owner uuid, p_forest jsonb, p_visited uuid[]) returns integer
+language plpgsql volatile as $body$
+declare prior_gate text := coalesce(current_setting('app.cms_rpc', true), '');
+  block_count integer;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select count(*)::integer into block_count
+    from platform_private.cms_pattern_update_nodes(p_owner, p_forest, p_visited, false);
+  perform set_config('app.cms_rpc', prior_gate, true);
+  return block_count;
+exception when others then
+  perform set_config('app.cms_rpc', prior_gate, true);
+  raise;
+end;
+$body$;
+select is(pg_temp.s12df_expanded_count(pg_temp.s09d_id('ownerOrg'),
+  pg_temp.s12pd_row('df-fan2')->'block_tree',
+  array[(pg_temp.s12pd_body('df-fan2')->>'patternId')::uuid]), 512,
+  'prerequisite: real stored pattern expands to exactly 512 actual block nodes');
+select is(jsonb_array_length(pg_temp.s12pd_row('df-fan2')#>'{block_tree,0,children}'), 16,
+  'prerequisite: only sixteen authored references produce the wide expanded child list');
+select pg_temp.s12pu_diff_head('df-fan', 'df-fan', '/fan');
+select * from pg_temp.s12df_check('df-fan', pg_temp.s12pu_head('df-fan', '/fan'), 2,
+  jsonb_build_array(pg_temp.s12df_path('/fan',
+    pg_temp.s12df_node('{"title":"old"}', pg_temp.s12df_fan_children()),
+    pg_temp.s12df_node('{"title":"new"}', pg_temp.s12df_fan_children()), null)));
+select is(jsonb_array_length(pg_temp.s12pu_body('df-fan')#>'{paths,0,base,children}'), 511,
+  'actual node value returns every expanded child, not a 32-child authored-forest cap');

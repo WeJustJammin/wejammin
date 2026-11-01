@@ -1,0 +1,61 @@
+---
+import { env } from 'cloudflare:workers';
+
+import CmsEditorialDocument from '../../../../components/cms-editorial/CmsEditorialDocument.astro';
+import CmsEditorialPageNotice from '../../../../components/cms-editorial-pages/CmsEditorialPageNotice';
+import CmsPatternVersionDesigner from '../../../../components/cms-pattern-designer/CmsPatternVersionDesigner';
+import '../../../../components/cms-pattern-designer/cms-pattern-designer.css';
+import {
+  createPatternDesignerPageReads,
+  loadPatternDesignerPage,
+} from '../../../../components/cms-pattern-designer/load-pattern-designer-page';
+import { cmsRedirectResponse } from '../../../../components/cms-editorial-pages/cms-editorial-page-outcome';
+
+export const prerender = false;
+
+Astro.response.headers.set('Cache-Control', 'no-store');
+if (Astro.request.method !== 'GET') {
+  return new Response('Method not allowed', {
+    status: 405,
+    headers: { allow: 'GET', 'cache-control': 'no-store' },
+  });
+}
+
+/*
+ * Protected pattern designer for a new key (CMS-03C-12). All behavior lives in the
+ * tested loader and island: the loader verifies the strict selector projection and
+ * returns one view, one closed state, or a sign-in redirect; the island renders the
+ * explicit-control tree form. No form is built from an unverified projection.
+ */
+const outcome = await loadPatternDesignerPage({
+  request: Astro.request,
+  patternKey: null,
+  reads: createPatternDesignerPageReads(env.PLATFORM_API),
+});
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
+Astro.response.status =
+  outcome.kind === 'view' ? outcome.status : outcome.notice.status;
+const title = outcome.kind === 'view' ? outcome.title : outcome.notice.title;
+const heading =
+  outcome.kind === 'view' ? outcome.heading : outcome.notice.heading;
+---
+
+<CmsEditorialDocument
+  title={title}
+  heading={heading}
+  description="Define a reusable pattern and submit it for review."
+  systemStatusLink
+>
+  {
+    outcome.kind === 'view' ? (
+      <CmsPatternVersionDesigner
+        context={outcome.view.context}
+        latest={null}
+        csrfToken={outcome.view.csrfToken}
+        client:load
+      />
+    ) : (
+      <CmsEditorialPageNotice notice={outcome.notice} />
+    )
+  }
+</CmsEditorialDocument>

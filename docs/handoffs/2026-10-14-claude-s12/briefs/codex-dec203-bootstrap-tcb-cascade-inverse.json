@@ -1,0 +1,347 @@
+{
+  "metadata": {
+    "purpose": "Source-only inverse review evidence; no source, TEST or runtime release.",
+    "documentPaths": "Repository-relative; UTF-8 text with LF newlines.",
+    "forwardOrder": "changes array order",
+    "inverseOrder": "reverse changes array order",
+    "replacementRule": "replace-unique: require exactly one literal before occurrence, then replace with after; inverse requires exactly one after occurrence.",
+    "appendRule": "append-only: before must be empty; append after at EOF only; inverse requires exact after suffix and removes that suffix only.",
+    "files": [
+      {
+        "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+        "baselineSha256": "eaa97522b3aec31093d6be3e9571effa41cad0dc42585bcfc58f1c6645ffe9b6",
+        "finalSha256": "56c405d640989dbf4888b3f3e41f9906a2b804ebe27414556d873100b55d3d66"
+      },
+      {
+        "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-owned-supervisor-plan-2026-10-18.md",
+        "baselineSha256": "8fcb880538f3bbcd917bd6f2aa8bdb26674c66ac33efd9e19176d3f6d6e7e6ed",
+        "finalSha256": "077ca60a00f9d14ad80c75dad996171155a92348c86ac5274214c961edfa2090"
+      },
+      {
+        "document": "docs/handoffs/2026-10-14-claude-s12/briefs/codex-dec203-isolated-native-tracing.md",
+        "baselineSha256": "ce77b2391774e60d5d0eb5175424e4c0a236e881c883048cde4dd859dcf3f9d5",
+        "finalSha256": "8ea1ef9613959fcbabf44ab8ca51b259ad68cfb7435e70b111002c853d69daa3"
+      },
+      {
+        "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+        "baselineSha256": "bd248e34e6933aba63239d9b2a277009cbfd13700ff2495cd24c4b7d34f915c3",
+        "finalSha256": "d0df8c2f2234d880edfea518360abdab897aee0d97ede304c1bc6e3e49cfc459"
+      },
+      {
+        "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-interface-2026-10-18.md",
+        "baselineSha256": "51aefaa96c2957f42aef50358aadad0c20458f3e5a5f13c39cd4756ec4da72df",
+        "finalSha256": "8cbcd3f4b5f4d6d056cf53d33beff50f4358161cbd5f1ead6a5c7c3026eba32c"
+      }
+    ]
+  },
+  "changes": [
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A01",
+      "operation": "replace-unique",
+      "before": "Design only; source-only UNRUN. Audience: native adapter author and gate reviewer.\nThis refines the frozen supervisor plan, not its production/TEST release.\nNo native producer, kernel support, ALT acceptance or new reset authority is proved.",
+      "after": "Design only, UNRUN; selected finite TCB amendment is cascaded, not source/TEST release.\nHistorical source hashes below are baseline observations, not current release pins.\nNo native producer, kernel support, ALT acceptance or new reset authority is proved."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A02",
+      "operation": "replace-unique",
+      "before": "Use one native bootstrap entry, one retained coordinator and producer-owned brands.",
+      "after": "Use the fixed outer CLI/inner coordinator route and one retained producer-owned registry."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A03",
+      "operation": "replace-unique",
+      "before": "The frozen plan SHA is",
+      "after": "Historical supervisor-plan source baseline SHA (not a current release pin):"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A04",
+      "operation": "replace-unique",
+      "before": "settle(): Promise<{state: 'drained' | 'uncertain', failure: SupervisorError | null}>;",
+      "after": "settle(): Promise<{state: 'work-terminal' | 'uncertain', failure: SupervisorError | null}>;"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A05",
+      "operation": "replace-unique",
+      "before": "close(): Promise<void>; // run-wide revocation before its first await",
+      "after": "close(): Promise<void>; // run-wide revocation before await; local cleanup, not own exit proof"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A06",
+      "operation": "replace-unique",
+      "before": "The session exists before allocation, so failed bootstrap still has settle/close.\n`ready` resolves only after actual native input issuers below succeed; it never returns\na partly authorized supervisor. Failed/uncertain preparation retains owned evidence.\n`close` cannot claim cleanup if settlement is uncertain; it rejects DRAIN_UNCERTAIN.\n\n",
+      "after": "The session exists before allocation; failed bootstrap retains actual settle/close.\nReady requires genuine adoption/build, all inputs/gates and native RUN_ACK; never partly ready.\nInner settle covers results only; close is local cleanup, not its own process-exit proof.\nUncertainty rejects DRAIN_UNCERTAIN; only the outer actual record proves GLOBAL TCB drained.\n\n"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A07",
+      "operation": "replace-unique",
+      "before": "| LeaseCapability / native bootstrap | Adopt the existing approved owner's four inherited OFD locks in fixed target order; observe actual descriptors, files, lock modes and owner ancestry/lifetime. No caller ownerPid/fd list. Recheck before releases and after awaits; owner loss/replacement revokes. |",
+      "after": "| LeaseCapability / native bootstrap | Genuine fixed C-owner FLOCK3–6 handoff; original-owner pidfd7 AND driver pidfd10, actual ancestry/descriptions and native cancellation/release checks. No caller owner/FD list; recheck after awaits and before release; loss/replacement revokes. |"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A08",
+      "operation": "replace-unique",
+      "before": "| BuildCapability / fixed supervisor builder | Fixed project C/support source, existing explicit compiler/headers, actual closed build, complete identities/bytes and output handle. No caller-selected source/binary or serialized build receipt. Bootstrap gap B below is mandatory. |",
+      "after": "| BuildCapability / fixed supervisor builder | Fixed source/support/toolchain, closed actual build, full bytes/identities and output handle. Selected finite TCB prehistory is not continuous history/client proof; no caller-selected binary/source or receipt grants authority. |"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A09",
+      "operation": "replace-unique",
+      "before": "Concrete lease handoff proposal: fixed inherited slots3–6 map to the four existing\n`sealTarget` locks/modes, with no selector/FD option. The native adopter derives owner\nfacts from the actual held OFDs; it does not accept their serialized claimed owner.\nDuplication may retain the OFDs, not extend authority beyond the original owner's life.\nThe current code has no such fixed launcher/adopter or native lifetime issuer: gap A.\nThis proposal neither acquires different locks nor changes their required dispositions.\n\nThe fixed build recipe supplies explicit canonical compiler/header paths and flags;\nthere is no ambient compiler search or caller-selected recipe. Pinning it is part of B.\n",
+      "after": "Selected route: outer receiving-native-launch CLI, one C owner and fixed coordinator.\nGenuine capabilities stay inside; outer status IPC never grants authority. The reviewed\nnative-bootstrap-interface fixes3–10, separate channels, both lifetimes, native CANCEL/\nHUP/release latches; TSFN is notification only. Root's TCB amendment selects finite\nfixed compiler/lease-owner/coordinator PREHISTORY, never Docker/SQL/setup/probe/\nmigration/reset/restoration/observer work. EVERY workflow client keeps continuous\nhistory/finality; metadata or duplicated FDs cannot extend original authority.\nThe fixed recipe/profile and actual native positive gates remain mandatory.\n\n"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A10",
+      "operation": "replace-unique",
+      "before": "A. No current fixed slots3–6 launcher/adopter or genuine original-owner lifetime issuer\nexists in the inspected infrastructure. Specify that private handoff and actual native\nlease recheck/revocation before implementation; inherited metadata is not its substitute.\nB. An unbuilt tracer cannot attest its own compiler history. The fixed build producer\nneeds a separately reviewed actual bootstrap/build-lifetime gate in the same retained\nregistry, or a separately admitted prebuilt artifact route. Neither is currently an\nimplemented issuer. An untraced build receipt cannot silently satisfy all-client history.\n",
+      "after": "A/B. The selected TCB amendment and reviewed native-bootstrap-interface fix the\nouter CLI/inner coordinator, actual3–10 handoff and separate construction boundary;\nthe native issuers are still unimplemented. Inner settle is work-terminal|uncertain.\nOnly outer FINISH/native join/alias close/I exit/C wait+EOF/C close/streams can prove\nGLOBAL TCB drained. Compiler receipts are not history, no-launch or PhaseDrainProof.\nFull bootstrap/RUN_ACK TESTs remain HELD until all genuine inputs/gates exist;\nno synthetic RUN_READY or unreviewed pre-ready adoption-plus-close branch is released.\n"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-supervisor-authority-contract-2026-10-18.md",
+      "changeId": "A11",
+      "operation": "replace-unique",
+      "before": "Proposed additional private modules: receiving-native-bootstrap, owned-supervisor-authority,\nreceiving-supervisor-workflow and receiving-native-finality (all `.mjs`, same directory).\nExisting fixed supervisor build/protocol/C modules remain as proposed in the frozen plan.\nLater integration must separately claim local-prefix/reset-state/session/runner callsites;\ndo not add a parallel validator path or leave old admission as a native fallback.\n\n",
+      "after": "Proposed modules include receiving-native-launch, receiving-native-coordinator,\nreceiving-native-bootstrap, owned-supervisor-authority/workflow/native-finality;\nfull exact paths/topology are in the reviewed bootstrap interface, not caller options.\nLater local-prefix/reset-state/session/runner integration needs separate exact claims.\nNever add a parallel validator path or legacy/native admission fallback.\n\n"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-owned-supervisor-plan-2026-10-18.md",
+      "changeId": "S01",
+      "operation": "replace-unique",
+      "before": "Status: DESIGN ONLY, UNRUN. Native `gpt-6.1-sol` / `ultra`.",
+      "after": "Status: DESIGN ONLY, UNRUN; selected finite TCB amendment cascaded, not source/TEST release."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-owned-supervisor-plan-2026-10-18.md",
+      "changeId": "S02",
+      "operation": "replace-unique",
+      "before": "Only design is released: no implementation/execution, privilege/policy change, reset or acceptance.",
+      "after": "Historical source hashes are baseline observations, not current pins; no new authority."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-owned-supervisor-plan-2026-10-18.md",
+      "changeId": "S03",
+      "operation": "replace-unique",
+      "before": "Each admitted client gets one attested, short-lived C supervisor. Its child",
+      "after": "Every Docker/workflow client gets one attested, short-lived C supervisor. Its child"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-owned-supervisor-plan-2026-10-18.md",
+      "changeId": "S04",
+      "operation": "replace-unique",
+      "before": "1. Pin fixed supervisor source/toolchain/output/ABI and native refusal contracts.",
+      "after": "1. Pin the selected outer-CLI/inner-coordinator route, fixed source/toolchain/ABI and refusals."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-owned-supervisor-plan-2026-10-18.md",
+      "changeId": "S05",
+      "operation": "replace-unique",
+      "before": "no support, hermetic-build or hostile-same-UID isolation is claimed. Peer plan:",
+      "after": "no support, hermetic-build or hostile-same-UID isolation is claimed. Historical peer baseline:"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-owned-supervisor-plan-2026-10-18.md",
+      "changeId": "S06",
+      "operation": "replace-unique",
+      "before": "Metadata keys: source/compiler/headers/output/node/abi/options/buildFlags.\nArtifact keys: path/sha256/device/inode/size/mode/uid; node: path/version. Bind\nfixed source/toolchain, reviewed headers/output and actual C identity. Bootstrap\nneeds a separate root gate: register setup under existing compiler constraints;\nthe unbuilt supervisor cannot attest its own compiler's continuous history.\n\n",
+      "after": "Metadata keys: source/compiler/headers/output/node/abi/options/buildFlags.\nArtifact keys: path/sha256/device/inode/size/mode/uid; node: path/version. Bind\nfixed source/toolchain/headers/output/C identity; [selected TCB](briefs/codex-dec203-bootstrap-tcb-amendment.md) applies.\nFinite compiler/lease-owner/coordinator prehistory is not client history; see [interface](lane-codex-dec203-native-bootstrap-interface-2026-10-18.md).\nInner ReceivingSession.settle is work-terminal|uncertain; close local; outer alone GLOBAL TCB drain.\n\n"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-owned-supervisor-plan-2026-10-18.md",
+      "changeId": "S07",
+      "operation": "replace-unique",
+      "before": "All Roles, including restore, share the global registry/environment/terminal path.",
+      "after": "Every Docker/workflow Role, including restore, shares the global registry/environment/terminal path."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/briefs/codex-dec203-isolated-native-tracing.md",
+      "changeId": "R01",
+      "operation": "replace-unique",
+      "before": "# DEC-203 isolated per-run native tracing\n",
+      "after": "# DEC-203 isolated per-run native tracing\n\nHistorical source hashes/receipts below are baseline observations, not current\nrelease pins. The selected finite TCB amendment at the end supersedes old proposals.\n"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/briefs/codex-dec203-isolated-native-tracing.md",
+      "changeId": "R02",
+      "operation": "replace-unique",
+      "before": "Every `run`/`spawn`, setup, probe, observer, migration, restoration and drain-observer client must cross the same private admission/environment/registry/completion boundary.",
+      "after": "Every Docker/workflow `run`/`spawn`, setup, probe, observer, migration, restoration and drain-observer client must cross the same private admission/environment/registry/completion boundary."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/briefs/codex-dec203-isolated-native-tracing.md",
+      "changeId": "R03",
+      "operation": "replace-unique",
+      "before": "All client phases, not just reset, require causal drain before restore.",
+      "after": "All Docker/workflow client phases, not just reset, require causal drain before restore."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/briefs/codex-dec203-isolated-native-tracing.md",
+      "changeId": "R04",
+      "operation": "append-only",
+      "before": "",
+      "after": "\n## Selected finite TCB construction and settlement\n\nRoot's read-only codex-dec203-bootstrap-tcb-amendment selects the fixed outer CLI,\nC owner and inner receiving-native-coordinator route in the reviewed bootstrap interface.\nOnly finite fixed compiler/lease-owner/coordinator construction is trusted PREHISTORY:\nno Docker/SQL/setup/probe/migration/reset/restoration/observer work occurs there.\nIt is not continuous history, ClientPermit, no-launch transcript or PhaseDrainProof.\nEvery Docker/workflow client keeps all original tracing, causality and finality gates.\nFixed3–6 FLOCK handoff, pidfds7+10, native cancellation and real child-FD absence remain mandatory.\nInner ReceivingSession.settle returns work-terminal|uncertain; close revokes before await,\nnot its own exit proof. Only outer actual FINISH/join/alias close/I exit/C wait+EOF/\nC close/outer streams can prove GLOBAL TCB drained; LocalSettlement/PhaseDrainProof stay unchanged.\nAll bootstrap/full RUN_ACK TESTs remain HELD until every genuine input/gate exists.\nNo synthetic RUN_READY or pre-ready adoption-plus-close branch is released. No new kill authority.\n"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B01",
+      "operation": "replace-unique",
+      "before": "This requires the explicit bootstrap contract amendments below; current A/B are\nnot implemented or cleared by a diagram, matching DTO or compiler exit receipt.",
+      "after": "Root's selected finite TCB amendment applies; A/B remain unimplemented and are\nnot cleared by a diagram, matching DTO or compiler exit receipt."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B02",
+      "operation": "replace-unique",
+      "before": "Read the complete authority contract300LF, SHA256",
+      "after": "HISTORICAL input observations, not current pins: authority baseline300LF, SHA256"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B03",
+      "operation": "replace-unique",
+      "before": "and supervisor plan300LF, SHA256",
+      "after": "and historical supervisor-plan baseline300LF, SHA256"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B04",
+      "operation": "replace-unique",
+      "before": "Also read the complete root brief `HD/briefs/codex-dec203-isolated-native-tracing.md`",
+      "after": "Historical root-brief baseline `HD/briefs/codex-dec203-isolated-native-tracing.md`"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B05",
+      "operation": "replace-unique",
+      "before": "the nonrenewing5s protocol-cancel settlement are in the companion. Compiler-only\nSIGKILL does not authorize any C-owner/coordinator kill or escalation.",
+      "after": "inner work-terminal|uncertain settlement and outer-only GLOBAL TCB drain are in the\ncompanion. Compiler-only SIGKILL never authorizes C-owner/coordinator escalation."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B06",
+      "operation": "replace-unique",
+      "before": "## Required contract amendments before GREEN",
+      "after": "## Selected TCB amendment and retained release HOLD"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B07",
+      "operation": "replace-unique",
+      "before": "1. Authority39–117 needs the explicit outer CLI/inner coordinator route, fixed3–10",
+      "after": "1. Authority39–117 now selects the outer CLI/inner coordinator route, fixed3–10"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B08",
+      "operation": "replace-unique",
+      "before": "2. Authority96–110/272–275 and supervisor88–92 must explicitly admit the finite",
+      "after": "2. Authority96–110/272–275 and supervisor88–92 now explicitly admit only the finite"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B09",
+      "operation": "replace-unique",
+      "before": "   blocks all later authority. Root must approve this trust boundary, not infer it.",
+      "after": "   blocks all later authority. This selected construction TCB grants no client proof."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B10",
+      "operation": "replace-unique",
+      "before": "3. Root brief16/22 must clarify that EVERY Docker/workflow client still requires",
+      "after": "3. Root brief19/25 keeps EVERY Docker/workflow client under genuine prelaunch admission"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B11",
+      "operation": "replace-unique",
+      "before": "   prelaunch registration and continuous history. The finite compiler/lease-owner",
+      "after": "   and continuous history. Only finite compiler/lease-owner/coordinator construction"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B12",
+      "operation": "replace-unique",
+      "before": "   construction is declared trusted prehistory only; it never touches Docker/SQL.\n   If “every client” is intended to include those compilers too, this proposal is\n   blocked: an unbuilt supervisor cannot trace itself. Do not silently waive it.",
+      "after": "   is selected trusted prehistory; no Docker/SQL/setup/probe/migration/reset/restore/\n   observer work occurs there. Inner close/settle never proves its own process exit;\n   only the outer actual record establishes GLOBAL TCB drained after full closure."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B13",
+      "operation": "replace-unique",
+      "before": "## Smallest executable TEST-first claims and steps",
+      "after": "## HELD TEST inventory — no bootstrap/full RUN_ACK release"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B14",
+      "operation": "replace-unique",
+      "before": "1. Freeze the amended contract/profile and actual source/recipe/environment bytes;\n   do not mint fixtures or implement a missing/unavailable success-capable stub.",
+      "after": "1. ALL bootstrap/full RUN_ACK TEST steps below are HELD until every genuine\n   artifact/ingress/policy/run input/gate exists; no synthetic RUN_READY or stub."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-plan-2026-10-18.md",
+      "changeId": "B15",
+      "operation": "replace-unique",
+      "before": "   Negative corrupt-handoff/foreign-parent fixtures need a later FIXED compiled",
+      "after": "   Pre-ready adoption-plus-close needs separate review; negative fixtures need FIXED"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-interface-2026-10-18.md",
+      "changeId": "I01",
+      "operation": "replace-unique",
+      "before": "The compiler-prehistory TCB amendment still needs explicit root approval.",
+      "after": "Root's read-only codex-dec203-bootstrap-tcb-amendment selects this finite construction TCB."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-interface-2026-10-18.md",
+      "changeId": "I02",
+      "operation": "replace-unique",
+      "before": "No supervisor, Workflow, permit, phase or proof object crosses outer IPC. Outer\nstatus/exit cannot mint authority. All genuine objects stay in inner private maps.",
+      "after": "No supervisor, Workflow, permit, phase or proof object crosses outer IPC. Outer\nstatus/exit cannot mint authority. All genuine objects stay in inner private maps.\nInner ReceivingSession.settle returns exactly\n`{state:'work-terminal'|'uncertain',failure:SupervisorError|null}`.\nInner close revokes its run natively before await; local cleanup cannot prove its exit. Only the outer\nactual owned record reports GLOBAL TCB drained after complete native/process closure.\nPer-client LocalSettlement and genuine PhaseDrainProof remain unchanged."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-interface-2026-10-18.md",
+      "changeId": "I03",
+      "operation": "replace-unique",
+      "before": "The first TEST claim may cover safe genuine positives only: actual fixed builds,\ntwo disjoint channels, real C-owned four-lock3–6 handoff, both actual pidfds,\nprecompile flags, native F_GETFD, real compiler-child absence, real adoption and\nRUN_ACK barriers. It must use the compiled fixed production artifacts and entry,\nnot a caller-selected program/source/FD, injected issuer or test-only production hook.\nNo foreign-parent/corrupt-handoff negative fixture is yet specified safely enough\nfor release. A later separately claimed FIXED compiled TEST artifact and closed\ntest harness may provide those witnesses, with genuine positive premises and\nno production override. Until reviewed, leave that negative scope explicitly OPEN.\n",
+      "after": "ALL bootstrap/full RUN_ACK TEST release is HELD until actual genuine artifact,\ningress/policy/run inputs and every remaining native prerequisite exist. A/B alone\ncannot emit synthetic RUN_READY or imply a full positive. A genuine pre-ready\nadoption-plus-close branch would need separate review and is NOT released.\nFuture safe positives must use fixed production artifacts/entry and actual builds,\nchannels, locks/pidfds, flag/child-FD facts and native adoption/RUN_ACK barriers.\nNo caller-selected program/source/FD, injected issuer or production test hook.\nNegative fixture routes remain OPEN until a separately reviewed FIXED compiled\nTEST artifact and closed harness exist; genuine premises cannot be fabricated.\n"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-interface-2026-10-18.md",
+      "changeId": "I04",
+      "operation": "replace-unique",
+      "before": "Root's read-only codex-dec203-bootstrap-tcb-amendment selects this finite construction TCB.",
+      "after": "Root's read-only codex-dec203-bootstrap-tcb-amendment selects this finite construction TCB.\nOnly fixed compiler/lease-owner/coordinator PREHISTORY is admitted, with no Docker/\nSQL/setup/probe/migration/reset/restoration/observer work. It is not continuous\nhistory, a no-launch transcript, ClientPermit or PhaseDrainProof. EVERY Docker/\nworkflow client keeps genuine admission, continuous owned history, writer/operation\ncausality and independent terminal evidence; construction uncertainty blocks ready."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-interface-2026-10-18.md",
+      "changeId": "I05",
+      "operation": "replace-unique",
+      "before": "Per-client LocalSettlement and genuine PhaseDrainProof remain unchanged.",
+      "after": "Work-terminal means admitted workflow/local results settled; bootstrap watchers,\nretained lock aliases, processes and channels may remain. Per-client LocalSettlement\nand genuine PhaseDrainProof remain unchanged."
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-interface-2026-10-18.md",
+      "changeId": "I06",
+      "operation": "replace-unique",
+      "before": "At5s without complete proof, settle returns uncertain/DRAIN_UNCERTAIN. Retain the\nouter actual ChildProcess, compiler records/streams/fences, C/I process records,",
+      "after": "At5s without complete GLOBAL TCB proof, the outer record reports uncertain/DRAIN_UNCERTAIN.\nInner settle never returns drained; work-terminal cannot discharge that outer proof.\nRetain the actual outer ChildProcess, compiler records/streams/fences, C/I process records,"
+    },
+    {
+      "document": "docs/handoffs/2026-10-14-claude-s12/lane-codex-dec203-native-bootstrap-interface-2026-10-18.md",
+      "changeId": "I07",
+      "operation": "replace-unique",
+      "before": "FINISH after work-terminal closes native watchers/aliases once and permits natural\nI exit; C requires actual wait/EOF before closing its aliases.",
+      "after": "Inner close completes only its local FINISH/join/alias-closure handshake, not its exit.\nFINISH after work-terminal closes native watchers/aliases once and permits natural\nI exit; C requires actual wait/EOF before closing its aliases."
+    }
+  ]
+}

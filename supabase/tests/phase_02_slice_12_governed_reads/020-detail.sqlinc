@@ -1,0 +1,140 @@
+-- CMS-03C-10 detail: per-reader redaction, exact resource, scope-derived next actions, concealment and 403, and a read
+-- that writes nothing.
+select pg_temp.s12ga_mark('r3:reads', pg_temp.s12ga_review('r3'));
+select pg_temp.s12ga_get('g-owner', 'owner', pg_temp.s12ga_review('r3'));
+select pg_temp.s12ga_get('g-rev1', 'rev1', pg_temp.s12ga_review('r3'));
+select pg_temp.s12ga_get('g-d2', 'designer2', pg_temp.s12ga_review('r3'));
+select pg_temp.s12ga_get('g-rev2', 'rev2', pg_temp.s12ga_review('r3'));
+
+select is(pg_temp.s12ga_out('g-owner') || '/' || pg_temp.s12ga_out('g-rev1') || '/' || pg_temp.s12ga_out('g-d2') || '/' || pg_temp.s12ga_out('g-rev2'),
+  'ok/ok/ok/ok',
+  'the receipt owner/submitter/capability holder, an assignee, the deciding reviewer and a second assignee can all read R3 [P2-S12-AC-090]');
+select is(pg_temp.s12ga_keys(pg_temp.s12ga_body('g-owner')),
+  'activatedAt,activationSchedule,assignments,blockRegistryDigest,contentHash,createdAt,decidedAt,decisions,distinctApprovalCount,id,'
+  || 'invalidatedReason,lineageId,myAssignment,permittedNextActions,policyBasis,policyBasisHash,recordedDecisionCount,'
+  || 'requiredCapabilities,requiredDecisionCount,riskClass,state,subjectHash,subjectId,subjectKey,subjectKind,subjectState,'
+  || 'subjectVersion,submittedAt,updatedAt,version',
+  'the detail body is exactly GovernedReviewDetailResource (30 members, DEC-191 activationSchedule) [P2-S12-AC-088]');
+select ok(
+  pg_temp.s12ga_body('g-owner')->>'id' = pg_temp.s12ga_review('r3')::text
+    and pg_temp.s12ga_body('g-owner')->>'state' = 'open' and pg_temp.s12ga_body('g-owner')->>'version' = '2'
+    and jsonb_typeof(pg_temp.s12ga_body('g-owner')->'version') = 'string'
+    and pg_temp.s12ga_body('g-owner')->>'riskClass' = 'protected'
+    and (pg_temp.s12ga_body('g-owner')->>'requiredDecisionCount')::integer = 2
+    and (pg_temp.s12ga_body('g-owner')->>'recordedDecisionCount')::integer = 1
+    and pg_temp.s12ga_body('g-owner')->'requiredCapabilities' = '["cms.reviewer","cms.reviewer.policy"]'::jsonb
+    and pg_temp.s12ga_body('g-owner')->>'subjectState' = 'review'
+    and (pg_temp.s12ga_body('g-owner')->>'distinctApprovalCount')::integer = 1
+    and pg_temp.s12ga_body('g-owner')->>'blockRegistryDigest' = encode(extensions.digest('[]'::bytea, 'sha256'), 'hex')
+    and pg_temp.s12ga_body('g-owner')->>'subjectId' = pg_temp.s12ga_subject('r3')::text
+    and pg_temp.s12ga_body('g-owner')->>'decidedAt' is null,
+  'the detail carries the review base, the recomputed block digest, the subject state and the live distinct approval count [P2-S12-AC-088]');
+select ok(
+  (select count(*) = 2 and bool_and(pg_temp.s12ga_keys(element) = 'contentTypeLabel,policyKey,policyVersion'
+          and jsonb_typeof(element->'policyVersion') = 'string' and element->>'policyVersion' = '1' and length(element->>'contentTypeLabel') between 1 and 120
+          and element->>'contentTypeLabel' !~* '^[0-9a-f]{8}-[0-9a-f]{4}-')
+     from jsonb_array_elements(pg_temp.s12ga_body('g-owner')->'policyBasis') element)
+  and (select array_agg(element->>'policyKey' order by element->>'policyKey' collate "C")
+         from jsonb_array_elements(pg_temp.s12ga_body('g-owner')->'policyBasis') element) = array['cms.disclosure.policy', 'editorial'],
+  'the policy basis lists one summary per bound content type: label, policy key and version, never an identifier [P2-S12-AC-090]');
+
+-- ----------------------------------------------------------------------------- per-reader redaction --
+select ok(
+  jsonb_array_length(pg_temp.s12ga_body('g-owner')->'decisions') = 1
+    and pg_temp.s12ga_keys(pg_temp.s12ga_body('g-owner')->'decisions'->0) = 'capability,decidedAt,decision,id,mine,reason'
+    and pg_temp.s12ga_body('g-owner')->'decisions'->0->>'capability' = 'cms.reviewer.policy'
+    and pg_temp.s12ga_body('g-owner')->'decisions'->0->>'decision' = 'approve'
+    and (pg_temp.s12ga_body('g-owner')->'decisions'->0->>'mine')::boolean = false
+    and pg_temp.s12ga_body('g-owner')->'decisions'->0->'reason' = 'null'::jsonb
+    and pg_temp.s12ga_body('g-rev1')->'decisions'->0->'reason' = 'null'::jsonb
+    and pg_temp.s12ga_body('g-rev2')->'decisions'->0->'reason' = 'null'::jsonb,
+  'a decision shows its slot capability and instant to every reader but its reason to no one but its decider [P2-S12-AC-090]');
+select ok((pg_temp.s12ga_body('g-d2')->'decisions'->0->>'mine')::boolean
+    and pg_temp.s12ga_body('g-d2')->'decisions'->0->>'reason' = 'The disclosure policy is met.',
+  'the deciding reviewer sees his own reason and the mine flag [P2-S12-AC-090]');
+select ok(
+  jsonb_array_length(pg_temp.s12ga_body('g-owner')->'assignments') = 3
+    and (select bool_and(pg_temp.s12ga_keys(element) = 'assignmentId,endsAt,reviewerLabel,startsAt,state,version'
+                         and element->>'reviewerLabel' ~ '^Reviewer [0-9]+$' and element->>'state' = 'active')
+           from jsonb_array_elements(pg_temp.s12ga_body('g-owner')->'assignments') element)
+    and (select count(distinct element->>'reviewerLabel') = 3
+           from jsonb_array_elements(pg_temp.s12ga_body('g-owner')->'assignments') element)
+    and pg_temp.s12ga_body('g-rev1')->'assignments' = '[]'::jsonb and pg_temp.s12ga_body('g-d2')->'assignments' = '[]'::jsonb
+    and pg_temp.s12ga_body('g-rev2')->'assignments' = '[]'::jsonb,
+  'only the receipt owner receives the assignment summaries, by distinct display label; every other reader receives [] [P2-S12-AC-090]');
+select ok(
+  pg_temp.s12ga_body('g-owner')->'myAssignment' = 'null'::jsonb
+    and pg_temp.s12ga_keys(pg_temp.s12ga_body('g-rev1')->'myAssignment') = 'assignmentId,endsAt'
+    and pg_temp.s12ga_body('g-rev1')->'myAssignment'->>'assignmentId' = pg_temp.s12ga_aid(pg_temp.s12ga_review('r3'), 'rev1')::text,
+  'an assignee receives only the id and end of the own assignment [P2-S12-AC-090]');
+select ok(
+  not exists (
+    select 1 from unnest(array['g-owner', 'g-rev1', 'g-d2', 'g-rev2']) l,
+         unnest(array[pg_temp.s12ga_person('owner'), pg_temp.s12ga_person('rev1'), pg_temp.s12ga_person('rev2'),
+                      pg_temp.s12ga_person('designer2'), pg_temp.s12ga_auth('owner'), pg_temp.s12ga_auth('rev1'),
+                      pg_temp.s12ga_auth('rev2'), pg_temp.s12ga_auth('designer2'), pg_temp.s12ga_org()]) ident
+     where position(ident::text in pg_temp.s12ga_body(l)::text) > 0),
+  'no person, auth user or party identifier appears anywhere in any reader document [P2-S12-AC-090]');
+select is(
+  (pg_temp.s12ga_body('g-owner')->'permittedNextActions')::text || ' ' || (pg_temp.s12ga_body('g-rev1')->'permittedNextActions')::text || ' '
+    || (pg_temp.s12ga_body('g-d2')->'permittedNextActions')::text || ' ' || (pg_temp.s12ga_body('g-rev2')->'permittedNextActions')::text,
+  '["assign_reviewer", "revoke_assignment"] ["record_decision"] [] ["record_decision"]',
+  'the next actions follow the role: owner assign/revoke, an undecided assignee record_decision, the decided reviewer none [P2-S12-AC-090]');
+
+-- --------------------------------------------------------- other states, other readers, other scopes --
+select pg_temp.s12ga_get('s-r1-owner', 'owner', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_get('s-r1-rev1', 'rev1', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_get('s-r1-d2', 'designer2', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_get('s-r5-owner', 'owner', pg_temp.s12ga_review('r5'));
+select pg_temp.s12ga_get('s-r6-d2', 'designer2', pg_temp.s12ga_review('r6'));
+select pg_temp.s12ga_get('s-r6-rev2', 'rev2', pg_temp.s12ga_review('r6'));
+select ok(
+  pg_temp.s12ga_body('s-r1-owner')->>'state' = 'approved' and pg_temp.s12ga_body('s-r1-owner')->>'subjectState' = 'approved'
+    and pg_temp.s12ga_body('s-r1-owner')->'permittedNextActions' = '["activate","schedule"]'::jsonb
+    and pg_temp.s12ga_body('s-r1-owner')->>'decidedAt' is not null
+    and pg_temp.s12ga_body('s-r1-rev1')->'decisions'->0->>'reason' = 'Matches the frozen definition.'
+    and pg_temp.s12ga_body('s-r1-rev1')->'permittedNextActions' = '[]'::jsonb,
+  'an approved review offers the owner-capability holder activate and schedule; its decider reads his own reason and has no action [P2-S12-AC-090]');
+select ok(pg_temp.s12ga_out('s-r1-d2') = 'ok' and pg_temp.s12ga_body('s-r1-d2')->'permittedNextActions' = '["activate","schedule"]'::jsonb
+    and pg_temp.s12ga_body('s-r1-d2')->'assignments' = '[]'::jsonb and pg_temp.s12ga_body('s-r1-d2')->'myAssignment' = 'null'::jsonb,
+  'a holder of the subject kind''s owner capability who is neither submitter, assignee nor owner reads the review and is offered '
+  || 'activate and schedule, without the owner assignments [P2-S12-AC-090]');
+select ok(
+  pg_temp.s12ga_body('s-r5-owner')->>'state' = 'invalidated'
+    and pg_temp.s12ga_body('s-r5-owner')->>'invalidatedReason' = 'reviewer_authority_changed'
+    and pg_temp.s12ga_body('s-r5-owner')->'decidedAt' = 'null'::jsonb
+    and pg_temp.s12ga_body('s-r5-owner')->>'subjectState' = 'draft'
+    and pg_temp.s12ga_body('s-r5-owner')->'permittedNextActions' = '[]'::jsonb
+    and (pg_temp.s12ga_body('s-r5-owner')->>'distinctApprovalCount')::integer = 0
+    and jsonb_array_length(pg_temp.s12ga_body('s-r5-owner')->'assignments') = 1
+    and pg_temp.s12ga_body('s-r5-owner')->'assignments'->0->>'state' = 'revoked',
+  'an invalidated review shows its reason, the subject back at draft, no actions, the revoked assignment to the owner and a '
+  || 'live approval count of zero [P2-S12-AC-090]');
+select ok(
+  pg_temp.s12ga_out('s-r6-d2') = 'ok' and pg_temp.s12ga_body('s-r6-d2')->'permittedNextActions' = '[]'::jsonb
+    and pg_temp.s12ga_body('s-r6-d2')->'assignments' = '[]'::jsonb
+    and pg_temp.s12ga_out('s-r6-rev2') = 'ok' and pg_temp.s12ga_body('s-r6-rev2')->'permittedNextActions' = '["record_decision"]'::jsonb,
+  'the submitter who is not the receipt owner reads the review without owner actions or assignments [P2-S12-AC-090]');
+
+-- ------------------------------------------------------------------------ concealment and 403 --
+select pg_temp.s12ga_get('c-absent', 'owner', 'a12a0000-0000-4000-8000-0000000000d1');
+select pg_temp.s12ga_rpc('c-other-org', 'platform_api.cms_get_governed_review', 'other',
+  jsonb_build_object('reviewId', pg_temp.s12ga_review('r3')), pg_temp.s12ga_ctx('other', interval '1 minute', false));
+select pg_temp.s12ga_rpc('c-nonmember', 'platform_api.cms_get_governed_review', 'rev3',
+  jsonb_build_object('reviewId', pg_temp.s12ga_review('r3')),
+  pg_temp.s12ga_ctx('rev3', interval '1 minute', false) || jsonb_build_object('actingPartyId', pg_temp.s12ga_org()));
+select pg_temp.s12ga_get('f-noscope', 'rev2', pg_temp.s12ga_review('r1'));
+select pg_temp.s12ga_get('f-revoked', 'rev2', pg_temp.s12ga_review('r4'));
+select pg_temp.s12ga_get('f-reviewer-other', 'rev1', pg_temp.s12ga_review('r6'));
+select pg_temp.s12ga_get('b-extra', 'owner', pg_temp.s12ga_review('r3'), jsonb_build_object('scope', 'owned'));
+select pg_temp.s12ga_get('b-bad-id', 'owner', pg_temp.s12ga_review('r3'), jsonb_build_object('reviewId', 'not-a-uuid'));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12ga_out(l), ';' order by l collate "C")
+     from unnest(array['c-absent', 'c-other-org', 'c-nonmember', 'f-noscope', 'f-revoked', 'f-reviewer-other', 'b-extra', 'b-bad-id']) l),
+  'b-bad-id=P0001:INVALID_REQUEST;b-extra=P0001:INVALID_REQUEST;c-absent=P0001:NOT_FOUND;c-nonmember=P0001:NOT_FOUND;'
+    || 'c-other-org=P0001:NOT_FOUND;f-noscope=P0001:capability_missing;f-reviewer-other=P0001:capability_missing;'
+    || 'f-revoked=P0001:capability_missing',
+  'an absent, cross-owner or non-member read is one concealed NOT_FOUND; a confirmed member with no read scope, or whose assignment '
+  || 'was revoked, is 403 capability_missing; extra or malformed input is INVALID_REQUEST [P2-S12-AC-090]');
+select ok(pg_temp.s12ga_same('r3:reads', pg_temp.s12ga_review('r3')),
+  'the detail reads write no audit, outbox, idempotency or review row [P2-S12-AC-091]');

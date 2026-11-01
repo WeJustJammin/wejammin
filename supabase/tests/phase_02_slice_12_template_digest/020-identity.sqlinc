@@ -1,0 +1,50 @@
+-- Identity of the patched producer: only the digest-mismatch statement and the two later reviewed lock amendments (20261024130200, 20261024130400)
+-- differ from the applied body of 20261013100200_cms_define_template_per_owner.sql, and no pg_proc attribute moved.
+-- The md5 below is the md5 of that applied body (the text between its $body$ markers), computed by script.
+select is(
+  (select pg_catalog.length(proc.prosrc) - pg_catalog.length(pg_catalog.replace(proc.prosrc,
+     $n$    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$n$, ''))
+     from pg_catalog.pg_proc proc where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure),
+  pg_catalog.length($n$    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$n$),
+  'the producer raises the typed digest token exactly once, with DETAIL ["/blockRegistryDigest"] [BE03c 1273]');
+-- POST-PROMOTION PIN FIX (lane claude_s12_gaps_db2, root-authorized named correction 2026-10-29): wave 3 promoted two reviewed anchored amendments of this
+-- producer AFTER the DEC-186 statement: 20261024130200 (CMS-03C-01 lock position 1) and 20261024130400 (lock position 4).  The pin stays a FULL-BODY pin:
+-- the amendments are reversed in reverse timestamp order (130400, then 130200), then the one DEC-186 statement, and the md5 of the result must equal the md5
+-- of the body applied by 20261013100200.  Each reversal is first shown to remove exactly one occurrence, so a reversal that matches nothing cannot pass.
+select is(
+  (select pg_catalog.length(proc.prosrc) - pg_catalog.length(pg_catalog.replace(proc.prosrc, E'  -- BE03c lock order position 4 (CMS-03C-01): the content type version rows the definition names, FOR SHARE in ascending id, after the\n  -- grant rows (1) and the parent version row (3); the compatibility is proved again under the lock.\n  perform 1\n    from platform_private.cms_content_type_versions version_row\n   where version_row.id in (\n     select bound.version_id\n       from platform_private.cms_governed_bound_versions(\'template_version\', acting_party_id,\n         pg_catalog.jsonb_build_object(\'typeIds\', definition->\'compatibleTypeIds\')) bound)\n   order by version_row.id\n     for share of version_row;\n  if (select pg_catalog.count(distinct bound.content_type_id)\n        from platform_private.cms_governed_bound_versions(\'template_version\', acting_party_id,\n          pg_catalog.jsonb_build_object(\'typeIds\', definition->\'compatibleTypeIds\')) bound)\n     <> (select pg_catalog.count(distinct (named.value #>> \'{}\')::uuid)\n           from pg_catalog.jsonb_array_elements(definition->\'compatibleTypeIds\') named(value)) then\n    raise exception \'VALIDATION_FAILED\' using errcode = \'P0001\';\n  end if;\n' || E'  new_row_id := extensions.gen_random_uuid();\n  lineage_id := case when has_previous then previous_row.template_id else new_row_id end;\n', ''))
+     from pg_catalog.pg_proc proc where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure),
+  pg_catalog.length(E'  -- BE03c lock order position 4 (CMS-03C-01): the content type version rows the definition names, FOR SHARE in ascending id, after the\n  -- grant rows (1) and the parent version row (3); the compatibility is proved again under the lock.\n  perform 1\n    from platform_private.cms_content_type_versions version_row\n   where version_row.id in (\n     select bound.version_id\n       from platform_private.cms_governed_bound_versions(\'template_version\', acting_party_id,\n         pg_catalog.jsonb_build_object(\'typeIds\', definition->\'compatibleTypeIds\')) bound)\n   order by version_row.id\n     for share of version_row;\n  if (select pg_catalog.count(distinct bound.content_type_id)\n        from platform_private.cms_governed_bound_versions(\'template_version\', acting_party_id,\n          pg_catalog.jsonb_build_object(\'typeIds\', definition->\'compatibleTypeIds\')) bound)\n     <> (select pg_catalog.count(distinct (named.value #>> \'{}\')::uuid)\n           from pg_catalog.jsonb_array_elements(definition->\'compatibleTypeIds\') named(value)) then\n    raise exception \'VALIDATION_FAILED\' using errcode = \'P0001\';\n  end if;\n' || E'  new_row_id := extensions.gen_random_uuid();\n  lineage_id := case when has_previous then previous_row.template_id else new_row_id end;\n'),
+  'the producer carries the 20261024130400 position-4 insertion exactly once, directly before its anchor');
+select is(
+  (select pg_catalog.length(proc.prosrc) - pg_catalog.length(pg_catalog.replace(proc.prosrc, E'-- BE03c lock order position 1: the designer grant rows FOR SHARE; the check below is the re-proof under the lock.\n  perform platform_private.cms_lock_governed_authority(actor_id, acting_party_id, \'cms.template_designer\');\n  if not platform_private.cms_template_designer_authorized(actor_id, acting_party_id) then', ''))
+     from pg_catalog.pg_proc proc where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure),
+  pg_catalog.length(E'-- BE03c lock order position 1: the designer grant rows FOR SHARE; the check below is the re-proof under the lock.\n  perform platform_private.cms_lock_governed_authority(actor_id, acting_party_id, \'cms.template_designer\');\n  if not platform_private.cms_template_designer_authorized(actor_id, acting_party_id) then'),
+  'the producer carries the 20261024130200 position-1 lock call exactly once, directly before the capability check');
+select is(
+  (select pg_catalog.md5(pg_catalog.replace(pg_catalog.replace(pg_catalog.replace(proc.prosrc,
+     E'  -- BE03c lock order position 4 (CMS-03C-01): the content type version rows the definition names, FOR SHARE in ascending id, after the\n  -- grant rows (1) and the parent version row (3); the compatibility is proved again under the lock.\n  perform 1\n    from platform_private.cms_content_type_versions version_row\n   where version_row.id in (\n     select bound.version_id\n       from platform_private.cms_governed_bound_versions(\'template_version\', acting_party_id,\n         pg_catalog.jsonb_build_object(\'typeIds\', definition->\'compatibleTypeIds\')) bound)\n   order by version_row.id\n     for share of version_row;\n  if (select pg_catalog.count(distinct bound.content_type_id)\n        from platform_private.cms_governed_bound_versions(\'template_version\', acting_party_id,\n          pg_catalog.jsonb_build_object(\'typeIds\', definition->\'compatibleTypeIds\')) bound)\n     <> (select pg_catalog.count(distinct (named.value #>> \'{}\')::uuid)\n           from pg_catalog.jsonb_array_elements(definition->\'compatibleTypeIds\') named(value)) then\n    raise exception \'VALIDATION_FAILED\' using errcode = \'P0001\';\n  end if;\n' || E'  new_row_id := extensions.gen_random_uuid();\n  lineage_id := case when has_previous then previous_row.template_id else new_row_id end;\n', E'  new_row_id := extensions.gen_random_uuid();\n  lineage_id := case when has_previous then previous_row.template_id else new_row_id end;\n'),
+     E'-- BE03c lock order position 1: the designer grant rows FOR SHARE; the check below is the re-proof under the lock.\n  perform platform_private.cms_lock_governed_authority(actor_id, acting_party_id, \'cms.template_designer\');\n  if not platform_private.cms_template_designer_authorized(actor_id, acting_party_id) then', 'if not platform_private.cms_template_designer_authorized(actor_id, acting_party_id) then'),
+     $n$    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$n$,
+     $o$    raise exception 'CONFLICT' using errcode = 'P0001';$o$))
+     from pg_catalog.pg_proc proc where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure),
+  'd08ff99c25e9eb76719eb7ebe0f3ca98',
+  'with the position-4 insertion, the position-1 lock call and the one DEC-186 statement reversed, the producer body is byte-identical to the applied 20261013100200 body');
+select is(
+  (select pg_catalog.jsonb_build_object('lang', lang.lanname, 'secdef', proc.prosecdef, 'volatile', proc.provolatile,
+            'config', proc.proconfig, 'owner', pg_catalog.pg_get_userbyid(proc.proowner), 'returns', proc.prorettype::regtype::text,
+            'args', pg_catalog.oidvectortypes(proc.proargtypes), 'parallel', proc.proparallel, 'leakproof', proc.proleakproof,
+            'strict', proc.proisstrict, 'rows', proc.prorows, 'cost', proc.procost)
+     from pg_catalog.pg_proc proc join pg_catalog.pg_language lang on lang.oid = proc.prolang
+    where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure),
+  '{"lang":"plpgsql","secdef":true,"volatile":"v","config":["search_path=\"\""],"owner":"wejammin_cms_definer","returns":"jsonb","args":"jsonb","parallel":"u","leakproof":false,"strict":false,"rows":0,"cost":100}'::jsonb,
+  'the producer keeps language, SECURITY DEFINER, volatility, empty search_path, owner and signature');
+select ok(
+  (select bool_and(not pg_catalog.has_function_privilege(role_name, 'platform_private.cms_define_template(jsonb)'::regprocedure, 'EXECUTE'))
+     from (values ('public'::name), ('anon'::name), ('authenticated'::name), ('service_role'::name)) roles(role_name)),
+  'the private producer stays inaccessible to every API role');
+select ok(
+  pg_catalog.has_function_privilege('service_role', 'platform_api.cms_define_template(jsonb)'::regprocedure, 'EXECUTE')
+  and not pg_catalog.has_function_privilege('anon', 'platform_api.cms_define_template(jsonb)'::regprocedure, 'EXECUTE')
+  and not pg_catalog.has_function_privilege('authenticated', 'platform_api.cms_define_template(jsonb)'::regprocedure, 'EXECUTE'),
+  'the public wrapper is untouched: service_role only');

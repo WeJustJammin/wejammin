@@ -1,0 +1,27 @@
+-- cmsRelatedContentRead function shape and grants (DEC-195; BE03c route registry, catalog; tracker P2-S12-AC-261).
+-- The private reader and its Worker transport follow the CMS-03C-14 read precedent: definer-owned, empty search_path,
+-- the transport executable by service_role only, nothing by anon, authenticated or PUBLIC.
+
+select ok(pg_temp.h11_private_definer('cms_get_related_content(jsonb)'),
+  'cms_get_related_content is a private SECURITY DEFINER function of the CMS definer, empty search_path, no API-role execute [P2-S12-AC-261]');
+select is(pg_temp.h11_rettype('cms_get_related_content(jsonb)'), 'jsonb', 'the private reader answers jsonb [P2-S12-AC-062]');
+select ok(coalesce((select p.prosecdef and pg_get_userbyid(p.proowner) = 'wejammin_cms_definer'
+                        and coalesce(p.proconfig, array[]::text[]) @> array['search_path=""']
+                        and has_function_privilege('service_role', p.oid, 'execute')
+                        and not has_function_privilege('anon', p.oid, 'execute')
+                        and not has_function_privilege('authenticated', p.oid, 'execute')
+                        and not exists (select 1 from aclexplode(coalesce(p.proacl, acldefault('f', p.proowner))) acl
+                                         where acl.grantee = 0 and acl.privilege_type = 'EXECUTE')
+                   from pg_proc p where p.oid = to_regprocedure('platform_api.cms_get_related_content(jsonb)')), false),
+  'the Worker transport platform_api.cms_get_related_content is definer-owned, empty search_path and service_role-only [P2-S12-AC-261]');
+select ok(not coalesce(has_function_privilege('service_role', to_regprocedure('platform_private.cms_get_related_content(jsonb)'), 'execute'), true),
+  'the private reader is not executable by service_role: only the transport is [P2-S12-AC-261]');
+select ok(coalesce(has_function_privilege('wejammin_cms_definer', to_regprocedure('platform_private.cms_get_related_content(jsonb)'), 'execute'), false),
+  'the private reader is executable by its definer, which the transport runs as [P2-S12-AC-261]');
+select is((select count(*)::integer from pg_proc proc join pg_namespace ns on ns.oid = proc.pronamespace
+            where ns.nspname = 'platform_api' and proc.proname = 'cms_get_related_content'), 1,
+  'exactly one transport overload exists [P2-S12-AC-261]');
+select is(pg_temp.r12_text($$select pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_get_related_content(jsonb)')) !~* '\m(insert|update|delete)\s+(into|platform_private|from)'$$), 'true',
+  'the reader contains no insert, update or delete statement: a read writes nothing [P2-S12-AC-062]');
+select is(pg_temp.r12_text($$select pg_catalog.pg_get_functiondef(to_regprocedure('platform_private.cms_get_related_content(jsonb)')) !~* 'for (update|share)'$$), 'true',
+  'the reader takes no row lock: a read locks nothing [P2-S12-AC-062]');

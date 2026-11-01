@@ -1,0 +1,121 @@
+-- Later actual copied-row failure: no helper replacement or simulated refusal.
+select pg_temp.s12rr_world('rr-fault');
+select pg_temp.s12rr_seed('rr-fault',key,jsonb_build_object('path','/'||key,'position',position,
+  'block_key','s12rr.replay','block_registry_digest',pg_temp.s12rr_digest(array['s12rr.replay']),
+  'props',jsonb_build_object('title',key))) from (values('first',2),('second',7)) fixtures(key,position);
+select pg_temp.s12rr_expect('rr-fault',array[pg_temp.s12rr_id('rr-fault:first'),pg_temp.s12rr_id('rr-fault:second')]);
+select * from pg_temp.s12cp_conflict('rr-fault');
+create temp table s12rr_fault_state(review_row jsonb,conflict_row jsonb) on commit drop;
+select pg_temp.s12pl_review('rr-fault',clock_timestamp());
+insert into s12rr_fault_state select to_jsonb(review),to_jsonb(conflict)
+  from platform_private.cms_editorial_reviews review cross join platform_private.cms_conflict_records conflict
+  where review.entry_id=pg_temp.s12pl_entry_id('rr-fault') and review.state='open'
+    and conflict.entry_id=review.entry_id and conflict.state='open';
+select ok((select count(*)=1 and bool_and(review_row->>'state'='open' and conflict_row->>'state'='open'
+  and conflict_row->>'resolved_revision_id' is null) from s12rr_fault_state),
+  'RR-FAULT premise: exact real open conflict and labelled live review exist before restore');
+
+-- 015's frozen detector reads the first actual destination row before a distinct
+-- second source copy fails. Only this new test-owned trigger/GUC is installed.
+create trigger s12rr_copy_fault before insert on platform_private.cms_composition_instances
+  for each row execute function pg_temp.s12cb_copy_fault();
+select set_config('s12cc.boundary_fault_entry',pg_temp.s12pl_entry_id('rr-fault')::text,true);
+select pg_temp.s12cc_call('RR-FAULT','restore',pg_temp.s12cc_request('rr-fault','restore','s12rr-fault-retry'));
+select set_config('s12cc.boundary_fault_entry','',true);
+drop trigger s12rr_copy_fault on platform_private.cms_composition_instances;
+select ok(not exists(select 1 from pg_trigger where tgname='s12rr_copy_fault'),
+  'RR-FAULT cleanup: only owned injection removed; no production guard toggled');
+select is(state||':'||coalesce(message,''),'P0001:S12CB_SECOND_CARRY_FAULT',
+  'RR-FAULT: original later-row fault propagates, not a fabricated translation refusal')
+  from s12cc_out where label='RR-FAULT';
+select ok(before_rows=after_rows,
+  'RR-FAULT: full revision/composition/entry/value/relation/review/conflict/reservation/chain-manifest/effect image rolls back')
+  from s12cc_out where label='RR-FAULT';
+select ok(doc#>>'{first,id}'<>doc#>>'{second,id}' and doc#>>'{first,revision_id}'=doc#>>'{second,revision_id}'
+  and doc#>>'{first,carried_from_id}'<>doc#>>'{second,carried_from_id}'
+  and exists(select 1 from s12rr_ids where key in ('rr-fault:first','rr-fault:second') and id::text=doc#>>'{first,carried_from_id}')
+  and exists(select 1 from s12rr_ids where key in ('rr-fault:first','rr-fault:second') and id::text=doc#>>'{second,carried_from_id}'),
+  'RR-FAULT witness: first real copy was visible before a distinct second selected source copy failed')
+  from s12cc_out cross join lateral(values(pg_temp.s12cb_fault_image(detail))) parsed(doc) where label='RR-FAULT';
+select ok((select to_jsonb(review)=saved.review_row from platform_private.cms_editorial_reviews review
+  cross join s12rr_fault_state saved where review.id=(saved.review_row->>'id')::uuid)
+  and (select to_jsonb(conflict)=saved.conflict_row from platform_private.cms_conflict_records conflict
+    cross join s12rr_fault_state saved where conflict.id=(saved.conflict_row->>'id')::uuid),
+  'RR-FAULT: exact old review and conflict full rows survive failure, no partial invalidation/supersession');
+
+-- Retry the byte-equivalent captured request/key after removing injection. A
+-- failed transaction must not leave a completed reservation/replay disposition.
+select pg_temp.s12cc_call('RR-RETRY','restore',request) from s12cc_out where label='RR-FAULT';
+select * from pg_temp.s12rr_restored('RR-RETRY','rr-fault');
+select ok(state='00000' and not (coalesce(headers,'[]')::jsonb @> '[{"x-cms-idempotent-replay":"true"}]'::jsonb),
+  'RR-RETRY: same key is a fresh successful commit after rollback, never a replay of a failed write')
+  from s12cc_out where label='RR-RETRY';
+select ok((select conflict.state='superseded' and conflict.version=(saved.conflict_row->>'version')::bigint+1
+  and conflict.resolved_revision_id is null
+  and to_jsonb(conflict)-array['state','version','updated_at']=saved.conflict_row-array['state','version','updated_at']
+  from platform_private.cms_conflict_records conflict cross join s12rr_fault_state saved
+  where conflict.id=(saved.conflict_row->>'id')::uuid),
+  'RR-RETRY: exact original conflict superseded once, never resolved or replaced by another identity');
+select ok((select review.state='invalidated' and review.invalidated_reason='revision_superseded'
+  and review.version=(saved.review_row->>'version')::bigint+1
+  from platform_private.cms_editorial_reviews review cross join s12rr_fault_state saved
+  where review.id=(saved.review_row->>'id')::uuid),
+  'RR-RETRY: existing revision INSERT trigger invalidates exact old review once');
+select is(jsonb_array_length(after_rows->store)-jsonb_array_length(before_rows->store),expected,
+  'RR-RETRY: exact new full-row count in '||store) from s12cc_out cross join (values
+    ('platform_private.cms_entry_revisions',1),('platform_private.cms_composition_instances',2),
+    ('platform_private.idempotency_records',1),('audit_private.audit_events',3),('platform_private.outbox_events',3)) counts(store,expected)
+  where label='RR-RETRY';
+
+-- Two restore pairs plus exactly one existing trigger-driven review pair.
+select is((select jsonb_agg(jsonb_build_object('action',a->'action','target_type',a->'target_type',
+  'target_id',a->'target_id','reason_code',a->'reason_code') order by a->>'action')
+  from jsonb_array_elements(o.after_rows->'audit_private.audit_events') a
+  where not (o.before_rows->'audit_private.audit_events' @> jsonb_build_array(a))),
+  jsonb_build_array(jsonb_build_object('action','cms.entry.review.invalidate','target_type','cms_editorial_review',
+    'target_id',saved.review_row->'id','reason_code','CMS_REVIEW_INVALIDATED'),
+    jsonb_build_object('action','cms.entry.revision.restore','target_type','cms_content_entry',
+      'target_id',o.request->'entryId','reason_code','CMS_ENTRY_REVISION_CREATED'),
+    jsonb_build_object('action','cms.entry.revision.restore.chain','target_type','cms_restore_chain_manifest',
+      'target_id',(select m.id from platform_private.cms_restore_chain_manifests m where m.manifest_hash::text=
+        pg_temp.s12cc_manifest_hash((select content_type_id from platform_private.cms_content_entries where id=pg_temp.s12pl_entry_id('rr-fault')),
+          (select schema_version_id from platform_private.cms_entry_revisions where id=(o.request->>'revisionId')::uuid),
+          (select schema_version_id from platform_private.cms_entry_revisions where id=(pg_temp.s12cc_body('RR-RETRY')->>'id')::uuid))),
+      'reason_code','CMS_ENTRY_RESTORE_CHAIN_APPLIED')),
+  'RR-RETRY: exact three audit action/target/reason identities, no per-copy or double review invalidation')
+  from s12cc_out o cross join s12rr_fault_state saved where label='RR-RETRY';
+select ok((select count(*)=3 and count(*) filter(where e->>'event_type'='cms.entry.review-changed.v1'
+  and e->>'aggregate_type'='cms_editorial_review' and e->>'aggregate_id'=saved.review_row->>'id'
+  and e->>'aggregate_version'='2' and e->'payload'=jsonb_build_object(
+    'reviewId',saved.review_row->'id','revisionId',saved.review_row->'revision_id'))=1
+  and count(*) filter(where e->>'event_type'='cms.entry.revision-created.v1'
+    and e->'payload'=jsonb_build_object('entryId',o.request->'entryId','revisionId',pg_temp.s12cc_body('RR-RETRY')->'id'))=1
+  and count(*) filter(where e->>'event_type'='cms.entry.revision-restored.v1'
+    and e#>>'{payload,sourceRevisionId}'=o.request->>'revisionId'
+    and e#>>'{payload,revisionId}'=pg_temp.s12cc_body('RR-RETRY')->>'id'
+    and e#>>'{payload,migrationChainId}'=o.request->>'migrationChainId')=1
+  from jsonb_array_elements(o.after_rows->'platform_private.outbox_events') e
+  where not (o.before_rows->'platform_private.outbox_events' @> jsonb_build_array(e))),
+  'RR-RETRY: exact review/new-revision/chain event identities and source/destination references')
+  from s12cc_out o cross join s12rr_fault_state saved where label='RR-RETRY';
+
+-- A later genuine dependency withdrawal must not revalidate an exact replay.
+select * from pg_temp.s12rr_signed('rr-replay-deprecated',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('rr-replay')->>'id')::uuid,'supported','deprecated'),true);
+select * from pg_temp.s12rr_signed('rr-replay-withdrawn',pg_temp.p_lifecycle_request(
+  (pg_temp.s09d_resp('rr-replay')->>'id')::uuid,'deprecated','withdrawn'),true);
+select is((select to_lifecycle from platform_private.cms_block_definition_lifecycle_events
+  where block_definition_version_id=(pg_temp.s09d_resp('rr-replay')->>'id')::uuid
+  order by created_at desc,id desc limit 1),'withdrawn','RR-REPLAY premise: exact source block is now genuinely withdrawn');
+select pg_temp.s12cc_call('RR-REPLAY-WITHDRAWN','restore',request) from s12cc_out where label='RR-RETRY';
+select is((select response from s12cc_out where label='RR-REPLAY-WITHDRAWN'),
+  (select response from s12cc_out where label='RR-RETRY'),'RR-REPLAY: byte-equivalent complete original locked envelope after dependency withdrawal');
+select ok(state='00000' and before_rows=after_rows and headers::jsonb @> '[{"x-cms-idempotent-replay":"true"}]'::jsonb,
+  'RR-REPLAY: exact replay signal and no repeated translation/invalidation/reservation/effects')
+  from s12cc_out where label='RR-REPLAY-WITHDRAWN';
+select refused.* from s12cc_out original cross join lateral pg_temp.s12cc_refused('RR-FRESH-WITHDRAWN','restore',
+  original.request||jsonb_build_object('idempotencyKey','s12rr-fresh-withdrawn',
+    'expectedVersion',pg_temp.s12pl_version('rr-fault'),'ifMatch',pg_temp.s12pl_version('rr-fault')),
+  'migration_chain_incomplete') refused where original.label='RR-RETRY';
+-- Relation-target lock barriers require genuine concurrent clients separately.
+-- No serial statement, arbitrary sleep or mock here is claimed as race evidence.

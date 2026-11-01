@@ -1,0 +1,222 @@
+-- Slice 12 lane placement (claude_s12_placement_sql), CMS-03C-02 fixtures (BE03c route row 160, Pattern versions
+-- and linked updates 1365, Slice 12 lock order 1336-1357; tracker P2-S12-AC-010..015, AC-218, AC-219, AC-258).
+--
+-- World: the DEC-108 (Slice 09) actors and the pattern-definition fixtures (real block, real compiled and activated
+-- content types, a real independent reviewer).  Every active pattern a test places is created and activated through
+-- the named producers (CMS-03C-12, 06, 08, 07, 09); no trigger is disabled and no active row is inserted.
+--   * authors: the owner (assigned, cms.author) and designer2 (cms.author grant, assigned only where a test says);
+--   * entries: a draft entry plus its current draft revision of the first pattern type, written as a guarded direct
+--     insert under app.cms_rpc exactly as phase_02_slice_11_helpers/001-world.sqlinc h11w_revision does (no
+--     command creates an entry with a bound template here);
+--   * templates: a real CMS-03C-01 draft (revision.template_version_id only needs the row to exist).
+-- Include after phase_02_slice_09_dec108/00-helpers, 01-actors, 02-chain, phase_02_slice_09_p240/01-block and
+-- phase_02_slice_12_pattern_definition/000-fixtures, 010-oracles (s12pd_* helpers).
+
+create temp table s12pl_ids(key text primary key, value text not null) on commit drop;
+
+select is(pg_temp.s09d_grant_via_rpc('owner', 'cms.author'), 'OK',
+  'setup: the owner holds a real CMS-03A-15 cms.author grant');
+select is(pg_temp.s09d_grant_via_rpc('designer2', 'cms.author'), 'OK',
+  'setup: designer2 holds a real cms.author grant (assignment is per entry)');
+select ok((select count(*) = 2 from identity_private.organization_actor_grant projected
+  where projected.organization_id = pg_temp.s09d_id('ownerOrg') and projected.capability_code = 'cms.author'
+    and projected.active), 'setup: both author grants project into the organization grant table');
+
+-- Template-bound entries (BE03c 1365, P2-S12-AC-218): an entry WITH a template accepts only a slotPath that names one
+-- of the template's slots and never the root path; an entry with NO template accepts only the root path `/`.  The
+-- real CMS-03C-01 templates are created in 030-patterns.sqlinc (label s12pl-template: slots main, side, fresh;
+-- label s12pl-template-root: one slot literally named root).  s12pl_tentry mints an entry bound to one of them.
+-- One draft entry + its current draft revision (entry version 1) and the owner's cms.author assignment.
+create or replace function pg_temp.s12pl_entry(
+  p_tag text, p_template uuid default null, p_assignee text default 'owner', p_type_ordinal integer default 1)
+returns uuid
+language plpgsql
+as $body$
+declare
+  entry_uuid uuid := extensions.gen_random_uuid();
+  revision_uuid uuid := extensions.gen_random_uuid();
+  org uuid := pg_temp.s09d_id('ownerOrg');
+  stamp timestamptz := timestamptz '2026-10-08T12:00:00Z';
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle, current_draft_revision_id, version,
+    created_by, created_at, updated_at)
+  values (entry_uuid, org, (select id from s12pd_types where ordinal = p_type_ordinal), org, 'active', null, 1,
+    (select auth_user_id from s09d_actor where key = 'owner'), stamp, stamp);
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id, template_version_id, taxonomy_version_ids,
+    parent_revision_ids, locale, payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at)
+  values (revision_uuid, org, entry_uuid, 1, (select version_id from s12pd_types where ordinal = p_type_ordinal),
+    p_template, '[]'::jsonb, '[]'::jsonb, 'en-US',
+    encode(extensions.digest(convert_to('s12pl:' || p_tag, 'utf8'), 'sha256'), 'hex'),
+    (select person_id from s09d_actor where key = 'owner'), org, 'draft', 1, 'valid', '{}'::jsonb, stamp, stamp);
+  update platform_private.cms_content_entries set current_draft_revision_id = revision_uuid where id = entry_uuid;
+  if p_assignee is not null then
+    insert into platform_private.cms_entry_assignments(
+      owner_id, entry_id, assignee_person_id, capability_key, state, version, created_at, updated_at)
+    values (org, entry_uuid, (select person_id from s09d_actor where key = p_assignee), 'cms.author', 'active', 1,
+      stamp, stamp);
+  end if;
+  insert into s12pl_ids(key, value) values (p_tag || ':entry', entry_uuid::text), (p_tag || ':revision', revision_uuid::text);
+  return revision_uuid;
+end;
+$body$;
+create or replace function pg_temp.s12pl_tentry(
+  p_tag text, p_assignee text default 'owner', p_template_label text default 's12pl-template')
+returns uuid
+language plpgsql
+as $body$
+begin
+  return pg_temp.s12pl_entry(p_tag, (pg_temp.s09d_resp(p_template_label)->>'id')::uuid, p_assignee);
+end;
+$body$;
+create or replace function pg_temp.s12pl_rev(p_tag text) returns uuid language sql stable as $body$
+  select value::uuid from s12pl_ids where key = p_tag || ':revision' $body$;
+create or replace function pg_temp.s12pl_entry_id(p_tag text) returns uuid language sql stable as $body$
+  select value::uuid from s12pl_ids where key = p_tag || ':entry' $body$;
+create or replace function pg_temp.s12pl_version(p_tag text) returns text language sql stable as $body$
+  select version::text from platform_private.cms_content_entries where id = pg_temp.s12pl_entry_id(p_tag) $body$;
+
+-- A pre-existing composition row (direct guarded insert, the position column is part of the row).  RED-tolerant:
+-- before the DEC-185 migration the column does not exist (SQLSTATE 42703), so the row is inserted without it and the
+-- suite reports every missing behavior instead of aborting at the first fixture; with the column present the
+-- first branch always runs.
+create or replace function pg_temp.s12pl_row(
+  p_tag text, p_path text, p_slot text, p_position integer, p_state text default 'active', p_version bigint default 1)
+returns uuid
+language plpgsql
+as $body$
+declare row_id uuid := extensions.gen_random_uuid();
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  begin
+    insert into platform_private.cms_composition_instances(
+      id, owner_id, state, version, created_at, updated_at, revision_id, path, slot_key, block_key, block_version,
+      block_registry_digest, link_mode, created_by, position)
+    values (row_id, pg_temp.s09d_id('ownerOrg'), p_state, p_version, timestamptz '2026-10-08T12:00:00Z',
+      timestamptz '2026-10-08T12:00:00Z', pg_temp.s12pl_rev(p_tag), p_path, p_slot, 's12pd.block', 1,
+      repeat('a', 64), 'detached', (select auth_user_id from s09d_actor where key = 'owner'), p_position);
+  exception when undefined_column then
+    insert into platform_private.cms_composition_instances(
+      id, owner_id, state, version, created_at, updated_at, revision_id, path, slot_key, block_key, block_version,
+      block_registry_digest, link_mode, created_by)
+    values (row_id, pg_temp.s09d_id('ownerOrg'), p_state, p_version, timestamptz '2026-10-08T12:00:00Z',
+      timestamptz '2026-10-08T12:00:00Z', pg_temp.s12pl_rev(p_tag), p_path, p_slot, 's12pd.block', 1,
+      repeat('a', 64), 'detached', (select auth_user_id from s09d_actor where key = 'owner'));
+  end;
+  return row_id;
+end;
+$body$;
+
+-- An OPEN editorial review row of a revision (guarded direct insert, as the Slice 11 review builders write it; the
+-- lifecycle guard admits only open at version 1).
+create or replace function pg_temp.s12pl_review(p_tag text, p_submitted timestamptz) returns uuid
+language plpgsql as $body$
+declare review_id uuid := extensions.gen_random_uuid();
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_editorial_reviews
+  select (jsonb_populate_record(null::platform_private.cms_editorial_reviews, jsonb_build_object(
+    'id', review_id, 'owner_id', pg_temp.s09d_id('ownerOrg'), 'revision_id', pg_temp.s12pl_rev(p_tag),
+    'entry_id', pg_temp.s12pl_entry_id(p_tag), 'state', 'open', 'version', 1, 'risk_class', 'ordinary',
+    'frozen_hash', repeat('1', 64), 'dependency_manifest', '{}'::jsonb, 'dependency_hash', repeat('2', 64),
+    'activation_evidence', '{}'::jsonb, 'workflow_policy_key', 'editorial', 'workflow_policy_version', 1,
+    'workflow_policy_hash', repeat('3', 64), 'required_capabilities', jsonb_build_array('cms.reviewer'),
+    'required_decision_count', 1, 'recorded_decision_count', 0, 'approval_evidence_hash', repeat('4', 64),
+    'submitted_by', (select person_id from s09d_actor where key = 'owner'), 'submitted_at', p_submitted,
+    'created_at', p_submitted, 'updated_at', p_submitted))).*;
+  return review_id;
+end;
+$body$;
+
+-- The exact p_request the production adapter builds (cms-composition-production-pattern.ts): the
+-- PatternInstanceRequestSchema members plus the transport idempotencyKey/ifMatch, the server context and the
+-- correlation.  p_pattern is the label of an activated pattern (its lineage id and definition version).
+create or replace function pg_temp.s12pl_request(
+  p_tag text, p_pattern text, p_slot text, p_overrides jsonb, p_idem text,
+  p_link text default 'linked', p_expected text default null, p_digest text default null,
+  p_actor text default 'owner')
+returns jsonb
+language sql
+stable
+as $body$
+  select jsonb_build_object(
+    'revisionId', pg_temp.s12pl_rev(p_tag),
+    'patternId', pg_temp.s12pd_body(p_pattern)->'patternId',
+    'patternVersion', pg_temp.s12pd_body(p_pattern)->'patternVersion',
+    'linkMode', p_link, 'slotPath', p_slot, 'overrides', p_overrides,
+    'expectedVersion', coalesce(p_expected, pg_temp.s12pl_version(p_tag)),
+    'idempotencyKey', p_idem,
+    'ifMatch', coalesce(p_expected, pg_temp.s12pl_version(p_tag)),
+    'correlationId', 'a9120000-0000-4000-8000-00000000c0c0',
+    'context', pg_temp.s09d_context(p_actor, true))
+  || case when p_digest is null then '{}'::jsonb else jsonb_build_object('blockRegistryDigest', p_digest) end
+$body$;
+
+-- Real governed activation of a created pattern draft (submit, assign rev1, approve, activate).
+create or replace function pg_temp.s12pl_activate(p_label text) returns setof text
+language plpgsql as $body$
+declare body jsonb := pg_temp.s12pd_body(p_label); review jsonb; decision jsonb; step text;
+begin
+  perform pg_temp.s12pd_run(p_label || ':submit',
+    jsonb_build_object('subjectKind', 'pattern_version', 'subjectId', body->'id', 'subjectHash', body->'contentHash',
+      'idempotencyKey', 's12pl-' || p_label || '-submit', 'context', pg_temp.s09d_context('owner', true)),
+    'owner', 'service_role', 'submit');
+  review := pg_temp.s12pd_body(p_label || ':submit');
+  perform pg_temp.s12pd_run(p_label || ':assign',
+    jsonb_build_object('reviewId', review->'id', 'action', 'create', 'expectedVersion', review->'version',
+      'ifMatch', review->'version', 'reviewerPersonId', pg_temp.s09d_actor_id('rev1', 'person'),
+      'expiresAt', to_char((clock_timestamp() + interval '1 day') at time zone 'UTC', 'YYYY-MM-DD"T"HH24:MI:SS.MS"Z"'),
+      'reason', 'Placement fixture', 'idempotencyKey', 's12pl-' || p_label || '-assign',
+      'context', pg_temp.s09d_context('owner', true)), 'owner', 'service_role', 'assign');
+  perform pg_temp.s12pd_run(p_label || ':decide',
+    jsonb_build_object('reviewId', review->'id', 'decision', 'approve', 'reason', 'Placement fixture approved',
+      'expectedVersion', review->'version', 'ifMatch', review->'version',
+      'idempotencyKey', 's12pl-' || p_label || '-decide', 'context', pg_temp.s09d_context('rev1', true)),
+    'rev1', 'service_role', 'decide');
+  decision := pg_temp.s12pd_body(p_label || ':decide');
+  perform pg_temp.s12pd_run(p_label || ':activate',
+    jsonb_build_object('reviewId', review->'id', 'action', 'activate', 'expectedVersion', decision->'version',
+      'ifMatch', decision->'version', 'idempotencyKey', 's12pl-' || p_label || '-activate',
+      'context', pg_temp.s09d_context('owner', true)), 'owner', 'service_role', 'activate');
+  foreach step in array array['submit', 'assign', 'decide', 'activate'] loop
+    return next extensions.is(pg_temp.s12pd_state(p_label || ':' || step), '00000',
+      'setup: ' || p_label || ' governed ' || step || ' succeeds through the real producer');
+    if pg_temp.s12pd_state(p_label || ':' || step) <> '00000' then
+      return next extensions.diag(p_label || ':' || step || ' ' || coalesce((select message || ' ' || coalesce(detail, '')
+        from s12pd_out where label = p_label || ':' || step), ''));
+    end if;
+  end loop;
+  return next extensions.is(pg_temp.s12pd_row(p_label)->>'state', 'active',
+    'setup: ' || p_label || ' is a real active pattern version (definition version unchanged)');
+end;
+$body$;
+
+-- Create a draft pattern through CMS-03C-12 and activate it; one TAP line per step.
+create or replace function pg_temp.s12pl_pattern(
+  p_label text, p_key text, p_tree jsonb, p_types jsonb default null, p_activate boolean default true,
+  p_expected text default null)
+returns setof text
+language plpgsql as $body$
+declare request jsonb;
+begin
+  request := pg_temp.s12pd_request(p_key, p_tree, p_expected, 's12pl-' || p_label || '-create', null, p_expected);
+  if p_types is not null then request := request || jsonb_build_object('compatibleTypeIds', p_types); end if;
+  perform pg_temp.s12pd_run(p_label, request);
+  return next extensions.is(pg_temp.s12pd_state(p_label), '00000', 'setup: ' || p_label || ' draft created by CMS-03C-12');
+  if pg_temp.s12pd_state(p_label) <> '00000' then
+    return next extensions.diag(coalesce((select message || ' ' || coalesce(detail, '') from s12pd_out
+      where label = p_label), ''));
+  end if;
+  if p_activate then return query select * from pg_temp.s12pl_activate(p_label); end if;
+end;
+$body$;
+create or replace function pg_temp.s12pl_refs(p_label text, p_count integer, p_prefix text default 'nested') returns jsonb
+language sql stable as $body$
+  select jsonb_agg(jsonb_build_object('kind', 'pattern', 'key', p_prefix || n,
+    'patternId', pg_temp.s12pd_body(p_label)->'patternId',
+    'patternVersion', pg_temp.s12pd_body(p_label)->'patternVersion') order by n)
+  from generate_series(1, p_count) n
+$body$;

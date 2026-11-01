@@ -1,0 +1,129 @@
+-- TEST-ONLY, UNRUN. Caller owns a fresh committed setup session in an isolated
+-- real pre-DEC-197 database: JWT helper, pgTAP/no_plan(), BEGIN; this file; COMMIT.
+-- This fragment neither reverts a migrated store nor replays the migration.
+-- Any SQL/setup/TAP failure must stop the future runner before migration replay.
+do $pre_receiver$
+declare
+  consumer_table oid := pg_catalog.to_regclass('platform_private.projection_consumer_state');
+begin
+  if consumer_table is null
+    or pg_catalog.to_regclass('platform_private.route_manifest_version') is not null
+    or pg_catalog.to_regclass('platform_private.publication_projection') is not null
+    or pg_catalog.to_regprocedure('platform_private.route_manifest_version_guard()') is not null then
+    raise exception 'DEC197_UPGRADE_SETUP: real pre-receiver schema required';
+  end if;
+  if exists (select 1 from platform_private.projection_consumer_state) then
+    raise exception 'DEC197_UPGRADE_SETUP: isolated empty consumer baseline required';
+  end if;
+  if not exists (
+    select 1 from pg_catalog.pg_constraint c
+    where c.conrelid = consumer_table and c.conname = 'projection_consumer_state_publication_fk'
+      and c.contype = 'f' and c.convalidated
+      and c.confrelid = 'platform_private.cms_publication_versions'::regclass
+  ) or exists (
+    select 1 from pg_catalog.pg_constraint c
+    where c.conrelid = consumer_table and c.contype = 'f'
+      and c.conkey @> array[(select a.attnum from pg_catalog.pg_attribute a
+        where a.attrelid = consumer_table and a.attname = 'projection_id')]::smallint[]
+  ) then
+    raise exception 'DEC197_UPGRADE_SETUP: original publication FK and unconstrained projection_id required';
+  end if;
+  if not exists (select 1 from pg_catalog.pg_class c where c.oid = consumer_table
+      and c.relrowsecurity and c.relforcerowsecurity)
+    or not exists (select 1 from pg_catalog.pg_policy p
+      where p.polrelid = consumer_table and p.polname = 'projection_consumer_state_rpc_policy')
+    or not pg_catalog.has_table_privilege('wejammin_cms_definer', consumer_table, 'SELECT')
+    or not exists (select 1 from pg_catalog.pg_trigger t where t.tgrelid = consumer_table
+      and t.tgname = 'projection_consumer_state_write_guard' and t.tgenabled = 'O'
+      and t.tgfoid = 'platform_private.cms_write_guard()'::regprocedure) then
+    raise exception 'DEC197_UPGRADE_SETUP: original consumer RLS, policy, grant and enabled guard required';
+  end if;
+end;
+$pre_receiver$;
+
+\ir 010-helpers.sqlinc
+\ir ../phase_02_slice_10_rpc/000-helpers.sqlinc
+\ir ../phase_02_slice_10_remaining_schema/000-helpers.sqlinc
+\ir ../phase_02_slice_10_rpc/001-fixtures.sqlinc
+\ir ../phase_02_slice_11_schema/000-helpers.sqlinc
+\ir ../phase_02_slice_11_schema/001-fixture.sqlinc
+\ir ../phase_02_slice_11_schema/002-row-builders.sqlinc
+\ir ../phase_02_slice_11_helpers/000-helpers.sqlinc
+\ir ../phase_02_slice_11_helpers/001-world.sqlinc
+\ir ../phase_02_slice_11_helpers/002-reviews.sqlinc
+select pg_temp.h11r_member('reviewer01', array['cms.reviewer']);
+\ir ../phase_02_slice_11_helpers/004-lineage.sqlinc
+
+create temp table dr_upgrade_publications (
+  label text primary key,
+  id uuid not null unique,
+  publication_hash text not null,
+  producer_result jsonb not null
+) on commit drop;
+
+-- Same guarded builders and publication seam as 000-world.sqlinc; no direct
+-- publication insertion and no swallowed producer exception.
+do $publications$
+declare label text; result jsonb;
+begin
+  foreach label in array array['a', 'b'] loop
+    perform pg_temp.h11w_revision('dec197-upgrade-' || label);
+    perform pg_temp.h11l_review('dec197-upgrade-' || label);
+    result := platform_private.cms_append_publication_lineage(
+      pg_temp.h11l_publish('dec197-upgrade-' || label));
+    insert into dr_upgrade_publications
+      select label, p.id, p.publication_hash::text, result
+      from platform_private.cms_publication_versions p
+      where p.id = (result->>'publicationVersionId')::uuid
+        and p.publication_hash::text = result->>'publicationHash';
+  end loop;
+  if (select count(*) from dr_upgrade_publications) <> 2 then
+    raise exception 'DEC197_UPGRADE_SETUP: two real publication VERSION parents required';
+  end if;
+end;
+$publications$;
+
+-- The old applied schema deliberately has no projection FK. These are labelled
+-- historical consumers of real publications, not invented receiving parents.
+-- Existing table guard remains enabled; postgres uses the existing CMS context.
+select pg_catalog.set_config('app.cms_rpc', 'true', true);
+insert into platform_private.projection_consumer_state
+  (id, publication_id, projection_id, consumer, expected_version, state,
+   attempts, last_error_code, updated_at, version)
+select pg_temp.dr_id('upgrade-consumer-' || p.label), p.id,
+  pg_temp.dr_id('upgrade-orphan-projection-' || p.label),
+  case p.label when 'a' then 'route' else 'cache' end,
+  case p.label when 'a' then 1 else 3 end,
+  case p.label when 'a' then 'active' else 'failed_retryable' end,
+  case p.label when 'a' then 0 else 2 end,
+  case p.label when 'a' then null else 'DEC197_UPGRADE_RETRY' end,
+  case p.label when 'a' then '2026-10-16T12:00:00.123456Z'::timestamptz
+    else '2026-10-16T12:00:00.987654Z'::timestamptz end,
+  case p.label when 'a' then 7 else 9 end
+from dr_upgrade_publications p;
+
+do $consumers$
+begin
+  if (select count(*) from platform_private.projection_consumer_state) <> 2
+    or (select count(*) from platform_private.projection_consumer_state c
+      join dr_upgrade_publications p on p.id = c.publication_id
+      where c.id = pg_temp.dr_id('upgrade-consumer-' || p.label)
+        and c.projection_id = pg_temp.dr_id('upgrade-orphan-projection-' || p.label)) <> 2
+    or not exists (select 1 from pg_catalog.pg_trigger t
+      where t.tgrelid = 'platform_private.projection_consumer_state'::regclass
+        and t.tgname = 'projection_consumer_state_write_guard' and t.tgenabled = 'O') then
+    raise exception 'DEC197_UPGRADE_SETUP: both labelled guarded historical consumers must exist';
+  end if;
+end;
+$consumers$;
+
+-- Future runner must also read 070 from ANOTHER session after setup COMMIT;
+-- this in-session document alone does not prove committed fixture visibility.
+select jsonb_build_object('witness', 'DEC197_UPGRADE_WORLD',
+  'database', current_database(), 'backendPid', pg_backend_pid(),
+  'publications', (select jsonb_agg(jsonb_build_object('label', p.label,
+    'publicationVersionId', p.id, 'publicationHash', p.publication_hash,
+    'consumerId', pg_temp.dr_id('upgrade-consumer-' || p.label),
+    'orphanProjectionId', pg_temp.dr_id('upgrade-orphan-projection-' || p.label))
+    order by p.label) from dr_upgrade_publications p),
+  'consumerCount', (select count(*)::text from platform_private.projection_consumer_state));

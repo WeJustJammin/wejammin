@@ -1,0 +1,137 @@
+-- Slice 12 governed-submit QA-RED support: idempotency replay, changed-body mismatch, revoked-capability
+-- denial and malformed input (lane s12_governed_red, CMS-03C-06). Include AFTER 010-projection.sqlinc,
+-- inside the including test's rolled-back transaction and pgTAP plan.
+--
+-- The replay oracle is mutation-sensitive: it serializes the FULL scoped subject row (including state and
+-- lifecycle_version), the subject's review and dependency rows (ordered) and the full idempotency rows
+-- (ordered); audit and outbox are counted only (append-only) and that limitation is labelled, not called a
+-- full-store no-effect proof. The changed-body case must be the exact IDEMPOTENCY_MISMATCH.
+create temp table s12gov_idsnap(label text primary key, snapshot text not null) on commit drop;
+
+create or replace function pg_temp.s12gov_scope(p_subject uuid)
+returns text language sql stable security definer set search_path = '' as $body$
+  select jsonb_build_object(
+    'subject', (select pg_catalog.to_jsonb(t)::text from platform_private.cms_template_versions t where t.id = p_subject),
+    'reviews', (select coalesce(pg_catalog.string_agg(pg_catalog.to_jsonb(r)::text, '|' order by r.id), '')
+                  from platform_private.cms_governed_reviews r where r.subject_id = p_subject),
+    'dependencies', (select coalesce(pg_catalog.string_agg(pg_catalog.to_jsonb(d)::text, '|' order by d.review_id, d.kind, d.ref_id), '')
+                       from platform_private.cms_governed_review_dependencies d
+                       join platform_private.cms_governed_reviews r on r.id = d.review_id where r.subject_id = p_subject),
+    'idempotency', (select coalesce(pg_catalog.string_agg(pg_catalog.to_jsonb(i)::text, '|' order by i.actor_id, i.operation, i.key_hash), '')
+                      from platform_private.idempotency_records i),
+    'auditCount', (select count(*) from audit_private.audit_events),
+    'outboxCount', (select count(*) from platform_private.outbox_events)
+  )::text
+$body$;
+
+select pg_temp.s12gov_as('Creator');
+insert into s12gov_idsnap(label, snapshot)
+values ('before-replay', pg_temp.s12gov_scope((select value::uuid from s12gov_ids where key = 'subject')));
+
+-- completed same-key/same-body replay: identical response, and the full scoped stores (subject, review,
+-- dependency, idempotency) plus the append-only audit/outbox counts are unchanged
+select pg_temp.s12gov_submit(pg_temp.s12gov_request(
+  (select value::uuid from s12gov_ids where key = 'subject'),
+  pg_temp.s12gov_subject_hash((select value::uuid from s12gov_ids where key = 'subject')),
+  's12gov-submit-0001'));
+select pg_temp.s12gov_capture('replay');
+select ok(
+  pg_temp.s12gov_state('replay') = '00000'
+    and pg_temp.s12gov_body('replay') = pg_temp.s12gov_body('subject'),
+  'a completed same-key/same-body replay returns the identical original response [P2-S12-AC-251]');
+select is(
+  pg_temp.s12gov_scope((select value::uuid from s12gov_ids where key = 'subject')),
+  (select snapshot from s12gov_idsnap where label = 'before-replay'),
+  'the replay leaves the subject (state + lifecycle_version), review, dependency and idempotency rows unchanged (audit/outbox count-only) [P2-S12-AC-251]');
+
+-- same-key different body: the exact IDEMPOTENCY_MISMATCH even though the subject is now in review
+select pg_temp.s12gov_submit(pg_temp.s12gov_request(
+  (select value::uuid from s12gov_ids where key = 'subject'),
+  repeat('f', 64),
+  's12gov-submit-0001'));
+select pg_temp.s12gov_capture('mismatch');
+select is(pg_temp.s12gov_message('mismatch'), 'IDEMPOTENCY_MISMATCH',
+  'a same-key request with a different body is refused IDEMPOTENCY_MISMATCH (not a bare CONFLICT) [P2-S12-AC-251]');
+select is(
+  pg_temp.s12gov_scope((select value::uuid from s12gov_ids where key = 'subject')),
+  (select snapshot from s12gov_idsnap where label = 'before-replay'),
+  'the mismatch refusal leaves the subject (state + lifecycle_version), review, dependency and idempotency rows unchanged (audit/outbox count-only) [P2-S12-AC-251]');
+
+-- a malformed null subjectKind is INVALID_REQUEST, not a concealed 404
+select pg_temp.s12gov_submit(jsonb_build_object(
+  'subjectKind', null,
+  'subjectId', (select value from s12gov_ids where key = 'subject'),
+  'subjectHash', pg_temp.s12gov_subject_hash((select value::uuid from s12gov_ids where key = 'subject')),
+  'idempotencyKey', 's12gov-submit-0006',
+  'context', pg_temp.s12gov_context()));
+select pg_temp.s12gov_capture('nullkind');
+select is(pg_temp.s12gov_message('nullkind'), 'INVALID_REQUEST',
+  'a malformed null subjectKind is refused 400 INVALID_REQUEST, not concealed [P2-S12-AC-064]');
+
+-- a caller whose owner capability has been revoked must not receive the cached body on a same-key replay
+-- (the fixture revokes the exact local grant reversibly; no guard is bypassed)
+select pg_temp.s12gov_as('Creator');
+create temp table s12gov_grant_before_revoke on commit drop as
+select actor_grant.* from identity_private.organization_actor_grant actor_grant
+ where actor_grant.organization_id = (select value::uuid from s12gov_ids where key = 'orgA')
+   and actor_grant.person_id = (select value::uuid from s12gov_ids where key = 'personCreator')
+   and actor_grant.capability_code = 'cms.template_designer';
+select ok(
+  (select count(*) = 1 and bool_and(active and valid_from <= current_date
+    and (valid_through is null or valid_through >= current_date)) from s12gov_grant_before_revoke),
+  'control: revoked replay starts with exactly one currently valid designer grant [P2-S12-AC-262]');
+select ok(
+  pg_temp.s12gov_state('subject') = '00000'
+    and pg_temp.s12gov_body('subject')->>'state' = 'open'
+    and exists (select 1 from platform_private.idempotency_records record
+      where record.actor_id = (select value::uuid from s12gov_ids where key = 'authCreator')
+        and record.operation = 'CMS-03C-06'
+        and record.key_hash = platform_private.cms_key_hash('s12gov-submit-0001')
+        and record.state = 'completed'::platform_private.idempotency_state
+        and record.response_ref->'safeHeaders'->'response' = pg_temp.s12gov_body('subject')),
+  'control: revoked replay targets the completed original success and its stored response [P2-S12-AC-262]');
+insert into s12gov_idsnap(label, snapshot)
+values ('before-revoke', pg_temp.s12gov_scope((select value::uuid from s12gov_ids where key = 'subject')));
+update identity_private.organization_actor_grant actor_grant
+   set active = false
+  from s12gov_grant_before_revoke original
+ where actor_grant.organization_id = original.organization_id
+   and actor_grant.person_id = original.person_id
+   and actor_grant.capability_code = original.capability_code;
+select is(
+  (select to_jsonb(actor_grant) from identity_private.organization_actor_grant actor_grant
+    join s12gov_grant_before_revoke original using (organization_id, person_id, capability_code)),
+  (select to_jsonb(original) || '{"active":false}'::jsonb from s12gov_grant_before_revoke original),
+  'control: revocation changed only the saved designer grant active flag [P2-S12-AC-262]');
+select pg_temp.s12gov_submit(pg_temp.s12gov_request(
+  (select value::uuid from s12gov_ids where key = 'subject'),
+  pg_temp.s12gov_subject_hash((select value::uuid from s12gov_ids where key = 'subject')),
+  's12gov-submit-0001'));
+select pg_temp.s12gov_capture('revoked');
+select is(pg_temp.s12gov_state('revoked'), 'P0001',
+  'a revoked owner capability raises the governed command refusal SQLSTATE [P2-S12-AC-262]');
+select is(pg_temp.s12gov_message('revoked'), 'capability_missing',
+  'a revoked owner capability is refused capability_missing on a completed-key replay [P2-S12-AC-262]');
+select is(pg_temp.s12gov_body('revoked'), null::jsonb,
+  'a revoked owner capability receives no cached replay body [P2-S12-AC-262]');
+select is(
+  pg_temp.s12gov_scope((select value::uuid from s12gov_ids where key = 'subject')),
+  (select snapshot from s12gov_idsnap where label = 'before-revoke'),
+  'the revoked replay leaves subject, review, dependency and idempotency rows unchanged (audit/outbox count-only) [P2-S12-AC-262]');
+
+-- Restore the saved values, including nullable expiry and timestamps; never assume active = true.
+update identity_private.organization_actor_grant actor_grant
+   set active = original.active, valid_from = original.valid_from,
+       valid_through = original.valid_through, created_at = original.created_at,
+       updated_at = original.updated_at
+  from s12gov_grant_before_revoke original
+ where actor_grant.organization_id = original.organization_id
+   and actor_grant.person_id = original.person_id
+   and actor_grant.capability_code = original.capability_code;
+select is(
+  (select to_jsonb(actor_grant) from identity_private.organization_actor_grant actor_grant
+    where actor_grant.organization_id = (select value::uuid from s12gov_ids where key = 'orgA')
+      and actor_grant.person_id = (select value::uuid from s12gov_ids where key = 'personCreator')
+      and actor_grant.capability_code = 'cms.template_designer'),
+  (select to_jsonb(original) from s12gov_grant_before_revoke original),
+  'cleanup: the designer grant exactly matches every saved pre-revocation field [P2-S12-AC-262]');

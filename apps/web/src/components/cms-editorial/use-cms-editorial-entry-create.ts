@@ -1,3 +1,4 @@
+import { retryable } from '../../lib/retryable-import';
 import type {
   AuthoringContextField,
   AuthoringContextType,
@@ -9,6 +10,11 @@ import type { CmsFieldErrorSummaryItem } from '../cms-editorial-fields/CmsFieldE
 import type { CmsFieldDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
 import { cmsEditorialAppEntryPath } from './cms-editorial-app-routes';
 import {
+  captureCmsEditorialEntryCreateAttempt,
+  cmsEditorialEntryCreateUnavailable,
+  type CmsEditorialEntryCreateAttempt,
+} from './cms-editorial-entry-create-attempt';
+import {
   collectCmsCreateValues,
   initialCmsCreateValues,
 } from './cms-editorial-entry-create-values';
@@ -18,7 +24,6 @@ import {
   newCmsEditorialIdempotencyKey,
 } from './cms-editorial-request-support';
 import { markRouteHeadingForFocus } from '../../lib/route-heading-focus';
-import { saveCmsEditorialResult } from './cms-editorial-result-handoff';
 import type { CmsFieldIssue } from '../cms-editorial-fields/cms-field-issue';
 
 type Fetcher = (
@@ -33,12 +38,6 @@ export interface CmsEditorialEntryCreateOptions {
   readonly descriptors: readonly CmsFieldDescriptor[];
   readonly fetcher?: Fetcher | undefined;
   readonly navigate?: ((path: string) => void) | undefined;
-}
-
-interface Pending {
-  readonly values: Readonly<Record<string, JsonValue>>;
-  readonly locale: string;
-  readonly key: string;
 }
 
 type Status =
@@ -64,20 +63,6 @@ const sessionStorageOrNull = (): Storage | null => {
   }
 };
 
-/** The create transport chunk could not be fetched: nothing was sent, so nothing was created. */
-const CREATE_UNAVAILABLE = (
-  idempotencyKey: string,
-): CmsEditorialEntryCreateSubmitResult => ({
-  status: 'error',
-  message:
-    'The create could not be started. Nothing was created; check your connection and try again.',
-  retryable: true,
-  outcomeUnknown: false,
-  unauthenticated: false,
-  retryAfterSeconds: null,
-  idempotencyKey,
-});
-
 /**
  * The state machine behind the create island. It owns the typed field values,
  * which fields have been touched, the raw-input errors, the pending attempt
@@ -85,6 +70,10 @@ const CREATE_UNAVAILABLE = (
  * under the same key), and the server's per-field refusals. Nothing here reads
  * the DOM: the island renders what this returns.
  */
+const loadCreateSubmit = retryable(
+  () => import('./cms-editorial-entry-create-submit'),
+);
+
 export const useCmsEditorialEntryCreate = (
   options: CmsEditorialEntryCreateOptions,
 ) => {
@@ -105,7 +94,8 @@ export const useCmsEditorialEntryCreate = (
   const [serverMessage, setServerMessage] = React.useState<string | null>(null);
   const [locked, setLocked] = React.useState(false);
   const [summaryToken, setSummaryToken] = React.useState(0);
-  const pending = React.useRef<Pending | null>(null);
+  const [taxonomyRefreshToken, setTaxonomyRefreshToken] = React.useState(0);
+  const pending = React.useRef<CmsEditorialEntryCreateAttempt | null>(null);
   const inFlight = React.useRef(false);
 
   const touch = (fieldId: string): void =>
@@ -149,11 +139,20 @@ export const useCmsEditorialEntryCreate = (
       const destination = cmsEditorialAppEntryPath(result.entryId);
       setStatus({ kind: 'created' });
       if (destination !== null) {
-        saveCmsEditorialResult(sessionStorageOrNull(), result.summary);
-        markRouteHeadingForFocus(sessionStorageOrNull());
-        (options.navigate ?? ((path) => window.location.assign(path)))(
-          destination,
-        );
+        const leave = (): void => {
+          markRouteHeadingForFocus(sessionStorageOrNull());
+          (options.navigate ?? ((path) => window.location.assign(path)))(
+            destination,
+          );
+        };
+        // The handoff (and the step-up draft store behind it) loads when the entry is created,
+        // not with the page (AC-106); the editor still opens when it cannot be fetched.
+        void import('./cms-editorial-result-save')
+          .then(({ saveCmsEditorialResult }) => {
+            saveCmsEditorialResult(sessionStorageOrNull(), result.summary);
+          })
+          .catch(() => undefined)
+          .then(leave);
       }
       return;
     }
@@ -181,11 +180,16 @@ export const useCmsEditorialEntryCreate = (
         message: result.message,
         unauthenticated: false,
       });
+      // A verified term refusal is the only refusal that re-reads the selector;
+      // the create is never retried automatically, so the values stay put.
+      if (result.taxonomyUnavailable)
+        setTaxonomyRefreshToken((token) => token + 1);
       setSummaryToken((token) => token + 1);
       return;
     }
-    setServerMessage(null);
+    setServerMessage(result.setupSummary === true ? result.message : null);
     setServerFields(new Set());
+    if (result.setupSummary === true) setSummaryToken((token) => token + 1);
     setStatus({
       kind: 'failed',
       message: result.message,
@@ -194,9 +198,7 @@ export const useCmsEditorialEntryCreate = (
   };
 
   const run = async (
-    toSend: Readonly<Record<string, JsonValue>>,
-    sendLocale: string,
-    key: string | null,
+    attempt: CmsEditorialEntryCreateAttempt,
   ): Promise<void> => {
     if (inFlight.current) return;
     inFlight.current = true;
@@ -206,25 +208,17 @@ export const useCmsEditorialEntryCreate = (
     // The create transport (and the contract schemas it validates with) loads on
     // the first submit, never with the island (FE03 "Performance budgets and
     // loading strategy", AC-106).
-    const submitter = await import('./cms-editorial-entry-create-submit').catch(
-      () => null,
-    );
+    const submitter = await loadCreateSubmit().catch(() => null);
     const result: CmsEditorialEntryCreateSubmitResult =
       submitter === null
-        ? CREATE_UNAVAILABLE(key ?? newCmsEditorialIdempotencyKey() ?? '')
+        ? cmsEditorialEntryCreateUnavailable(
+            attempt.key ?? newCmsEditorialIdempotencyKey() ?? '',
+          )
         : await submitter.submitCmsEditorialEntryCreate({
-            prefill: {
-              contentTypeId: type.contentTypeId,
-              contentTypeVersionId: type.contentTypeVersionId,
-              locale: sendLocale,
-              schemaArtifact: type.schemaArtifact,
-              validatorRefs: type.validatorRefs,
-              workflowPolicy: type.workflowPolicy,
-              activationEvidence: type.activationEvidence,
-            },
-            values: toSend,
+            prefill: attempt.prefill,
+            values: attempt.values,
             csrfToken: READ_CSRF_COOKIE_FROM_DOCUMENT(document),
-            idempotencyKey: key,
+            idempotencyKey: attempt.key,
             ...(options.fetcher === undefined
               ? {}
               : { fetcher: options.fetcher }),
@@ -234,8 +228,7 @@ export const useCmsEditorialEntryCreate = (
     if (result.status === 'error' && result.outcomeUnknown) {
       inFlight.current = false;
       pending.current = {
-        values: toSend,
-        locale: sendLocale,
+        ...attempt,
         key: result.idempotencyKey,
       };
       setLocked(true);
@@ -251,8 +244,7 @@ export const useCmsEditorialEntryCreate = (
 
   const submit = async (): Promise<void> => {
     if (pending.current !== null) {
-      const attempt = pending.current;
-      await run(attempt.values, attempt.locale, attempt.key);
+      await run(pending.current);
       return;
     }
     const collected = collectCmsCreateValues(descriptors, values, touched);
@@ -261,7 +253,9 @@ export const useCmsEditorialEntryCreate = (
       setSummaryToken((token) => token + 1);
       return;
     }
-    await run(collected.values, locale, null);
+    await run(
+      captureCmsEditorialEntryCreateAttempt(type, collected.values, locale),
+    );
   };
 
   return {
@@ -272,6 +266,7 @@ export const useCmsEditorialEntryCreate = (
     status,
     summaryItems,
     summaryToken,
+    taxonomyRefreshToken,
     submitting: status.kind === 'submitting',
     statusMessage:
       status.kind === 'idle'

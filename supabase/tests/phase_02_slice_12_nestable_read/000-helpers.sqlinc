@@ -1,0 +1,91 @@
+-- Harness of the cmsPatternNestableRead suite.  The same shape as pg_temp.s12pu_call (shared, allow-listed to other functions and never
+-- edited here): one RPC call as a named actor and real database role with the value of the RPC-context flag `app.cms_rpc` just before and
+-- just after (PAT-031) and a before/after image of every store a pattern or composition write touches, kept in s12pu_out so the shared
+-- accessors s12pu_oc / s12pu_body / s12pu_unchanged read the result.
+
+create or replace function pg_temp.s12nr_call(
+  p_label text, p_function text, p_request jsonb, p_actor text default 'owner', p_role text default 'service_role', p_flag text default null)
+returns void
+language plpgsql as $body$
+declare before_rows jsonb; answer jsonb; code text := '00000'; msg text; details text;
+  prior_role text := current_setting('role'); prior_user text := current_user; invoked_as text; restored boolean;
+  flag_before text; flag_after text;
+begin
+  if p_function not in ('platform_api.cms_list_pattern_nestable', 'platform_api.cms_list_pattern_selector') then
+    raise exception 'unknown nestable-read function %', p_function;
+  end if;
+  if p_role not in ('service_role', 'anon', 'authenticated') then raise exception 'unknown database role %', p_role; end if;
+  perform pg_temp.s09d_session(p_actor, p_role);
+  if p_actor = 'anonymous' then
+    perform pg_temp.set_jwt_claim('sub', '', true);
+    perform set_config('app.auth_user_id', '', true);
+    perform set_config('app.actor_auth_user_id', '', true);
+    perform set_config('app.actor_person_id', '', true);
+    perform set_config('app.acting_party_id', '', true);
+    perform set_config('app.acting_context_id', '', true);
+  end if;
+  perform set_config('response.headers', '', true);
+  before_rows := pg_temp.s12pl_snapshot();
+  begin
+    perform set_config('role', p_role, true);
+    invoked_as := current_user;
+    if invoked_as is distinct from p_role then raise exception 'nestable-read test effective role mismatch'; end if;
+    if p_flag is not null then perform set_config('app.cms_rpc', p_flag, true); end if;
+    flag_before := coalesce(current_setting('app.cms_rpc', true), '');
+    begin
+      execute format('select %s($1)', p_function) into answer using p_request;
+    exception when others then
+      get stacked diagnostics code = returned_sqlstate, msg = message_text, details = pg_exception_detail;
+      answer := null;
+    end;
+    flag_after := coalesce(current_setting('app.cms_rpc', true), '');
+    perform set_config('role', prior_role, true);
+  exception when others then
+    perform set_config('role', prior_role, true);
+    raise;
+  end;
+  restored := current_user::text = prior_user and current_setting('role') = prior_role;
+  if restored is not true then raise exception 'nestable-read test role restoration failed'; end if;
+  if p_flag is not null then perform set_config('app.cms_rpc', '', true); end if;
+  insert into s12pu_out values (p_label, p_request, answer, code, msg, details, null, before_rows,
+    pg_temp.s12pl_snapshot(), p_role, invoked_as, restored, flag_before, flag_after)
+  on conflict (label) do update set request = excluded.request, response = excluded.response, state = excluded.state,
+    message = excluded.message, detail = excluded.detail, before_rows = excluded.before_rows,
+    after_rows = excluded.after_rows, rpc_before = excluded.rpc_before, rpc_after = excluded.rpc_after,
+    requested_role = excluded.requested_role, call_role = excluded.call_role, role_restored = excluded.role_restored;
+end;
+$body$;
+
+-- The id of the content type with this ordinal (1-3) as a uuid.
+create or replace function pg_temp.s12nr_type(p_ordinal integer) returns uuid language sql stable as $body$
+  select id from s12pd_types where ordinal = p_ordinal $body$;
+-- The compatibleTypeIds / contentTypeId array of the ordinals, in the order given.
+create or replace function pg_temp.s12nr_types(variadic p_ordinals integer[]) returns jsonb language sql stable as $body$
+  select coalesce(jsonb_agg(to_jsonb(pg_temp.s12nr_type(o)) order by n), '[]'::jsonb) from unnest(p_ordinals) with ordinality t(o, n) $body$;
+-- A request: the type set (ordinals), plus any patch / unset keys; the acting context of p_actor.
+create or replace function pg_temp.s12nr_request(p_types integer[], p_patch jsonb default '{}'::jsonb, p_unset text[] default array[]::text[],
+  p_actor text default 'owner') returns jsonb language sql volatile as $body$
+  select (jsonb_build_object('contentTypeId', pg_temp.s12nr_types(variadic p_types), 'context', pg_temp.s09d_context(p_actor, true),
+    'correlationId', 'a9120000-0000-4000-8000-00000000c0d3') || p_patch) - p_unset $body$;
+create or replace function pg_temp.s12nr_read(p_label text, p_types integer[], p_patch jsonb default '{}'::jsonb,
+  p_unset text[] default array[]::text[], p_actor text default 'owner', p_role text default 'service_role') returns void language plpgsql as $body$
+begin
+  perform pg_temp.s12nr_call(p_label, 'platform_api.cms_list_pattern_nestable', pg_temp.s12nr_request(p_types, p_patch, p_unset, p_actor), p_actor, p_role);
+end;
+$body$;
+-- 'key@version' of every item, in page order.
+create or replace function pg_temp.s12nr_keys(p_page jsonb) returns text[] language sql stable as $body$
+  select coalesce(array_agg(item->>'patternKey' || '@' || (item->>'patternVersion') order by ordinality), array[]::text[])
+    from jsonb_array_elements(coalesce(p_page->'items', '[]'::jsonb)) with ordinality t(item, ordinality) $body$;
+-- The item the independent oracle expects for a created pattern label: every member comes from the CMS-03C-12 response of that label.
+create or replace function pg_temp.s12nr_item(p_label text) returns jsonb language sql stable as $body$
+  select jsonb_build_object('patternId', pg_temp.s12pd_body(p_label)->'patternId', 'patternVersionId', pg_temp.s12pd_body(p_label)->'id',
+    'patternKey', pg_temp.s12pd_body(p_label)->'patternKey', 'patternVersion', pg_temp.s12pd_body(p_label)->'patternVersion',
+    'nodeCount', pg_temp.s12pd_body(p_label)->'nodeCount', 'blockRegistryDigest', pg_temp.s12pd_body(p_label)->'blockRegistryDigest') $body$;
+-- The pageVersion oracle: the high-water update instant (UTC microseconds) of the owner's pattern versions, in ANY state, whose
+-- compatibleTypeIds contain EVERY listed type ("1" when there is none).
+create or replace function pg_temp.s12nr_page_version(variadic p_ordinals integer[]) returns text language sql stable as $body$
+  select coalesce(floor(extract(epoch from max(v.updated_at)) * 1000000)::bigint::text, '1')
+    from platform_private.cms_pattern_versions v
+   where v.owner_id = pg_temp.s09d_id('ownerOrg')
+     and not exists (select 1 from unnest(p_ordinals) o where not v.compatible_type_ids ? lower(pg_temp.s12nr_type(o)::text)) $body$;

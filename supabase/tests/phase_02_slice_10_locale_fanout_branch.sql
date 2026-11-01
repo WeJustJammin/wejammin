@@ -69,7 +69,7 @@ insert into platform_private.cms_locale_variants(
 )
 select extensions.gen_random_uuid(),
        (select value::uuid from s10_ids where key = 'organization'),
-       'approved', 1, timestamptz '2026-09-27T12:00:00Z', timestamptz '2026-09-27T12:00:00Z',
+       'draft', 1, timestamptz '2026-09-27T12:00:00Z', timestamptz '2026-09-27T12:00:00Z',
        (select value::uuid from s10_ids where key = 'entryId'),
        dependent.revision_id::uuid,
        (select value::uuid from s10_ids where key = 'entryRevisionId'),
@@ -83,9 +83,9 @@ from (values
   ('a9160000-0000-4000-8000-000000000004', 'es-ES')
 ) dependent(revision_id, locale);
 
--- A newer en-US source revision with a different payload.  Its insert trigger
--- (cms_entry_revisions_locale_stale) would stale the dependents at once, so the
--- fixture inserts it with triggers disabled to hold the state the wrapper's
+-- A newer en-US source revision with a different payload.  A writer that made it the draft
+-- head would stale the dependents at once (cms_content_entries_locale_stale), so the fixture
+-- inserts it raw, with triggers disabled and no head move, to hold the state the wrapper's
 -- preflight must count: three latest dependents still pinned to the old hash.
 set local session_replication_role = replica;
 insert into platform_private.cms_entry_revisions(

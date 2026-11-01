@@ -1,0 +1,201 @@
+-- Replay witnesses for supabase/migrations-wip/template-digest/20261014180000_cms_define_template_digest_mismatch.sql
+-- (each `do $amend$` block below is a byte-identical copy of that migration's DO block; the migration is applied
+-- once by the reset, so only a replay can show the properties a forward patch must have):
+--   1. idempotent: against the already-patched body the block changes nothing (body and every other pg_proc
+--      attribute identical);
+--   2. patches exactly once: against the pre-patch body (the generic CONFLICT restored in place) it reproduces the
+--      patched body byte for byte and moves no other attribute;
+--   3. fail loud: against a body that carries neither the anchor nor the replacement it raises SQLSTATE 55000
+--      instead of silently leaving the defect in place.
+-- The second and third replays run inside a subtransaction that an exception rolls back, so the function the rest of
+-- the suite sees is untouched.  If the migration is edited, regenerate this file (its copies are extracted by script).
+create temp table tdg_replay(label text primary key, src text, attrs text) on commit drop;
+create or replace function pg_temp.tdg_snapshot(p_label text) returns void language sql as $body$
+  insert into tdg_replay
+  select p_label, proc.prosrc, (to_jsonb(proc) - 'prosrc')::text
+    from pg_catalog.pg_proc proc
+   where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure
+$body$;
+select pg_temp.tdg_snapshot('before');
+do $amend$
+declare
+  target_identity constant text := 'platform_private.cms_define_template(jsonb)';
+  anchor constant text := $a1$     and p_request->>'blockRegistryDigest' <> block_digest then
+    raise exception 'CONFLICT' using errcode = 'P0001';$a1$;
+  replacement constant text := $r1$     and p_request->>'blockRegistryDigest' <> block_digest then
+    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$r1$;
+  live pg_catalog.pg_proc%rowtype;
+  patched text;
+  before_attrs text;
+  after_attrs text;
+  occurrences integer;
+begin
+  select proc.* into live from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if not found then
+    raise exception '% is missing', target_identity using errcode = '55000';
+  end if;
+  if live.prolang <> (select lang.oid from pg_catalog.pg_language lang where lang.lanname = 'plpgsql')
+     or live.prorettype <> 'jsonb'::pg_catalog.regtype or not live.prosecdef then
+    raise exception '% does not have the expected shape', target_identity using errcode = '55000';
+  end if;
+  occurrences := (pg_catalog.length(live.prosrc) - pg_catalog.length(pg_catalog.replace(live.prosrc, anchor, '')))
+                 / pg_catalog.length(anchor);
+  if occurrences = 1 then
+    patched := pg_catalog.replace(live.prosrc, anchor, replacement);
+  elsif occurrences = 0 and pg_catalog.strpos(live.prosrc, replacement) > 0 then
+    return; -- already applied
+  else
+    raise exception '% patch anchor occurs % times', target_identity, occurrences using errcode = '55000';
+  end if;
+  before_attrs := (pg_catalog.to_jsonb(live) - 'prosrc')::text;
+  execute pg_catalog.format(
+    'create or replace function platform_private.cms_define_template(p_request jsonb) '
+    || 'returns jsonb language plpgsql volatile security definer set search_path = %L as %L',
+    '', patched);
+  select (pg_catalog.to_jsonb(proc) - 'prosrc')::text into after_attrs
+    from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if after_attrs is distinct from before_attrs then
+    raise exception '%: owner, ACL, security, volatility or config changed', target_identity using errcode = '55000';
+  end if;
+end;
+$amend$;
+select pg_temp.tdg_snapshot('after');
+select ok((select b.src = a.src from tdg_replay b join tdg_replay a on a.label = 'after' where b.label = 'before'),
+  'replay: the patch is idempotent, the already-patched body is byte-identical [BE03c 1273]');
+select ok((select b.attrs = a.attrs from tdg_replay b join tdg_replay a on a.label = 'after' where b.label = 'before'),
+  'replay: owner, ACL, security, volatility and config are unchanged by the replay [BE03c 1273]');
+
+create or replace function pg_temp.tdg_replay_from_unpatched() returns text language plpgsql as $body$
+declare
+  patched_src text := (select src from tdg_replay where label = 'before');
+  patched_attrs text := (select attrs from tdg_replay where label = 'before');
+  outcome text := 'NO RESULT';
+begin
+  begin
+    execute pg_catalog.format(
+      'create or replace function platform_private.cms_define_template(p_request jsonb) '
+      || 'returns jsonb language plpgsql volatile security definer set search_path = %L as %L',
+      '', pg_catalog.replace(patched_src,
+        $n$    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$n$,
+        $o$    raise exception 'CONFLICT' using errcode = 'P0001';$o$));
+    execute $replay$
+do $amend$
+declare
+  target_identity constant text := 'platform_private.cms_define_template(jsonb)';
+  anchor constant text := $a1$     and p_request->>'blockRegistryDigest' <> block_digest then
+    raise exception 'CONFLICT' using errcode = 'P0001';$a1$;
+  replacement constant text := $r1$     and p_request->>'blockRegistryDigest' <> block_digest then
+    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$r1$;
+  live pg_catalog.pg_proc%rowtype;
+  patched text;
+  before_attrs text;
+  after_attrs text;
+  occurrences integer;
+begin
+  select proc.* into live from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if not found then
+    raise exception '% is missing', target_identity using errcode = '55000';
+  end if;
+  if live.prolang <> (select lang.oid from pg_catalog.pg_language lang where lang.lanname = 'plpgsql')
+     or live.prorettype <> 'jsonb'::pg_catalog.regtype or not live.prosecdef then
+    raise exception '% does not have the expected shape', target_identity using errcode = '55000';
+  end if;
+  occurrences := (pg_catalog.length(live.prosrc) - pg_catalog.length(pg_catalog.replace(live.prosrc, anchor, '')))
+                 / pg_catalog.length(anchor);
+  if occurrences = 1 then
+    patched := pg_catalog.replace(live.prosrc, anchor, replacement);
+  elsif occurrences = 0 and pg_catalog.strpos(live.prosrc, replacement) > 0 then
+    return; -- already applied
+  else
+    raise exception '% patch anchor occurs % times', target_identity, occurrences using errcode = '55000';
+  end if;
+  before_attrs := (pg_catalog.to_jsonb(live) - 'prosrc')::text;
+  execute pg_catalog.format(
+    'create or replace function platform_private.cms_define_template(p_request jsonb) '
+    || 'returns jsonb language plpgsql volatile security definer set search_path = %L as %L',
+    '', patched);
+  select (pg_catalog.to_jsonb(proc) - 'prosrc')::text into after_attrs
+    from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if after_attrs is distinct from before_attrs then
+    raise exception '%: owner, ACL, security, volatility or config changed', target_identity using errcode = '55000';
+  end if;
+end;
+$amend$;
+$replay$;
+    outcome := case when (select proc.prosrc = patched_src and (to_jsonb(proc) - 'prosrc')::text = patched_attrs
+                            from pg_catalog.pg_proc proc
+                           where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure)
+                    then 'PATCHED' else 'DIVERGED' end;
+    raise exception 'rollback' using errcode = 'P0001'; -- restores the real function
+  exception when others then
+    if sqlerrm <> 'rollback' then outcome := 'RAISED ' || sqlstate; end if;
+  end;
+  return outcome;
+end;
+$body$;
+select is(pg_temp.tdg_replay_from_unpatched(), 'PATCHED',
+  'replay: against the pre-patch body the migration restores the patched body and every attribute exactly [BE03c 1273]');
+
+create or replace function pg_temp.tdg_replay_unanchored() returns text language plpgsql as $body$
+declare outcome text := 'NO RAISE';
+begin
+  begin
+    execute 'create or replace function platform_private.cms_define_template(p_request jsonb) '
+         || 'returns jsonb language plpgsql volatile security definer set search_path = '''' as $f$ begin return null; end; $f$';
+    execute $replay$
+do $amend$
+declare
+  target_identity constant text := 'platform_private.cms_define_template(jsonb)';
+  anchor constant text := $a1$     and p_request->>'blockRegistryDigest' <> block_digest then
+    raise exception 'CONFLICT' using errcode = 'P0001';$a1$;
+  replacement constant text := $r1$     and p_request->>'blockRegistryDigest' <> block_digest then
+    raise exception 'block_registry_digest_mismatch' using errcode = 'P0001', detail = '["/blockRegistryDigest"]';$r1$;
+  live pg_catalog.pg_proc%rowtype;
+  patched text;
+  before_attrs text;
+  after_attrs text;
+  occurrences integer;
+begin
+  select proc.* into live from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if not found then
+    raise exception '% is missing', target_identity using errcode = '55000';
+  end if;
+  if live.prolang <> (select lang.oid from pg_catalog.pg_language lang where lang.lanname = 'plpgsql')
+     or live.prorettype <> 'jsonb'::pg_catalog.regtype or not live.prosecdef then
+    raise exception '% does not have the expected shape', target_identity using errcode = '55000';
+  end if;
+  occurrences := (pg_catalog.length(live.prosrc) - pg_catalog.length(pg_catalog.replace(live.prosrc, anchor, '')))
+                 / pg_catalog.length(anchor);
+  if occurrences = 1 then
+    patched := pg_catalog.replace(live.prosrc, anchor, replacement);
+  elsif occurrences = 0 and pg_catalog.strpos(live.prosrc, replacement) > 0 then
+    return; -- already applied
+  else
+    raise exception '% patch anchor occurs % times', target_identity, occurrences using errcode = '55000';
+  end if;
+  before_attrs := (pg_catalog.to_jsonb(live) - 'prosrc')::text;
+  execute pg_catalog.format(
+    'create or replace function platform_private.cms_define_template(p_request jsonb) '
+    || 'returns jsonb language plpgsql volatile security definer set search_path = %L as %L',
+    '', patched);
+  select (pg_catalog.to_jsonb(proc) - 'prosrc')::text into after_attrs
+    from pg_catalog.pg_proc proc where proc.oid = pg_catalog.to_regprocedure(target_identity);
+  if after_attrs is distinct from before_attrs then
+    raise exception '%: owner, ACL, security, volatility or config changed', target_identity using errcode = '55000';
+  end if;
+end;
+$amend$;
+$replay$;
+  exception when others then
+    outcome := 'RAISED ' || sqlstate;
+    -- the exception rolls this subtransaction back, restoring the real function
+  end;
+  return outcome;
+end;
+$body$;
+select is(pg_temp.tdg_replay_unanchored(), 'RAISED 55000',
+  'replay: a body without the anchor or the replacement is refused with 55000 [BE03c 1273]');
+select ok((select proc.prosrc = (select src from tdg_replay where label = 'before')
+             from pg_catalog.pg_proc proc
+            where proc.oid = 'platform_private.cms_define_template(jsonb)'::regprocedure),
+  'replay: the refused patch rolled back, the live producer is unchanged by the refused replay [BE03c 1273]');

@@ -1,0 +1,144 @@
+-- CMS-03C-14 three-way diff: for each node path the pinned value (base), the new active value (theirs) and the local override (yours).
+-- BE03c "Linked update (diff, accept, detach)" and CompositionUpdateDiffResource (DEC-193): the value of a node path is the node's props
+-- plus its block identity (blockKey, blockVersion) and its ordered children addresses; a path is a collision of exactly one kind (the first
+-- that applies): removed_root (the instance's own block root, removed by the target), structure (block identity or children changed), props
+-- (the override differs from the base props AND the target changed them); the diff also carries the instance's slotPath and newRoots, and a
+-- newer collision-free target is bulk eligible even when no path changed.  A chain is the slash-joined node keys from the placed root (the keys of
+-- a nested pattern reference lead the chain).  Every expected document below is written by hand from the trees of 010-world.sqlinc.
+
+create or replace function pg_temp.s12pdf_check(p_label text, p_tag text, p_path text, p_state text, p_mode text, p_pinned integer, p_target integer,
+  p_paths jsonb, p_bulk boolean, p_slot text default '/', p_new_roots jsonb default '[]'::jsonb) returns setof text language plpgsql as $body$
+declare body jsonb := pg_temp.s12pu_body(p_label);
+begin
+  return next extensions.is(pg_temp.s12pu_oc(p_label), 'ok', p_label || ': the diff is answered');
+  if pg_temp.s12pu_oc(p_label) <> 'ok' then
+    return next extensions.diag(coalesce((select message || ' ' || coalesce(detail, '') from s12pu_out where label = p_label), ''));
+    return;
+  end if;
+  return next extensions.is((select array_agg(k order by k) from jsonb_object_keys(body) k),
+    array['bulkEligible', 'collisionCount', 'instance', 'newRoots', 'paths', 'slotPath', 'targetPatternVersion'],
+    p_label || ': exactly CompositionUpdateDiffResource');
+  return next extensions.is((select array_agg(k order by k) from jsonb_object_keys(body->'instance') k),
+    array['id', 'linkMode', 'path', 'pinnedPatternVersion', 'revisionId', 'state', 'version'],
+    p_label || ': the instance carries exactly id, version, revisionId, path, state, linkMode, pinnedPatternVersion (no owner or authority member)');
+  return next extensions.is(body->'instance', jsonb_build_object('id', pg_temp.s12pu_head(p_tag, p_path), 'version', pg_temp.s12pu_hv(p_tag, p_path),
+    'revisionId', pg_temp.s12pl_rev(p_tag), 'path', p_path, 'state', p_state, 'linkMode', p_mode, 'pinnedPatternVersion', p_pinned),
+    p_label || ': the instance projection is the stored row');
+  return next extensions.is(body->'targetPatternVersion', to_jsonb(p_target), p_label || ': the target is ' || p_target);
+  return next extensions.is(body->'slotPath', to_jsonb(p_slot), p_label || ': the slotPath is the placement slot of the instance (its path less its root key chain)');
+  return next extensions.is(body->'paths', p_paths, p_label || ': the changed paths, bytewise ordered, with base, theirs, yours, the collision flag and its kind');
+  return next extensions.is(body->'newRoots', p_new_roots, p_label || ': the new roots are the target block roots the pinned forest lacks');
+  return next extensions.is(body->'collisionCount', to_jsonb((select count(*) from jsonb_array_elements(p_paths) e where (e->>'collision')::boolean)::integer),
+    p_label || ': collisionCount counts the flagged paths');
+  return next extensions.is(body->'bulkEligible', to_jsonb(p_bulk), p_label || ': bulkEligible is ' || p_bulk);
+  return next extensions.ok(pg_temp.s12pu_unchanged(p_label), p_label || ': the read changed no store (no audit, no outbox, no idempotency record, no row)');
+end;
+$body$;
+-- A node value: block identity, props and the ordered child addresses (the test world has one registered block, s12pd.block v1).
+create or replace function pg_temp.s12pdf_node(p_props jsonb, p_children text[] default '{}') returns jsonb language sql immutable as $body$
+  select case when p_props is null then null
+    else jsonb_build_object('blockKey', 's12pd.block', 'blockVersion', 1, 'props', p_props, 'children', to_jsonb(p_children)) end $body$;
+-- A diff path entry: p_kind is the collisionKind (null for no collision); the node children default to none, and `theirs` keeps the base children.
+create or replace function pg_temp.s12pdf_path(p_path text, p_base jsonb, p_theirs jsonb, p_yours jsonb, p_kind text default null,
+  p_children text[] default '{}', p_theirs_children text[] default null) returns jsonb language sql immutable as $body$
+  select jsonb_build_object('path', p_path, 'base', pg_temp.s12pdf_node(p_base, p_children),
+    'theirs', pg_temp.s12pdf_node(p_theirs, coalesce(p_theirs_children, p_children)), 'yours', p_yours,
+    'collision', p_kind is not null, 'collisionKind', p_kind) $body$;
+-- The new root the pu-a successor adds beside hero and cta.
+create or replace function pg_temp.s12pdf_badge() returns jsonb language sql immutable as $body$
+  select jsonb_build_array(jsonb_build_object('rootPath', '/badge', 'blockKey', 's12pd.block', 'blockVersion', 1)) $body$;
+
+-- theirs-only: no local override ---------------------------------------------------------------------------------------------------
+-- hero has the children title and note in both versions; the pu-a successor also adds the root badge (newRoots).
+select pg_temp.s12pu_diff_head('d-hero1', 'dif1', '/hero');
+select * from pg_temp.s12pdf_check('d-hero1', 'dif1', '/hero', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/hero', '{"title":"H1"}', '{"title":"H2"}', null, null, array['/hero/title', '/hero/note']),
+  pg_temp.s12pdf_path('/hero/title', '{"title":"T1"}', '{"title":"T2"}', null)), true, '/', pg_temp.s12pdf_badge());
+-- a newer collision-free target is bulk eligible even when no path of this instance changed (BE03c: the pin and newRoots are still offered)
+select pg_temp.s12pu_diff_head('d-cta1', 'dif1', '/cta');
+select * from pg_temp.s12pdf_check('d-cta1', 'dif1', '/cta', 'active', 'linked', 1, 2, '[]'::jsonb, true, '/', pg_temp.s12pdf_badge());
+
+-- a local override on a path the new version changed is a props collision; one on an unchanged path is not listed ----------------------
+select pg_temp.s12pu_diff_head('d-hero2', 'dif2', '/hero');
+select * from pg_temp.s12pdf_check('d-hero2', 'dif2', '/hero', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/hero', '{"title":"H1"}', '{"title":"H2"}', null, null, array['/hero/title', '/hero/note']),
+  pg_temp.s12pdf_path('/hero/title', '{"title":"T1"}', '{"title":"T2"}', '{"title":"MINE"}', 'props')), false, '/', pg_temp.s12pdf_badge());
+select ok(not exists (select 1 from jsonb_array_elements(pg_temp.s12pu_body('d-hero2')->'paths') e where e->>'path' = '/hero/note'),
+  'the override on /hero/note, which the new version did not change, is retained and not part of the diff [BE03c Linked update]');
+
+-- an override equal to the base is no collision: the new value is adopted -------------------------------------------------------------------
+select pg_temp.s12pu_diff_head('d-hero3', 'dif3', '/hero');
+select * from pg_temp.s12pdf_check('d-hero3', 'dif3', '/hero', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/hero', '{"title":"H1"}', '{"title":"H2"}', '{"title":"H1"}', null, array['/hero/title', '/hero/note']),
+  pg_temp.s12pdf_path('/hero/title', '{"title":"T1"}', '{"title":"T2"}', null)), true, '/', pg_temp.s12pdf_badge());
+
+-- two collisions ---------------------------------------------------------------------------------------------------------------------
+select pg_temp.s12pu_diff_head('d-hero4', 'dif4', '/hero');
+select * from pg_temp.s12pdf_check('d-hero4', 'dif4', '/hero', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/hero', '{"title":"H1"}', '{"title":"H2"}', '{"title":"MINE-H"}', 'props', array['/hero/title', '/hero/note']),
+  pg_temp.s12pdf_path('/hero/title', '{"title":"T1"}', '{"title":"T2"}', '{"title":"MINE-T"}', 'props')), false, '/', pg_temp.s12pdf_badge());
+
+-- an override of JSON null is an override: yours is null and it differs from the base -------------------------------------------------------
+select pg_temp.s12pu_diff_head('d-hero7', 'dif7', '/hero');
+select * from pg_temp.s12pdf_check('d-hero7', 'dif7', '/hero', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/hero', '{"title":"H1"}', '{"title":"H2"}', null, null, array['/hero/title', '/hero/note']),
+  pg_temp.s12pdf_path('/hero/title', '{"title":"T1"}', '{"title":"T2"}', null, 'props')), false, '/', pg_temp.s12pdf_badge());
+
+-- an override on a root the new version left unchanged ---------------------------------------------------------------------------------------
+select pg_temp.s12pu_diff_head('d-cta6', 'dif6', '/cta');
+select * from pg_temp.s12pdf_check('d-cta6', 'dif6', '/cta', 'active', 'linked', 1, 2, '[]'::jsonb, true, '/', pg_temp.s12pdf_badge());
+
+-- a detached instance receives no updates: 200 with an empty diff and target = pinned ------------------------------------------------------
+select pg_temp.s12pu_diff_head('d-detached', 'dif5', '/hero');
+select * from pg_temp.s12pdf_check('d-detached', 'dif5', '/hero', 'active', 'detached', 1, 1, '[]'::jsonb, false);
+
+-- the placement path prefix is not part of the chain: a row in a template slot diffs by its node chain and reports the slot -----------------
+select pg_temp.s12pu_diff_head('d-tpl', 'tpl1', '/main/hero');
+select * from pg_temp.s12pdf_check('d-tpl', 'tpl1', '/main/hero', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/hero', '{"title":"H1"}', '{"title":"H2"}', null, null, array['/hero/title', '/hero/note']),
+  pg_temp.s12pdf_path('/hero/title', '{"title":"T1"}', '{"title":"T2"}', null)), true, '/main', pg_temp.s12pdf_badge());
+
+-- a removed root: theirs is null and removal of the instance's own block root is always a removed_root collision (accept needs a choice) -----
+select pg_temp.s12pu_diff_head('d-keep', 'rm1', '/keep');
+select * from pg_temp.s12pdf_check('d-keep', 'rm1', '/keep', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/keep', '{"title":"K1"}', '{"title":"K2"}', null)), true);
+select pg_temp.s12pu_diff_head('d-gone', 'rm1', '/gone');
+select * from pg_temp.s12pdf_check('d-gone', 'rm1', '/gone', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/gone', '{"title":"G1"}', null, null, 'removed_root')), false);
+select pg_temp.s12pu_diff_head('d-gone2', 'rm2', '/gone');
+select * from pg_temp.s12pdf_check('d-gone2', 'rm2', '/gone', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/gone', '{"title":"G1"}', null, '{"title":"G99"}', 'removed_root')), false);
+
+-- chains through a nested pattern reference; the pinned nested version is superseded but still the base ------------------------------------------
+select pg_temp.s12pu_diff_head('d-nest-leaf', 'nest1', '/shared/leaf');
+select * from pg_temp.s12pdf_check('d-nest-leaf', 'nest1', '/shared/leaf', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/shared/leaf', '{"title":"L1"}', '{"title":"L2"}', null)), true);
+select pg_temp.s12pu_diff_head('d-nest-top', 'nest1', '/top');
+select * from pg_temp.s12pdf_check('d-nest-top', 'nest1', '/top', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/top', '{"title":"D1"}', '{"title":"D2"}', null)), true);
+select pg_temp.s12pu_diff_head('d-nest-mine', 'nest2', '/shared/leaf');
+select * from pg_temp.s12pdf_check('d-nest-mine', 'nest2', '/shared/leaf', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/shared/leaf', '{"title":"L1"}', '{"title":"L2"}', '{"title":"L77"}', 'props')), false);
+
+-- the target is the latest ACTIVE COMPATIBLE version above the pinned one ---------------------------------------------------------------------
+select pg_temp.s12pu_diff_head('d-ver1', 'ver1', '/item');
+select * from pg_temp.s12pdf_check('d-ver1', 'ver1', '/item', 'active', 'linked', 1, 3, jsonb_build_array(
+  pg_temp.s12pdf_path('/item', '{"title":"k1"}', '{"title":"k3"}', null)), true);
+select pg_temp.s12pu_diff_head('d-ver2', 'ver2', '/item');
+select * from pg_temp.s12pdf_check('d-ver2', 'ver2', '/item', 'active', 'linked', 2, 3, jsonb_build_array(
+  pg_temp.s12pdf_path('/item', '{"title":"k2"}', '{"title":"k3"}', null)), true);
+select pg_temp.s12pu_diff_head('d-inc', 'inc1', '/item');
+select * from pg_temp.s12pdf_check('d-inc', 'inc1', '/item', 'active', 'linked', 1, 1, '[]'::jsonb, false);
+select pg_temp.s12pu_diff_head('d-draft', 'fd1', '/item');
+select * from pg_temp.s12pdf_check('d-draft', 'fd1', '/item', 'active', 'linked', 1, 1, '[]'::jsonb, false);
+select pg_temp.s12pu_diff_head('d-newest', 'nu1', '/hero');
+select * from pg_temp.s12pdf_check('d-newest', 'nu1', '/hero', 'active', 'linked', 2, 2, '[]'::jsonb, false);
+
+-- a placement of 39 rows: every row is diffed independently (DEC-181) -------------------------------------------------------------------------------
+select pg_temp.s12pu_diff_head('d-big-r7', 'big1', '/root7');
+select * from pg_temp.s12pdf_check('d-big-r7', 'big1', '/root7', 'active', 'linked', 1, 2, jsonb_build_array(
+  pg_temp.s12pdf_path('/root7', '{"title":"P1"}', '{"title":"P2"}', null)), true);
+select pg_temp.s12pu_diff_head('d-big-nested', 'big1', '/more/extra3');
+select * from pg_temp.s12pdf_check('d-big-nested', 'big1', '/more/extra3', 'active', 'linked', 1, 2, '[]'::jsonb, true);
+select is((select count(*)::integer from platform_private.cms_composition_instances where revision_id = pg_temp.s12pl_rev('big1')), 39,
+  'setup: the 39-row placement exists (31 roots and the 8 roots of the nested reference)');

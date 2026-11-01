@@ -266,7 +266,7 @@ const fixture = (
           ['processed-response', 'recorded'],
           ['ack'],
         ]
-      : [['retry']]),
+      : [['retry', { delaySeconds: 15 }]]),
   ];
   const unchanged = JSON.stringify({
     envelope,
@@ -318,22 +318,39 @@ const fixture = (
           input.signal instanceof AbortSignal && !input.signal.aborted,
         ).toBe(true);
       }
-      // The verified CMS origin hands the effect its input and private lease control.
+      // The verified CMS origin hands the effect its input, its private lease control and the Worker-layer
+      // delivery context (DEC-184): the environment, the invocation signal and the delivery number.
       same(
         effect.mock.calls.map(([input]) => [input]),
         [[expectedEffect]],
       );
       same(
         effect.mock.calls.map((call) => call.length),
-        [2],
+        [3],
       );
       expect(
         effect.mock.calls.every(
           ([, control]) => typeof control?.checkpoint === 'function',
         ),
       ).toBe(true);
+      for (const call of effect.mock.calls as unknown[][]) {
+        const delivery = call[2] as {
+          env: unknown;
+          signal: AbortSignal;
+          deliveryAttempt: number;
+        };
+        same(Reflect.ownKeys(delivery).sort(), [
+          'deliveryAttempt',
+          'env',
+          'signal',
+        ]);
+        expect(delivery.env === env).toBe(true);
+        expect(delivery.deliveryAttempt).toBe(message.attempts);
+        expect(delivery.signal instanceof AbortSignal).toBe(true);
+      }
       same(ack.mock.calls, terminal ? [[]] : []);
-      same(retry.mock.calls, terminal ? [] : [[]]);
+      // A retry-type CMS disposition is redelivered on the BE00 schedule: 15 s after the first delivery.
+      same(retry.mock.calls, terminal ? [] : [[{ delaySeconds: 15 }]]);
       same(leaseToken.mock.calls, [[message]]);
       expect(leaseToken.mock.calls[0]?.[0] === message).toBe(true);
       expect(message.body === envelope).toBe(true);

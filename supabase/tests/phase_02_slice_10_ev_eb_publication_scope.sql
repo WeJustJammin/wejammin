@@ -33,8 +33,8 @@ select is(
      from pg_proc p join pg_namespace n on n.oid = p.pronamespace
     where n.nspname = 'platform_api'
       and p.proname ~ '(review|decision)'),
-  'cms_assign_editorial_reviewer, cms_assign_schema_review, cms_decide_schema_review, cms_get_editorial_review, cms_get_schema_review, cms_list_editorial_reviews, cms_mint_preview, cms_record_review_decision, cms_submit_review, cms_submit_schema_review, cms_sweep_expired_review_authority, cms_takedown_preview_tokens, cms_verify_preview_token',
-  'EB scope: the only worker-facing review and decision functions are the 03A schema-review family and the named Slice 11 entry-review commands and reads'
+  'cms_assign_editorial_reviewer, cms_assign_governed_reviewer, cms_assign_schema_review, cms_decide_schema_review, cms_get_editorial_review, cms_get_governed_review, cms_get_schema_review, cms_list_editorial_reviews, cms_list_governed_reviews, cms_mint_preview, cms_recheck_governed_reviews, cms_record_governed_decision, cms_record_review_decision, cms_submit_governed_review, cms_submit_review, cms_submit_schema_review, cms_sweep_expired_review_authority, cms_takedown_preview_tokens, cms_verify_preview_token',
+  'EB scope: the only worker-facing review and decision functions are the 03A schema-review family, the named Slice 11 entry-review commands and reads, the five Slice 12 governed-review commands and reads (CMS-03C-06, -07, -08, -10, -11) and the recheck RPC cms_recheck_governed_reviews (BE03c 1612, job cms.governed_review.recheck)'
 );
 
 -- 3: private commands and helpers for entry reviews, editorial decisions, publications, preview tokens and scheduled publication.
@@ -63,8 +63,8 @@ select is(
     where n.nspname = 'platform_private'
       and c.relkind in ('r', 'p')
       and c.relname ~ '(editorial_review|editorial_decision|publication|preview_token)'),
-  'cms_editorial_decisions, cms_editorial_review_assignments, cms_editorial_review_dependencies, cms_editorial_reviews, cms_preview_tokens, cms_publication_schedules, cms_publication_settings_snapshots, cms_publication_versions',
-  'EB scope: the review, decision, schedule, publication and preview-token storage is exactly the five Slice 10 tables plus the named Slice 11 review-assignment, review-dependency and publication-settings-snapshot tables'
+  'cms_editorial_decisions, cms_editorial_review_assignments, cms_editorial_review_dependencies, cms_editorial_reviews, cms_preview_tokens, cms_publication_schedules, cms_publication_settings_snapshots, cms_publication_versions, publication_projection',
+  'EB scope: the review, decision, schedule, publication and preview-token storage is exactly the five Slice 10 tables plus the named Slice 11 review-assignment, review-dependency and publication-settings-snapshot tables and the BE04c publication_projection receiving table (DEC-197, BE04c 345)'
 );
 
 -- 6: manifest / version-set / hash functions, any schema the API or the Worker can reach plus the private helpers.

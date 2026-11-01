@@ -1,5 +1,6 @@
 import {
   ApiErrorSchema,
+  CMS_KEY_RESERVED_REASON,
   createRequestId,
   TemplateVersionHeadersSchema,
   TemplateVersionRequestSchema,
@@ -10,6 +11,15 @@ import type {
   TemplateVersionResource,
 } from '@wejammin/contracts';
 
+import {
+  forbiddenDetails,
+  type CapabilityOperationId,
+} from './cms-composition-platform-capability';
+import { conflictReasonDetails } from './cms-composition-platform-conflict';
+import {
+  compositionDependencyDetails,
+  isCompositionDependencyStatus,
+} from './cms-composition-platform-dependency';
 import {
   cmsEditorialBoundedRequestJson,
   cmsEditorialBoundedResponseJson,
@@ -23,6 +33,7 @@ import {
   cmsEditorialSameOriginRequest,
   isCmsEditorialPlatformBinding,
 } from './cms-editorial-platform-shared';
+import { violationsOf } from './cms-composition-platform-mutation-violations';
 import { relayedResetAt } from './rate-limit-reset-at';
 
 export const CMS_TEMPLATE_DEFINE_PATH = '/api/v1/cms/templates/versions';
@@ -37,9 +48,9 @@ const ERROR_CODES = {
   422: 'TEMPLATE_VALIDATION_FAILED',
   429: 'RATE_LIMITED',
   500: 'INTERNAL_ERROR',
-  502: 'DEPENDENCY_INVALID_RESPONSE',
+  502: 'DEPENDENCY_UNAVAILABLE',
   503: 'DEPENDENCY_UNAVAILABLE',
-  504: 'DEPENDENCY_DEADLINE_EXCEEDED',
+  504: 'DEPENDENCY_UNAVAILABLE',
 } as const;
 type Status = keyof typeof ERROR_CODES;
 const SAFE_VIOLATION_CODES = new Set([
@@ -51,9 +62,16 @@ const SAFE_VIOLATION_CODES = new Set([
   'audience_invalid',
   'compatible_type_duplicate',
   'template_slot_duplicate',
+  CMS_KEY_RESERVED_REASON,
 ]);
 
-export const localError = (request: Request, status: Status): Response => {
+export const localError = (
+  request: Request,
+  status: Status,
+  details: Record<string, unknown> = isCompositionDependencyStatus(status)
+    ? { ...compositionDependencyDetails() }
+    : {},
+): Response => {
   const code = ERROR_CODES[status];
   const requestId = createRequestId(
     request.headers.get('x-request-id') ?? undefined,
@@ -69,7 +87,7 @@ export const localError = (request: Request, status: Status): Response => {
       code,
       message: `${code}: template operation rejected or unavailable.`,
       requestId,
-      details: {},
+      details,
     }),
     { status, headers },
   );
@@ -78,39 +96,42 @@ export const localError = (request: Request, status: Status): Response => {
 const safeDetails = (
   status: Status,
   details: Readonly<Record<string, unknown>>,
+  operationId: CapabilityOperationId = 'CMS-03C-01',
 ): Record<string, unknown> => {
   if (status === 401) return { recoveryAction: 'reauthenticate' };
   if (status === 400 || status === 422) {
     if (!Array.isArray(details.violations)) return {};
-    return {
-      violations: details.violations.slice(0, 50).flatMap((candidate) => {
-        if (
-          typeof candidate !== 'object' ||
-          candidate === null ||
-          Array.isArray(candidate)
-        )
-          return [];
-        const value = candidate as Readonly<Record<string, unknown>>;
-        return [
-          {
-            path:
-              typeof value.path === 'string' ? value.path.slice(0, 256) : '/',
-            code:
-              typeof value.code === 'string' &&
-              SAFE_VIOLATION_CODES.has(value.code)
-                ? value.code
-                : 'invalid',
-            message: 'The value is invalid.',
-          },
-        ];
-      }),
-    };
+    const violations = details.violations.slice(0, 50).flatMap((candidate) => {
+      if (
+        typeof candidate !== 'object' ||
+        candidate === null ||
+        Array.isArray(candidate)
+      )
+        return [];
+      const value = candidate as Readonly<Record<string, unknown>>;
+      return [
+        {
+          path: typeof value.path === 'string' ? value.path.slice(0, 256) : '/',
+          code:
+            typeof value.code === 'string' &&
+            SAFE_VIOLATION_CODES.has(value.code)
+              ? value.code
+              : 'invalid',
+          message: 'The value is invalid.',
+        },
+      ];
+    });
+    // BE03c E13: a reserved key carries the typed reasonCode beside its pointer.
+    return status === 422 &&
+      violations.some(({ code }) => code === CMS_KEY_RESERVED_REASON)
+      ? { reasonCode: CMS_KEY_RESERVED_REASON, violations }
+      : { violations };
   }
-  if (status === 403)
-    return details.reasonCode === 'CAPABILITY_REQUIRED'
-      ? { reasonCode: 'CAPABILITY_REQUIRED' }
-      : {};
+  if (status === 403) return forbiddenDetails(operationId, details);
   if (status === 409) {
+    // BE03c 1273 / DEC-186: a typed 409 reason names itself and nothing else.
+    const reason = conflictReasonDetails(operationId, details);
+    if (reason !== null) return { ...reason };
     const output: Record<string, unknown> = {};
     for (const key of ['expectedVersion', 'currentVersion'] as const)
       if (
@@ -133,14 +154,19 @@ const safeDetails = (
     if (resetAt !== null) output.resetAt = resetAt;
     return output;
   }
-  if (status === 502 || status === 503 || status === 504)
-    return { dependencyClass: 'cms_composition', retryable: status !== 502 };
+  if (isCompositionDependencyStatus(status))
+    return { ...compositionDependencyDetails() };
   return {};
 };
 
+/**
+ * `operationId` names the contract row that governs the relayed 403 reason: CMS-03C-01 for the define mutation and
+ * the context read (which has no row of its own), `cmsTemplateLatestRead` for the detail read.
+ */
 export const forwardedError = async (
   request: Request,
   upstream: Response,
+  operationId: CapabilityOperationId = 'CMS-03C-01',
 ): Promise<Response> => {
   const status = upstream.status;
   if (!Object.hasOwn(ERROR_CODES, status)) return localError(request, 502);
@@ -167,7 +193,7 @@ export const forwardedError = async (
     JSON.stringify(
       ApiErrorSchema.parse({
         ...parsed.data,
-        details: safeDetails(checkedStatus, parsed.data.details),
+        details: safeDetails(checkedStatus, parsed.data.details, operationId),
       }),
     ),
     { status, headers },
@@ -215,7 +241,12 @@ export const forwardCmsTemplateDefineMutation = async (
   const read = await cmsEditorialBoundedRequestJson(request);
   if (!read.ok) return localError(request, 400);
   const body = TemplateVersionRequestSchema.safeParse(read.value);
-  if (!body.success) return localError(request, 422);
+  if (!body.success)
+    return localError(
+      request,
+      422,
+      safeDetails(422, { violations: violationsOf(body.error.issues) }),
+    );
   const ifMatch =
     headers.data.ifMatch === undefined
       ? null

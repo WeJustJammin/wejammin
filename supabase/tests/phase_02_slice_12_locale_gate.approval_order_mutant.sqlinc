@@ -1,0 +1,181 @@
+-- MUTANT / DIAGNOSTIC ONLY -- UNRUN. Explicit-entry negative diagnostic for root 6.1 validation of
+-- the cms.locale.no_fallback_gate branch order. This file is NOT part of canonical recursive .sql
+-- discovery: its .sqlinc extension excludes it from pg_prove -r --ext .sql, it is never included
+-- from phase_02_slice_12_locale_gate.sql, and it must never be renamed to .sql. Root runs it
+-- explicitly against the same database as the canonical entry.
+--
+-- The entry skeleton below is copied from supabase/tests/phase_02_slice_12_locale_gate.sql with no
+-- fixture or assertion byte changed: jwt-claims, the pgtap extension, plan(60), the same eleven
+-- include directives (ten helper includes then phase_02_slice_12_locale_gate/001-gate.sqlinc),
+-- finish() and rollback. The only injected code is a transaction-local body mutation and its
+-- restore.
+--
+-- Mutation: the branch order inside platform_private.cms_locale_no_fallback_gate(uuid, text) is
+-- changed so the approval branch (locale_variant_not_approved) is evaluated BEFORE the stale branch
+-- and still AFTER the missing branch. Under the correct order a NOT-approved locale variant whose
+-- no_fallback field is stale reports no_fallback_stale; the mutant reports
+-- locale_variant_not_approved instead. The stale witnesses for not-approved variants are the ones
+-- affected: fr2 at publish and at execute (its approval is invalidated when fr3 is created) and
+-- fr3 (previously open, now invalidated) at execute. Root's valid run reports 57 PASS and 3 FAIL
+-- (assertions 50-52).
+-- This lane authors the mutant UNRUN and claims no run outcome.
+--
+-- Transaction-local and reversible: the original definition (pg_get_functiondef), the full catalog
+-- row (to_jsonb(pg_proc)), obj_description and OID are captured into a temp snapshot before the
+-- include, and the original definition is restored from that snapshot after it, with full
+-- catalog/source/comment equality guards. Every guard raises on mismatch (fail-closed): a guard
+-- failure is an invalid mutation proof, never a passing run. No drop, grant, ownership, security,
+-- search_path or configuration change is made -- only the single branch-order replacement.
+
+\ir support/jwt-claims.sqlinc
+commit;
+create extension if not exists pgtap with schema extensions;
+commit;
+
+begin;
+select plan(60);
+
+\ir phase_02_slice_10_rpc/000-helpers.sqlinc
+\ir phase_02_slice_10_remaining_schema/000-helpers.sqlinc
+\ir phase_02_slice_10_rpc/001-fixtures.sqlinc
+\ir phase_02_slice_11_schema/000-helpers.sqlinc
+\ir phase_02_slice_11_schema/001-fixture.sqlinc
+\ir phase_02_slice_11_schema/002-row-builders.sqlinc
+\ir phase_02_slice_11_helpers/000-helpers.sqlinc
+\ir phase_02_slice_11_helpers/001-world.sqlinc
+\ir phase_02_slice_11_helpers/002-reviews.sqlinc
+\ir phase_02_slice_12_locale_variant/000-helpers.sqlinc
+
+-- ==== mutation: capture the original gate, then reorder the two branches (transaction-local) ====
+create temp table l12m_gate_snapshot(
+  gate_oid oid not null,
+  definition text not null,
+  proc jsonb not null,
+  comment text,
+  source text not null
+) on commit drop;
+
+do $mutant$
+declare
+  m_target oid;
+  m_definition text;
+  m_proc jsonb;
+  m_comment text;
+  m_source text;
+  m_rows integer;
+  m_anchor_stale text := E'  elsif stale_count > 0 then\n';
+  m_anchor_approval text := E'  elsif p_phase in (''schedule'', ''publish'', ''execute'')\n';
+  m_tail_approval text := E'    return query select ''failed''::text, ''locale_variant_not_approved''::text, 1;\n';
+  m_a integer;
+  m_b integer;
+  m_tail integer;
+  m_end integer;
+  m_stale_part text;
+  m_approval_part text;
+  m_before text;
+  m_after text;
+  m_expected_source text;
+  m_mutated_definition text;
+  m_new_proc jsonb;
+begin
+  m_target := to_regprocedure('platform_private.cms_locale_no_fallback_gate(uuid,text)');
+  if m_target is null then
+    raise exception 'mutant: platform_private.cms_locale_no_fallback_gate(uuid,text) not found';
+  end if;
+
+  select pg_get_functiondef(proc.oid), to_jsonb(proc), obj_description(proc.oid, 'pg_proc'), proc.prosrc
+    into m_definition, m_proc, m_comment, m_source
+    from pg_proc proc where proc.oid = m_target;
+  if m_definition is null or m_source is null then
+    raise exception 'mutant: could not capture the original gate definition';
+  end if;
+
+  insert into l12m_gate_snapshot(gate_oid, definition, proc, comment, source)
+    values (m_target, m_definition, m_proc, m_comment, m_source);
+  select count(*) into m_rows from l12m_gate_snapshot;
+  if m_rows <> 1 then
+    raise exception 'mutant: snapshot must hold exactly one row, got %', m_rows;
+  end if;
+
+  m_a := strpos(m_source, m_anchor_stale);
+  m_b := strpos(m_source, m_anchor_approval);
+  m_tail := strpos(m_source, m_tail_approval);
+  if m_a = 0 or m_b = 0 or m_tail = 0 or not (m_a < m_b and m_b < m_tail) then
+    raise exception 'mutant: branch anchors not found in the expected order (stale=%, approval=%, tail=%)',
+      m_a, m_b, m_tail;
+  end if;
+  if (length(m_source) - length(replace(m_source, m_anchor_stale, ''))) <> length(m_anchor_stale)
+     or (length(m_source) - length(replace(m_source, m_anchor_approval, ''))) <> length(m_anchor_approval)
+     or (length(m_source) - length(replace(m_source, m_tail_approval, ''))) <> length(m_tail_approval) then
+    raise exception 'mutant: a branch anchor is not unique in the original source';
+  end if;
+
+  m_end := m_tail + length(m_tail_approval);
+  m_stale_part := substr(m_source, m_a, m_b - m_a);
+  m_approval_part := substr(m_source, m_b, m_end - m_b);
+  m_before := m_stale_part || m_approval_part;
+  m_after := m_approval_part || m_stale_part;
+  if m_before = m_after then
+    raise exception 'mutant: the branch reorder is a no-op';
+  end if;
+  m_expected_source := substr(m_source, 1, m_a - 1) || m_after || substr(m_source, m_end);
+
+  if (length(m_definition) - length(replace(m_definition, m_before, ''))) <> length(m_before) then
+    raise exception 'mutant: the exact before-fragment does not occur exactly once in the saved definition';
+  end if;
+
+  m_mutated_definition := replace(m_definition, m_before, m_after);
+
+  execute m_mutated_definition;
+
+  select to_jsonb(proc) into m_new_proc from pg_proc proc where proc.oid = m_target;
+  if m_new_proc is null then
+    raise exception 'mutant: the gate disappeared after CREATE OR REPLACE';
+  end if;
+  if (m_new_proc - 'prosrc') is distinct from (m_proc - 'prosrc') then
+    raise exception 'mutant: CREATE OR REPLACE altered catalog metadata other than prosrc';
+  end if;
+  if obj_description(m_target, 'pg_proc') is distinct from m_comment then
+    raise exception 'mutant: CREATE OR REPLACE altered the function comment';
+  end if;
+  if m_new_proc->>'prosrc' is distinct from m_expected_source then
+    raise exception 'mutant: the installed prosrc is not the exact expected mutation';
+  end if;
+  if replace(m_new_proc->>'prosrc', m_after, m_before) is distinct from m_source then
+    raise exception 'mutant: the installed prosrc is not a pure branch reorder of the original';
+  end if;
+end;
+$mutant$;
+
+\ir phase_02_slice_12_locale_gate/001-gate.sqlinc
+
+-- ==== restore the original gate from the snapshot (transaction-local) ==========================
+do $restore$
+declare
+  m_snapshot l12m_gate_snapshot%rowtype;
+  m_rows integer;
+  m_proc jsonb;
+  m_definition text;
+  m_comment text;
+begin
+  select count(*) into m_rows from l12m_gate_snapshot;
+  if m_rows <> 1 then
+    raise exception 'restore: snapshot must hold exactly one row, got %', m_rows;
+  end if;
+  select * into m_snapshot from l12m_gate_snapshot;
+
+  execute m_snapshot.definition;
+
+  select to_jsonb(proc), pg_get_functiondef(proc.oid), obj_description(proc.oid, 'pg_proc')
+    into m_proc, m_definition, m_comment
+    from pg_proc proc where proc.oid = m_snapshot.gate_oid;
+  if m_proc is distinct from m_snapshot.proc
+     or m_definition is distinct from m_snapshot.definition
+     or m_comment is distinct from m_snapshot.comment then
+    raise exception 'restore: the gate was not restored to its exact original catalog state';
+  end if;
+end;
+$restore$;
+
+select * from finish();
+rollback;

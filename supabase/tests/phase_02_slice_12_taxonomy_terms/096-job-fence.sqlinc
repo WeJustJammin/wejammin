@@ -1,0 +1,70 @@
+-- The lease and state fence of the cms.taxonomy.merge_converge handler.  The handler is the BE00 jobs-row handler of a claimed job, so it re-proves
+-- the claim like the dry-run claim snapshot does (20261005018400: state running, version, lease token, unexpired lease): a job that is
+-- unclaimed, whose lease expired, that was re-claimed since, that was cancelled or that already succeeded writes NOTHING.  BE00 consumer registry
+-- ("Re-read job/aggregate/authority ... cancelled/terminal/stale -> no-op ack"; lease CAS on Job.version); BE03c 1334, 1351.  [P2-S12-AC-021]
+select pg_temp.s12tt_act('jf-create-1', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'jf-retire');
+select pg_temp.s12tt_act('jf-create-2', 'owner', pg_temp.s12tt_lineage('vf'), 'create', 'jf-survivor');
+select pg_temp.s12tt_act('jf-merge', 'owner', pg_temp.s12tt_lineage('vf'), 'merge', 'jf-retire', jsonb_build_object(
+  'survivorId', pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jf-survivor')));
+select is(pg_temp.s12tt_oc('jf-merge'), 'ok', 'fixture: the retired term is merged while it holds no assignment');
+select pg_temp.s12tt_seed_revision('rf1');
+select pg_temp.s12tt_seed_revision('rf2');
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('rf1'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jf-retire'), 1, 'active', 0);
+select pg_temp.s12tt_assignment(pg_temp.s12tt_rev('rf2'), pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jf-retire'), 1, 'active', 0);
+create temp table s12tt_fence_jobs on commit drop as
+select (select set_config('app.cms_rpc', 'true', true)) flag,
+       (platform_private.cms_request_taxonomy_merge_converge(pg_temp.s12ga_auth('owner'), pg_temp.s09d_id('ownerOrg'),
+          pg_temp.s12tt_term_id(pg_temp.s12tt_lineage('vf'), 'jf-retire'), 'a9186000-0000-4000-8000-0000000000d1')->>'jobId')::uuid live,
+       (select job.job_id from platform_private.accept_job_with_outbox(pg_temp.s12ga_auth('owner'), pg_temp.s09d_id('ownerOrg'),
+          'cms.taxonomy.merge_converge', 'a9186000-0000-4000-8000-0000000000d2', extensions.digest('s12tt-fence-cancelled', 'sha256'),
+          extensions.digest('s12tt-fence-cancelled-request', 'sha256'), clock_timestamp() + interval '1 day') job) cancelled,
+       (select job.job_id from platform_private.accept_job_with_outbox(pg_temp.s12ga_auth('owner'), pg_temp.s09d_id('ownerOrg'),
+          'cms.taxonomy.merge_converge', 'a9186000-0000-4000-8000-0000000000d3', extensions.digest('s12tt-fence-done', 'sha256'),
+          extensions.digest('s12tt-fence-done-request', 'sha256'), clock_timestamp() + interval '1 day') job) done;
+
+-- (a) an unclaimed queued job: nothing to fence on, so nothing runs
+select pg_temp.s12tt_mark('before-unclaimed');
+select pg_temp.s12tt_run('f-unclaimed', jsonb_build_object('claimedJob', jsonb_build_object('jobId', (select live from s12tt_fence_jobs),
+  'version', '1', 'leaseToken', 'a9186000-0000-4000-8000-0000000000e1')));
+select is(pg_temp.s12tt_rout('f-unclaimed'), 'P0001:CONFLICT', 'an unclaimed queued job is refused 409: there is no lease to act under [P2-S12-AC-021]');
+select ok(pg_temp.s12tt_same('before-unclaimed'), 'and the refusal wrote nothing [P2-S12-AC-021]');
+
+-- (b) an expired lease, then (c) a re-claim: the stale delivery, the wrong token and the wrong version all write nothing
+select pg_temp.s12tt_claim('f-a', (select live from s12tt_fence_jobs), 1, 1);
+select pg_sleep(1.3);
+select pg_temp.s12tt_mark('before-stale');
+select pg_temp.s12tt_run('f-expired', pg_temp.s12tt_claimed('f-a'));
+select is(pg_temp.s12tt_rout('f-expired'), 'P0001:CONFLICT', 'a lease that has expired is no authority: 409 although state, version and token still match [P2-S12-AC-021]');
+select ok(pg_temp.s12tt_same('before-stale'), 'and the expired-lease refusal wrote nothing [P2-S12-AC-021]');
+select pg_temp.s12tt_claim('f-b', (select live from s12tt_fence_jobs), (select version from s12tt_claims where label = 'f-a'), 840);
+select pg_temp.s12tt_mark('before-reclaimed');
+select pg_temp.s12tt_run('f-stale', pg_temp.s12tt_claimed('f-a'));
+select pg_temp.s12tt_run('f-wrong-token', jsonb_set(pg_temp.s12tt_claimed('f-b'), '{claimedJob,leaseToken}',
+  to_jsonb((select token::text from s12tt_claims where label = 'f-a'))));
+select pg_temp.s12tt_run('f-wrong-version', jsonb_set(pg_temp.s12tt_claimed('f-b'), '{claimedJob,version}',
+  to_jsonb((select version::text from s12tt_claims where label = 'f-a'))));
+select pg_temp.s12tt_run('f-future-version', jsonb_set(pg_temp.s12tt_claimed('f-b'), '{claimedJob,version}',
+  to_jsonb(((select version from s12tt_claims where label = 'f-b') + 1)::text)));
+select is(array[pg_temp.s12tt_rout('f-stale'), pg_temp.s12tt_rout('f-wrong-token'), pg_temp.s12tt_rout('f-wrong-version'), pg_temp.s12tt_rout('f-future-version')],
+  array_fill('P0001:CONFLICT'::text, array[4]),
+  'after a re-claim the stale delivery, the right version with another token, the right token with another version and a future version are all 409 [P2-S12-AC-021]');
+select ok(pg_temp.s12tt_same('before-reclaimed'), 'and none of them wrote a row [P2-S12-AC-021]');
+
+-- (d) a cancelled job and a succeeded job are terminal: a stale worker still holding the old lease writes nothing
+select pg_temp.s12tt_claim('f-cancelled', (select cancelled from s12tt_fence_jobs), 1);
+select pg_temp.s12tt_claim('f-done', (select done from s12tt_fence_jobs), 1);
+select is(pg_temp.s12tt_outcome('f-cancelled', 'cancelled', null, 'CANCELLED'), true, 'fixture: the BE00 runtime cancels the first job');
+select is(pg_temp.s12tt_outcome('f-done', 'succeeded', '{"converged": 0}'::jsonb, null), true, 'fixture: the BE00 runtime records the second job succeeded');
+select pg_temp.s12tt_mark('before-terminal');
+select pg_temp.s12tt_run('f-terminal-cancelled', pg_temp.s12tt_claimed('f-cancelled'));
+select pg_temp.s12tt_run('f-terminal-done', pg_temp.s12tt_claimed('f-done'));
+select is(array[pg_temp.s12tt_rout('f-terminal-cancelled'), pg_temp.s12tt_rout('f-terminal-done')], array_fill('P0001:CONFLICT'::text, array[2]),
+  'a cancelled job and a succeeded job are refused 409 under their old lease [P2-S12-AC-021]');
+select ok(pg_temp.s12tt_same('before-terminal'), 'and wrote nothing [P2-S12-AC-021]');
+
+-- (e) the live lease still works: the unconverged tail is untouched until now, then converges exactly once
+select is(pg_temp.s12tt_work(pg_temp.s09d_id('ownerOrg')), 2,
+  'before the valid call both assignments of the merged term are still unconverged (every refusal left them alone) [P2-S12-AC-021]');
+select pg_temp.s12tt_run('f-live', pg_temp.s12tt_claimed('f-b'));
+select is(pg_temp.s12tt_rout('f-live'), 'ok:{"converged": 2, "remaining": 0, "continuationJobId": null}',
+  'the re-claimed live lease converges the tail [P2-S12-AC-021]');

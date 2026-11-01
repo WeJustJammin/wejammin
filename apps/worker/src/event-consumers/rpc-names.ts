@@ -16,6 +16,8 @@ export const EVENT_CONSUMER_RPC = {
   readCapabilityGrant: 'cms_capability_grant_read_current',
   /** AC-916: records an in-app notification intent (account holder resolved server-side). */
   recordInAppNotification: 'in_app_notification_record',
+  /** BE03c (DEC-208): per-minute locale fan-out counts and the stale no_fallback gauge, three integers. */
+  readCmsLocaleObservability: 'cms_locale_observability_read',
   /** BE00: durable dead-letter record for an event a consumer cannot accept. */
   deadLetterEvent: 'consumer_dead_letter_event',
 } as const;

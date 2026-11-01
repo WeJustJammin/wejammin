@@ -1,0 +1,144 @@
+-- Independent reachable sets: selected = B root, T leaf, retained local tail.
+select is((select jsonb_build_object('version',version,'provider',provider_key,'providerVersion',provider_version,
+  'kind',provider_kind,'referenceKind',reference_kind) from platform_private.cms_preflight_registry
+  where category='pattern' order by version desc limit 1),
+  '{"version":2,"provider":"cms.pattern.active_digest","providerVersion":1,"kind":"database","referenceKind":null}'::jsonb,
+  'PC-REG-01: real current immutable registry row replaces only the pattern reference gate');
+select is((select count(*) from platform_private.cms_preflight_registry where category='pattern' and version=1
+  and provider_key='preflight.reference_gate' and provider_kind='reference_gate' and reference_kind='pattern'),
+  1::bigint,'PC-REG-02: original immutable pattern registry row remains intact');
+select is((pg_temp.s12pu_row(pg_temp.s12pu_head('cs-detached','/panel'))->>'block_registry_digest'),
+  pg_temp.s12cs_digest(1,2),'PC-PREMISE-01: real mixed snapshot has independent selected-tree digest');
+select is(pg_temp.s12pu_pattern_row('s12cs-outer1')->>'state','superseded',
+  'PC-PREMISE-02: canonical and legacy controls retain the same nonactive real pin');
+select checked.* from unnest(array['submit','schedule','publish','execute']) phases(phase)
+  cross join lateral pg_temp.s12pc_check('PC-P01-'||phase,'cs-detached',null,true,
+    array['s12cs-outer1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]',phase) checked;
+select * from pg_temp.s12pc_check('PC-P01-repeat','cs-detached',null,true,
+  array['s12cs-outer1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]','submit',null,'PC-P01-submit');
+select * from pg_temp.s12pc_check('PC-P03-live','cs-linked',null,true,
+  array['s12cs-outer2'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-P04-retired','cs-retired',null,true,array[]::text[],'[]');
+select * from pg_temp.s12pc_check('PC-P05-target-snapshot','cs-progress',null,true,
+  array['s12cs-outer2'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+
+-- Several roots of one real placement produce distinct legal paths and two
+-- independently materializable trees; no fabricated slot or placement identity.
+select * from pg_temp.s12pl_pattern('s12pc-two1','s12pc-two',jsonb_build_array(
+  pg_temp.s12cs_block('left','s12cs.root',1,'LEFT',jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner2'))),
+  pg_temp.s12cs_block('right','s12cs.root',2,'RIGHT',jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner2')))));
+select * from pg_temp.s12pu_place('pc-mixed','s12pc-two1');
+select * from pg_temp.s12pu_place('pc-both','s12pc-two1');
+select * from pg_temp.s12pu_place('pc-legacy-two','s12pc-two1','{}','detached');
+select pg_temp.s12pu_update('pc-detach-left',pg_temp.s12pu_update_request('pc-mixed','detach',
+  jsonb_build_array(pg_temp.s12pu_target('pc-mixed','/left')),'s12pc-detach-left'));
+select pg_temp.s12pu_update('pc-detach-both',pg_temp.s12pu_update_request('pc-both','detach',
+  jsonb_build_array(pg_temp.s12pu_target('pc-both','/left'),pg_temp.s12pu_target('pc-both','/right')),
+  's12pc-detach-both'));
+select is(pg_temp.s12pu_oc(label),'ok',label||': actual public detach succeeds')
+  from unnest(array['pc-detach-left','pc-detach-both']) label;
+select is((select jsonb_agg(jsonb_build_object('path',i.path,'tree',i.detached_tree is not null) order by i.path)
+  from platform_private.cms_composition_instances i where i.id in (
+    pg_temp.s12pu_head('pc-mixed','/left'),pg_temp.s12pu_head('pc-mixed','/right'))),
+  '[{"path":"/left","tree":true},{"path":"/right","tree":false}]'::jsonb,
+  'PC-PREMISE-03: same pin has one actual snapshot and one live NULL-tree head');
+select isnt(pg_temp.s12pu_row(pg_temp.s12pu_head('pc-both','/left'))->'block_registry_digest',
+  pg_temp.s12pu_row(pg_temp.s12pu_head('pc-both','/right'))->'block_registry_digest',
+  'PC-PREMISE-04: same pin has two actual canonical trees with different reachable root versions');
+
+select pg_temp.s12pl_entry(tag) from unnest(array['pc-only','pc-bad-digest','pc-history',
+  'pc-reverse','pc-one-bad','pc-retired-live','pc-legacy-single']) tag;
+select * from pg_temp.s12pc_seed('PC-F01','pc-only',pg_temp.s12pu_head('pc-mixed','/left'));
+select * from pg_temp.s12pc_seed('PC-F01-legacy','pc-legacy-single',pg_temp.s12pu_head('pc-legacy-two','/left'));
+select * from pg_temp.s12pc_seed('PC-F02','pc-bad-digest',pg_temp.s12pu_head('cs-detached','/panel'),
+  jsonb_build_object('block_registry_digest',repeat('0',64)));
+select * from pg_temp.s12pc_seed('PC-F03-old-live','pc-history',pg_temp.s12pu_head('pc-legacy-two','/left'));
+select * from pg_temp.s12pc_seed('PC-F03-latest-tree','pc-history',pg_temp.s12pu_head('pc-both','/left'));
+select * from pg_temp.s12pc_seed('PC-F04-old-tree','pc-reverse',pg_temp.s12pu_head('pc-both','/left'));
+select * from pg_temp.s12pc_seed('PC-F04-latest-live','pc-reverse',pg_temp.s12pu_head('pc-legacy-two','/left'));
+select * from pg_temp.s12pc_seed('PC-F05-left','pc-one-bad',pg_temp.s12pu_head('pc-both','/left'));
+select * from pg_temp.s12pc_seed('PC-F05-right','pc-one-bad',pg_temp.s12pu_head('pc-both','/right'),
+  jsonb_build_object('block_registry_digest',repeat('0',64)));
+select * from pg_temp.s12pc_seed('PC-F06-live','pc-retired-live',pg_temp.s12pu_head('cs-legacy','/panel'));
+select * from pg_temp.s12pc_seed('PC-F06-tombstone','pc-retired-live',pg_temp.s12pu_head('cs-legacy','/panel'),
+  '{"state":"retired"}');
+select * from pg_temp.s12pc_check('PC-P06-bad-own-digest','pc-bad-digest','pattern_digest_changed',false,
+  array['s12cs-outer1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-P02-legacy-active','pc-legacy-single',null,true,
+  array['s12pc-two1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-P09-check-both-trees','pc-one-bad','pattern_digest_changed',false,
+  array['s12pc-two1'],'[["s12cs.root",1],["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-P10-no-resurrection','pc-retired-live',null,true,array[]::text[],'[]');
+
+-- A new governed version makes only the retained root pin inactive. Canonical
+-- copies elsewhere must not inherit the live right-hand row's classification.
+select * from pg_temp.s12pl_pattern('s12pc-two2','s12pc-two',jsonb_build_array(
+  pg_temp.s12cs_block('left','s12cs.root',1,'LEFT',jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner2'))),
+  pg_temp.s12cs_block('right','s12cs.root',2,'RIGHT',jsonb_build_array(pg_temp.s12cs_ref('s12cs-inner2')))),null,true,'1');
+select is(pg_temp.s12pu_pattern_row('s12pc-two1')->>'state','superseded',
+  'PC-PREMISE-05: actual governed successor superseded the common pin');
+select is(pg_temp.s12pu_pattern_row('s12cs-inner2')->>'state','active',
+  'PC-PREMISE-06: pinned nested child stays active, so root failure is the only offender');
+select * from pg_temp.s12pc_check('PC-P02-legacy-inactive','pc-legacy-single','pattern_not_active',false,
+  array['s12pc-two1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-P07-latest-tree','pc-history',null,true,
+  array['s12pc-two1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-P08-latest-live','pc-reverse','pattern_not_active',false,
+  array['s12pc-two1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-P11-mixed-pin','pc-mixed','pattern_not_active',false,
+  array['s12pc-two1'],'[["s12cs.root",1],["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-P12-cross-revision','pc-only',null,true,
+  array['s12pc-two1'],'[["s12cs.root",1],["s12cs.leaf",2],["s12cs.tail",1]]');
+select * from pg_temp.s12pc_check('PC-P13-both-provenance','pc-both',null,true,
+  array['s12pc-two1'],'[["s12cs.root",1],["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]');
+
+-- A strict, well-shaped frozen manifest with the wrong pin hash is not current.
+select * from pg_temp.s12pc_check('PC-P14-frozen-hash','cs-linked','pattern_digest_changed',false,
+  array['s12cs-outer2'],'[["s12cs.root",2],["s12cs.leaf",2],["s12cs.tail",1]]','submit',
+  jsonb_set((select manifest from s12pc_out where label='PC-P03-live'),'{patterns,0,hash}',to_jsonb(repeat('0',64))));
+select checked.* from (values('PC-S01-sql-null',null::jsonb),('PC-S02-json-null','null'::jsonb),
+  ('PC-S03-scalar','42'::jsonb),('PC-S04-shape','{}'::jsonb)) malformed(label,manifest)
+  cross join lateral pg_temp.s12pc_stale(label,'cs-linked',manifest) checked;
+select * from pg_temp.s12pc_stale('PC-S05-malformed-patterns','cs-linked',jsonb_set(
+  (select manifest from s12pc_out where label='PC-P03-live'),'{patterns}','null'::jsonb));
+select * from pg_temp.s12pc_stale('PC-S06-orphan-identity','cs-linked',jsonb_set(
+  (select manifest from s12pc_out where label='PC-P03-live'),'{patterns,0,id}',
+  to_jsonb('a9d19999-0000-4000-8000-000000000002'::text)));
+
+-- Actual API cross-owner and same-owner wrong-entry revision concealment. The
+-- request is fully formed before role switching, so temp-table permissions
+-- cannot impersonate an API denial. No private helper is granted to API roles.
+create function pg_temp.s12pc_conceal(p_label text,p_actor text,p_revision uuid)
+returns setof text language plpgsql as $body$
+declare prior_role text:=current_setting('role'); prior_user text:=current_user;
+  prior_rpc text:=current_setting('app.cms_rpc',true); code text:='00000'; message text; called text;
+  before_rows jsonb:=pg_temp.s12pc_snapshot(); request jsonb; answer jsonb;
+begin
+  if to_regprocedure('platform_api.cms_get_entry_workflow(jsonb)') is null then
+    return next extensions.fail(p_label||': actual workflow RPC available'); return;
+  end if;
+  request:=jsonb_build_object('entryId',pg_temp.s12pl_entry_id('cs-detached'),'revisionId',p_revision,
+    'context',pg_temp.s09d_context(p_actor,true));
+  perform pg_temp.s09d_session(p_actor,'service_role');
+  perform set_config('role','service_role',true); called:=current_user;
+  begin
+    execute 'select platform_api.cms_get_entry_workflow($1)' into answer using request;
+  exception when others then get stacked diagnostics code=returned_sqlstate,message=message_text;
+  end;
+  perform set_config('role',prior_role,true);
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+  return next extensions.is(code||coalesce(':'||message,''),'P0001:NOT_FOUND',p_label||': uniform actual no-disclosure refusal');
+  return next extensions.is(answer,null::jsonb,p_label||': no dependency/provider details disclosed');
+  return next extensions.ok(called='service_role' and current_user=prior_user and current_setting('role')=prior_role,
+    p_label||': actual API role and caller restoration');
+  return next extensions.is(pg_temp.s12pc_snapshot(),before_rows,p_label||': full persistent image unchanged');
+  return next extensions.is(coalesce(current_setting('app.cms_rpc',true),''),coalesce(prior_rpc,''),p_label||': scoped context restored');
+end;
+$body$;
+select * from pg_temp.s12pc_conceal('PC-A01-foreign-owner','other',pg_temp.s12pl_rev('cs-detached'));
+select * from pg_temp.s12pc_conceal('PC-A02-wrong-entry-revision','owner',pg_temp.s12pl_rev('cs-linked'));
+select * from pg_temp.s12pc_conceal('PC-A03-absent','other','a9d19999-0000-4000-8000-000000000001');
+select checked.* from (values('platform_private.cms_evaluate_preflight(jsonb)'),
+  ('platform_private.cms_frozen_dependencies_status(uuid,jsonb)')) signatures(identity)
+  cross join (values('anon'),('authenticated'),('service_role')) roles(role_name)
+  cross join lateral pg_temp.s12pc_acl(signatures.identity,roles.role_name) checked;

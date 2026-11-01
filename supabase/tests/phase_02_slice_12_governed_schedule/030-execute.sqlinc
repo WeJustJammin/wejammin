@@ -1,0 +1,128 @@
+-- CMS-03C-19 execute: the lease/version fence, a completed activation with supersession, a repeated run, a late run and a terminal
+-- block (the schedule creator's authority ended), then re-activation of the blocked subject.
+create or replace function pg_temp.s12gb_lease(p_tag text) returns uuid language sql stable as $body$
+  select (coalesce(pg_temp.s12gb_claimed('claim-1', p_tag), pg_temp.s12gb_claimed('claim-2', p_tag))->>'leaseId')::uuid $body$;
+create or replace function pg_temp.s12gb_cver(p_tag text) returns text language sql stable as $body$
+  select coalesce(pg_temp.s12gb_claimed('claim-1', p_tag), pg_temp.s12gb_claimed('claim-2', p_tag))->>'expectedVersion' $body$;
+
+-- ------------------------------------------------------------------------------ fence and structure --
+select pg_temp.s12gb_mark('e3:fence', 'e3');
+select pg_temp.s12gb_mark('ef:fence', 'ef');
+select pg_temp.s12gb_exec('fx-lease', pg_temp.s12gb_sid('e3'), '2', extensions.gen_random_uuid());
+select pg_temp.s12gb_exec('fx-version', pg_temp.s12gb_sid('e3'), '99', pg_temp.s12gb_lease('e3'));
+select pg_temp.s12gb_exec('fx-absent', extensions.gen_random_uuid(), '2', extensions.gen_random_uuid());
+select pg_temp.s12gb_exec('fx-pending', pg_temp.s12gb_sid('ef'), '2', extensions.gen_random_uuid());
+select pg_temp.s12gb_call('fx-extra', 'platform_api.cms_execute_governed_activation', jsonb_build_object(
+  'scheduleId', pg_temp.s12gb_sid('e3'), 'expectedVersion', '2', 'leaseId', pg_temp.s12gb_lease('e3'), 'evidence', null));
+select pg_temp.s12gb_call('fx-uuid', 'platform_api.cms_execute_governed_activation', jsonb_build_object(
+  'scheduleId', 'not-a-uuid', 'expectedVersion', '2', 'leaseId', pg_temp.s12gb_lease('e3')));
+select pg_temp.s12gb_call('fx-zero', 'platform_api.cms_execute_governed_activation', jsonb_build_object(
+  'scheduleId', pg_temp.s12gb_sid('e3'), 'expectedVersion', '0', 'leaseId', pg_temp.s12gb_lease('e3')));
+select pg_temp.s12gb_call('fx-number', 'platform_api.cms_execute_governed_activation', jsonb_build_object(
+  'scheduleId', pg_temp.s12gb_sid('e3'), 'expectedVersion', 2, 'leaseId', pg_temp.s12gb_lease('e3')));
+select pg_temp.s12gb_call('fx-nolease', 'platform_api.cms_execute_governed_activation', jsonb_build_object(
+  'scheduleId', pg_temp.s12gb_sid('e3'), 'expectedVersion', '2'));
+select is(
+  (select string_agg(l || '=' || pg_temp.s12gb_sout(l), ';' order by l collate "C")
+     from unnest(array['fx-lease', 'fx-version', 'fx-absent', 'fx-pending', 'fx-extra', 'fx-uuid', 'fx-zero', 'fx-number', 'fx-nolease']) l),
+  'fx-absent=P0001:NOT_FOUND;fx-extra=P0001:INVALID_REQUEST;fx-lease=P0001:CONFLICT;fx-nolease=P0001:INVALID_REQUEST;'
+    || 'fx-number=P0001:INVALID_REQUEST;fx-pending=P0001:CONFLICT;fx-uuid=P0001:INVALID_REQUEST;'
+    || 'fx-version=P0001:VERSION_MISMATCH;fx-zero=P0001:INVALID_REQUEST',
+  'execute takes exactly { scheduleId, expectedVersion, leaseId }; an absent schedule is NOT_FOUND, a lease that is not the claim''s or a schedule that is not executing is CONFLICT, a version that is not the one relied on is VERSION_MISMATCH [P2-S12-AC-150]');
+select ok(nullif(pg_temp.s12gb_sdet('fx-version'), '')::jsonb = '{"expectedVersion": "99", "currentVersion": "2"}'::jsonb
+    and pg_temp.s12gb_same('e3:fence', 'e3') and pg_temp.s12gb_same('ef:fence', 'ef'),
+  'the fence refusals name the expected and the current review version and leave the schedule, subject, review and append-only stores identical [P2-S12-AC-150]');
+
+-- ------------------------------------------------------------------ ex1: completed, ex0 superseded --
+create temp table s12gb_before_ex1 on commit drop as
+  select (select count(*) from platform_private.outbox_events) as events,
+         (select activated_at from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('ex0')) as ex0_activated;
+select pg_temp.s12gb_exec('x-ex1', pg_temp.s12gb_sid('ex1'), pg_temp.s12gb_cver('ex1'), pg_temp.s12gb_lease('ex1'));
+select is(pg_temp.s12gb_sout('x-ex1'), 'ok', 'an executing schedule with its own lease and review version executes [P2-S12-AC-150]');
+select is(pg_temp.s12ga_keys(pg_temp.s12gb_sbody('x-ex1')), 'actualUtc,deviationSeconds,outcome,reasonCode,scheduleId',
+  'the result is exactly GovernedActivationExecutionResult (5 members) [P2-S12-AC-150]');
+select ok(
+  pg_temp.s12gb_sbody('x-ex1')->>'outcome' = 'completed' and pg_temp.s12gb_sbody('x-ex1')->'reasonCode' = 'null'::jsonb
+    and pg_temp.s12gb_sbody('x-ex1')->>'scheduleId' = pg_temp.s12gb_sid('ex1')::text
+    and pg_temp.s12gb_sbody('x-ex1')->>'actualUtc'
+        = platform_private.auth_iso_time((pg_temp.s12gb_sched('ex1')->>'actual_at_utc')::timestamptz)
+    and (pg_temp.s12gb_sbody('x-ex1')->>'deviationSeconds')::bigint = (pg_temp.s12gb_sched('ex1')->>'deviation_seconds')::bigint
+    and (pg_temp.s12gb_sched('ex1')->>'deviation_seconds')::bigint
+        = round(extract(epoch from ((pg_temp.s12gb_sched('ex1')->>'actual_at_utc')::timestamptz
+                                    - (pg_temp.s12gb_sched('ex1')->>'resolved_at_utc')::timestamptz)))::bigint
+    and (pg_temp.s12gb_sched('ex1')->>'deviation_seconds')::bigint between 1 and 40,
+  'a completed execution records the actual instant and the signed deviation from the scheduled instant (a late run still activates) [P2-S12-AC-150]');
+select ok(
+  (select schedule.state = 'completed' and schedule.version = 3 and schedule.lease_id is null and schedule.lease_until is null
+          and schedule.next_attempt_at is null and schedule.attempt_count = 0 and schedule.reason_code is null
+     from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('ex1'))
+  and (select subject.state = 'active' and subject.lifecycle_version = 5 and subject.version = 2
+          and subject.activated_at = (pg_temp.s12gb_sched('ex1')->>'actual_at_utc')::timestamptz
+     from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('ex1'))
+  and (select review.state = 'approved' and review.version = 3
+          and review.activated_at = (pg_temp.s12gb_sched('ex1')->>'actual_at_utc')::timestamptz
+     from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('ex1')),
+  'the schedule completes at version 3, the subject goes scheduled -> active (lifecycle 4 -> 5, definition version 2) and the review records the activation instant at version 3 [P2-S12-AC-150]');
+select ok(
+  (select v1.state = 'superseded' and v1.lifecycle_version = 5 and v1.activated_at = before.ex0_activated
+     from platform_private.cms_template_versions v1, s12gb_before_ex1 before where v1.id = pg_temp.s12ga_subject('ex0'))
+  and (select count(*) = 1 from platform_private.cms_template_versions member
+        where member.template_id = (pg_temp.s12gb_subj('ex0')->>'template_id')::uuid and member.state = 'active')
+  and pg_temp.s12gb_events('ex0') = 1 and pg_temp.s12gb_events('ex1') = 1
+  and (select count(*) from platform_private.outbox_events) = (select events from s12gb_before_ex1) + 1
+  and (select event.event_type = 'cms.template.activated.v1' and event.aggregate_type = 'cms_template_version'
+          and event.aggregate_version = 5
+          and event.payload = jsonb_build_object('templateId', subject.template_id, 'templateVersionId', subject.id)
+     from platform_private.outbox_events event
+     join platform_private.cms_template_versions subject on subject.id = event.aggregate_id
+    where event.aggregate_id = pg_temp.s12ga_subject('ex1'))
+  and pg_temp.s12gb_audits('cms.governed.activate', 'ex1') = 1,
+  'the scheduled execution supersedes the previous active version and commits exactly one cms.template.activated.v1 (aggregate version 5) and one audit record [P2-S12-AC-150]');
+
+-- ------------------------------------------------------------- e2: completed, then repeated and late --
+select pg_temp.s12gb_exec('x-e2', pg_temp.s12gb_sid('e2'), pg_temp.s12gb_cver('e2'), pg_temp.s12gb_lease('e2'));
+select pg_temp.s12gb_mark('e2:done', 'e2');
+select pg_temp.s12gb_exec('x-e2-again', pg_temp.s12gb_sid('e2'), pg_temp.s12gb_cver('e2'), pg_temp.s12gb_lease('e2'));
+select pg_temp.s12gb_exec('x-e2-again-other', pg_temp.s12gb_sid('e2'), '2', extensions.gen_random_uuid());
+select ok(pg_temp.s12gb_sout('x-e2') = 'ok' and pg_temp.s12gb_sbody('x-e2')->>'outcome' = 'completed'
+    and (pg_temp.s12gb_sbody('x-e2')->>'deviationSeconds')::bigint between 1 and 40
+    and pg_temp.s12gb_sout('x-e2-again') = 'ok'
+    and pg_temp.s12gb_sbody('x-e2-again') = jsonb_build_object('scheduleId', pg_temp.s12gb_sid('e2'), 'outcome', 'already_completed',
+          'reasonCode', null, 'actualUtc', pg_temp.s12gb_sbody('x-e2')->'actualUtc',
+          'deviationSeconds', pg_temp.s12gb_sbody('x-e2')->'deviationSeconds')
+    and pg_temp.s12gb_sbody('x-e2-again-other')->>'outcome' = 'already_completed',
+  'a repeated run on a completed schedule answers already_completed with the recorded instant and deviation, whatever lease it presents, and has no effect [P2-S12-AC-151]');
+select ok(pg_temp.s12gb_same('e2:done', 'e2') and pg_temp.s12gb_events('e2') = 1 and pg_temp.s12gb_audits('cms.governed.activate', 'e2') = 1
+    and (select state = 'active' and lifecycle_version = 5 from platform_private.cms_template_versions where id = pg_temp.s12ga_subject('e2')),
+  'the repeated runs wrote no second event, audit record or state change [P2-S12-AC-151]');
+
+-- ------------------------------------------------ ea: the creator''s authority ended -> blocked --
+select is(pg_temp.s09d_revoke_via_rpc('rev2', 'cms.template_designer'), 'OK',
+  'control: the real CMS-03A-17 command revokes the designer capability of rev2, the creator of the ea schedule [P2-S12-AC-151]');
+select pg_temp.s12gb_exec('x-ea', pg_temp.s12gb_sid('ea'), pg_temp.s12gb_cver('ea'), pg_temp.s12gb_lease('ea'));
+select ok(pg_temp.s12gb_sout('x-ea') = 'ok'
+    and pg_temp.s12gb_sbody('x-ea') = jsonb_build_object('scheduleId', pg_temp.s12gb_sid('ea'), 'outcome', 'blocked',
+          'reasonCode', 'activation_authority_ended', 'actualUtc', null, 'deviationSeconds', null)
+    and (select schedule.state = 'blocked' and schedule.reason_code = 'activation_authority_ended' and schedule.version = 3
+            and schedule.lease_id is null and schedule.lease_until is null and schedule.actual_at_utc is null
+            and schedule.attempt_count = 0
+       from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('ea'))
+  and (select subject.state = 'blocked' and subject.lifecycle_version = 5 and subject.activated_at is null
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('ea'))
+  and (select review.state = 'approved' and review.version = 2 and review.activated_at is null
+         from platform_private.cms_governed_reviews review where review.id = pg_temp.s12ga_review('ea'))
+  and pg_temp.s12gb_events('ea') = 0 and pg_temp.s12gb_audits('cms.governed.schedule.block', 'ea') = 0
+  and (select count(*) = 1 from audit_private.audit_events
+        where action = 'cms.governed.schedule.block' and target_id = pg_temp.s12gb_sid('ea')),
+  'a creator whose designer grant was revoked blocks the schedule activation_authority_ended: schedule blocked, subject blocked (lifecycle 5), review still approved, no event, one audit record [P2-S12-AC-146]');
+-- blocked -> active through a new activation command while the review is still approved and current
+select pg_temp.s12gb_act('ea-reactivate', 'owner', pg_temp.s12ga_review('ea'), 'activate');
+select ok(pg_temp.s12ga_out('ea-reactivate') = 'ok' and pg_temp.s12ga_body('ea-reactivate')->>'subjectState' = 'active'
+    and (select subject.state = 'active' and subject.lifecycle_version = 6
+         from platform_private.cms_template_versions subject where subject.id = pg_temp.s12ga_subject('ea'))
+    and (select event.aggregate_version = 6 from platform_private.outbox_events event
+          where event.aggregate_id = pg_temp.s12ga_subject('ea') and event.event_type = 'cms.template.activated.v1')
+    and pg_temp.s12gb_events('ea') = 1
+    and (select schedule.state = 'blocked' and schedule.version = 3
+         from platform_private.cms_governed_activation_schedules schedule where schedule.review_id = pg_temp.s12ga_review('ea')),
+  'a blocked subject whose review is still approved and current activates through a new CMS-03C-09 command (lifecycle 6, one event); the blocked schedule row is evidence and stays [P2-S12-AC-146]');

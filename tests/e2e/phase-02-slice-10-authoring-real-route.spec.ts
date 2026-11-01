@@ -287,6 +287,62 @@ test.describe('Phase 2 Slice 10 entry authoring real route', () => {
     expect(browserErrors, 'no script or hydration errors').toEqual([]);
   });
 
+  test('edit: a required field cleared is refused locally with the validators\u2019 own message after the idle window, blur alone shows nothing, and sending resumes once it is valid', async ({
+    browser,
+  }) => {
+    test.setTimeout(120_000);
+    const author = provisionAuthor(world, 'authoring-local-refusal');
+    const { page, client, browserErrors } = await signIn(
+      browser,
+      world,
+      author,
+    );
+    const entry = await seedEntry(client, world, 'Keep me');
+    await gotoHydrated(page, `${ENTRIES_PATH}/${entry.entryId}`);
+    const posts: string[] = [];
+    page.on('request', (request) => {
+      if (
+        request.method() === 'POST' &&
+        request.url().endsWith(`${ENTRIES_API}/${entry.entryId}/revisions`)
+      )
+        posts.push(request.url());
+    });
+    const summary = page.locator('[data-cms-editorial-validation-summary]');
+    await titleField(page).fill('');
+    // Blur alone shows nothing (autosave is the first thing that validates, FE03 form contract).
+    await page.getByLabel('Summary').focus();
+    await expect(summary).toHaveCount(0);
+    // After the idle window the save flow loads, the validators refuse, and nothing is sent.
+    await expect(summary).toContainText(
+      'Check these fields before saving again',
+      {
+        timeout: 45_000,
+      },
+    );
+    await expect(titleField(page)).toHaveAttribute('aria-invalid', 'true');
+    await expect(
+      page.getByText('This field is required.').first(),
+    ).toBeVisible();
+    // The field carries the validators' own message (the fallback the editor shows while they are not loaded is the
+    // server's sentence), and the status line says what a local refusal always says.
+    await expect(
+      page.locator(`#field-${world.fields.title}-errors`),
+    ).toHaveText('This field is required.');
+    await expect(
+      page.getByText('Fix the highlighted fields before saving.').first(),
+    ).toBeVisible();
+    expect(posts).toEqual([]);
+    await expectNoSeriousAxeFindings(page, 'draft editor with a local refusal');
+    await titleField(page).fill('Kept and valid');
+    const saved = page.waitForResponse(isRevisionPost(entry.entryId), {
+      timeout: 45_000,
+    });
+    await page.getByRole('button', { name: 'Save draft' }).click();
+    expect((await saved).status()).toBe(201);
+    expect(posts).toHaveLength(1);
+    expect(browserErrors, 'no script or hydration errors').toEqual([]);
+  });
+
   test('edit: a save whose response is lost is replayed byte for byte under the same key and commits exactly once', async ({
     browser,
   }) => {

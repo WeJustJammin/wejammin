@@ -1,0 +1,147 @@
+-- TEST-ONLY, UNRUN. Caller owns BEGIN READ ONLY and ends with ROLLBACK.
+-- Run in fresh observer sessions before/after real migration replay. Compare
+-- snapshot only; observer metadata must differ across the migration boundary.
+-- Row images are ordered JSON TEXT, preserving bigint digits without JS Number.
+set local timezone = 'UTC';
+set local search_path = pg_catalog;
+
+with
+namespaces as (
+  select n.* from pg_namespace n
+  where n.nspname in ('platform_private', 'platform_api', 'audit_private',
+    'public_api', 'public', 'auth', 'storage')
+),
+relations as (
+  select c.*, n.nspname from pg_class c join namespaces n on n.oid = c.relnamespace
+),
+routines as (
+  select p.*, n.nspname from pg_proc p join namespaces n on n.oid = p.pronamespace
+  where p.prokind in ('f', 'p', 'w')
+),
+types as (
+  select t.*, n.nspname from pg_type t join namespaces n on n.oid = t.typnamespace
+),
+inventory as (
+  select 'namespaces' as section, n.nspname as sort_key,
+    jsonb_build_object('oid', n.oid, 'name', n.nspname,
+      'owner', pg_get_userbyid(n.nspowner), 'acl', n.nspacl) as item
+  from namespaces n
+  union all
+  select 'relations', c.nspname || '.' || c.relname,
+    jsonb_build_object('oid', c.oid, 'schema', c.nspname, 'name', c.relname,
+      'kind', c.relkind, 'owner', pg_get_userbyid(c.relowner), 'acl', c.relacl,
+      'rowSecurity', c.relrowsecurity, 'forceRowSecurity', c.relforcerowsecurity,
+      'persistence', c.relpersistence, 'replicaIdentity', c.relreplident,
+      'options', c.reloptions, 'isPartition', c.relispartition)
+  from relations c
+  union all
+  select 'columns', c.nspname || '.' || c.relname || '.' || lpad(a.attnum::text, 6, '0'),
+    jsonb_build_object('relation', c.oid, 'number', a.attnum, 'name', a.attname,
+      'type', format_type(a.atttypid, a.atttypmod), 'typeOid', a.atttypid,
+      'notNull', a.attnotnull, 'identity', a.attidentity, 'generated', a.attgenerated,
+      'collation', a.attcollation, 'acl', a.attacl,
+      'default', pg_get_expr(d.adbin, d.adrelid))
+  from relations c join pg_attribute a on a.attrelid = c.oid
+  left join pg_attrdef d on d.adrelid = a.attrelid and d.adnum = a.attnum
+  where a.attnum > 0 and not a.attisdropped
+  union all
+  select 'constraints', c.nspname || '.' || c.relname || '.' || k.conname,
+    jsonb_build_object('oid', k.oid, 'name', k.conname, 'type', k.contype,
+      'relation', k.conrelid, 'referencedRelation', k.confrelid,
+      'columns', k.conkey, 'referencedColumns', k.confkey,
+      'validated', k.convalidated, 'deferrable', k.condeferrable,
+      'initiallyDeferred', k.condeferred, 'updateAction', k.confupdtype,
+      'deleteAction', k.confdeltype, 'match', k.confmatchtype,
+      'definition', pg_get_constraintdef(k.oid, false))
+  from relations c join pg_constraint k on k.conrelid = c.oid
+  union all
+  select 'indexes', c.nspname || '.' || c.relname,
+    jsonb_build_object('index', i.indexrelid, 'table', i.indrelid,
+      'unique', i.indisunique, 'primary', i.indisprimary,
+      'exclusion', i.indisexclusion, 'valid', i.indisvalid, 'ready', i.indisready,
+      'live', i.indislive, 'immediate', i.indimmediate,
+      'definition', pg_get_indexdef(i.indexrelid, 0, false),
+      'predicate', pg_get_expr(i.indpred, i.indrelid))
+  from relations c join pg_index i on i.indexrelid = c.oid
+  union all
+  select 'sequences', s.schemaname || '.' || s.sequencename,
+    jsonb_build_object('schema', s.schemaname, 'name', s.sequencename,
+      'owner', s.sequenceowner, 'dataType', s.data_type::text,
+      'start', s.start_value::text, 'minimum', s.min_value::text,
+      'maximum', s.max_value::text, 'increment', s.increment_by::text,
+      'cycle', s.cycle, 'cache', s.cache_size::text, 'lastValue', s.last_value::text)
+  from pg_sequences s where s.schemaname in (select nspname from namespaces)
+  union all
+  select 'triggers', c.nspname || '.' || c.relname || '.' || t.tgname,
+    jsonb_build_object('oid', t.oid, 'name', t.tgname, 'relation', t.tgrelid,
+      'function', t.tgfoid, 'enabled', t.tgenabled, 'internal', t.tgisinternal,
+      'constraint', t.tgconstraint, 'definition', pg_get_triggerdef(t.oid, false))
+  from relations c join pg_trigger t on t.tgrelid = c.oid
+  union all
+  select 'policies', c.nspname || '.' || c.relname || '.' || p.polname,
+    jsonb_build_object('oid', p.oid, 'name', p.polname, 'relation', p.polrelid,
+      'command', p.polcmd, 'permissive', p.polpermissive, 'roles', p.polroles,
+      'using', pg_get_expr(p.polqual, p.polrelid),
+      'check', pg_get_expr(p.polwithcheck, p.polrelid))
+  from relations c join pg_policy p on p.polrelid = c.oid
+  union all
+  select 'routines', p.nspname || '.' || p.proname || '(' ||
+    pg_get_function_identity_arguments(p.oid) || ')',
+    jsonb_build_object('oid', p.oid, 'schema', p.nspname, 'name', p.proname,
+      'identityArguments', pg_get_function_identity_arguments(p.oid),
+      'owner', pg_get_userbyid(p.proowner), 'acl', p.proacl,
+      'securityDefiner', p.prosecdef, 'configuration', p.proconfig,
+      'kind', p.prokind, 'volatility', p.provolatile, 'strict', p.proisstrict,
+      'parallel', p.proparallel, 'leakproof', p.proleakproof,
+      'definition', pg_get_functiondef(p.oid))
+  from routines p
+  union all
+  select 'types', t.nspname || '.' || t.typname,
+    jsonb_build_object('oid', t.oid, 'schema', t.nspname, 'name', t.typname,
+      'owner', pg_get_userbyid(t.typowner), 'acl', t.typacl,
+      'kind', t.typtype, 'relation', t.typrelid, 'elementType', t.typelem,
+      'baseType', t.typbasetype, 'notNull', t.typnotnull,
+      'default', t.typdefault, 'collation', t.typcollation)
+  from types t
+  union all
+  select 'defaultAcls', d.defaclrole::text || ':' || d.defaclnamespace::text || ':' || d.defaclobjtype,
+    jsonb_build_object('oid', d.oid, 'role', pg_get_userbyid(d.defaclrole),
+      'namespace', d.defaclnamespace, 'objectType', d.defaclobjtype, 'acl', d.defaclacl)
+  from pg_default_acl d
+  where d.defaclnamespace = 0 or d.defaclnamespace in (select oid from namespaces)
+  union all
+  select 'roles', r.rolname,
+    jsonb_build_object('oid', r.oid, 'name', r.rolname, 'superuser', r.rolsuper,
+      'inherit', r.rolinherit, 'createRole', r.rolcreaterole, 'createDb', r.rolcreatedb,
+      'login', r.rolcanlogin, 'replication', r.rolreplication, 'bypassRls', r.rolbypassrls,
+      'connectionLimit', r.rolconnlimit, 'validUntil', r.rolvaliduntil::text,
+      'configuration', r.rolconfig)
+  from pg_roles r
+  union all
+  select 'roleMemberships', m.roleid::text || ':' || m.member::text || ':' || m.grantor::text,
+    to_jsonb(m)
+  from pg_auth_members m
+),
+sections as (
+  select section, jsonb_agg(item order by sort_key collate "C") as items
+  from inventory group by section
+)
+select jsonb_build_object(
+  'witness', 'DEC197_UPGRADE_SNAPSHOT_V1',
+  'observer', jsonb_build_object('database', current_database(),
+    'backendPid', pg_backend_pid(), 'user', current_user),
+  'snapshot', jsonb_build_object(
+    'catalog', (select jsonb_object_agg(section, items order by section) from sections),
+    'consumerRows', (select coalesce(jsonb_agg(to_jsonb(c)::text order by c.id), '[]'::jsonb)
+      from platform_private.projection_consumer_state c),
+    'publicationVersionRows', (select coalesce(jsonb_agg(to_jsonb(p)::text order by p.id), '[]'::jsonb)
+      from platform_private.cms_publication_versions p),
+    'receivingObjects', jsonb_build_object(
+      'manifestTable', to_regclass('platform_private.route_manifest_version')::text,
+      'projectionTable', to_regclass('platform_private.publication_projection')::text,
+      'manifestRowType', to_regtype('platform_private.route_manifest_version')::text,
+      'projectionRowType', to_regtype('platform_private.publication_projection')::text,
+      'manifestGuard', to_regprocedure('platform_private.route_manifest_version_guard()')::text,
+      'manifestSequence', case when to_regclass('platform_private.route_manifest_version') is null
+        then null else pg_get_serial_sequence('platform_private.route_manifest_version', 'version_no') end)
+  ));
