@@ -28,6 +28,7 @@ import {
   alertOf,
   conflictFor,
   expectOnlyCommitDisabled,
+  failureResponse,
   forbiddenFor,
   heldWire,
   invalidFor,
@@ -142,6 +143,24 @@ describe('CmsGovernedReviewPanel submit form (CMS-03C-06) commandState', () => {
     expect(navigate.mock.calls[0]?.[0]).toMatch(/^\/step-up\?returnTo=/u);
     expect(wire).toHaveBeenCalledTimes(1);
     expect(container.querySelector(GATE)).toBeNull();
+  });
+
+  it('[P2-S12-AC-271] commandState error: a plain 401 UNAUTHENTICATED answer says the session ended and links to sign-in with the page as returnTo; it is never a step-up route or a gate', async () => {
+    const wire = queuedFetcher([failureResponse(401, 'UNAUTHENTICATED')]);
+    const { container, navigate } = mount(wire);
+    await send(container);
+    expect(wire).toHaveBeenCalledTimes(1);
+    expect(statusOf(container) + alertOf(container)).toContain(
+      'Your session expired. Your entries were not saved.',
+    );
+    const link = container.querySelector<HTMLAnchorElement>(
+      'a[href^="/auth/sign-in?returnTo="]',
+    );
+    expect(link?.textContent).toBe('Sign in again');
+    expect(navigate).not.toHaveBeenCalled();
+    expect(container.querySelector('a[href*="step-up"]')).toBeNull();
+    expect(container.querySelector(GATE)).toBeNull();
+    expect(alertOf(container)).not.toContain('A fixed message.');
   });
 
   it.each(['capability_missing', 'separation_of_duties'])(

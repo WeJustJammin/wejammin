@@ -1,5 +1,13 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import { act } from 'react';
 
@@ -9,8 +17,16 @@ import {
   click,
   disableReactAct,
   enableReactAct,
+  flush,
   typeInto,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
+import {
+  DRAFT_PATH,
+  RULE_PATH,
+  canonicalReads,
+  draftAnswer,
+  noRuleAnswer,
+} from './related-conflict.test-support';
 import type { RelatedContentRuleRequest } from '@wejammin/contracts';
 import {
   ENTRY_ID,
@@ -23,6 +39,9 @@ import {
 
 beforeAll(enableReactAct);
 afterAll(disableReactAct);
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
 
 const name = (n: number): string => `entry ${id(n).slice(-12)}`;
 const save = (container: HTMLElement) =>
@@ -246,25 +265,39 @@ describe('CmsRelatedContentForm: submission', () => {
   });
 });
 
+/** The read that reconciles an unknown save (FE03 1050) finds nothing recorded, so the identical retry is offered. */
+const notRecorded = () =>
+  vi.stubGlobal(
+    'fetch',
+    canonicalReads({
+      [DRAFT_PATH]: () => draftAnswer('4'),
+      [RULE_PATH]: () => noRuleAnswer(),
+    }),
+  );
+
 describe('CmsRelatedContentForm: idempotency', () => {
-  it('replays the identical request with the same key after an unknown outcome', async () => {
+  it('[P2-S12-AC-271] test correction (FE03 1050): replays the identical request with the same key after an unknown outcome that the reconciling read found not recorded', async () => {
+    notRecorded();
     const submit = submitStub((call) =>
       call === 0 ? { kind: 'uncertain' } : { kind: 'saved', saved: savedOf() },
     );
     const { container } = mount({ submit });
     await save(container);
-    expect(heading(container)).toBe('Save not confirmed');
+    await flush();
+    expect(heading(container)).toBe('Save not recorded');
     await save(container);
     expect(sent(submit, 1)[2]).toBe(sent(submit, 0)[2]);
     expect(sent(submit, 1)[0]).toEqual(sent(submit, 0)[0]);
   });
 
-  it('uses a new key once the request changed, and after a definite answer', async () => {
+  it('[P2-S12-AC-271] test correction (FE03 1050): uses a new key once the request changed, and after a definite answer', async () => {
+    notRecorded();
     const submit = submitStub((call) =>
       call === 0 ? { kind: 'uncertain' } : { kind: 'saved', saved: savedOf() },
     );
     const { container } = mount({ submit });
     await save(container);
+    await flush();
     await click(buttonNamed(container, `Exclude ${name(2)}`));
     await save(container);
     expect(sent(submit, 1)[2]).not.toBe(sent(submit, 0)[2]);

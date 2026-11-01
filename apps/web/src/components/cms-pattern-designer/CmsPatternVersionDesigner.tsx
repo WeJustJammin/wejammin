@@ -1,5 +1,6 @@
 import * as React from 'react';
 
+import CmsRegistryChangeNotice from '../cms-composition/CmsRegistryChangeNotice';
 import CmsPatternCommitButton from './CmsPatternCommitButton';
 import CmsPatternConflictPanel from './CmsPatternConflictPanel';
 import CmsPatternFields from './CmsPatternFields';
@@ -7,12 +8,8 @@ import CmsPatternNestedPicker from './CmsPatternNestedPicker';
 import CmsPatternStatus from './CmsPatternStatus';
 import CmsPatternTree from './CmsPatternTree';
 import CmsPatternVersionFacts from './CmsPatternVersionFacts';
-import { groupItems } from './pattern-designer-issues';
-import {
-  PATTERN_FORM_ID,
-  PATTERN_TREE_ID,
-  targetDomId,
-} from './pattern-designer-ids';
+import { groupSummary } from './pattern-designer-issues';
+import { PATTERN_FORM_ID, PATTERN_TREE_ID } from './pattern-designer-ids';
 import type { PatternDesignerContext } from './pattern-designer-request';
 import type { PatternLatestDetail } from './pattern-latest-read';
 import { PATTERN_LIMITS } from './pattern-tree-rules';
@@ -43,24 +40,11 @@ export interface CmsPatternVersionDesignerProps {
 export default function CmsPatternVersionDesigner(
   props: CmsPatternVersionDesignerProps,
 ): React.ReactElement {
-  const { context, latest, csrfToken } = props;
+  const { latest, csrfToken } = props;
   const designer = usePatternDesigner(props);
-  const { editor, status } = designer;
+  const { editor, status, context } = designer;
   const editing = latest !== null;
-  const submitted =
-    status.kind === 'invalid' || status.kind === 'result' ? status.items : [];
-  // Errors of visited controls (blur) join the submit summary; a problem shown twice is shown once.
-  const grouped = groupItems([
-    ...submitted,
-    ...designer.blurItems.filter(
-      (blurred) =>
-        !submitted.some(
-          (entry) =>
-            entry.message === blurred.message &&
-            targetDomId(entry.target) === targetDomId(blurred.target),
-        ),
-    ),
-  ]);
+  const grouped = groupSummary(status, designer.blurItems);
   const returnTo = editing
     ? `/app/cms-content-modeling/patterns/${latest.patternKey}`
     : '/app/cms-content-modeling/patterns/new';
@@ -93,6 +77,11 @@ export default function CmsPatternVersionDesigner(
         tree={editor.tree}
         summaryRef={designer.summaryRef}
         returnTo={returnTo}
+      />
+      <CmsRegistryChangeNotice
+        state={designer.registry.state}
+        waiting={designer.registry.waiting}
+        onRead={designer.registry.check}
       />
       {designer.showConflict ? (
         <CmsPatternConflictPanel

@@ -45,11 +45,23 @@ afterEach(() => {
 });
 
 describe('CMS-11 template designer interaction', () => {
-  it('keeps the draft values and idempotency key across an uncertain retry', async () => {
+  it('keeps the draft values and idempotency key across an uncertain retry, which waits for the read of the key', async () => {
     vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
     const fetcher = vi
       .fn<typeof fetch>()
       .mockRejectedValueOnce(new Error('connection lost'))
+      // The read of the key the unknown outcome starts by itself (FE03 1048, DEC-242 item 3): nothing there.
+      .mockResolvedValueOnce(
+        Response.json(
+          {
+            code: 'TEMPLATE_NOT_FOUND',
+            message: 'refused',
+            requestId: '50000000-0000-4000-8000-000000000005',
+            details: {},
+          },
+          { status: 404 },
+        ),
+      )
       .mockResolvedValueOnce(
         Response.json(
           {
@@ -107,10 +119,13 @@ describe('CMS-11 template designer interaction', () => {
         new Event('submit', { bubbles: true, cancelable: true }),
       );
     });
-    expect(fetcher).toHaveBeenCalledTimes(2);
-    const keys = fetcher.mock.calls.map(([, init]) =>
-      new Headers(init?.headers).get('idempotency-key'),
+    expect(fetcher).toHaveBeenCalledTimes(3);
+    expect(fetcher.mock.calls[1]![0]).toBe(
+      '/api/v1/cms/templates/release-note',
     );
+    const keys = fetcher.mock.calls
+      .filter(([, init]) => init?.method === 'POST')
+      .map(([, init]) => new Headers(init?.headers).get('idempotency-key'));
     expect(keys).toEqual(['draft-attempt-001', 'draft-attempt-001']);
     expect(container.textContent).toContain(`Template ID ${TEMPLATE_ID}`);
     const errorSpy = vi.spyOn(console, 'error');

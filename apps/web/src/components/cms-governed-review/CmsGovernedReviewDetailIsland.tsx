@@ -14,13 +14,16 @@ import {
   useIslandConfirmation,
 } from '../cms-editorial-workflow/use-cms-workflow-status';
 import { readGovernedReviewLazily } from './governed-answer-machinery';
-import CmsGovernedReviewDetail from './CmsGovernedReviewDetail';
+import CmsGovernedReviewDetail, {
+  GOVERNED_DETAIL_HEADING_IDS,
+} from './CmsGovernedReviewDetail';
 import {
   GovernedActivationFormView,
   GovernedAssignmentFormView,
   GovernedDecisionFormView,
 } from './governed-review-form-views';
 import { governedDisabledActionCopy } from './governed-review-labels';
+import { useGovernedReread } from './use-governed-reread';
 import { WhenOffered } from '../cms-editorial-workflow/cms-lazy-view';
 
 export interface CmsGovernedReviewDetailIslandInit {
@@ -73,12 +76,11 @@ export default function CmsGovernedReviewDetailIsland({
   );
   const { data: review, status, refetch } = canonical;
   const confirmation = useIslandConfirmation();
-  // FE03 1050: a degraded review is re-required, so it stays degraded (hidden, forms off) until a read VERIFIES, which
-  // includes the time a re-read is in flight; derived during render so no frame shows the unverified review.
-  const [unverified, setUnverified] = React.useState(false);
-  if (status === 'degraded' && !unverified) setUnverified(true);
-  if (status === 'ready' && unverified) setUnverified(false);
-  const degraded = status === 'degraded' || unverified;
+  const { degraded, rereading, onReread } = useGovernedReread(
+    canonical,
+    confirmation.announcer,
+    GOVERNED_DETAIL_HEADING_IDS.summary,
+  );
   if (review === null)
     return (
       <CmsWorkflowClosedState
@@ -116,11 +118,8 @@ export default function CmsGovernedReviewDetailIsland({
         <CmsGovernedReviewDetail
           review={review}
           degradedSince={degraded ? canonical.lastVerifiedAt : null}
-          onReread={
-            status === 'degraded' && canonical.rateLimit === null
-              ? () => void refetch()
-              : undefined
-          }
+          rereading={rereading}
+          onReread={onReread}
         />
         <section aria-labelledby="governed-actions-title">
           <h2 id="governed-actions-title" tabIndex={-1}>

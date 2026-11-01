@@ -1,0 +1,162 @@
+{
+ "lane": "claude_s12_db10",
+ "tap": ".lane-logs/alt-staged-db10-181247-1421218.tap",
+ "tapSha256": "7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952",
+ "stamp": "run-final",
+ "noteForRoot": "Citations depend on promotion of supabase/migrations-wip/db10/* (3 files). Clause index 2 is the empty 'again before publish' clause of P2-S12-AC-211 (clause 1 is 'is refused before save'). The same 8 db9b RED titles are cited from the db9b file's own TAP; they are included here with the green TAP.",
+ "proposals": [
+  {
+   "criterion": "P2-S12-AC-211",
+   "proposedStatus": null,
+   "proposedLimitation": null,
+   "clauses": [
+    {
+     "index": 2,
+     "text": "again before publish",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc",
+       "title": "[RED] the publication provider does not pass a revision that pins an active legacy pattern nested ten levels deep [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc:12 - [RED] the publication provider does not pass a revision that pins an active legacy pattern nested ten levels deep. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 12
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc",
+       "title": "[RED] the publication provider does not pass a revision that pins an active legacy pattern expanding to 544 block roots [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc:14 - [RED] the publication provider does not pass a revision that pins an active legacy pattern expanding to 544 block roots. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 14
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc",
+       "title": "[RED] the deep legacy pin fails the pattern category with pattern_depth_exceeded [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc:16 - [RED] the deep legacy pin fails the pattern category with pattern_depth_exceeded. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 16
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc",
+       "title": "[RED] the wide legacy pin fails the pattern category with pattern_nodes_exceeded [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc:18 - [RED] the wide legacy pin fails the pattern category with pattern_nodes_exceeded. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 18
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc",
+       "title": "[RED] one offending pin is one blocking unit [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc:20 - [RED] one offending pin is one blocking unit. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 20
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc",
+       "title": "[RED] CMS-03C-02 refuses the active legacy pattern nested ten levels deep: pattern_depth_exceeded at /patternId [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc:22 - [RED] CMS-03C-02 refuses the active legacy pattern nested ten levels deep: pattern_depth_exceeded at /patternId. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 22
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc",
+       "title": "[RED] and the refused placement wrote nothing [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest/020-red.sqlinc:24 - [RED] and the refused placement wrote nothing. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 24
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc",
+       "title": "CMS-03C-02 still places the pattern nested exactly eight levels deep (the 9th level is the refused one) [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc:64 - CMS-03C-02 still places the pattern nested exactly eight levels deep (the 9th level is the refused one). Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 64
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc",
+       "title": "CMS-03C-02 still places the pattern that expands to exactly 512 block roots (the 513th is the refused one) [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc:66 - CMS-03C-02 still places the pattern that expands to exactly 512 block roots (the 513th is the refused one). Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 66
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc",
+       "title": "both at-bound placements wrote rows (the refusals of the RED suite write nothing) [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc:69 - both at-bound placements wrote rows (the refusals of the RED suite write nothing). Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 69
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc",
+       "title": "the pattern provider still passes a live pin nested exactly eight levels deep [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc:73 - the pattern provider still passes a live pin nested exactly eight levels deep. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 73
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc",
+       "title": "the pattern provider still passes a live pin that expands to exactly 512 block roots [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc:75 - the pattern provider still passes a live pin that expands to exactly 512 block roots. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 75
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc",
+       "title": "two over-bound pins (one too deep, one too wide) report pattern_depth_exceeded first: the order is depth, then nodes [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc:79 - two over-bound pins (one too deep, one too wide) report pattern_depth_exceeded first: the order is depth, then nodes. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 79
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc",
+       "title": "each offending live pin is one blocking unit: two over-bound pins count two [P2-S12-AC-211]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db10_bounds/010-boundary.sqlinc:81 - each offending live pin is one blocking unit: two over-bound pins count two. Real ALT-stack run (lane db10: promoted migrations plus supabase/migrations-wip/db10), TAP .lane-logs/alt-staged-db10-181247-1421218.tap SHA-256 7c0f61c8ec14d8d7f9abefcee9ef72dc0aa789da870c66a35bbcd02e7d07a952 (db9b RED suite: .lane-logs/alt-staged-db10-175347-1335179.tap SHA-256 c269929000f160fbfa97e24d17525afcdac0660bb54b9a4f3148a06662d34ea2, 112/112). The RED assertions failed 7/7 on promoted migrations only (TAP .lane-logs/alt-staged-none-175139-1325785.tap SHA-256 d63dbec3243363982a6a59aa108df7f69a96e0f5d9ccd9a2430d5cc38b0c5aa7). The WIP migrations are not promoted yet: root promotes them before this citation is recorded.",
+       "descriptionLine": 81
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

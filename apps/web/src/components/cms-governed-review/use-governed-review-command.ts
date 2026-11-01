@@ -110,6 +110,17 @@ export const useGovernedCommand = <
     controller.getState,
   );
   const governed = state.phase === 'refused' ? refusal.current : null;
+  // The shared controller refetches on the SHARED classification of a refusal. A governed classification that asks
+  // for a refetch the shared table does not (`reviewer_not_eligible`, DEC-242) is honoured here, once per refused state.
+  React.useEffect(() => {
+    if (
+      state.phase === 'refused' &&
+      governed?.refetch === true &&
+      state.refusal?.refetch !== true
+    )
+      void latest.current.refetch();
+    // `governed` is derived from `state` and the ref set before the refused phase renders.
+  }, [state]);
   return {
     controller,
     state: governed === null ? state : { ...state, refusal: governed },

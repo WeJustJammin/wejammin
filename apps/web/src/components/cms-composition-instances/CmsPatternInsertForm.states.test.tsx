@@ -22,13 +22,21 @@ import {
 import {
   ENTRY,
   PLACE,
+  SELECTOR,
   entryDetail,
   json,
   mountPage,
+  noListReads,
   refusal,
   settle,
 } from './composition-page.test-support';
-import { entryFacts, row, selectorItem } from './composition.test-support';
+import {
+  entryFacts,
+  row,
+  selectorItem,
+  selectorPage,
+} from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /*
  * P2-S12-AC-271, `commandState` of FE03 "Slice 12 definition governance states", for CMS-03C-02 (place a pattern) on the
@@ -107,9 +115,10 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
     await answerHeld(held, placed());
     await settle();
     expect(resultHeading(page.container)).toBe('Pattern placed');
+    expectListRefetches(page, 1);
   });
 
-  it('[P2-S12-AC-271] commandState success (kept half): the named resource, the draft cleared and the next command at the committed version; no refetch of the entry or list is made (C5)', async () => {
+  it('[P2-S12-AC-271] commandState success (test correction, FE03 1047): the named resource, the draft cleared, the next command at the committed version, and the instance list refetched from the protected read', async () => {
     const page = mountPage({ [PLACE]: [placed()] });
     await fill(page.container);
     await typeInto(overrides(page.container), '{"/hero": {"title": "mine"}}');
@@ -126,6 +135,8 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
     expect(pattern(page.container).value).toBe('');
     expect(overrides(page.container).value).toBe('');
     expect(page.unexpected).toEqual([]);
+    // FE03 1047: the lists shown are refetched (the entry itself is not: the next version comes from the answer).
+    expect(page.lists).toHaveLength(1);
   });
 
   it('[P2-S12-AC-271] commandState error: a 401 answer renders the session-ended copy (STEP_UP_REQUIRED does not apply: BE03c requires no recent MFA for CMS-03C-02)', async () => {
@@ -139,6 +150,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
     );
     expect(pattern(page.container).value).toBe(hero.patternVersionId);
     expect(page.unexpected).toEqual([]);
+    noListReads(page);
   });
 
   it('[P2-S12-AC-271] commandState error: 403 renders the CapabilityGate with the fixed sentence in the result alert', async () => {
@@ -160,6 +172,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
       document.querySelector('[data-cms-editorial-capability-gate] h2'),
     );
     expect(page.container.querySelector('a[href*="step-up"]')).toBeNull();
+    noListReads(page);
   });
 
   it.each([
@@ -172,7 +185,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
       'The entry changed since this page loaded. The page read its new version; check your input and place again.',
     ],
   ])(
-    '[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and keeps the input',
+    '[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and the instance list and keeps the input',
     async (reasonCode, sentence) => {
       const page = mountPage({
         [PLACE]: [
@@ -190,6 +203,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
         1,
       );
       expect(page.calls.at(-1)?.path).toContain('/api/v1/cms/entries/');
+      expect(page.lists).toHaveLength(1);
       expect(byLabel<HTMLInputElement>(page.container, 'Slot path').value).toBe(
         '/main',
       );
@@ -208,7 +222,9 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
     ],
     [
       'block_registry_digest_mismatch',
-      'The block registry changed since this pattern was listed. Reload the page and choose the pattern again.',
+      // [P2-S12-AC-271] test correction (BE03c 388, DEC-246 ruling 5, review V20 m9): the digest refusal reads the selector
+      // again and no longer asks for a reload; the values are kept.
+      'The block registry changed since this pattern was listed. The pattern list was read again and your input is kept; check it and place again.',
     ],
     [
       'block_rules_violated',
@@ -224,6 +240,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
             violations: [{ path: '/patternVersion', code: 'invalid' }],
           }),
         ],
+        [SELECTOR]: [json(selectorPage([hero]), 200, '"7"')],
       });
       await send(page.container);
       expect(resultText(page.container)).toContain(sentence);
@@ -232,6 +249,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
       expect(page.container.textContent).toContain(
         'The server did not accept this pattern. Choose it again.',
       );
+      noListReads(page);
     },
   );
 
@@ -264,6 +282,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
       .map((call) => call.headers['idempotency-key']);
     expect(keys[1]).toBe(keys[0]);
     expect(resultHeading(page.container)).toBe('Pattern placed');
+    expectListRefetches(page, 2);
   });
 
   it('[P2-S12-AC-271] commandState disabled (kept half): an uneditable draft or a missing session withholds the commit control and the page says why; the island has no permittedNextActions input', async () => {

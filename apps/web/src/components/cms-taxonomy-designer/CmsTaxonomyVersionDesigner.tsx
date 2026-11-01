@@ -48,7 +48,7 @@ const issuesOf = (
 export default function CmsTaxonomyVersionDesigner(
   props: CmsTaxonomyVersionDesignerProps,
 ): React.ReactElement {
-  const { latest, versions = [], csrfToken } = props;
+  const { latest, csrfToken } = props;
   const designer = useTaxonomyDesigner(props);
   const { status } = designer;
   const editing = latest !== null;
@@ -72,7 +72,13 @@ export default function CmsTaxonomyVersionDesigner(
       {designer.base === null ? null : (
         <CmsTaxonomyVersionFacts version={designer.base} />
       )}
-      <CmsTaxonomyVersionList versions={versions} />
+      <CmsTaxonomyVersionList versions={designer.versionRows} />
+      {designer.versionsStale ? (
+        <p role="status">
+          The version list could not be refreshed. Reload to see the new
+          version.
+        </p>
+      ) : null}
       {csrfToken.length === 0 ? (
         <p role="status">Reload to restore the protected form session.</p>
       ) : null}

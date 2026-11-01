@@ -1,0 +1,70 @@
+-- GREEN facts of the legacy-forest suite (P2-S12-AC-211 "again before publish"; BE03c 408, 1678, 1694).  Everything asserted here passes on the promoted migrations.
+-- The bound re-checks (DEC-247) are in 020-red.sqlinc.
+
+-- the fixture is what it claims: a real chain at the producer's depth limit, and two legacy rows the producer would refuse
+create or replace function pg_temp.d9l_depth(p_label text) returns integer language plpgsql as $body$
+declare result integer;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select coalesce(max(closure.nested_depth), 0) into result
+    from platform_private.cms_pattern_nested_closure(pg_temp.s09d_id('ownerOrg'),
+      (select block_tree from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body(p_label)->>'id')::uuid)) closure;
+  perform set_config('app.cms_rpc', '', true);
+  return result;
+end;
+$body$;
+create or replace function pg_temp.d9l_roots(p_label text) returns integer language plpgsql as $body$
+declare result integer;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  select count(*) filter (where nodes.is_root)::integer into result
+    from platform_private.cms_pattern_placement_nodes(pg_temp.s09d_id('ownerOrg'),
+      (select block_tree from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body(p_label)->>'id')::uuid),
+      array[(pg_temp.s12pd_body(p_label)->>'patternId')::uuid]) nodes;
+  perform set_config('app.cms_rpc', '', true);
+  return result;
+end;
+$body$;
+select is(pg_temp.d9l_depth('p9'), 8, 'fixture: the real pattern p9 has its deepest nested pin eight levels below it, the deepest nesting CMS-03C-12 accepts [P2-S12-AC-211]');
+select is(pg_temp.d9l_depth('l-deep'), 9, 'fixture: the legacy pattern l-deep reaches p1 nine levels below it, one level more than the producer accepts [P2-S12-AC-211]');
+select is(pg_temp.d9l_roots('l-wide'), 544, 'fixture: the legacy pattern l-wide expands to 544 block roots (17 pins of a 32-root pattern), over the 512 bound [P2-S12-AC-211]');
+select ok((select count(*) = 2 and bool_and(v.state = 'active' and v.version = 1 and v.activated_at is not null and v.owner_id = pg_temp.s09d_id('ownerOrg'))
+             from platform_private.cms_pattern_versions v where v.id in ((pg_temp.s12pd_body('l-deep')->>'id')::uuid, (pg_temp.s12pd_body('l-wide')->>'id')::uuid))
+    and (select count(*) = 2 and bool_and(r.state = 'approved') from platform_private.cms_governed_reviews r
+          where r.subject_kind = 'pattern_version' and r.subject_id in ((pg_temp.s12pd_body('l-deep')->>'id')::uuid, (pg_temp.s12pd_body('l-wide')->>'id')::uuid)),
+  'fixture: both legacy rows are ACTIVE, made so by the real governed chain (their approved reviews exist; the only forged step is the labelled draft insert) [P2-S12-AC-211]');
+
+-- control: the producer refuses today exactly the shapes the legacy rows have
+select * from pg_temp.s12pd_refused('c-deep', pg_temp.s12pd_request('d9l-c-deep', pg_temp.s12pl_refs('p9', 1, 'n'), null, 'd9l-c-deep'),
+  'VALIDATION_FAILED', 'pattern_depth_exceeded');
+select * from pg_temp.s12pd_refused('c-wide', pg_temp.s12pd_request('d9l-c-wide', pg_temp.s12pl_refs('roots32', 17, 'w'), null, 'd9l-c-wide'),
+  'VALIDATION_FAILED', 'pattern_nodes_exceeded');
+
+-- placement: the node bound of a stored forest is re-proved by CMS-03C-02 (the depth bound is in 020-red)
+select is((select state || ':' || message || ':' || detail from s12pl_out where label = 'pl-wide'), 'P0001:pattern_nodes_exceeded:["/patternId"]',
+  'CMS-03C-02 refuses the active legacy pattern that expands to 544 block roots: pattern_nodes_exceeded at /patternId [P2-S12-AC-211]');
+select ok((select before_rows = after_rows from s12pl_out where label = 'pl-wide'),
+  'the refused placement wrote nothing: every captured store is unchanged [P2-S12-AC-211]');
+
+-- the publication provider on the control revision
+select ok(pg_temp.d9l_provider_result('seed-ctrl')->>'code' = '00000' and pg_temp.d9l_provider_result('seed-ctrl')->>'status' = 'current'
+    and pg_temp.d9l_provider_result('seed-ctrl')->'pattern' = '{"outcome": "passed", "category": "pattern", "reasonCode": null, "providerKey": "cms.pattern.active_digest", "blockingCount": 0, "providerVersion": "1"}'::jsonb,
+  'control: a revision that pins a within-bounds active pattern passes the pattern provider [P2-S12-AC-211]');
+
+-- BOUNDARY facts for pattern_cycle: no cyclic stored forest can be made active
+select ok((select state = 'P0001' and message = 'subject_not_submittable' from s12pd_out where label = 'l-cx:submit')
+    and (select state = 'P0001' and message = 'subject_not_submittable' from s12pd_out where label = 'l-cy:submit')
+    and (select count(*) = 2 and bool_and(state = 'draft') from platform_private.cms_pattern_versions
+          where id in ((pg_temp.s12pd_body('l-cx')->>'id')::uuid, (pg_temp.s12pd_body('l-cy')->>'id')::uuid)),
+  'BOUNDARY fact: the hand-built mutual cycle X <-> Y cannot be submitted (each nested pin is inactive, subject_not_submittable), so it stays a draft [P2-S12-AC-211]');
+select ok(exists (select 1 from pg_index i join pg_class c on c.oid = i.indexrelid
+                   where i.indrelid = 'platform_private.cms_pattern_versions'::regclass and i.indisunique
+                     and c.relname = 'cms_pattern_versions_active_lineage_idx' and pg_get_expr(i.indpred, i.indrelid) = '(state = ''active''::text)'),
+  'BOUNDARY fact: at most one version of a lineage is active (partial unique index on pattern_id), so an active version can never pin another active version of its own lineage [P2-S12-AC-211]');
+select ok((select p.state = 'superseded' from platform_private.cms_pattern_versions p where p.id = (pg_temp.s12pd_body('c1')->>'id')::uuid)
+    and (select p.state = 'active' and p.version = 2 and p.pattern_id = (pg_temp.s12pd_body('c1')->>'patternId')::uuid
+           and p.block_tree->0->>'patternId' = p.pattern_id::text
+         from platform_private.cms_pattern_versions p where p.id = (pg_temp.s12pd_body('c2')->>'id')::uuid),
+  'BOUNDARY fact: the closest producible cycle, version 2 pinning version 1 of its own lineage, passes submit and activates, and activating it supersedes the version it pins [P2-S12-AC-211]');
+select is((select state || ':' || message || ':' || detail from s12pl_out where label = 'pl-c2'), 'P0001:nested_pattern_not_active:["/patternId"]',
+  'BOUNDARY fact: CMS-03C-02 classifies that closest cycle nested_pattern_not_active, because the pinned version of its own lineage is no longer active, never pattern_cycle [P2-S12-AC-211]');

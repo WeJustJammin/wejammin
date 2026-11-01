@@ -19,7 +19,7 @@ The canonical record a refused overlap points to is shown as copyable text, neve
 ## Module map
 
 - Zero zod in the browser (FE03 AC261, `../cms-taxonomy-pages/taxonomy-static-closure.test.ts`):
-  `term-rules.ts` writes out the CMS-03C-03 grammar, `taxonomy-terms-read.ts` and
+  `term-rules.ts` writes out the CMS-03C-03 grammar, `taxonomy-terms-fetch.ts` (the reader and its verification) and
   `term-action-submit.ts` verify a 2xx structurally, `term-status-copy.ts` and `term-copy.ts` hold the
   fixed copy per outcome and `reasonCode`. The transport is `../cms-taxonomy-designer/taxonomy-transport.ts`.
 - Model: `term-action-request.ts` (form to `TaxonomyTermActionRequest`, naming the field a rule
@@ -73,6 +73,16 @@ a merged term shows its survivor. A vocabulary whose full 50-version read holds 
 says so (BE03c 406) rather than claiming there is none. The list and the active version are re-read after every
 committed or unknown outcome before anything else is offered. List state in the URL is `lifecycle`
 and the signed `cursor` only.
+
+The terms read is split: `taxonomy-terms-read.ts` holds the types, `TERM_LIFECYCLES` and a thin `readTaxonomyTerms` that imports
+`taxonomy-terms-fetch.ts` when the island asks (the `taxonomy-terms-fetch` entry of `CMS_ON_DEMAND_CHUNKS`, proof
+`../cms-on-demand-pattern-terms.proof.test.tsx`); the server page loader imports `verifiedTermsPage` from the fetch module.
+The read has the shared 8,000 ms deadline (`taxonomy-terms-fetch.deadline.test.ts`);
+`CmsTaxonomyTermForm.hung-reads.test.tsx` asserts that a refresh that never answers ends in "The list could not be refreshed"
+with "Refresh the list". A test that uses the default reader under fake timers must load the fetch module first.
+`CmsTaxonomyTermForm.closing-words.test.tsx` asserts the closing words of the FE03 state table for the term and vocabulary
+transports: the action and the reads after it are same-origin `no-store` requests and nothing is claimed before the server
+answers.
 
 While a term command is pending only the commit control is disabled (FE03 1048): the fields stay editable and keep focus. Cancel and Back keep their pending lock because FE03 is silent on them and closing a form with a command in flight is new behaviour (`CmsTaxonomyTermForm.pending.test.tsx`).
 

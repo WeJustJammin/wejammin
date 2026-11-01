@@ -2,6 +2,8 @@ import { retryable } from '../../lib/retryable-import';
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useCmsTemplateRateWait } from '../cms-composition/cms-template-rate-wait';
+import { useReconcileOnOutcome } from '../cms-composition/use-reconcile-on-outcome';
+import type { TaxonomyVersionSummary } from './CmsTaxonomyVersionList';
 import { TAXONOMY_RESULT_HEADING_ID } from './taxonomy-designer-ids';
 import { buildTaxonomyVersionRequest } from './taxonomy-designer-request';
 import type { TaxonomyFormStatus } from './taxonomy-designer-status';
@@ -12,15 +14,17 @@ import {
 } from '../../lib/module-unavailable';
 import type { submitTaxonomyVersion } from './taxonomy-designer-submit';
 import type { reconcileUnknownVersionOutcome as reconcileOutcome } from './taxonomy-outcome-reconcile';
-import {
+import { readTaxonomyVersionsOnDemand } from './taxonomy-versions-on-demand';
+import type {
   readTaxonomyVersions,
-  type TaxonomyVersionFacts,
+  TaxonomyVersionFacts,
 } from './taxonomy-versions-read';
 import type { CanonicalDomain, TaxonomyShape } from './taxonomy-vocabulary';
 import {
   useTaxonomyConflict,
   type TaxonomyBaseIdentity,
 } from './use-taxonomy-conflict';
+import { useTaxonomyVersionRows } from './use-taxonomy-version-rows';
 
 /** The seams a test replaces: the dynamic imports of the write and of the unknown-outcome check. */
 export const taxonomySubmitImporters = {
@@ -40,6 +44,8 @@ export const submitOnDemand: typeof submitTaxonomyVersion = async (...input) =>
 export interface TaxonomyDesignerOptions {
   /** The vocabulary's newest version when editing; null for a new key. */
   readonly latest: TaxonomyVersionFacts | null;
+  /** The vocabulary's versions as the page rendered them; refetched after a verified save. */
+  readonly versions?: readonly TaxonomyVersionSummary[] | undefined;
   readonly csrfToken: string;
   /** Seams for a test. */
   readonly submit?: typeof submitTaxonomyVersion | undefined;
@@ -60,9 +66,10 @@ const toggled = <T>(list: readonly T[], value: T): T[] =>
 /** All state and commands of the vocabulary designer; the components only render. */
 export const useTaxonomyDesigner = ({
   latest,
+  versions = [],
   csrfToken,
   submit = submitOnDemand,
-  readVersions = readTaxonomyVersions,
+  readVersions = readTaxonomyVersionsOnDemand,
 }: TaxonomyDesignerOptions) => {
   const [taxonomyKey, setTaxonomyKey] = useState(latest?.taxonomyKey ?? '');
   const [shape, setShape] = useState<TaxonomyShape | ''>(latest?.shape ?? '');
@@ -89,6 +96,9 @@ export const useTaxonomyDesigner = ({
     readVersions,
   );
   const { check: checkLatest, clear: clearConflict } = conflict;
+  const versionRows = useTaxonomyVersionRows(versions, readVersions);
+  const refreshVersions = versionRows.refresh;
+  const adoptVersions = versionRows.adopt;
 
   useEffect(() => {
     // The named result heading takes focus (FE03 :1108); the region is the fallback.
@@ -168,6 +178,7 @@ export const useTaxonomyDesigner = ({
     if (result.kind === 'created') {
       sentRef.current = snapshot;
       setStatus({ kind: 'created', resource: result.resource });
+      await refreshVersions(result.resource.taxonomyId);
       return;
     }
     setStatus({ kind: 'result', result });
@@ -183,15 +194,14 @@ export const useTaxonomyDesigner = ({
       // The check cannot load: the unknown outcome stays unknown and the person sees it.
       return;
     }
-    const verdict = reconcileUnknownVersionOutcome(
-      prepared.value,
-      await checkLatest(),
-    );
+    const read = await checkLatest();
+    const verdict = reconcileUnknownVersionOutcome(prepared.value, read);
     if (verdict.kind === 'created') {
       attemptRef.current = null;
       clearConflict();
       sentRef.current = snapshot;
       setStatus({ kind: 'created', resource: verdict.resource });
+      adoptVersions(read);
     } else if (verdict.kind === 'not-saved') {
       clearConflict();
       setStatus({ kind: 'unsaved' });
@@ -203,14 +213,25 @@ export const useTaxonomyDesigner = ({
     clearConflict,
     csrfToken,
     domains,
+    adoptVersions,
     fieldKeys,
     rateWait,
+    refreshVersions,
     shape,
     submit,
     taxonomyId,
     taxonomyKey,
     typeKeys,
   ]);
+
+  // FE03 1048 `commandState` error: a 409 "refetches" by itself. An unknown outcome is already read by
+  // `onSubmit`; the explicit control only repeats a read that failed.
+  useReconcileOnOutcome(
+    taxonomyId !== null &&
+      status.kind === 'result' &&
+      status.result.kind === 'conflict',
+    () => void checkLatest(),
+  );
 
   const loaded = conflict.verified;
   const rebase = useCallback((): void => {
@@ -246,6 +267,8 @@ export const useTaxonomyDesigner = ({
       [],
     ),
     base,
+    versionRows: versionRows.rows,
+    versionsStale: versionRows.stale,
     status,
     summaryRef,
     blocked,

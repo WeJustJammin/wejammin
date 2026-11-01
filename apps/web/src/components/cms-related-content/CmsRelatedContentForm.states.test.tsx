@@ -9,6 +9,15 @@ import {
   flush,
 } from '../cms-editorial-fields/cms-editor-dom.test-support';
 import { TARGET_REFUSED_MESSAGE } from './related-content-copy';
+import {
+  DRAFT_PATH,
+  RULE_PATH,
+  canonicalReads,
+  draftAnswer,
+  noRuleAnswer,
+  reads,
+  ruleAnswer,
+} from './related-conflict.test-support';
 import type { RelatedSubmitResult } from './related-content-submit';
 import {
   PAGE_PATH,
@@ -198,8 +207,11 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
       },
     );
 
-    it('[P2-S12-AC-271] commandState error (kept half): a 409 renders fixed conflict copy, keeps the draft and withholds the save behind the explicit Review changes read; it is NOT refetched automatically (D2) (CMS-03C-05)', async () => {
-      const fetchSpy = vi.fn<typeof fetch>();
+    it('[P2-S12-AC-271] commandState error (test correction, FE03 1049, DEC-242): a 409 renders fixed conflict copy, keeps the draft, refetches the draft and the saved rule by itself and withholds the save until the person reapplies (CMS-03C-05)', async () => {
+      const fetchSpy = canonicalReads({
+        [DRAFT_PATH]: () => draftAnswer('9'),
+        [RULE_PATH]: () => ruleAnswer({ version: '10' }),
+      });
       vi.stubGlobal('fetch', fetchSpy);
       const { container } = await draftThenSave({
         kind: 'conflict',
@@ -213,7 +225,11 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
       expect(buttonNamed(container, 'Review changes').disabled).toBe(false);
       expect(commit(container).disabled).toBe(true);
       expect(listItems(container, 'ol.cms-related-rows')).toContain(id(1));
-      expect(fetchSpy).not.toHaveBeenCalled();
+      expect(reads(fetchSpy).map((call) => call.path)).toEqual([
+        DRAFT_PATH,
+        RULE_PATH,
+      ]);
+      buttonNamed(container, /^Reapply/u);
       // Choosing a rule does not lift the conflict the person still has to review.
       await click(
         Array.from(
@@ -258,15 +274,22 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
     });
   });
 
-  it('[P2-S12-AC-271] commandState degraded (kept half): an unknown outcome claims no success and replays the same Idempotency-Key; nothing is refetched before the retry (D3) (CMS-03C-05)', async () => {
-    const fetchSpy = vi.fn<typeof fetch>();
+  it('[P2-S12-AC-271] commandState degraded (test correction, FE03 1050, DEC-242): an unknown outcome claims no success, is reconciled by a read of the saved rule before any retry, and the retry replays the same Idempotency-Key (CMS-03C-05)', async () => {
+    const fetchSpy = canonicalReads({
+      [DRAFT_PATH]: () => draftAnswer('4'),
+      [RULE_PATH]: () => noRuleAnswer(),
+    });
     vi.stubGlobal('fetch', fetchSpy);
     const { submit, container } = await draftThenSave((call) =>
       call === 0 ? { kind: 'uncertain' } : { kind: 'saved', saved: savedOf() },
     );
-    expect(heading(container)).toBe('Save not confirmed');
+    expect(reads(fetchSpy).map((call) => call.path)).toEqual([
+      DRAFT_PATH,
+      RULE_PATH,
+    ]);
+    expect(heading(container)).toBe('Save not recorded');
     expect(text(container)).toContain(
-      'We could not confirm whether the save went through. Saving again is safe: the same request is never applied twice.',
+      'The save was not recorded. Your choices are kept. Saving again is safe: the same request is never applied twice.',
     );
     expect(text(container)).not.toContain('Related content saved');
     expect(commit(container).disabled).toBe(false);
@@ -276,7 +299,6 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
     expect(submit.mock.calls[1]?.[2]).toBe(submit.mock.calls[0]?.[2]);
     expect(submit.mock.calls[1]?.[0]).toEqual(submit.mock.calls[0]?.[0]);
     expect(heading(container)).toBe('Related content saved');
-    expect(fetchSpy).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });
 

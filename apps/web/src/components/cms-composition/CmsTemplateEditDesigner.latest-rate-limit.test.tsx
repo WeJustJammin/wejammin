@@ -19,7 +19,8 @@ import CmsTemplateEditDesigner from './CmsTemplateEditDesigner';
 /**
  * FE03 "Network and retry contract" (:1172): the latest-version read after a conflict answered
  * 429. The wait is announced politely, the unsent values stay in the form, and the check cannot
- * be repeated before the stated wait has elapsed.
+ * be repeated before the stated wait has elapsed. The first scripted read is the automatic one a
+ * 409 starts by itself (FE03 1048, DEC-242 item 3); the live region is captured before it runs.
  */
 const TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
 const HASH = 'a'.repeat(64);
@@ -124,6 +125,8 @@ const mountConflicted = async (...reads: Response[]) => {
       />,
     );
   });
+  // The polite region is mounted with the form, empty, so an answer that arrives later is announced.
+  const region = container.querySelector('[data-cms-template-rate-limit]');
   await act(async () => {
     setInput(container.querySelector('#cms-template-audience')!, 'changed');
     container
@@ -131,7 +134,7 @@ const mountConflicted = async (...reads: Response[]) => {
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   });
   await settle();
-  return { container, fetcher, root };
+  return { container, fetcher, root, region };
 };
 
 const check = (container: HTMLElement): HTMLButtonElement =>
@@ -153,13 +156,16 @@ const notice = (container: HTMLElement): Element | null =>
 
 describe('the template latest-version check after a 429', () => {
   it('announces the stated wait politely, keeps the values and re-enables the check once it elapsed', async () => {
-    const { container, fetcher } = await mountConflicted(limited(5), current());
-    const initialNotice = notice(container);
+    const {
+      container,
+      fetcher,
+      region: initialNotice,
+    } = await mountConflicted(limited(5), current());
     expect(initialNotice).not.toBeNull();
-    expect(initialNotice?.textContent).toBe('');
     expect(initialNotice?.getAttribute('role')).toBe('status');
     expect(initialNotice?.getAttribute('aria-live')).toBe('polite');
-    await press(container);
+    expect(notice(container)).toBe(initialNotice);
+    expect(fetcher).toHaveBeenCalledTimes(2);
     expect(notice(container)?.getAttribute('role')).toBe('status');
     expect(notice(container)?.textContent).toBe(rateLimitMessage(5));
     expect(alertTexts(container).join(' ')).not.toContain('Too many requests');
@@ -185,21 +191,17 @@ describe('the template latest-version check after a 429', () => {
 
   it('asks for a moment, and leaves the check available, when no wait was stated', async () => {
     const { container } = await mountConflicted(limited());
-    await press(container);
     expect(notice(container)?.textContent).toBe(rateLimitMessage(null));
     expect(check(container).disabled).toBe(false);
   });
 
   it('keeps the alert for a read refused for another reason', async () => {
-    const { container } = await mountConflicted(
+    const { container, region: initialNotice } = await mountConflicted(
       Response.json({ private: 'error' }, { status: 403 }),
     );
-    const initialNotice = notice(container);
     expect(initialNotice).not.toBeNull();
-    expect(initialNotice?.textContent).toBe('');
     expect(initialNotice?.getAttribute('role')).toBe('status');
     expect(initialNotice?.getAttribute('aria-live')).toBe('polite');
-    await press(container);
     expect(alertTexts(container)).toContain(
       'Template designer access is required for this acting context.',
     );
@@ -247,6 +249,8 @@ describe('the template latest-version check after a 429', () => {
           </React.Profiler>,
         ),
       );
+      const initialNotice = notice(container);
+      const readStartedAt = Date.now();
       await act(async () => {
         setInput(container.querySelector('#cms-template-audience')!, 'changed');
         container.querySelector('form')!.dispatchEvent(
@@ -257,10 +261,6 @@ describe('the template latest-version check after a 429', () => {
         );
       });
       await settle();
-      expect(check(container).disabled).toBe(false);
-      const initialNotice = notice(container);
-      const readStartedAt = Date.now();
-      await press(container);
       expect(shifted, 'terminal commit must delay passive effect startup').toBe(
         true,
       );

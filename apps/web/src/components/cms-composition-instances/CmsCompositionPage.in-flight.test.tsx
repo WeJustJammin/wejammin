@@ -35,6 +35,7 @@ import {
   row,
   selectorItem,
 } from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /**
  * [P2-S12-AC-271] FE03 1046 commandState loading with root's reading of DEC-241: while a command is in flight a
@@ -84,7 +85,7 @@ const overrides = (container: HTMLElement) =>
   byLabel<HTMLTextAreaElement>(container, 'Overrides (JSON, optional)');
 
 describe('composition page: a command in flight', () => {
-  it('[P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, the pending label holds and the open review survives the answer', async () => {
+  it('[P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, a click reads no diff, the pending label holds and Review is enabled again after the answer', async () => {
     const held = heldReply();
     const diff1 = diffOf(1, [plainPath('/a')]);
     const diff2 = diffOf(2, [plainPath('/b')]);
@@ -118,9 +119,10 @@ describe('composition page: a command in flight', () => {
     expect(buttonNamed(c, 'Review update for /main/row-2').disabled).toBe(
       false,
     );
+    expectListRefetches(page, 1);
   });
 
-  it('[P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer and keep the form dirty', async () => {
+  it('[P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer', async () => {
     const held = heldReply();
     const page = mountPage({ [PLACE]: [held.reply] });
     const c = page.container;
@@ -144,6 +146,7 @@ describe('composition page: a command in flight', () => {
       pattern: side.patternVersionId,
       overrides: '{"/x": {"a": 1}}',
     });
+    expectListRefetches(page, 1);
   });
 
   it('[P2-S12-AC-271] commandState loading: fields that were not edited after dispatch are still cleared by a verified placement', async () => {
@@ -161,6 +164,7 @@ describe('composition page: a command in flight', () => {
     expect(pattern(c).value).toBe('');
     expect(overrides(c).value).toBe('');
     expect(slot(c).value).toBe('/main');
+    expectListRefetches(page, 1);
   });
 
   it('[P2-S12-AC-271] commandState loading: an answer changed while the accept is in flight is the one kept when the accept is refused 409 and the diff reloaded', async () => {
@@ -190,6 +194,7 @@ describe('composition page: a command in flight', () => {
       yours: radio(c, '/a', 'yours').checked,
       theirs: radio(c, '/a', 'theirs').checked,
     }).toEqual({ yours: false, theirs: true });
+    expectListRefetches(page, 1);
   });
 });
 
@@ -252,6 +257,7 @@ describe('composition page: placing the blocks a newer version adds (DEC-193)', 
       ),
     ).toHaveLength(2);
     expect(resultRegion(c)?.textContent).toContain('Blocks not placed');
+    expectListRefetches(page, 1);
   });
 
   it('[P2-S12-AC-271] commandState degraded: an unknown outcome on placing new blocks says so without claiming a result', async () => {

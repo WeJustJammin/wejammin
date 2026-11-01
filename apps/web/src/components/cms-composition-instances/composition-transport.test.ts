@@ -1,5 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
+import { BROWSER_READ_DEADLINE_MS } from '../../lib/read-deadline';
 import { readJson, sendJson } from './composition-transport';
 
 /*
@@ -226,5 +227,97 @@ describe('readJson', () => {
       status: null,
       reason: null,
     });
+  });
+});
+
+describe('readJson deadline (review V20 m10, DEC-246 ruling 1)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+  const failed = { kind: 'failed', status: null, reason: null };
+  const never = () => new Promise<Response>(() => undefined);
+
+  it('answers a failure at the shared deadline when the fetch never settles, and not before', async () => {
+    vi.useFakeTimers();
+    const answer = readJson('/api/v1/x', {
+      fetcher: never as unknown as typeof fetch,
+    });
+    let settled: unknown = null;
+    void answer.then((value) => (settled = value));
+    await vi.advanceTimersByTimeAsync(BROWSER_READ_DEADLINE_MS - 1);
+    expect(settled).toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(settled).toEqual(failed);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('gives the fetch a signal that the deadline aborts', async () => {
+    vi.useFakeTimers();
+    const signals: AbortSignal[] = [];
+    const fetcher = vi.fn((_path: string, init?: RequestInit) => {
+      signals.push(init?.signal as AbortSignal);
+      return never();
+    });
+    const answer = readJson('/api/v1/x', {
+      fetcher: fetcher as unknown as typeof fetch,
+    });
+    await vi.advanceTimersByTimeAsync(BROWSER_READ_DEADLINE_MS);
+    expect(await answer).toEqual(failed);
+    expect(signals[0]?.aborted).toBe(true);
+  });
+
+  it('answers a failure when the body never arrives', async () => {
+    vi.useFakeTimers();
+    const hung = async () =>
+      new Response(new ReadableStream({ start: () => undefined }), {
+        status: 200,
+      });
+    const answer = readJson('/api/v1/x', {
+      fetcher: hung as unknown as typeof fetch,
+    });
+    await vi.advanceTimersByTimeAsync(BROWSER_READ_DEADLINE_MS);
+    expect(await answer).toEqual(failed);
+  });
+
+  it('ends at once when the caller aborts, which is not waited for', async () => {
+    vi.useFakeTimers();
+    const caller = new AbortController();
+    const answer = readJson('/api/v1/x', {
+      fetcher: never as unknown as typeof fetch,
+      signal: caller.signal,
+    });
+    caller.abort();
+    expect(await answer).toEqual(failed);
+    expect(vi.getTimerCount()).toBe(0);
+  });
+
+  it('starts no retry once the caller has aborted while the retry waited', async () => {
+    const caller = new AbortController();
+    const fetcher = vi.fn(async () =>
+      error(503, 'DEPENDENCY_UNAVAILABLE', { retryable: true }),
+    );
+    const answer = await readJson('/api/v1/x', {
+      fetcher: fetcher as unknown as typeof fetch,
+      signal: caller.signal,
+      sleep: async () => caller.abort(),
+    });
+    expect(answer).toEqual(failed);
+    expect(fetcher).toHaveBeenCalledTimes(1);
+  });
+
+  it('answers a failure for a fetch that does not answer with a Response', async () => {
+    const answer = await readJson('/api/v1/x', {
+      fetcher: (async () => ({ status: 200 })) as unknown as typeof fetch,
+    });
+    expect(answer).toEqual(failed);
+  });
+
+  it('leaves no timer behind after an answer', async () => {
+    vi.useFakeTimers();
+    const answer = await readJson('/api/v1/x', {
+      fetcher: (async () => ok({ v: 1 })) as unknown as typeof fetch,
+    });
+    expect(answer).toMatchObject({ kind: 'ok' });
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

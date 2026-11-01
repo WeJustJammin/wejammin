@@ -54,6 +54,11 @@ version sits read-only beside the unsent draft before Keep or Discard is offered
 reused only while an outcome is unknown. Nothing the person typed is lost on a refusal. A 403 is
 the `capability_missing` copy only.
 
+A 409 version conflict reads the versions by itself (`useReconcileOnOutcome` in `use-taxonomy-designer.ts`; FE03 1048,
+DEC-242), and a verified save refetches the versions table (`use-taxonomy-version-rows.ts`): a failed refetch keeps the table
+it had and says so. A NEW vocabulary has no id to read before its first save, so its 409 and unknown outcome are not read
+back here (the same `Idempotency-Key` replay is the reconciliation).
+
 While a save is pending only the commit control is disabled (FE03 1048): every field stays editable and keeps focus, and an edit made meanwhile does not change the pending state. The fields lock only after a verified success (`CmsTaxonomyVersionDesigner.pending.test.tsx`).
 
 ## Related links
@@ -63,3 +68,15 @@ While a save is pending only the commit control is disabled (FE03 1048): every f
 - `../cms-governed-review/README.md`
 - `../../pages/api/v1/cms/taxonomies/README.md`
 - `.memory/wiki/specs/fe/03-cms-content-modeling.md` (`CmsTaxonomyVersionDesigner`)
+
+The versions read (`taxonomy-versions-read.ts`) is not part of the route's cold load: every use of it is a re-read after a
+command, a lost answer or a 409, so the islands default to `readTaxonomyVersionsOnDemand` (`taxonomy-versions-on-demand.ts`,
+which depends on the reader and nothing points back; `TAXONOMY_VERSIONS_PAGE_MAX` lives in `taxonomy-vocabulary-core.ts`) and the module is listed in `CMS_ON_DEMAND_CHUNKS` as `taxonomy-versions-read`
+with its proof in `cms-on-demand-taxonomy-locale.proof.test.tsx`. A chunk that cannot be fetched answers `unavailable`. `taxonomy-versions-on-demand.test.tsx` pins that path (the table is kept and the list is said not to be refreshed).
+The read has the shared 8,000 ms deadline (`../../lib/read-deadline.ts`; `taxonomy-versions-read.deadline.test.ts`): a read
+that never answers is `unavailable`, with the control that repeats it.
+Tests that run on fake timers must load that chunk first (`await import('./taxonomy-versions-read')` in `beforeAll`): a real
+module load cannot progress under fake timers, so the first test that reads would otherwise fail depending on the
+transform cache (`CmsTaxonomyVersionDesigner.latest-states.test.tsx`). `CmsTaxonomyVersionDesigner.closing-words.test.tsx`
+asserts the closing words of the FE03 state table: the save and the versions read after it are same-origin `no-store`
+requests and nothing is claimed before the server answers.

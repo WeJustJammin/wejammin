@@ -174,7 +174,7 @@ describe('CmsLocaleVariantForm: typed refusals keep the input and say one fixed 
     [
       422,
       'Could not save',
-      'A translation was refused. Check each value against the limit shown beside its field, then save again.',
+      'This language is not supported for this content type, so the translation cannot be saved. Nothing was saved.',
     ],
     [
       500,
@@ -246,11 +246,22 @@ describe('CmsLocaleVariantForm: rate limit and unknown outcome', () => {
     );
   });
 
-  it('keeps the idempotency key and replays the identical request while the outcome is unknown, and changes it with the request', async () => {
-    const { submit, container } = await saveWith((call) =>
-      call < 2
-        ? { kind: 'uncertain' }
-        : savedResult({ savedFieldIds: [TITLE] }),
+  it('keeps the idempotency key and replays the identical request while the outcome is unknown (each unknown outcome read back first), and changes it with the request', async () => {
+    const refresh = refreshStub({
+      kind: 'ready',
+      snapshot: {
+        version: '4',
+        sourceRevisionId: SOURCE_REVISION_ID,
+        sourceHash: HASH,
+        texts: { [TITLE]: 'Spring tour' },
+      },
+    });
+    const { submit, container } = await saveWith(
+      (call) =>
+        call < 2
+          ? { kind: 'uncertain' }
+          : savedResult({ savedFieldIds: [TITLE] }),
+      { refresh },
     );
     expect(heading(container)).toBe('Save not confirmed');
     expect(text(container)).toContain(

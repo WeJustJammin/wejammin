@@ -48,4 +48,15 @@ export type ReadState<T> =
   | {
       readonly kind: 'rate_limited';
       readonly retryAfterSeconds: number | null;
+    }
+  /**
+   * The pattern list could not be read again after the block registry changed (DEC-246 ruling 5): the digests it holds
+   * are stale, so the placement stays off until a read of the first page verifies; `cause` is the failed read.
+   */
+  | {
+      readonly kind: 'stale';
+      readonly cause: Extract<
+        ReadState<never>,
+        { kind: 'failed' | 'rate_limited' }
+      >;
     };

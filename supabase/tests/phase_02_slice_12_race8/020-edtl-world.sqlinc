@@ -1,0 +1,65 @@
+-- Slice 12 race8: the CMS-03B-10 create world, committed (lane claude_s12_db8; tracker P2-S12-AC-294).  Include INSIDE the world transaction, after
+-- `select no_plan();` and with psql output redirected (\o /dev/null).  It is the DEC-202 lock fixture of phase_02_slice_12_entry_default_template_lock
+-- (real public schema / template / entry producers: an active default template T1, the bound content type whose relation field targets `article`, a
+-- real article target entry T with the owner's assignment) plus, built by the same real producers:
+--   * r8-other  - an active content type of ANOTHER key and one entry E2 of it: for the owner it is a concealed relation target (BE03b rule 2: a target not
+--                 visible on the unlocked state is refused first with the uniform refusal and no lock is taken on it);
+--   * edtl-succ - an approved successor schema of the bound content type (default T1, no bindings), its CMS-03A-04 activation stashed under 'actsucc';
+--   * stashed commands: 'bump' (CMS-03B-01 cms_create_revision on T), 'retire' (CMS-03C-09 retire of T1) and the notes the files assert on.
+-- The path starts with `../` because \ir resolves it against THIS file's directory.  The world file's own `begin;` only warns inside the open transaction.
+\ir ../phase_02_slice_12_entry_default_template_lock/000-world.sqlinc
+
+select pg_temp.r7_note('world_premises_failed', (select count(*) filter (where not passed) from s12edtl_premises)::text);
+select pg_temp.r7_note('world_premises', (select count(*) from s12edtl_premises)::text);
+
+-- the concealed target: another content type of the owner, one entry of it, created by the real command
+select pg_temp.s09d_create_type('r8-other', 's12r8other');
+select pg_temp.s09d_to_active('r8-other', array['rev2']);
+select pg_temp.s12ga_rpc('r8-e2-create', 'platform_api.cms_create_entry', 'owner',
+  pg_temp.s12edtl_request('r8-other', jsonb_build_object(
+    (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('r8-other:version') and field_key = 'title'), 'R8 CONCEALED TARGET'), 'r8-e2-create-key'),
+  pg_temp.s09d_context('owner', true));
+select pg_temp.r7_note('e2_create_state', pg_temp.s12ga_state('r8-e2-create'));
+select pg_temp.r7_note('e2', pg_temp.s12ga_body('r8-e2-create')->'entry'->>'id');
+
+-- the successor schema, approved, and its stashed activation (the request of pg_temp.s09d_activate)
+select pg_temp.s09d_successor('edtl-succ', 'edtl-bound', 'owner', null, null, null,
+  p_default_template => pg_temp.s12ga_subject('edtl-template'), p_bindings => '[]'::jsonb);
+select pg_temp.s09d_to_approved('edtl-succ', array['rev3']);
+select pg_temp.r7_stash_cmd('actsucc', 'owner', 'platform_api.cms_activate_schema', jsonb_build_object(
+    'contentTypeId', pg_temp.s09d_id('edtl-succ:type'), 'versionId', pg_temp.s09d_id('edtl-succ:version'),
+    'expectedVersion', pg_temp.s09d_version('edtl-succ'), 'dryRunId', pg_temp.s09d_id('edtl-succ:dryRun'),
+    'approvalIds', pg_temp.s09d_approval_ids('edtl-succ'), 'migrationPlanId', pg_temp.s09d_id('edtl-succ:plan'),
+    'idempotencyKey', 'r8-actsucc-key'), pg_temp.s09d_context('owner', true));
+select pg_temp.r7_note('actsucc_request', (select ((body::jsonb) #- '{request,context}')->>'request' from r7_stash where key = 'actsucc'));
+select pg_temp.r7_note('succ_steps', (select string_agg(label || '=' || state || coalesce(':' || message, ''), ', ' order by label) from s09d_probe where label like 'edtl-succ:%'));
+select pg_temp.r7_note('succ_version', pg_temp.s09d_id('edtl-succ:version')::text);
+select pg_temp.r7_note('succ_state_in_world', (select state::text from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('edtl-succ:version')));
+
+-- ids the files assert on
+select pg_temp.r7_note('bound_version', pg_temp.s09d_id('edtl-bound:version')::text);
+select pg_temp.r7_note('bound_type', pg_temp.s09d_id('edtl-bound:type')::text);
+select pg_temp.r7_note('template', pg_temp.s12ga_subject('edtl-template')::text);
+select pg_temp.r7_note('target', pg_temp.s09d_id('edtl-target:entry')::text);
+select pg_temp.r7_note('target_version', pg_temp.s09d_id('edtl-target:version')::text);
+select pg_temp.r7_note('relation_field', (select stable_field_id::text from platform_private.cms_field_definition_versions
+  where content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field_key = 'related'));
+select pg_temp.r7_note('owner_org', pg_temp.s09d_id('ownerOrg')::text);
+select pg_temp.r7_note('owner_person', (select person_id::text from s09d_actor where key = 'owner'));
+
+-- The create request of the bound content type (the request builder of the world, stashed under p_key) with an optional relation target and pin.
+create or replace function pg_temp.r8_stash_create(p_key text, p_target uuid, p_pin text default null) returns void language plpgsql as $b$
+declare v_values jsonb;
+begin
+  v_values := jsonb_build_object(
+    (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field_key = 'title'), 'R8 ' || p_key);
+  if p_target is not null then
+    v_values := v_values || jsonb_build_object(pg_temp.r7_get('relation_field'), jsonb_build_object('targets', jsonb_build_array(
+      jsonb_strip_nulls(jsonb_build_object('targetId', p_target, 'expectedTargetVersion', p_pin)))));
+  end if;
+  perform pg_temp.r7_stash_cmd(p_key, 'owner', 'platform_api.cms_create_entry',
+    pg_temp.s12edtl_request('edtl-bound', v_values, 'r8-' || p_key), pg_temp.s09d_context('owner', true));
+end;
+$b$;

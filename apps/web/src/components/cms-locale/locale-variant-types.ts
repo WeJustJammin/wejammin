@@ -1,6 +1,10 @@
 import type { JsonValue } from '@wejammin/contracts';
 
 import type { CmsScalarDescriptor } from '../cms-editorial-fields/cms-field-descriptor';
+import type {
+  LocaleSubmitResult,
+  SavedLocaleVariant,
+} from './locale-variant-submit';
 
 /** The localization modes that put a field in scope of a locale variant (BE03a, BE03c 1526). */
 export type LocaleFieldMode = 'localized' | 'no_fallback';
@@ -58,4 +62,37 @@ export interface LocaleVariantInit {
   readonly state: LocaleVariantState;
   readonly values: Readonly<Record<string, JsonValue | null>>;
   readonly staleFieldIds: readonly string[];
+}
+
+/** The form's status: what the one focusable result region renders. */
+export type LocaleStatus =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'invalid'; readonly issues: readonly LocaleIssue[] }
+  | { readonly kind: 'pending' }
+  | { readonly kind: 'saved'; readonly saved: SavedLocaleVariant }
+  | {
+      readonly kind: 'result';
+      readonly result: Exclude<LocaleSubmitResult, { kind: 'saved' }>;
+    };
+
+export type LocaleIssueCode =
+  | 'entry_invalid'
+  | 'locale_invalid'
+  | 'source_invalid'
+  | 'hash_invalid'
+  | 'version_invalid'
+  | 'chain_invalid'
+  | 'nothing_to_save'
+  | 'too_many_fields'
+  | 'field_invalid'
+  | 'module_unavailable';
+
+export interface LocaleIssue {
+  readonly code: LocaleIssueCode;
+  /** The summary line: for a field it names the field. */
+  readonly message: string;
+  /** What is wrong with a field, for the message beside its control. */
+  readonly detail?: string;
+  /** A field id, or `form` for an issue about the request as a whole. */
+  readonly target: string;
 }

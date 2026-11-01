@@ -37,7 +37,8 @@ afterEach(() => vi.useRealTimers());
 /**
  * FE03 "Network and retry contract" (:1172): the latest-version read after a conflict or an
  * unknown outcome answered 429. The wait is announced, the unsent tree stays in the form, and the
- * check cannot be repeated before the stated wait has elapsed.
+ * check cannot be repeated before the stated wait has elapsed. The first read is the automatic one
+ * the 409 starts by itself (FE03 1048, DEC-242 item 3).
  */
 const limited = (retryAfterSeconds?: number): PatternLatestResult => ({
   kind: 'rejected',
@@ -45,7 +46,9 @@ const limited = (retryAfterSeconds?: number): PatternLatestResult => ({
   ...(retryAfterSeconds === undefined ? {} : { retryAfterSeconds }),
 });
 
-const mount = (...reads: PatternLatestResult[]) => {
+const mount = (
+  ...reads: Array<PatternLatestResult | Promise<PatternLatestResult>>
+) => {
   const queue = [...reads];
   const readLatest = vi.fn(async () => {
     const next = queue.shift();
@@ -87,8 +90,7 @@ describe('the latest-version check after a 429', () => {
       detail: latestDetail({ version: '5', patternVersion: 5 }),
     });
     await toConflict(container);
-    await click(check(container));
-    await settle();
+    expect(readLatest).toHaveBeenCalledTimes(1);
     expect(conflictAlert(container)).toBe(rateLimitMessage(5));
     expect(check(container).disabled).toBe(true);
     expect(container.textContent).toContain('Node 1 · Level 1 of 8');
@@ -109,14 +111,17 @@ describe('the latest-version check after a 429', () => {
   it('asks for a moment, and leaves the check available, when no wait was stated', async () => {
     const { container } = mount(limited());
     await toConflict(container);
-    await click(check(container));
-    await settle();
     expect(conflictAlert(container)).toBe(rateLimitMessage(null));
     expect(check(container).disabled).toBe(false);
   });
 
   it('announces it politely instead of interrupting, in a live region that was already there', async () => {
-    const { container } = mount(limited(8));
+    // The automatic read is held, so the empty region can be observed before its answer arrives.
+    let release: (result: PatternLatestResult) => void = () => undefined;
+    const held = new Promise<PatternLatestResult>((resolve) => {
+      release = resolve;
+    });
+    const { container } = mount(held);
     await toConflict(container);
     const region = container.querySelector(
       '.cms-pattern-conflict [data-cms-pattern-rate-limit]',
@@ -125,7 +130,9 @@ describe('the latest-version check after a 429', () => {
     expect(region?.getAttribute('aria-live')).toBe('polite');
     expect(region?.getAttribute('aria-atomic')).toBe('true');
     expect(region?.textContent).toBe('');
-    await click(check(container));
+    await act(async () => {
+      release(limited(8));
+    });
     await settle();
     const notice = container.querySelector(
       '.cms-pattern-conflict [data-cms-pattern-rate-limit]',
@@ -137,8 +144,6 @@ describe('the latest-version check after a 429', () => {
   it('keeps the alert for a read refused for another reason', async () => {
     const { container } = mount({ kind: 'rejected', status: 403 });
     await toConflict(container);
-    await click(check(container));
-    await settle();
     expect(
       container.querySelector('.cms-pattern-conflict [role="alert"]')
         ?.textContent,

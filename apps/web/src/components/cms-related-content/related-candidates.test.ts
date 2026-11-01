@@ -1,5 +1,5 @@
 import { EntryListPageSchema } from '@wejammin/contracts';
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   CANDIDATE_PAGE_LIMIT,
@@ -198,5 +198,31 @@ describe('fetchCandidatePage', () => {
         throw new TypeError('offline');
       }) as unknown as typeof fetch),
     ).toEqual({ kind: 'failed' });
+  });
+});
+
+describe('fetchCandidatePage deadline (DEC-246 ruling 1)', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('answers failed at the shared 8,000 ms deadline when the list never answers, and aborts the fetch', async () => {
+    vi.useFakeTimers();
+    const signals: AbortSignal[] = [];
+    const fetcher = vi.fn((_url: string, init?: RequestInit) => {
+      signals.push(init?.signal as AbortSignal);
+      return new Promise<Response>(() => undefined);
+    });
+    const answer = fetchCandidatePage(
+      null,
+      SOURCE,
+      fetcher as unknown as typeof fetch,
+    );
+    let settled: unknown = null;
+    void answer.then((value) => (settled = value));
+    await vi.advanceTimersByTimeAsync(7_999);
+    expect(settled).toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(settled).toEqual({ kind: 'failed' });
+    expect(signals[0]?.aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

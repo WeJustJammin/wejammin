@@ -49,7 +49,11 @@ export default function CmsCompositionPage(
         onSubmit={() => void insert.submit()}
         onLoadMore={() => void insert.loadMore()}
       />
-      <CmsCompositionStatus status={session.status} />
+      <CmsCompositionStatus
+        status={session.status}
+        recheck={session.unconfirmed ? session.recheck : null}
+        rechecking={session.holding}
+      />
       <CmsCompositionInstanceList
         rows={session.rows}
         selected={page.selected}

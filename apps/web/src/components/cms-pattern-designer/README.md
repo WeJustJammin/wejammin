@@ -23,7 +23,7 @@ first-party proxies in `apps/web/src/server/cms-pattern-platform-*.ts`.
   `pattern-tree-rules.ts` writes out every bound and grammar of `PatternBlockTreeSchema`
   and `CmsPatternKeySchema`; `pattern-designer-reasons.ts` writes out the CMS-03C-12 reason
   tokens and the composition catalog codes; `pattern-designer-submit.ts` and
-  `pattern-latest-read.ts` verify a 2xx structurally (the proxy has already parsed the strict
+  `pattern-latest-fetch.ts` verify a 2xx structurally (the proxy has already parsed the strict
   resource). Their `*.test.ts` files are the drift guards against the generated contracts.
 - Model: `pattern-tree-state.ts` (pure edits of the editable tree by `uiId`),
   `pattern-designer-request.ts` (the form to a `PatternVersionRequest`, naming the node a
@@ -60,7 +60,24 @@ Components stay at most 200 lines and hold no business rule.
 ## Conventions
 
 Every control has a persistent label and a 44 by 44 pixel target; every tree edit has an
-explicit add, remove, move earlier or move later button (never drag-only). The tree is an
+explicit add, remove, move earlier or move later button (never drag-only). A 409 version conflict reads the latest version
+by itself (`useReconcileOnOutcome` in `use-pattern-designer.ts`, FE03 1048, DEC-242); the control only repeats a failed read.
+The registry-digest 409 (`block_registry_digest_mismatch`) re-reads the designer context by itself
+(`useRegistryContext`, `../cms-composition/cms-template-context-read.ts`), keeps the unsent tree, replaces the block choices
+and names the selectors that changed (`CmsRegistryChangeNotice`); no send is possible while that read runs or after it failed.
+The reader stays behind the on-demand seam (`../cms-composition/README.md`, the 94 B route margin). The fixed copy of that
+refusal and of `block_unavailable` never says reload (`pattern-designer-reasons.test.ts`).
+The latest-version read is split: `pattern-latest-read.ts` holds the types and a thin `readLatestPatternVersion` that
+imports `pattern-latest-fetch.ts` (the reader and its verification, the `pattern-latest-fetch` entry of
+`CMS_ON_DEMAND_CHUNKS`, proof `../cms-on-demand-pattern-terms.proof.test.tsx`) when the island asks; only that wrapper is
+on the initial route. A test that mounts a designer with the default reader under fake timers must load it first
+(`await import('./pattern-latest-fetch')`). Both protected reads of the designer, the latest version and the nestable list,
+have the shared 8,000 ms deadline (`pattern-latest-fetch.deadline.test.ts`, `pattern-nestable-read.deadline.test.ts`; the defensive answers, a caller that aborts mid-read and a non-Response, are pinned in
+`pattern-latest-fetch.edges.test.ts` and `pattern-nestable-read.edges.test.ts`);
+`CmsPatternVersionDesigner.hung-reads.test.tsx` mounts the designer with a fetch that never answers and asserts the unavailable
+cell with "Check latest version" and the failed cell with "Retry loading nestable patterns".
+`CmsPatternVersionDesigner.closing-words.test.tsx` asserts the closing words of the FE03 state table: the save and the reads
+around it are same-origin `no-store` requests and nothing is claimed, and no address rewritten, before the server answers. The tree is an
 `<ol>` with level text ("Level 2 of 8") and node numbers ("Node 1.2") that the error
 summary uses to link to the node. A cycle, depth or node-count refusal names the offending
 request node (DEC-228, `/blockTree/{i}(/children/{j})*`, read by `pattern-designer-node-pointer.ts`)

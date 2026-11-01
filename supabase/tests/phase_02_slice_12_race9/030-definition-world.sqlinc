@@ -1,0 +1,44 @@
+-- Slice 12 race9: the definitions of ORGANIZATION A named by a caller of ORGANIZATION B (lane claude_s12_db9a; tracker P2-S12-AC-294 "no invisible/foreign definition lock
+-- lever", DEC-245(6): a DEFINITION, a content type or a template, not a relation target).  Include INSIDE the world transaction, after `select no_plan();` and with psql
+-- output redirected (\o /dev/null).  It is race8's DEC-202 create world of organization A (020-edtl-world.sqlinc: the active bound content type with its versions, the active
+-- default template T1, an approved successor schema and its stashed CMS-03A-04 activation) plus, for the caller of organization B (`other`, the owner of the second
+-- organization of the DEC-108 actors; its own schema-designer grant is the existing fixture forgery of that helper, nothing is added):
+--   'b_activate' / 'b_activate_absent'  B sends A's stashed schema activation request (A's content type, version, dry run and plan ids) / the same shape with absent ids
+--   'b_submit' / 'b_submit_absent'      B submits A's default template version (CMS-03C-06 `subjectKind template_version`) / an absent template version id
+--   'b_create' / 'b_create_absent'      B sends the REAL CMS-03B-10 `cms_create_entry` naming A's `contentTypeId` + `contentTypeVersionId` (A's create request, B's context) / an absent pair
+--   'a_create'                          A's own create of the bound content type (the positive control: it needs A's version rows and A's template)
+-- LABELLED FIXTURE (the repository has no command that grants a CMS capability of a non-initialized organization; the S09 world and db9b forge the same row):
+-- `other` holds cms.author in the second organization (an organization_actor_grant row), so that its create passes the capability check and reaches the definition lookup.
+create or replace function pg_temp.r9_stash_b(p_key text, p_fn text, p_request jsonb) returns void language plpgsql as $b$
+begin
+  perform pg_temp.r7_stash_cmd(p_key, 'other', p_fn, p_request, pg_temp.s09d_context('other', true));
+  perform pg_temp.r7_stash_copy(p_key || ':lt', p_key, '{"lock_timeout": "1s"}'::jsonb);
+end;
+$b$;
+\ir ../phase_02_slice_12_race8/020-edtl-world.sqlinc
+
+insert into identity_private.organization_actor_grant(organization_id, person_id, capability_code, valid_from, valid_through, active)
+select pg_temp.s09d_id('otherOrg'), person_id, 'cms.author', current_date, current_date + 1, true from s09d_actor where key = 'other';
+
+select pg_temp.r8_stash_create('a_create', null);
+select pg_temp.r9_stash_b('b_activate', 'platform_api.cms_activate_schema',
+  (((select body::jsonb from r7_stash where key = 'actsucc')->'request') - 'context') || jsonb_build_object('idempotencyKey', 'r9-b-activate-key'));
+select pg_temp.r9_stash_b('b_activate_absent', 'platform_api.cms_activate_schema', jsonb_build_object(
+    'contentTypeId', 'a9a94000-0000-4000-8000-0000000009a1', 'versionId', 'a9a94000-0000-4000-8000-0000000009a2',
+    'expectedVersion', pg_temp.s09d_version('edtl-succ'), 'dryRunId', 'a9a94000-0000-4000-8000-0000000009a3',
+    'approvalIds', (((select body::jsonb from r7_stash where key = 'actsucc')->'request')->'approvalIds'),
+    'migrationPlanId', 'a9a94000-0000-4000-8000-0000000009a4', 'idempotencyKey', 'r9-b-activate-absent-key'));
+select pg_temp.r9_stash_b('b_submit', 'platform_api.cms_submit_governed_review', jsonb_build_object(
+    'subjectKind', 'template_version', 'subjectId', pg_temp.s12ga_subject('edtl-template'), 'subjectHash', repeat('a', 64), 'idempotencyKey', 'r9-b-submit-key'));
+select pg_temp.r9_stash_b('b_submit_absent', 'platform_api.cms_submit_governed_review', jsonb_build_object(
+    'subjectKind', 'template_version', 'subjectId', 'a9a94000-0000-4000-8000-0000000009b1', 'subjectHash', repeat('a', 64), 'idempotencyKey', 'r9-b-submit-absent-key'));
+select pg_temp.r7_note('other_org', pg_temp.s09d_id('otherOrg')::text);
+select pg_temp.r7_note('bound_type_row_state', (select state::text from platform_private.cms_content_types where id = pg_temp.s09d_id('edtl-bound:type')));
+select pg_temp.r9_stash_b('b_create', 'platform_api.cms_create_entry', pg_temp.s12edtl_request('edtl-bound', jsonb_build_object(
+    (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field_key = 'title'), 'R9 B CREATE'), 'r9-b-create-key'));
+select pg_temp.r9_stash_b('b_create_absent', 'platform_api.cms_create_entry', pg_temp.s12edtl_request('edtl-bound', jsonb_build_object(
+    (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field_key = 'title'), 'R9 B CREATE ABSENT'), 'r9-b-create-absent-key')
+  || jsonb_build_object('contentTypeId', 'a9a94000-0000-4000-8000-0000000009c1', 'contentTypeVersionId', 'a9a94000-0000-4000-8000-0000000009c2'));
+select pg_temp.r7_note('owner_org', pg_temp.s09d_id('ownerOrg')::text);

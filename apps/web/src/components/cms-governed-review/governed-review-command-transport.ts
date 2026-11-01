@@ -212,6 +212,7 @@ export const sendGovernedCommand = async <
       path,
       await addClientBindingIdHeader(path, {
         method: 'POST',
+        cache: 'no-store',
         credentials: 'same-origin',
         redirect: 'manual',
         headers,

@@ -63,25 +63,32 @@ export const useLocaleSourceReview = ({
     [],
   );
 
-  const read = useCallback(async (): Promise<void> => {
-    controllerRef.current?.abort();
-    const controller = new AbortController();
-    controllerRef.current = controller;
-    const sequence = ++sequenceRef.current;
-    setState({ kind: 'reading' });
-    const result = await refresh({
-      entryId,
-      sourceLocale,
-      fieldIds,
-      signal: controller.signal,
-    });
-    if (sequenceRef.current === sequence) setState(result);
-  }, [entryId, fieldIds, refresh, sourceLocale]);
+  /** Reads the draft detail; resolves to what it answered, or null when a later read or a clear superseded it. */
+  const read =
+    useCallback(async (): Promise<LocaleSourceRefreshResult | null> => {
+      controllerRef.current?.abort();
+      const controller = new AbortController();
+      controllerRef.current = controller;
+      const sequence = ++sequenceRef.current;
+      setState({ kind: 'reading' });
+      const result = await refresh({
+        entryId,
+        sourceLocale,
+        fieldIds,
+        signal: controller.signal,
+      });
+      if (sequenceRef.current !== sequence) return null;
+      setState(result);
+      return result;
+    }, [entryId, fieldIds, refresh, sourceLocale]);
 
   const require = useCallback((): void => {
     setRequired(true);
     void read();
   }, [read]);
+
+  /** Puts the review gate in front of the next save with what was already read (no second read). */
+  const hold = useCallback((): void => setRequired(true), []);
 
   const clear = useCallback((): void => {
     sequenceRef.current += 1;
@@ -94,5 +101,5 @@ export const useLocaleSourceReview = ({
   const snapshot: LocaleSourceSnapshot | null =
     state.kind === 'ready' ? state.snapshot : null;
 
-  return { required, state, snapshot, require, read, clear };
+  return { required, state, snapshot, require, read, hold, clear };
 };

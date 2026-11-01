@@ -8,8 +8,13 @@ export const RESULT_HEADING_ID = 'cms-composition-result-heading';
 /** The one focusable result region: a pending note, a named outcome, or a refusal that says what was kept. */
 export default function CmsCompositionStatus({
   status,
+  recheck = null,
+  rechecking = false,
 }: {
   readonly status: CompositionStatus;
+  /** An unknown outcome whose reading could not verify: "Check again", the only way to a retry (FE03 1050). */
+  readonly recheck?: (() => Promise<void>) | null;
+  readonly rechecking?: boolean;
 }): React.ReactElement | null {
   const nonce =
     status.kind === 'success' || status.kind === 'error' ? status.nonce : 0;
@@ -42,6 +47,17 @@ export default function CmsCompositionStatus({
         </h2>
       )}
       {status.kind === 'error' && !status.gate ? <p>{status.message}</p> : null}
+      {recheck === null ? null : (
+        <p>
+          <button
+            type="button"
+            aria-disabled={rechecking ? 'true' : 'false'}
+            onClick={rechecking ? undefined : () => void recheck()}
+          >
+            Check again
+          </button>
+        </p>
+      )}
       {lines.length > 0 ? (
         <ul>
           {lines.map((line, index) => (

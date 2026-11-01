@@ -18,6 +18,8 @@ const PATTERN_REASONS = [
   'pattern_not_active',
   'pattern_digest_changed',
   'nested_pattern_not_active',
+  'pattern_depth_exceeded',
+  'pattern_nodes_exceeded',
   'pattern_block_rules_violated',
 ] as const;
 
@@ -97,6 +99,22 @@ describe('BE03c pattern preflight provider (DEC-199)', () => {
     expect(cmsPreflightUnavailableReasons('pattern')).toEqual([
       'provider_unavailable',
     ]);
+  });
+
+  it('[P2-S12-AC-211] DEC-247 publishes the re-proved CMS-03C-12 bounds as failed reasons, after nested_pattern_not_active', () => {
+    const failed = cmsPreflightFailedReasons('pattern');
+    for (const reasonCode of ['pattern_depth_exceeded', 'pattern_nodes_exceeded']) {
+      expect(failed, reasonCode).toContain(reasonCode);
+      expect(cmsPreflightUnavailableReasons('pattern')).not.toContain(
+        reasonCode,
+      );
+    }
+    expect(failed.indexOf('pattern_depth_exceeded')).toBe(
+      failed.indexOf('nested_pattern_not_active') + 1,
+    );
+    expect(failed.indexOf('pattern_nodes_exceeded')).toBe(
+      failed.indexOf('pattern_depth_exceeded') + 1,
+    );
   });
 
   it('parses every closed pattern reason through result, report and refusal contracts', () => {

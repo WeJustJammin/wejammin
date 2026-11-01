@@ -70,3 +70,6 @@ desktop.ini
 *.swp
 *.swo
 *~
+
+# Local lane and e2e server-log captures (tests/e2e/support/run-s09-real-servers.mjs)
+.lane-logs/

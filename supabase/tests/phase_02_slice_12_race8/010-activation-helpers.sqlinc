@@ -1,0 +1,22 @@
+-- Slice 12 race8: session helpers shared by the race8 files that drive CMS-03C-09 (lane claude_s12_db8; scoped images of a review, the audit / outbox /
+-- idempotency counts, the lineage lock key, the activator's grant row).  Include AFTER 000-harness.sqlinc of race7, outside any transaction:
+--   \ir phase_02_slice_12_race8/010-activation-helpers.sqlinc
+-- They are session (pg_temp) functions, so they outlive the committed world's transaction; they read only the CMS tables and the notes of the harness.
+create or replace function pg_temp.r8_img(p_review uuid) returns text language sql stable as $b$
+  select pg_catalog.md5(pg_catalog.jsonb_build_object(
+    'review', (select pg_catalog.to_jsonb(r) from platform_private.cms_governed_reviews r where r.id = p_review),
+    'subject', (select pg_catalog.to_jsonb(t) from platform_private.cms_template_versions t
+                 where t.id = (select r.subject_id from platform_private.cms_governed_reviews r where r.id = p_review)),
+    'decisions', (select pg_catalog.count(*) from platform_private.cms_governed_review_decisions d where d.review_id = p_review))::text) $b$;
+create or replace function pg_temp.r8_stores() returns text language sql stable as $b$
+  select 'audit=' || (select count(*) from audit_private.audit_events) || ' outbox=' || (select count(*) from platform_private.outbox_events)
+    || ' idem=' || (select count(*) from platform_private.idempotency_records) $b$;
+create or replace function pg_temp.r8_states(p_lineage uuid) returns text language sql stable as $b$
+  select coalesce(pg_catalog.string_agg(state::text, ',' order by version), '') from platform_private.cms_template_versions where template_id = p_lineage $b$;
+create or replace function pg_temp.r8_state_of(p_subject uuid) returns text language sql stable as $b$
+  select state::text from platform_private.cms_template_versions where id = p_subject $b$;
+create or replace function pg_temp.r8_lock_key(p_lineage uuid) returns text language sql stable as $b$
+  select platform_private.cms_governed_lineage_lock_key('template_version', p_lineage)::text $b$;
+create or replace function pg_temp.r8_grant_where() returns text language sql stable as $b$
+  select format('organization_id = %L::uuid and person_id = %L::uuid and capability_code = ''cms.template_designer''',
+    pg_temp.r7_get('owner_org'), pg_temp.r7_get('owner_person')) $b$;

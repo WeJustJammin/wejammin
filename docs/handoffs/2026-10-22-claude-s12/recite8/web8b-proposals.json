@@ -1,0 +1,1094 @@
+[
+ {
+  "criterion": "P2-S12-AC-271",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "(the whole 7-state x 5-family table; web8b: related content, composition and governed islands)",
+    "add": [
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx",
+      "title": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState success (test correction, FE03 1047): the named outcome per instance, the panel and selection cleared, no entry read for a single request, and the instance list refetched",
+      "part": "success",
+      "cell": "commandState success (test correction, FE03 1047): the named outcome per instance, the panel and selection cleared, no entry read for a sing"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx",
+      "title": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState error (test correction, FE03 1049): 409 diff_has_collisions renders fixed copy, keeps the selection, and refetches the entry, the instance list and the unapplied diffs",
+      "part": "error",
+      "cell": "commandState error (test correction, FE03 1049): 409 diff_has_collisions renders fixed copy, keeps the selection, and refetches the entry, t"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx",
+      "title": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState error (test correction, FE03 1049): 409 null renders fixed copy, keeps the selection, and refetches the entry, the instance list and the unapplied diffs",
+      "part": "error",
+      "cell": "commandState error (test correction, FE03 1049): 409 null renders fixed copy, keeps the selection, and refetches the entry, the instance lis"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx",
+      "title": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, states that nothing is assumed, keeps the selection, and only then offers the retry under the same key",
+      "part": "degraded",
+      "cell": "commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, states"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk-edges.test.tsx",
+      "title": "bulk: the sequence stops cleanly [P2-S12-AC-271] commandState error: when the entry cannot be read between requests the sequence stops, says how many were applied and keeps the unapplied diffs without re-reading them",
+      "part": "error",
+      "cell": "commandState error: when the entry cannot be read between requests the sequence stops, says how many were applied and keeps the unapplied di"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk-edges.test.tsx",
+      "title": "bulk: the sequence stops cleanly [P2-S12-AC-271] commandState error: a refused request that is not a 409 stops the sequence and keeps the unapplied diffs as they are, without a re-read",
+      "part": "error",
+      "cell": "commandState error: a refused request that is not a 409 stops the sequence and keeps the unapplied diffs as they are, without a re-read"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk-edges.test.tsx",
+      "title": "bulk detach: a 409 on a later request [P2-S12-AC-271] commandState error: a 409 on the second request of a bulk detach says how many were applied, refetches the entry and the list, and leaves the rest selected",
+      "part": "error",
+      "cell": "commandState error: a 409 on the second request of a bulk detach says how many were applied, refetches the entry and the list, and leaves th"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk-edges.test.tsx",
+      "title": "bulk 409: the diffs it re-reads [P2-S12-AC-271] diffState error: a diff that cannot be read again after a 409 is said so, and no stale diff is kept",
+      "part": "error",
+      "cell": "diffState error: a diff that cannot be read again after a 409 is said so, and no stale diff is kept"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk-edges.test.tsx",
+      "title": "bulk 409: the diffs it re-reads [P2-S12-AC-271] diffState error: a diff that cannot be reached after a 409 is said so, and no stale diff is kept",
+      "part": "error",
+      "cell": "diffState error: a diff that cannot be reached after a 409 is said so, and no stale diff is kept"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk-edges.test.tsx",
+      "title": "bulk 409: the diffs it re-reads [P2-S12-AC-271] diffState error: a page that goes away while the diffs are read again changes nothing",
+      "part": "error",
+      "cell": "diffState error: a page that goes away while the diffs are read again changes nothing"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk.test.tsx",
+      "title": "bulk accept [P2-S12-AC-271] commandState error (test correction, FE03 1049): stops at a 409 request, says how many were applied, refetches the entry, the list and the unapplied diffs, and leaves the rest selected",
+      "part": "error",
+      "cell": "commandState error (test correction, FE03 1049): stops at a 409 request, says how many were applied, refetches the entry, the list and the u"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.list-refetch.test.tsx",
+      "title": "composition page: the list is refetched from the protected read [P2-S12-AC-271] commandState success: a verified placement refetches the instance list and shows the server render order",
+      "part": "success",
+      "cell": "commandState success: a verified placement refetches the instance list and shows the server render order"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.list-refetch.test.tsx",
+      "title": "composition page: the list is refetched from the protected read [P2-S12-AC-271] commandState success: a verified detach refetches the instance list and shows rows another session changed",
+      "part": "success",
+      "cell": "commandState success: a verified detach refetches the instance list and shows rows another session changed"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.list-refetch.test.tsx",
+      "title": "composition page: the list is refetched from the protected read [P2-S12-AC-271] commandState success: a verified accept refetches the instance list once the update is applied",
+      "part": "success",
+      "cell": "commandState success: a verified accept refetches the instance list once the update is applied"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.list-refetch.test.tsx",
+      "title": "composition page: the list is refetched from the protected read [P2-S12-AC-271] commandState error: a 409 on a detach refreshes the entry and refetches the instance list before saying so",
+      "part": "error",
+      "cell": "commandState error: a 409 on a detach refreshes the entry and refetches the instance list before saying so"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.list-refetch.test.tsx",
+      "title": "composition page: the list is refetched from the protected read [P2-S12-AC-271] commandState error: a 409 on a placement refetches the instance list and keeps the typed fields",
+      "part": "error",
+      "cell": "commandState error: a 409 on a placement refetches the instance list and keeps the typed fields"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.list-refetch.test.tsx",
+      "title": "a retired row survives the refetch (V19 m7, DEC-193) [P2-S12-AC-271] commandState success: a block an accept removed stays listed and detachable after the list is refetched",
+      "part": "success",
+      "cell": "commandState success: a block an accept removed stays listed and detachable after the list is refetched"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 401 refusal of a detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 401 refusal of a detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 403 refusal of a detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 403 refusal of a detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 404 refusal of a detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 404 refusal of a detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 422 refusal of a detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 422 refusal of a detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 429 refusal of a detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 429 refusal of a detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 401 refusal of a placement asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 401 refusal of a placement asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 403 refusal of a placement asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 403 refusal of a placement asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 404 refusal of a placement asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 404 refusal of a placement asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 422 refusal of a placement asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 422 refusal of a placement asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 429 refusal of a placement asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 429 refusal of a placement asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 401 refusal of an accept asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 401 refusal of an accept asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 403 refusal of an accept asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 403 refusal of an accept asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 404 refusal of an accept asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 404 refusal of an accept asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 422 refusal of an accept asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 422 refusal of an accept asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 429 refusal of an accept asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 429 refusal of an accept asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 401 refusal of a bulk detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 401 refusal of a bulk detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 403 refusal of a bulk detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 403 refusal of a bulk detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 404 refusal of a bulk detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 404 refusal of a bulk detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 422 refusal of a bulk detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 422 refusal of a bulk detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 429 refusal of a bulk detach asks for no instance list",
+      "part": "error",
+      "cell": "commandState error: a 429 refusal of a bulk detach asks for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] diffState error: a review that opens, and a diff that is refused, ask for no instance list",
+      "part": "error",
+      "cell": "diffState error: a review that opens, and a diff that is refused, ask for no instance list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.no-refetch.test.tsx",
+      "title": "refusals that ask for no list [P2-S12-AC-271] commandState error: a 409 asks for the list once, and the harness would see a read it was not told about",
+      "part": "error",
+      "cell": "commandState error: a 409 asks for the list once, and the harness would see a read it was not told about"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+      "title": "reads that outlive the page [P2-S12-AC-271] commandState degraded: a page that goes away while the entry is read back changes nothing and sends nothing more",
+      "part": "degraded",
+      "cell": "commandState degraded: a page that goes away while the entry is read back changes nothing and sends nothing more"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+      "title": "reads that outlive the page [P2-S12-AC-271] commandState degraded: a bulk accept whose reconciling read outlives the page changes nothing",
+      "part": "degraded",
+      "cell": "commandState degraded: a bulk accept whose reconciling read outlives the page changes nothing"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+      "title": "reads that outlive the page [P2-S12-AC-271] commandState degraded: new blocks whose reconciling read outlives the page change nothing",
+      "part": "degraded",
+      "cell": "commandState degraded: new blocks whose reconciling read outlives the page change nothing"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+      "title": "reads that outlive the page [P2-S12-AC-271] commandState degraded: an accept whose reconciling read outlives the page changes nothing",
+      "part": "degraded",
+      "cell": "commandState degraded: an accept whose reconciling read outlives the page changes nothing"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+      "title": "the production wire [P2-S12-AC-271] commandState success: with no test seam the island reads the instance list through the global fetch",
+      "part": "success",
+      "cell": "commandState success: with no test seam the island reads the instance list through the global fetch"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+      "title": "the production wire [P2-S12-AC-271] commandState degraded: with no test seam an unknown detach is reconciled through the global fetch",
+      "part": "degraded",
+      "cell": "commandState degraded: with no test seam an unknown detach is reconciled through the global fetch"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+      "title": "several new blocks [P2-S12-AC-271] commandState success: placing two new blocks names both and refetches the list",
+      "part": "success",
+      "cell": "commandState success: placing two new blocks names both and refetches the list"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile.test.tsx",
+      "title": "detach: an unknown outcome is reconciled before any retry [P2-S12-AC-271] commandState degraded: an unknown detach renders pending while the entry and the list are read, then offers the identical retry",
+      "part": "degraded",
+      "cell": "commandState degraded: an unknown detach renders pending while the entry and the list are read, then offers the identical retry"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile.test.tsx",
+      "title": "detach: an unknown outcome is reconciled before any retry [P2-S12-AC-271] commandState degraded (test correction, FE03 1050, DEC-245(4)): when the entry moved the reconciliation says the change may have been applied, and an unreadable entry is said not to be known and holds the retry behind Check again",
+      "part": "degraded",
+      "cell": "commandState degraded (test correction, FE03 1050, DEC-245(4)): when the entry moved the reconciliation says the change may have been applie"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile.test.tsx",
+      "title": "new blocks: an unknown outcome and a 409 are reconciled [P2-S12-AC-271] commandState degraded: an unknown placement of new blocks reads the entry and the list before saying the result is not known",
+      "part": "degraded",
+      "cell": "commandState degraded: an unknown placement of new blocks reads the entry and the list before saying the result is not known"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile.test.tsx",
+      "title": "new blocks: an unknown outcome and a 409 are reconciled [P2-S12-AC-271] commandState error: a 409 on placing new blocks refetches the instance list as well as the entry and the diff",
+      "part": "error",
+      "cell": "commandState error: a 409 on placing new blocks refetches the instance list as well as the entry and the diff"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile.test.tsx",
+      "title": "bulk: an unknown outcome and a 409 refetch [P2-S12-AC-271] commandState degraded: an unknown bulk accept renders pending, reconciles by reading the entry and the list, keeps the selection and retries under the same key",
+      "part": "degraded",
+      "cell": "commandState degraded: an unknown bulk accept renders pending, reconciles by reading the entry and the list, keeps the selection and retries"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile.test.tsx",
+      "title": "bulk: an unknown outcome and a 409 refetch [P2-S12-AC-271] commandState error: a 409 on a bulk accept refetches the entry, the list and the unapplied diffs and keeps the selection",
+      "part": "error",
+      "cell": "commandState error: a 409 on a bulk accept refetches the entry, the list and the unapplied diffs and keeps the selection"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.refetch-lock.test.tsx",
+      "title": "a 409: the controls wait for the refetch [P2-S12-AC-271] commandState loading: Place pattern stays disabled and sends nothing while the entry is read after a 409",
+      "part": "loading",
+      "cell": "commandState loading: Place pattern stays disabled and sends nothing while the entry is read after a 409"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.refetch-lock.test.tsx",
+      "title": "a 409: the controls wait for the refetch [P2-S12-AC-271] commandState loading: Detach stays disabled and sends nothing while the entry is read after a 409",
+      "part": "loading",
+      "cell": "commandState loading: Detach stays disabled and sends nothing while the entry is read after a 409"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.refetch-lock.test.tsx",
+      "title": "a 409: the controls wait for the refetch [P2-S12-AC-271] commandState loading: Accept stays disabled and sends nothing while the diff is read again after a 409",
+      "part": "loading",
+      "cell": "commandState loading: Accept stays disabled and sends nothing while the diff is read again after a 409"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.refetch-lock.test.tsx",
+      "title": "a 409: the controls wait for the refetch [P2-S12-AC-271] commandState loading: Place selected blocks stays disabled and sends nothing while the entry is read after a 409",
+      "part": "loading",
+      "cell": "commandState loading: Place selected blocks stays disabled and sends nothing while the entry is read after a 409"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.refetch-lock.test.tsx",
+      "title": "a 409: the controls wait for the refetch [P2-S12-AC-271] commandState loading: Accept all selected updates stays disabled and sends nothing while the entry is read after a 409",
+      "part": "loading",
+      "cell": "commandState loading: Accept all selected updates stays disabled and sends nothing while the entry is read after a 409"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.refetch-lock.test.tsx",
+      "title": "a 409: the controls wait for the refetch [P2-S12-AC-271] commandState loading: Detach selected stays disabled and sends nothing while the list is read after a 409",
+      "part": "loading",
+      "cell": "commandState loading: Detach selected stays disabled and sends nothing while the list is read after a 409"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.refetch-lock.test.tsx",
+      "title": "a success: the controls wait for the list refetch [P2-S12-AC-271] commandState loading: Place pattern stays disabled while the list is read after a verified placement",
+      "part": "loading",
+      "cell": "commandState loading: Place pattern stays disabled while the list is read after a verified placement"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.refetch-lock.test.tsx",
+      "title": "a success: the controls wait for the list refetch [P2-S12-AC-271] commandState loading: the row commands stay disabled while the list is read after a verified detach",
+      "part": "loading",
+      "cell": "commandState loading: the row commands stay disabled while the list is read after a verified detach"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.refetch-lock.test.tsx",
+      "title": "a success: the controls wait for the list refetch [P2-S12-AC-271] commandState loading: a bulk sequence keeps its controls disabled while the entry is read between its requests",
+      "part": "loading",
+      "cell": "commandState loading: a bulk sequence keeps its controls disabled while the entry is read between its requests"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.selection.test.tsx",
+      "title": "composition page: a row ticked while a command runs [P2-S12-AC-271] commandState success: a row ticked while a single detach is in flight stays selected when the detach completes",
+      "part": "success",
+      "cell": "commandState success: a row ticked while a single detach is in flight stays selected when the detach completes"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.selection.test.tsx",
+      "title": "composition page: a row ticked while a command runs [P2-S12-AC-271] commandState success: a row ticked while a bulk detach is in flight stays selected when it completes, and the applied rows leave the selection",
+      "part": "success",
+      "cell": "commandState success: a row ticked while a bulk detach is in flight stays selected when it completes, and the applied rows leave the selecti"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx",
+      "title": "insert: an unknown outcome is reconciled with the entry before any retry [P2-S12-AC-271] test correction (FE03 1050, DEC-245(4)): says the entry could not be checked when the read fails, and offers no retry, only Check again",
+      "part": "",
+      "cell": "test correction (FE03 1050, DEC-245(4)): says the entry could not be checked when the read fails, and offers no retry, only Check again"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unverified-hold.test.tsx",
+      "title": "composition commands hold the retry until a read verifies [P2-S12-AC-271] commandState degraded: a placement whose entry cannot be read offers no retry until Check again verifies",
+      "part": "degraded",
+      "cell": "commandState degraded: a placement whose entry cannot be read offers no retry until Check again verifies"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unverified-hold.test.tsx",
+      "title": "composition commands hold the retry until a read verifies [P2-S12-AC-271] commandState degraded: a detach whose entry cannot be read offers no retry until Check again verifies",
+      "part": "degraded",
+      "cell": "commandState degraded: a detach whose entry cannot be read offers no retry until Check again verifies"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unverified-hold.test.tsx",
+      "title": "composition commands hold the retry until a read verifies [P2-S12-AC-271] commandState degraded: an accept whose entry cannot be read offers no retry until Check again verifies",
+      "part": "degraded",
+      "cell": "commandState degraded: an accept whose entry cannot be read offers no retry until Check again verifies"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unverified-hold.test.tsx",
+      "title": "composition commands hold the retry until a read verifies [P2-S12-AC-271] commandState degraded: new blocks whose entry cannot be read offer no retry until Check again verifies",
+      "part": "degraded",
+      "cell": "commandState degraded: new blocks whose entry cannot be read offer no retry until Check again verifies"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unverified-hold.test.tsx",
+      "title": "composition commands hold the retry until a read verifies [P2-S12-AC-271] commandState degraded: a bulk request whose entry cannot be read offers no retry until Check again verifies, and the progress stays stated",
+      "part": "degraded",
+      "cell": "commandState degraded: a bulk request whose entry cannot be read offers no retry until Check again verifies, and the progress stays stated"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unverified-hold.test.tsx",
+      "title": "composition commands hold the retry until a read verifies [P2-S12-AC-271] commandState degraded: after Check again verifies, the retry replays the same request under the same key",
+      "part": "degraded",
+      "cell": "commandState degraded: after Check again verifies, the retry replays the same request under the same key"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsPatternInsertForm.states.test.tsx",
+      "title": "CmsPatternInsertForm (CMS-03C-02 place) commandState [P2-S12-AC-271] commandState success (test correction, FE03 1047): the named resource, the draft cleared, the next command at the committed version, and the instance list refetched from the protected read",
+      "part": "success",
+      "cell": "commandState success (test correction, FE03 1047): the named resource, the draft cleared, the next command at the committed version, and the"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx",
+      "title": "CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) commandState [P2-S12-AC-271] commandState success (test correction, FE03 1047): the named outcome per instance, the panel and answers cleared, the next command at the committed version, and the instance list refetched after each command",
+      "part": "success",
+      "cell": "commandState success (test correction, FE03 1047): the named outcome per instance, the panel and answers cleared, the next command at the co"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx",
+      "title": "CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) commandState [P2-S12-AC-271] commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, never a guessed result, and only then the retry, which reuses the same key",
+      "part": "degraded",
+      "cell": "commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, never "
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/composition-instance-list.test.ts",
+      "title": "readInstanceList [P2-S12-AC-271] asks for 50 rows a page and encodes the cursor",
+      "part": "",
+      "cell": "asks for 50 rows a page and encodes the cursor"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/composition-instance-list.test.ts",
+      "title": "readInstanceList [P2-S12-AC-271] follows the cursor and keeps the newest row of a path where it first stood",
+      "part": "",
+      "cell": "follows the cursor and keeps the newest row of a path where it first stood"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/composition-instance-list.test.ts",
+      "title": "readInstanceList [P2-S12-AC-271] fails closed when the walk does not end within its budget or offers a cursor twice",
+      "part": "",
+      "cell": "fails closed when the walk does not end within its budget or offers a cursor twice"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/use-composition-new-roots.test.tsx",
+      "title": "useCompositionNewRoots guards [P2-S12-AC-271] sends nothing without an open diff, a listed instance or a chosen root",
+      "part": "",
+      "cell": "sends nothing without an open diff, a listed instance or a chosen root"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/use-composition-new-roots.test.tsx",
+      "title": "useCompositionNewRoots guards [P2-S12-AC-271] sends one request at a time and stops quietly on a 429",
+      "part": "",
+      "cell": "sends one request at a time and stops quietly on a 429"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/use-composition-session.refresh.test.tsx",
+      "title": "refreshList: only the latest answer replaces the rows [P2-S12-AC-271] commandState success: an older list answer that arrives last does not replace the newer one",
+      "part": "success",
+      "cell": "commandState success: an older list answer that arrives last does not replace the newer one"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/use-composition-session.refresh.test.tsx",
+      "title": "refreshList: only the latest answer replaces the rows [P2-S12-AC-271] commandState success: a list answer that began before a command added rows is dropped",
+      "part": "success",
+      "cell": "commandState success: a list answer that began before a command added rows is dropped"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/use-composition-session.refresh.test.tsx",
+      "title": "keepRetired [P2-S12-AC-271] keeps a retired row the read does not list, after the row that preceded it",
+      "part": "",
+      "cell": "keeps a retired row the read does not list, after the row that preceded it"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/use-composition-session.refresh.test.tsx",
+      "title": "keepRetired [P2-S12-AC-271] puts a retired row with no listed predecessor first, drops a vanished live row, and lets the read win for a listed path",
+      "part": "",
+      "cell": "puts a retired row with no listed predecessor first, drops a vanished live row, and lets the read win for a listed path"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/use-composition-session.refresh.test.tsx",
+      "title": "recheck [P2-S12-AC-271] commandState degraded: with nothing unconfirmed it reads nothing",
+      "part": "degraded",
+      "cell": "commandState degraded: with nothing unconfirmed it reads nothing"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/use-composition-session.refresh.test.tsx",
+      "title": "recheck [P2-S12-AC-271] commandState degraded: a page that goes away while it reads changes nothing",
+      "part": "degraded",
+      "cell": "commandState degraded: a page that goes away while it reads changes nothing"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/use-composition-session.refresh.test.tsx",
+      "title": "restated [P2-S12-AC-271] commandState degraded: says the new sentence of a refusal, refocusing only on request, and leaves any other status alone",
+      "part": "degraded",
+      "cell": "commandState degraded: says the new sentence of a refusal, refocusing only on request, and leaves any other status alone"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.states.test.tsx",
+      "title": "CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState [P2-S12-AC-271] commandState error: 409 reviewer_not_eligible renders the one uniform copy at the reviewer field and refetches the review (FE03 884, DEC-242)",
+      "part": "error",
+      "cell": "commandState error: 409 reviewer_not_eligible renders the one uniform copy at the reviewer field and refetches the review (FE03 884, DEC-242"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewDetailIsland.reread.test.tsx",
+      "title": "CmsGovernedReviewDetailIsland: a degraded detail and its re-read [P2-S12-AC-271] governedReviewState degraded (V17 N7): the re-read control stays mounted, focused and announced while it reads, and focus moves to the restored review heading with the outcome announced",
+      "part": "degraded",
+      "cell": "governedReviewState degraded (V17 N7): the re-read control stays mounted, focused and announced while it reads, and focus moves to the resto"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewDetailIsland.reread.test.tsx",
+      "title": "CmsGovernedReviewDetailIsland: a degraded detail and its re-read [P2-S12-AC-271] governedReviewState degraded (V17 N7): a re-read that fails again keeps the same control focused and enabled for the next try",
+      "part": "degraded",
+      "cell": "governedReviewState degraded (V17 N7): a re-read that fails again keeps the same control focused and enabled for the next try"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewDetailIsland.reread.test.tsx",
+      "title": "CmsGovernedReviewDetailIsland: a degraded detail and its re-read [P2-S12-AC-271] governedReviewState degraded (V17 N7): a read that restores the review by itself after a 429 does not move focus",
+      "part": "degraded",
+      "cell": "governedReviewState degraded (V17 N7): a read that restores the review by itself after a 429 does not move focus"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-governed-review/governed-review-refusal.test.ts",
+      "title": "classifyGovernedRefusal [P2-S12-AC-271] gives an ineligible reviewer the one uniform copy at the reviewer field and a refetch (FE03 884, DEC-242)",
+      "part": "error",
+      "cell": "gives an ineligible reviewer the one uniform copy at the reviewer field and a refetch (FE03 884, DEC-242)"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "title": "409: refetched automatically, values kept and compared [P2-S12-AC-271] commandState error: a 409 reads the protected draft and then the saved rule by itself and shows the server state beside the kept values",
+      "part": "error",
+      "cell": "commandState error: a 409 reads the protected draft and then the saved rule by itself and shows the server state beside the kept values"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "title": "409: refetched automatically, values kept and compared [P2-S12-AC-271] commandState error: a 409 whose automatic read fails keeps the values, offers no Reapply and lets Review changes read again",
+      "part": "error",
+      "cell": "commandState error: a 409 whose automatic read fails keeps the values, offers no Reapply and lets Review changes read again"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "title": "unknown outcome: reconciled by a read before any retry [P2-S12-AC-271] commandState degraded: an unknown save renders pending while the entry is read, offers no retry meanwhile and shows the saved result when the read finds it recorded",
+      "part": "degraded",
+      "cell": "commandState degraded: an unknown save renders pending while the entry is read, offers no retry meanwhile and shows the saved result when th"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "title": "unknown outcome: reconciled by a read before any retry [P2-S12-AC-271] commandState degraded: an unknown save the read finds not recorded keeps the values, says so and only then offers the identical retry under the same key",
+      "part": "degraded",
+      "cell": "commandState degraded: an unknown save the read finds not recorded keeps the values, says so and only then offers the identical retry under "
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "title": "unknown outcome: reconciled by a read before any retry [P2-S12-AC-271] commandState degraded: an unknown save whose read fails offers no retry, only a check again, and the check again settles it",
+      "part": "degraded",
+      "cell": "commandState degraded: an unknown save whose read fails offers no retry, only a check again, and the check again settles it"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "title": "unknown outcome: the reconciling read is limited or outlives the page [P2-S12-AC-271] commandState degraded (test correction, V19 m6): a reconciling read answered 429 holds Save and Check again (aria-disabled, still mounted) for the stated wait and keeps the values",
+      "part": "degraded",
+      "cell": "commandState degraded (test correction, V19 m6): a reconciling read answered 429 holds Save and Check again (aria-disabled, still mounted) f"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "title": "unknown outcome: the reconciling read is limited or outlives the page [P2-S12-AC-271] commandState degraded: a page that goes away while the save is read back changes nothing and sends nothing more",
+      "part": "degraded",
+      "cell": "commandState degraded: a page that goes away while the save is read back changes nothing and sends nothing more"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "title": "success: the saved rule is refetched [P2-S12-AC-271] commandState success: a verified save reads the saved rule again and takes its entry version as the next one",
+      "part": "success",
+      "cell": "commandState success: a verified save reads the saved rule again and takes its entry version as the next one"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "title": "success: the saved rule is refetched [P2-S12-AC-271] commandState success: a refetch that cannot be verified keeps the verified save and its version",
+      "part": "success",
+      "cell": "commandState success: a refetch that cannot be verified keeps the verified save and its version"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict-admission.test.tsx",
+      "title": "CmsRelatedContentForm: conflict admission [P2-S12-AC-271] test correction (DEC-242): blocks native form submits during both held reads the 409 started by itself and after verification until explicit Reapply",
+      "part": "error",
+      "cell": "test correction (DEC-242): blocks native form submits during both held reads the 409 started by itself and after verification until explicit"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict-admission.test.tsx",
+      "title": "CmsRelatedContentForm: conflict admission [P2-S12-AC-271] test correction (DEC-242): clears the snapshot and Reapply after another 409 and requires a fresh two-stage verified review, which that 409 starts by itself",
+      "part": "error",
+      "cell": "test correction (DEC-242): clears the snapshot and Reapply after another 409 and requires a fresh two-stage verified review, which that 409 "
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+      "title": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): keeps the ordered pins, the rule and the entered bound beside the server state the 409 read by itself, and offers Review changes to read again",
+      "part": "error",
+      "cell": "test correction (DEC-242): keeps the ordered pins, the rule and the entered bound beside the server state the 409 read by itself, and offers"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+      "title": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): the 409 reads the protected draft detail first and then the saved rule by itself, with no press, no further save and no mutation header",
+      "part": "error",
+      "cell": "test correction (DEC-242): the 409 reads the protected draft detail first and then the saved rule by itself, with no press, no further save "
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+      "title": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): Reapply is offered once the automatic read verified; Reapply re-sends on the reviewed rule version with a fresh key and the entered bound",
+      "part": "error",
+      "cell": "test correction (DEC-242): Reapply is offered once the automatic read verified; Reapply re-sends on the reviewed rule version with a fresh k"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+      "title": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): keeps the draft and its token and offers no Reapply when the automatic review read fails",
+      "part": "error",
+      "cell": "test correction (DEC-242): keeps the draft and its token and offers no Reapply when the automatic review read fails"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.recheck.test.tsx",
+      "title": "Check again keeps focus while it reads [P2-S12-AC-271] commandState degraded: the control stays the same focused element through the read, and the verified outcome moves focus to the result heading",
+      "part": "degraded",
+      "cell": "commandState degraded: the control stays the same focused element through the read, and the verified outcome moves focus to the result headi"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.recheck.test.tsx",
+      "title": "Check again keeps focus while it reads [P2-S12-AC-271] commandState degraded: a check that still cannot verify keeps focus on the control and says so again",
+      "part": "degraded",
+      "cell": "commandState degraded: a check that still cannot verify keeps focus on the control and says so again"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.recheck.test.tsx",
+      "title": "an edit never lifts an unreconciled save [P2-S12-AC-271] commandState degraded: choosing an entry or a rule while the read runs keeps Save off and the pending label",
+      "part": "degraded",
+      "cell": "commandState degraded: choosing an entry or a rule while the read runs keeps Save off and the pending label"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.recheck.test.tsx",
+      "title": "an edit never lifts an unreconciled save [P2-S12-AC-271] commandState degraded: choosing an entry after a read that did not verify keeps Save off and Check again offered",
+      "part": "degraded",
+      "cell": "commandState degraded: choosing an entry after a read that did not verify keeps Save off and Check again offered"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.recheck.test.tsx",
+      "title": "an edit never lifts an unreconciled save [P2-S12-AC-271] commandState degraded: once a read found the save not recorded, an edit clears the notice and Save is offered",
+      "part": "degraded",
+      "cell": "commandState degraded: once a read found the save not recorded, an edit clears the notice and Save is offered"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.recheck.test.tsx",
+      "title": "the success refetch never lowers the version [P2-S12-AC-271] commandState success: a refetch that answers an older entry token keeps the saved version, an equal one adopts it",
+      "part": "success",
+      "cell": "commandState success: a refetch that answers an older entry token keeps the saved version, an equal one adopts it"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.save.test.tsx",
+      "title": "CmsRelatedContentForm: idempotency [P2-S12-AC-271] test correction (FE03 1050): replays the identical request with the same key after an unknown outcome that the reconciling read found not recorded",
+      "part": "degraded",
+      "cell": "test correction (FE03 1050): replays the identical request with the same key after an unknown outcome that the reconciling read found not re"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.save.test.tsx",
+      "title": "CmsRelatedContentForm: idempotency [P2-S12-AC-271] test correction (FE03 1050): uses a new key once the request changed, and after a definite answer",
+      "part": "degraded",
+      "cell": "test correction (FE03 1050): uses a new key once the request changed, and after a definite answer"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx",
+      "title": "CmsRelatedContentForm (CMS-03C-05) commandState commandState error [P2-S12-AC-271] commandState error (test correction, FE03 1049, DEC-242): a 409 renders fixed conflict copy, keeps the draft, refetches the draft and the saved rule by itself and withholds the save until the person reapplies (CMS-03C-05)",
+      "part": "error",
+      "cell": "commandState error (test correction, FE03 1049, DEC-242): a 409 renders fixed conflict copy, keeps the draft, refetches the draft and the sa"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx",
+      "title": "CmsRelatedContentForm (CMS-03C-05) commandState [P2-S12-AC-271] commandState degraded (test correction, FE03 1050, DEC-242): an unknown outcome claims no success, is reconciled by a read of the saved rule before any retry, and the retry replays the same Idempotency-Key (CMS-03C-05)",
+      "part": "degraded",
+      "cell": "commandState degraded (test correction, FE03 1050, DEC-242): an unknown outcome claims no success, is reconciled by a read of the saved rule"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/related-reconcile.test.ts",
+      "title": "recordedSave [P2-S12-AC-271] recognises the saved rule as the answer to the request",
+      "part": "",
+      "cell": "recognises the saved rule as the answer to the request"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/related-reconcile.test.ts",
+      "title": "reconcileSave [P2-S12-AC-271] reports a recorded save, a verified read without it, and a read that decided nothing",
+      "part": "",
+      "cell": "reports a recorded save, a verified read without it, and a read that decided nothing"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/use-related-content-form.guards.test.tsx",
+      "title": "useRelatedContentForm: guards [P2-S12-AC-271] says why a list refuses a pin or an exclusion and changes nothing",
+      "part": "",
+      "cell": "says why a list refuses a pin or an exclusion and changes nothing"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/use-related-content-form.guards.test.tsx",
+      "title": "useRelatedContentForm: guards [P2-S12-AC-271] changes nothing when a pin cannot move, and moves one that can",
+      "part": "",
+      "cell": "changes nothing when a pin cannot move, and moves one that can"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/use-related-content-form.guards.test.tsx",
+      "title": "useRelatedContentForm: guards [P2-S12-AC-271] reads nothing again when there is no unknown attempt to reconcile",
+      "part": "",
+      "cell": "reads nothing again when there is no unknown attempt to reconcile"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/use-related-content-form.guards.test.tsx",
+      "title": "useRelatedContentForm: guards [P2-S12-AC-271] holds Check again for the stated wait when the reconciling read is limited",
+      "part": "",
+      "cell": "holds Check again for the stated wait when the reconciling read is limited"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/use-related-content-form.guards.test.tsx",
+      "title": "useRelatedContentForm: guards [P2-S12-AC-271] commandState degraded (V19 m9): a reconciling read that a newer one superseded changes nothing while the newer one is still reading",
+      "part": "degraded",
+      "cell": "commandState degraded (V19 m9): a reconciling read that a newer one superseded changes nothing while the newer one is still reading"
+     }
+    ],
+    "staleExisting": [
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+      "title": "composition page: a command in flight [P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, the pending label holds and the open review survives the answer",
+      "reason": "V17 N5: retitled to what it asserts"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+      "title": "composition page: a command in flight [P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer and keep the form dirty",
+      "reason": "V17 N5: retitled to what it asserts"
+     }
+    ],
+    "gap": null,
+    "retitled": [
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx",
+      "oldTitle": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState success (kept half): the named outcome per instance, the panel and selection cleared; no refetch of the entry or list is made for a single request (C5)",
+      "newTitle": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState success (test correction, FE03 1047): the named outcome per instance, the panel and selection cleared, no entry read for a single request, and the instance list refetched",
+      "rawOld": "[P2-S12-AC-271] commandState success (kept half): the named outcome per instance, the panel and selection cleared; no refetch of the entry or list is made for a single request (C5)",
+      "rawNew": "[P2-S12-AC-271] commandState success (test correction, FE03 1047): the named outcome per instance, the panel and selection cleared, no entry read for a single request, and the instance list refetched"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx",
+      "oldTitle": "[P2-S12-AC-271] commandState error (kept half): 409 %s renders fixed copy and keeps the selection; the entry is not refetched (C8)",
+      "newTitle": "[P2-S12-AC-271] commandState error (test correction, FE03 1049): 409 %s renders fixed copy, keeps the selection, and refetches the entry, the instance list and the unapplied diffs",
+      "rawOld": "[P2-S12-AC-271] commandState error (kept half): 409 %s renders fixed copy and keeps the selection; the entry is not refetched (C8)",
+      "rawNew": "[P2-S12-AC-271] commandState error (test correction, FE03 1049): 409 %s renders fixed copy, keeps the selection, and refetches the entry, the instance list and the unapplied diffs"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx",
+      "oldTitle": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState degraded (kept half): an unknown outcome states that nothing is assumed and keeps the selection; it renders no pending state and makes no refetch before a retry (C7)",
+      "newTitle": "CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandState [P2-S12-AC-271] commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, states that nothing is assumed, keeps the selection, and only then offers the retry under the same key",
+      "rawOld": "[P2-S12-AC-271] commandState degraded (kept half): an unknown outcome states that nothing is assumed and keeps the selection; it renders no pending state and makes no refetch before a retry (C7)",
+      "rawNew": "[P2-S12-AC-271] commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, states that nothing is assumed, keeps the selection, and only then offers the retry under the same key"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk.test.tsx",
+      "oldTitle": "bulk accept stops at a failed request, says how many were applied and leaves the rest selected",
+      "newTitle": "bulk accept [P2-S12-AC-271] commandState error (test correction, FE03 1049): stops at a 409 request, says how many were applied, refetches the entry, the list and the unapplied diffs, and leaves the rest selected",
+      "rawOld": "stops at a failed request, says how many were applied and leaves the rest selected",
+      "rawNew": "[P2-S12-AC-271] commandState error (test correction, FE03 1049): stops at a 409 request, says how many were applied, refetches the entry, the list and the unapplied diffs, and leaves the rest selected"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+      "oldTitle": "composition page: a command in flight [P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, the pending label holds and the open review survives the answer",
+      "newTitle": "composition page: a command in flight [P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, a click reads no diff, the pending label holds and Review is enabled again after the answer",
+      "rawOld": "[P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, the pending label holds and the open review survives the answer",
+      "rawNew": "[P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, a click reads no diff, the pending label holds and Review is enabled again after the answer"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx",
+      "oldTitle": "composition page: a command in flight [P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer and keep the form dirty",
+      "newTitle": "composition page: a command in flight [P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer",
+      "rawOld": "[P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer and keep the form dirty",
+      "rawNew": "[P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unsaved.test.tsx",
+      "oldTitle": "insert: an unknown outcome is reconciled with the entry before any retry says the entry could not be checked when the read fails, and the retry is still offered",
+      "newTitle": "insert: an unknown outcome is reconciled with the entry before any retry [P2-S12-AC-271] test correction (FE03 1050, DEC-245(4)): says the entry could not be checked when the read fails, and offers no retry, only Check again",
+      "rawOld": "says the entry could not be checked when the read fails, and the retry is still offered",
+      "rawNew": "[P2-S12-AC-271] test correction (FE03 1050, DEC-245(4)): says the entry could not be checked when the read fails, and offers no retry, only Check again"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsPatternInsertForm.states.test.tsx",
+      "oldTitle": "CmsPatternInsertForm (CMS-03C-02 place) commandState [P2-S12-AC-271] commandState success (kept half): the named resource, the draft cleared and the next command at the committed version; no refetch of the entry or list is made (C5)",
+      "newTitle": "CmsPatternInsertForm (CMS-03C-02 place) commandState [P2-S12-AC-271] commandState success (test correction, FE03 1047): the named resource, the draft cleared, the next command at the committed version, and the instance list refetched from the protected read",
+      "rawOld": "[P2-S12-AC-271] commandState success (kept half): the named resource, the draft cleared and the next command at the committed version; no refetch of the entry or list is made (C5)",
+      "rawNew": "[P2-S12-AC-271] commandState success (test correction, FE03 1047): the named resource, the draft cleared, the next command at the committed version, and the instance list refetched from the protected read"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsPatternInsertForm.states.test.tsx",
+      "oldTitle": "[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and keeps the input",
+      "newTitle": "[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and the instance list and keeps the input",
+      "rawOld": "[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and keeps the input",
+      "rawNew": "[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and the instance list and keeps the input"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx",
+      "oldTitle": "CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) commandState [P2-S12-AC-271] commandState success (kept half): the named outcome per instance, the panel and answers cleared and the next command at the committed version; no refetch of the entry or list is made (C5)",
+      "newTitle": "CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) commandState [P2-S12-AC-271] commandState success (test correction, FE03 1047): the named outcome per instance, the panel and answers cleared, the next command at the committed version, and the instance list refetched after each command",
+      "rawOld": "[P2-S12-AC-271] commandState success (kept half): the named outcome per instance, the panel and answers cleared and the next command at the committed version; no refetch of the entry or list is made (C5)",
+      "rawNew": "[P2-S12-AC-271] commandState success (test correction, FE03 1047): the named outcome per instance, the panel and answers cleared, the next command at the committed version, and the instance list refetched after each command"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx",
+      "oldTitle": "[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and the diff and keeps the answers",
+      "newTitle": "[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry, the instance list and the diff and keeps the answers",
+      "rawOld": "[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and the diff and keeps the answers",
+      "rawNew": "[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry, the instance list and the diff and keeps the answers"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx",
+      "oldTitle": "CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) commandState [P2-S12-AC-271] commandState degraded (kept half): an unknown outcome renders a pending, never a guessed, result and the retry reuses the same key; no entry refetch precedes the retry (C7)",
+      "newTitle": "CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) commandState [P2-S12-AC-271] commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, never a guessed result, and only then the retry, which reuses the same key",
+      "rawOld": "[P2-S12-AC-271] commandState degraded (kept half): an unknown outcome renders a pending, never a guessed, result and the retry reuses the same key; no entry refetch precedes the retry (C7)",
+      "rawNew": "[P2-S12-AC-271] commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, never a guessed result, and only then the retry, which reuses the same key"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.states.test.tsx",
+      "oldTitle": "CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState [P2-S12-AC-271] commandState error: 409 reviewer_not_eligible renders fixed copy at the reviewer field (no refetch is made)",
+      "newTitle": "CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState [P2-S12-AC-271] commandState error: 409 reviewer_not_eligible renders the one uniform copy at the reviewer field and refetches the review (FE03 884, DEC-242)",
+      "rawOld": "[P2-S12-AC-271] commandState error: 409 reviewer_not_eligible renders fixed copy at the reviewer field (no refetch is made)",
+      "rawNew": "[P2-S12-AC-271] commandState error: 409 reviewer_not_eligible renders the one uniform copy at the reviewer field and refetches the review (FE03 884, DEC-242)"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.test.tsx",
+      "oldTitle": "assign a reviewer (create) shows one fixed message for an ineligible reviewer and names the other refusals",
+      "newTitle": "assign a reviewer (create) shows one fixed message for an ineligible reviewer, refetching the review like the other 409 reasons, and names the other refusals",
+      "rawOld": "shows one fixed message for an ineligible reviewer and names the other refusals",
+      "rawNew": "shows one fixed message for an ineligible reviewer, refetching the review like the other 409 reasons, and names the other refusals"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict-admission.test.tsx",
+      "oldTitle": "CmsRelatedContentForm: conflict admission blocks native form submits before review, during both held reads and after verification until explicit Reapply",
+      "newTitle": "CmsRelatedContentForm: conflict admission [P2-S12-AC-271] test correction (DEC-242): blocks native form submits during both held reads the 409 started by itself and after verification until explicit Reapply",
+      "rawOld": "blocks native form submits before review, during both held reads and after verification until explicit Reapply",
+      "rawNew": "[P2-S12-AC-271] test correction (DEC-242): blocks native form submits during both held reads the 409 started by itself and after verification until explicit Reapply"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict-admission.test.tsx",
+      "oldTitle": "CmsRelatedContentForm: conflict admission clears the snapshot and Reapply after another 409 and requires a fresh two-stage verified review",
+      "newTitle": "CmsRelatedContentForm: conflict admission [P2-S12-AC-271] test correction (DEC-242): clears the snapshot and Reapply after another 409 and requires a fresh two-stage verified review, which that 409 starts by itself",
+      "rawOld": "clears the snapshot and Reapply after another 409 and requires a fresh two-stage verified review",
+      "rawNew": "[P2-S12-AC-271] test correction (DEC-242): clears the snapshot and Reapply after another 409 and requires a fresh two-stage verified review, which that 409 starts by itself"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+      "oldTitle": "CmsRelatedContentForm: 409 review, reapply and discard keeps the ordered pins, the rule and the entered bound, and offers Review changes",
+      "newTitle": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): keeps the ordered pins, the rule and the entered bound beside the server state the 409 read by itself, and offers Review changes to read again",
+      "rawOld": "keeps the ordered pins, the rule and the entered bound, and offers Review changes",
+      "rawNew": "[P2-S12-AC-271] test correction (DEC-242): keeps the ordered pins, the rule and the entered bound beside the server state the 409 read by itself, and offers Review changes to read again"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+      "oldTitle": "CmsRelatedContentForm: 409 review, reapply and discard reads the protected draft detail first and then the saved rule on Review changes, with no save and no mutation header",
+      "newTitle": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): the 409 reads the protected draft detail first and then the saved rule by itself, with no press, no further save and no mutation header",
+      "rawOld": "reads the protected draft detail first and then the saved rule on Review changes, with no save and no mutation header",
+      "rawNew": "[P2-S12-AC-271] test correction (DEC-242): the 409 reads the protected draft detail first and then the saved rule by itself, with no press, no further save and no mutation header"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+      "oldTitle": "CmsRelatedContentForm: 409 review, reapply and discard offers no Reapply before a verified read; Reapply re-sends on the reviewed rule version with a fresh key and the entered bound",
+      "newTitle": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): Reapply is offered once the automatic read verified; Reapply re-sends on the reviewed rule version with a fresh key and the entered bound",
+      "rawOld": "offers no Reapply before a verified read; Reapply re-sends on the reviewed rule version with a fresh key and the entered bound",
+      "rawNew": "[P2-S12-AC-271] test correction (DEC-242): Reapply is offered once the automatic read verified; Reapply re-sends on the reviewed rule version with a fresh key and the entered bound"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+      "oldTitle": "CmsRelatedContentForm: 409 review, reapply and discard keeps the draft and its token and offers no Reapply when the review read fails",
+      "newTitle": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): keeps the draft and its token and offers no Reapply when the automatic review read fails",
+      "rawOld": "keeps the draft and its token and offers no Reapply when the review read fails",
+      "rawNew": "[P2-S12-AC-271] test correction (DEC-242): keeps the draft and its token and offers no Reapply when the automatic review read fails"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.save.test.tsx",
+      "oldTitle": "CmsRelatedContentForm: idempotency replays the identical request with the same key after an unknown outcome",
+      "newTitle": "CmsRelatedContentForm: idempotency [P2-S12-AC-271] test correction (FE03 1050): replays the identical request with the same key after an unknown outcome that the reconciling read found not recorded",
+      "rawOld": "replays the identical request with the same key after an unknown outcome",
+      "rawNew": "[P2-S12-AC-271] test correction (FE03 1050): replays the identical request with the same key after an unknown outcome that the reconciling read found not recorded"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.save.test.tsx",
+      "oldTitle": "CmsRelatedContentForm: idempotency uses a new key once the request changed, and after a definite answer",
+      "newTitle": "CmsRelatedContentForm: idempotency [P2-S12-AC-271] test correction (FE03 1050): uses a new key once the request changed, and after a definite answer",
+      "rawOld": "uses a new key once the request changed, and after a definite answer",
+      "rawNew": "[P2-S12-AC-271] test correction (FE03 1050): uses a new key once the request changed, and after a definite answer"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx",
+      "oldTitle": "CmsRelatedContentForm (CMS-03C-05) commandState commandState error [P2-S12-AC-271] commandState error (kept half): a 409 renders fixed conflict copy, keeps the draft and withholds the save behind the explicit Review changes read; it is NOT refetched automatically (D2) (CMS-03C-05)",
+      "newTitle": "CmsRelatedContentForm (CMS-03C-05) commandState commandState error [P2-S12-AC-271] commandState error (test correction, FE03 1049, DEC-242): a 409 renders fixed conflict copy, keeps the draft, refetches the draft and the saved rule by itself and withholds the save until the person reapplies (CMS-03C-05)",
+      "rawOld": "[P2-S12-AC-271] commandState error (kept half): a 409 renders fixed conflict copy, keeps the draft and withholds the save behind the explicit Review changes read; it is NOT refetched automatically (D2) (CMS-03C-05)",
+      "rawNew": "[P2-S12-AC-271] commandState error (test correction, FE03 1049, DEC-242): a 409 renders fixed conflict copy, keeps the draft, refetches the draft and the saved rule by itself and withholds the save until the person reapplies (CMS-03C-05)"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx",
+      "oldTitle": "CmsRelatedContentForm (CMS-03C-05) commandState [P2-S12-AC-271] commandState degraded (kept half): an unknown outcome claims no success and replays the same Idempotency-Key; nothing is refetched before the retry (D3) (CMS-03C-05)",
+      "newTitle": "CmsRelatedContentForm (CMS-03C-05) commandState [P2-S12-AC-271] commandState degraded (test correction, FE03 1050, DEC-242): an unknown outcome claims no success, is reconciled by a read of the saved rule before any retry, and the retry replays the same Idempotency-Key (CMS-03C-05)",
+      "rawOld": "[P2-S12-AC-271] commandState degraded (kept half): an unknown outcome claims no success and replays the same Idempotency-Key; nothing is refetched before the retry (D3) (CMS-03C-05)",
+      "rawNew": "[P2-S12-AC-271] commandState degraded (test correction, FE03 1050, DEC-242): an unknown outcome claims no success, is reconciled by a read of the saved rule before any retry, and the retry replays the same Idempotency-Key (CMS-03C-05)"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile.test.tsx",
+      "oldTitle": "detach: an unknown outcome is reconciled before any retry [P2-S12-AC-271] commandState degraded: when the entry moved the reconciliation says the change may have been applied, and an unreadable entry is said not to be known",
+      "newTitle": "detach: an unknown outcome is reconciled before any retry [P2-S12-AC-271] commandState degraded (test correction, FE03 1050, DEC-245(4)): when the entry moved the reconciliation says the change may have been applied, and an unreadable entry is said not to be known and holds the retry behind Check again",
+      "rawOld": "[P2-S12-AC-271] commandState degraded: when the entry moved the reconciliation says the change may have been applied, and an unreadable entry is said not to be known",
+      "rawNew": "[P2-S12-AC-271] commandState degraded (test correction, FE03 1050, DEC-245(4)): when the entry moved the reconciliation says the change may have been applied, and an unreadable entry is said not to be known and holds the retry behind Check again"
+     },
+     {
+      "tool": "vitest",
+      "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+      "oldTitle": "unknown outcome: the reconciling read is limited or outlives the page [P2-S12-AC-271] commandState degraded: a reconciling read answered 429 holds Save and Check again for the stated wait and keeps the values",
+      "newTitle": "unknown outcome: the reconciling read is limited or outlives the page [P2-S12-AC-271] commandState degraded (test correction, V19 m6): a reconciling read answered 429 holds Save and Check again (aria-disabled, still mounted) for the stated wait and keeps the values",
+      "rawOld": "[P2-S12-AC-271] commandState degraded: a reconciling read answered 429 holds Save and Check again for the stated wait and keeps the values",
+      "rawNew": "[P2-S12-AC-271] commandState degraded (test correction, V19 m6): a reconciling read answered 429 holds Save and Check again (aria-disabled, still mounted) for the stated wait and keeps the values"
+     }
+    ]
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "web8b closes the 409 / unknown-outcome / success-refetch cells of the related-content, composition (insert, accept, detach, new blocks, bulk) and governed (decision, assignment, activation) islands; cite a state part only when every island of that part (including web8a islands) is closed."
+ }
+]

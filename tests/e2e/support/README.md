@@ -122,6 +122,17 @@ layers these on the same world:
 - `s12-pw7-world.ts`, `s12-pw7-flow.ts`, `s12-pw7-tagged.ts` — the worlds, browser steps and tagged-entry helpers of the
   Slice 12 page-operation and journey specs (template, locale `no_fallback`, related content, term merge); each spec builds
   its own data through the real routes.
+- `s12-pw9-world.ts`, `s12-pw9-flow.ts`, `s12-pw9-keys.ts` — the preconditions and readers, mouse steps and keyboard-only
+  steps (640x400, Tab-reached, no programmatic focus) of the Slice 12 wave-9 journeys (dependency invalidation, linked
+  update accept and detach, protected decision, pattern created and scheduled in the browser).
+- `s12-pw9-jobs.ts` — the two system jobs the harness has no queue consumer for (`cms.governed_review.recheck` and the
+  linked-update scan), run through their PRODUCTION `platform_api` RPCs with the Worker service credential, exactly as the
+  Worker's consumers call them.
+- `s12-pw9-scan.ts` — the identifier scan past the browser: outbox payloads, audit rows and the captured SERVER LOGS
+  (see "Server log capture") checked for person ids, auth-user ids, decision reasons, policy basis, diff values and
+  canonical ids (the browser half is `s12-pw5-trace.ts`).
+- `server-log-layout.mjs` (with `.d.mts`) and `server-log-capture.ts` (with `server-log-capture.test.ts`) — the writer
+  and the reader of the server log capture below.
 - `s12-real-governed.ts` (with `s12-real-governed.test.ts`) — the Slice 12 CMS
   composition boundaries of the real-route API Worker (governed review, taxonomy
   definition and term actions, pattern placement, definition and update, related
@@ -162,6 +173,36 @@ and delegates all non-test paths to the production server entry. Its temporary
 Wrangler config is created under the operating-system temp directory, never in
 `apps/web`.
 
+## Server log capture
+
+P2-S12-AC-273 requires that no person id, auth-user id, decision reason, policy basis, diff value or canonical id appears
+in the URL, storage, logs or telemetry. The launcher therefore records what the servers log:
+
+| File (in `.lane-logs/e2e-server-logs/<run>/`) | Holds                                                                                                                                                                                                                                                                           |
+| --------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `api-worker.log`                              | the API Worker's stdout and stderr: the PRODUCTION logger's structured lines (`createRuntimeDependencies().createLogger`, written with `console.info`), the route telemetry the production boundaries log through it, `[s10-rpc]` lines, and wrangler's request and error lines |
+| `web-server.log`                              | the web server's wrangler output (every generation of the supervised session, appended), including its request and error lines                                                                                                                                                  |
+| `launcher.log`                                | the launcher's own lines (restart notices, held-request lines, startup errors)                                                                                                                                                                                                  |
+
+- Each file starts with a `# s09-real-server-log` header line; the rest is the child's bytes, appended synchronously, and still
+  echoed unchanged to the launcher's stdout and stderr (the suite runner's retry boundary reads those).
+- The API Worker runs in workerd, which has no host filesystem, so its sink is its process stdout; the launcher is the file writer.
+- The directory is git-excluded and never under `test-results/` (Playwright empties that at the next run). The launcher announces
+  the live run in `.lane-logs/e2e-server-logs/current.json` (directory, launcher pid) and removes it on exit. Set
+  `S09_SERVER_LOG_DIR` to name the directory instead (it is truncated at launch, and a path under `test-results/` is refused).
+- `expectNothingLeaked` (`s12-pw9-scan.ts`) reads the three files once their sizes stop changing and fails if any forbidden value
+  appears raw, JSON-escaped or percent-encoded. It fails CLOSED: no pointer, a pointer to a dead launcher, a missing file, or an
+  API or web log with nothing beyond its header throws, so the scan can never pass over nothing.
+- `server-log-capture.test.ts` seeds sinks with and without a leaked value and proves the scan fails on the leak.
+
+Telemetry emitters of the Slice 12 journeys and where each lands: the production logger and the boundaries' `telemetry`
+callbacks (which only call it) are in `api-worker.log`; the outbox events are in `platform_private.outbox_events` (scanned);
+audit rows are in `audit_private.audit_events` (scanned). NOT captured, because they have no sink in this harness: the Worker's
+`captureException` (the production runtime's own no-op), the Content-Security-Policy `report-to csp-endpoint` directive (no
+`Reporting-Endpoints` header defines the group, so Chrome sends no report), Cloudflare Workers Logs (`observability.enabled`
+only takes effect on a deployed Worker), the web client code (no beacon, tracing or analytics call), and the Kong, PostgREST and
+Postgres container logs (docker, not the Worker or web).
+
 ## Real-route server supervision
 
 `run-s09-real-servers.mjs` starts the Worker API and the web Wrangler session as
@@ -169,7 +210,8 @@ detached process groups and fronts the web session with `s09-hold-proxy.mjs` on
 the public port. `wrangler dev` treats any network error in its ProxyWorker as
 fatal to the whole dev session, so the runner restarts the web child (at most 20
 times, killing the orphaned process group first) while the proxy holds in-flight
-requests and replays them to the new child. A parent-death watchdog and the
+requests and replays them to the new child. Both servers' stdout and stderr are piped through the launcher into the
+server log capture above. A parent-death watchdog and the
 shutdown path kill every detached tree, so an interrupted run leaves no server
 behind. `s09-hold-proxy.test.ts` is a Vitest-only unit suite; the functional
 Playwright config ignores `support/*.test.ts`.

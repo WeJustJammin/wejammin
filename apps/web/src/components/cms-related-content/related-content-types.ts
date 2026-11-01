@@ -4,6 +4,11 @@ import type {
 } from '@wejammin/contracts';
 
 import type { RelatedLists } from './related-content-lists';
+import type { RequestIssue } from './related-content-request';
+import type {
+  RelatedSubmitResult,
+  SavedRelatedContent,
+} from './related-content-submit';
 
 /** The entry the page edits related content for (verified by the page loader, FE03 :1072). */
 export interface RelatedEntryFacts {
@@ -49,3 +54,21 @@ export type RelatedConflictReviewState =
   | { readonly kind: 'idle' }
   | { readonly kind: 'reading' }
   | RelatedConflictReadResult;
+
+/** The one result region of the form: what the last command (or the read that followed it) left. */
+export type RelatedStatus =
+  | { readonly kind: 'idle' }
+  | { readonly kind: 'invalid'; readonly issues: readonly RequestIssue[] }
+  | { readonly kind: 'pending' }
+  /**
+   * An unknown outcome is being reconciled by a read (FE03 1050): no retry is offered meanwhile. `again` is true when
+   * the person asked for the read with "Check again", whose control stays mounted while it runs.
+   */
+  | { readonly kind: 'reconciling'; readonly again: boolean }
+  /** The reconciling read verified and found no such save: the identical retry is offered. */
+  | { readonly kind: 'not_recorded' }
+  | { readonly kind: 'saved'; readonly saved: SavedRelatedContent }
+  | {
+      readonly kind: 'result';
+      readonly result: Exclude<RelatedSubmitResult, { kind: 'saved' }>;
+    };

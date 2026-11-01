@@ -1,0 +1,40 @@
+-- Slice 12 race9: the committed related-content world PLUS the Slice 11 publication world (lane claude_s12_db9a; tracker P2-S12-AC-277
+-- "related target unpublish", DEC-245(7): a stand-in must take exactly the production locks).  Include INSIDE the world transaction, after
+-- `select no_plan();` and with psql output redirected (\o /dev/null).  Nothing is hand-written except what the two source worlds already hand-write:
+--   * the Slice 12 related-content world of race8 (080-related-world.sqlinc: Slice 10/11 preludes, fifteen published entries, the CMS-03C-05 curation helpers);
+--   * the Slice 11 publication world (rpc_review 000/020/030 + rpc_publication 000: actors pub / rvA / rvB, p11_approved, p11_sreq, p11_call, r11_evidence);
+--   * three target entries u4a / u4b / u4c (p11_approved: an entry, a draft revision at its TRUE projection hash, a review approved by a reviewer), each
+--     PUBLISHED by the real CMS-03B-09 command and then given a pending UNPUBLISH schedule by the real CMS-03B-07 command (about 75 s ahead);
+--   * three unpublished draft sources srcU4a / srcU4b / srcU4c (the r12 builders) with the creator's author assignment, and the stashed CMS-03C-05
+--     curation of each source that pins its target.
+-- The execute request cannot be built before the claim (it needs the claim's lease and version) and its Worker-verified accessibility evidence goes stale
+-- within the 75 s wait, so the world stores only the target and source ids and the revision ids as notes; the file builds each execute request after the claim.
+-- Paths start with `../` because \ir resolves them against THIS file's directory.
+\ir ../phase_02_slice_12_race8/080-related-world.sqlinc
+\ir ../phase_02_slice_11_rpc_review/000-world.sqlinc
+\ir ../phase_02_slice_11_rpc_review/020-decision.sqlinc
+\ir ../phase_02_slice_11_rpc_review/030-submit.sqlinc
+\ir ../phase_02_slice_11_rpc_publication/000-world.sqlinc
+
+create or replace function pg_temp.r9_world_target(p_x text) returns void language plpgsql as $b$
+declare tag text := 'r12:u4' || p_x; src text := 'srcU4' || p_x;
+begin
+  perform pg_temp.p11_approved(tag);
+  perform pg_temp.p11_call('pub-' || p_x, 'pub', 'cms_publish_revision', pg_temp.p11_preq(tag));
+  perform pg_temp.p11_call('sch-' || p_x, 'pub', 'cms_schedule_publication',
+    pg_temp.p11_sreq(tag, jsonb_build_object('action', 'unpublish'), '{}'::text[], null, interval '75 seconds'));
+  insert into pg_temp.r12_tags(id, value) values (pg_temp.r12_id('u4' || p_x), 'u4' || p_x);
+  perform pg_temp.r12_make(src);
+  perform pg_temp.r12_assign(src);
+  perform pg_temp.r8_stash_curate('curate:' || p_x, src, 'u4' || p_x);
+  perform pg_temp.r7_note('target_' || p_x, pg_temp.r12_id('u4' || p_x)::text);
+  perform pg_temp.r7_note('source_' || p_x, pg_temp.r12_id(src)::text);
+  perform pg_temp.r7_note('revision_' || p_x, pg_temp.h11w_uuid(tag || ':revision')::text);
+  perform pg_temp.r7_note('publish_out_' || p_x, pg_temp.r11_out('pub-' || p_x));
+  perform pg_temp.r7_note('schedule_out_' || p_x, pg_temp.r11_out('sch-' || p_x));
+end;
+$b$;
+select pg_temp.r9_world_target(x) from unnest(array['a', 'b', 'c']) x;
+select pg_temp.r7_stash_sys('claim', 'platform_api.cms_claim_due_publication_schedules', jsonb_build_object('batch', 10));
+select pg_temp.r7_note('pub_world_errors', (select count(*)::text from r12_world_errors));
+select pg_temp.r7_note('pub_world_errors_text', (select string_agg(step || ': ' || err::text, ' | ') from r12_world_errors));

@@ -13,7 +13,10 @@ import type {
   RelatedEntryFacts,
   RelatedRuleSnapshot,
 } from './related-content-types';
-import { useRelatedContentForm } from './use-related-content-form';
+import {
+  RELATED_RECHECK_ID,
+  useRelatedContentForm,
+} from './use-related-content-form';
 
 export interface CmsRelatedContentFormProps {
   readonly entry: RelatedEntryFacts;
@@ -85,6 +88,17 @@ export default function CmsRelatedContentForm(
         {form.note}
       </p>
       <CmsRelatedStatus status={form.status} returnTo={returnTo} />
+      {form.canRecheck ? (
+        // One control for the whole unconfirmed episode: it stays mounted (and focused) while its read runs.
+        <button
+          type="button"
+          id={RELATED_RECHECK_ID}
+          aria-disabled={form.rechecking ? 'true' : 'false'}
+          onClick={form.rechecking ? undefined : () => void form.recheck()}
+        >
+          Check again
+        </button>
+      ) : null}
       {form.conflict.required ? (
         <CmsRelatedConflictReview
           state={form.conflict.state}

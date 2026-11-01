@@ -1,0 +1,338 @@
+[
+  {
+    "criterion": "P2-S12-AC-271",
+    "lane": "claude_s12_web9b",
+    "clauses": [
+      {
+        "index": 0,
+        "text": "(the whole 7-state x 5-family table; web9b: related content, composition and governed islands)",
+        "add": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/use-composition-session.refresh.test.tsx",
+            "title": "keepRetired [P2-S12-AC-271] commandState success: keeps only the retired rows of the draft revision the list answered (V20 m3, DEC-246 ruling 2)",
+            "part": "success",
+            "cell": "list refetch keeps only retired rows of the draft revision the read answered (V20 m3, DEC-246(2))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.list-refetch.test.tsx",
+            "title": "a retired row of a previous draft revision is not kept (V20 m3, DEC-246 ruling 2) [P2-S12-AC-271] commandState error: a 409 whose entry read answers a new draft revision drops the retired row of the old one",
+            "part": "error",
+            "cell": "409 whose entry read answers a new draft revision drops the retired row of the old one (V20 m3)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.unverified-hold.test.tsx",
+            "title": "a repeated failed check is heard (V20 m5, DEC-246 ruling 3) [P2-S12-AC-271] commandState degraded: each failed Check again says a sentence that differs from the one before, and the live region is written",
+            "part": "degraded",
+            "cell": "a repeated failed Check again says a different sentence and writes the live region (V20 m5, DEC-246(3))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.read-deadline.test.tsx",
+            "title": "a read that never answers releases the island at the deadline [P2-S12-AC-271] commandState loading: a 409 whose entry read never answers keeps the controls off for 8,000 ms and then frees them with the refusal said",
+            "part": "loading",
+            "cell": "read deadline: controls off for 8,000 ms then freed with the refusal said (V20 m10, DEC-246(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.read-deadline.test.tsx",
+            "title": "a read that never answers releases the island at the deadline [P2-S12-AC-271] commandState degraded: an unknown outcome whose entry read never answers offers Check again, and no retry, once the deadline passes",
+            "part": "degraded",
+            "cell": "read deadline: unknown outcome, entry read never answers, Check again offered and no retry"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.read-deadline.test.tsx",
+            "title": "a read that never answers releases the island at the deadline [P2-S12-AC-271] commandState degraded: a verified detach whose list refetch never answers keeps the rows and frees the controls at the deadline",
+            "part": "degraded",
+            "cell": "read deadline: list refetch never answers, rows kept, controls freed"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.read-deadline.test.tsx",
+            "title": "a read that never answers releases the island at the deadline [P2-S12-AC-271] diffState degraded: an update diff that never answers shows the unreadable-update sentence at the deadline and frees the review control",
+            "part": "degraded",
+            "cell": "read deadline: diff never answers, unreadable-update sentence, review control freed"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.read-deadline.test.tsx",
+            "title": "a read that never answers releases the island at the deadline [P2-S12-AC-271] selectorState degraded: a Load more read that never answers says the list could not be read at the deadline and keeps the listed patterns",
+            "part": "degraded",
+            "cell": "read deadline: selector page never answers, list kept, load more offered again"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.registry-digest.test.tsx",
+            "title": "a placement refused for a changed block registry [P2-S12-AC-271] commandState error: a 409 digest refusal reads the selector again, keeps the typed values and sends the current digest next",
+            "part": "error",
+            "cell": "placement digest 409 re-reads the selector and sends the current digest next (V20 m9, DEC-246(5))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.registry-digest.test.tsx",
+            "title": "a placement refused for a changed block registry [P2-S12-AC-271] commandState error: a pattern the first page no longer lists is cleared, said, and the rest of the input is kept",
+            "part": "error",
+            "cell": "placement digest 409: a pattern the first page no longer lists is cleared and said"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.registry-digest.test.tsx",
+            "title": "a placement refused for a changed block registry [P2-S12-AC-271] commandState error: a digest refusal answered 422 reads the selector but no entry or list",
+            "part": "error",
+            "cell": "digest refusal answered 422 reads the selector, no entry or list"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.registry-digest.test.tsx",
+            "title": "a placement refused for a changed block registry [P2-S12-AC-271] selectorState degraded: a selector that cannot be read again keeps the input, holds the placement and offers to read the patterns again",
+            "part": "degraded",
+            "cell": "selector cannot be read again: placement held, Read the patterns again offered"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.registry-digest.test.tsx",
+            "title": "a placement refused for a changed block registry [P2-S12-AC-271] selectorState degraded: a Read the patterns again that fails again keeps the placement off and the earlier sentence; a choice cleared meanwhile is read as no choice",
+            "part": "degraded",
+            "cell": "Read the patterns again fails again: still held, earlier sentence kept"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.registry-digest.test.tsx",
+            "title": "a placement refused for a changed block registry [P2-S12-AC-271] commandState error: a page that goes away while the selector is read again changes nothing and asks for nothing more",
+            "part": "degraded",
+            "cell": "page gone while the selector is read again: nothing changes, nothing more asked"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+            "title": "reads that outlive the page [P2-S12-AC-271] commandState degraded: a page that goes away while the entry is read back changes nothing and sends nothing more",
+            "part": "degraded",
+            "cell": "page gone while the reconciling read answers: no list read, nothing sent (refute8b BLIND, now discriminating)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+            "title": "reads that outlive the page [P2-S12-AC-271] commandState degraded: a bulk accept whose reconciling read outlives the page changes nothing",
+            "part": "degraded",
+            "cell": "page gone while the reconciling read answers: no list read, nothing sent (refute8b BLIND, now discriminating)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+            "title": "reads that outlive the page [P2-S12-AC-271] commandState degraded: new blocks whose reconciling read outlives the page change nothing",
+            "part": "degraded",
+            "cell": "page gone while the reconciling read answers: no list read, nothing sent (refute8b BLIND, now discriminating)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.reconcile-edges.test.tsx",
+            "title": "reads that outlive the page [P2-S12-AC-271] commandState degraded: an accept whose reconciling read outlives the page changes nothing",
+            "part": "degraded",
+            "cell": "page gone while the reconciling read answers: no list read, nothing sent (refute8b BLIND, now discriminating)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/use-composition-session.refresh.test.tsx",
+            "title": "recheck [P2-S12-AC-271] commandState degraded: a page that goes away while it reads changes nothing",
+            "part": "degraded",
+            "cell": "recheck of a gone page reads no list and leaves the outcome unconfirmed (refute8b BLIND row 83, now discriminating)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.closing-words.test.tsx",
+            "title": "composition reads: no-store, and the page keeps what it showed until the server answers [P2-S12-AC-271] selectorState and diffState and commandState closing words: the selector page, the diff, the entry and the list reads are no-store and change nothing before they answer",
+            "part": "closing words",
+            "cell": "composition reads: no-store, same-origin, nothing changes before the answer"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.closing-words.test.tsx",
+            "title": "composition commands: no-store, and never optimistic [P2-S12-AC-271] commandState closing words: a placement shows no row, no new version and no cleared field until the server answers, and the list refetch changes nothing before it answers",
+            "part": "closing words",
+            "cell": "composition placement: no-store POST, never optimistic, list refetch changes nothing before it answers"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition-instances/CmsCompositionPage.closing-words.test.tsx",
+            "title": "composition commands: no-store, and never optimistic [P2-S12-AC-271] commandState closing words: a detach and an accept leave the row as the server last listed it until the server answers",
+            "part": "closing words",
+            "cell": "composition detach and accept: no-store POST, never optimistic"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.closing-words.test.tsx",
+            "title": "related content: no-store and never optimistic [P2-S12-AC-271] loading and success closing words: Load more entries is a no-store, same-origin GET, and the list shows no new candidate before the page answers",
+            "part": "closing words",
+            "cell": "related content candidate read: no-store, same-origin, no new candidate before the answer"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.closing-words.test.tsx",
+            "title": "related content: no-store and never optimistic [P2-S12-AC-271] commandState closing words: Save related content is a no-store, same-origin POST, and nothing is called saved, no version moves and no pin changes before the server answers",
+            "part": "closing words",
+            "cell": "related content save: no-store POST, nothing called saved and no version moves before the answer"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.candidates.test.tsx",
+            "title": "a candidate page that never answers (DEC-246 ruling 1) [P2-S12-AC-271] loading and error closing words: Load more entries leaves its loading state at the 8,000 ms deadline, says the page could not be loaded and offers it again, keeping the list",
+            "part": "degraded",
+            "cell": "candidate page read never answers: deadline, failed sentence, load more offered, list kept (DEC-246(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+            "title": "409: refetched automatically, values kept and compared [P2-S12-AC-271] commandState error: a 409 whose automatic read fails keeps the values, offers no Reapply and lets Review changes read again",
+            "part": "error",
+            "cell": "409 whose automatic read fails: the read WAS attempted (refute8b PROOFGAP row 91)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.auto-refetch.test.tsx",
+            "title": "success: the saved rule is refetched [P2-S12-AC-271] commandState success: a refetch that cannot be verified keeps the verified save and its version",
+            "part": "success",
+            "cell": "refetch that cannot be verified: the read WAS attempted (refute8b PROOFGAP row 98)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+            "title": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): keeps the draft and its token and offers no Reapply when the automatic review read fails",
+            "part": "error",
+            "cell": "409 whose automatic review read fails: the read WAS attempted (refute8b PROOFGAP row 104)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx",
+            "title": "CmsRelatedContentForm: 409 review, reapply and discard [P2-S12-AC-271] test correction (DEC-242): keeps the ordered pins, the rule and the entered bound beside the server state the 409 read by itself, and offers Review changes to read again",
+            "part": "error",
+            "cell": "409: values kept beside the server state the 409 read by itself (AC-284/285 c0, now asserted: review section lists the saved rule)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-related-content/related-candidates.test.ts",
+            "title": "fetchCandidatePage deadline (DEC-246 ruling 1) answers failed at the shared 8,000 ms deadline when the list never answers, and aborts the fetch",
+            "part": "degraded",
+            "cell": "candidate read deadline (module)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedSubmitForm.states.test.tsx",
+            "title": "CmsGovernedReviewPanel submit form (CMS-03C-06) commandState [P2-S12-AC-271] commandState error: a plain 401 UNAUTHENTICATED answer says the session ended and links to sign-in with the page as returnTo; it is never a step-up route or a gate",
+            "part": "error",
+            "cell": "governed submit form: plain 401 says the session ended, links to sign-in with returnTo, never step-up or a gate (refute8b open error cell)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedReview.closing-words.test.tsx",
+            "title": "the governed submit command: no-store and never optimistic [P2-S12-AC-271] commandState closing words: Submit for review is a no-store, same-origin POST and the panel keeps the draft lifecycle until the server answers",
+            "part": "closing words",
+            "cell": "governed submit command: same-origin POST, never optimistic (no-store option on the shared transport reported as DEFECT to root)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedReview.closing-words.test.tsx",
+            "title": "the governed review read: no-store and never optimistic [P2-S12-AC-271] governedReviewState closing words: the canonical review read is a no-store, same-origin GET and the shown review stays what it was until the read answers",
+            "part": "closing words",
+            "cell": "governed review read: no-store, same-origin GET, the shown review stays until the read answers"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/governed-review-canonical-read.test.ts",
+            "title": "readCanonicalGovernedReview deadline (DEC-246 ruling 1) answers degraded at the shared 8,000 ms deadline when the read never answers, and aborts the fetch",
+            "part": "degraded",
+            "cell": "governed review read deadline (module)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewQueue.states.test.tsx",
+            "title": "CmsGovernedReviewQueue (CMS-03C-11) governedReviewState: error, degraded, disabled [P2-S12-AC-271] governedReviewState degraded (DEC-242(1), FE03 1018/1630): a 503 renders the closed notice with Retry at the same list position, saying nothing was loaded and showing no queue row from any cache",
+            "part": "degraded",
+            "cell": "governed queue degraded: closed notice with Retry, nothing from a cache (DEC-242(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewQueue.states.test.tsx",
+            "title": "CmsGovernedReviewQueue (CMS-03C-11) governedReviewState: error, degraded, disabled [P2-S12-AC-271] governedReviewState degraded (DEC-242(1), FE03 1018/1630): a 200 that is not the strict page renders the closed notice with Retry at the same list position, saying nothing was loaded and showing no queue row from any cache",
+            "part": "degraded",
+            "cell": "governed queue degraded: closed notice with Retry, nothing from a cache (DEC-242(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/taxonomy-versions-on-demand.test.tsx",
+            "title": "readTaxonomyVersionsOnDemand [P2-S12-AC-271] latestReadState degraded: a chunk that cannot be fetched answers unavailable and requests nothing",
+            "part": "degraded",
+            "cell": "versions read: failed chunk answers unavailable (V20 m6)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/taxonomy-versions-on-demand.test.tsx",
+            "title": "readTaxonomyVersionsOnDemand [P2-S12-AC-271] latestReadState degraded: the vocabulary designer keeps its table and says the list could not be refreshed when the chunk cannot be fetched after a save",
+            "part": "degraded",
+            "cell": "vocabulary designer: failed chunk after a save keeps the table and says the list could not be refreshed (V20 m6)"
+          }
+        ],
+        "staleExisting": [],
+        "gap": null,
+        "retitled": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewQueue.states.test.tsx",
+            "oldTitle": "CmsGovernedReviewQueue (CMS-03C-11) governedReviewState: error, degraded, disabled [P2-S12-AC-271] governedReviewState degraded (kept half of the cell, see DEFECT D1 for the last verified queue): a 503 renders a closed notice saying nothing was loaded and no queue row from any cache",
+            "newTitle": "CmsGovernedReviewQueue (CMS-03C-11) governedReviewState: error, degraded, disabled [P2-S12-AC-271] governedReviewState degraded (DEC-242(1), FE03 1018/1630): a 503 renders the closed notice with Retry at the same list position, saying nothing was loaded and showing no queue row from any cache"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/CmsGovernedReviewQueue.states.test.tsx",
+            "oldTitle": "CmsGovernedReviewQueue (CMS-03C-11) governedReviewState: error, degraded, disabled [P2-S12-AC-271] governedReviewState degraded (kept half of the cell, see DEFECT D1 for the last verified queue): a 200 that is not the strict page renders a closed notice saying nothing was loaded and no queue row from any cache",
+            "newTitle": "CmsGovernedReviewQueue (CMS-03C-11) governedReviewState: error, degraded, disabled [P2-S12-AC-271] governedReviewState degraded (DEC-242(1), FE03 1018/1630): a 200 that is not the strict page renders the closed notice with Retry at the same list position, saying nothing was loaded and showing no queue row from any cache"
+          }
+        ]
+      }
+    ],
+    "proposedStatus": "partial",
+    "proposedLimitation": "web9b closes, for the related-content, composition and governed islands: V20 m3/m5/m6/m9/m10, the n4 unscripted list reads (62 tests now assert the refetch), the refute8b governed submit 401 cell, the queue degraded retitle, the 5 BLIND rows (now fail with the unmount guard removed), the 3 PROOFGAP rows and the closing words (no-store, never optimistic) of the composition, related-content and governed review-read families; the governed command POST lacks the no-store option on a shared file outside the claim (DEFECT). Cite a state part only when web9a closes the same part for its islands.",
+    "defects": [
+      "apps/web/src/components/cms-editorial-workflow/cms-workflow-command-transport.ts:243 sends no cache: no-store on a governed command POST (shared file outside the lane claim); CmsGovernedReview.closing-words.test.tsx asserts everything but that option."
+    ]
+  },
+  {
+    "criterion": "P2-S12-AC-069",
+    "lane": "claude_s12_web9b",
+    "clauses": [
+      {
+        "index": 0,
+        "text": "CMS-03C-06 is consumed by the protected `CmsGovernedReviewPanel` on the template, pattern",
+        "add": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/governed-review-page-mounts.test.tsx",
+            "title": "the template page hosts the governed review panel for the version it served [P2-S12-AC-069] renders the panel with the served version, its lifecycle as text, the submit action and the version\u2019s review summary"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/governed-review-page-mounts.test.tsx",
+            "title": "the template page hosts the governed review panel for the version it served [P2-S12-AC-069] renders no panel when the page is not ready: a denied context, a degraded detail"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/governed-review-page-mounts.test.tsx",
+            "title": "the pattern page hosts the governed review panel for the version it served [P2-S12-AC-069] renders the panel with the served version, its lifecycle as text, the submit action and the version\u2019s review summary"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-governed-review/governed-review-page-mounts.test.tsx",
+            "title": "the pattern page hosts the governed review panel for the version it served [P2-S12-AC-069] renders no panel for a new pattern or a pattern that cannot be read"
+          }
+        ],
+        "staleExisting": [],
+        "gap": null,
+        "retitled": []
+      }
+    ],
+    "proposedStatus": "verified",
+    "proposedLimitation": "The Astro pages cannot be rendered by the plain Vitest config (no Astro plugin): the new suite drives the chain each page frontmatter runs with real code and only the protected edge replaced, then mounts the panel the page renders; governed-review-mounts.test.ts still guards the source wiring (text)."
+  }
+]

@@ -29,6 +29,7 @@ import {
   settle,
 } from './composition-page.test-support';
 import { row, selectorItem } from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /*
  * FE03 927 ("Unsaved changes": retain the scoped draft, show an inline leave confirmation, use beforeunload only while
@@ -90,6 +91,7 @@ describe('insert: leaving with an unsent placement draft', () => {
     await settle();
     expect(page.container.textContent).toContain('Pattern placed');
     expect(unloadPrevented()).toBe(false);
+    expectListRefetches(page, 1);
   });
 
   it('treats a changed slot path or typed overrides as unsent input too', async () => {
@@ -213,6 +215,7 @@ describe('insert: an unknown outcome is reconciled with the entry before any ret
     expect(posts[1]?.body).toEqual(posts[0]?.body);
     expect(posts[1]?.headers['if-match']).toBe('"9"');
     noStrayRequests(page.unexpected);
+    expectListRefetches(page, 2);
   });
 
   it('says so when the entry has moved on, and still retries the same request', async () => {
@@ -234,9 +237,10 @@ describe('insert: an unknown outcome is reconciled with the entry before any ret
     expect(posts[1]?.headers['idempotency-key']).toBe(
       posts[0]?.headers['idempotency-key'],
     );
+    expectListRefetches(page, 2);
   });
 
-  it('says the entry could not be checked when the read fails, and the retry is still offered', async () => {
+  it('[P2-S12-AC-271] test correction (FE03 1050, DEC-245(4)): says the entry could not be checked when the read fails, and offers no retry, only Check again', async () => {
     const page = mountPage({
       [PLACE]: [unknown()],
       [ENTRY]: [refusal(503, 'DEPENDENCY_UNAVAILABLE')],
@@ -247,6 +251,7 @@ describe('insert: an unknown outcome is reconciled with the entry before any ret
     expect(page.container.textContent).toContain(
       'The entry could not be read to check',
     );
-    expect(buttonNamed(page.container, 'Place pattern').disabled).toBe(false);
+    expect(buttonNamed(page.container, 'Place pattern').disabled).toBe(true);
+    buttonNamed(page.container, 'Check again');
   });
 });

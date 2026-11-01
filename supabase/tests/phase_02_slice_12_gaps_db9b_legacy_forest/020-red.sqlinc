@@ -1,0 +1,23 @@
+-- Regression suite (DEC-247, ratified DEC-248): what the publication-side pattern provider and CMS-03C-02 placement do with an ACTIVE legacy stored forest that is
+-- over the nesting depth or the expanded-root bound.  BE03c 1678: "Composition graphs reject cycles and enforce protected depth/node/slot counts before save and
+-- again before publish."; BE03c 388 (CMS-03C-02 validation: "no cycles; max protected depth/nodes"); 1585 (provider reasons pattern_depth_exceeded and
+-- pattern_nodes_exceeded after nested_pattern_not_active); 1694 (placement "expand graph with cycle/depth/node checks"); ledger P2-S12-AC-211 clause "again
+-- before publish".  Written RED by lane db9b (run of 2026-10-31: the provider answered `passed` for both pinned revisions and CMS-03C-02 placed the
+-- ten-level pattern); green since lane db10's migrations (supabase/migrations-wip/db10, DEC-247).
+
+select is(pg_temp.d9l_provider_result('seed-ctrl')->'pattern'->>'outcome', 'passed',
+  'control: the within-bounds pinned revision passes the pattern provider [P2-S12-AC-211]');
+select isnt(pg_temp.d9l_provider_result('seed-deep')->'pattern'->>'outcome', 'passed',
+  'the publication provider does not pass a revision that pins an active pattern nested ten levels deep, one level over the CMS-03C-12 bound [P2-S12-AC-211]');
+select isnt(pg_temp.d9l_provider_result('seed-wide')->'pattern'->>'outcome', 'passed',
+  'the publication provider does not pass a revision that pins an active pattern expanding to 544 block roots, over the 512 bound [P2-S12-AC-211]');
+select is(pg_temp.d9l_provider_result('seed-deep')->'pattern'->>'reasonCode', 'pattern_depth_exceeded',
+  'the ten-level pin fails the pattern category with the reason pattern_depth_exceeded [P2-S12-AC-211]');
+select is(pg_temp.d9l_provider_result('seed-wide')->'pattern'->>'reasonCode', 'pattern_nodes_exceeded',
+  'the 544-root pin fails the pattern category with the reason pattern_nodes_exceeded [P2-S12-AC-211]');
+select is((pg_temp.d9l_provider_result('seed-deep')->'pattern'->>'blockingCount')::integer, 1,
+  'one offending pin is one blocking unit: the ten-level pin has blockingCount 1 [P2-S12-AC-211]');
+select is((select state || ':' || coalesce(message, '') || ':' || coalesce(detail, '') from s12pl_out where label = 'pl-deep'), 'P0001:pattern_depth_exceeded:["/patternId"]',
+  'CMS-03C-02 refuses the active pattern nested ten levels deep with pattern_depth_exceeded at /patternId [P2-S12-AC-211]');
+select ok((select before_rows = after_rows from s12pl_out where label = 'pl-deep'),
+  'the refused ten-level placement wrote nothing: every captured store is unchanged [P2-S12-AC-211]');

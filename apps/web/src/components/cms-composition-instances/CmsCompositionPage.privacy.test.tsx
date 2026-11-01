@@ -25,6 +25,7 @@ import {
   row,
   selectorItem,
 } from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /*
  * FE03 Testing Obligations (Slice 12 governance): no diff value, canonical id or person id in the URL, storage, logs
@@ -111,5 +112,6 @@ describe('composition island: no state outside the component', () => {
         call.search === '' || call.search.startsWith('?contentTypeId='),
       ).toBe(true);
     for (const spy of consoles) spy.mockRestore();
+    expectListRefetches(page, 2);
   });
 });

@@ -56,32 +56,44 @@ afterEach(() => {
 });
 
 /*
- * FE03 :1224 (form contract): a 409 shows the current server version beside the preserved draft, offers
- * Review changes, Reapply when permitted and Discard, and never overwrites automatically. Review changes
- * reads the protected draft detail (CMS-03B-11) FIRST, then the saved rule (cmsRelatedContentRead, DEC-195),
- * and shows the verified server snapshot beside the local draft. Reapply re-sends the preserved draft on the
+ * FE03 :1224 (form contract) with DEC-242 (a 409 is refetched AUTOMATICALLY, the explicit press is not "refetched"): a
+ * 409 reads the protected draft detail (CMS-03B-11) FIRST, then the saved rule (cmsRelatedContentRead, DEC-195), by
+ * itself, and shows the verified server snapshot beside the preserved draft, with Review changes (to read again),
+ * Reapply when permitted and Discard; it never overwrites automatically. Reapply re-sends the preserved draft on the
  * reviewed rule.version, or on the earlier draft entry.version when the read answered `rule: null`, with a
  * fresh key; the reviewed token is never the 409's `currentVersion` (the blind-adoption defect this suite
  * pins). A failed, aborted or malformed read keeps the draft and its token and offers no Reapply, and a 429
  * on the read keeps the input and disables Review changes until the stated wait elapses.
  */
 
-/** Save a preserved draft (one pin, a rule and an entered bound) into the 409 conflict. */
+/**
+ * Save a preserved draft (one pin, a rule and an entered bound) into the 409 conflict. The wire the automatic review
+ * reads is installed BEFORE the save: the first read is the one the 409 starts.
+ */
 const conflicted = async (
   submit: ReturnType<typeof submitStub>,
+  wire?: ReturnType<typeof vi.fn>,
 ): Promise<HTMLElement> => {
+  if (wire !== undefined) vi.stubGlobal('fetch', wire);
   const { container } = mount({ submit });
   await click(buttonNamed(container, `Pin ${name(1)}`));
   await click(byLabel(container, /Shared terms/u));
   await typeInto(boundField(container), '12');
   await click(buttonNamed(container, 'Save related content'));
+  await flush();
   return container;
 };
 
 describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
-  it('keeps the ordered pins, the rule and the entered bound, and offers Review changes', async () => {
+  it('[P2-S12-AC-271] test correction (DEC-242): keeps the ordered pins, the rule and the entered bound beside the server state the 409 read by itself, and offers Review changes to read again', async () => {
     const submit = submitStub({ kind: 'conflict', currentVersion: '9' });
-    const container = await conflicted(submit);
+    const container = await conflicted(
+      submit,
+      canonicalReads({
+        [DRAFT_PATH]: () => draftAnswer('9'),
+        [RULE_PATH]: () => ruleAnswer(),
+      }),
+    );
     expect(heading(container)).toBe('This entry changed');
     expect(text(container)).toContain('Your choices are kept.');
     expect(listItems(container, 'ol.cms-related-rows')).toEqual([id(1)]);
@@ -90,19 +102,24 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
     ).toBe(true);
     expect(boundField(container).value).toBe('12');
     expect(text(container)).toContain('Entry version4');
+    // Beside the draft sits the server state the 409 read by itself: the review section lists the saved rule's pin
+    // (not the person's), and nothing else was pressed.
+    const review = container.querySelector(
+      'section[aria-label="Related content conflict review"]',
+    );
+    expect(review).not.toBeNull();
+    expect(review?.textContent).toContain(id(2));
+    expect(review?.textContent).not.toContain(id(1));
     buttonNamed(container, 'Review changes');
   });
 
-  it('reads the protected draft detail first and then the saved rule on Review changes, with no save and no mutation header', async () => {
+  it('[P2-S12-AC-271] test correction (DEC-242): the 409 reads the protected draft detail first and then the saved rule by itself, with no press, no further save and no mutation header', async () => {
     const submit = submitStub({ kind: 'conflict', currentVersion: '9' });
-    const container = await conflicted(submit);
     const fetcher = canonicalReads({
       [DRAFT_PATH]: () => draftAnswer('9'),
       [RULE_PATH]: () => ruleAnswer(),
     });
-    vi.stubGlobal('fetch', fetcher);
-    await click(buttonNamed(container, 'Review changes'));
-    await flush();
+    const container = await conflicted(submit, fetcher);
     const called = reads(fetcher);
     expect(called.map((call) => call.path)).toEqual([DRAFT_PATH, RULE_PATH]);
     expect(called.every((call) => call.method === 'GET')).toBe(true);
@@ -121,25 +138,21 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
     }
   });
 
-  it('offers no Reapply before a verified read; Reapply re-sends on the reviewed rule version with a fresh key and the entered bound', async () => {
+  it('[P2-S12-AC-271] test correction (DEC-242): Reapply is offered once the automatic read verified; Reapply re-sends on the reviewed rule version with a fresh key and the entered bound', async () => {
     // The reapply CASes on the reviewed rule version (10); its success resource is that + 1.
     const submit = submitStub((call) =>
       call === 0
         ? { kind: 'conflict', currentVersion: '9' }
         : { kind: 'saved', saved: savedOf({ version: '11' }) },
     );
-    const container = await conflicted(submit);
-    expect(() => buttonNamed(container, /^Reapply/u)).toThrow();
     // The rule read answers the freshest entry token (10) after the earlier draft read (9).
-    vi.stubGlobal(
-      'fetch',
+    const container = await conflicted(
+      submit,
       canonicalReads({
         [DRAFT_PATH]: () => draftAnswer('9'),
         [RULE_PATH]: () => ruleAnswer({ version: '10' }),
       }),
     );
-    await click(buttonNamed(container, 'Review changes'));
-    await flush();
     await click(buttonNamed(container, /^Reapply/u));
     await flush();
     expect(submit).toHaveBeenCalledTimes(2);
@@ -162,35 +175,29 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
         ? { kind: 'conflict', currentVersion: '9' }
         : { kind: 'saved', saved: savedOf({ version: '12' }) },
     );
-    const container = await conflicted(submit);
     const fetcher = canonicalReads({
       [DRAFT_PATH]: () => draftAnswer('11'),
       [RULE_PATH]: () => noRuleAnswer(),
     });
-    vi.stubGlobal('fetch', fetcher);
-    await click(buttonNamed(container, 'Review changes'));
-    await flush();
+    const container = await conflicted(submit, fetcher);
     expect(reads(fetcher)).toHaveLength(2);
     await click(buttonNamed(container, /^Reapply/u));
     await flush();
     expect(sent(submit, 1)[0].expectedVersion).toBe('11');
   });
 
-  it('keeps the draft and its token and offers no Reapply when the review read fails', async () => {
+  it('[P2-S12-AC-271] test correction (DEC-242): keeps the draft and its token and offers no Reapply when the automatic review read fails', async () => {
     const submit = submitStub((call) =>
       call === 0
         ? { kind: 'conflict', currentVersion: '9' }
         : { kind: 'saved', saved: savedOf() },
     );
-    const container = await conflicted(submit);
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => {
-        throw new TypeError('offline');
-      }),
-    );
-    await click(buttonNamed(container, 'Review changes'));
-    await flush();
+    const offline = vi.fn(async () => {
+      throw new TypeError('offline');
+    });
+    const container = await conflicted(submit, offline);
+    // The automatic review read WAS attempted (the draft first) and failed.
+    expect(offline.mock.calls.length).toBeGreaterThan(0);
     expect(heading(container)).toBe('This entry changed');
     expect(listItems(container, 'ol.cms-related-rows')).toEqual([id(1)]);
     expect(boundField(container).value).toBe('12');
@@ -203,33 +210,27 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
 
   it('keeps the draft and offers no Reapply when the reviewed rule read is malformed', async () => {
     const submit = submitStub({ kind: 'conflict', currentVersion: '9' });
-    const container = await conflicted(submit);
-    vi.stubGlobal(
-      'fetch',
+    const container = await conflicted(
+      submit,
       canonicalReads({
         [DRAFT_PATH]: () => draftAnswer('9'),
         [RULE_PATH]: () => json({ rule: { id: id(9) } }),
       }),
     );
-    await click(buttonNamed(container, 'Review changes'));
-    await flush();
     expect(listItems(container, 'ol.cms-related-rows')).toEqual([id(1)]);
     expect(() => buttonNamed(container, /^Reapply/u)).toThrow();
   });
 
   it('offers Review changes without a current version and keeps the conflict when a reapply answers 409 again', async () => {
     const submit = submitStub({ kind: 'conflict', currentVersion: null });
-    const container = await conflicted(submit);
-    buttonNamed(container, 'Review changes');
-    vi.stubGlobal(
-      'fetch',
+    const container = await conflicted(
+      submit,
       canonicalReads({
         [DRAFT_PATH]: () => draftAnswer('9'),
         [RULE_PATH]: () => ruleAnswer(),
       }),
     );
-    await click(buttonNamed(container, 'Review changes'));
-    await flush();
+    buttonNamed(container, 'Review changes');
     await click(buttonNamed(container, /^Reapply/u));
     await flush();
     expect(heading(container)).toBe('This entry changed');
@@ -238,15 +239,13 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
   it('keeps the input and disables Review changes until the stated 429 wait elapses', async () => {
     vi.useFakeTimers();
     const submit = submitStub({ kind: 'conflict', currentVersion: '9' });
-    const container = await conflicted(submit);
-    vi.stubGlobal(
-      'fetch',
+    const container = await conflicted(
+      submit,
       canonicalReads({
         [DRAFT_PATH]: () => rateLimited(5),
         [RULE_PATH]: () => rateLimited(5),
       }),
     );
-    await click(buttonNamed(container, 'Review changes'));
     await settle(0);
     expect(buttonNamed(container, 'Review changes').disabled).toBe(true);
     expect(listItems(container, 'ol.cms-related-rows')).toEqual([id(1)]);

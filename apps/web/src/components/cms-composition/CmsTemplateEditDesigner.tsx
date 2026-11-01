@@ -5,6 +5,7 @@ import type {
 } from '@wejammin/contracts';
 
 import { warmCmsValidators } from '../../lib/cms-contract-validators';
+import CmsRegistryChangeNotice from './CmsRegistryChangeNotice';
 import CmsTemplateBindings from './CmsTemplateBindings';
 import CmsTemplateFields from './CmsTemplateFields';
 import CmsTemplateLatestCheck from './CmsTemplateLatestCheck';
@@ -20,6 +21,7 @@ import {
 import { cmsTemplateDraftDirty } from './cms-template-draft-dirty';
 import { useCmsTemplateRateWait } from './cms-template-rate-wait';
 import { useCmsTemplateSentFields } from './use-cms-template-sent-fields';
+import { useTemplateRegistry } from './use-template-registry';
 import { useCmsTemplateValidators } from './use-cms-template-validators';
 
 interface Props {
@@ -32,12 +34,14 @@ interface Props {
 
 /** Successor-draft island: edit state lives in the reconcile-state hook. */
 export default function CmsTemplateEditDesigner({
-  context,
+  context: initialContext,
   detail,
   csrfToken,
   navigate,
 }: Props): React.ReactElement {
   const state = useCmsTemplateEditState(detail);
+  const registry = useTemplateRegistry(initialContext, state.status);
+  const context = registry.context;
   const rateWait = useCmsTemplateRateWait();
   const gate = useCmsTemplateValidators();
   const sent = useCmsTemplateSentFields();
@@ -54,7 +58,8 @@ export default function CmsTemplateEditDesigner({
     context.contentTypes.length === 0 ||
     csrfToken.length === 0 ||
     state.writeBlocked ||
-    rateWait.waiting;
+    rateWait.waiting ||
+    registry.holding;
 
   const submit = async (
     event: React.FormEvent<HTMLFormElement>,
@@ -106,6 +111,11 @@ export default function CmsTemplateEditDesigner({
         mode="successor"
         parentVersion={state.baseDetail.version}
         returnTo={'/app/cms-content-modeling/templates/' + detail.templateKey}
+      />
+      <CmsRegistryChangeNotice
+        state={registry.state}
+        waiting={registry.waiting}
+        onRead={registry.check}
       />
       <CmsTemplateLatestCheck
         offered={

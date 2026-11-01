@@ -254,12 +254,12 @@ describe('assign a reviewer (create)', () => {
     expect(fetcher).toHaveBeenCalledTimes(2);
   });
 
-  it('shows one fixed message for an ineligible reviewer and names the other refusals', async () => {
+  it('shows one fixed message for an ineligible reviewer, refetching the review like the other 409 reasons, and names the other refusals', async () => {
     for (const [reason, text, refetches] of [
       [
         'reviewer_not_eligible',
         'That person cannot be assigned to this review.',
-        0,
+        1,
       ],
       [
         'assignment_exists',

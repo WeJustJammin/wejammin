@@ -6,6 +6,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 import { createHoldingProxy } from './s09-hold-proxy.mjs';
+import { createServerLogCapture } from './server-log-layout.mjs';
 
 const projectRoot = fileURLToPath(new URL('../../../', import.meta.url));
 const apiScript = `${projectRoot}/tests/e2e/support/content-schema-registry-api.ts`;
@@ -38,6 +39,18 @@ const runtimeConfigDirectory = await mkdtemp(
   join(tmpdir(), 'wejammin-s09-real-'),
 );
 const webConfig = join(runtimeConfigDirectory, 'wrangler.jsonc');
+// Server logs for the Slice 12 identifier scan (P2-S12-AC-273 "logs or telemetry"). Every byte the API Worker and
+// the web server write to stdout or stderr is appended to a file in `.lane-logs/e2e-server-logs/<run>/` (git-excluded,
+// outside test-results/, which Playwright empties) AND still echoed unchanged to this process's stdout and stderr, which
+// Playwright shows and `run-s09-real-suite.mjs` reads for its retry signatures. The API Worker runs in workerd with no
+// host filesystem, so its sink is its stdout: the production logger (`createRuntimeDependencies().createLogger`) writes
+// each structured line through `console.info`. `server-log-capture.ts` reads these files at the end of each journey;
+// `S09_SERVER_LOG_DIR` overrides the directory (see tests/e2e/support/README.md).
+const serverLogs = createServerLogCapture({ projectRoot, runToken });
+// A closed pipe on this process's own stdout or stderr must not kill the supervisor mid-teardown.
+for (const stream of [process.stdout, process.stderr])
+  stream.on('error', () => undefined);
+process.once('exit', () => serverLogs.close());
 // The service key never goes on a command line: it travels in a 0600 file inside
 // the 0700 runtime directory, which the exit hook removes with the web config.
 const apiEnvironmentFile = join(runtimeConfigDirectory, 'api.env');
@@ -98,7 +111,7 @@ const resolveSupabaseStack = async () => {
   const url = supabaseApiUrl();
   const secret = supabaseServiceKey();
   if (secret === null) {
-    console.error(
+    serverLogs.launcherLine(
       'S10 real-route launcher: cannot read the local Supabase service key; the Slice 10 editorial routes stay unregistered and the Slice 10 specs will refuse to run. Start the stack: pnpm db:start && pnpm db:reset.',
     );
     return null;
@@ -118,7 +131,7 @@ const resolveSupabaseStack = async () => {
     }
     await sleep(1_000);
   }
-  console.error(
+  serverLogs.launcherLine(
     `S10 real-route launcher: the local Supabase API at ${url} is not answering (${lastError}); the Slice 10 editorial routes stay unregistered and the Slice 10 specs will refuse to run. Start it: pnpm db:start && pnpm db:reset.`,
   );
   return null;
@@ -191,19 +204,24 @@ setInterval(() => {
 process.once('SIGINT', () => void shutdown(0));
 process.once('SIGTERM', () => void shutdown(0));
 
-const spawnChild = (command, args, watch, detached = false) => {
+// `logKind` is 'api' or 'web' for a server whose output is captured, null for a step (the build) that is only echoed.
+const spawnChild = (command, args, watch, detached = false, logKind = null) => {
   const child = spawn(command, args, {
     cwd: projectRoot,
     env: process.env,
-    stdio: 'inherit',
+    stdio: logKind === null ? 'inherit' : ['inherit', 'pipe', 'pipe'],
     detached,
   });
+  if (logKind !== null) {
+    serverLogs.tee(logKind, child.stdout, process.stdout);
+    serverLogs.tee(logKind, child.stderr, process.stderr);
+  }
   children.push(child);
   if (detached) detachedChildren.add(child);
   if (watch)
     child.once('exit', (code, signal) => {
       if (!shuttingDown) {
-        console.error(
+        serverLogs.launcherLine(
           `S09 ${args[1]} server exited before teardown (code=${String(code)}, signal=${String(signal)})`,
         );
         shutdown(code === null || code === 0 ? 1 : code);
@@ -295,6 +313,7 @@ try {
     ],
     true,
     true,
+    'api',
   );
   await waitFor(`${apiOrigin}/api/v1/health`, 200);
 
@@ -331,10 +350,11 @@ try {
       ],
       false,
       true,
+      'web',
     );
     child.once('exit', (code, signal) => {
       if (shuttingDown || generation !== webGeneration) return;
-      console.error(
+      serverLogs.launcherLine(
         `S09 web server exited before teardown (code=${String(code)}, signal=${String(signal)}); restarting (${String(webRestarts + 1)}/${String(maxWebRestarts)})`,
       );
       // Anything the dead session left behind (an orphaned workerd) must not
@@ -346,12 +366,14 @@ try {
       }
       webRestarts += 1;
       if (webRestarts > maxWebRestarts) {
-        console.error('S09 web server keeps exiting; giving up.');
+        serverLogs.launcherLine('S09 web server keeps exiting; giving up.');
         shutdown(1);
         return;
       }
       webReady = startWeb().catch((error) => {
-        console.error(error instanceof Error ? error.message : String(error));
+        serverLogs.launcherLine(
+          error instanceof Error ? error.message : String(error),
+        );
         shutdown(1);
       });
     });
@@ -369,13 +391,15 @@ try {
     // A restart replaces `webReady`; re-read it on every hold.
     ready: () => webReady,
     onRetry: ({ method, url, code, attempt }) =>
-      console.error(
+      serverLogs.launcherLine(
         `S09 held ${method} ${url} (${code}, attempt ${String(attempt)}) until the web server is ready`,
       ),
   });
   await holdingProxy.listen();
   await new Promise(() => undefined);
 } catch (error) {
-  console.error(error instanceof Error ? error.message : String(error));
+  serverLogs.launcherLine(
+    error instanceof Error ? error.message : String(error),
+  );
   shutdown(1);
 }

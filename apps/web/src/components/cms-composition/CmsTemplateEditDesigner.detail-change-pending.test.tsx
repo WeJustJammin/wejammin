@@ -196,13 +196,10 @@ const nativeSubmit = async (container: HTMLElement): Promise<void> => {
       .dispatchEvent(new Event('submit', { bubbles: true, cancelable: true }));
   });
 };
-const click = async (button: HTMLButtonElement): Promise<void> => {
-  await act(async () => button.click());
-};
 
 describe('CMS-11 detail change while a successor write is held', () => {
   it.each(['created', 'lost'] as const)(
-    'B-TPL-010 surfaces a possibly-sent attempt as unknown and offers the manual check (%s)',
+    'B-TPL-010 surfaces a possibly-sent attempt as unknown and reads the latest version by itself (%s)',
     async (lateKind) => {
       const write = deferred<Response>();
       const read = deferred<Response>();
@@ -234,13 +231,13 @@ describe('CMS-11 detail change while a successor write is held', () => {
 
         // The possibly-sent attempt must be surfaced as an unknown outcome ...
         expect(container.textContent).toContain('The result is unknown.');
-        // ... with the manual recovery control, and no automatic read.
-        const checkButton = buttonWithText(container, 'Check latest version');
+        // ... with the recovery control, and the canonical read started by itself (FE03 1048, DEC-242 item 3).
+        const checkButton = buttonWithText(
+          container,
+          'Checking latest version…',
+        );
         expect(checkButton).not.toBeNull();
-        expect(getCalls(fetcher)).toHaveLength(0);
-
-        // The manual read happens only after the person clicks it.
-        await click(checkButton!);
+        expect(checkButton!.disabled).toBe(true);
         expect(getCalls(fetcher)).toHaveLength(1);
         await act(async () => read.resolve(current(newerDetail)));
         expect(container.textContent).toContain('Latest version 3');

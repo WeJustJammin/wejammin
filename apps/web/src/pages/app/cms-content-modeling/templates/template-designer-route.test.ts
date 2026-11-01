@@ -27,7 +27,8 @@ describe('CMS-11 protected template designer page', () => {
   it('loads only the protected selector context and gates the hydrated form', () => {
     expect(source).toContain('readCmsTemplateContext');
     expect(source).toContain('env.PLATFORM_API');
-    expect(source).toContain('TemplateDesignerContextSchema.safeParse');
+    // The verification and the failure answers are tested in cms-template-page-outcome.test.ts.
+    expect(source).toContain('templateCreatePageOutcome');
     expect(source).toContain('cmsEditorialCsrfCookie');
     expect(source).toContain('context !== null ?');
     expect(source).toContain('client:load');
@@ -36,11 +37,9 @@ describe('CMS-11 protected template designer page', () => {
   });
 
   it('redirects an expired session and never turns denial/degradation into a form', () => {
-    expect(source).toContain('selector.status === 401');
+    expect(source).toContain("outcome.kind === 'redirect'");
     expect(source).toContain('cmsRedirectResponse');
-    expect(source).toContain(
-      'Astro.response.status = selector.ok ? 502 : selector.status',
-    );
+    expect(source).toContain('Astro.response.status = outcome.status');
     expect(source).toContain('context === null ?');
   });
 });
@@ -53,7 +52,7 @@ describe('CMS-11 protected template successor page', () => {
     );
     expect(editSource).toContain('readCmsTemplateDetail');
     expect(editSource).toContain('readCmsTemplateContext');
-    expect(editSource).toContain('TemplateVersionDetailSchema.safeParse');
+    expect(editSource).toContain('templateSuccessorPageOutcome');
     expect(editSource).toContain('CmsTemplateEditDesigner');
     expect(editSource).toContain('detail !== null && context !== null');
     expect(editSource).toContain('client:load');

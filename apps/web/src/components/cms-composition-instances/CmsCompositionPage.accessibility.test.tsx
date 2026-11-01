@@ -112,7 +112,7 @@ const page = (
     row(3),
   ],
 ) => {
-  const scripted = scriptedFetch(script);
+  const scripted = scriptedFetch(script, { rows: instances });
   const mounted = mountInShell(
     <CmsCompositionPage
       entry={entryFacts()}

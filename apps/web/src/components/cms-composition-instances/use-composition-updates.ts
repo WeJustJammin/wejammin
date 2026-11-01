@@ -1,13 +1,13 @@
-import { useCallback, useMemo } from 'react';
+import {
+  useCallback,
+  useMemo,
+  type Dispatch,
+  type SetStateAction,
+} from 'react';
 
 import { rateLimitMessage } from '../../lib/rate-limit-message';
 import { retainChoices } from './composition-choices';
-import {
-  newRootsRequest,
-  submitPlacement,
-  submitUpdate,
-  type UpdateAnswer,
-} from './composition-commands';
+import { submitUpdate, type UpdateAnswer } from './composition-commands';
 import { refusalMessage, UNKNOWN_OUTCOME_MESSAGE } from './composition-copy';
 import { NO_PANEL, type Panel } from './composition-panel';
 import { readUpdateDiff } from './composition-reads';
@@ -18,6 +18,7 @@ import {
   type UpdateBody,
 } from './composition-update-request';
 import type { Choice, ChoiceMap, UpdateDiff } from './composition-types';
+import { useCompositionNewRoots } from './use-composition-new-roots';
 import { usePanelNow } from './use-composition-panel-now';
 import type { CompositionSession } from './use-composition-session';
 
@@ -27,7 +28,7 @@ export interface PanelState {
 }
 export interface SelectionState {
   readonly selected: ReadonlySet<string>;
-  readonly setSelected: (next: ReadonlySet<string>) => void;
+  readonly setSelected: Dispatch<SetStateAction<ReadonlySet<string>>>;
 }
 
 /** The lines that name each instance's outcome (the new pin, a removal or a local copy, DEC-193). */
@@ -42,23 +43,34 @@ export const outcomeLines = (
 export const useCompositionUpdates = (
   session: CompositionSession,
   { panel, setPanel }: PanelState,
-  { selected, setSelected }: SelectionState,
+  { setSelected }: SelectionState,
 ) => {
-  const { fetcher, mutate, addRows, setEntry, setStatus, refreshEntry } =
-    session;
+  const {
+    fetcher,
+    mutate,
+    addRows,
+    setEntry,
+    setStatus,
+    refreshEntry,
+    refreshList,
+    reconcileUnknown,
+    held,
+  } = session;
   const { panelRef, choicesNow } = usePanelNow(panel);
   const readOptions = useMemo(
     () => (fetcher === undefined ? {} : { fetcher }),
     [fetcher],
   );
 
+  // V17 N1: only the processed ids leave the selection; a row ticked while the command ran stays ticked.
   const prune = useCallback(
-    (ids: readonly string[]) => {
-      const next = new Set(selected);
-      for (const id of ids) next.delete(id);
-      setSelected(next);
-    },
-    [selected, setSelected],
+    (ids: readonly string[]) =>
+      setSelected((current) => {
+        const next = new Set(current);
+        for (const id of ids) next.delete(id);
+        return next;
+      }),
+    [setSelected],
   );
 
   /** Read the diff again; the answers survive only for paths whose three values did not change. */
@@ -115,20 +127,30 @@ export const useCompositionUpdates = (
     [panel, setPanel],
   );
 
-  /** A command's non-success answer: what happened, and (for a 409) a fresh version and diff with choices kept. */
+  /**
+   * A command's non-success answer: what happened, and (for a 409) a fresh version, list and diff with choices kept
+   * (FE03 1049). An unknown outcome reconciles by refetching the entry and the list before any retry (FE03 1050).
+   */
   const afterRefusal = useCallback(
     async (
       answer: Exclude<UpdateAnswer, { kind: 'updated' }>,
       heading: string,
       keep: { diff: UpdateDiff; choices: ChoiceMap } | null,
+      sentVersion: string,
     ): Promise<void> => {
       if (answer.kind === 'rate_limited') return;
       if (answer.kind === 'uncertain') {
-        setStatus(failure('Result not known', UNKNOWN_OUTCOME_MESSAGE));
+        setStatus(pending('Checking the entry before any retry…'));
+        const { line } = await reconcileUnknown(sentVersion, 'update');
+        if (session.mountedRef.current)
+          setStatus(
+            failure('Result not known', `${UNKNOWN_OUTCOME_MESSAGE} ${line}`),
+          );
         return;
       }
       if (answer.status === 409) {
-        await refreshEntry();
+        const facts = await refreshEntry();
+        await refreshList(facts?.revisionId);
         if (keep !== null) await reloadDiff(keep.diff, choicesNow(keep));
       }
       setStatus(
@@ -140,7 +162,15 @@ export const useCompositionUpdates = (
         ),
       );
     },
-    [choicesNow, refreshEntry, reloadDiff, setStatus],
+    [
+      choicesNow,
+      reconcileUnknown,
+      refreshEntry,
+      refreshList,
+      reloadDiff,
+      session.mountedRef,
+      setStatus,
+    ],
   );
 
   const send = useCallback(
@@ -178,10 +208,25 @@ export const useCompositionUpdates = (
     setStatus(pending('Accepting the update…'));
     const answer = await send(body);
     if (answer === null) return;
-    if (answer.kind === 'updated')
+    if (answer.kind === 'updated') {
       applied(answer, 'Update applied', [panel.diff.instance.id]);
-    else await afterRefusal(answer, 'Update not applied', panel);
-  }, [afterRefusal, applied, panel, send, session.entryRef, setStatus]);
+      await refreshList();
+    } else
+      await afterRefusal(
+        answer,
+        'Update not applied',
+        panel,
+        body.expectedVersion,
+      );
+  }, [
+    afterRefusal,
+    applied,
+    panel,
+    refreshList,
+    send,
+    session.entryRef,
+    setStatus,
+  ]);
 
   const detach = useCallback(
     async (instanceId: string): Promise<void> => {
@@ -202,18 +247,22 @@ export const useCompositionUpdates = (
       setStatus(pending('Detaching the block…'));
       const answer = await send(body);
       if (answer === null) return;
-      if (answer.kind === 'updated') applied(answer, 'Detached', [instanceId]);
-      else
+      if (answer.kind === 'updated') {
+        applied(answer, 'Detached', [instanceId]);
+        await refreshList();
+      } else
         await afterRefusal(
           answer,
           'Not detached',
           panel.kind === 'diff' ? panel : null,
+          body.expectedVersion,
         );
     },
     [
       afterRefusal,
       applied,
       panel,
+      refreshList,
       send,
       session.entryRef,
       session.rowsRef,
@@ -221,75 +270,19 @@ export const useCompositionUpdates = (
     ],
   );
 
-  /** DEC-193 _Place_: the blocks a newer version adds are placed only through CMS-03C-02 `roots`. */
-  const placeNewRoots = useCallback(
-    async (roots: readonly string[]): Promise<void> => {
-      if (panel.kind !== 'diff') return;
-      const instance = session.rowsRef.current.find(
-        (row) => row.id === panel.diff.instance.id,
-      );
-      if (instance === undefined) return;
-      const request = newRootsRequest(
-        panel.diff,
-        instance,
-        roots,
-        session.entryRef.current,
-      );
-      if (request === null) return;
-      setStatus(pending('Placing the new blocks…'));
-      const answer = await mutate(JSON.stringify(request), (context) =>
-        submitPlacement(request, context),
-      );
-      if (answer === null) return;
-      if (answer.kind === 'placed') {
-        addRows(answer.rows);
-        setEntry({ ...session.entryRef.current, version: answer.version });
-        setStatus(
-          success('New blocks placed', [
-            `Placed ${answer.rows.length} ${answer.rows.length === 1 ? 'block' : 'blocks'} from pattern version ${request.patternVersion}.`,
-          ]),
-        );
-        await reloadDiff(panel.diff, choicesNow(panel));
-        return;
-      }
-      if (answer.kind === 'rate_limited') return;
-      if (answer.kind === 'uncertain') {
-        setStatus(failure('Result not known', UNKNOWN_OUTCOME_MESSAGE));
-        return;
-      }
-      if (answer.status === 409) {
-        await refreshEntry();
-        await reloadDiff(panel.diff, choicesNow(panel));
-      }
-      setStatus(
-        failure(
-          'Blocks not placed',
-          refusalMessage('place', answer.status, answer.reason),
-          [],
-          answer.status === 403,
-        ),
-      );
-    },
-    [
-      addRows,
-      choicesNow,
-      mutate,
-      panel,
-      refreshEntry,
-      reloadDiff,
-      session.entryRef,
-      session.rowsRef,
-      setEntry,
-      setStatus,
-    ],
+  const placeNewRoots = useCompositionNewRoots(
+    session,
+    panel,
+    reloadDiff,
+    choicesNow,
   );
 
   return {
     review,
     choose,
-    accept,
-    detach,
-    placeNewRoots,
+    accept: held(accept),
+    detach: held(detach),
+    placeNewRoots: held(placeNewRoots),
     reloadDiff,
     send,
     applied,

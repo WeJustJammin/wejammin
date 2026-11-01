@@ -1,0 +1,1827 @@
+[
+  {
+    "criterion": "P2-S12-AC-294",
+    "lane": "db9a",
+    "proposedStatus": "partial",
+    "proposedLimitation": "Archived target between check and use: no archive writer exists (BE03b rule 2 names it; DEC-245(6)). A default template superseded under a waiting create is not exercised.",
+    "citations": [
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "a create naming T3 is observed blocked BY the assignment revocation in flight (the caller's assignment rows over the target) [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "MODEL",
+        "reason": "race9_entry_unassigned.sql:118 (U2, scenario 57-59): the holder is a raw UPDATE of ONE cms_entry_assignments row (r7_hold_raw). The only production writer of an assignment revocation is the AFTER-trigger helper cms_revoke_edit_presence_without_authority (20261005011300:26-120), fired by the actor-grant and tenure triggers (20261005010600:334-348), i.e. inside a transaction that has already updated the grant or tenure row, which every create share-locks at position 1 (20261005012100 cms_lock_entry_authority:127-143, called through cms_require_entry_capability_locked:160-175). With a production revoker the create therefore waits at position 1 (U1), never at position 2 on the assignment; U2 is an interleaving no production writer can produce. DEC-245(7)/DEC-246(6): a stand-in is evidence only when it takes exactly the production path's locks (U2 holds no position 1 lock). Same class as db8 U3 (refute8 DROP MODEL). The row is sound as a model of the second loop of cms_resolve_relation_targets (20261005012100:425-431) and is the only test that reaches it; it cannot be credited.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "U2 create waits behind a hand-held assignment revoke",
+        "rowIndex": 0,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 7,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "while it waits the create already holds the relation target entry row (position 2) and has taken neither the default template (3) nor the content type version (4): no late position 2 [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "MODEL",
+        "reason": "race9_entry_unassigned.sql:120: 55P03/00000/00000 shows the create holds the target entry row and neither 3 nor 4 while it waits on the hand-held assignment write. Same stand-in as row 0 (no production revoker can leave the create at position 2). The order fact (2 before 3 and 4) is carried by race8_entry_create.sql A3 (refute8 part 4) and D2 with production waits.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "U2 positions while waiting at 2",
+        "rowIndex": 1,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 8,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "the target is rechecked after the wait: once the assignment is revoked the create is the uniform VALIDATION_FAILED at /fields/{relation field} [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "MODEL",
+        "reason": "race9_entry_unassigned.sql:122: P0001:VALIDATION_FAILED at the relation field after the stand-in commits. Discriminating for the second-loop recheck, but the interleaving cannot occur with a production revoker (row 0). Not citable (DEC-245(7), DEC-246(6)).",
+        "fix": null,
+        "splitParts": [],
+        "cell": "U2 outcome after the position-2 wait",
+        "rowIndex": 2,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 9,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "the revocation committed: the target is no longer visible to the caller although the caller still holds cms.author and cms.editor grants [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "MODEL",
+        "reason": "race9_entry_unassigned.sql:124: the stand-in's own commit (assignment revoked, target invisible, grants kept): a control of the stand-in, and a passing precondition of rows 2 and 4.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "U2 holder committed",
+        "rowIndex": 3,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 10,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "the refused create wrote nothing: no entry exists and the Idempotency-Key holds no record [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "MODEL",
+        "reason": "race9_entry_unassigned.sql:126: effect side of row 2; same stand-in.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "U2 refused create wrote nothing",
+        "rowIndex": 4,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 11,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "a create naming T2 is observed blocked BY the real authority revocation in flight [P2-S12-AC-294]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_entry_unassigned.sql:131 (U1, scenario 76-78): the REAL platform_api.cms_revoke_capability_grant (stash 'revoke_editor', owner context, CAS on the grant version) is held open and the real cms_create_entry is observed blocked BY it (pg_blocking_pids). Both commands are production commands. Which part: this is the position-1 authority fencing of BE03b rule 1 (\"a revocation committed before the writer's lock wins; one that arrives later waits\"), i.e. part \"authority/\" (post-split clause 1), as the real-command twin of A4 (raw UPDATE of the author grant), NOT part \"visibility\": the discriminating content is where the create waits (position 1, rows 5+6 together), not the position-2 recheck, which this seam cannot reach (the create holds position 1 from before its first visibility pass, so no real revoker can commit between \"check\" and \"use\"). It does not re-prove the creator's own capability (cms.author is kept, row 8); A4 carries that. Wait evidence for rows 6 and 7.",
+        "fix": null,
+        "splitParts": [
+          0
+        ],
+        "cell": "U1 create waits behind the REAL CMS-03A-17 revocation",
+        "rowIndex": 5,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 13,
+          "ok": true
+        },
+        "postSplitClauseIndex": 1
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "while it waits behind the real revocation the create holds no later position: not the relation target entry row (2), the default template (3) or the content type version (4) [P2-S12-AC-294]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_entry_unassigned.sql:133: 00000/00000/00000 on the target entry row (2), the default template version (3) and the content type version (4) while the create is blocked BY the real revocation (positions probed from a third session; both polarities exist elsewhere in the file: U2 reads 55P03 at position 2, and the same table forms read 55P03 in race8 D2/W4). Together with row 5 this places the wait at position 1 (the grant row the revoker updated; the diag only says \"transactionid\", so the position is inferred from \"blocked by h\" plus \"nothing later held\", which is what a position-2 wait would not show). A create that took position 2 first would read 55P03 here. This is the discriminating row for the authority-fencing claim (lock before write). It is NOT evidence for \"late position-2 acquisition\" (part 4): a create that locked 3 before 2 would also read 00000 on all three while parked at position 1 (BLIND for that part).",
+        "fix": null,
+        "splitParts": [
+          0
+        ],
+        "cell": "U1 holds no position 2/3/4 while waiting",
+        "rowIndex": 6,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 14,
+          "ok": true
+        },
+        "postSplitClauseIndex": 1
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "after the real revocation commits, the create whose own capability is cms.author answers the uniform VALIDATION_FAILED at /fields/{relation field} [P2-S12-AC-294]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_entry_unassigned.sql:135: after the real revocation commits the create, whose own capability cms.author is intact (row 8), answers P0001:VALIDATION_FAILED|[\"/fields/<relation field>\"] (the uniform refusal, BE03b rule 2), i.e. it decides on the post-revocation authority/visibility state, not on the pre-wait snapshot (control U0: the same create succeeds while the target is visible). It would pass without a second visibility loop (the first pass already runs after the position-1 wait), so it proves \"post-wait state is what the create acts on\" for the authority rows, not the position-2 recheck (part \"visibility\", uncited).",
+        "fix": null,
+        "splitParts": [
+          0
+        ],
+        "cell": "U1 outcome after the real revocation commits",
+        "rowIndex": 7,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 15,
+          "ok": true
+        },
+        "postSplitClauseIndex": 1
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "the real revocation committed the grant end and the same-transaction assignment revocation (DEC-143): the caller keeps cms.author and the target is invisible [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "race9_entry_unassigned.sql:137: the holder's own commit (grant false, assignment revoked, target invisible) plus the fixture fact that cms.author remains. It is the precondition of row 7, passes whether or not the create rechecks anything (refute8 DROP CONTROL class: \"the activation committed\", \"the unpublish commits\").",
+        "fix": null,
+        "splitParts": [],
+        "cell": "U1 real revocation committed (grant end + assignment revoked + cms.author kept)",
+        "rowIndex": 8,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 16,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+        "title": "the create refused after the real revocation wrote no entry and left no Idempotency-Key record [P2-S12-AC-294]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_entry_unassigned.sql:139: no bound-type entry and no Idempotency-Key record after the refusal (u1_entries_after = entries_before and r8_reserved = 0). Effect side of row 7; weak and redundant but it can fail (a create that waited and then succeeded would add an entry), same ruling as A4 row 13 in refute8.",
+        "fix": null,
+        "splitParts": [
+          0
+        ],
+        "cell": "U1 refused create wrote nothing",
+        "rowIndex": 9,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+          "n": 17,
+          "ok": true
+        },
+        "postSplitClauseIndex": 1
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+        "title": "a caller of organization B naming organization A's content type and version in a schema activation is refused (not completed, not timed out on a lock) [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "ADJACENT",
+        "reason": "race9_definition_lever.sql:92: the command driven is CMS-03A-04 cms_activate_schema as organization B (BE03b rule 3: activation locks \"only for a candidate of the caller's own organization\"), not CMS-03B-10. The clause names the CMS-03B-10 write path (\"CMS-03B-10 locks ... with no invisible/foreign definition lock lever\"). The assertion is also negative-form (not ok, not TIMEOUT, not 55P03%): any other error, including a CONFLICT produced by a lock wait that hit the 1 s lock_timeout (activation converts lock failures to CONFLICT, BE03b rule 6), passes; only row 11 (identity with the absent-id outcome) would catch it.",
+        "fix": "Drive CMS-03B-10 itself (AC-294 missedGaps 1); this row belongs to the activation / governed-submit criteria, not to AC-294.",
+        "splitParts": [],
+        "cell": "lever: activation naming A's content type refused",
+        "rowIndex": 10,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+          "n": 5,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+        "title": "the activation naming A's existing definition and the activation naming absent ids answer the identical outcome: no existence oracle [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "ADJACENT",
+        "reason": "race9_definition_lever.sql:94: sound for CMS-03A-04 (an existing foreign definition and absent ids answer the identical outcome, so no existence oracle and no wait: a lock request on A's FOR UPDATE rows would have hit the 1 s lock_timeout and differ). Wrong command for this clause: CMS-03B-10 is not driven. Belongs to BE03b rule 3 (a Slice 10/11 activation criterion), not to AC-294.",
+        "fix": "Drive CMS-03B-10 itself (AC-294 missedGaps 1); this row belongs to the activation / governed-submit criteria, not to AC-294.",
+        "splitParts": [],
+        "cell": "lever: activation outcome identical to absent ids",
+        "rowIndex": 11,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+          "n": 6,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+        "title": "a caller of organization B submitting A's default template version is the concealed NOT_FOUND, identical to the outcome for an absent template version id [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "ADJACENT",
+        "reason": "race9_definition_lever.sql:96: cms_submit_governed_review is CMS-03C-06 (BE03c 174), not CMS-03C-07 as the file header, the README and the lane report say; it concerns the governed-review subject lookup, not the CMS-03B-10 default lock at position 3. Sound concealment evidence for the governed submit (candidate refile: the CMS-03C-06 concealment cell of AC-072/AC-073 if a clause there is uncited), not for the create path.",
+        "fix": "Drive CMS-03B-10 itself (AC-294 missedGaps 1); this row belongs to the activation / governed-submit criteria, not to AC-294.",
+        "splitParts": [],
+        "cell": "lever: governed submit naming A's default template concealed",
+        "rowIndex": 12,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+          "n": 7,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+        "title": "every one of those calls returned under a 1 s lock_timeout while the holder of organization A's definition rows was still open: B requested no lock on A's rows (a FOR SHARE would have waited behind FOR UPDATE) [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "ADJACENT",
+        "reason": "race9_definition_lever.sql:99: the assertion is held_after_* = 55P03/55P03/55P03 x4, i.e. only that the holder still owned A's rows after each call; the elapsed time is not measured (the claim \"returned under a 1 s lock_timeout\" is carried by the outcome rows 10-12, not by this row). A control-style row for commands that are not CMS-03B-10.",
+        "fix": "Drive CMS-03B-10 itself (AC-294 missedGaps 1); this row belongs to the activation / governed-submit criteria, not to AC-294.",
+        "splitParts": [],
+        "cell": "lever: calls returned under 1 s lock_timeout with the holder open",
+        "rowIndex": 13,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+          "n": 8,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+        "title": "the refused calls changed nothing: no idempotency record, no review, the version and template states are unchanged [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "ADJACENT",
+        "reason": "race9_definition_lever.sql:100: stores before = stores during for CMS-03A-04 and CMS-03C-06 refusals. Effect side of rows 10-12; wrong command for this clause.",
+        "fix": "Drive CMS-03B-10 itself (AC-294 missedGaps 1); this row belongs to the activation / governed-submit criteria, not to AC-294.",
+        "splitParts": [],
+        "cell": "lever: refused calls changed nothing",
+        "rowIndex": 14,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+          "n": 9,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      },
+      {
+        "clauseIndex": 1,
+        "proposedClauseIndex": 1,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+        "title": "control: organization A's own create of the bound content type is observed blocked BY the same holder (the probe sees a wait on these rows when one is requested) [P2-S12-AC-294]",
+        "verdict": "DROP",
+        "dropClass": "ADJACENT",
+        "reason": "race9_definition_lever.sql:102: control that the probe sees a wait on A's definition rows (A's own create is blocked BY the holder). A valid control for the lever file; a control is not proof, and the file does not drive a foreign create.",
+        "fix": "Drive CMS-03B-10 itself (AC-294 missedGaps 1); this row belongs to the activation / governed-submit criteria, not to AC-294.",
+        "splitParts": [],
+        "cell": "lever: control, A's own create blocked by the holder",
+        "rowIndex": 15,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+          "n": 10,
+          "ok": true
+        },
+        "postSplitClauseIndex": null
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "DEFINITION LEVER ON THE WRITE PATH IS REACHABLE AND UNTESTED (the answer to the brief). CMS-03B-10 does name a definition: its request carries client-supplied contentTypeId and contentTypeVersionId (BE03b 276; platform_private.cms_create_entry 20261005018040:81-90 exact keys, :106-114 the owner-scoped resolve \"candidate.owner_id = acting_party_id ... A hidden or version-less pair conceals as NOT_FOUND\"), resolved by a plain SELECT with no lock before the ownership predicate; the version lock (position 4) is taken only for a row that resolved (20261022010100 moves it below the value loop). It does NOT name a default template (no operand: BE03b 1726; the default is derived from the owner-scoped version, and cms_lock_default_template_shared(template, acting_party_id) puts the owner predicate in the locking statement itself, 20261022010000:37-41). So the lever exists for the content type/version ids and is a property of the create, yet race9_definition_lever.sql drives other commands (CMS-03A-04 activation under BE03b rule 3, and the governed submit CMS-03C-06 for a template_version subject) and never cms_create_entry. Those six rows are sound for their own commands and prove nothing about the AC-294 write path, so the part \"with no invisible/foreign definition lock lever\" stays UNCITED. Needed (1): a caller of organization B with cms.author (labelled grant, as db9b does) sends cms_create_entry naming A's contentTypeId and contentTypeVersionId while a session of A holds A's content type row and version rows FOR UPDATE: the create answers the concealed P0001:NOT_FOUND, identical to the answer for an absent pair, under a 1 s lock_timeout and with the holder still open (probe after); control: A's own create is observed blocked BY the same holder. Needed (2), default template, unit level and no forgery: with A's holder owning template T1 FOR UPDATE, a session calls platform_private.cms_lock_default_template_shared(T1, B) under lock_timeout 1 s and returns at once; control (T1, A) waits. A command-level foreign default needs a forged B version row (the AC-289 BOUNDARY), which is acceptable only as a labelled forgery.",
+      "WHAT U1 DOES AND DOES NOT PROVE (the answer to the brief). U1 is the real CMS-03A-17 revocation: the create waits at POSITION 1 (rows 5-6: blocked BY the revoker while holding nothing at 2, 3 or 4; the diag only says \"transactionid\", so the position is inferred, which is what a position-2 wait would not show) and after the commit answers the uniform refusal. It proves the position-1 authority fencing of BE03b rule 1 with a production revoker, which is why its rows are filed under part \"authority/\" (post-split clause 1, next to A4's raw-UPDATE stand-in). It does not re-prove the creator's own capability (cms.author is kept) and it cannot reach the position-2 recheck: the create holds position 1 from before its first visibility pass, so no real revoker can commit between \"check\" and \"use\" (20261005012100:160-175 locks first, :408-431 the two visibility loops run after); its outcome would be identical if the second loop did not exist. Part \"visibility\" therefore stays uncited, as DEC-246(6) rules: bumped is proven (A3) but credits one branch, archived has no writer, unassigned has no production seam at position 2.",
+      "U2 IS UNREACHABLE BY ANY PRODUCTION WRITER. The assignment rows are revoked only by cms_revoke_edit_presence_without_authority (20261005011300:26-120), called from the AFTER triggers on organization_actor_grant and membership_tenure (20261005010600:334-348) in the transaction that already holds the grant or tenure row that every create share-locks at position 1; there is no function that revokes one assignment (the entry-scoped assignment trigger revokes nothing, 20261005011300:66-68). U2 is a labelled stand-in; DEC-245(7) and DEC-246(6) rule it out. Nothing is lost for the clause: with the production seam the position-2 wait on an assignment cannot occur.",
+      "LABEL ERROR in the lane files: cms_submit_governed_review is CMS-03C-06 (BE03c 174), not CMS-03C-07 (the decision, BE03c 175) as race9_definition_lever.sql:6, 030-definition-world.sqlinc:3, race9/README.md and the lane report say. Cosmetic, but the file header is what a reader cites.",
+      "AC-294 part 4 (\"late position-2 acquisition\") gains nothing from U1 (BLIND for that part) and keeps its db8 rows (A3, D2); part 2 (\"exact schema/default\") keeps A1 and D2; the superseded-default branch (db8 open item 3) is still not exercised."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "contingent": "Rows 5, 6, 7 and 9 (U1) are filed under part \"authority/\" (post-split clause 1) on the reading that the position-1 authority fencing of a REAL revocation, with the create deciding on the post-revocation state, is the real-command evidence of \"authority ... rechecked after waits\". If root reads that part strictly as the creator's OWN capability re-proof (A4 only), U1 proves only the first-pass \"unassigned\" flavour of \"visibility\" and cannot be credited to any part while \"visibility\" is open: then do not cite rows 5-9 and name them in the limitation as sound partial evidence (the treatment refute8 gave A3). Status is partial either way.",
+    "limitationAdvice": "Unproven (uncited parts): \"visibility\" (BE03b rule 2: a relation target ARCHIVED or UNASSIGNED between check and use). Archived: no BE03b or BE03c command archives an entry (nothing writes cms_content_entries.lifecycle; DEC-245(6) keeps it open until an archive writer exists). Unassigned: a production revocation (the grant or tenure trigger, 20261005011300) holds position 1, so the create waits there and the position-2 recheck is unreachable through it (phase_02_slice_12_race9_entry_unassigned.sql U1, cited under \"authority/\"); the hand-held single-assignment revocation U2 has no production writer and is not cited (DEC-245(7), DEC-246(6)). A target bumped while the create waits at position 2 is proven (race8_entry_create.sql A3) but credits only a branch of the part. And \"with no invisible/foreign definition lock lever\": CMS-03B-10 names a content type and version by client-supplied contentTypeId and contentTypeVersionId (BE03b 276), resolved owner-scoped without a lock (20261005018040:106-114), so the lever is reachable on the write path, but phase_02_slice_12_race9_definition_lever.sql drives CMS-03A-04 and CMS-03C-06, not cms_create_entry. Missing test: a caller of organization B names organization A's contentTypeId and contentTypeVersionId in cms_create_entry while a session of A holds those rows FOR UPDATE; the create answers the concealed NOT_FOUND (identical to an absent pair) under a 1 s lock_timeout; control: A's own create is observed blocked by the same holder. The default template cannot be named (no operand) and a foreign stored default cannot exist (AC-289 BOUNDARY); its lock helper cms_lock_default_template_shared (20261022010000:37-41) puts the owner predicate in the locking statement and is unit-testable. Proven and cited: the position-1 authority fence with a raw grant update (capability re-proved, FORBIDDEN after the wait) and with the real CMS-03A-17 revocation, exact schema (VALIDATION_FAILED at /contentTypeVersionId) and exact default (CONFLICT) rechecked after waits, position 2 never acquired after 3 or 4 (A3, D2); the ascending-id lock order (A6) is cited under clause 0.",
+    "notes": "db9a rows 0-15: 16 proposed against the post-apply8 five-part split (post-split clause indexes: 1 \"authority/\", 2 \"visibility\", 3 \"and exact schema/default are rechecked after waits,\", 4 \"with no invisible/foreign definition lock lever\", 5 \"or late position-2 acquisition.\"). KEEP 4 (U1 rows 5, 6, 7, 9 -> post-split clause 1; use clauseIndex 1 + splitParts[0] as apply8 does), DROP 12 (U2 x5 MODEL, U1 holder-commit CONTROL, lever x6 ADJACENT/WRONG-COMMAND). Status after: partial (parts \"visibility\" and \"definition lever\" uncited). Identity: all 16 titles resolve to exactly one passing TAP test and one whole string literal at the stated line."
+  },
+  {
+    "criterion": "P2-S12-AC-277",
+    "lane": "db9a",
+    "proposedStatus": "partial",
+    "proposedLimitation": "unchanged for the other parts (linked pattern update versus local override, duplicate and out-of-order events, restore-epoch fencing)",
+    "citations": [
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+        "title": "once the unpublish has committed the public projection no longer lists the target [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race8_related.sql:95 (U1): position(target in u1_projection_after) = 0 AND u1_projection_after <> '' (the guard refute8 asked for is now in). Matched by the \"during\" row (:92-93, position(...) = 1: the target IS listed before the unpublish commits, KEEP in refute8), so the \"after\" row can fail; the projection helper (090-related-helpers.sqlinc:22-30) raises instead of returning '' on a broken function, so the non-empty guard closes the vacuous pass. The unpublish is the lineage-producer stand-in that takes the production locks of the case (DEC-245(7): \"U1 yes\"). Title unchanged, so db8's other U1 citations keep resolving. Not a duplicate of refute8's c4 rows (it was a missedGap, not a row).",
+        "fix": null,
+        "splitParts": [],
+        "cell": "db8 U1 projection drops the unpublished target (guarded)",
+        "rowIndex": 0,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+          "n": 9,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "the production unpublisher holds the target entry row FOR SHARE (FOR UPDATE NOWAIT is refused, FOR SHARE NOWAIT is granted), exactly the lock the curation takes at position 2 [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_related_unpublish.sql:154: with the REAL CMS-03B-20 execute held open, FOR UPDATE NOWAIT on the target entry row is refused (55P03) and FOR SHARE NOWAIT is granted (00000). Verified against the source: the executor takes the entry row FOR SHARE at position 0 (20261005017740:153-155) and the curation takes target entries FOR SHARE at position 2 (20261014060400:155-164, cms_lock_entry_rows_shared). Supporting row: the two probes cannot tell FOR SHARE from FOR KEY SHARE (the lineage insert's foreign key takes the latter), so the title's \"FOR SHARE\" rests on the migration, but neither mode conflicts with the curation's FOR SHARE, which is the determinism the clause needs. Would fail (with row 2) if the executor were changed to FOR UPDATE.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "production unpublisher holds the target entry row FOR SHARE",
+        "rowIndex": 1,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 7,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "the real curation pinning the target completes WITHOUT waiting for the unpublish in flight (under a 1 s lock_timeout, while the unpublisher is still open) [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_related_unpublish.sql:156: the real cms_curate_related_content is sent under lock_timeout 1 s while the real execute transaction is held open; it returns eligibleCount '1' (collect window 20 s) AND, probed after the collect, FOR UPDATE NOWAIT on the target entry row is still 55P03, i.e. the executor was still open when the curation finished. \"No wait\" is therefore OBSERVED, not assumed: a wait on any lock the executor holds could only end by the 1 s timeout (the holder never releases before r7_end), so the outcome would be an error; the only way to pass is not to wait. The same machinery reads true waits in the control (rows 13-14).",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O1 curation completes without waiting while the production unpublish is open",
+        "rowIndex": 2,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 8,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "the pin of the target is committed while its unpublish is still uncommitted [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_related_unpublish.sql:157: the main session (a third connection) reads the pin (target_a) while the executor transaction is uncommitted: the curation committed first. Effect side of row 2.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O1 pin committed while the unpublish is uncommitted",
+        "rowIndex": 3,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 9,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "while the unpublish is uncommitted the public projection still lists the published target, pinned first [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_related_unpublish.sql:159: position(target in projection) = 1 (listed first, as the pinned eligible target) while the lineage head is still publish:active from the committed view (fixture :151-152). The projection reads committed lineage heads (BE03c 1571). Matches refute8's KEEP of the same row for the stand-in U1.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O1 projection still lists the published target while the unpublish is uncommitted",
+        "rowIndex": 4,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 10,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "the schedule is still executing (the executor's transaction owns its schedule row update) while the curation commits [P2-S12-AC-277]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "race9_related_unpublish.sql:160: o1_sched_during like 'executing:%' only restates that the executor's transaction is uncommitted (the fixture row :151-152 already asserts the lineage head), the precondition of rows 3-4. It passes whether or not any concurrency rule exists.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O1 schedule still executing",
+        "rowIndex": 5,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 11,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "the scheduled unpublish commits as a revoked tombstone after the active publish [P2-S12-AC-277]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "race9_related_unpublish.sql:161: 'publish:active,unpublish:revoked' is the executor's own commit (CMS-03B-20's functional result, covered by the Slice 11 criteria), the same class as refute8's DROP CONTROL of race8 U1 \"the unpublish commits as a revoked tombstone\". The race outcome is carried by rows 7-8.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O1 unpublish commits as a tombstone",
+        "rowIndex": 6,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 12,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "the schedule is completed and the unpublished target stays pinned in the stored rule set (history is private, not removed) [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_related_unpublish.sql:163: after both commit, the schedule is completed AND the stored rule set still pins the unpublished target (o1_pins_after = target_a): the editorial pin survives the unpublish (\"its editorial explanation remains private\", BE03c 1700). The pin conjunct can fail (an unpublish that removed the pin); same content as refute8's KEEP \"the unpublished target stays pinned in the stored rule set\".",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O1 end state: schedule completed and the unpublished target stays pinned",
+        "rowIndex": 7,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 13,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "once the scheduled unpublish has committed the public projection no longer lists the target (it still projects the source's other eligible targets) [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_related_unpublish.sql:165: position(target in projection) = 0 AND projection <> '' (the source still projects its other eligible targets). Matched by row 4 (listed before the commit). BE03c 1571/1700: a target that becomes unpublished disappears from the output.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O1 projection no longer lists the target after the scheduled unpublish",
+        "rowIndex": 8,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 14,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "the real execute command unpublishing the pinned target completes WITHOUT waiting for the curation in flight (under a 1 s lock_timeout, while the curation is still open) [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_related_unpublish.sql:171: with the real curation held open (source entry row FOR UPDATE and target FOR SHARE, fixture :168-169 with both probes), the real execute is sent under lock_timeout 1 s and returns outcome completed; the probe after the collect still reads 55P03 on the source row, i.e. the curation was still open. Same observation method as row 2, other order.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O2 production execute completes without waiting while the curation is open",
+        "rowIndex": 9,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 16,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "the unpublish is committed while the curation is not: no pin is visible yet [P2-S12-AC-277]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "race9_related_unpublish.sql:173: lineage 'publish:active,unpublish:revoked', schedule completed and no pin visible while the curation is uncommitted: it establishes the order of the scenario (the executor's commit and the curation's own uncommitted state) and is the precondition of rows 11-12; it passes whether or not any concurrency rule exists.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O2 unpublish committed, curation not",
+        "rowIndex": 10,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 17,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "once the curation commits the unpublished target is pinned (a target unpublished before the curation commits is still a valid pin) [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_related_unpublish.sql:174: after the curation commits, o2_pins_after = target_b although the unpublish committed first: \"a target unpublished before the curation commits is still a valid pin\" (pin eligibility is exists/active/same owner/readable, not published: BE03c 1700). Deterministic outcome of the unpublish-first order; matches refute8's KEEP \"once the writer commits the curation proceeds and commits the pin\".",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O2 curation commits the pin of an already unpublished target",
+        "rowIndex": 11,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 18,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "whichever command committed last, the public projection does not list the unpublished target [P2-S12-AC-277]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "race9_related_unpublish.sql:176: position(target in projection) = 0 AND projection <> ''. Same content as refute8's KEEP of race8 U3 \"whichever command committed last\", now after production commands.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O2 projection excludes the unpublished target whichever command committed last",
+        "rowIndex": 12,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 19,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "control: the curation and the scheduled unpublish are each observed blocked BY a holder of the target entry row FOR UPDATE, so the no-wait outcomes above are real [P2-S12-AC-277]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "race9_related_unpublish.sql:181: hand-held FOR UPDATE on the target entry row (what a 03B revision writer takes) and both real commands blocked BY it (pg_blocking_pids). A correct and necessary POSITIVE CONTROL: it shows that the wait probe and the lock_timeout method DO detect a wait on this very row, so the no-wait rows are not artifacts of a blind probe. A control is not proof of the clause; the holder is a revision writer, not an unpublish.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O3 control: both observed blocked by a FOR UPDATE holder",
+        "rowIndex": 13,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 21,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "control: both wait for the holder's transaction on a row lock [P2-S12-AC-277]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "race9_related_unpublish.sql:183: wait_event type transactionid for both. Control detail of row 13.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O3 control: both wait on a row lock",
+        "rowIndex": 14,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 22,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "while both wait nothing has been written: no pin, and the lineage head is the active publish [P2-S12-AC-277]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "race9_related_unpublish.sql:185: no pin and the lineage head still publish:active while both are parked. A mid-state of the control; it fails only if a command did not wait, which row 13 already shows.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O3 control: while both wait nothing written",
+        "rowIndex": 15,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 23,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "once the holder releases, both commit: the curation pins the target and the execute completes the unpublish [P2-S12-AC-277]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "race9_related_unpublish.sql:187: both commit once the holder rolls back. The scenario is a three-party interleaving (revision writer, curation, unpublish) whose trigger is a hand-held stand-in; the clause's scenario is the two-party race of rows 2-12.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O3 control: after release both commit",
+        "rowIndex": 16,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 24,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 4,
+        "proposedClauseIndex": 2,
+        "lane": "db9a",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+        "title": "the end state is the same in every order: unpublish tombstone, schedule completed, pin stored, target absent from the public projection [P2-S12-AC-277]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "race9_related_unpublish.sql:190: the title claims every order but the assertion is O3's own end state only (O1 and O2 end states are asserted by rows 7-8 and 11-12). Over-claiming title; content is the control's outcome, not a citable race outcome. If it is ever cited the title must say \"after both queue behind a revision writer's row lock\".",
+        "fix": null,
+        "splitParts": [],
+        "cell": "O3 end state \"the same in every order\"",
+        "rowIndex": 17,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+          "n": 25,
+          "ok": true
+        }
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "APPLY BY CLAUSE TEXT, NOT BY THE PROPOSAL'S INDEX. The proposal files these rows at index 2 with a stale parent text (\"locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing ...\"), which matches no clause of the current ledger: index 2 is \"term merge versus assignment,\" (8 citations). The part field (\"related target unpublish,\") is right and is clause 4 of the current ledger (clause 3 is \"locale source edit versus translation,\"). A positional apply would credit the term-merge clause with 10 unpublish rows. The JSON rows carry clauseIndex 4; apply8 already guards this with an expected-text check.",
+      "THE PRODUCTION PATH IS SOUND, AND \"NO WAIT\" IS OBSERVED. Verified against the sources: the CMS-03B-20 executor takes the target entry row FOR SHARE at position 0 (20261005017740:153-155), the schedule creator's publisher authority rows FOR SHARE, the content-type version FOR SHARE and the schedule's review and schedule rows FOR UPDATE (:16-18, 62-67); the CMS-03C-05 curation takes the SOURCE entry row FOR UPDATE and the target entries FOR SHARE at position 2 (20261014060400:12-24, 125-164). The two commands share FOR SHARE/FOR SHARE on the target and FOR SHARE/FOR SHARE on the authority and type-version rows and have no conflicting row, so nobody waits in either order; the file observes this (completion under lock_timeout 1 s while the other transaction is verified still open) and not merely assumes it. Residual: the third order, \"unpublish fully committed, then a fresh curation\", involves no concurrency; its end state is carried by refute8's KEEP of race8 U3 \"once the writer commits the curation proceeds and commits the pin\".",
+      "THE FOR UPDATE CONTROL (O3) IS SOUND AS A CONTROL AND NOT CITABLE AS PROOF. A hand-held FOR UPDATE on the target entry row (what a CMS-03B-01 revision writer takes) makes both production commands wait (pg_blocking_pids, wait_event transactionid), which proves the probe and the lock_timeout method see a wait on exactly this row, so the no-wait rows cannot be a blind probe. The holder is a revision writer, not an unpublish, so the three-party interleaving is not the clause's scenario. Rows 13-17 therefore DROP as CONTROL (row 17 also over-claims \"in every order\").",
+      "PROBE LIMIT (row 1): FOR UPDATE NOWAIT refused + FOR SHARE NOWAIT granted cannot distinguish FOR SHARE from FOR KEY SHARE (the publication-version insert's foreign key takes the latter), so \"holds the target entry row FOR SHARE\" rests on the migration line. Neither mode conflicts with the curation, which is what the determinism needs; add a FOR NO KEY UPDATE NOWAIT probe (conflicts with FOR SHARE, not with FOR KEY SHARE) if the title should be proven rather than read.",
+      "STALE LIMITATION TEXT: refute8's limitationAdvice for AC-277 ends \"... the executor itself is not driven\". After wave 9 the CMS-03B-20 executor IS driven (race9_related_unpublish.sql); the limitations script must use the text below.",
+      "Optional hardening, not blocking: db8's U1 stand-in rows are redundant now that the production path exists; they stay citable (DEC-245(7): U1 takes the production locks of the case)."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "contingent": null,
+    "limitationAdvice": "Unproven (uncited parts): \"linked pattern update versus local override,\" (BE03c names no override-writing command other than the CMS-03C-02 placement and the CMS-03C-15 resolution; owner reading needed), \"duplicate and out-of-order events,\" and \"and restore-epoch fencing each have a deterministic tested outcome.\" (BE03c states no 03c consumer-ordering or restore-fence rule beyond the idempotent recheck job and the platform fence; owner reading needed). Proven by two-session pgTAP: template activation versus block withdrawal and worker lease expiry (phase_02_slice_12_race7_template_block.sql, _lease.sql), locale source edit versus translation (phase_02_slice_12_race8_locale.sql: both orders, the typed VERSION_MISMATCH of the loser, the retry, the stale row) and related target unpublish on the production path (phase_02_slice_12_race9_related_unpublish.sql: CMS-03B-07 schedule, the real claim and CMS-03B-20 execute against CMS-03C-05, both orders; both take the target entry row FOR SHARE, so nobody waits, observed under a 1 s lock_timeout with the other transaction verified open, and the end state is the same: unpublish tombstone, schedule completed, pin stored, target absent from the public projection; a FOR UPDATE holder control shows the probe sees a wait on that row) plus the lineage-producer stand-in of phase_02_slice_12_race8_related.sql (U1, which takes the production locks of the case, DEC-245(7); the U3 FOR UPDATE rows are not cited).",
+    "notes": "db9a rows 0-17 for the part \"related target unpublish,\" (current clause 4): 18 proposed. KEEP 10 (row 0 db8 U1 guarded projection row; rows 1-4 and 7-9 and 11-12 production path), DROP 8 (CONTROL: executor-state restatements 5, 10; the executor's own tombstone commit 6; the FOR UPDATE control 13-16; the over-claiming \"every order\" row 17). Status after: partial (clauses 1, 5, 7 stay owner readings). Identity: all 18 titles resolve to exactly one passing TAP test and one whole string literal at the stated line."
+  },
+  {
+    "criterion": "P2-S12-AC-108",
+    "lane": "db9b",
+    "proposedStatus": "verified",
+    "proposedLimitation": null,
+    "citations": [
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+        "title": "positive control: the first owner's author lists its two active versions [P2-S12-AC-108]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "pattern_selector_foreign.sql:147: the first owner's author lists d9p-a-only@1 and d9p-shared@1 for the first owner's type. A positive control (the reader can list active, compatible, owned rows); not proof of the clause, and not matched to the negative arm (different type).",
+        "fix": null,
+        "splitParts": [],
+        "cell": "pattern selector positive control: first owner lists its two versions",
+        "rowIndex": 0,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+          "n": 34,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+        "title": "the second organization's author lists NOTHING for its own type: the first owner's two ACTIVE versions are never listed to another owner [P2-S12-AC-108]",
+        "verdict": "DROP",
+        "dropClass": "BLIND",
+        "reason": "pattern_selector_foreign.sql:152: The foreign rows are the first owner's real ACTIVE versions, but they are ALSO incompatible with the requested type: the second organization asks for its own type (d9pforeign), CMS-03C-12 only accepts the caller's own active type ids (BE03c 407; the lane's own \"honest limit 2\"), so the first owner's versions name only the first organization's type. cms_list_pattern_selector filters version_row.owner_id = v_party_id AND state = 'active' AND compatible_type_ids contains the type (20261014140300:135-137); with the owner predicate removed the page would be the same empty page. The negative arm is over-determined by the compatibility predicate, so the owner predicate the clause names is never the deciding one: the assertion passes whether or not the rule exists (BLIND). The positive control (the first owner's author lists its versions) is not a matched control: it asks for a different type.",
+        "fix": "Build the matched pair of AC-108 missedGaps 1 and re-propose; do not cite as is.",
+        "splitParts": [],
+        "cell": "second organization lists NOTHING for its own type",
+        "rowIndex": 1,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+          "n": 36,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+        "title": "independent oracle: the two active rows exist in the store and none of their ids is in the second organization's page [P2-S12-AC-108]",
+        "verdict": "DROP",
+        "dropClass": "BLIND",
+        "reason": "pattern_selector_foreign.sql:156: the two ACTIVE rows exist and none of their ids is in the second organization's page. Same overdetermination as the row above (the page is empty for the compatibility reason), so the oracle cannot fail without the type predicate failing first. BLIND.",
+        "fix": "Build the matched pair of AC-108 missedGaps 1 and re-propose; do not cite as is.",
+        "splitParts": [],
+        "cell": "independent oracle: foreign ids absent from the page",
+        "rowIndex": 2,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+          "n": 37,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+        "title": "the second organization's page is byte-identical after the first owner's activation: same (empty) items and the same pageVersion [P2-S12-AC-109]",
+        "verdict": "DROP",
+        "dropClass": "BLIND",
+        "reason": "pattern_selector_foreign.sql:181: tagged [P2-S12-AC-109] in its own title (the pageVersion rule), filed here under AC-108 clause 3. The first owner's successor cannot enter or move a page computed from versions compatible with a different type, with or without the owner predicate (pageVersion is the max updated_at over the owner's versions compatible with the type, 20261014140300:157-160, which is empty for the second organization either way). BLIND, and ADJACENT to AC-109.",
+        "fix": "Build the matched pair of AC-108 missedGaps 1 and re-propose; do not cite as is.",
+        "splitParts": [],
+        "cell": "second organization page byte-identical after the first owner activates",
+        "rowIndex": 3,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+          "n": 50,
+          "ok": true
+        }
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "MATCHED PAIR NEEDED (1). The clause is proven only by a foreign version that passes every other predicate. Both the lane and I read the same fact: no production path stores an ACTIVE other-owner version compatible with the caller's type (CMS-03C-12 accepts only the caller's own active type ids, BE03c 407). The lane stopped there (\"honest limit 2\") but its own technique goes further: db9b legacy_forest 000-world.sqlinc:29-51 (d9l_draft) clones a real pattern row as a labelled DRAFT with arbitrary columns and makes it ACTIVE only through the real governed chain, and :40-69 of the pattern file forges the second organization's type the same way. Build: a first-owner DRAFT clone whose compatible_type_ids names the second organization's active type d9pforeign, run through the FIRST owner's real chain (submit, assign, approve, activate: the first owner holds the owner scope); if the chain refuses the foreign type id at submit or activation, name that refusal (migration:line) as the BOUNDARY; if only the lifecycle seam remains, a labelled forgery under app.cms_governed_lifecycle is the fallback. Assert: the second organization's author, asking for d9pforeign, lists NOTHING of the first owner's clone; control (matched): the same clone with owner = the second organization is listed; control: remove nothing, the clone is ACTIVE and compatible. Only then the owner predicate (20261014140300:135) is the sole deciding predicate. The same row closes the pattern half of AC-190 clause 2 and the nestable read (20261027100000).",
+      "ROW 3 IS TAGGED [P2-S12-AC-109] in its own title (the pageVersion rule) and filed under AC-108: a mis-filing on top of the blindness; do not carry the tag across criteria.",
+      "The type-ownership concealment of the same file (rows :168-172, NOT_FOUND identical to an absent type) is real evidence, but of a different predicate (20261014140300:111-113) and of AC-190 clause 4, not of this clause."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "contingent": null,
+    "limitationAdvice": "Unproven (uncited clause): \"or other-owner version is never listed\": the owner predicate of CMS-03C-13 (cms_list_pattern_selector, 20261014140300:135, version_row.owner_id = v_party_id) is still not isolated. phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql lists the first owner's real ACTIVE versions to nobody else, but every one of them also fails the compatibility predicate for the second organization's type (CMS-03C-12 accepts only the caller's own active type ids, BE03c 407), so the second organization's page is empty with or without the owner predicate. Missing test: a matched pair in which the other-owner ACTIVE version is compatible with the requested type, so only the owner predicate can exclude it (a first-owner draft clone naming the second organization's active type, activated through the first owner's real governed chain, as db9b legacy_forest d9l_draft builds legacy rows; or the guard that refuses it named as the BOUNDARY), with the same row owned by the caller as the listed control.",
+    "notes": "db9b rows 0-3: 4 proposed. KEEP 0, DROP 4 (BLIND 3: the negative arms are overdetermined by the compatibility predicate; CONTROL 1). The lane proposed verified; status stays partial."
+  },
+  {
+    "criterion": "P2-S12-AC-190",
+    "lane": "db9b",
+    "proposedStatus": "verified",
+    "proposedLimitation": null,
+    "citations": [
+      {
+        "clauseIndex": 2,
+        "proposedClauseIndex": 2,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+        "title": "positive control: the first organization's author lists the active terms of its active vocabularies, equal to the independent oracle (non-empty) [P2-S12-AC-190]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "taxonomy_selector_foreign.sql:72: the first organization's author lists its active terms, equal to the independent oracle (non-empty). A positive control; the matched pair is row 2, which contains the same arm.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "taxonomy positive control",
+        "rowIndex": 0,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+          "n": 24,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 2,
+        "proposedClauseIndex": 2,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+        "title": "the second organization's page is EMPTY, pageVersion \"1\": the first organization's ACTIVE vocabularies and terms, whose allowlists name the requested type and field, are never listed to another owner [P2-S12-AC-190]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "taxonomy_selector_foreign.sql:88: the negative arm of the matched pair. ISOLATED: the foreign rows are the first organization's real ACTIVE vocabularies with ACTIVE terms whose allowlists name the very type key (s12govordinary) and field key (title) the second organization's author asks for (fixture :43-49), and cms_list_taxonomy_selector filters version_row.owner_id = acting_party_id AND state = 'active' AND allowlisted_type_keys ? type_key AND allowlisted_field_keys ? field_key (20261014120700:138-139) with no content-type existence check, so with the owner predicate removed the second page would list the >= 10 terms. The second organization's own vocabulary is a draft (:50-53), so nothing of its own competes. Sound and discriminating, but it proves the TAXONOMY branch of the plural clause \"selectors)\": E14 (BE03c 227) scopes \"every lookup by key (the latest read, parents, selectors)\"; the ledger's own limitation names BOTH selectors' owner predicates, and the pattern selectors' version-list owner predicate (CMS-03C-13 and the nestable read, 20261027100000) is still not isolated (see AC-108 rows 1-3). AC-190 would become verified (every clause cited, guard: a verified entry may state no limitation), so the unproven branch could not be recorded. Hold: cite it together with the pattern rows once the matched pair exists, or at once if root reads \"lookup by key\" as the taxonomy selector only (the pattern selectors take a content-type id, not a key).",
+        "fix": "Hold (not citable as proposed). Cite at clause 2 once the pattern-selector matched pair exists (AC-108 missedGaps 1), or at once if root reads \"selectors\" as the key-addressed taxonomy selector only (see contingent).",
+        "splitParts": [],
+        "cell": "second organization page EMPTY for the same query",
+        "rowIndex": 1,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+          "n": 28,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 2,
+        "proposedClauseIndex": 2,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+        "title": "the same query (type s12govordinary, field title, locale en-US) answers a non-empty page to the first organization and an empty one to the second: the owner predicate is the sole difference [P2-S12-AC-190]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "taxonomy_selector_foreign.sql:91: the matched pair in one assertion (>= 10 items for the first organization, 0 for the second, pageVersion differs) for the SAME typeKey/fieldKey/locale: the owner predicate is the sole difference. The strongest row of the file. Sound and discriminating, but it proves the TAXONOMY branch of the plural clause \"selectors)\": E14 (BE03c 227) scopes \"every lookup by key (the latest read, parents, selectors)\"; the ledger's own limitation names BOTH selectors' owner predicates, and the pattern selectors' version-list owner predicate (CMS-03C-13 and the nestable read, 20261027100000) is still not isolated (see AC-108 rows 1-3). AC-190 would become verified (every clause cited, guard: a verified entry may state no limitation), so the unproven branch could not be recorded. Hold: cite it together with the pattern rows once the matched pair exists, or at once if root reads \"lookup by key\" as the taxonomy selector only (the pattern selectors take a content-type id, not a key).",
+        "fix": "Hold (not citable as proposed). Cite at clause 2 once the pattern-selector matched pair exists (AC-108 missedGaps 1), or at once if root reads \"selectors\" as the key-addressed taxonomy selector only (see contingent).",
+        "splitParts": [],
+        "cell": "same query: non-empty for the first organization, empty for the second",
+        "rowIndex": 2,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+          "n": 29,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 2,
+        "proposedClauseIndex": 2,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+        "title": "no vocabulary lineage of the first organization appears in the second organization's page [P2-S12-AC-190]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "taxonomy_selector_foreign.sql:94: no item of the second page belongs to a first-organization taxonomy lineage. Implied by row 1 (an empty page) but not vacuous (it names the lineages that would leak). Sound and discriminating, but it proves the TAXONOMY branch of the plural clause \"selectors)\": E14 (BE03c 227) scopes \"every lookup by key (the latest read, parents, selectors)\"; the ledger's own limitation names BOTH selectors' owner predicates, and the pattern selectors' version-list owner predicate (CMS-03C-13 and the nestable read, 20261027100000) is still not isolated (see AC-108 rows 1-3). AC-190 would become verified (every clause cited, guard: a verified entry may state no limitation), so the unproven branch could not be recorded. Hold: cite it together with the pattern rows once the matched pair exists, or at once if root reads \"lookup by key\" as the taxonomy selector only (the pattern selectors take a content-type id, not a key).",
+        "fix": "Hold (not citable as proposed). Cite at clause 2 once the pattern-selector matched pair exists (AC-108 missedGaps 1), or at once if root reads \"selectors\" as the key-addressed taxonomy selector only (see contingent).",
+        "splitParts": [],
+        "cell": "no first-organization lineage in the second page",
+        "rowIndex": 3,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+          "n": 30,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 2,
+        "proposedClauseIndex": 2,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+        "title": "the second organization's page is byte-identical after the first organization's change: same (empty) items, same pageVersion [P2-S12-AC-190]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "taxonomy_selector_foreign.sql:108: after a new active term of the first organization (control :104-106: the first page grows by exactly one) the second page is unchanged. Discriminating for the owner predicate for the same reason as row 1. Sound and discriminating, but it proves the TAXONOMY branch of the plural clause \"selectors)\": E14 (BE03c 227) scopes \"every lookup by key (the latest read, parents, selectors)\"; the ledger's own limitation names BOTH selectors' owner predicates, and the pattern selectors' version-list owner predicate (CMS-03C-13 and the nestable read, 20261027100000) is still not isolated (see AC-108 rows 1-3). AC-190 would become verified (every clause cited, guard: a verified entry may state no limitation), so the unproven branch could not be recorded. Hold: cite it together with the pattern rows once the matched pair exists, or at once if root reads \"lookup by key\" as the taxonomy selector only (the pattern selectors take a content-type id, not a key).",
+        "fix": "Hold (not citable as proposed). Cite at clause 2 once the pattern-selector matched pair exists (AC-108 missedGaps 1), or at once if root reads \"selectors\" as the key-addressed taxonomy selector only (see contingent).",
+        "splitParts": [],
+        "cell": "second page byte-identical after the first organization changes",
+        "rowIndex": 4,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+          "n": 33,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 2,
+        "proposedClauseIndex": 2,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+        "title": "each cross-owner type outcome equals that caller's outcome for an ABSENT type, message and DETAIL, with no body [P2-S12-AC-190]",
+        "verdict": "FIX",
+        "dropClass": "ADJACENT",
+        "reason": "pattern_selector_foreign.sql:172: each caller naming the other organization's ACTIVE type receives exactly its own outcome for an absent type (P0001:NOT_FOUND, message and DETAIL, no body; the paired absent-type calls are at :166-167). This is the type-ownership predicate of CMS-03C-13 (20261014140300:111-113), not the version-list owner predicate, and it is the content of clause 4 (\"a key held by another owner is indistinguishable from an unused key, so that no cross-owner existence signal ... is possible\"): sound, additive there. Refile to AC-190 clause 4. It does not discharge the pattern selectors' part of clause 2.",
+        "fix": "Refile to P2-S12-AC-190 clause 4 (additive); not a clause 2 citation.",
+        "splitParts": [],
+        "cell": "pattern selector: cross-owner type outcome equals absent",
+        "rowIndex": 5,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+          "n": 42,
+          "ok": true
+        },
+        "refileTo": {
+          "criterion": "P2-S12-AC-190",
+          "clauseIndex": 4
+        }
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "THE TAXONOMY HALF IS A GENUINE ISOLATION. Matched pair: the same typeKey/fieldKey/locale query answers >= 10 items to the first organization and an empty page to the second, the foreign rows are real ACTIVE vocabularies and terms whose allowlists name that very key (the allowlist is a plain string match with no content-type existence check, 20261014120700:138-139), and the second organization has no active vocabulary of its own. Removing version_row.owner_id = acting_party_id would list the first organization's terms to the second. This is the first test I found that isolates a CMS-03C selector's owner predicate.",
+      "THE PATTERN HALF IS NOT (see AC-108 missedGaps 1): the same matched pair is needed for cms_list_pattern_selector and, by the same predicate, the nestable read cmsPatternNestableRead (BE03c 184, 20261027100000). \"selectors\" is plural, and DEC-245(5) read plural family claims as universal.",
+      "READING FOR ROOT (contingent): E14 (BE03c 227) says \"Every lookup by key (the latest read, parents, selectors) is scoped to the caller's owner party\". If \"selectors\" means only selectors that look up BY KEY, the taxonomy selector (typeKey, fieldKey) is the only one, the pattern selectors take a content-type id, and rows 1-4 close the clause now (AC-190 becomes verified; row 5 refiled to clause 4). The ledger's own limitation (accepted by two refutation rounds) names both selectors' predicates, so the default here is to hold; per \"more work now\" the matched pair is cheap (one forged clone closes AC-108 clause 3 and this half together)."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "contingent": "Rows 1-4 become KEEP at clause 2 (and AC-190 verified, limitation cleared, row 5 refiled to clause 4) if root reads \"selectors)\" as the key-addressed taxonomy selector only; they are cited together with the pattern rows when the matched pair of AC-108 missedGaps 1 exists.",
+    "limitationAdvice": "Unproven (uncited clause): \"selectors)\": the taxonomy selector's owner predicate is now isolated (phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql: the same query lists the first organization's active terms and an empty page to the second, 20261014120700:138-139), but the pattern selectors' version-list owner predicate (CMS-03C-13, 20261014140300:135, and the nestable read, 20261027100000) is not: no active other-owner version compatible with the caller's type is producible by the real path (CMS-03C-12 accepts only the caller's own active type ids, BE03c 407) and the db9b pattern file passes with the predicate removed. Missing test: the matched pair of AC-108 (a first-owner active clone naming the second organization's type, not listed to the second organization, listed to its owner).",
+    "notes": "db9b rows 0-5: 6 proposed. KEEP 0, FIX 5 (4 WHOLECLAIM hold: taxonomy rows 1-4; 1 ADJACENT refile to clause 4: row 5), DROP 1 (taxonomy positive control). The lane proposed verified; status stays partial unless root rules the contingent reading."
+  },
+  {
+    "criterion": "P2-S12-AC-146",
+    "lane": "db9b",
+    "proposedStatus": "verified",
+    "proposedLimitation": null,
+    "citations": [
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "a: the PRIOR active version is byte-for-byte the same row after the block (state, activated_at, lifecycle_version, version, updated_at, supersedes_id) [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:190-191 (d9f_blocked, scenario a, reason activation_authority_ended): the PRIOR active version row after the terminal block equals, column for column (to_jsonb of the whole row: state, activated_at, lifecycle_version, version, updated_at, supersedes_id, ...), the image taken at :158-162 before the claim. The prior is a REAL active version 1 (CMS-03C-09 activate, fixture :128-132) and its successor a real approved version 2 superseding it by identity (:133-140), scheduled by the real command and fired after a real wait (:142-168). Seam note: the scheduler's designer grant ends by the calendar (pg_temp.s12fr_lapse, restored by s12fr_restore at :207), the accepted lapse fixture of the governed-recheck suites; the fire's own grant read is real; it changes the INPUT of the decision, not the code under test. Discriminating: control e (:228-235) shows the same image changes (lifecycle +1, state superseded) when a fire completes.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "a activation_authority_ended: prior row byte-for-byte",
+        "rowIndex": 0,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 18,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "a: the prior version is still active with its activated_at unchanged and never retired [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:192-195 (scenario a, reason activation_authority_ended): state active, activated_at equal to the image's, retired_at null. Entailed by the byte-for-byte row of the same scenario (no independent failure mode); kept as the readable statement of \"intact\".",
+        "fix": null,
+        "splitParts": [],
+        "cell": "a activation_authority_ended: prior still active, activated_at kept",
+        "rowIndex": 1,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 19,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "a: the lineage still has exactly one active member and no superseded member: no supersession happened [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:196-197 (scenario a, reason activation_authority_ended): the lineage has exactly one active and zero superseded members (pg_temp.d9f_members): the successor was not activated and the prior not superseded. Lineage-level, so it also sees a sibling change the row image would not.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "a activation_authority_ended: lineage one active, none superseded",
+        "rowIndex": 2,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 20,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "a: no event was emitted for either version and the prior version gained no audit record [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:198-200 (scenario a, reason activation_authority_ended): the prior version gained no outbox event and no audit record (counts equal the image's) and the successor emitted no event. The block's own audit record belongs to the successor and the schedule (existing c2/c4 citations assert \"no event, one audit record\"); this is the prior-version half. The successor-no-event conjunct is c4 content, harmless here.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "a activation_authority_ended: no event / audit for the prior",
+        "rowIndex": 3,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 21,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "b: the PRIOR active version is byte-for-byte the same row after the block (state, activated_at, lifecycle_version, version, updated_at, supersedes_id) [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:190-191 (d9f_blocked, scenario b, reason approval_invalidated): the PRIOR active version row after the terminal block equals, column for column (to_jsonb of the whole row: state, activated_at, lifecycle_version, version, updated_at, supersedes_id, ...), the image taken at :158-162 before the claim. The prior is a REAL active version 1 (CMS-03C-09 activate, fixture :128-132) and its successor a real approved version 2 superseding it by identity (:133-140), scheduled by the real command and fired after a real wait (:142-168). Seam note: the real CMS-03A-17 command revokes the only approver's reviewer grant AFTER the claim (:212-213); the committed invalidation returns the successor to draft and the claimed schedule blocks approval_invalidated at fire (the successor is draft, not blocked: d9f_blocked is called with 'draft', :216); it changes the INPUT of the decision, not the code under test. Discriminating: control e (:228-235) shows the same image changes (lifecycle +1, state superseded) when a fire completes.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "b approval_invalidated: prior row byte-for-byte",
+        "rowIndex": 4,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 25,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "b: the prior version is still active with its activated_at unchanged and never retired [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:192-195 (scenario b, reason approval_invalidated): state active, activated_at equal to the image's, retired_at null. Entailed by the byte-for-byte row of the same scenario (no independent failure mode); kept as the readable statement of \"intact\".",
+        "fix": null,
+        "splitParts": [],
+        "cell": "b approval_invalidated: prior still active, activated_at kept",
+        "rowIndex": 5,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 26,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "b: the lineage still has exactly one active member and no superseded member: no supersession happened [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:196-197 (scenario b, reason approval_invalidated): the lineage has exactly one active and zero superseded members (pg_temp.d9f_members): the successor was not activated and the prior not superseded. Lineage-level, so it also sees a sibling change the row image would not.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "b approval_invalidated: lineage one active, none superseded",
+        "rowIndex": 6,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 27,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "b: no event was emitted for either version and the prior version gained no audit record [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:198-200 (scenario b, reason approval_invalidated): the prior version gained no outbox event and no audit record (counts equal the image's) and the successor emitted no event. The block's own audit record belongs to the successor and the schedule (existing c2/c4 citations assert \"no event, one audit record\"); this is the prior-version half. The successor-no-event conjunct is c4 content, harmless here.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "b approval_invalidated: no event / audit for the prior",
+        "rowIndex": 7,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 28,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "d: the PRIOR active version is byte-for-byte the same row after the block (state, activated_at, lifecycle_version, version, updated_at, supersedes_id) [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:190-191 (d9f_blocked, scenario d, reason canonical_source_unavailable): the PRIOR active version row after the terminal block equals, column for column (to_jsonb of the whole row: state, activated_at, lifecycle_version, version, updated_at, supersedes_id, ...), the image taken at :158-162 before the claim. The prior is a REAL active version 1 (CMS-03C-09 activate, fixture :128-132) and its successor a real approved version 2 superseding it by identity (:133-140), scheduled by the real command and fired after a real wait (:142-168). Seam note: a taxonomy lineage d0/d1 (:124-126) declaring the role domain; a NEWER append-only registry row marks the role provider unbuilt (:219-222), the way an owning shard changes provider state; the fire's provider read is real; it changes the INPUT of the decision, not the code under test. Discriminating: control e (:228-235) shows the same image changes (lifecycle +1, state superseded) when a fire completes.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "d canonical_source_unavailable: prior row byte-for-byte",
+        "rowIndex": 8,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 31,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "d: the prior version is still active with its activated_at unchanged and never retired [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:192-195 (scenario d, reason canonical_source_unavailable): state active, activated_at equal to the image's, retired_at null. Entailed by the byte-for-byte row of the same scenario (no independent failure mode); kept as the readable statement of \"intact\".",
+        "fix": null,
+        "splitParts": [],
+        "cell": "d canonical_source_unavailable: prior still active, activated_at kept",
+        "rowIndex": 9,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 32,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "d: the lineage still has exactly one active member and no superseded member: no supersession happened [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:196-197 (scenario d, reason canonical_source_unavailable): the lineage has exactly one active and zero superseded members (pg_temp.d9f_members): the successor was not activated and the prior not superseded. Lineage-level, so it also sees a sibling change the row image would not.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "d canonical_source_unavailable: lineage one active, none superseded",
+        "rowIndex": 10,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 33,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "d: no event was emitted for either version and the prior version gained no audit record [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:198-200 (scenario d, reason canonical_source_unavailable): the prior version gained no outbox event and no audit record (counts equal the image's) and the successor emitted no event. The block's own audit record belongs to the successor and the schedule (existing c2/c4 citations assert \"no event, one audit record\"); this is the prior-version half. The successor-no-event conjunct is c4 content, harmless here.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "d canonical_source_unavailable: no event / audit for the prior",
+        "rowIndex": 11,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 34,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "c: the PRIOR active version is byte-for-byte the same row after the block (state, activated_at, lifecycle_version, version, updated_at, supersedes_id) [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:190-191 (d9f_blocked, scenario c, reason dependency_changed): the PRIOR active version row after the terminal block equals, column for column (to_jsonb of the whole row: state, activated_at, lifecycle_version, version, updated_at, supersedes_id, ...), the image taken at :158-162 before the claim. The prior is a REAL active version 1 (CMS-03C-09 activate, fixture :128-132) and its successor a real approved version 2 superseding it by identity (:133-140), scheduled by the real command and fired after a real wait (:142-168). Seam note: a real successor of the bound content type is activated through the DEC-108 chain after c1 was scheduled (:238-241); executed last because it changes the dependency of every schedule; it changes the INPUT of the decision, not the code under test. Discriminating: control e (:228-235) shows the same image changes (lifecycle +1, state superseded) when a fire completes.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "c dependency_changed: prior row byte-for-byte",
+        "rowIndex": 12,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 39,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "c: the prior version is still active with its activated_at unchanged and never retired [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:192-195 (scenario c, reason dependency_changed): state active, activated_at equal to the image's, retired_at null. Entailed by the byte-for-byte row of the same scenario (no independent failure mode); kept as the readable statement of \"intact\".",
+        "fix": null,
+        "splitParts": [],
+        "cell": "c dependency_changed: prior still active, activated_at kept",
+        "rowIndex": 13,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 40,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "c: the lineage still has exactly one active member and no superseded member: no supersession happened [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:196-197 (scenario c, reason dependency_changed): the lineage has exactly one active and zero superseded members (pg_temp.d9f_members): the successor was not activated and the prior not superseded. Lineage-level, so it also sees a sibling change the row image would not.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "c dependency_changed: lineage one active, none superseded",
+        "rowIndex": 14,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 41,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "c: no event was emitted for either version and the prior version gained no audit record [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_active.sql:198-200 (scenario c, reason dependency_changed): the prior version gained no outbox event and no audit record (counts equal the image's) and the successor emitted no event. The block's own audit record belongs to the successor and the schedule (existing c2/c4 citations assert \"no event, one audit record\"); this is the prior-version half. The successor-no-event conjunct is c4 content, harmless here.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "c dependency_changed: no event / audit for the prior",
+        "rowIndex": 15,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 42,
+          "ok": true
+        },
+        "computed": true
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+        "title": "control: an execution that completes supersedes the prior version (lifecycle +1, activated_at kept), so the \"row unchanged\" assertions above would fail on a supersession [P2-S12-AC-146]",
+        "verdict": "DROP",
+        "dropClass": "CONTROL",
+        "reason": "fire_prior_active.sql:228-235: the control that a COMPLETED execution supersedes the prior version (lifecycle +1, activated_at kept) so the intactness assertions can fail. Essential to the file, and proof that the method discriminates, but it asserts the success path of the activation, not \"intact\" after a block. A control is not citable proof of the clause.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "control e: a completing fire supersedes the prior",
+        "rowIndex": 16,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+          "n": 35,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql",
+        "title": "the PRIOR active version is byte-for-byte the same row after the terminal block (state, activated_at, lifecycle_version, version, updated_at), with no event and no audit record [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_retries.sql:112-113 (d9r_intact: row image + audit count + event count): after the FOURTH failure blocks r1 retries_exhausted (:103-111) the prior r0 is the same row with the same audit and event counts. The ladder is real (15, 60, 300 s with real sleeps, about 7.5 minutes; attempt counts 1, 2, 3 asserted at :82-99, and d9r_intact is also asserted after each retryable failure). Seam check of the one labelled seam (s12gb_fault_on/off replaces ONE existing function, the policy-evidence resolver, so the retryable failure occurs): (a) it substitutes only the dependency read that fails; (b) the observed tokens failed_retryable x3 then blocked/retries_exhausted with attempt_count 3 leave no other terminal reason; (c) restoration byte for byte is asserted (:111); (d) the assertion is on the prior version, which the substitution does not touch. Note the assertion is not self-controlled in this file; control e of fire_prior_active.sql shows the image changes on a completing fire.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "retries_exhausted: prior row byte-for-byte",
+        "rowIndex": 17,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql",
+          "n": 20,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql",
+        "title": "the lineage still has exactly one active member, r0 with its activated_at unchanged, and no superseded member: no supersession happened [P2-S12-AC-146]",
+        "verdict": "KEEP",
+        "dropClass": null,
+        "reason": "fire_prior_retries.sql:114-120: r0 active, retired_at null, activated_at equal to the image's, exactly one active and zero superseded members in the lineage after the terminal block. Same seam as the row above.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "retries_exhausted: lineage one active, none superseded",
+        "rowIndex": 18,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql",
+          "n": 21,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 5,
+        "proposedClauseIndex": 5,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql",
+        "title": "the schedule is blocked retries_exhausted and the scheduled successor is blocked, never activated, with no event [P2-S12-AC-146]",
+        "verdict": "DROP",
+        "dropClass": "ADJACENT",
+        "reason": "fire_prior_retries.sql:106-110: the schedule is blocked retries_exhausted with attempt_count 3, the successor r1 is blocked and never activated, no event. This is clause 4 (\"retries_exhausted ... making the subject blocked\"), already cited by 010-ladder.sqlinc (two rows asserting the same outcome with the audit record); nothing about the PRIOR version, so it is not evidence for clause 5.",
+        "fix": null,
+        "splitParts": [],
+        "cell": "retries_exhausted: schedule and successor blocked, no event",
+        "rowIndex": 19,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql",
+          "n": 18,
+          "ok": true
+        }
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "CLAUSE 5 IS UNIVERSAL OVER FIVE REASON CODES AND ALL FIVE ARE DRIVEN: activation_authority_ended (a), approval_invalidated (b), canonical_source_unavailable (d, a taxonomy lineage), dependency_changed (c) and retries_exhausted (the real 15/60/300 s ladder), each against a REAL prior active version 1 (CMS-03C-09 activate) with a real approved successor 2 that supersedes it by identity. The method discriminates: control e makes the same image change when a fire completes.",
+      "Scenario b ends with the successor in DRAFT, not blocked (the committed invalidation after the claim returns it, :215-216), which is clause 6/clause 4 territory and not a defect of clause 5; the existing clause 2 citation (055-fire-approval.sqlinc, an approval that stops counting between acceptance and fire) is the one that leaves the subject blocked.",
+      "Cost to the canonical gate: fire_prior_active.sql really waits about 70 s and fire_prior_retries.sql about 445 s (15 + 60 + 300 s sleeps in one transaction); db:test runs every .sql under supabase/tests. Root should plan the budget; nothing is forged to shorten it.",
+      "Identity: 16 of the 20 titles are computed (p_tag || ': ...' in pg_temp.d9f_blocked) and therefore belong to the entrypoint; each is unique in its file (0 duplicate descriptions in either TAP) and each resolves to exactly one passing test."
+    ],
+    "missedTests": [],
+    "status": "verified",
+    "contingent": null,
+    "limitationAdvice": "",
+    "notes": "db9b rows 0-19: 20 proposed. KEEP 18 (16 fire_prior_active.sql rows: four assertions x reasons a, b, d, c; 2 fire_prior_retries.sql rows), DROP 2 (control e CONTROL; retries successor-blocked row ADJACENT to clause 4). With clause 5 cited every clause is cited: verified, limitation cleared (the lane's verified is right)."
+  },
+  {
+    "criterion": "P2-S12-AC-211",
+    "lane": "db9b",
+    "proposedStatus": "partial",
+    "proposedLimitation": "Unproven (uncited clause): \"again before publish\": DEFECT, root decision pending (RED suite supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest_red.sql, WIP note supabase/migrations-wip/db9b/README.md): the publication pattern provider answers `passed` for a revision that pins an ACTIVE stored pattern nested ten levels deep or expanding to 544 block roots, and CMS-03C-02 places the ten-level pattern (the 544-root one is refused pattern_nodes_exceeded: phase_02_slice_12_gaps_db9b_legacy_forest/010-facts.sqlinc). BOUNDARY: pattern_cycle is not producible (mutual and self-lineage cycles cannot be submitted or activated; the closest producible shape is classified nested_pattern_not_active). The literal-tree bounds are enforced by the table CHECK cms_pattern_versions_block_tree_valid, so only the expanded bounds can be stored over the limit.",
+    "citations": [],
+    "splits": [],
+    "missedGaps": [
+      "NO ADDS IS CORRECT. Clause 1 (\"again before publish\") is the provider (cms.pattern.active_digest, cms_pattern_live_pin_reason) and placement re-proving the depth/node bounds; both fail the RED suite (seven [RED] tests, TAP tests 106-112 of alt-staged-none-174519-1302112.tap) and DEC-247 (option A, 2026-10-31) orders the fix (lane db10). The 121 GREEN facts of legacy_forest.sql are fixtures, controls and BOUNDARY facts; none asserts the clause (the 544-root placement refusal at 010-facts.sqlinc:44-47 is placement-side and already behaves as DEC-247 wants). The [RED] titles must never be cited while they fail, and none of the GREEN facts pins the defect (nothing asserts that the provider passes the deep pin or that placement places it).",
+      "GATE HAZARD (finding): supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest_red.sql is an entrypoint under supabase/tests that FAILS by design. infra/run-pgtap-verbose.mjs and supabase test db run pg_prove -r --ext .sql over the whole directory, so pnpm db:test, db:test:tap and therefore db:verify go red on it until db10's migrations are promoted. Keep it out of every canonical run until then (the WIP README says nothing in migrations-wip is applied by db:verify, but the test file is not in WIP).",
+      "STALE LIMITATION: the lane's text says \"root decision pending\". DEC-247 is ratified; the limitation must say the fix is lane db10 and name what flips it.",
+      "BOUNDARY CHECKED, TRUE, with lines: (a) mutual cycle X <-> Y: both drafts, each nested pin inactive, so submit refuses subject_not_submittable (anchor 20261013300820:154-158 reclassified by 20261014040100:24-30); (b) self-lineage: at most one version of a lineage is active (partial unique index cms_pattern_versions_active_lineage_idx, 20261014020100:101-102), so an active forest cannot contain two versions of one lineage and a cycle through a lineage can only exist with a non-active member, which the provider reports as nested_pattern_not_active (fact test 010-facts.sqlinc:64-70); (c) a literal tree over depth 8 or 512 nodes cannot be stored (CHECK cms_pattern_versions_block_tree_valid, :79-83), and node_count is capped at 512 (:84-86), so only the EXPANDED bounds can be stored over the limit. pattern_cycle at SAVE is a producer refusal already cited by clause 0; \"again before publish\" for a cycle is carried by nested_pattern_not_active.",
+      "Minor: 010-facts.sqlinc:50-52 hard-codes providerVersion \"1\" in the passing control; if db10 bumps the provider version the control must be updated deliberately."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "contingent": null,
+    "limitationAdvice": "Unproven (uncited clause): \"again before publish\": DEC-247 (option A, 2026-10-31) requires the cms.pattern.active_digest provider (cms_pattern_live_pin_reason) to fail a live pin whose expanded forest is over depth 8 or 512 nodes with pattern_depth_exceeded / pattern_nodes_exceeded (after nested_pattern_not_active) and CMS-03C-02 placement to refuse a ninth nested level with 422 pattern_depth_exceeded at /patternId; lane db10 implements it. Until db10's migrations are promoted, phase_02_slice_12_gaps_db9b_legacy_forest_red.sql (seven [RED] tests: a revision that pins an active legacy pattern nested ten levels deep or expanding to 544 block roots passes the provider, and the ten-level pattern is placed) fails by design and is never cited; it is the witness after the promotion (cite its provider and placement rows then). BOUNDARY: pattern_cycle is not producible at publish time (a mutual cycle cannot be submitted, 20261013300820:154-158 as reclassified by 20261014040100:24-30; one version of a lineage is active at most, 20261014020100:101-102, so the closest producible shape is classified nested_pattern_not_active; a literal tree over depth 8 or 512 nodes cannot be stored, 20261014020100:79-86, so only the expanded bounds can be).",
+    "notes": "db9b: no rows proposed (correct). Status stays partial."
+  },
+  {
+    "criterion": "P2-S12-AC-044",
+    "lane": "db9b",
+    "proposedStatus": "partial",
+    "proposedLimitation": "Unproven sub-branches (BOUNDARY): (1) entry deletion/tombstone: no command exists. cms_content_entries.lifecycle admits archived, deletion_pending and held (supabase/migrations/20260926090000_cms_entry_revision_authority.sql:33-34; BE03b 1964, 1980, 2005) but no platform_api or platform_private function writes it (catalog scan in supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql, BOUNDARY facts), and BE03b 1891 `entry_unavailable` is the reader side only; the writer belongs to a later shard and no spec in BE03b or BE03c defines it. (2) composition-source deletion: composition-instance rows are append-only (DELETE and UPDATE are refused, proved in the same file); the only tombstone is the retired row CMS-03C-15 accept appends for a removed root (supabase/migrations/20261014140600_cms_apply_pattern_update.sql:241), covered by phase_02_slice_12_dec193_consumers and phase_02_slice_12_pattern_updates*. The clause is proven for the one deleting command that exists, the CMS-03C-09 retirement of a pattern lineage.",
+    "citations": [
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "the pattern row is KEPT as a tombstone: state retired, retired_at set, lifecycle +1, and every definition column (tree, digest, hash, key, version, types) identical [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:123 (:120-122): the retired pattern row keeps every definition column (to_jsonb minus state, lifecycle_version, retired_at, updated_at equals the pre image) with state retired, retired_at set and lifecycle +1: the IA03 533 \"immutable evidence/tombstone\" of the source. The command is the real CMS-03C-09 retire (DEC-190, 20261014160100:21-58, driven at :113-117). SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "the pattern row is kept as a tombstone",
+        "rowIndex": 0,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 36,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "the governed review of the retired version is kept: it differs only in version + 1 and updated_at [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:126 (:124-125): the review differs from its pre image only in version + 1 and updated_at. Evidence kept. SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "the governed review of the retired version is kept",
+        "rowIndex": 1,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 37,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "the decisions, assignments and dependencies of the retired version's review are byte-identical: the approval evidence survives [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:131 (:127-130): decisions, assignments and dependencies of the retired version's review are byte-identical to the pre image (ordered jsonb aggregates). Evidence kept. SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "approval evidence survives",
+        "rowIndex": 2,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 38,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "the composition rows that pin the retired version are byte-identical: no source row is deleted or rewritten, the pins remain as evidence [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:134 (:132-133): the four composition rows of the two revisions that pin the retired version are unchanged; CompositionInstance is append-only (the immutable guard refuses UPDATE and DELETE, proved at :222-228). \"No orphan remains\": the pins stay as evidence. SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "composition rows pinning the retired version byte-identical",
+        "rowIndex": 3,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 39,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "the selector projection no longer lists the retired version and still lists the live outer [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:142 (:139-141): CMS-03C-13 omits the retired version and still lists the live outer; the matched control at :92-94 lists it before. Derived access removed. SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "selector projection no longer lists the retired version",
+        "rowIndex": 4,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 41,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "CMS-03C-02 refuses a new placement of the retired version: pattern_version_not_active at /patternVersion, nothing written [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:146 (:143-145): CMS-03C-02 refuses a new placement of the retired version, pattern_version_not_active at /patternVersion, before_rows = after_rows. Derived access removed. SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "placement refuses the retired version",
+        "rowIndex": 5,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 42,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "the publication provider refuses the revision that pins the retired version live: pattern_not_active, one blocking unit [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:150 (:149): the publication pattern provider fails the live pin pattern_not_active with blockingCount 1 (matched control at :95-96: both revisions passed before). Derived access removed at publication. SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "provider refuses the revision pinning the retired version",
+        "rowIndex": 6,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 46,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "the publication provider refuses the revision whose live pin reaches the retired version through a nested use: nested_pattern_not_active [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:152 (:151): the revision whose live pin reaches the retired version through a nested use fails nested_pattern_not_active, blockingCount 1. SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "provider refuses the nested use",
+        "rowIndex": 7,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 47,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "the retirement queued exactly one more cms.pattern.activated.v1 event for the version, at its new lifecycle counter, with a correlation id [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:164 (:160-163): exactly one more cms.pattern.activated.v1 event for the version, aggregate_version = its new lifecycle counter, a correlation id, payload { patternId, patternVersionId } (DEC-188: one subject-kind event, aggregate = the retired row). The queue entry of the dependent invalidation. The event type keeps the name \"activated\" for a retirement by design (DEC-188). SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "the retirement queued exactly one more event",
+        "rowIndex": 8,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 48,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "an exact replay of the retirement returns the same response and queues no second event and no second audit record [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:170 (:166-169): the replay returns the same response and queues no second event and no second audit record (the event and audit counts equal pre + 1). SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "exact replay of the retirement is idempotent",
+        "rowIndex": 9,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 49,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "the recheck of the retirement event finds the in-flight review that froze the retired version and invalidates it dependency_changed [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:179 (:175-178): the recheck of the retirement event (platform_api.cms_recheck_governed_reviews called with the event id, the way the governed-recheck suites drive the job body; the Worker dispatch from event to job is not driven here) finds the approved, unactivated review that froze the retired version and invalidates it dependency_changed (invalidated 1, dependencyChanged 1). Dependent invalidation. SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "recheck invalidates the in-flight dependent review",
+        "rowIndex": 10,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 50,
+          "ok": true
+        }
+      },
+      {
+        "clauseIndex": 3,
+        "proposedClauseIndex": 3,
+        "lane": "db9b",
+        "tool": "pgtap",
+        "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+        "title": "a repeated run (the job is at least once) invalidates nothing more and writes no second audit record: the invalidation is idempotent [P2-S12-AC-044]",
+        "verdict": "FIX",
+        "dropClass": "WHOLECLAIM",
+        "reason": "deletion.sql:189 (:185-188 plus :180-184): the second run invalidates 0 and writes no second audit record; the first run left the review invalidated at version + 1, its subject back in draft and exactly one invalidation audit record. The job is at-least-once, so this is the \"idempotent\" in \"idempotent dependent invalidation\". SOUND for the pattern-lineage retire, the one deleting command. HELD with the clause: \"deletion\" is one word and cannot be split, the owner (organization) and entry branches have no writer (see limitationAdvice), and the guard rejects both \"partial with every clause cited\" (ledger-guard-lib.mjs:211-214) and \"verified with a limitation\" (:171-175), so citing it would make AC-044 verified and erase the branch that cannot be driven (the round-2 rule, DEC-245(6): \"archived stays open until an archive writer exists\"). Cite it if root rules the entry/owner branches out of scope for CMS-12.",
+        "fix": "Hold with clause 3 (see limitationAdvice and contingent). Cite all 12 at clause 3 only if root rules entry and owner deletion out of scope for CMS-12.",
+        "splitParts": [],
+        "cell": "a repeated run invalidates nothing more",
+        "rowIndex": 11,
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+          "n": 52,
+          "ok": true
+        }
+      }
+    ],
+    "splits": [],
+    "missedGaps": [
+      "THE PROPOSAL IS NOT GUARD-VALID. It cites clause 3 (\"deletion\"), which leaves every clause of AC-044 cited, and keeps status partial with a limitation. ledger-guard-lib.mjs rejects a partial entry whose clauses are all cited (\"every clause is cited, so the entry is verified, not partial\", :211-214) and a verified entry with a limitation (:171-175); apply8-style status logic would turn it into verified and clear the limitation, i.e. the verified-with-caveat that root's round-2 rule forbids. \"deletion\" is one word; there is no verbatim split.",
+      "THE BOUNDARY IS TRUE, WITH LINES, and is wider than the lane states. Entry: cms_content_entries.lifecycle admits archived, deletion_pending and held (20260926090000:33-34; BE03b 1891, 1980, 2005) but no migration writes any of them to that table (a search of every migration for an assignment of archived, held or deletion_pending finds only the party-alias and taxonomy-term lifecycle columns and the profile-portfolio state, 20260901062000:92), and the held/deletion_pending values are named \"the only representation of a legal hold or an erasure fence before Slice 16 registers the hold provider\" (20261005017510:15-19; 20261014060100:8), so the writer belongs to Slice 16; BE03b 1980 says only \"an authorized CAS RPC\". The lane's regex catalog scan (deletion.sql:200-205) is a heuristic, the search above is the stronger evidence. Composition instance: DELETE and UPDATE are refused by the immutable guard (proved at :222-228); the only tombstone is the retired row CMS-03C-15 accept appends for a removed root (the apply function handles it, 20261014140600:241; the append is proved by phase_02_slice_12_dec193_consumers and pattern_updates*). OWNER (organization) deletion, which the lane does not mention: platform_api exposes rpc_create_organization, rpc_change_organization_type and identity_organization_read only (20260901040000:1778-1861); no close/delete/dissolve exists.",
+      "READING FOR ROOT: IA03 533 is the CMS-12 \"Use reusable pattern\" row; its \"source\" is the pattern, so the pattern-lineage retirement (DEC-190, \"Retirement removes exposure only\") can be read as the whole of \"source deletion\" for CMS-12, with entry deletion belonging to the CMS-05 rows. The ledger's accepted limitation, however, names \"(pattern lineage, entry)\" as the sources. Default here: hold (consistent with DEC-245(6)); the flip is mechanical (contingent).",
+      "Not proposed but sound: deletion.sql:135-136 \"one audit record of the retirement was written\" (evidence kept); additive if the clause is cited.",
+      "Run note: test 48 flaked once before the lane ordered the newest event by aggregate_version (every event of a pgTAP transaction shares one occurred_at); the final bytes ran green once. The ordering is now deterministic by construction (:159), so one green run is sufficient, but it is a single run."
+    ],
+    "missedTests": [],
+    "status": "partial",
+    "contingent": "All 12 rows become KEEP at clause 3 (AC-044 verified, limitation cleared) if root rules that \"deletion\" for CMS-12 Use reusable pattern covers the pattern source only, i.e. entry, composition-instance and owner deletion are other flows' rows or Slice 16. Otherwise AC-044 stays partial until a deleting command exists for the entry/owner.",
+    "limitationAdvice": "Unproven (uncited clause): \"deletion\": proven and ready (phase_02_slice_12_gaps_db9b_deletion.sql, 12 rows: tombstone kept with every definition column, review evidence and composition pins byte-identical, selector, placement and publication provider stop serving the retired version, one more event at the new lifecycle counter, idempotent replay, the in-flight dependent review invalidated once and again as a no-op) for the one deleting command that exists, the CMS-03C-09 retirement of a pattern lineage (DEC-190). Not provable and therefore holding the clause open: entry deletion, archival and hold (cms_content_entries.lifecycle admits archived, deletion_pending and held, 20260926090000:33-34, but no function writes them; held and deletion_pending are the pre-Slice-16 legal-hold/erasure fence, 20261005017510:15-19; BE03b 1980 names only an authorized CAS RPC that no spec defines), owner (organization) deletion (platform_api has rpc_create_organization, rpc_change_organization_type and identity_organization_read only, 20260901040000:1778-1861) and composition-instance deletion (DELETE refused by the immutable guard, proved in the file; the only tombstone is the retired row CMS-03C-15 accept appends).",
+    "notes": "db9b rows 0-11: 12 proposed, all for the pattern-lineage retire. KEEP 0, FIX 12 (WHOLECLAIM hold: sound proof of one branch of an unsplittable one-word clause; the guard forbids partial-with-every-clause-cited). The lane proposed partial with the clause cited, which the guard rejects. Status stays partial; flip per contingent."
+  },
+  {
+    "criterion": "P2-S12-AC-159",
+    "lane": "db9b",
+    "proposedStatus": null,
+    "proposedLimitation": null,
+    "citations": [],
+    "splits": [],
+    "missedGaps": [
+      "The lane proposed no AC-159 citation for item 1 (V18 MINOR-2 / DEC-243). AC-159 is already verified (10/10 clauses cited); the second-organization read of template_context.sql is ADDITIVE evidence for clause 6 (\"at most 128 registered, currently supported block selectors ... of the platform registry, whichever release registered them\": the primary clause), clause 3 (\"owned\": the content-type selectors stay owner-scoped across organizations) and clause 7 (no owner member serialized). Clause 6's existing db1 rows prove the cut at 128 and a forged other-owner block row (arbitrary owner uuid); this file adds the production-shaped read as a second organization's designer, which is exactly what MINOR-2 asked for. 37 tests, 0 duplicate descriptions, all passing."
+    ],
+    "missedTests": [
+      {
+        "lane": "db9b",
+        "criterion": "P2-S12-AC-159",
+        "clauseIndex": 6,
+        "additive": true,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "title": "the second organization's designer receives EXACTLY the first designer's selectors, same members in the same order (blocks are platform registry records) [DEC-243]"
+        },
+        "evidence": "template_context.sql:102-103 (:101 non-empty guard, :75-82 controls: the first designer's list is the four released blocks in C order and equals the registered-row count): the list of a template designer of a SECOND organization (grant forged, labelled; control :85-88 FORBIDDEN before the grant) equals the first designer's list. Fails on the pre-DEC-243 predicate (the acting-party owner would give the second organization []). This is the V18 MINOR-2 assertion and the cross-organization half of the clause \"of the platform registry, whichever release registered them\".",
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "n": 27,
+          "ok": true
+        }
+      },
+      {
+        "lane": "db9b",
+        "criterion": "P2-S12-AC-159",
+        "clauseIndex": 6,
+        "additive": true,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "title": "the second designer's list with the RPC flag leaked is the same list: neither the owner column nor RLS hides a block"
+        },
+        "evidence": "template_context.sql:112-113: the same read with app.cms_rpc leaked (PAT-031 variant) is still the first designer's list. Discriminating for the owner predicate and for RLS; additive.",
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "n": 31,
+          "ok": true
+        }
+      },
+      {
+        "lane": "db9b",
+        "criterion": "P2-S12-AC-159",
+        "clauseIndex": 6,
+        "additive": true,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "title": "a block registered after the first reads appears in both organizations' lists, identical again, one longer than before"
+        },
+        "evidence": "template_context.sql:132-136: a block registered later through the real signed path reaches both organizations, the lists stay identical and grow by exactly one: the list is the live platform registry, not a snapshot.",
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "n": 37,
+          "ok": true
+        }
+      },
+      {
+        "lane": "db9b",
+        "criterion": "P2-S12-AC-159",
+        "clauseIndex": 7,
+        "additive": true,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "title": "every selector is exactly {blockKey, blockVersion}: no owner, release or authority member is serialized"
+        },
+        "evidence": "template_context.sql:106-108: every selector of the SECOND organization's read has exactly the keys blockKey and blockVersion (clause 7, \"excluding owner IDs, grant records, renderer refs, manifests and policy internals\"); additive.",
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "n": 29,
+          "ok": true
+        }
+      },
+      {
+        "lane": "db9b",
+        "criterion": "P2-S12-AC-159",
+        "clauseIndex": 3,
+        "additive": true,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "title": "the second organization owns no content type, so its contentTypes is empty: the first organization's type is not leaked"
+        },
+        "evidence": "template_context.sql:117-118 with the matched control :119-122 (the first designer sees its own active type): the content-type selector stays owner-scoped across organizations (\"owned\"). Isolating: removing the owner predicate would list the first organization's type to the second.",
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "n": 33,
+          "ok": true
+        }
+      },
+      {
+        "lane": "db9b",
+        "criterion": "P2-S12-AC-159",
+        "clauseIndex": 3,
+        "additive": true,
+        "citation": {
+          "tool": "pgtap",
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "title": "no content type of the first organization appears in the second organization's read"
+        },
+        "evidence": "template_context.sql:123-125: no id of the first organization's types in the second read (implied by the row above but names the leaking ids); additive.",
+        "tap": {
+          "file": "supabase/tests/phase_02_slice_12_gaps_db9b_template_context.sql",
+          "n": 35,
+          "ok": true
+        }
+      }
+    ],
+    "status": "verified",
+    "contingent": null,
+    "limitationAdvice": "",
+    "notes": "Not a proposed criterion: a refuter's addition for the brief's question \"V18 MINOR-2 (which AC-159 clause?)\". 6 additive rows (clause 6: 3, clause 3: 2, clause 7: 1). No status change."
+  }
+]

@@ -1,0 +1,16 @@
+-- Slice 12 race8: session helpers of the CMS-03B-10 create files (lane claude_s12_db8).  Include AFTER race7/000-harness.sqlinc, outside any transaction.
+-- Session (pg_temp) functions: they outlive the committed world's transaction and read only CMS tables and the harness notes.
+create or replace function pg_temp.r8_bound_entries() returns text language sql stable as $b$
+  select count(*)::text from platform_private.cms_content_entries where content_type_id = pg_temp.r7_get('bound_type')::uuid $b$;
+create or replace function pg_temp.r8_entry_version(p_entry uuid) returns text language sql stable as $b$
+  select version::text from platform_private.cms_content_entries where id = p_entry $b$;
+-- rows the idempotency store holds for one Idempotency-Key (a refused or rolled-back command leaves none)
+create or replace function pg_temp.r8_reserved(p_key text) returns text language sql stable as $b$
+  select count(*)::text from platform_private.idempotency_records where key_hash = platform_private.cms_key_hash(p_key) $b$;
+-- the states of the bound content type's versions, oldest first
+create or replace function pg_temp.r8_version_states() returns text language sql stable as $b$
+  select coalesce(pg_catalog.string_agg(state::text, ',' order by state::text), '') from platform_private.cms_content_type_versions
+   where content_type_id = pg_temp.r7_get('bound_type')::uuid $b$;
+create or replace function pg_temp.r8_grant_where(p_capability text) returns text language sql stable as $b$
+  select format('organization_id = %L::uuid and person_id = %L::uuid and capability_code = %L',
+    pg_temp.r7_get('owner_org'), pg_temp.r7_get('owner_person'), p_capability) $b$;

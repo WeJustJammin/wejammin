@@ -55,3 +55,16 @@ export const failure = (
   gate,
   nonce: nextNonce(),
 });
+
+/**
+ * The same refusal with a new sentence (the outcome of "Check again"). The result heading takes focus only when
+ * `refocus` is true, so a control that is still needed keeps it.
+ */
+export const restated = (
+  current: CompositionStatus,
+  message: string,
+  refocus: boolean,
+): CompositionStatus =>
+  current.kind === 'error'
+    ? { ...current, message, nonce: refocus ? nextNonce() : current.nonce }
+    : current;

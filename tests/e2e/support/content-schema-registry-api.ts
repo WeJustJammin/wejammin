@@ -1,9 +1,8 @@
-import type { Logger } from '@wejammin/observability/logging';
-
 import {
   createWorkerApp,
   type WorkerDependencies,
 } from '../../../apps/worker/src/index';
+import { createRuntimeDependencies } from '../../../apps/worker/src/production-worker-runtime';
 import type {
   ContentSchemaRegistryDependencies,
   ContentSchemaRegistryResult,
@@ -318,13 +317,12 @@ const registry: ContentSchemaRegistryDependencies = {
   deadlineMs: 1_000,
 };
 
-const noop = () => undefined;
-const logger = {
-  debug: noop,
-  info: noop,
-  warn: noop,
-  error: noop,
-} as unknown as Logger;
+// P2-S12-AC-273 ("logs or telemetry"): the logger is the one the production Worker composes
+// (`createRuntimeDependencies`: the observability `createLogger` with its schema validation, redaction by closed
+// vocabulary and sampling, service 'wejammin-api'), never a no-op. Its default sink is `console.info`, which workerd
+// writes to this Worker's stdout; `run-s09-real-servers.mjs` pipes that into `api-worker.log` for the journeys' scan
+// (`server-log-capture.ts`). `captureException` stays the production Worker's own no-op: it has no sink to capture.
+const productionLogger = createRuntimeDependencies().createLogger;
 
 const legacyDependencies = {
   auth: s09.auth,
@@ -333,7 +331,7 @@ const legacyDependencies = {
 
 const baseDependencies = {
   captureException: () => undefined,
-  createLogger: () => logger,
+  createLogger: productionLogger,
   now: Date.now,
   auth: s09.auth,
   identityAuthority: s09.identityAuthority,

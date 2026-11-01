@@ -1,3 +1,4 @@
+import { runReadUnderDeadline } from '../../lib/run-read-under-deadline';
 import {
   rateLimitWaitSeconds,
   retryingSafeRead,
@@ -179,30 +180,34 @@ export interface ReadOptions {
   readonly sleep?: Sleep;
 }
 
-/** One safe read; a dependency failure that declares itself retryable is retried twice (FE03 :1173). */
-export const readJson = async (
+const UNREAD: ReadAnswer = { kind: 'failed', status: null, reason: null };
+
+const readOnce = async (
   path: string,
-  options: ReadOptions = {},
+  options: ReadOptions,
 ): Promise<ReadAnswer> => {
   const fetcher = options.fetcher ?? fetch;
   let response: Response;
   try {
     response = await retryingSafeRead(
-      () =>
-        fetcher(path, {
+      () => {
+        // A read the deadline or the caller ended never starts a retry.
+        if (options.signal?.aborted === true)
+          throw new DOMException('Read ended', 'AbortError');
+        return fetcher(path, {
           method: 'GET',
           credentials: 'same-origin',
           cache: 'no-store',
           redirect: 'error',
           ...(options.signal === undefined ? {} : { signal: options.signal }),
-        }),
+        });
+      },
       options.sleep === undefined ? {} : { sleep: options.sleep },
     );
   } catch {
-    return { kind: 'failed', status: null, reason: null };
+    return UNREAD;
   }
-  if (!(response instanceof Response))
-    return { kind: 'failed', status: null, reason: null };
+  if (!(response instanceof Response)) return UNREAD;
   if (response.status === 200) {
     try {
       return {
@@ -229,3 +234,19 @@ export const readJson = async (
     reason: details === null ? null : reasonOf(details),
   };
 };
+
+/**
+ * One safe read; a dependency failure that declares itself retryable is retried twice (FE03 :1173). The whole read,
+ * retries and body included, ends at the shared browser deadline (8,000 ms) or when the caller aborts, and then
+ * answers a failure, so the island leaves its loading state and every control it held is released (review V20 m10,
+ * DEC-246 ruling 1).
+ */
+export const readJson = (
+  path: string,
+  options: ReadOptions = {},
+): Promise<ReadAnswer> =>
+  runReadUnderDeadline(
+    (signal) => readOnce(path, { ...options, signal }),
+    UNREAD,
+    options.signal,
+  );

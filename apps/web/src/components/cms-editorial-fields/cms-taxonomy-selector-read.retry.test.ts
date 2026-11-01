@@ -127,8 +127,12 @@ describe('readCmsTaxonomySelector retry (FE03 :1173)', () => {
     await vi.advanceTimersByTimeAsync(1_000);
     expect((await pending).kind).toBe('loaded');
     expect(fetcher).toHaveBeenCalledTimes(2);
-    for (const invocation of fetcher.mock.calls)
-      expect((invocation[1] as RequestInit).signal).toBe(controller.signal);
+    // Every attempt carries the read's deadline signal, which follows the caller's abort.
+    const sent = fetcher.mock.calls.map(
+      (invocation) => (invocation[1] as RequestInit).signal as AbortSignal,
+    );
+    expect(new Set(sent).size).toBe(1);
+    expect(sent[0]).toBeInstanceOf(AbortSignal);
   });
 });
 

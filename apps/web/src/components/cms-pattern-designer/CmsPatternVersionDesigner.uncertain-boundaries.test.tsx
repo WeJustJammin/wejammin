@@ -37,7 +37,11 @@ import type { PatternSubmitResult } from './pattern-designer-submit';
 import type { PatternLatestResult } from './pattern-latest-read';
 import { firstVersionDetail } from './pattern-uncertain-reconcile.test-support';
 
-beforeAll(enableReactAct);
+beforeAll(async () => {
+  enableReactAct();
+  // The latest-version read is an on-demand chunk (pattern-latest-read.ts): load it up front.
+  await import('./pattern-latest-fetch');
+});
 afterAll(disableReactAct);
 beforeEach(() =>
   window.history.replaceState(

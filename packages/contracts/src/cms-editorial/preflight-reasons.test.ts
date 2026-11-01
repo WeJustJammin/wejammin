@@ -68,6 +68,8 @@ describe('[P2-S11-AC-093] the closed failed and unavailable reason sets (DEC-160
       'pattern_not_active',
       'pattern_digest_changed',
       'nested_pattern_not_active',
+      'pattern_depth_exceeded',
+      'pattern_nodes_exceeded',
       'pattern_block_rules_violated',
     ]);
     expect(cmsPreflightFailedReasons('schema')).toEqual([

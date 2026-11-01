@@ -1,0 +1,916 @@
+diff --git a/apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx b/apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx
+index 1d898dc5..573b66d9 100644
+--- a/apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx
++++ b/apps/web/src/components/cms-composition-instances/CmsBulkUpdatePanel.states.test.tsx
+@@ -18,8 +18,10 @@ import {
+ } from './composition-command-states.test-support';
+ import { UNKNOWN_OUTCOME_MESSAGE } from './composition-copy';
+ import {
++  ENTRY,
+   UPDATE,
+   diffPath,
++  entryDetail,
+   json,
+   mountPage,
+   refusal,
+@@ -66,12 +68,16 @@ const select = async (container: HTMLElement) => {
+   for (const n of [1, 2])
+     await click(byLabel<HTMLInputElement>(container, `Select /main/row-${n}`));
+ };
+-const mount = (update: Array<Response | (() => Response)>) =>
++const mount = (
++  update: Array<Response | (() => Response)>,
++  more: Record<string, Array<Response | (() => Response)>> = {},
++) =>
+   mountPage(
+     {
+       [diffPath(id(1))]: [clean(1)],
+       [diffPath(id(2))]: [clean(2)],
+       [UPDATE]: update,
++      ...more,
+     },
+     { instances: rows() },
+   );
+@@ -152,7 +158,7 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
+     await answerHeld(heldDetach, detached());
+   });
+ 
+-  it('[P2-S12-AC-271] commandState success (kept half): the named outcome per instance, the panel and selection cleared; no refetch of the entry or list is made for a single request (C5)', async () => {
++  it('[P2-S12-AC-271] commandState success (test correction, FE03 1047): the named outcome per instance, the panel and selection cleared, no entry read for a single request, and the instance list refetched', async () => {
+     const accepting = mount([appended()]);
+     await bulkAccept(accepting);
+     expect(resultHeading(accepting.container)).toBe('Updates applied');
+@@ -170,10 +176,12 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
+       expectedVersion: '9',
+     });
+     expect(accepting.unexpected).toEqual([]);
++    expect(accepting.lists).toHaveLength(1);
+     accepting.unmount();
+ 
+     const detaching = mount([detached()]);
+     await bulkDetach(detaching);
++    expect(detaching.lists).toHaveLength(1);
+     expect(resultHeading(detaching.container)).toBe('Blocks detached');
+     expect(resultText(detaching.container)).toContain(
+       '/main/row-2: Local copy',
+@@ -220,20 +228,34 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
+       'The entry or the instance changed since this page loaded. The page reloaded them; your choices are kept, so check them and try again.',
+     ],
+   ])(
+-    '[P2-S12-AC-271] commandState error (kept half): 409 %s renders fixed copy and keeps the selection; the entry is not refetched (C8)',
++    '[P2-S12-AC-271] commandState error (test correction, FE03 1049): 409 %s renders fixed copy, keeps the selection, and refetches the entry, the instance list and the unapplied diffs',
+     async (reasonCode, sentence) => {
+-      const page = mount([
+-        refusal(
+-          409,
+-          'COMPOSITION_VERSION_CONFLICT',
+-          reasonCode === null ? { currentVersion: '11' } : { reasonCode },
+-        ),
+-      ]);
++      const page = mount(
++        [
++          refusal(
++            409,
++            'COMPOSITION_VERSION_CONFLICT',
++            reasonCode === null ? { currentVersion: '11' } : { reasonCode },
++          ),
++        ],
++        {
++          [ENTRY]: [entryDetail('11')],
++          [diffPath(id(1))]: [clean(1), clean(1)],
++          [diffPath(id(2))]: [clean(2), clean(2)],
++        },
++      );
+       await bulkAccept(page);
+       expect(resultHeading(page.container)).toBe('Updates stopped');
+       expect(resultText(page.container)).toContain(sentence);
+       expect(resultText(page.container)).toContain('0 of 1 requests applied.');
+       expect(page.container.textContent).toContain('2 selected');
++      expect(
++        page.calls.filter((call) => call.path === ENTRY.slice(4)),
++      ).toHaveLength(1);
++      expect(page.lists).toHaveLength(1);
++      expect(
++        page.calls.filter((call) => call.path.endsWith('/update-diff')),
++      ).toHaveLength(4);
+     },
+   );
+ 
+@@ -258,15 +280,24 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
+     },
+   );
+ 
+-  it('[P2-S12-AC-271] commandState degraded (kept half): an unknown outcome states that nothing is assumed and keeps the selection; it renders no pending state and makes no refetch before a retry (C7)', async () => {
+-    const page = mount([
+-      refusal(502, 'DEPENDENCY_UNAVAILABLE', { retryable: true }),
+-      appended(),
+-    ]);
++  it('[P2-S12-AC-271] commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, states that nothing is assumed, keeps the selection, and only then offers the retry under the same key', async () => {
++    const heldEntry = heldReply();
++    const page = mount(
++      [refusal(502, 'DEPENDENCY_UNAVAILABLE', { retryable: true }), appended()],
++      { [ENTRY]: [heldEntry.reply] },
++    );
+     await bulkAccept(page);
++    expectPendingLabel(page.container, 'Checking the entry before any retry…');
++    expect(acceptAll(page.container).disabled).toBe(true);
++    await answerHeld(heldEntry, entryDetail('9'));
++    await settle();
+     expect(resultHeading(page.container)).toBe('Updates stopped');
+     expect(resultText(page.container)).toContain(UNKNOWN_OUTCOME_MESSAGE);
++    expect(resultText(page.container)).toContain(
++      'The entry is still at version 9.',
++    );
+     expect(resultText(page.container)).not.toContain('Updates applied');
++    expect(page.lists).toHaveLength(1);
+     expect(page.container.textContent).toContain('2 selected');
+     await click(acceptAll(page.container));
+     await settle();
+diff --git a/apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk.test.tsx b/apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk.test.tsx
+index 22b738a7..482d804d 100644
+--- a/apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk.test.tsx
++++ b/apps/web/src/components/cms-composition-instances/CmsCompositionPage.bulk.test.tsx
+@@ -20,6 +20,7 @@ import {
+   settle,
+ } from './composition-page.test-support';
+ import {
++  ENTRY_ID,
+   diffOf,
+   id,
+   plainPath,
+@@ -123,17 +124,27 @@ describe('bulk accept', () => {
+     noStrayRequests(page.unexpected);
+   });
+ 
+-  it('stops at a failed request, says how many were applied and leaves the rest selected', async () => {
++  it('[P2-S12-AC-271] commandState error (test correction, FE03 1049): stops at a 409 request, says how many were applied, refetches the entry, the list and the unapplied diffs, and leaves the rest selected', async () => {
++    const reread = Object.fromEntries(
++      Array.from({ length: 8 }, (_, i) => [
++        diffPath(id(33 + i)),
++        [
++          json(diffOf(33 + i, [plainPath()]), 200, '"3"'),
++          json(diffOf(33 + i, [plainPath()]), 200, '"3"'),
++        ],
++      ]),
++    );
+     const page = mountPage(
+       {
+         ...cleanDiffs(40),
++        ...reread,
+         [UPDATE]: [
+           appended(1, 32, '10'),
+           refusal(409, 'COMPOSITION_VERSION_CONFLICT', {
+             reasonCode: 'diff_has_collisions',
+           }),
+         ],
+-        [ENTRY]: [entryDetail('10')],
++        [ENTRY]: [entryDetail('10'), entryDetail('11')],
+       },
+       { instances: rowsOf(40) },
+     );
+@@ -154,6 +165,16 @@ describe('bulk accept', () => {
+     expect(page.container.querySelector('.cms-diff')?.textContent).toContain(
+       '8 updates selected.',
+     );
++    // The 409 read the entry again after the one between the requests, the list once, and the 8 unapplied diffs again.
++    expect(
++      page.calls.filter(
++        (call) => call.path === `/api/v1/cms/entries/${ENTRY_ID}`,
++      ),
++    ).toHaveLength(2);
++    expect(page.lists).toHaveLength(1);
++    expect(
++      page.calls.filter((call) => call.path.endsWith('/update-diff')),
++    ).toHaveLength(48);
+   });
+ 
+   it('refuses bulk acceptance when any selected instance collides and names it', async () => {
+diff --git a/apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx b/apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx
+index aa7cead9..9997f4ed 100644
+--- a/apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx
++++ b/apps/web/src/components/cms-composition-instances/CmsCompositionPage.in-flight.test.tsx
+@@ -84,7 +84,7 @@ const overrides = (container: HTMLElement) =>
+   byLabel<HTMLTextAreaElement>(container, 'Overrides (JSON, optional)');
+ 
+ describe('composition page: a command in flight', () => {
+-  it('[P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, the pending label holds and the open review survives the answer', async () => {
++  it('[P2-S12-AC-271] commandState loading: Review stays disabled while an accept is in flight, a click reads no diff, the pending label holds and Review is enabled again after the answer', async () => {
+     const held = heldReply();
+     const diff1 = diffOf(1, [plainPath('/a')]);
+     const diff2 = diffOf(2, [plainPath('/b')]);
+@@ -120,7 +120,7 @@ describe('composition page: a command in flight', () => {
+     );
+   });
+ 
+-  it('[P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer and keep the form dirty', async () => {
++  it('[P2-S12-AC-271] commandState loading: insert fields edited after dispatch survive the placement answer', async () => {
+     const held = heldReply();
+     const page = mountPage({ [PLACE]: [held.reply] });
+     const c = page.container;
+diff --git a/apps/web/src/components/cms-composition-instances/CmsPatternInsertForm.states.test.tsx b/apps/web/src/components/cms-composition-instances/CmsPatternInsertForm.states.test.tsx
+index f0cf4976..7a7a8fed 100644
+--- a/apps/web/src/components/cms-composition-instances/CmsPatternInsertForm.states.test.tsx
++++ b/apps/web/src/components/cms-composition-instances/CmsPatternInsertForm.states.test.tsx
+@@ -109,7 +109,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
+     expect(resultHeading(page.container)).toBe('Pattern placed');
+   });
+ 
+-  it('[P2-S12-AC-271] commandState success (kept half): the named resource, the draft cleared and the next command at the committed version; no refetch of the entry or list is made (C5)', async () => {
++  it('[P2-S12-AC-271] commandState success (test correction, FE03 1047): the named resource, the draft cleared, the next command at the committed version, and the instance list refetched from the protected read', async () => {
+     const page = mountPage({ [PLACE]: [placed()] });
+     await fill(page.container);
+     await typeInto(overrides(page.container), '{"/hero": {"title": "mine"}}');
+@@ -126,6 +126,8 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
+     expect(pattern(page.container).value).toBe('');
+     expect(overrides(page.container).value).toBe('');
+     expect(page.unexpected).toEqual([]);
++    // FE03 1047: the lists shown are refetched (the entry itself is not: the next version comes from the answer).
++    expect(page.lists).toHaveLength(1);
+   });
+ 
+   it('[P2-S12-AC-271] commandState error: a 401 answer renders the session-ended copy (STEP_UP_REQUIRED does not apply: BE03c requires no recent MFA for CMS-03C-02)', async () => {
+@@ -172,7 +174,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
+       'The entry changed since this page loaded. The page read its new version; check your input and place again.',
+     ],
+   ])(
+-    '[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and keeps the input',
++    '[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and the instance list and keeps the input',
+     async (reasonCode, sentence) => {
+       const page = mountPage({
+         [PLACE]: [
+@@ -190,6 +192,7 @@ describe('CmsPatternInsertForm (CMS-03C-02 place) commandState', () => {
+         1,
+       );
+       expect(page.calls.at(-1)?.path).toContain('/api/v1/cms/entries/');
++      expect(page.lists).toHaveLength(1);
+       expect(byLabel<HTMLInputElement>(page.container, 'Slot path').value).toBe(
+         '/main',
+       );
+diff --git a/apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx b/apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx
+index 3437d2cd..a5914e71 100644
+--- a/apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx
++++ b/apps/web/src/components/cms-composition-instances/CmsPatternUpdateDiff.states.test.tsx
+@@ -177,7 +177,7 @@ describe('CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) comman
+     await answerHeld(heldPlace, refusal(502, 'DEPENDENCY_UNAVAILABLE'));
+   });
+ 
+-  it('[P2-S12-AC-271] commandState success (kept half): the named outcome per instance, the panel and answers cleared and the next command at the committed version; no refetch of the entry or list is made (C5)', async () => {
++  it('[P2-S12-AC-271] commandState success (test correction, FE03 1047): the named outcome per instance, the panel and answers cleared, the next command at the committed version, and the instance list refetched after each command', async () => {
+     const page = mount([updatedLinked('10'), updated('11', '5')]);
+     await accepting(page);
+     expect(resultHeading(page.container)).toBe('Update applied');
+@@ -198,6 +198,7 @@ describe('CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) comman
+     expect(resultHeading(page.container)).toBe('Detached');
+     expect(resultText(page.container)).toContain('/main/row-1: Local copy');
+     expect(page.unexpected).toEqual([]);
++    expect(page.lists).toHaveLength(2);
+   });
+ 
+   it('[P2-S12-AC-271] commandState success: placing the new blocks names the placement and reads the diff again', async () => {
+@@ -278,7 +279,7 @@ describe('CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) comman
+       'The entry or the instance changed since this page loaded. The page reloaded them; your choices are kept, so check them and try again.',
+     ],
+   ])(
+-    '[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry and the diff and keeps the answers',
++    '[P2-S12-AC-271] commandState error: 409 %s renders fixed copy, refetches the entry, the instance list and the diff and keeps the answers',
+     async (reasonCode, sentence) => {
+       const page = mount(
+         [
+@@ -300,6 +301,7 @@ describe('CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) comman
+       expect(
+         page.calls.filter((call) => call.path.endsWith('/update-diff')),
+       ).toHaveLength(2);
++      expect(page.lists).toHaveLength(1);
+       expect(radio(page.container, '/a', 'yours').checked).toBe(true);
+     },
+   );
+@@ -334,23 +336,30 @@ describe('CmsPatternUpdateDiff (CMS-03C-15 accept, detach; DEC-193 Place) comman
+     },
+   );
+ 
+-  it('[P2-S12-AC-271] commandState degraded (kept half): an unknown outcome renders a pending, never a guessed, result and the retry reuses the same key; no entry refetch precedes the retry (C7)', async () => {
+-    const page = mount([
+-      refusal(502, 'DEPENDENCY_UNAVAILABLE', { retryable: true }),
+-      updated(),
+-    ]);
++  it('[P2-S12-AC-271] commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, never a guessed result, and only then the retry, which reuses the same key', async () => {
++    const heldEntry = heldReply();
++    const page = mount(
++      [refusal(502, 'DEPENDENCY_UNAVAILABLE', { retryable: true }), updated()],
++      { [ENTRY]: [heldEntry.reply] },
++    );
++    const c = page.container;
+     await accepting(page);
+-    expect(resultHeading(page.container)).toBe('Result not known');
+-    expect(resultText(page.container)).toContain(UNKNOWN_OUTCOME_MESSAGE);
+-    expect(resultText(page.container)).not.toContain('Update applied');
+-    expect(radio(page.container, '/a', 'yours').checked).toBe(true);
+-    await click(accept(page.container));
++    expectPendingLabel(c, 'Checking the entry before any retry…');
++    expect(accept(c).disabled).toBe(true);
++    await answerHeld(heldEntry, entryDetail('9'));
+     await settle();
+-    const keys = page.calls
+-      .filter((call) => call.method === 'POST')
+-      .map((call) => call.headers['idempotency-key']);
+-    expect(keys[1]).toBe(keys[0]);
+-    expect(resultHeading(page.container)).toBe('Update applied');
++    expect(resultHeading(c)).toBe('Result not known');
++    expect(resultText(c)).toContain(UNKNOWN_OUTCOME_MESSAGE);
++    expect(resultText(c)).toContain('The entry is still at version 9.');
++    expect(page.lists).toHaveLength(1);
++    expect(radio(c, '/a', 'yours').checked).toBe(true);
++    await click(accept(c));
++    await settle();
++    const posts = page.calls.filter((call) => call.method === 'POST');
++    expect(posts[1]?.headers['idempotency-key']).toBe(
++      posts[0]?.headers['idempotency-key'],
++    );
++    expect(resultHeading(c)).toBe('Update applied');
+   });
+ 
+   it('[P2-S12-AC-271] commandState disabled (kept half): no newer version, an uneditable draft or a missing session withholds the commit controls and says why; the island has no permittedNextActions input', async () => {
+diff --git a/apps/web/src/components/cms-composition-instances/composition-page.test-support.tsx b/apps/web/src/components/cms-composition-instances/composition-page.test-support.tsx
+index 922920db..1b1bb2ac 100644
+--- a/apps/web/src/components/cms-composition-instances/composition-page.test-support.tsx
++++ b/apps/web/src/components/cms-composition-instances/composition-page.test-support.tsx
+@@ -28,8 +28,19 @@ export interface Call {
+ }
+ type Reply = Response | (() => Response);
+ 
++/** `cmsCompositionInstancesRead` through its browser proxy: the instance-list refetch after a command (DEC-206). */
++const isListRead = (method: string, pathname: string): boolean =>
++  method === 'GET' &&
++  /^\/api\/v1\/cms\/entries\/[^/]+\/compositions$/u.test(pathname);
++
++/**
++ * Instance-list reads are recorded in `lists`, not in `calls`: the suites that predate the list refetch (FE03 1047, 1049)
++ * pin the command, entry and diff sequence in `calls`, and the list refetch is pinned by its own suites through
++ * `lists`. An unscripted list read answers 503 (a list that cannot be read), which keeps the rows the island holds.
++ */
+ export const scriptedFetch = (script: Record<string, Reply[]>) => {
+   const calls: Call[] = [];
++  const lists: Call[] = [];
+   const unexpected: string[] = [];
+   const queues = new Map(
+     Object.entries(script).map(([key, replies]) => [key, [...replies]]),
+@@ -38,22 +49,28 @@ export const scriptedFetch = (script: Record<string, Reply[]>) => {
+     const url = new URL(String(input), 'https://app.example.test');
+     const method = init?.method ?? 'GET';
+     const key = `${method} ${url.pathname}`;
+-    calls.push({
++    const call: Call = {
+       method,
+       path: url.pathname,
+       search: url.search,
+       headers: (init?.headers ?? {}) as Record<string, string>,
+       body: typeof init?.body === 'string' ? JSON.parse(init.body) : undefined,
+-    });
++    };
+     const queue = queues.get(key);
+     const next = queue?.shift();
++    if (isListRead(method, url.pathname)) {
++      lists.push(call);
++      if (next === undefined) return new Response(null, { status: 503 });
++      return typeof next === 'function' ? next() : next;
++    }
++    calls.push(call);
+     if (next === undefined) {
+       unexpected.push(key);
+       throw new Error(`Unscripted request ${key}`);
+     }
+     return typeof next === 'function' ? next() : next;
+   }) as typeof fetch;
+-  return { fetcher, calls, unexpected };
++  return { fetcher, calls, lists, unexpected };
+ };
+ 
+ export const json = (body: unknown, status = 200, etag?: string): Response =>
+diff --git a/apps/web/src/components/cms-composition-instances/use-composition-updates.completion.test.tsx b/apps/web/src/components/cms-composition-instances/use-composition-updates.completion.test.tsx
+index feed3cb7..647d6b95 100644
+--- a/apps/web/src/components/cms-composition-instances/use-composition-updates.completion.test.tsx
++++ b/apps/web/src/components/cms-composition-instances/use-composition-updates.completion.test.tsx
+@@ -68,6 +68,7 @@ describe('useCompositionUpdates: the completion of a refused command', () => {
+           },
+           'Update not applied',
+           { diff, choices: answers(diff, 'theirs') },
++          '9',
+         );
+       return <p>harness</p>;
+     }
+diff --git a/apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.states.test.tsx b/apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.states.test.tsx
+index 1522c567..31cc3150 100644
+--- a/apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.states.test.tsx
++++ b/apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.states.test.tsx
+@@ -217,7 +217,7 @@ describe('CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState'
+     },
+   );
+ 
+-  it('[P2-S12-AC-271] commandState error: 409 reviewer_not_eligible renders fixed copy at the reviewer field (no refetch is made)', async () => {
++  it('[P2-S12-AC-271] commandState error: 409 reviewer_not_eligible renders the one uniform copy at the reviewer field and refetches the review (FE03 884, DEC-242)', async () => {
+     const { container, refetch } = mount(
+       queuedFetcher([conflictFor('reviewer_not_eligible')]),
+     );
+@@ -231,7 +231,8 @@ describe('CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState'
+         '[role="alert"] a[href="#governed-assignment-reviewer"]',
+       ),
+     ).not.toBeNull();
+-    expect(refetch).toHaveBeenCalledTimes(0);
++    // FE03 884 gives the fixed copy and 1049 says 409 reasons "refetch": the review is read again (DEC-242).
++    expect(refetch).toHaveBeenCalledTimes(1);
+   });
+ 
+   it('[P2-S12-AC-271] commandState error: 422 expiry_out_of_bounds renders fixed copy at the expiry field', async () => {
+diff --git a/apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.test.tsx b/apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.test.tsx
+index d0d64d91..a880d86c 100644
+--- a/apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.test.tsx
++++ b/apps/web/src/components/cms-governed-review/CmsGovernedAssignmentForm.test.tsx
+@@ -254,12 +254,12 @@ describe('assign a reviewer (create)', () => {
+     expect(fetcher).toHaveBeenCalledTimes(2);
+   });
+ 
+-  it('shows one fixed message for an ineligible reviewer and names the other refusals', async () => {
++  it('shows one fixed message for an ineligible reviewer, refetching the review like the other 409 reasons, and names the other refusals', async () => {
+     for (const [reason, text, refetches] of [
+       [
+         'reviewer_not_eligible',
+         'That person cannot be assigned to this review.',
+-        0,
++        1,
+       ],
+       [
+         'assignment_exists',
+diff --git a/apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict-admission.test.tsx b/apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict-admission.test.tsx
+index 14d51fd5..cd5dc72a 100644
+--- a/apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict-admission.test.tsx
++++ b/apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict-admission.test.tsx
+@@ -48,19 +48,17 @@ afterEach(() => {
+ });
+ 
+ describe('CmsRelatedContentForm: conflict admission', () => {
+-  it('blocks native form submits before review, during both held reads and after verification until explicit Reapply', async () => {
++  it('[P2-S12-AC-271] test correction (DEC-242): blocks native form submits during both held reads the 409 started by itself and after verification until explicit Reapply', async () => {
+     const submit = submitStub({ kind: 'conflict', currentVersion: '99' });
+-    const { container } = await conflictedDraft(submit);
+     const { fetcher, releases } = controllingFetch('abort-ignores');
+-    vi.stubGlobal('fetch', fetcher);
+-    await nativeSubmit(container);
++    const { container } = await conflictedDraft(submit, fetcher);
+     await flush();
+-    expect(submit).toHaveBeenCalledTimes(1);
+-    expect(fetcher).not.toHaveBeenCalled();
++    // No press: the 409 itself started the draft read.
++    expect(reads(fetcher).map((call) => call.path)).toEqual([DRAFT_PATH]);
+     expect(buttonNamed(container, 'Save related content').disabled).toBe(true);
+-    await click(buttonNamed(container, 'Review changes'));
++    await nativeSubmit(container);
+     await flush();
+-    expect(reads(fetcher).map((call) => call.path)).toEqual([DRAFT_PATH]);
++    expect(submit).toHaveBeenCalledTimes(1);
+     await nativeSubmit(container);
+     expect(submit).toHaveBeenCalledTimes(1);
+     await act(async () => {
+@@ -92,34 +90,31 @@ describe('CmsRelatedContentForm: conflict admission', () => {
+     expect(boundField(container).value).toBe('12');
+   });
+ 
+-  it('clears the snapshot and Reapply after another 409 and requires a fresh two-stage verified review', async () => {
++  it('[P2-S12-AC-271] test correction (DEC-242): clears the snapshot and Reapply after another 409 and requires a fresh two-stage verified review, which that 409 starts by itself', async () => {
+     const submit = submitStub((call) =>
+       call < 2
+         ? { kind: 'conflict', currentVersion: '99' }
+         : { kind: 'saved', saved: savedOf({ version: '24' }) },
+     );
+-    const { container } = await conflictedDraft(submit);
+     const firstRead = canonicalReads({
+       [DRAFT_PATH]: () => draftAnswer('17'),
+       [RULE_PATH]: () => ruleAnswer({ version: '19' }),
+     });
+-    vi.stubGlobal('fetch', firstRead);
+-    await click(buttonNamed(container, 'Review changes'));
++    const { container } = await conflictedDraft(submit, firstRead);
+     await flush();
+     expect(container.querySelector(SNAPSHOT_SELECTOR)).not.toBeNull();
++    const { fetcher, releases } = controllingFetch('abort-ignores');
++    vi.stubGlobal('fetch', fetcher);
+     await click(buttonNamed(container, /^Reapply/u));
+     await flush();
+     expect(submit).toHaveBeenCalledTimes(2);
+     expect(sent(submit, 1)[0].expectedVersion).toBe('19');
+     expect(heading(container)).toBe('This entry changed');
++    // The second 409 started its own review: the draft read is held, so there is no snapshot and no Reapply yet.
+     expect(container.querySelector(SNAPSHOT_SELECTOR)).toBeNull();
+     expect(() => buttonNamed(container, /^Reapply/u)).toThrow();
+     await nativeSubmit(container);
+     expect(submit).toHaveBeenCalledTimes(2);
+-    const { fetcher, releases } = controllingFetch('abort-ignores');
+-    vi.stubGlobal('fetch', fetcher);
+-    await click(buttonNamed(container, 'Review changes'));
+-    await flush();
+     expect(reads(fetcher).map((call) => call.path)).toEqual([DRAFT_PATH]);
+     expect(() => buttonNamed(container, /^Reapply/u)).toThrow();
+     await act(async () => {
+@@ -147,9 +142,11 @@ describe('CmsRelatedContentForm: conflict admission', () => {
+       DRAFT_PATH,
+       RULE_PATH,
+     ]);
++    // Two reads of the review, then the success refetch (FE03 1047) has begun with the draft read, still held.
+     expect(reads(fetcher).map((call) => call.path)).toEqual([
+       DRAFT_PATH,
+       RULE_PATH,
++      DRAFT_PATH,
+     ]);
+     expect(heading(container)).toBe('Related content saved');
+     expect(localVersion(container)).toBe('24');
+diff --git a/apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx b/apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx
+index b29b3a87..67950e57 100644
+--- a/apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx
++++ b/apps/web/src/components/cms-related-content/CmsRelatedContentForm.conflict.test.tsx
+@@ -56,32 +56,44 @@ afterEach(() => {
+ });
+ 
+ /*
+- * FE03 :1224 (form contract): a 409 shows the current server version beside the preserved draft, offers
+- * Review changes, Reapply when permitted and Discard, and never overwrites automatically. Review changes
+- * reads the protected draft detail (CMS-03B-11) FIRST, then the saved rule (cmsRelatedContentRead, DEC-195),
+- * and shows the verified server snapshot beside the local draft. Reapply re-sends the preserved draft on the
++ * FE03 :1224 (form contract) with DEC-242 (a 409 is refetched AUTOMATICALLY, the explicit press is not "refetched"): a
++ * 409 reads the protected draft detail (CMS-03B-11) FIRST, then the saved rule (cmsRelatedContentRead, DEC-195), by
++ * itself, and shows the verified server snapshot beside the preserved draft, with Review changes (to read again),
++ * Reapply when permitted and Discard; it never overwrites automatically. Reapply re-sends the preserved draft on the
+  * reviewed rule.version, or on the earlier draft entry.version when the read answered `rule: null`, with a
+  * fresh key; the reviewed token is never the 409's `currentVersion` (the blind-adoption defect this suite
+  * pins). A failed, aborted or malformed read keeps the draft and its token and offers no Reapply, and a 429
+  * on the read keeps the input and disables Review changes until the stated wait elapses.
+  */
+ 
+-/** Save a preserved draft (one pin, a rule and an entered bound) into the 409 conflict. */
++/**
++ * Save a preserved draft (one pin, a rule and an entered bound) into the 409 conflict. The wire the automatic review
++ * reads is installed BEFORE the save: the first read is the one the 409 starts.
++ */
+ const conflicted = async (
+   submit: ReturnType<typeof submitStub>,
++  wire?: ReturnType<typeof vi.fn>,
+ ): Promise<HTMLElement> => {
++  if (wire !== undefined) vi.stubGlobal('fetch', wire);
+   const { container } = mount({ submit });
+   await click(buttonNamed(container, `Pin ${name(1)}`));
+   await click(byLabel(container, /Shared terms/u));
+   await typeInto(boundField(container), '12');
+   await click(buttonNamed(container, 'Save related content'));
++  await flush();
+   return container;
+ };
+ 
+ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
+-  it('keeps the ordered pins, the rule and the entered bound, and offers Review changes', async () => {
++  it('[P2-S12-AC-271] test correction (DEC-242): keeps the ordered pins, the rule and the entered bound beside the server state the 409 read by itself, and offers Review changes to read again', async () => {
+     const submit = submitStub({ kind: 'conflict', currentVersion: '9' });
+-    const container = await conflicted(submit);
++    const container = await conflicted(
++      submit,
++      canonicalReads({
++        [DRAFT_PATH]: () => draftAnswer('9'),
++        [RULE_PATH]: () => ruleAnswer(),
++      }),
++    );
+     expect(heading(container)).toBe('This entry changed');
+     expect(text(container)).toContain('Your choices are kept.');
+     expect(listItems(container, 'ol.cms-related-rows')).toEqual([id(1)]);
+@@ -93,16 +105,13 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
+     buttonNamed(container, 'Review changes');
+   });
+ 
+-  it('reads the protected draft detail first and then the saved rule on Review changes, with no save and no mutation header', async () => {
++  it('[P2-S12-AC-271] test correction (DEC-242): the 409 reads the protected draft detail first and then the saved rule by itself, with no press, no further save and no mutation header', async () => {
+     const submit = submitStub({ kind: 'conflict', currentVersion: '9' });
+-    const container = await conflicted(submit);
+     const fetcher = canonicalReads({
+       [DRAFT_PATH]: () => draftAnswer('9'),
+       [RULE_PATH]: () => ruleAnswer(),
+     });
+-    vi.stubGlobal('fetch', fetcher);
+-    await click(buttonNamed(container, 'Review changes'));
+-    await flush();
++    const container = await conflicted(submit, fetcher);
+     const called = reads(fetcher);
+     expect(called.map((call) => call.path)).toEqual([DRAFT_PATH, RULE_PATH]);
+     expect(called.every((call) => call.method === 'GET')).toBe(true);
+@@ -121,25 +130,21 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
+     }
+   });
+ 
+-  it('offers no Reapply before a verified read; Reapply re-sends on the reviewed rule version with a fresh key and the entered bound', async () => {
++  it('[P2-S12-AC-271] test correction (DEC-242): Reapply is offered once the automatic read verified; Reapply re-sends on the reviewed rule version with a fresh key and the entered bound', async () => {
+     // The reapply CASes on the reviewed rule version (10); its success resource is that + 1.
+     const submit = submitStub((call) =>
+       call === 0
+         ? { kind: 'conflict', currentVersion: '9' }
+         : { kind: 'saved', saved: savedOf({ version: '11' }) },
+     );
+-    const container = await conflicted(submit);
+-    expect(() => buttonNamed(container, /^Reapply/u)).toThrow();
+     // The rule read answers the freshest entry token (10) after the earlier draft read (9).
+-    vi.stubGlobal(
+-      'fetch',
++    const container = await conflicted(
++      submit,
+       canonicalReads({
+         [DRAFT_PATH]: () => draftAnswer('9'),
+         [RULE_PATH]: () => ruleAnswer({ version: '10' }),
+       }),
+     );
+-    await click(buttonNamed(container, 'Review changes'));
+-    await flush();
+     await click(buttonNamed(container, /^Reapply/u));
+     await flush();
+     expect(submit).toHaveBeenCalledTimes(2);
+@@ -162,35 +167,29 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
+         ? { kind: 'conflict', currentVersion: '9' }
+         : { kind: 'saved', saved: savedOf({ version: '12' }) },
+     );
+-    const container = await conflicted(submit);
+     const fetcher = canonicalReads({
+       [DRAFT_PATH]: () => draftAnswer('11'),
+       [RULE_PATH]: () => noRuleAnswer(),
+     });
+-    vi.stubGlobal('fetch', fetcher);
+-    await click(buttonNamed(container, 'Review changes'));
+-    await flush();
++    const container = await conflicted(submit, fetcher);
+     expect(reads(fetcher)).toHaveLength(2);
+     await click(buttonNamed(container, /^Reapply/u));
+     await flush();
+     expect(sent(submit, 1)[0].expectedVersion).toBe('11');
+   });
+ 
+-  it('keeps the draft and its token and offers no Reapply when the review read fails', async () => {
++  it('[P2-S12-AC-271] test correction (DEC-242): keeps the draft and its token and offers no Reapply when the automatic review read fails', async () => {
+     const submit = submitStub((call) =>
+       call === 0
+         ? { kind: 'conflict', currentVersion: '9' }
+         : { kind: 'saved', saved: savedOf() },
+     );
+-    const container = await conflicted(submit);
+-    vi.stubGlobal(
+-      'fetch',
++    const container = await conflicted(
++      submit,
+       vi.fn(async () => {
+         throw new TypeError('offline');
+       }),
+     );
+-    await click(buttonNamed(container, 'Review changes'));
+-    await flush();
+     expect(heading(container)).toBe('This entry changed');
+     expect(listItems(container, 'ol.cms-related-rows')).toEqual([id(1)]);
+     expect(boundField(container).value).toBe('12');
+@@ -203,33 +202,27 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
+ 
+   it('keeps the draft and offers no Reapply when the reviewed rule read is malformed', async () => {
+     const submit = submitStub({ kind: 'conflict', currentVersion: '9' });
+-    const container = await conflicted(submit);
+-    vi.stubGlobal(
+-      'fetch',
++    const container = await conflicted(
++      submit,
+       canonicalReads({
+         [DRAFT_PATH]: () => draftAnswer('9'),
+         [RULE_PATH]: () => json({ rule: { id: id(9) } }),
+       }),
+     );
+-    await click(buttonNamed(container, 'Review changes'));
+-    await flush();
+     expect(listItems(container, 'ol.cms-related-rows')).toEqual([id(1)]);
+     expect(() => buttonNamed(container, /^Reapply/u)).toThrow();
+   });
+ 
+   it('offers Review changes without a current version and keeps the conflict when a reapply answers 409 again', async () => {
+     const submit = submitStub({ kind: 'conflict', currentVersion: null });
+-    const container = await conflicted(submit);
+-    buttonNamed(container, 'Review changes');
+-    vi.stubGlobal(
+-      'fetch',
++    const container = await conflicted(
++      submit,
+       canonicalReads({
+         [DRAFT_PATH]: () => draftAnswer('9'),
+         [RULE_PATH]: () => ruleAnswer(),
+       }),
+     );
+-    await click(buttonNamed(container, 'Review changes'));
+-    await flush();
++    buttonNamed(container, 'Review changes');
+     await click(buttonNamed(container, /^Reapply/u));
+     await flush();
+     expect(heading(container)).toBe('This entry changed');
+@@ -238,15 +231,13 @@ describe('CmsRelatedContentForm: 409 review, reapply and discard', () => {
+   it('keeps the input and disables Review changes until the stated 429 wait elapses', async () => {
+     vi.useFakeTimers();
+     const submit = submitStub({ kind: 'conflict', currentVersion: '9' });
+-    const container = await conflicted(submit);
+-    vi.stubGlobal(
+-      'fetch',
++    const container = await conflicted(
++      submit,
+       canonicalReads({
+         [DRAFT_PATH]: () => rateLimited(5),
+         [RULE_PATH]: () => rateLimited(5),
+       }),
+     );
+-    await click(buttonNamed(container, 'Review changes'));
+     await settle(0);
+     expect(buttonNamed(container, 'Review changes').disabled).toBe(true);
+     expect(listItems(container, 'ol.cms-related-rows')).toEqual([id(1)]);
+diff --git a/apps/web/src/components/cms-related-content/CmsRelatedContentForm.save.test.tsx b/apps/web/src/components/cms-related-content/CmsRelatedContentForm.save.test.tsx
+index dd9c8dca..5ce47552 100644
+--- a/apps/web/src/components/cms-related-content/CmsRelatedContentForm.save.test.tsx
++++ b/apps/web/src/components/cms-related-content/CmsRelatedContentForm.save.test.tsx
+@@ -1,5 +1,13 @@
+ // @vitest-environment jsdom
+-import { afterAll, beforeAll, describe, expect, it } from 'vitest';
++import {
++  afterAll,
++  afterEach,
++  beforeAll,
++  describe,
++  expect,
++  it,
++  vi,
++} from 'vitest';
+ 
+ import { act } from 'react';
+ 
+@@ -9,8 +17,16 @@ import {
+   click,
+   disableReactAct,
+   enableReactAct,
++  flush,
+   typeInto,
+ } from '../cms-editorial-fields/cms-editor-dom.test-support';
++import {
++  DRAFT_PATH,
++  RULE_PATH,
++  canonicalReads,
++  draftAnswer,
++  noRuleAnswer,
++} from './related-conflict.test-support';
+ import type { RelatedContentRuleRequest } from '@wejammin/contracts';
+ import {
+   ENTRY_ID,
+@@ -23,6 +39,9 @@ import {
+ 
+ beforeAll(enableReactAct);
+ afterAll(disableReactAct);
++afterEach(() => {
++  vi.unstubAllGlobals();
++});
+ 
+ const name = (n: number): string => `entry ${id(n).slice(-12)}`;
+ const save = (container: HTMLElement) =>
+@@ -246,25 +265,39 @@ describe('CmsRelatedContentForm: submission', () => {
+   });
+ });
+ 
++/** The read that reconciles an unknown save (FE03 1050) finds nothing recorded, so the identical retry is offered. */
++const notRecorded = () =>
++  vi.stubGlobal(
++    'fetch',
++    canonicalReads({
++      [DRAFT_PATH]: () => draftAnswer('4'),
++      [RULE_PATH]: () => noRuleAnswer(),
++    }),
++  );
++
+ describe('CmsRelatedContentForm: idempotency', () => {
+-  it('replays the identical request with the same key after an unknown outcome', async () => {
++  it('[P2-S12-AC-271] test correction (FE03 1050): replays the identical request with the same key after an unknown outcome that the reconciling read found not recorded', async () => {
++    notRecorded();
+     const submit = submitStub((call) =>
+       call === 0 ? { kind: 'uncertain' } : { kind: 'saved', saved: savedOf() },
+     );
+     const { container } = mount({ submit });
+     await save(container);
+-    expect(heading(container)).toBe('Save not confirmed');
++    await flush();
++    expect(heading(container)).toBe('Save not recorded');
+     await save(container);
+     expect(sent(submit, 1)[2]).toBe(sent(submit, 0)[2]);
+     expect(sent(submit, 1)[0]).toEqual(sent(submit, 0)[0]);
+   });
+ 
+-  it('uses a new key once the request changed, and after a definite answer', async () => {
++  it('[P2-S12-AC-271] test correction (FE03 1050): uses a new key once the request changed, and after a definite answer', async () => {
++    notRecorded();
+     const submit = submitStub((call) =>
+       call === 0 ? { kind: 'uncertain' } : { kind: 'saved', saved: savedOf() },
+     );
+     const { container } = mount({ submit });
+     await save(container);
++    await flush();
+     await click(buttonNamed(container, `Exclude ${name(2)}`));
+     await save(container);
+     expect(sent(submit, 1)[2]).not.toBe(sent(submit, 0)[2]);
+diff --git a/apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx b/apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx
+index 4cd840ea..6c392834 100644
+--- a/apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx
++++ b/apps/web/src/components/cms-related-content/CmsRelatedContentForm.states.test.tsx
+@@ -9,6 +9,15 @@ import {
+   flush,
+ } from '../cms-editorial-fields/cms-editor-dom.test-support';
+ import { TARGET_REFUSED_MESSAGE } from './related-content-copy';
++import {
++  DRAFT_PATH,
++  RULE_PATH,
++  canonicalReads,
++  draftAnswer,
++  noRuleAnswer,
++  reads,
++  ruleAnswer,
++} from './related-conflict.test-support';
+ import type { RelatedSubmitResult } from './related-content-submit';
+ import {
+   PAGE_PATH,
+@@ -198,8 +207,11 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
+       },
+     );
+ 
+-    it('[P2-S12-AC-271] commandState error (kept half): a 409 renders fixed conflict copy, keeps the draft and withholds the save behind the explicit Review changes read; it is NOT refetched automatically (D2) (CMS-03C-05)', async () => {
+-      const fetchSpy = vi.fn<typeof fetch>();
++    it('[P2-S12-AC-271] commandState error (test correction, FE03 1049, DEC-242): a 409 renders fixed conflict copy, keeps the draft, refetches the draft and the saved rule by itself and withholds the save until the person reapplies (CMS-03C-05)', async () => {
++      const fetchSpy = canonicalReads({
++        [DRAFT_PATH]: () => draftAnswer('9'),
++        [RULE_PATH]: () => ruleAnswer({ version: '10' }),
++      });
+       vi.stubGlobal('fetch', fetchSpy);
+       const { container } = await draftThenSave({
+         kind: 'conflict',
+@@ -213,7 +225,11 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
+       expect(buttonNamed(container, 'Review changes').disabled).toBe(false);
+       expect(commit(container).disabled).toBe(true);
+       expect(listItems(container, 'ol.cms-related-rows')).toContain(id(1));
+-      expect(fetchSpy).not.toHaveBeenCalled();
++      expect(reads(fetchSpy).map((call) => call.path)).toEqual([
++        DRAFT_PATH,
++        RULE_PATH,
++      ]);
++      buttonNamed(container, /^Reapply/u);
+       // Choosing a rule does not lift the conflict the person still has to review.
+       await click(
+         Array.from(
+@@ -258,15 +274,22 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
+     });
+   });
+ 
+-  it('[P2-S12-AC-271] commandState degraded (kept half): an unknown outcome claims no success and replays the same Idempotency-Key; nothing is refetched before the retry (D3) (CMS-03C-05)', async () => {
+-    const fetchSpy = vi.fn<typeof fetch>();
++  it('[P2-S12-AC-271] commandState degraded (test correction, FE03 1050, DEC-242): an unknown outcome claims no success, is reconciled by a read of the saved rule before any retry, and the retry replays the same Idempotency-Key (CMS-03C-05)', async () => {
++    const fetchSpy = canonicalReads({
++      [DRAFT_PATH]: () => draftAnswer('4'),
++      [RULE_PATH]: () => noRuleAnswer(),
++    });
+     vi.stubGlobal('fetch', fetchSpy);
+     const { submit, container } = await draftThenSave((call) =>
+       call === 0 ? { kind: 'uncertain' } : { kind: 'saved', saved: savedOf() },
+     );
+-    expect(heading(container)).toBe('Save not confirmed');
++    expect(reads(fetchSpy).map((call) => call.path)).toEqual([
++      DRAFT_PATH,
++      RULE_PATH,
++    ]);
++    expect(heading(container)).toBe('Save not recorded');
+     expect(text(container)).toContain(
+-      'We could not confirm whether the save went through. Saving again is safe: the same request is never applied twice.',
++      'The save was not recorded. Your choices are kept. Saving again is safe: the same request is never applied twice.',
+     );
+     expect(text(container)).not.toContain('Related content saved');
+     expect(commit(container).disabled).toBe(false);
+@@ -276,7 +299,6 @@ describe('CmsRelatedContentForm (CMS-03C-05) commandState', () => {
+     expect(submit.mock.calls[1]?.[2]).toBe(submit.mock.calls[0]?.[2]);
+     expect(submit.mock.calls[1]?.[0]).toEqual(submit.mock.calls[0]?.[0]);
+     expect(heading(container)).toBe('Related content saved');
+-    expect(fetchSpy).not.toHaveBeenCalled();
+     vi.unstubAllGlobals();
+   });
+ 
+diff --git a/apps/web/src/components/cms-related-content/related-conflict.test-support.tsx b/apps/web/src/components/cms-related-content/related-conflict.test-support.tsx
+index 4634fe51..726bbe54 100644
+--- a/apps/web/src/components/cms-related-content/related-conflict.test-support.tsx
++++ b/apps/web/src/components/cms-related-content/related-conflict.test-support.tsx
+@@ -41,9 +41,15 @@ export const reviewMessage = (container: HTMLElement): string =>
+     'section[aria-label="Related content conflict review"] > [role="status"]',
+   )?.textContent ?? '';
+ 
++/**
++ * Save a preserved draft into the 409. The wire the automatic review reads (DEC-242) is installed BEFORE the save, so
++ * the first read is the one the 409 starts.
++ */
+ export const conflictedDraft = async (
+   submit: ReturnType<typeof submitStub>,
++  wire?: ReturnType<typeof vi.fn>,
+ ) => {
++  if (wire !== undefined) vi.stubGlobal('fetch', wire);
+   const mounted = mount({ submit });
+   await click(buttonNamed(mounted.container, `Pin ${name(1)}`));
+   await click(byLabel(mounted.container, /Shared terms/u));

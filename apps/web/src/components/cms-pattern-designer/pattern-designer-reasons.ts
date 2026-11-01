@@ -50,7 +50,7 @@ export const PATTERN_REFUSAL_COPY: Readonly<
   pattern_cycle:
     'A nested pattern leads back to this pattern, so the tree would contain itself. Remove the nested pattern that closes the loop. Nothing was saved.',
   block_registry_digest_mismatch:
-    'The block registry changed while you were editing. Reload to refresh the block choices, then submit again. Nothing was saved.',
+    'The block registry changed while you were editing. Block choices are read again; your values are kept. Nothing was saved.',
   key_reserved:
     'That pattern key is reserved because it names a page or a route. Choose another key. Nothing was saved.',
   pattern_depth_exceeded:

@@ -4,7 +4,7 @@ import {
   jsonResponse,
   patternDetailFixture,
 } from '../../server/cms-pattern-platform.test-support';
-import { readLatestPatternVersion } from './pattern-latest-read';
+import { readLatestPatternVersion } from './pattern-latest-fetch';
 
 /**
  * FE03 "Network and retry contract" (:1172-1173) for the latest-version read

@@ -8,6 +8,7 @@ import CmsLocaleSourceReview from './CmsLocaleSourceReview';
 import CmsLocaleStatus from './CmsLocaleStatus';
 import type { refreshLocaleSource } from './locale-source-refresh';
 import {
+  ENTRY_MOVED_NOTICE,
   LOCALE_RESULT_HEADING_ID,
   SAVE_WARNING,
   variantStateText,
@@ -107,11 +108,16 @@ export default function CmsLocaleVariantForm(
         controlIdFor={controlIdFor}
       />
       {form.lateEdits ? <CmsTemplateLateEditNotice /> : null}
-      {form.review.required ? (
+      {form.entryMoved ? <p role="status">{ENTRY_MOVED_NOTICE}</p> : null}
+      {form.reviewShown ? (
         <CmsLocaleSourceReview
           state={form.review.state}
           pending={form.pending}
-          onReload={() => void form.review.read()}
+          onReload={
+            form.review.required
+              ? () => void form.review.read()
+              : form.reloadSource
+          }
           onAdopt={form.adopt}
         />
       ) : null}

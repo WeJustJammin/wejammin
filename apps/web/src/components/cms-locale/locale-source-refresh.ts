@@ -4,6 +4,8 @@ import {
   isCmsVersion,
 } from '@wejammin/contracts/client';
 
+import { startReadDeadline } from '../../lib/read-deadline';
+import { withinDeadline } from '../../lib/read-within-deadline';
 import {
   rateLimitWaitSeconds,
   retryingSafeRead,
@@ -33,8 +35,6 @@ export type LocaleSourceRefreshResult =
       readonly kind: 'rate_limited';
       readonly retryAfterSeconds: number | null;
     };
-
-const READ_DEADLINE_MS = 8_000;
 
 type Json = Readonly<Record<string, unknown>>;
 const isRecord = (value: unknown): value is Json =>
@@ -84,7 +84,7 @@ export const parseSourceSnapshot = (
   };
 };
 
-/** One bounded, abortable, no-store GET of the draft detail; a failure adopts nothing. */
+/** One bounded, abortable, no-store GET of the draft detail (the shared read deadline); a failure adopts nothing. */
 export const refreshLocaleSource = async (input: {
   readonly entryId: string;
   readonly sourceLocale: string;
@@ -93,32 +93,35 @@ export const refreshLocaleSource = async (input: {
   readonly signal?: AbortSignal;
 }): Promise<LocaleSourceRefreshResult> => {
   const fetcher = input.fetcher ?? fetch;
-  const controller = new AbortController();
-  const abort = (): void => controller.abort();
-  input.signal?.addEventListener('abort', abort, { once: true });
-  const timer = setTimeout(abort, READ_DEADLINE_MS);
+  const deadline = startReadDeadline(input.signal);
   try {
-    const response = await retryingSafeRead(() =>
-      fetcher(`/api/v1/cms/entries/${input.entryId}`, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        redirect: 'error',
-        headers: { accept: 'application/json' },
-        signal: controller.signal,
-      }),
+    const response = await withinDeadline(
+      deadline,
+      retryingSafeRead(() =>
+        fetcher(`/api/v1/cms/entries/${input.entryId}`, {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          redirect: 'error',
+          headers: { accept: 'application/json' },
+          signal: deadline.signal,
+        }),
+      ),
     );
     if (!(response instanceof Response))
       return { kind: 'failed', status: null };
     if (response.status === 429)
       return {
         kind: 'rate_limited',
-        retryAfterSeconds: await rateLimitWaitSeconds(response),
+        retryAfterSeconds: await withinDeadline(
+          deadline,
+          rateLimitWaitSeconds(response),
+        ),
       };
     if (response.status !== 200)
       return { kind: 'failed', status: response.status };
     const snapshot = parseSourceSnapshot(
-      await response.json(),
+      await withinDeadline(deadline, response.json()),
       input.entryId,
       input.sourceLocale,
       input.fieldIds,
@@ -129,7 +132,6 @@ export const refreshLocaleSource = async (input: {
   } catch {
     return { kind: 'failed', status: null };
   } finally {
-    clearTimeout(timer);
-    input.signal?.removeEventListener('abort', abort);
+    deadline.clear();
   }
 };

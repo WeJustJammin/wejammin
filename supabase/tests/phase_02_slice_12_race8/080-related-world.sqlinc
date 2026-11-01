@@ -1,0 +1,46 @@
+-- Slice 12 race8: the committed related-content world (lane claude_s12_db8; tracker P2-S12-AC-277 "related target unpublish").  Include INSIDE the world
+-- transaction, after `select no_plan();` and with psql output redirected.  It is exactly the prelude of phase_02_slice_12_related_content.sql (the Slice 10 RPC
+-- world, the Slice 11 data-model world and review / lineage builders) plus its 001-world (fifteen published entries through the REAL publication
+-- producer, unpublished draft sources the creator is assigned to, hand-written fixtures labelled in that file).  Nothing is added by hand here.
+-- Then the commands of the race are stashed from live state: a CMS-03C-05 curation that pins a published target, and the unpublish tombstone request of
+-- the REAL lineage producer (platform_private.cms_append_publication_lineage, the producer of every publication row; 03b has no other unpublish writer).
+-- Paths start with `../` because \ir resolves them against THIS file's directory.
+\ir ../phase_02_slice_10_rpc/000-helpers.sqlinc
+\ir ../phase_02_slice_10_remaining_schema/000-helpers.sqlinc
+\ir ../phase_02_slice_10_rpc/001-fixtures.sqlinc
+\ir ../phase_02_slice_11_schema/000-helpers.sqlinc
+\ir ../phase_02_slice_11_schema/001-fixture.sqlinc
+\ir ../phase_02_slice_11_schema/002-row-builders.sqlinc
+\ir ../phase_02_slice_11_helpers/000-helpers.sqlinc
+\ir ../phase_02_slice_11_helpers/001-world.sqlinc
+\ir ../phase_02_slice_11_helpers/002-reviews.sqlinc
+\ir ../phase_02_slice_11_helpers/004-lineage.sqlinc
+\ir ../phase_02_slice_12_related_content/000-helpers.sqlinc
+\ir ../phase_02_slice_12_related_content/001-world.sqlinc
+
+select pg_temp.r7_note('rel_world_errors', (select count(*)::text from r12_world_errors));
+select pg_temp.r7_note('rel_world_errors_text', (select string_agg(step || ': ' || err::text, ' | ') from r12_world_errors));
+select pg_temp.s10_rpc_as('a9100000-0000-4000-8000-000000000001'::uuid, (select value::uuid from s10_ids where key = 'organization'));
+
+-- The actor of the Slice 10 world as transaction-local settings (the settings of pg_temp.s10_rpc_as), for a command that runs without a role switch.
+create or replace function pg_temp.r8_stash_curate(p_key text, p_source text, p_pin text) returns void language plpgsql as $b$
+declare v_auth text := (select value from s10_ids where key = 'creatorAuth');
+begin
+  perform pg_temp.r7_stash_sys(p_key, 'platform_api.cms_curate_related_content',
+    pg_temp.r12_req(p_source, array[p_pin], array[]::text[], pg_temp.r12_rule('same-type-recent', 5), 'r8-' || p_key),
+    jsonb_build_object(
+      'request.jwt.claims', jsonb_build_object('role', 'authenticated', 'sub', v_auth)::text,
+      'app.auth_user_id', v_auth, 'app.actor_auth_user_id', v_auth,
+      'app.actor_person_id', (select value from s10_ids where key = 'creatorPerson'),
+      'app.acting_party_id', (select value from s10_ids where key = 'organization'),
+      'app.acting_context_id', '', 'app.correlation_id', 'a9200000-0000-4000-8000-0000000000e5', 'app.cms_rpc', ''));
+end;
+$b$;
+select pg_temp.r8_stash_curate('curate:u1', 'srcA', 'c2');
+select pg_temp.r8_stash_curate('curate:u3', 'srcR', 'c3');
+select pg_temp.r7_note('src_u1', pg_temp.r12_id('srcA')::text);
+select pg_temp.r7_note('src_u3', pg_temp.r12_id('srcR')::text);
+select pg_temp.r7_note('target_u1', pg_temp.r12_id('c2')::text);
+select pg_temp.r7_note('target_u3', pg_temp.r12_id('c3')::text);
+select pg_temp.r7_note('unpublish_u1', pg_temp.h11l_tombstone('r12:c2', 'unpublish')::text);
+select pg_temp.r7_note('unpublish_u3', pg_temp.h11l_tombstone('r12:c3', 'unpublish')::text);

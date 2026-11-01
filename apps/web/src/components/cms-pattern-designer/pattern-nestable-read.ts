@@ -4,6 +4,8 @@ import {
   isCmsVersion,
 } from '@wejammin/contracts/client';
 
+import { startReadDeadline } from '../../lib/read-deadline';
+import { withinDeadline } from '../../lib/read-within-deadline';
 import {
   rateLimitWaitSeconds,
   retryingSafeRead,
@@ -181,6 +183,8 @@ const wait = (
 /**
  * One page of the nestable patterns for the content types of the pattern being designed (1-64), after the opaque cursor of
  * the page before (null for the first). FE03 :1173: a 502/503/504 the BE declares safe is retried twice (250 ms, 750 ms).
+ * The whole read has the shared 8,000 ms deadline (DEC-246(1)): a read that never answers is `unavailable`, the failed
+ * cell with its Retry control. A caller abort (`controls.signal`) is also `unavailable`, and is not shown.
  */
 export const readNestablePatterns = async (
   typeIds: readonly string[],
@@ -194,53 +198,52 @@ export const readNestablePatterns = async (
   for (const typeId of typeIds) query.append('contentTypeId', typeId);
   if (cursor !== null) query.set('cursor', cursor);
   query.set('limit', String(NESTABLE_PAGE_LIMIT));
-  let response: Response;
+  const deadline = startReadDeadline(controls.signal);
+  const { signal } = deadline;
   try {
-    response = await retryingSafeRead(
-      async () => {
-        require(controls.signal);
-        const answer = await fetcher(
-          `/api/v1/cms/patterns/nestable?${query.toString().replaceAll('+', '%20')}`,
-          {
-            method: 'GET',
-            credentials: 'same-origin',
-            cache: 'no-store',
-            redirect: 'error',
-            ...(controls.signal === undefined
-              ? {}
-              : { signal: controls.signal }),
-          },
-        );
-        require(controls.signal);
-        return answer;
-      },
-      { sleep: (delay) => wait(delay, controls.signal) },
+    const response = await withinDeadline(
+      deadline,
+      retryingSafeRead(
+        async () => {
+          require(signal);
+          const answer = await fetcher(
+            `/api/v1/cms/patterns/nestable?${query.toString().replaceAll('+', '%20')}`,
+            {
+              method: 'GET',
+              credentials: 'same-origin',
+              cache: 'no-store',
+              redirect: 'error',
+              signal,
+            },
+          );
+          require(signal);
+          return answer;
+        },
+        { sleep: (delay) => wait(delay, signal) },
+      ),
     );
+    if (!(response instanceof Response)) return { kind: 'unavailable' };
+    if (REJECTED.includes(response.status)) {
+      const seconds =
+        response.status === 429
+          ? await withinDeadline(deadline, rateLimitWaitSeconds(response))
+          : null;
+      return {
+        kind: 'rejected',
+        status: response.status as 400 | 401 | 403 | 404 | 422 | 429,
+        ...(seconds === null ? {} : { retryAfterSeconds: seconds }),
+      };
+    }
+    if (response.status !== 200) return { kind: 'unavailable' };
+    const body = await withinDeadline(deadline, response.json());
+    const page = verifiedNestablePage(body);
+    return page !== null &&
+      response.headers.get('etag') === `"${page.pageVersion}"`
+      ? { kind: 'page', page }
+      : { kind: 'unavailable' };
   } catch {
     return { kind: 'unavailable' };
+  } finally {
+    deadline.clear();
   }
-  if (canceled(controls.signal) || !(response instanceof Response))
-    return { kind: 'unavailable' };
-  if (REJECTED.includes(response.status)) {
-    const seconds =
-      response.status === 429 ? await rateLimitWaitSeconds(response) : null;
-    if (canceled(controls.signal)) return { kind: 'unavailable' };
-    return {
-      kind: 'rejected',
-      status: response.status as 400 | 401 | 403 | 404 | 422 | 429,
-      ...(seconds === null ? {} : { retryAfterSeconds: seconds }),
-    };
-  }
-  if (response.status !== 200) return { kind: 'unavailable' };
-  let body: unknown;
-  try {
-    body = await response.json();
-  } catch {
-    return { kind: 'unavailable' };
-  }
-  const page = canceled(controls.signal) ? null : verifiedNestablePage(body);
-  return page !== null &&
-    response.headers.get('etag') === `"${page.pageVersion}"`
-    ? { kind: 'page', page }
-    : { kind: 'unavailable' };
 };

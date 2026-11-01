@@ -1,0 +1,52 @@
+-- Lane claude_s12_db10 sweep: the expanders (P2-S12-AC-211 "again before publish", DEC-247).  Controls first: the in-bound shapes still answer.
+
+-- CMS-03C-14 diff: the target (newest active) forest is over the bound
+select * from pg_temp.s12pu_refused('d10-diff-deep', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('upd-deep', '/hero')), 'pattern_depth_exceeded', '["/patternId"]');
+select * from pg_temp.s12pu_refused('d10-diff-wide', 'platform_api.cms_get_instance_update_diff',
+  pg_temp.s12pu_diff_request(pg_temp.s12pu_head('upd-wide', '/hero')), 'pattern_nodes_exceeded', '["/patternId"]');
+
+-- CMS-03C-15 accept: refused at the target pointer, nothing written
+select * from pg_temp.s12pu_refused('d10-accept-deep', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('upd-deep', 'accept', jsonb_build_array(pg_temp.s12pu_target('upd-deep', '/hero')), 'd10-accept-deep', 2),
+  'pattern_depth_exceeded', '["/targetPatternVersion"]');
+select * from pg_temp.s12pu_refused('d10-accept-wide', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('upd-wide', 'accept', jsonb_build_array(pg_temp.s12pu_target('upd-wide', '/hero')), 'd10-accept-wide', 2),
+  'pattern_nodes_exceeded', '["/targetPatternVersion"]');
+
+-- CMS-03C-15 detach: the pinned (base) forest is over the bound
+select * from pg_temp.s12pu_refused('d10-detach-deep', 'platform_api.cms_apply_pattern_update',
+  pg_temp.s12pu_update_request('seed-deep', 'detach', jsonb_build_array(pg_temp.s12pu_target('seed-deep', '/' || repeat('n1/', 9) || 'hero')), 'd10-detach-deep'),
+  'pattern_depth_exceeded');
+
+-- render plan and checker read model: it stays TOTAL.  The manifest builder, render plan, accessibility checker input and composition list all read through
+-- cms_composition_effective_nodes; if an over-bound pin made it raise, the manifest build would abort and the pattern provider's typed reason (db9b suite) could
+-- never be reported.  The over-bound pin reads as its root block alone; the provider is the gate.
+select is(pg_temp.d10_try(format('select count(*) from platform_private.cms_revision_render_plan(%L)', pg_temp.s12pl_rev('seed-ctrl'))), 'ok',
+  'control: the render plan of a revision that pins a within-bounds pattern answers [P2-S12-AC-211]');
+select is(pg_temp.d10_try(format('select count(*) from platform_private.cms_revision_render_plan(%L)', pg_temp.s12pl_rev('seed-deep'))), 'ok',
+  'the render plan still answers for a revision that pins a pattern nested ten levels deep (the provider fails the revision) [P2-S12-AC-211]');
+select is(pg_temp.d10_try(format('select count(*) from platform_private.cms_revision_render_plan(%L)', pg_temp.s12pl_rev('seed-wide'))), 'ok',
+  'the render plan still answers for a revision that pins a pattern expanding to 544 block roots (the provider fails the revision) [P2-S12-AC-211]');
+select is(pg_temp.d10_try(format('select count(*) from platform_private.cms_composition_effective_nodes((select head from platform_private.cms_composition_instances head where head.id = %L))',
+    pg_temp.s12pu_head('seed-deep', '/' || repeat('n1/', 9) || 'hero'))), 'ok',
+  'the effective-node read adapter answers (the root block alone) for the live pin nested ten levels deep instead of raising [P2-S12-AC-211]');
+
+-- the node-bound probe agrees with the expansion it stands in for (is_root count of cms_pattern_placement_nodes), and caps over the bound
+select is(pg_temp.d10_try(format('select 1 / (case when platform_private.cms_pattern_expanded_root_count(%L, %L) = 32 then 1 else 0 end)',
+    pg_temp.s09d_id('ownerOrg'), (select block_tree from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('roots32')->>'id')::uuid))), 'ok',
+  'the probe counts the 32 block roots of roots32 [P2-S12-AC-211]');
+select is(pg_temp.d10_try(format('select 1 / (case when platform_private.cms_pattern_expanded_root_count(%L, %L) = 513 then 1 else 0 end)',
+    pg_temp.s09d_id('ownerOrg'), (select block_tree from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('l-wide')->>'id')::uuid))), 'ok',
+  'the probe answers the cap 513 for l-wide, which expands to 544 block roots [P2-S12-AC-211]');
+select is(pg_temp.d10_try(format('select 1 / (case when platform_private.cms_pattern_expanded_root_count(%L, %L) = 1 then 1 else 0 end)',
+    pg_temp.s09d_id('ownerOrg'), (select block_tree from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('p9')->>'id')::uuid))), 'ok',
+  'the probe counts one block root for p9, a chain of eight nested references to one block [P2-S12-AC-211]');
+
+-- restore of the active composition heads: the over-bound pin is the restore's own typed refusal, never a stray token
+select is(pg_temp.d10_try(format('select count(*) from platform_private.cms_restore_composition_plan(%L)', pg_temp.s12pl_rev('rst-ctrl'))), 'ok',
+  'control: the restore plan of a revision that pins a within-bounds pattern answers [P2-S12-AC-211]');
+select is(pg_temp.d10_try(format('select count(*) from platform_private.cms_restore_composition_plan(%L)', pg_temp.s12pl_rev('rst-deep'))),
+  'P0001:migration_chain_incomplete', 'the restore plan refuses an active pin nested ten levels deep as migration_chain_incomplete [P2-S12-AC-211]');
+select is(pg_temp.d10_try(format('select count(*) from platform_private.cms_restore_composition_plan(%L)', pg_temp.s12pl_rev('rst-wide'))),
+  'P0001:migration_chain_incomplete', 'the restore plan refuses an active pin expanding to 544 block roots as migration_chain_incomplete [P2-S12-AC-211]');

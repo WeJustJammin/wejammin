@@ -24,8 +24,10 @@ for that bound before saving a derived rule.
 
 ## Conflict review and explicit reapply
 
-A 409 preserves all local lists, rule choices, bound and the original entry token. It requires Review
-changes before another write; ordinary Save and native form submission cannot bypass that requirement.
+A 409 preserves all local lists, rule choices, bound and the original entry token, and refetches by itself
+(FE03 1049, DEC-242): the review below starts without a press. Review changes remains to read again after a
+failed or limited read. Another write needs a verified review first; ordinary Save and native form submission
+cannot bypass that requirement.
 `related-conflict-read.ts` reads protected draft detail FIRST and saved rule SECOND. Both are same-origin,
 no-store GETs with no query, body or mutation/conditional headers. Each stage owns an 8-second abortable
 deadline covering fetch, safe retry, body parsing and lazy contract validation. Unmount cancels the owned
@@ -38,6 +40,16 @@ draft GET that might silently adopt an intervening rule. The first Reapply gets 
 an unchanged uncertain attempt retains its key under the existing transport policy. Another 409 requires
 another review. Failed, malformed, canceled, 403 and 404 reads offer no Reapply. A 429 keeps the input and
 gates Review changes for the verified wait. Discard is an explicit page reload.
+
+## Unknown outcome and success refetch (FE03 1047, 1050)
+
+An unknown outcome renders the pending label "Checking whether the save went through…" and is reconciled by the same
+draft-then-rule read before any retry is offered (`related-reconcile.ts`, `use-related-outcomes.ts`). The saved rule is
+the answer to the request only when its entry token is the sent version plus one and its pins, exclusions and derived rule
+equal the request: then the save is shown as saved. A verified read that finds no such save says "Save not recorded" and
+offers the identical retry under the same key. A read that cannot verify keeps Save off and offers Check again (a 429
+blocks both for the stated wait). A verified success reads the saved rule once more and takes its entry token as the next
+version; a refetch that cannot verify keeps the verified save.
 
 ## Ownership
 
@@ -57,8 +69,9 @@ The protected saved-rule read gates edit access; each write rechecks authority a
   strict validators lazily: draft validators use `cms-contract-validators`; the related-rule schema uses
   a dynamic contract import.
 - Copy: `related-content-copy.ts` (including the one target-refusal message) and `related-status-copy.ts`.
-- State: `use-related-content-form.ts`, `use-related-conflict-review.ts` and, for the picker's "Load more",
-  `use-related-candidates.ts`. The
+- State: `use-related-content-form.ts` (with `use-related-list-edits.ts` for the pin and exclusion commands and
+  `use-related-outcomes.ts` for the reconciling and success reads), `use-related-conflict-review.ts` and, for the
+  picker's "Load more", `use-related-candidates.ts`. The
   candidate read follows the FE03 network and retry contract (`retryingSafeRead`: 250 ms and 750 ms on a
   retryable 502/503/504; a 429 waits for `Retry-After`, announces the wait and keeps the choices).
 - Views: `CmsRelatedContentForm` over `CmsRelatedPinList`, `CmsRelatedExclusionList`,
@@ -96,3 +109,13 @@ boundary test before implementation; the conflict and lifecycle suites drive the
 - `../../server/README.md` (the same-origin proxy)
 - `.memory/wiki/specs/fe/03-cms-content-modeling.md`
 - `.memory/wiki/specs/be/03c-composition-taxonomy-localization.md` (CMS-03C-05, 1417)
+
+"Check again" is one control for the whole unconfirmed episode (`CmsRelatedContentForm`): it stays mounted and
+`aria-disabled` while its read runs, so keyboard focus survives; a verified outcome moves focus to the result heading, a
+still unverified one keeps it on the control. An edit never lifts a save that is being (or could not be) reconciled
+(`keepOnEdit`). The status type lives in `related-content-types.ts`, so the form hook, `use-related-list-edits.ts` and
+`use-related-outcomes.ts` do not import each other.
+
+The candidate page read (`fetchCandidatePage`) ends at the shared 8,000 ms browser deadline and answers `failed`, which keeps
+the list shown and offers the read again (`CmsRelatedContentForm.candidates.test.tsx`).
+`CmsRelatedContentForm.closing-words.test.tsx` pins "no-store and never optimistic" for the candidate read and the save.

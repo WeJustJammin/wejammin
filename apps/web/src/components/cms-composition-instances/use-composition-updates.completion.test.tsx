@@ -25,6 +25,7 @@ import {
 } from './composition.test-support';
 import { useCompositionSession } from './use-composition-session';
 import { useCompositionUpdates } from './use-composition-updates';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /**
  * [P2-S12-AC-271] A command's completion works on what the author sees now (a ref), and falls back to what the command
@@ -68,6 +69,7 @@ describe('useCompositionUpdates: the completion of a refused command', () => {
           },
           'Update not applied',
           { diff, choices: answers(diff, 'theirs') },
+          '9',
         );
       return <p>harness</p>;
     }
@@ -79,5 +81,7 @@ describe('useCompositionUpdates: the completion of a refused command', () => {
       kind: 'diff',
       choices: answers(diff, 'theirs'),
     });
+    // The 409 refetches the entry, the list and the diff once each.
+    expectListRefetches(scripted, 1);
   });
 });

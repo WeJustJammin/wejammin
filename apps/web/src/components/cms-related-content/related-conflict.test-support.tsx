@@ -41,9 +41,15 @@ export const reviewMessage = (container: HTMLElement): string =>
     'section[aria-label="Related content conflict review"] > [role="status"]',
   )?.textContent ?? '';
 
+/**
+ * Save a preserved draft into the 409. The wire the automatic review reads (DEC-242) is installed BEFORE the save, so
+ * the first read is the one the 409 starts.
+ */
 export const conflictedDraft = async (
   submit: ReturnType<typeof submitStub>,
+  wire?: ReturnType<typeof vi.fn>,
 ) => {
+  if (wire !== undefined) vi.stubGlobal('fetch', wire);
   const mounted = mount({ submit });
   await click(buttonNamed(mounted.container, `Pin ${name(1)}`));
   await click(byLabel(mounted.container, /Shared terms/u));

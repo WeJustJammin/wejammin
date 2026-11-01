@@ -1045,7 +1045,7 @@ export const CMS_ON_DEMAND_CHUNKS = Object.freeze([
     trigger: 'save',
     reason: 'The locale variant save loads when the person saves.',
     importedBy: [
-      'apps/web/src/components/cms-locale/use-locale-variant-form.ts',
+      'apps/web/src/components/cms-locale/locale-variant-submit-seam.ts',
     ],
     proof: {
       file: 'apps/web/src/components/cms-on-demand-taxonomy-locale.proof.test.tsx',
@@ -1053,9 +1053,9 @@ export const CMS_ON_DEMAND_CHUNKS = Object.freeze([
   },
   {
     stem: 'locale-source-refresh',
-    trigger: '409 on save',
+    trigger: 'save',
     reason:
-      'The source review read loads after a 409 asks the person to review the source.',
+      'The source read loads after a save, never at mount: after an accepted save (the source is refetched), after a save whose outcome is unknown, and when a save finds the source changed (409).',
     importedBy: [
       'apps/web/src/components/cms-locale/use-locale-source-review.ts',
     ],
@@ -1081,6 +1081,54 @@ export const CMS_ON_DEMAND_CHUNKS = Object.freeze([
     importedBy: ['apps/web/src/components/cms-taxonomy-terms/use-term-form.ts'],
     proof: {
       file: 'apps/web/src/components/cms-on-demand-taxonomy-locale.proof.test.tsx',
+    },
+  },
+  {
+    stem: 'cms-registry-read',
+    trigger: 'registry-digest 409',
+    reason:
+      'The designer context read and the comparison of its block selectors load when a 409 block_registry_digest_mismatch asks for the block choices again, never with the route.',
+    importedBy: [
+      'apps/web/src/components/cms-composition/registry-read-on-demand.ts',
+    ],
+    proof: {
+      file: 'apps/web/src/components/cms-on-demand-registry.proof.test.tsx',
+    },
+  },
+  {
+    stem: 'taxonomy-versions-read',
+    trigger: 'refetch after a command',
+    reason:
+      'The versions read of a vocabulary runs only as a re-read: after a saved version, a lost write outcome or a 409 in the designer, after a term action, and after a governed command. No mount effect asks for it.',
+    importedBy: [
+      'apps/web/src/components/cms-taxonomy-designer/taxonomy-versions-on-demand.ts',
+    ],
+    proof: {
+      file: 'apps/web/src/components/cms-on-demand-taxonomy-locale.proof.test.tsx',
+    },
+  },
+  {
+    stem: 'pattern-latest-fetch',
+    trigger: 'refetch after a command',
+    reason:
+      'The reader of the owner latest version of a pattern key runs only as a re-read: after a 409, a lost write outcome or a governed command, or when the person presses Check latest version. No mount effect asks for it.',
+    importedBy: [
+      'apps/web/src/components/cms-pattern-designer/pattern-latest-read.ts',
+    ],
+    proof: {
+      file: 'apps/web/src/components/cms-on-demand-pattern-terms.proof.test.tsx',
+    },
+  },
+  {
+    stem: 'taxonomy-terms-fetch',
+    trigger: 'refetch after a command',
+    reason:
+      'The reader of one page of a vocabulary terms runs only after the first paint: when the list is read again after a term action or a lost answer, when a filter is applied, or when a term action opens its choice list. The first page is served with the route.',
+    importedBy: [
+      'apps/web/src/components/cms-taxonomy-terms/taxonomy-terms-read.ts',
+    ],
+    proof: {
+      file: 'apps/web/src/components/cms-on-demand-pattern-terms.proof.test.tsx',
     },
   },
   {

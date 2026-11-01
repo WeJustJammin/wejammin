@@ -1,0 +1,202 @@
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_activation_order.sql:15: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_activation_order.sql:18: WARNING:  there is no transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_activation_order.sql .. 
+1..21
+# restore=removed=326 restore2=removed=0 off=disabled=118 fk_deferred=339 on=enabled=118 missing_where= added_where= restore_error=-
+# w1=p1=55P03 p3=00000 p3b=- p4=00000 p5=00000 adv=00000 | w3=p1=55P03 p3=55P03 p3b=- p4=00000 p5=00000 adv=00000 | w3b=p1=55P03 p3=55P03 p3b=55P03 p4=00000 p5=00000 adv=00000 | w4=p1=55P03 p3=55P03 p3b=- p4=55P03 p5=00000 adv=00000
+ok 1 - the committed-world harness ran every wait scenario without an error of its own [P2-S12-AC-085]
+ok 2 - the committed governed world built with no failed fixture assertion [P2-S12-AC-085]
+ok 3 - fixture: the lineage of the W3b scenario has an ACTIVE version before the race [P2-S12-AC-085]
+ok 4 - fixture: the holder owns the activator's grant row FOR UPDATE (position 1) [P2-S12-AC-085]
+ok 5 - CMS-03C-09 activate is observed blocked BY the holder of the authority rows, the position 1 lock [P2-S12-AC-085]
+ok 6 - blocked at position 1 the activation holds nothing after it: the subject row (3), the content type version row (4), the review row (5) and the advisory lock are all free [P2-S12-AC-085]
+ok 7 - once the position 1 holder releases the activation completes and the subject is active [P2-S12-AC-085]
+ok 8 - fixture: the holder owns the subject version row FOR UPDATE (position 3) [P2-S12-AC-085]
+ok 9 - CMS-03C-09 activate is observed blocked BY the holder of the subject version row, the position 3 lock [P2-S12-AC-085]
+ok 10 - blocked at the subject row (position 3) the activation already holds position 1 and holds nothing after: content type version row (4), review row (5) and advisory lock free [P2-S12-AC-085]
+ok 11 - once the position 3 holder releases the activation completes and the subject is active [P2-S12-AC-085]
+ok 12 - fixture: the lineage holds an active version and the approved successor before the race [P2-S12-AC-085]
+ok 13 - CMS-03C-09 activate is observed blocked BY the holder of the lineage's ACTIVE row, taken after the subject row [P2-S12-AC-085]
+ok 14 - blocked at the lineage's active row the activation holds position 1 and the subject row, and nothing after it: content type version row (4), review row (5), advisory lock free [P2-S12-AC-085]
+ok 15 - once the active-row holder releases the activation completes: the predecessor is superseded and the successor active [P2-S12-AC-085]
+ok 16 - fixture: the holder owns the bound content type version row FOR UPDATE (position 4) [P2-S12-AC-085]
+ok 17 - CMS-03C-09 activate is observed blocked BY the holder of the bound content type version row, the position 4 lock [P2-S12-AC-085]
+ok 18 - blocked at the content type version row (position 4) the activation already holds positions 1 and 3, and the review row (5) and the advisory lock are still free [P2-S12-AC-085]
+ok 19 - once the position 4 holder releases the activation completes and the subject is active [P2-S12-AC-085]
+ok 20 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-085]
+ok 21 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-085]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_create.sql:17: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_create.sql:18: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_create.sql:19: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_create.sql:20: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_entry_default_template_lock/000-world.sqlinc:5: WARNING:  there is already a transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_create.sql ...... 
+1..34
+# restore=removed=426 restore2=removed=0 off=disabled=118 fk_deferred=339 on=enabled=118 missing_where= added_where= restore_error=-
+# a3=P0001:VALIDATION_FAILED|["/fields/bdf2c064-e13b-4797-b9ce-36961be7bf35"] | a5=P0001:VALIDATION_FAILED|["/fields/bdf2c064-e13b-4797-b9ce-36961be7bf35"] | a4=P0001:FORBIDDEN | a1=P0001:VALIDATION_FAILED|["/contentTypeVersionId"]
+# succ_steps=edtl-succ:assign:rev3=00000, edtl-succ:decide:rev3=00000, edtl-succ:dryRun=00000, edtl-succ:plan.batch=00000, edtl-succ:plan.claim=00000, edtl-succ:plan.get=00000, edtl-succ:plan.seal=00000, edtl-succ:submit=00000, edtl-succ:successor=00000 | actsucc_request={"dryRunId": "c433a830-c359-4bea-824f-0adc1c8c1dce", "versionId": "f1068dfa-fea6-460b-aba1-26097770b692", "approvalIds": ["69371384-1a4e-4a64-8e44-2c66b5b475f0"], "contentTypeId": "fa5887a0-b809-44a4-981f-d12cae856323", "idempotencyKey": "r8-actsucc-key", "expectedVersion": "4", "migrationPlanId": "255d498c-feed-40a1-9423-e9aa3dfe09cc"}
+# a1_h=ok:{"id": "f1068dfa-fea6-460b-aba1-26097770b692", "jobId": null, "state": "active", "version": "5", "createdAt": "2026-10-30T06:45:14.726794+00:00", "eventType": "cms.schema.activated.v1", "updatedAt": "2026-10-30T06:45:16.903438+00:00", "activatedAt": "2026-10-30T06:45:16.903438+00:00", "contentHas
+ok 1 - the committed-world harness ran every create scenario without an error of its own [P2-S12-AC-294]
+ok 2 - the committed create world built with no failed fixture assertion and no failed premise [P2-S12-AC-294]
+ok 3 - fixture: the concealed target (an entry of another content type) was created by the real command [P2-S12-AC-294]
+ok 4 - fixture: the bound content type holds no entry before the scenarios [P2-S12-AC-294]
+ok 5 - fixture: the target is being bumped by a real revision append that stays open; the committed target version is still 1 [P2-S12-AC-294]
+ok 6 - the create naming the target with expectedTargetVersion 1 is observed blocked BY the open revision append on the target entry (position 2) [P2-S12-AC-294]
+ok 7 - while the create waits at the relation target (position 2) it holds neither the default template row (3) nor the content type version row (4): position 2 is never acquired after 3 or 4 [P2-S12-AC-294]
+ok 8 - the pinned target version is decided after the wait: the bumped target is the uniform VALIDATION_FAILED at /fields/{relation field} [P2-S12-AC-294]
+ok 9 - the refused create wrote nothing: the bump committed (target version 2), no entry exists and the Idempotency-Key holds no record [P2-S12-AC-294]
+ok 10 - control: the same create pinned to the new target version succeeds and records the exact default template as its first pin (rolled back afterwards) [P2-S12-AC-294]
+ok 11 - fixture: a holder owns the entry row of the concealed target FOR UPDATE [P2-S12-AC-294]
+ok 12 - a create naming a concealed target answers the uniform VALIDATION_FAILED while the holder still owns the target's entry row: no lock is taken on it, no lock lever [P2-S12-AC-294]
+ok 13 - a concealed target and an absent target id are refused with the identical outcome: no existence oracle [P2-S12-AC-294]
+ok 14 - the concealed-target refusals wrote no entry [P2-S12-AC-294]
+# a6_b_high=ok:{"entry": {"id": "61d57f49-ac99-4f5f-a522-ca3492333f47", "version": "1", "createdAt": "2026-10-30T06:45:16.494Z", "updatedAt": "2026-10-30T06:45:16.494Z"}, "state": "draft", "locale": "en-US", "revision": {"id": "6b29e387-aed2-4886-840d-aef208dcae47", "version": "1", "createdAt": "2026-10-30T06:4 | a6_b_low=ok:{"entry": {"id": "e6b2041c-7970-47cb-9b60-aef4ef9134ee", "version": "1", "createdAt": "2026-10-30T06:45:16.599Z", "updatedAt": "2026-10-30T06:45:16.599Z"}, "state": "draft", "locale": "en-US", "revision": {"id": "d3b75e07-407e-469d-99f4-3f2537e6563d", "version": "1", "createdAt": "2026-10-30T06:4
+ok 15 - fixture: a content type with a two-target relation is active, a second article target exists, and the holder of the HIGHER target id owns it while the lower one is free [P2-S12-AC-294]
+ok 16 - a create naming two targets is observed blocked BY the holder of the higher-id target (position 2) [P2-S12-AC-294]
+ok 17 - while it waits for the higher-id target the create already holds the lower-id target entry row and the caller's assignment rows on it: the set is locked in ascending id order [P2-S12-AC-294]
+ok 18 - once the higher-id holder releases the create completes [P2-S12-AC-294]
+ok 19 - a create naming the same two targets is observed blocked BY the holder of the lower-id target (position 2) [P2-S12-AC-294]
+ok 20 - while it waits for the lower-id target the create has not yet touched the higher-id target: no later id is locked before an earlier one [P2-S12-AC-294]
+ok 21 - once the lower-id holder releases the create completes [P2-S12-AC-294]
+ok 22 - fixture: a revocation of the author grant is in flight (updated, not committed) [P2-S12-AC-294]
+ok 23 - a create arriving while the revocation is in flight waits for the revoking transaction (position 1) [P2-S12-AC-294]
+ok 24 - the capability is re-proved under the position 1 lock after the wait: a revocation committed first wins, the create is FORBIDDEN [P2-S12-AC-294]
+ok 25 - the create refused after the revocation wrote no entry and left no Idempotency-Key record [P2-S12-AC-294]
+ok 26 - cleanup: the author grant is restored before the next scenario [P2-S12-AC-294]
+ok 27 - fixture: the approved successor schema is being activated by the real command, which stays open [P2-S12-AC-294]
+ok 28 - a create of the superseded-to-be schema arriving during the activation is observed blocked BY it [P2-S12-AC-294]
+ok 29 - while the create waits behind the activation it has taken neither the relation target (2) nor the default template (3) [P2-S12-AC-294]
+ok 30 - the exact schema is rechecked after the wait: the activation won, so the create is refused at /contentTypeVersionId [P2-S12-AC-294]
+ok 31 - the refused create stored no entry, no unlocked replacement pin and no Idempotency-Key record [P2-S12-AC-294]
+ok 32 - the activation committed: the bound content type has one active version, the successor, and two superseded ones [P2-S12-AC-294]
+ok 33 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-294]
+ok 34 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-294]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_default.sql:11: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_default.sql:12: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_default.sql:13: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_default.sql:14: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_entry_default_template_lock/000-world.sqlinc:5: WARNING:  there is already a transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_entry_default.sql ..... 
+1..10
+# restore=removed=358 restore2=removed=0 off=disabled=118 fk_deferred=339 on=enabled=118 missing_where= added_where= restore_error=-
+# d2_h=ok:{"action": "retire", "reviewId": "88a05af3-ee11-4022-b569-cefa71a25f34", "eventType": "cms.template.activated.v1", "lineageId": "45897d73-d4c6-4e9a-a1a3-030ad5c98166", "subjectId": "45897d73-d4c6-4e9a-a1a3-030ad5c98166", "activatedAt": "2026-10-30T06:45:18.658Z", "subjectKind": "template_version" | d2_b=P0001:CONFLICT
+ok 1 - the committed-world harness ran the default-template scenario without an error of its own [P2-S12-AC-294]
+ok 2 - the committed create world built with no failed fixture assertion and no failed premise [P2-S12-AC-294]
+ok 3 - fixture: the default template T1 is active and the bound content type holds no entry before the race [P2-S12-AC-294]
+ok 4 - fixture: the real retire of T1 stays open and owns the template row, the target entry row is still free [P2-S12-AC-294]
+ok 5 - the create is observed blocked BY the open retire of its exact stored default template, the position 3 lock [P2-S12-AC-294]
+ok 6 - while the create waits at the default template (3) it already holds the relation target entry row (2), which no other session held before: position 2 precedes 3 [P2-S12-AC-294]
+# observation: the retire holder owns the content type version row itself (a retire locks its bound types): d2_pos4_before=55P03 d2_pos4_during=55P03
+ok 7 - the exact stored default is re-read after the wait: the retired default is the typed 409 CONFLICT [P2-S12-AC-294]
+ok 8 - the retire committed and the refused create stored no entry, no pin and no Idempotency-Key record [P2-S12-AC-294]
+ok 9 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-294]
+ok 10 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-294]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_locale.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_locale.sql:14: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_locale.sql:15: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_locale.sql:16: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_entry_default_template_lock/000-world.sqlinc:5: WARNING:  there is already a transaction in progress
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_locale.sql ............ 
+1..17
+# restore=removed=427 restore2=removed=0 off=disabled=118 fk_deferred=339 on=enabled=118 missing_where= added_where= restore_error=-
+# e1_h=ok:{"id": "3a6b260d-2901-4182-8dbe-e576341b3f43", "state": "draft", "locale": "en-US", "entryId": "156c5a32-b947-432b-8a47-e8a1711864ee", "version": "1", "createdAt": "2026-10-30T06:45:21.728Z", "upda | e1_b=P0001:VERSION_MISMATCH | e1_retry=ok:{"id": "dac29d46-b8cb-48a7-a65f-e01269ce1c2f", "state": "draft", "locale": "fr-FR", "entryId": "156c5a32-b947-432b-8a47-e8a1711864ee", "version": "1", "createdAt": "2026-10-30T06:45:21.917Z", "upda
+# e2_h=ok:{"id": "422502d9-5ef1-4677-9df4-4690860a4a3e", "state": "draft", "locale": "fr-FR", "entryId": "4cc27851-c1f0-496c-a0ec-cbc7b35c4efb", "version": "1", "createdAt": "2026-10-30T06:45:21.950Z", "upda | e2_b=P0001:VERSION_MISMATCH | e2_retry=ok:{"id": "44a57be8-c7ee-49fe-8530-b49d3333f15b", "state": "draft", "locale": "en-US", "entryId": "4cc27851-c1f0-496c-a0ec-cbc7b35c4efb", "version": "1", "createdAt": "2026-10-30T06:45:22.073Z", "upda
+ok 1 - the committed-world harness ran both locale scenarios without an error of its own [P2-S12-AC-277]
+ok 2 - the committed locale world built with no failed fixture assertion: two entries of an active localized content type exist [P2-S12-AC-277]
+ok 3 - fixture: a real source-locale revision append on the entry stays open; the committed entry version is still 1 [P2-S12-AC-277]
+ok 4 - the translation of the old source is observed blocked BY the open source edit (the entry row) [P2-S12-AC-277]
+ok 5 - once the source edit commits the translation answers the typed 409 VERSION_MISMATCH (entry version and source hash are stale) [P2-S12-AC-277]
+ok 6 - the losing translation wrote nothing: no variant row and no Idempotency-Key record, while the source edit moved the head and the entry to version 2 [P2-S12-AC-277]
+ok 7 - the translation retried on the new source revision and hash commits a draft variant pinned to the NEW source revision [P2-S12-AC-277]
+ok 8 - fixture: a real fr-FR translation of the entry stays open as the lock holder [P2-S12-AC-277]
+ok 9 - the source edit of the old entry version is observed blocked BY the open translation (the entry row) [P2-S12-AC-277]
+ok 10 - once the translation commits the source edit answers the typed 409 VERSION_MISMATCH (the entry version advanced) [P2-S12-AC-277]
+ok 11 - the losing source edit wrote nothing: the head is still the first revision, the translation is a draft variant with one localization event, no Idempotency-Key record [P2-S12-AC-277]
+ok 12 - the source edit retried at the new entry version commits and moves the head [P2-S12-AC-277]
+ok 13 - the source-change fan-out appended a stale variant row (version 2) after the committed translation: the variant is honestly stale [P2-S12-AC-277]
+ok 14 - the stale row lists exactly the translated source field (stale_field_ids) [P2-S12-AC-277]
+ok 15 - the stale transition emitted its own cms.localization.changed.v1 event (two events for the locale) [P2-S12-AC-277]
+ok 16 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-277]
+ok 17 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-277]
+ok
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_related.sql:13: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_related.sql:14: NOTICE:  extension "pgtap" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_related.sql:15: NOTICE:  extension "dblink" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_related.sql:16: WARNING:  there is no transaction in progress
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:207: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:207: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:210: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:210: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:210: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:213: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:213: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:213: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:217: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:217: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:217: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:220: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:220: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:220: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:223: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:226: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:226: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:226: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:231: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:231: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:231: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:238: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:238: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:238: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:240: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:240: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:240: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:244: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:244: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:244: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:247: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:247: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:247: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:249: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:249: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:249: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:252: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:252: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:252: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:254: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:254: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:254: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:256: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:256: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+psql:/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_related_content/001-world.sqlinc:256: NOTICE:  relation "cms_manifest_block_refs" already exists, skipping
+/home/rob/.codex/worktrees/phase2-slice12/WeJammin/supabase/tests/phase_02_slice_12_race8_related.sql ........... 
+1..19
+# restore=removed=394 restore2=removed=0 off=disabled=118 fk_deferred=339 on=enabled=118 missing_where= added_where= restore_error=-
+# rel_world_errors=none | u1_h=00000 | u1_b=ok:{"id": "a9200000-0000-4000-8000-08efac20f822", "pins": ["a9200000-0000-4000-8000-017bccda0742"], "state": "active", "version": "2", "createdAt": "2026-10-30T06:45:23.958Z", "updatedAt": "2026-10-30T06:45:23.958Z", "exclusions": [], "contentHash": "343c726c9a03af692dde1f79064d9178a102bba95e80e664f | u3_h=00000 | u3_b=ok:{"id": "a9200000-0000-4000-8000-186afac6c10b", "pins": ["a9200000-0000-4000-8000-369e11ada261"], "state": "active", "version": "2", "createdAt": "2026-10-30T06:45:24.027Z", "updatedAt": "2026-10-30T06:45:24.027Z", "exclusions": [], "contentHash": "467681e65c30d898a95dbad054cd8b59708cf5498c2475ed5
+ok 1 - the committed-world harness ran both related-target scenarios without an error of its own [P2-S12-AC-277]
+ok 2 - the committed related-content world built with no failed fixture assertion and no world error [P2-S12-AC-277]
+ok 3 - fixture: both pinned targets are published (active publish head) before the race [P2-S12-AC-277]
+ok 4 - fixture: the unpublish tombstone of the first target is appended in an open transaction: the committed lineage head is still the active publish [P2-S12-AC-277]
+ok 5 - the curation pinning the target does not wait for the unpublish in flight and commits (eligibleCount is the one pin) [P2-S12-AC-277]
+ok 6 - the pin of the target is stored although its unpublish is in flight [P2-S12-AC-277]
+ok 7 - while the unpublish is uncommitted the public projection still lists the published target, pinned first (the projection reads committed lineage heads) [P2-S12-AC-277]
+ok 8 - the unpublish commits as a revoked tombstone after the active publish [P2-S12-AC-277]
+ok 9 - once the unpublish has committed the public projection no longer lists the target [P2-S12-AC-277]
+ok 10 - the unpublished target stays pinned in the stored rule set (history is private, not removed) [P2-S12-AC-277]
+ok 11 - fixture: the unpublishing writer owns the target entry row and has appended the tombstone, uncommitted [P2-S12-AC-277]
+ok 12 - the curation pinning the target is observed blocked BY the unpublishing writer on the target entry row (position 2) [P2-S12-AC-277]
+ok 13 - while it waits at the target the curation already owns the source entry row (position 0) [P2-S12-AC-277]
+ok 14 - while it waits the curation has stored no pin and the source projects no target [P2-S12-AC-277]
+ok 15 - once the writer commits the curation proceeds and commits the pin: a target unpublished before the curation finishes is still a valid pin (eligibleCount is the one pin) [P2-S12-AC-277]
+ok 16 - the unpublish committed as a revoked tombstone and the pin is stored [P2-S12-AC-277]
+ok 17 - whichever command committed last, the public projection does not list the unpublished target (it still projects the source's other eligible targets) [P2-S12-AC-277]
+ok 18 - cleanup: the harness removed every row the committed world and the scenarios added () [P2-S12-AC-277]
+ok 19 - cleanup: no pre-existing row was changed or removed [P2-S12-AC-277]
+ok
+All tests successful.
+Files=5, Tests=101, 13 wallclock secs ( 0.04 usr  0.02 sys +  0.10 cusr  0.06 csys =  0.22 CPU)
+Result: PASS

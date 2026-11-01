@@ -1,14 +1,18 @@
 import { useCallback, useRef, useState } from 'react';
 
 import { placementRequest, submitPlacement } from './composition-commands';
-import { refusalMessage, UNKNOWN_OUTCOME_MESSAGE } from './composition-copy';
+import {
+  refusalMessage,
+  registryChangedMessage,
+  UNKNOWN_OUTCOME_MESSAGE,
+} from './composition-copy';
 import {
   fieldOfPointer,
   type InsertField,
   type InsertIssue,
   type PlacementFields,
 } from './composition-insert-fields';
-import { readEntryFacts, readSelectorPage } from './composition-reads';
+import { readSelectorPage } from './composition-reads';
 import { failure, pending, success } from './composition-status';
 import type {
   ReadState,
@@ -16,6 +20,7 @@ import type {
   SelectorPage,
 } from './composition-types';
 import type { CompositionSession } from './use-composition-session';
+import { useSelectorReread } from './use-composition-selector-reread';
 
 const SERVER_FIELD_MESSAGES: Readonly<Record<InsertField, string>> = {
   pattern: 'The server did not accept this pattern. Choose it again.',
@@ -32,14 +37,6 @@ const EMPTY_FIELDS: PlacementFields = {
   overridesText: '',
 };
 
-/** What the entry read after an unknown placement says: still the version sent, moved on, or unreadable. */
-const reconciliationLine = (current: string | null, sent: string): string =>
-  current === null
-    ? 'The entry could not be read to check, so nothing more is known. Sending again retries the same request and cannot place twice.'
-    : current === sent
-      ? `The entry is still at version ${current}. Sending again retries the same request and cannot place twice.`
-      : `The entry has moved to version ${current} since the request was sent, so the placement may have been applied. Sending again retries the same request and cannot place twice.`;
-
 const placedLine = (item: SelectorItem | null, mode: string, n: number) =>
   `Placed ${n} ${n === 1 ? 'row' : 'rows'} pinned to ${
     item === null
@@ -52,11 +49,20 @@ export const useCompositionInsert = (
   session: CompositionSession,
   initialPage: SelectorPage,
 ) => {
-  const { entry, mutate, addRows, setEntry, setStatus, refreshEntry } = session;
+  const {
+    entry,
+    mutate,
+    addRows,
+    setEntry,
+    setStatus,
+    refreshEntry,
+    refreshList,
+    reconcileUnknown,
+    held,
+  } = session;
   const [fields, setFields] = useState<PlacementFields>(EMPTY_FIELDS);
   // The fields as last sent or first shown: input that differs from them is unsent work (FE03 927).
   const [baseline, setBaseline] = useState<PlacementFields>(EMPTY_FIELDS);
-  const [reconciling, setReconciling] = useState(false);
   const [issues, setIssues] = useState<readonly InsertIssue[]>([]);
   const [page, setPage] = useState(initialPage);
   const [selectorState, setSelectorState] = useState<ReadState<unknown>>({
@@ -80,8 +86,30 @@ export const useCompositionInsert = (
     );
   }, []);
 
+  const reread = useSelectorReread({
+    contentTypeId: entry.contentTypeId,
+    fetcher: session.fetcher,
+    mounted: mountedRef,
+    setPage,
+    setFields,
+    setSelectorState,
+  });
+
   const loadMore = useCallback(async (): Promise<void> => {
-    if (loadingRef.current || page.nextCursor === null) return;
+    if (loadingRef.current) return;
+    if (selectorState.kind === 'stale') {
+      // The block registry changed: the stale list is read again from its first page, not continued.
+      loadingRef.current = true;
+      setSelectorState({ kind: 'loading' });
+      const outcome = await reread(fields.item);
+      loadingRef.current = false;
+      if (outcome === 'read' || outcome === 'cleared')
+        setStatus(
+          failure('Pattern not placed', registryChangedMessage(outcome)),
+        );
+      return;
+    }
+    if (page.nextCursor === null) return;
     loadingRef.current = true;
     setSelectorState({ kind: 'loading' });
     const options =
@@ -134,7 +162,10 @@ export const useCompositionInsert = (
     fields.item,
     mountedRef,
     page.nextCursor,
+    reread,
+    selectorState.kind,
     session.fetcher,
+    setStatus,
   ]);
 
   const submit = useCallback(async (): Promise<void> => {
@@ -171,32 +202,34 @@ export const useCompositionInsert = (
           placedLine(fields.item, built.request.linkMode, answer.rows.length),
         ]),
       );
+      await refreshList();
       return;
     }
     if (answer.kind === 'rate_limited') return;
     if (answer.kind === 'uncertain') {
-      // FE03 1048: an unknown outcome reconciles by refetching the entry before any retry. The read is only shown: the
-      // request, and so its Idempotency-Key, stays exactly as it was sent, so the retry can never place twice.
-      setReconciling(true);
+      // FE03 1050: an unknown outcome reconciles by refetching the entry and the list before any retry.
       setStatus(pending('Checking the entry before any retry…'));
-      const facts = await readEntryFacts(
-        entry.entryId,
-        session.fetcher === undefined ? {} : { fetcher: session.fetcher },
+      const { line } = await reconcileUnknown(
+        built.request.expectedVersion,
+        'place',
       );
       if (!mountedRef.current) return;
-      setReconciling(false);
       setStatus(
-        failure(
-          'Result not known',
-          `${UNKNOWN_OUTCOME_MESSAGE} ${reconciliationLine(
-            facts.kind === 'facts' ? facts.version : null,
-            built.request.expectedVersion,
-          )}`,
-        ),
+        failure('Result not known', `${UNKNOWN_OUTCOME_MESSAGE} ${line}`),
       );
       return;
     }
-    if (answer.status === 409) await refreshEntry();
+    if (answer.status === 409) {
+      const facts = await refreshEntry();
+      await refreshList(facts?.revisionId);
+    }
+    // The digest the selector listed went stale: read the selector again so the next placement carries the current one.
+    let message = refusalMessage('place', answer.status, answer.reason);
+    if (answer.reason === 'block_registry_digest_mismatch') {
+      const outcome = await reread(fields.item);
+      if (outcome === null) return;
+      message = registryChangedMessage(outcome);
+    }
     const mapped = answer.paths.flatMap((path) => {
       const field = fieldOfPointer(path);
       return field === null
@@ -209,12 +242,7 @@ export const useCompositionInsert = (
     );
     if (unique.length > 0) setIssues(unique);
     setStatus(
-      failure(
-        'Pattern not placed',
-        refusalMessage('place', answer.status, answer.reason),
-        [],
-        answer.status === 403,
-      ),
+      failure('Pattern not placed', message, [], answer.status === 403),
     );
   }, [
     addRows,
@@ -223,7 +251,10 @@ export const useCompositionInsert = (
     mountedRef,
     mutate,
     session.fetcher,
+    reconcileUnknown,
+    reread,
     refreshEntry,
+    refreshList,
     session.entryRef,
     setEntry,
     setStatus,
@@ -236,13 +267,12 @@ export const useCompositionInsert = (
     fields.overridesText !== baseline.overridesText;
   return {
     dirty,
-    reconciling,
     fields,
     issues,
     page,
     selectorState,
     change,
     loadMore,
-    submit,
+    submit: held(submit),
   };
 };

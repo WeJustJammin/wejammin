@@ -1,6 +1,7 @@
 import type { EntryListPage } from '@wejammin/contracts';
 import { isCmsUuid } from '@wejammin/contracts/client';
 
+import { runReadUnderDeadline } from '../../lib/run-read-under-deadline';
 import {
   rateLimitWaitSeconds,
   retryingSafeRead,
@@ -148,12 +149,24 @@ export type CandidateFetch =
 /**
  * One same-origin read of the entry list under the FE03 network and retry contract (:1172-1175): a 502, 503
  * or 504 the BE declares retryable is retried twice (250 ms, 750 ms, `retryingSafeRead`); a 429 is not
- * retried but reports its `Retry-After` wait; a 409 cursor conflict restarts from the first page.
+ * retried but reports its `Retry-After` wait; a 409 cursor conflict restarts from the first page. The whole read ends
+ * at the shared browser deadline (8,000 ms, DEC-246 ruling 1) and then answers `failed`, which keeps the list shown.
  */
-export const fetchCandidatePage = async (
+export const fetchCandidatePage = (
   cursor: string | null,
   sourceEntryId: string,
   fetcher: typeof fetch = fetch,
+): Promise<CandidateFetch> =>
+  runReadUnderDeadline(
+    (signal) => readCandidatePage(cursor, sourceEntryId, fetcher, signal),
+    { kind: 'failed' },
+  );
+
+const readCandidatePage = async (
+  cursor: string | null,
+  sourceEntryId: string,
+  fetcher: typeof fetch,
+  signal: AbortSignal,
 ): Promise<CandidateFetch> => {
   const search = new URLSearchParams({ limit: String(CANDIDATE_PAGE_LIMIT) });
   if (cursor !== null) search.set('cursor', cursor);
@@ -166,6 +179,7 @@ export const fetchCandidatePage = async (
         cache: 'no-store',
         redirect: 'error',
         headers: { accept: 'application/json' },
+        signal,
       }),
     );
   } catch {

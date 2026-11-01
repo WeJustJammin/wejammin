@@ -61,6 +61,10 @@ const FAILED_REASON_COPY: Readonly<Record<string, string>> = {
   pattern_digest_changed:
     'A pattern used here changed since this draft was saved.',
   nested_pattern_not_active: 'A nested pattern used here is not active.',
+  pattern_depth_exceeded:
+    'A pattern used here is nested more deeply than a pattern may be.',
+  pattern_nodes_exceeded:
+    'A pattern used here expands to more blocks than a pattern may place.',
   pattern_block_rules_violated:
     'A pattern used here breaks the composition rules of its blocks.',
   settings_changed:

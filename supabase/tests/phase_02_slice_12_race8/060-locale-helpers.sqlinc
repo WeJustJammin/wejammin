@@ -1,0 +1,23 @@
+-- Slice 12 race8: session helpers of the locale file (lane claude_s12_db8).  Include AFTER race7/000-harness.sqlinc and race8/030-create-helpers.sqlinc
+-- (r8_entry_version, r8_reserved), outside any transaction.
+-- the newest en-US (source locale) revision of an entry: its id, and its payload hash
+create or replace function pg_temp.r8_src_rev(p_entry uuid) returns uuid language sql stable as $b$
+  select id from platform_private.cms_entry_revisions where entry_id = p_entry and locale = 'en-US' order by revision_number desc limit 1 $b$;
+create or replace function pg_temp.r8_head_rev(p_entry uuid) returns uuid language sql stable as $b$
+  select current_draft_revision_id from platform_private.cms_content_entries where id = p_entry $b$;
+-- the fr-FR variant rows of an entry as 'state:version' oldest first, and the stale field ids of the newest
+create or replace function pg_temp.r8_variants(p_entry uuid) returns text language sql stable as $b$
+  select coalesce(pg_catalog.string_agg(state || ':' || version, ',' order by version), '') from platform_private.cms_locale_variants
+   where entry_id = p_entry and locale = 'fr-FR' $b$;
+create or replace function pg_temp.r8_stale_ids(p_entry uuid) returns text language sql stable as $b$
+  select stale_field_ids::text from platform_private.cms_locale_variants where entry_id = p_entry and locale = 'fr-FR' order by version desc limit 1 $b$;
+create or replace function pg_temp.r8_variant_source(p_entry uuid) returns uuid language sql stable as $b$
+  select source_revision_id from platform_private.cms_locale_variants where entry_id = p_entry and locale = 'fr-FR' order by version desc limit 1 $b$;
+-- the localization outbox events of an entry
+create or replace function pg_temp.r8_loc_events(p_entry uuid) returns text language sql stable as $b$
+  select count(*)::text from platform_private.outbox_events where event_type = 'cms.localization.changed.v1' and payload->>'entryId' = p_entry::text $b$;
+-- A copy of a stashed command with request members replaced (the retry of a command against the state the race left).
+create or replace function pg_temp.r8_patch_cmd(p_key text, p_from text, p_patch jsonb) returns void language sql as $b$
+  insert into r7_stash(key, body)
+  select p_key, jsonb_set(body::jsonb, '{request}', (body::jsonb->'request') || p_patch)::text from r7_stash where key = p_from
+  on conflict (key) do update set body = excluded.body $b$;

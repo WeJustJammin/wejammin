@@ -47,7 +47,7 @@ const REJECTED_COPY: Readonly<Record<number, string>> = {
   403: 'This account cannot edit this entry, so it cannot save translations for it. Nothing was saved.',
   404: 'This entry or its source revision is not available to this account. Nothing was saved.',
   415: 'The request could not be sent. Reload the page and try again.',
-  422: 'A translation was refused. Check each value against the limit shown beside its field, then save again.',
+  422: 'This language is not supported for this content type, so the translation cannot be saved. Nothing was saved.',
   500: 'The translation could not be saved. Nothing was confirmed. Try again shortly.',
   502: 'The translation service is not responding. Nothing was confirmed. Try again shortly.',
   503: 'The translation service is not responding. Nothing was confirmed. Try again shortly.',
@@ -102,3 +102,7 @@ export const variantStateText = (state: LocaleVariantState): string =>
   })[state];
 export const NO_FALLBACK_SOURCE_NOTE =
   'The source text is not shown for a no-fallback field.';
+
+/** A verified read after an unknown outcome showed the entry or its source moved (DEC-244 3): reported, never adopted. */
+export const ENTRY_MOVED_NOTICE =
+  'The entry changed after this page loaded, so the translation may have been saved. Sending again retries the same request and cannot save it twice.';

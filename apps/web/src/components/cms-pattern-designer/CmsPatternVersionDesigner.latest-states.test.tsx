@@ -34,7 +34,8 @@ import type { ReadNestable } from './use-nestable-patterns';
 /*
  * [P2-S12-AC-271] `latestReadState` of `cmsPatternLatestRead` (FE03 "Slice 12 definition governance states"): the pattern
  * designer over its real conflict panel, hooks and latest reader (only `fetch` is replaced). The page is server HTML;
- * the read is the explicit "Check latest version" offered after a conflict.
+ * a 409 is refetched by itself (FE03 1048, DEC-242 item 3): the first scripted read is the automatic one and the
+ * explicit "Check latest version" only repeats a read.
  */
 const wire = (overrides: Record<string, unknown> = {}): Response => {
   const detail = { ...latestDetail(), ...overrides };
@@ -106,7 +107,7 @@ const mount = (csrfToken = CSRF_TOKEN, context = designerContext) =>
       readNestable={readNestable}
     />,
   );
-/** Mounts the edit form, edits the first node key and saves: the conflict offers the check. */
+/** Mounts the edit form, edits the first node key and saves: the 409 starts the first scripted read by itself. */
 const mountConflicted = async (
   ...reads: Array<Response | Promise<Response>>
 ) => {
@@ -148,7 +149,6 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
       release = resolve;
     });
     const { container, fetcher } = await mountConflicted(held);
-    await click(check(container));
     await settle(249);
     expect(skeleton(container)).toBeNull();
     expect(check(container).textContent).toBe('Checking latest version…');
@@ -170,8 +170,9 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
   });
 
   it('[P2-S12-AC-271] latestReadState success: cmsPatternLatestRead (CmsPatternVersionDesigner): a 200 detail is compared with the unsent tree, and Discard prefills the form from the latest read while Keep rebases only on request', async () => {
-    const { container } = await mountConflicted(newer(), newer());
-    await press(container);
+    const { container, fetcher } = await mountConflicted(newer());
+    // No press: the 409 itself read the latest version.
+    expect(fetcher).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain(
       'Latest saved version: 5, 1 node, draft.',
     );
@@ -183,7 +184,6 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
     expect(nodeKey(container)).toBe('edited');
     expect(container.querySelector('.cms-pattern-conflict')).toBeNull();
     const second = await mountConflicted(newer());
-    await press(second.container);
     await click(
       buttonNamed(second.container, /^Discard my edits and load version 5/u),
     );
@@ -193,7 +193,6 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
 
   it("[P2-S12-AC-271] latestReadState empty (not-disclosed): cmsPatternLatestRead (CmsPatternVersionDesigner): an absent or another owner's key answers 404 and shows only the concealing copy; no-records is N/A for a single-detail read", async () => {
     const { container } = await mountConflicted(refusal(404));
-    await press(container);
     expect(alerts(container)).toContain(
       'This pattern is unavailable to the current acting context.',
     );
@@ -211,7 +210,6 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
     '[P2-S12-AC-271] latestReadState error: cmsPatternLatestRead (CmsPatternVersionDesigner): a typed %i read renders its fixed alert copy and keeps the unsent tree',
     async (status, copy) => {
       const { container } = await mountConflicted(refusal(status));
-      await press(container);
       expect(alerts(container)).toContain(copy);
       expect(container.textContent).not.toContain('other-owner-key');
       expect(nodeKey(container)).toBe('edited');
@@ -225,7 +223,6 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
       { status: 429, headers: { 'retry-after': '5' } },
     );
     const { container } = await mountConflicted(limited);
-    await press(container);
     const notice = container.querySelector('[data-cms-pattern-rate-limit]');
     expect(notice?.getAttribute('role')).toBe('status');
     expect(notice?.textContent).toBe(rateLimitMessage(5));
@@ -236,7 +233,6 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
 
   it('[P2-S12-AC-271] latestReadState degraded: cmsPatternLatestRead (CmsPatternVersionDesigner): a read that fails keeps the base version, the unsent tree and the earlier verified latest comparison, and submit stays disabled', async () => {
     const { container } = await mountConflicted(newer(), refusal(503));
-    await press(container);
     expect(container.textContent).toContain('Latest saved version: 5');
     await press(container);
     expect(alerts(container)).toContain(
@@ -254,7 +250,6 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
       release = resolve;
     });
     const { container } = await mountConflicted(newer(), held);
-    await press(container);
     const keep = () =>
       buttonNamed(container, /^Keep my edits and base them on version 5/u);
     const discard = () =>
@@ -285,7 +280,6 @@ describe('CmsPatternVersionDesigner (cmsPatternLatestRead) latestReadState', () 
     );
     expect(save(noTypes.container).disabled).toBe(true);
     const denied = await mountConflicted(refusal(403));
-    await press(denied.container);
     expect(alerts(denied.container)).toContain(
       'Template designer access is required for this acting context.',
     );

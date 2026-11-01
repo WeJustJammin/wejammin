@@ -1,0 +1,699 @@
+[
+  {
+    "criterion": "P2-S12-AC-271",
+    "clauses": [
+      {
+        "index": 0,
+        "text": "(the whole 7-state x 5-family table; web9a: template, locale, pattern, vocabulary, term and connected-selector islands: the open error, degraded and closing-words cells)",
+        "add": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "title": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 version conflict renders its fixed copy, keeps the tree and refetches the latest version by itself (CMS-03C-12)",
+            "part": "error",
+            "cell": "CMS-03C-12 409 version conflict: fixed copy, tree kept, latest version read by itself"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "title": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 registry-digest refusal renders its fixed copy, keeps the tree and reads the designer context again, not the latest version (V20 m7, DEC-245(1)) (CMS-03C-12)",
+            "part": "error",
+            "cell": "CMS-03C-12 409 registry-digest: designer context re-read (not the latest version), fixed copy, tree kept (V20 m7, DEC-245(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.states.test.tsx",
+            "title": "CmsLocaleVariantForm (CMS-03C-04) commandState commandState error [P2-S12-AC-271] commandState error: a 422 renders the fixed refused copy in the result region and keeps every value (CMS-03C-04)",
+            "part": "error",
+            "cell": "CMS-03C-04 422 (locale unsupported, DEC-244 4 / DEC-230): fixed copy in the result region, every value kept"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.moved-edit.test.tsx",
+            "title": "the entry-moved notice after an unknown outcome [P2-S12-AC-271] commandState degraded: is shown while the body is the one attempted, and its retry is the same request under the same key",
+            "part": "degraded",
+            "cell": "CMS-03C-04 unknown outcome with the entry moved: notice shown, retry is the same request under the same key (DEC-244 3)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.moved-edit.test.tsx",
+            "title": "the entry-moved notice after an unknown outcome goes with the first edit, because the next send is a different request under a new key",
+            "part": "degraded",
+            "cell": "CMS-03C-04 unknown outcome with the entry moved: the first edit removes the same-request promise; the next send is a different request under a new key (V20 m4)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-editorial-fields/CmsTaxonomyFieldEditor.connected-degraded.test.tsx",
+            "title": "the connected taxonomy selector: degraded [P2-S12-AC-271] commandState degraded: a first page followed by a 503 keeps the last verified page, the selection and the announced count, writes nothing and asks for the same page again",
+            "part": "degraded",
+            "cell": "CMS-03C-17 selector: a page read that fails after a verified page keeps that page, the selection and the count; retry asks for the same page (refute8b open cell)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.hung-reads.test.tsx",
+            "title": "the pattern version designer: a read that never answers [P2-S12-AC-271] commandState degraded: the latest-version read after a 409 ends at the deadline in its unavailable cell, and the control repeats it",
+            "part": "degraded",
+            "cell": "CMS-03C-12 latest-version read that never answers: ends at the shared 8,000 ms deadline in the unavailable cell with Check latest version (DEC-246(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.hung-reads.test.tsx",
+            "title": "the pattern version designer: a read that never answers [P2-S12-AC-271] commandState degraded: the nestable-pattern list ends at the deadline in its failed cell, and Retry loads it again",
+            "part": "degraded",
+            "cell": "cmsPatternNestableRead that never answers: ends at the deadline in the failed cell with Retry (DEC-246(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.hung-reads.test.tsx",
+            "title": "the term form: a read that never answers [P2-S12-AC-271] commandState degraded: the refresh after a lost term action ends at the deadline in its failed cell, and Refresh the list asks again",
+            "part": "degraded",
+            "cell": "cmsTaxonomyTermsRead that never answers: the list refresh ends at the deadline in the failed cell with Refresh the list (DEC-246(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-editorial-fields/CmsTaxonomyFieldEditor.connected-degraded.test.tsx",
+            "title": "the connected taxonomy selector: a read that never answers [P2-S12-AC-271] commandState degraded: a first page that never answers ends at the shared 8,000 ms deadline in the degraded cell, and Try again asks again",
+            "part": "degraded",
+            "cell": "CMS-03C-17 first page that never answers: ends at the deadline in the degraded cell, Try again asks again (DEC-246(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-editorial-fields/CmsTaxonomyFieldEditor.connected-degraded.test.tsx",
+            "title": "the connected taxonomy selector: a read that never answers [P2-S12-AC-271] commandState degraded: a next page that never answers keeps the last verified page and ends in the degraded cell",
+            "part": "degraded",
+            "cell": "CMS-03C-17 next page that never answers: keeps the last verified page and ends in the degraded cell (DEC-246(1))"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.closing-words.test.tsx",
+            "title": "template 'create designer': no-store and never optimistic [P2-S12-AC-271] commandState closing words: the save, the read after an unknown outcome and the context read are all same-origin no-store requests",
+            "part": "closing",
+            "cell": "CMS-03C-01 create and successor designers: every request (save, key or latest read, context read) is a same-origin no-store request"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.closing-words.test.tsx",
+            "title": "template 'successor (edit) designer': no-store and never optimistic [P2-S12-AC-271] commandState closing words: the save, the read after an unknown outcome and the context read are all same-origin no-store requests",
+            "part": "closing",
+            "cell": "CMS-03C-01 create and successor designers: every request (save, key or latest read, context read) is a same-origin no-store request"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.closing-words.test.tsx",
+            "title": "template 'create designer': no-store and never optimistic [P2-S12-AC-271] commandState closing words: nothing on the page claims a result, navigates or clears the values before the server answers the save",
+            "part": "closing",
+            "cell": "CMS-03C-01 create and successor designers: never optimistic, nothing claimed or cleared before the save is answered"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.closing-words.test.tsx",
+            "title": "template 'successor (edit) designer': no-store and never optimistic [P2-S12-AC-271] commandState closing words: nothing on the page claims a result, navigates or clears the values before the server answers the save",
+            "part": "closing",
+            "cell": "CMS-03C-01 create and successor designers: never optimistic, nothing claimed or cleared before the save is answered"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.closing-words.test.tsx",
+            "title": "the locale variant form: no-store and never optimistic [P2-S12-AC-271] commandState closing words: the save and the read after it are same-origin no-store requests, and nothing is claimed before the save is answered",
+            "part": "closing",
+            "cell": "CMS-03C-04 locale form: the save and the source read are same-origin no-store requests; nothing claimed before the save is answered"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.closing-words.test.tsx",
+            "title": "the pattern version designer: no-store and never optimistic [P2-S12-AC-271] commandState closing words: the save and the reads around it are same-origin no-store requests, and nothing is claimed before the save is answered",
+            "part": "closing",
+            "cell": "CMS-03C-12 pattern designer: the save and the reads around it are same-origin no-store requests; nothing claimed and no address rewritten before the save is answered"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.closing-words.test.tsx",
+            "title": "the vocabulary designer: no-store and never optimistic [P2-S12-AC-271] commandState closing words: the save and the read after it are same-origin no-store requests, and nothing is claimed before the save is answered",
+            "part": "closing",
+            "cell": "CMS-03C-16 vocabulary designer: the save and the versions read are same-origin no-store requests; nothing claimed before the save is answered"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-terms/CmsTaxonomyTermForm.closing-words.test.tsx",
+            "title": "the term form: no-store and never optimistic [P2-S12-AC-271] commandState closing words: the action and the reads around it are same-origin no-store requests, and nothing is claimed before the action is answered",
+            "part": "closing",
+            "cell": "CMS-03C-03 term form: the action and the reads after it are same-origin no-store requests; nothing claimed before the action is answered"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-editorial-fields/CmsTaxonomyFieldEditor.connected-degraded.test.tsx",
+            "title": "the connected taxonomy selector: no-store and never optimistic [P2-S12-AC-271] commandState closing words: every read (first page, next page, retry, refresh) is a no-store same-origin GET",
+            "part": "closing",
+            "cell": "CMS-03C-17 selector: every read is a same-origin no-store GET"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-editorial-fields/CmsTaxonomyFieldEditor.connected-degraded.test.tsx",
+            "title": "the connected taxonomy selector: no-store and never optimistic [P2-S12-AC-271] commandState closing words: nothing on the field changes, and nothing is written, before the server answers a read",
+            "part": "closing",
+            "cell": "CMS-03C-17 selector: never optimistic, nothing changes or is written before the server answers a read"
+          }
+        ],
+        "staleExisting": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "title": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 {\"kind\":\"conflict\",\"currentVersion\":\"5\"} renders fixed copy and keeps the tree; a version conflict refetches the latest version by itself, the registry-digest refusal reads nothing (D2, DEC-242) (CMS-03C-12)",
+            "reason": "V20 m7: the it.each is split; the conflict case keeps its assertions"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "title": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 {\"kind\":\"refused\",\"status\":409,\"reason\":\"block_registry_digest_mismatch\"} renders fixed copy and keeps the tree; a version conflict refetches the latest version by itself, the registry-digest refusal reads nothing (D2, DEC-242) (CMS-03C-12)",
+            "reason": "V20 m7 / refute8b web8a idx 43: the row now asserts the context re-read (fails with the automatic read removed) and not the latest-version read"
+          }
+        ],
+        "gap": null,
+        "retitled": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "oldTitle": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 {\"kind\":\"conflict\",\"currentVersion\":\"5\"} renders fixed copy and keeps the tree; a version conflict refetches the latest version by itself, the registry-digest refusal reads nothing (D2, DEC-242) (CMS-03C-12)",
+            "newTitle": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 version conflict renders its fixed copy, keeps the tree and refetches the latest version by itself (CMS-03C-12)",
+            "note": "V20 m7: the it.each is split; the conflict case keeps its assertions"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "oldTitle": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 {\"kind\":\"refused\",\"status\":409,\"reason\":\"block_registry_digest_mismatch\"} renders fixed copy and keeps the tree; a version conflict refetches the latest version by itself, the registry-digest refusal reads nothing (D2, DEC-242) (CMS-03C-12)",
+            "newTitle": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 registry-digest refusal renders its fixed copy, keeps the tree and reads the designer context again, not the latest version (V20 m7, DEC-245(1)) (CMS-03C-12)",
+            "note": "V20 m7 / refute8b web8a idx 43: the row now asserts the context re-read (fails with the automatic read removed) and not the latest-version read"
+          }
+        ]
+      }
+    ],
+    "proposedStatus": "partial",
+    "proposedLimitation": "web9a closes the locale 422 row, the connected selector degraded cell and the closing words for the template, locale, pattern, vocabulary, term and selector islands; the related-content, composition and governed families are web9b. Cite a part only when every island of that part is closed."
+  },
+  {
+    "criterion": "P2-S12-AC-164",
+    "clauses": [
+      {
+        "index": 3,
+        "text": "disable submission with the corresponding sign-in, capability, rate-wait or retry state when the context is missing, denied or degraded",
+        "add": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) is ready with the verified context only"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) redirects a missing session to the allowlisted sign-in return path, showing no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers a denied context with 403 and the capability sentence, with no Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers a rate limit with 429, the wait sentence and the stated Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"0\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"abc\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"012\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"100000\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"1.5\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers a degraded 503 with the retry sentence and its Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers a degraded 504 with the retry sentence and its Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 400 with the retry sentence and no Retry-After, even when one is sent"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 404 with the retry sentence and no Retry-After, even when one is sent"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 500 with the retry sentence and no Retry-After, even when one is sent"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 502 with the retry sentence and no Retry-After, even when one is sent"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 502 for a body that is not JSON and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 502 for a body that is not the context and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 502 for an extra member and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) is ready with the verified context and the latest detail"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) redirects a missing session on the context to sign-in"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) redirects a missing session on the latest detail to sign-in"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a denied latest detail with 403 and the capability sentence"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a denied context with 403 when the latest detail was read"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers an absent or concealed template with 404 and the unavailable sentence"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a rate limit on either read with 429, the wait sentence and the stated Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a degraded 503 on either read with the retry sentence and its Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a degraded 504 on either read with the retry sentence and its Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) reports the latest detail failure first when both reads failed"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a context that is not the context and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail that is not the detail and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail of another key and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail whose version is not its template version and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail without its strong ETag and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail with another ETag and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a body that is not JSON and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a malformed or reserved key with 400 and no status-specific sentence"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern redirects an expired session to sign-in and back to the new-pattern page"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern shows one fixed notice for a 403"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern shows one fixed notice for a 404"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern shows one fixed notice for a 503"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern keeps the wait of a rate limit"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern renders nothing from a context that is not the strict projection"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern redirects when either read says the session ended"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern shows the disclosure-safe 404 for a concealed or absent key"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern renders nothing for another key"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern renders nothing for a wrong ETag"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern renders nothing for a body outside the contract"
+          }
+        ],
+        "staleExisting": [],
+        "gap": null,
+        "retitled": []
+      },
+      {
+        "index": 6,
+        "text": "verification covers each denied or degraded state",
+        "add": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) is ready with the verified context only"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) redirects a missing session to the allowlisted sign-in return path, showing no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers a denied context with 403 and the capability sentence, with no Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers a rate limit with 429, the wait sentence and the stated Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"0\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"abc\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"012\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"100000\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"1.5\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) does not believe a Retry-After of \"\""
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers a degraded 503 with the retry sentence and its Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers a degraded 504 with the retry sentence and its Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 400 with the retry sentence and no Retry-After, even when one is sent"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 404 with the retry sentence and no Retry-After, even when one is sent"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 500 with the retry sentence and no Retry-After, even when one is sent"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 502 with the retry sentence and no Retry-After, even when one is sent"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 502 for a body that is not JSON and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 502 for a body that is not the context and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateCreatePageOutcome (templates/new) answers 502 for an extra member and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) is ready with the verified context and the latest detail"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) redirects a missing session on the context to sign-in"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) redirects a missing session on the latest detail to sign-in"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a denied latest detail with 403 and the capability sentence"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a denied context with 403 when the latest detail was read"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers an absent or concealed template with 404 and the unavailable sentence"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a rate limit on either read with 429, the wait sentence and the stated Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a degraded 503 on either read with the retry sentence and its Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a degraded 504 on either read with the retry sentence and its Retry-After"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) reports the latest detail failure first when both reads failed"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a context that is not the context and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail that is not the detail and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail of another key and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail whose version is not its template version and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail without its strong ETag and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a detail with another ETag and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers 502 for a body that is not JSON and shows no form"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/cms-template-page-outcome.test.ts",
+            "title": "templateSuccessorPageOutcome (templates/[templateKey]) answers a malformed or reserved key with 400 and no status-specific sentence"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern redirects an expired session to sign-in and back to the new-pattern page"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern shows one fixed notice for a 403"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern shows one fixed notice for a 404"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern shows one fixed notice for a 503"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern keeps the wait of a rate limit"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a new pattern renders nothing from a context that is not the strict projection"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern redirects when either read says the session ended"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern shows the disclosure-safe 404 for a concealed or absent key"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern renders nothing for another key"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern renders nothing for a wrong ETag"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/load-pattern-designer-page.test.ts",
+            "title": "loadPatternDesignerPage: a saved pattern renders nothing for a body outside the contract"
+          }
+        ],
+        "staleExisting": [],
+        "gap": null,
+        "retitled": []
+      }
+    ],
+    "proposedStatus": "unchanged (root decides after the refutation)",
+    "proposedLimitation": "",
+    "notes": "Template pages: the inline Astro logic of templates/new.astro and templates/[templateKey].astro moved to components/cms-composition/cms-template-page-outcome.ts (tested without Astro); the pattern pages were already behind load-pattern-designer-page.ts. The Playwright specs cite the pages through a browser; none was run."
+  }
+]

@@ -1,56 +1,34 @@
-import { retryable } from '../../lib/retryable-import';
 import type { JsonValue } from '@wejammin/contracts';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 import { useCmsTemplateRateWait } from '../cms-composition/cms-template-rate-wait';
 import type { refreshLocaleSource } from './locale-source-refresh';
 import { LOCALE_RESULT_HEADING_ID } from './locale-variant-copy';
-import {
-  buildLocaleVariantRequest,
-  type LocaleIssue,
-} from './locale-variant-request';
+import { buildLocaleVariantRequest } from './locale-variant-request';
 import {
   MODULE_UNAVAILABLE_COPY,
-  importModule,
   isModuleUnavailable,
 } from '../../lib/module-unavailable';
-import type {
-  LocaleSubmitResult,
-  SavedLocaleVariant,
-  submitLocaleVariant,
-} from './locale-variant-submit';
+import type { submitLocaleVariant } from './locale-variant-submit';
 import type {
   LocaleEntryFacts,
   LocaleFieldInit,
   LocaleResolution,
+  LocaleStatus,
   LocaleVariantInit,
   LocaleVariantState,
 } from './locale-variant-types';
+import { submitOnDemand } from './locale-variant-submit-seam';
+import { useLocaleSaveReconcile } from './use-locale-save-reconcile';
 import { useLocaleSourceReview } from './use-locale-source-review';
 
-/** The seam a test replaces: the dynamic import of the save. */
-export const localeSubmitImporters = {
-  submit: retryable(() => import('./locale-variant-submit')),
-};
+/** The seam a test replaces (the dynamic import of the save) lives in its own module. */
+export {
+  localeSubmitImporters,
+  submitOnDemand,
+} from './locale-variant-submit-seam';
 
-/**
- * The save runs only when the person saves, so it loads then, not with the form (P2-S11-AC-106).
- * A chunk that cannot be fetched rejects with `ModuleUnavailableError`: nothing was sent.
- */
-export const submitOnDemand: typeof submitLocaleVariant = async (...input) =>
-  (
-    await importModule(() => localeSubmitImporters.submit())
-  ).submitLocaleVariant(...input);
-
-export type LocaleStatus =
-  | { readonly kind: 'idle' }
-  | { readonly kind: 'invalid'; readonly issues: readonly LocaleIssue[] }
-  | { readonly kind: 'pending' }
-  | { readonly kind: 'saved'; readonly saved: SavedLocaleVariant }
-  | {
-      readonly kind: 'result';
-      readonly result: Exclude<LocaleSubmitResult, { kind: 'saved' }>;
-    };
+export type { LocaleStatus } from './locale-variant-types';
 
 export interface LocaleFormOptions {
   readonly entry: LocaleEntryFacts;
@@ -121,6 +99,10 @@ export const useLocaleVariantForm = ({
     refresh,
   });
 
+  const reconcile = useLocaleSaveReconcile(review, (version) =>
+    setSource((current) => ({ ...current, version })),
+  );
+
   useEffect(() => {
     mountedRef.current = true;
     return () => {
@@ -134,7 +116,9 @@ export const useLocaleVariantForm = ({
       document.getElementById(LOCALE_RESULT_HEADING_ID)?.focus();
   }, [status]);
 
+  const { dismissMoved } = reconcile;
   const edited = useCallback((): void => {
+    dismissMoved();
     // The conflict notice stays until the source is adopted: editing does not lift the review gate.
     // A save in flight stays pending: its fields are editable meanwhile (FE03 1048) but its state is not theirs to clear.
     setStatus((current) =>
@@ -145,7 +129,7 @@ export const useLocaleVariantForm = ({
         ? current
         : { kind: 'idle' },
     );
-  }, []);
+  }, [dismissMoved]);
 
   const change = useCallback(
     (fieldId: string, value: JsonValue | null): void => {
@@ -165,7 +149,11 @@ export const useLocaleVariantForm = ({
     [],
   );
 
-  const blocked = csrfToken.length === 0 || rateWait.waiting || review.required;
+  const blocked =
+    csrfToken.length === 0 ||
+    rateWait.waiting ||
+    review.required ||
+    reconcile.unverified;
 
   const save = useCallback(async (): Promise<void> => {
     if (!mountedRef.current || blocked || inFlightRef.current) return;
@@ -219,6 +207,7 @@ export const useLocaleVariantForm = ({
       // A save writes a new draft, whatever the state was before (BE03c 1532).
       setVariantState('draft');
       setStatus({ kind: 'saved', saved: result.saved });
+      await reconcile.afterSaved({ ...source, version: result.saved.version });
       return;
     }
     if (result.kind === 'chain_mismatch') setChain(result.activeFallbackChain);
@@ -231,6 +220,8 @@ export const useLocaleVariantForm = ({
     )
       rateWait.start(result.retryAfterSeconds);
     setStatus({ kind: 'result', result });
+    // FE03 1048: an unknown outcome is read back by itself, and nothing can be retried before that read verified.
+    if (result.kind === 'uncertain') await reconcile.afterUnknown(source);
   }, [
     blocked,
     chain,
@@ -239,6 +230,7 @@ export const useLocaleVariantForm = ({
     fields,
     inputErrors,
     rateWait,
+    reconcile,
     review,
     source,
     submit,
@@ -285,6 +277,10 @@ export const useLocaleVariantForm = ({
     blocked,
     rateWaiting: rateWait.waiting,
     review,
+    /** The review panel is shown for a 409 gate and for an unknown outcome that no read verified yet. */
+    reviewShown: review.required || reconcile.unverified,
+    entryMoved: reconcile.entryMoved,
+    reloadSource: () => void reconcile.afterUnknown(),
     issuesFor: (fieldId: string) =>
       fieldIssues
         .filter((issue) => issue.target === fieldId)

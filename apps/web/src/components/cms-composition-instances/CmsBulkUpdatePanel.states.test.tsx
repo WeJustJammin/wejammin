@@ -18,10 +18,13 @@ import {
 } from './composition-command-states.test-support';
 import { UNKNOWN_OUTCOME_MESSAGE } from './composition-copy';
 import {
+  ENTRY,
   UPDATE,
   diffPath,
+  entryDetail,
   json,
   mountPage,
+  noListReads,
   refusal,
   settle,
 } from './composition-page.test-support';
@@ -33,6 +36,7 @@ import {
   propsPath,
   row,
 } from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /*
  * P2-S12-AC-271, `commandState` of FE03 "Slice 12 definition governance states", for CMS-03C-15 on a selection (bulk
@@ -66,12 +70,16 @@ const select = async (container: HTMLElement) => {
   for (const n of [1, 2])
     await click(byLabel<HTMLInputElement>(container, `Select /main/row-${n}`));
 };
-const mount = (update: Array<Response | (() => Response)>) =>
+const mount = (
+  update: Array<Response | (() => Response)>,
+  more: Record<string, Array<Response | (() => Response)>> = {},
+) =>
   mountPage(
     {
       [diffPath(id(1))]: [clean(1)],
       [diffPath(id(2))]: [clean(2)],
       [UPDATE]: update,
+      ...more,
     },
     { instances: rows() },
   );
@@ -138,6 +146,8 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
     await click(acceptAll(accepting.container));
     expect(posts(accepting)).toHaveLength(1);
     await answerHeld(heldAccept, appended());
+    await settle();
+    expectListRefetches(accepting, 1);
     accepting.unmount();
 
     const heldDetach = heldReply();
@@ -150,9 +160,11 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
     await click(buttonNamed(detaching.container, 'Detach selected'));
     expect(posts(detaching)).toHaveLength(1);
     await answerHeld(heldDetach, detached());
+    await settle();
+    expectListRefetches(detaching, 1);
   });
 
-  it('[P2-S12-AC-271] commandState success (kept half): the named outcome per instance, the panel and selection cleared; no refetch of the entry or list is made for a single request (C5)', async () => {
+  it('[P2-S12-AC-271] commandState success (test correction, FE03 1047): the named outcome per instance, the panel and selection cleared, no entry read for a single request, and the instance list refetched', async () => {
     const accepting = mount([appended()]);
     await bulkAccept(accepting);
     expect(resultHeading(accepting.container)).toBe('Updates applied');
@@ -170,10 +182,12 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
       expectedVersion: '9',
     });
     expect(accepting.unexpected).toEqual([]);
+    expect(accepting.lists).toHaveLength(1);
     accepting.unmount();
 
     const detaching = mount([detached()]);
     await bulkDetach(detaching);
+    expect(detaching.lists).toHaveLength(1);
     expect(resultHeading(detaching.container)).toBe('Blocks detached');
     expect(resultText(detaching.container)).toContain(
       '/main/row-2: Local copy',
@@ -190,6 +204,7 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
     );
     expect(resultText(page.container)).toContain('0 of 1 requests applied.');
     expect(page.container.textContent).toContain('2 selected');
+    noListReads(page);
   });
 
   it('[P2-S12-AC-271] commandState error: 403 renders the CapabilityGate with the fixed sentence in the result alert', async () => {
@@ -208,6 +223,7 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
     expect(document.activeElement).toBe(
       document.querySelector('[data-cms-editorial-capability-gate] h2'),
     );
+    noListReads(page);
   });
 
   it.each([
@@ -220,20 +236,34 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
       'The entry or the instance changed since this page loaded. The page reloaded them; your choices are kept, so check them and try again.',
     ],
   ])(
-    '[P2-S12-AC-271] commandState error (kept half): 409 %s renders fixed copy and keeps the selection; the entry is not refetched (C8)',
+    '[P2-S12-AC-271] commandState error (test correction, FE03 1049): 409 %s renders fixed copy, keeps the selection, and refetches the entry, the instance list and the unapplied diffs',
     async (reasonCode, sentence) => {
-      const page = mount([
-        refusal(
-          409,
-          'COMPOSITION_VERSION_CONFLICT',
-          reasonCode === null ? { currentVersion: '11' } : { reasonCode },
-        ),
-      ]);
+      const page = mount(
+        [
+          refusal(
+            409,
+            'COMPOSITION_VERSION_CONFLICT',
+            reasonCode === null ? { currentVersion: '11' } : { reasonCode },
+          ),
+        ],
+        {
+          [ENTRY]: [entryDetail('11')],
+          [diffPath(id(1))]: [clean(1), clean(1)],
+          [diffPath(id(2))]: [clean(2), clean(2)],
+        },
+      );
       await bulkAccept(page);
       expect(resultHeading(page.container)).toBe('Updates stopped');
       expect(resultText(page.container)).toContain(sentence);
       expect(resultText(page.container)).toContain('0 of 1 requests applied.');
       expect(page.container.textContent).toContain('2 selected');
+      expect(
+        page.calls.filter((call) => call.path === ENTRY.slice(4)),
+      ).toHaveLength(1);
+      expect(page.lists).toHaveLength(1);
+      expect(
+        page.calls.filter((call) => call.path.endsWith('/update-diff')),
+      ).toHaveLength(4);
     },
   );
 
@@ -255,18 +285,28 @@ describe('CmsBulkUpdatePanel (CMS-03C-15 bulk accept and bulk detach) commandSta
       await bulkAccept(page);
       expect(resultText(page.container)).toContain(sentence);
       expect(resultText(page.container)).not.toContain('composition operation');
+      noListReads(page);
     },
   );
 
-  it('[P2-S12-AC-271] commandState degraded (kept half): an unknown outcome states that nothing is assumed and keeps the selection; it renders no pending state and makes no refetch before a retry (C7)', async () => {
-    const page = mount([
-      refusal(502, 'DEPENDENCY_UNAVAILABLE', { retryable: true }),
-      appended(),
-    ]);
+  it('[P2-S12-AC-271] commandState degraded (test correction, FE03 1050): an unknown outcome renders a pending label while the entry and the list are read, states that nothing is assumed, keeps the selection, and only then offers the retry under the same key', async () => {
+    const heldEntry = heldReply();
+    const page = mount(
+      [refusal(502, 'DEPENDENCY_UNAVAILABLE', { retryable: true }), appended()],
+      { [ENTRY]: [heldEntry.reply] },
+    );
     await bulkAccept(page);
+    expectPendingLabel(page.container, 'Checking the entry before any retry…');
+    expect(acceptAll(page.container).disabled).toBe(true);
+    await answerHeld(heldEntry, entryDetail('9'));
+    await settle();
     expect(resultHeading(page.container)).toBe('Updates stopped');
     expect(resultText(page.container)).toContain(UNKNOWN_OUTCOME_MESSAGE);
+    expect(resultText(page.container)).toContain(
+      'The entry is still at version 9.',
+    );
     expect(resultText(page.container)).not.toContain('Updates applied');
+    expect(page.lists).toHaveLength(1);
     expect(page.container.textContent).toContain('2 selected');
     await click(acceptAll(page.container));
     await settle();

@@ -42,6 +42,12 @@ cannot write (kinds CMS-03C-04 refuses) keep their stored value untouched becaus
   (`locale-source-refresh.ts`) and holds saving until the person adopts the refreshed version, source revision
   and fingerprint: a new fingerprint stamped onto a translation of the old source would hide its staleness.
 - The `Idempotency-Key` is kept while an outcome is unknown and renewed when the request changes.
+- An unknown outcome reads the draft detail back by itself and holds every save until that read verified the entry
+  (`use-locale-save-reconcile.ts`). Any verified answer lifts the hold and the retry is the identical request under its
+  key and If-Match (DEC-244 3): a moved entry or source is only reported ("the translation may have been saved"), never
+  adopted, so no second, different write can occur. A confirmed save refetches the source the
+  same way: a moved source is proposed for review, never adopted, and only a newer entry version of the same source is
+  taken for the next `If-Match`.
 - Zero zod in the browser (FE03 AC261, `locale-variant-static-closure.test.ts`). `locale-variant-request.ts`,
   `locale-variant-submit.ts` and `locale-source-refresh.ts` are zod-free; their tests are the drift guards.
 
@@ -76,6 +82,15 @@ write or read proxies (`apps/web/src/server/cms-composition-platform-locale*.ts`
 
 A new field kind is writable only after CMS-03C-04 accepts it (`WRITABLE_KINDS` in the loader). A new refusal
 goes in `locale-variant-submit.ts` with its fixed copy in `locale-variant-copy.ts`; add the failing test first.
+
+The save and the source read are on-demand chunks: `locale-variant-submit-seam.ts` holds the dynamic imports of
+`locale-variant-submit.ts` and `locale-source-refresh.ts` and is the only importer of either (`CMS_ON_DEMAND_CHUNKS`). The
+source read has the shared 8,000 ms deadline (`../../lib/read-deadline.ts`; `locale-source-refresh.deadline.test.ts`). After
+an unknown outcome whose verified read found the entry moved, the form says a retry is the same request; the first edit
+removes that sentence, because the next send is a different request under a new key
+(`CmsLocaleVariantForm.moved-edit.test.tsx`). `CmsLocaleVariantForm.closing-words.test.tsx` asserts the closing words of the
+FE03 state table: the save and the read after it are same-origin `no-store` requests and nothing is claimed before the
+server answers.
 
 While a save is pending only the commit control (and Revalidate) is disabled (FE03 1048): the fields stay editable and keep focus, and `edited()` leaves a `pending` status alone so an edit never lifts it. The source-review buttons keep their pending lock (adopting a new source would change the stamp of a save in flight; `CmsLocaleVariantForm.pending.test.tsx`).
 

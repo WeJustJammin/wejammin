@@ -28,6 +28,7 @@ import {
   selectorItem,
   selectorPage,
 } from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /*
  * FE03 1114; P2-S12-AC-045, AC-111: insert a pattern on the entry's current draft. The request is the exact
@@ -86,6 +87,7 @@ describe('insert: the request', () => {
     expect(call?.headers['x-csrf-token']).toBe('csrf-token');
     expect(call?.headers['idempotency-key']).toMatch(/^[0-9a-f-]{16,}$/u);
     noStrayRequests(page.unexpected);
+    expectListRefetches(page, 1);
   });
 
   it('names the result, lists the row and uses the committed entry version for the next command', async () => {
@@ -114,6 +116,7 @@ describe('insert: the request', () => {
     expect(
       page.container.querySelectorAll('ul.cms-instance-rows > li'),
     ).toHaveLength(2);
+    expectListRefetches(page, 2);
   });
 
   it('clears the pattern and overrides after a success but keeps the slot path and link mode', async () => {
@@ -141,6 +144,7 @@ describe('insert: the request', () => {
     expect(byLabel<HTMLInputElement>(page.container, /^Linked/u).checked).toBe(
       true,
     );
+    expectListRefetches(page, 1);
   });
 });
 
@@ -226,6 +230,8 @@ describe('insert: refusals', () => {
   ])('says what a typed 422 %s means', async (reasonCode, text) => {
     const page = mountPage({
       [PLACE]: [refusal(422, 'COMPOSITION_VALIDATION_FAILED', { reasonCode })],
+      // [P2-S12-AC-271] test correction (BE03c 388, DEC-246 ruling 5): the digest refusal reads the selector again.
+      [SELECTOR]: [json(selectorPage([hero]), 200, '"7"')],
     });
     await fill(page.container);
     await click(buttonNamed(page.container, 'Place pattern'));
@@ -258,6 +264,7 @@ describe('insert: refusals', () => {
     expect(page.calls.at(-1)?.headers['idempotency-key']).not.toBe(
       page.calls[0]?.headers['idempotency-key'],
     );
+    expectListRefetches(page, 2);
   });
 
   it('after revision_not_editable disables the commands once the draft is no longer editable', async () => {
@@ -274,6 +281,7 @@ describe('insert: refusals', () => {
     await settle();
     expect(buttonNamed(page.container, 'Place pattern').disabled).toBe(true);
     expect(page.container.textContent).toContain('not an editable draft');
+    expectListRefetches(page, 1);
   });
 
   it('reuses the Idempotency-Key for the identical retry after an unknown outcome, and a new key after a decision', async () => {
@@ -301,6 +309,7 @@ describe('insert: refusals', () => {
       .map((call) => call.headers['idempotency-key']);
     expect(keys[1]).toBe(keys[0]);
     expect(keys[2]).not.toBe(keys[1]);
+    expectListRefetches(page, 2);
   });
 
   it('blocks the next command for the stated wait of a 429 and keeps the input', async () => {

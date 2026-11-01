@@ -313,15 +313,19 @@ describe('CmsGovernedReviewQueue (CMS-03C-11) governedReviewState: error, degrad
       () => jsonResponse(200, { items: 'no' }),
     ],
   ])(
-    '[P2-S12-AC-271] governedReviewState degraded (kept half of the cell, see DEFECT D1 for the last verified queue): %s renders a closed notice saying nothing was loaded and no queue row from any cache',
+    '[P2-S12-AC-271] governedReviewState degraded (DEC-242(1), FE03 1018/1630): %s renders the closed notice with Retry at the same list position, saying nothing was loaded and showing no queue row from any cache',
     async (_label, answer) => {
-      const result = await load(answer).outcome;
+      const result = await load(answer, '?scope=submitted').outcome;
       expect(result.kind).toBe('notice');
       if (result.kind !== 'notice') return;
       expect(result.notice.message).toMatch(/Nothing was loaded/u);
+      expect(result.notice.retryHref).toBe(`${ROUTE}?scope=submitted`);
       const { container } = mountElement(
         <CmsEditorialPageNotice notice={result.notice} />,
       );
+      const retry = container.querySelector('a');
+      expect(retry?.textContent).toBe('Try again');
+      expect(retry?.getAttribute('href')).toBe(`${ROUTE}?scope=submitted`);
       expect(container.querySelector('ul li')).toBeNull();
       expect(container.querySelector('time')).toBeNull();
     },

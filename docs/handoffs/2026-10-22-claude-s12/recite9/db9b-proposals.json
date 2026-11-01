@@ -1,0 +1,477 @@
+{
+ "lane": "claude_s12_db9b",
+ "tap": ".lane-logs/alt-staged-none-173525-1266705.tap (+ alt-staged-none-173718-1273725.tap for the retries file)",
+ "tapSha256": "769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38",
+ "tapSha256Retries": "6580fdec111c791a10a95f195d220ab179a67569dfcb4185658ad0ef0544e6e1",
+ "stamp": "run1",
+ "proposals": [
+  {
+   "criterion": "P2-S12-AC-108",
+   "proposedStatus": "verified",
+   "proposedLimitation": null,
+   "clauses": [
+    {
+     "index": 3,
+     "text": "or other-owner version is never listed",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+       "title": "positive control: the first owner's author lists its two active versions [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql:147 - the first owner's own active versions ARE listed (positive control). The foreign rows are the first owner's REAL active versions (CMS-03C-12 plus the governed chain); the caller is the second organization (an active row of the second organization is unproducible: BOUNDARY, cms_owner_initialization receipt). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 147
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+       "title": "the second organization's author lists NOTHING for its own type: the first owner's two ACTIVE versions are never listed to another owner [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql:152 - the second organization's author lists an empty page for its own type although two active versions of another owner exist. The foreign rows are the first owner's REAL active versions (CMS-03C-12 plus the governed chain); the caller is the second organization (an active row of the second organization is unproducible: BOUNDARY, cms_owner_initialization receipt). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 152
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+       "title": "independent oracle: the two active rows exist in the store and none of their ids is in the second organization's page [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql:156 - the two foreign active rows exist in the store and none of their ids is in the second organization's page. The foreign rows are the first owner's REAL active versions (CMS-03C-12 plus the governed chain); the caller is the second organization (an active row of the second organization is unproducible: BOUNDARY, cms_owner_initialization receipt). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 156
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+       "title": "the second organization's page is byte-identical after the first owner's activation: same (empty) items and the same pageVersion [P2-S12-AC-109]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql:181 - a further activation of the other owner changes nothing in the caller's page or pageVersion. The foreign rows are the first owner's REAL active versions (CMS-03C-12 plus the governed chain); the caller is the second organization (an active row of the second organization is unproducible: BOUNDARY, cms_owner_initialization receipt). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 181
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "criterion": "P2-S12-AC-190",
+   "proposedStatus": "verified",
+   "proposedLimitation": null,
+   "clauses": [
+    {
+     "index": 2,
+     "text": "selectors)",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+       "title": "positive control: the first organization's author lists the active terms of its active vocabularies, equal to the independent oracle (non-empty) [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql:72 - the first organization's author lists its non-empty page, equal to the independent oracle. ACTIVE vocabularies and terms of the first organization (real CMS-03C-16/06/08/07/09 and CMS-03C-03 producers) whose allowlists name the requested type key and field key; the caller is the second organization (an active vocabulary of the second organization is unproducible: BOUNDARY, owner receipt). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 72
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+       "title": "the second organization's page is EMPTY, pageVersion \"1\": the first organization's ACTIVE vocabularies and terms, whose allowlists name the requested type and field, are never listed to another owner [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql:88 - the taxonomy selector's page is empty for the second organization. ACTIVE vocabularies and terms of the first organization (real CMS-03C-16/06/08/07/09 and CMS-03C-03 producers) whose allowlists name the requested type key and field key; the caller is the second organization (an active vocabulary of the second organization is unproducible: BOUNDARY, owner receipt). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 88
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+       "title": "the same query (type s12govordinary, field title, locale en-US) answers a non-empty page to the first organization and an empty one to the second: the owner predicate is the sole difference [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql:91 - the same query answers non-empty to one organization and empty to the other: the owner predicate is the sole difference. ACTIVE vocabularies and terms of the first organization (real CMS-03C-16/06/08/07/09 and CMS-03C-03 producers) whose allowlists name the requested type key and field key; the caller is the second organization (an active vocabulary of the second organization is unproducible: BOUNDARY, owner receipt). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 91
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+       "title": "no vocabulary lineage of the first organization appears in the second organization's page [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql:94 - no vocabulary lineage of the other owner appears in the page. ACTIVE vocabularies and terms of the first organization (real CMS-03C-16/06/08/07/09 and CMS-03C-03 producers) whose allowlists name the requested type key and field key; the caller is the second organization (an active vocabulary of the second organization is unproducible: BOUNDARY, owner receipt). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 94
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql",
+       "title": "the second organization's page is byte-identical after the first organization's change: same (empty) items, same pageVersion [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_taxonomy_selector_foreign.sql:108 - a change of the other owner's vocabulary changes nothing in the caller's page. ACTIVE vocabularies and terms of the first organization (real CMS-03C-16/06/08/07/09 and CMS-03C-03 producers) whose allowlists name the requested type key and field key; the caller is the second organization (an active vocabulary of the second organization is unproducible: BOUNDARY, owner receipt). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 108
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql",
+       "title": "each cross-owner type outcome equals that caller's outcome for an ABSENT type, message and DETAIL, with no body [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_pattern_selector_foreign.sql:172 - the pattern selector answers a type of another owner exactly as an absent type (message and DETAIL, no body). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 172
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "criterion": "P2-S12-AC-146",
+   "proposedStatus": "verified",
+   "proposedLimitation": null,
+   "clauses": [
+    {
+     "index": 5,
+     "text": "with the prior active version intact",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "a: the PRIOR active version is byte-for-byte the same row after the block (state, activated_at, lifecycle_version, version, updated_at, supersedes_id) [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block activation_authority_ended: the prior active version of the lineage is the identical row after the block. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "a: the prior version is still active with its activated_at unchanged and never retired [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block activation_authority_ended: still active, activated_at unchanged, never retired. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "a: the lineage still has exactly one active member and no superseded member: no supersession happened [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block activation_authority_ended: exactly one active member and no superseded member (no supersession). Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "a: no event was emitted for either version and the prior version gained no audit record [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block activation_authority_ended: no event for either version, no audit record on the prior version. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "b: the PRIOR active version is byte-for-byte the same row after the block (state, activated_at, lifecycle_version, version, updated_at, supersedes_id) [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block approval_invalidated: the prior active version of the lineage is the identical row after the block. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "b: the prior version is still active with its activated_at unchanged and never retired [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block approval_invalidated: still active, activated_at unchanged, never retired. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "b: the lineage still has exactly one active member and no superseded member: no supersession happened [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block approval_invalidated: exactly one active member and no superseded member (no supersession). Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "b: no event was emitted for either version and the prior version gained no audit record [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block approval_invalidated: no event for either version, no audit record on the prior version. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "d: the PRIOR active version is byte-for-byte the same row after the block (state, activated_at, lifecycle_version, version, updated_at, supersedes_id) [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block canonical_source_unavailable: the prior active version of the lineage is the identical row after the block. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "d: the prior version is still active with its activated_at unchanged and never retired [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block canonical_source_unavailable: still active, activated_at unchanged, never retired. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "d: the lineage still has exactly one active member and no superseded member: no supersession happened [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block canonical_source_unavailable: exactly one active member and no superseded member (no supersession). Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "d: no event was emitted for either version and the prior version gained no audit record [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block canonical_source_unavailable: no event for either version, no audit record on the prior version. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "c: the PRIOR active version is byte-for-byte the same row after the block (state, activated_at, lifecycle_version, version, updated_at, supersedes_id) [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block dependency_changed: the prior active version of the lineage is the identical row after the block. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "c: the prior version is still active with its activated_at unchanged and never retired [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block dependency_changed: still active, activated_at unchanged, never retired. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "c: the lineage still has exactly one active member and no superseded member: no supersession happened [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block dependency_changed: exactly one active member and no superseded member (no supersession). Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "c: no event was emitted for either version and the prior version gained no audit record [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": true,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql - fire-time terminal block dependency_changed: no event for either version, no audit record on the prior version. Titles are built at run time by pg_temp.d9f_blocked(tag, reason) (title = tag || ': ...'). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38."
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql",
+       "title": "control: an execution that completes supersedes the prior version (lifecycle +1, activated_at kept), so the \"row unchanged\" assertions above would fail on a supersession [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_active.sql:235 - control: a completing execution supersedes the prior version, so the intactness assertions are discriminating. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 235
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql",
+       "title": "the PRIOR active version is byte-for-byte the same row after the terminal block (state, activated_at, lifecycle_version, version, updated_at), with no event and no audit record [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql:113 - retries_exhausted after the real 15/60/300 s ladder: the prior active version is the identical row, no event, no audit record. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173718-1273725.tap SHA-256 6580fdec111c791a10a95f195d220ab179a67569dfcb4185658ad0ef0544e6e1.",
+       "descriptionLine": 113
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql",
+       "title": "the lineage still has exactly one active member, r0 with its activated_at unchanged, and no superseded member: no supersession happened [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql:120 - retries_exhausted: exactly one active member (r0, activated_at unchanged) and no superseded member. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173718-1273725.tap SHA-256 6580fdec111c791a10a95f195d220ab179a67569dfcb4185658ad0ef0544e6e1.",
+       "descriptionLine": 120
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql",
+       "title": "the schedule is blocked retries_exhausted and the scheduled successor is blocked, never activated, with no event [P2-S12-AC-146]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_fire_prior_retries.sql:110 - retries_exhausted: the schedule and the successor are blocked, no event. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173718-1273725.tap SHA-256 6580fdec111c791a10a95f195d220ab179a67569dfcb4185658ad0ef0544e6e1.",
+       "descriptionLine": 110
+      }
+     ]
+    }
+   ]
+  },
+  {
+   "criterion": "P2-S12-AC-211",
+   "proposedStatus": "partial",
+   "proposedLimitation": "Unproven (uncited clause): \"again before publish\": DEFECT, root decision pending (RED suite supabase/tests/phase_02_slice_12_gaps_db9b_legacy_forest_red.sql, WIP note supabase/migrations-wip/db9b/README.md): the publication pattern provider answers `passed` for a revision that pins an ACTIVE stored pattern nested ten levels deep or expanding to 544 block roots, and CMS-03C-02 places the ten-level pattern (the 544-root one is refused pattern_nodes_exceeded: phase_02_slice_12_gaps_db9b_legacy_forest/010-facts.sqlinc). BOUNDARY: pattern_cycle is not producible (mutual and self-lineage cycles cannot be submitted or activated; the closest producible shape is classified nested_pattern_not_active). The literal-tree bounds are enforced by the table CHECK cms_pattern_versions_block_tree_valid, so only the expanded bounds can be stored over the limit.",
+   "clauses": [
+    {
+     "index": 1,
+     "text": "again before publish",
+     "add": []
+    }
+   ]
+  },
+  {
+   "criterion": "P2-S12-AC-044",
+   "proposedStatus": "partial",
+   "proposedLimitation": "Unproven sub-branches (BOUNDARY): (1) entry deletion/tombstone: no command exists. cms_content_entries.lifecycle admits archived, deletion_pending and held (supabase/migrations/20260926090000_cms_entry_revision_authority.sql:33-34; BE03b 1964, 1980, 2005) but no platform_api or platform_private function writes it (catalog scan in supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql, BOUNDARY facts), and BE03b 1891 `entry_unavailable` is the reader side only; the writer belongs to a later shard and no spec in BE03b or BE03c defines it. (2) composition-source deletion: composition-instance rows are append-only (DELETE and UPDATE are refused, proved in the same file); the only tombstone is the retired row CMS-03C-15 accept appends for a removed root (supabase/migrations/20261014140600_cms_apply_pattern_update.sql:241), covered by phase_02_slice_12_dec193_consumers and phase_02_slice_12_pattern_updates*. The clause is proven for the one deleting command that exists, the CMS-03C-09 retirement of a pattern lineage.",
+   "clauses": [
+    {
+     "index": 3,
+     "text": "deletion",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "the pattern row is KEPT as a tombstone: state retired, retired_at set, lifecycle +1, and every definition column (tree, digest, hash, key, version, types) identical [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:123 - CMS-03C-09 retire keeps the pattern row as a tombstone with every definition column identical. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 123
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "the governed review of the retired version is kept: it differs only in version + 1 and updated_at [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:126 - the governed review of the retired version differs only in version + 1 and updated_at. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 126
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "the decisions, assignments and dependencies of the retired version's review are byte-identical: the approval evidence survives [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:131 - the approval evidence (decisions, assignments, dependencies) is byte-identical after the retirement. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 131
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "the composition rows that pin the retired version are byte-identical: no source row is deleted or rewritten, the pins remain as evidence [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:134 - the composition rows that pin the retired version are untouched. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 134
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "the selector projection no longer lists the retired version and still lists the live outer [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:142 - derived access removed: the selector no longer lists the retired version. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 142
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "CMS-03C-02 refuses a new placement of the retired version: pattern_version_not_active at /patternVersion, nothing written [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:146 - derived access removed: placement of the retired version is refused pattern_version_not_active, nothing written. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 146
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "the publication provider refuses the revision that pins the retired version live: pattern_not_active, one blocking unit [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:150 - derived access removed: the publication provider fails a live pin pattern_not_active. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 150
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "the publication provider refuses the revision whose live pin reaches the retired version through a nested use: nested_pattern_not_active [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:152 - derived access removed: a nested use fails nested_pattern_not_active. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 152
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "the retirement queued exactly one more cms.pattern.activated.v1 event for the version, at its new lifecycle counter, with a correlation id [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:164 - the retirement queued exactly one cms.pattern.activated.v1 event at its lifecycle counter. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 164
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "an exact replay of the retirement returns the same response and queues no second event and no second audit record [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:170 - the retire command is idempotent: an exact replay queues no second event and no second audit record. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 170
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "the recheck of the retirement event finds the in-flight review that froze the retired version and invalidates it dependency_changed [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:179 - dependent invalidation: the recheck of the retirement event invalidates the in-flight review that froze the retired version (dependency_changed). Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 179
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql",
+       "title": "a repeated run (the job is at least once) invalidates nothing more and writes no second audit record: the invalidation is idempotent [P2-S12-AC-044]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9b_deletion.sql:189 - dependent invalidation is idempotent: a repeated run invalidates nothing more and audits nothing twice. Real ALT-stack run (lane none, promoted migrations only), TAP .lane-logs/alt-staged-none-173525-1266705.tap SHA-256 769aaf6e9d6f1da61045e77d2425e0fc6694c77b63f540769ef602a238314b38.",
+       "descriptionLine": 189
+      }
+     ]
+    }
+   ]
+  }
+ ]
+}

@@ -1,0 +1,38 @@
+-- Slice 12 race8: session helpers of the related-content file (lane claude_s12_db8).  Include AFTER race7/000-harness.sqlinc, outside any transaction.
+-- A command session for a command that runs WITHOUT the service_role switch of race7's remote r7_cmd: the Slice 10 world authenticates through the
+-- transaction-local actor settings of pg_temp.s10_rpc_as (as the world's own suites call it), so the remote function applies the stashed settings and calls.
+create or replace function pg_temp.r8_conn_plain(p_conn text) returns void language plpgsql as $b$
+begin
+  perform pg_temp.r7_conn(p_conn);
+  perform extensions.dblink_exec(p_conn, $r8remote$
+    create or replace function pg_temp.r7_cmd(p jsonb) returns text language plpgsql as $f$
+    declare k text; v text; res text;
+    begin
+      for k, v in select e.key, e.value from jsonb_each_text(p->'settings') e loop
+        perform set_config(k, v, true);
+      end loop;
+      execute format('select %s($1)::text', p->>'fn') into res using (p->'request');
+      return coalesce(res, '');
+    end
+    $f$
+  $r8remote$);
+end;
+$b$;
+-- the public projection of a source as the ordered entry ids ('' for none), read from the main session
+create or replace function pg_temp.r8_projection(p_source uuid) returns text language plpgsql volatile as $b$
+declare out text;
+begin
+  perform pg_catalog.set_config('app.cms_rpc', 'true', false);
+  select coalesce(pg_catalog.string_agg(item.value->>'entryId', ',' order by item.ord), '') into out
+    from jsonb_array_elements(platform_private.cms_related_content_public_targets(p_source, 'en-US', 'public')) with ordinality item(value, ord);
+  return out;
+end;
+$b$;
+-- the active pin rows of a source (the stored rule set) as the pinned target ids
+create or replace function pg_temp.r8_pins(p_source uuid) returns text language sql stable as $b$
+  select coalesce(pg_catalog.string_agg(target_entry_id::text, ',' order by target_entry_id), '') from platform_private.cms_related_content_rules
+   where source_entry_id = p_source and mode = 'pin' and state = 'active' $b$;
+-- the lineage rows of an entry in the public audience as 'action:state', oldest first
+create or replace function pg_temp.r8_lineage(p_entry uuid) returns text language sql stable as $b$
+  select coalesce(pg_catalog.string_agg(action || ':' || state, ',' order by version), '') from platform_private.cms_publication_versions
+   where entry_id = p_entry and locale = 'en-US' and audience = 'public' $b$;

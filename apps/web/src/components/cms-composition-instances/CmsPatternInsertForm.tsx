@@ -35,6 +35,7 @@ export interface CmsPatternInsertFormProps {
 const selectorUnverified = (state: ReadState<unknown>): boolean =>
   state.kind === 'loading' ||
   state.kind === 'failed' ||
+  state.kind === 'stale' ||
   state.kind === 'rate_limited';
 
 const messageOf = (

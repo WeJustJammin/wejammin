@@ -618,3 +618,171 @@ Rules: `docs/handoffs/2026-10-14-claude-s12/lane-rules.md`. All lanes Sonnet 5.5
 - `2026-10-30` validate #1 failed at format:check only (race7 README table padding) → formatted (padding only); validate #2
   GREEN (`.lane-logs/canonical/validate-20261030T053453Z.log`, 2,615 s): 2,252 test files, coverage 100%/100%, all steps 0.
   Checkpoint 2 committed locally in groups (explicit lists), no push.
+- `2026-10-30` CHECKPOINT 2 COMMITTED locally (no push): `a1a48f5d` db, `37745709` web, `0ff726d5` browser tests, `6ca11e0f`
+  ledgers + receipts, `85ab5ff0` docs. Wave 8 released (`briefs/gaps-wave8.md`, no sub-agents): `claude_s12_web8a` (template,
+  locale, pattern, vocabulary/term islands: 409 auto-refetch, unknown reconcile-before-retry, 422 at field, success refetch),
+  `claude_s12_web8b` (related, composition, governed islands + reviewer_not_eligible + V17 N1/N5/N7), `claude_s12_db8` (AC-294,
+  AC-085 positions 3/4, AC-277 locale/related scenarios).
+- `2026-10-30` db8 DONE GREEN (report SHA `780db955…`, proposals `1f086053…`, TAP `recite8/db8-race8-final-run.tap`): 5 dblink
+  pgTAP files (race8_activation_order, _entry_create, _entry_default, _locale, _related) + `phase_02_slice_12_race8/` fragments,
+  101/101 on ALT, worlds restored; no defect, no WIP. Closes AC-085 positions 1-4 (refute7 finding 4), AC-294 rechecks after waits
+  (A1/A3/A4/A5/A6/D2), AC-277 c2 locale edit vs translation and related target unpublish. BOUNDARY: AC-294 "archived/unassigned
+  between check and use" (no archive/unassign command in BE03b/BE03c) → root: split it off uncited (round-2 rule), never
+  verified-with-caveat. Refute8 (with web8a/b) to check A5 concealed-vs-absent, D2's single assertion, the unpublish model.
+- `2026-10-30` web8a DONE PARTIAL (report SHA `6745cfa4…`, proposals `f9fbbd5a…`, 40 AC-271 rows + 11 retitles): 409 auto-refetch
+  (template create/successor, pattern, vocabulary), unknown-outcome read before retry (template create/successor, locale), success
+  refetch (vocabulary versions table, locale source) — RED first; ~60 test corrections (explicit "Check latest version" presses →
+  automatic read); new shared helper `cms-composition/use-reconcile-on-outcome.ts`; edits outside its dirs:
+  `cms-on-demand-taxonomy-locale.proof.test.tsx`, `step-up-required.inventory.test.ts`. apps/web 786 files / 8,956 (1 inventory
+  failure fixed). BOUNDARY: term 422 fields, new-vocabulary 409/unknown (no read by key), registry-digest 409 context refetch (no
+  browser reader), locale 422 copy (root to correct), template/pattern success refetch N/A (no list). Root updated the two
+  real-route specs that pressed "Check latest version" (template-real-route, template-uncertain: auto-read armed before each save).
+- `2026-10-30` web8b DONE GREEN (report SHA `6376b3eb…`, proposals `aec79773…` 69 rows, corrections diff `b492e460…`): related
+  409/unknown/success, composition list refetch via the existing DEC-206 browser proxy (B5), unknown reconcile-before-retry (B7),
+  bulk 409 (B8), reviewer_not_eligible refetch, V17 N1/N5/N7; defect fixed: governed classification refetch never acted
+  (use-governed-review-command.ts); apps/web 787 files / 8,957 PASS. Root DEC-244 ratifies its four readings + web8a's N/A and
+  BOUNDARY items; locale 422 copy to be corrected. Next: V19 (web8a + web8b product review) and refute8 (web8a/web8b/db8).
+- `2026-10-30` Browser gate on wave-8 code (`.lane-logs/canonical/e2e-20261030T071414Z/`): default 123/123; real-route T4 FAIL —
+  taxonomy edit initial route 92,545 gzip > 92,160 budget (curator panel), same in `pnpm bundle:check` (1 failing check); locale
+  CMS-15 failed once with a transient page-fetch "Error: Network…" and passed on the second pass (flake, watch). web8b resumed to
+  bring the route back under budget (no budget raise; lazy/slim the new imports).
+- `2026-10-30` V19 DONE (report SHA `20fc16fe…`): web8a + web8b ACCEPT-WITH-CONDITIONS; 1 BLOCKER (B1 bundle registry names the old
+  locale submit file — fixed in-tree during review), 3 MAJOR (web8a M1 locale unknown-outcome retry becomes a new request when only
+  the version moved → double-write risk; web8a M2 digest-409 BOUNDARY invalid — `/api/v1/cms/templates/context` browser route
+  exists; web8b M3 composition 409 refresh window re-enables Place pattern → duplicate POST), 11 MINOR (m1 StrictMode drops the
+  create read; m2 locale adopts older version; m6 Check-again focus; m7 refreshList drops retired rows (DEC-193); m8 test-support
+  masks list reads; m3/m10 type-only import cycles), 5 NIT; 31/36 mutants killed. web8a fix round dispatched (M1, M2, m1, m2, m3,
+  B1 + tests/performance); web8b gets M3/m6/m7/m8/m10 after its bundle round.
+- `2026-10-30` web8b bundle round GREEN (report SHA `112c550c…`): taxonomy edit 92,545 → 92,081 gzip (79 under; HEAD 92,059) by
+  moving `taxonomy-versions-read.ts` behind the on-demand boundary (`taxonomy-versions-on-demand.ts`, CMS_ON_DEMAND_CHUNKS entry +
+  proof test); the cause was web8a's designer growth, not the governed refusal import. Also repointed the locale-submit gate
+  entry to `locale-variant-submit-seam.ts` (V19 B1). All routes within budget; thin headroom: taxonomy edit 79 B, conflict resolve
+  847 B, pattern edit 1,216 B. apps/web + tests/performance 800 files / 9,153 PASS. web8b fix round 2 dispatched (V19 M3, m6, m7,
+  m8, m10, surviving mutants).
+- `2026-10-30` refute8 DONE (report SHA `a52651b8…`, JSON `0444cb38…`): ACCEPT-WITH-DROPS, 159 → 115 KEEP / 34 DROP / 10 FIX;
+  AC-271 parts loading (25 rows), success (38), disabled (32) citable; error/degraded/closing words not; AC-294 needs a five-part
+  split (part 1 visibility uncited); 9 DEAD ledger citations in AC-008/042/081/282/284/285 from wave-8 retitles (map in AC-271
+  missedGaps); web7 proposals rows 34/35/42/43 stale; U3 unpublish model DROP (production executor takes FOR SHARE). Root DEC-245
+  (seven rulings). apply8 waits for the web8a/web8b fix rounds (more retitles possible).
+- `2026-10-30` web8a fix round GREEN (report SHA `1cdf5d94…`, proposals `95da1919…` 51 add + 11 retitles): V19 M1 (locale retry
+  byte-identical, moved version only reported), M2 (digest 409 re-reads the existing browser context route, keeps values, names
+  added/removed selectors), m1 StrictMode, m2 strictly-newer adoption, m3 cycle, B1; locale 422 copy fixed (DEC-244); apps/web 799
+  files / 9,064 + tests/performance 195 PASS. web8a found a NEW import cycle from web8b's bundle round
+  (taxonomy-versions-read ↔ taxonomy-versions-on-demand) → added to web8b's round with the locale-source-refresh gate text.
+- `2026-10-30` web8b fix round 2 GREEN (report SHA `0d143562…`, proposals `c19c6240…` 122 rows + 26 retitles): V19 M3 (controls
+  stay disabled through every post-answer read; one POST per press, 9 RED rows), DEC-245(4) composition retry hold, m6, m7 (retired
+  rows kept + per-call sequence guard), m8 (unscripted list reads recorded, `noListReads`), m10 cycle, V19 surviving mutants
+  killed, taxonomy-versions cycle broken (constant moved to taxonomy-vocabulary-core.ts), gate text fixed; apps/web +
+  tests/performance 812 files / 9,259 PASS. Gate RED on CMS pattern edit 94,697 > 92,160 — web8a's M2 context re-read in the
+  initial chunks → web8a bundle round dispatched (move it on-demand; no budget raise).
+- `2026-10-31` STALL (root fault): web8a went idle 2026-10-30 08:32Z waiting on a background build monitor that never re-woke it;
+  root waited ~36 h for a notification without a liveness check. Resumed with instructions to run builds/tests in the foreground.
+  Lesson: after any lane reports "waiting on a monitor", root checks liveness (task output mtime, processes) at the next idle point.
+- `2026-10-31` web8a bundle round GREEN (report SHA `439214f8…`): digest-409 context re-read moved to on-demand chunk
+  `cms-registry-read` (CMS_ON_DEMAND_CHUNKS entry + RED-first proof test); CMS pattern edit 94,697 → 92,066 gzip (94 B margin;
+  HEAD 90,703), template create/edit −4,077 each; `bundle:check` exit 0, no budget change; apps/web 801 files / 9,072 + perf 198
+  PASS (foreground runs). The 36 h-old "cd /home/rob/.codex/wor…" task the owner saw is web8a's nohup'd baseline build-check
+  (bc0lod30i, 2026-10-30 08:34Z): it finished in minutes; the entry is a stale lane-owned record root cannot stop.
+- `2026-10-31` dispatched (sonnet, foreground-only): V20 (`briefs/review-v20-web8-fixes.md`, verify V19 fixes + bundle
+  round, sibling sweep, revert-checks, own build) and refute8b (`briefs/recite8b-refutation.md`, ~70 fix-round rows not in
+  refute8, moved/dead identities after the fix rounds, AC-271 part matrix after DEC-245). apply8 waits for both.
+- `2026-10-31` dispatched db9a + db9b (sonnet, foreground-only; `briefs/gaps-wave9-db.md`): db9a AC-294 unassigned
+  (real revocation race) + definition lock lever (DEC-245(6)), AC-277 U1 non-empty guard + unpublish on the production
+  schedule/execute path (DEC-245(7)); db9b V18 MINOR-2 second-org selectors, AC-108/190 active foreign pattern/vocabulary via the
+  real path, AC-146 c5 prior active intact, AC-211 c1 publication-side bounds, AC-044 deletion (or BOUNDARY with lines).
+  WIP timestamps db9a 20261031100000–104999, db9b 20261031105000–109999. Proposals → recite9/. 4 agents live (cap).
+- `2026-10-31` db9a GREEN (report `lane-claude_s12_db9a-report.md` SHA `45c67bc3…`; ALT run alt-staged-none-170804-1148885
+  78/78, TAP `1a29d16e…`): race9_entry_unassigned (U1 real CMS-03A-17 revoke → create waits at POSITION 1 then VALIDATION_FAILED;
+  U2 hand-held assignment revoke = position-2 stand-in, no single-assignment revoke command exists), race9_definition_lever (B's
+  cms_activate_schema / cms_submit_governed_review naming A's held definitions → concealed NOT_FOUND under 1 s lock_timeout, no
+  wait; control A blocked), race9_related_unpublish (real CMS-03B-07/claim/CMS-03B-20 vs CMS-03C-05: no wait in either order, same
+  end state), race8_related U1 non-empty guard. No defect. Root reading pending for refute9: U2 is a stand-in with no production
+  writer (DEC-245(7)) → not cited; "visibility" part stays uncited (archived has no writer).
+- `2026-10-31` dispatched pw9 (`briefs/gaps-wave9-pw.md`): AC-273 undriven journeys (dependency invalidation → draft,
+  linked update accept/detach, protected decision, pattern created/assigned/scheduled in browser, log/telemetry scan, keyboard-only
+  640x400 for template/pattern). Writes specs only; root runs.
+- `2026-10-31` refute8b DONE (report SHA `4663b705…`, JSON `842109a1…`): ACCEPT-WITH-DROPS; 173 rows → 108 KEEP / 60 DROP
+  / 5 FIX; DEC-245(1) and (4) fixes revert-checked real (12 and 8 rows fail reverted). BLOCKER: CmsTaxonomyVersionDesigner
+  .latest-states.test.tsx fails 3/12 (web8b cycle break left the versions chunk dynamic; fake-timer test loses the import race;
+  fix = preload in beforeAll) — ledger-cited (AC-271 c3), so the guard would fail. Ten dead ledger identities mapped
+  (AC-008/042/045/081/282/284/285); the AC-284/285 "keeps the ordered pins" retitle over-claims (FIX:TITLE); web8a idx 43
+  pattern digest row title still says "reads nothing" (FIX:PINNED). AC-271: loading/success/disabled citable; error open (submit
+  plain 401 untested; cite the locale 422 row), degraded open (queue "kept half" titles; selector page-then-503 test); closing
+  words open. All → web9 round after V20. Root drafted `recite8/apply8.mjs` (dry run clean: 10 retitles, AC-271 c1/c2/c6 +
+  uncite c10/c11, AC-085 8, AC-294 five-part split, AC-277 15+3); runs after web9 with `title-overrides.json`.
+- `2026-10-31` pw9 PARTIAL-by-rule (report SHA `f3712419…`, proposals `cdd58260…`; nothing run): five real-route specs J7
+  dependency invalidation, J8 linked update accept/detach, J9 protected vocabulary decision, J10 pattern created/assigned/
+  decided/scheduled, J11/J12 keyboard-only template/pattern at 640x400; support s12-pw9-{world,jobs,scan,flow,keys}.ts; jobs run
+  through their production platform_api RPCs as service_role (no queue consumer in the harness). Root registered the five specs in
+  playwright.s09-real.config.ts + playwright.config.ts and added README module-map lines. BOUNDARY 1 (Worker logger no-op, Wrangler
+  stdout inherited) ruled harness-only → closed by lane pwfix9 (`briefs/pwfix9-log-capture.md`), dispatched now.
+- `2026-10-31` pwfix9 GREEN (report SHA `40576de7…`): real-route API Worker now uses the production
+  createRuntimeDependencies().createLogger (stdout via console.info; workerd has no host fs); launcher pipes both wrangler children
+  to .lane-logs/e2e-server-logs/<run>/{api-worker,web-server,launcher}.log (echo kept; pointer current.json); s12-pw9-scan reads
+  them last, fails closed on empty logs; 13 new support tests (4 fail with matcher stubbed). CMS route telemetry is samplingClass
+  'always' (only public_success lines sample). Uncaptured, no sink here: captureException no-op, CSP report-to (no
+  Reporting-Endpoints), Workers Logs (deployed only), container logs, queue/cron. Root added .lane-logs/ to .gitignore.
+- `2026-10-31` V20 DONE (report SHA `47ec4a55…`): web8a + web8b ACCEPT-WITH-CONDITIONS; BLOCKER B1 (= refute8b blocker,
+  preload), MAJOR M1 (digest-409 copy still says "Reload" beside "Your values are kept"), 10 MINOR (m1/m10 no read deadline, m3
+  keepRetired across revisions, m4, m5, m6 uncovered failed-chunk path, m7 pattern row title, m8, m9 placement digest 409), 7 NIT;
+  bundle reproduced byte for byte (margins 64 B taxonomy edit, 94 B pattern edit); 37/38 revert checks bite. Root wrote the shared
+  read deadline `apps/web/src/lib/read-deadline.ts` (RED-first test, 6 PASS, README) and DEC-246 (seven rulings, raw record).
+- `2026-10-31` dispatched web9a + web9b (`briefs/gaps-wave9-web.md`, foreground-only, build under
+  /tmp/wejammin-web-build.lock): V20 + refute8b items, AC-271 error/degraded/closing-word cells, AC-164 c3/c6 (web9a), AC-069
+  page mount (web9b). Next: refute9 (db9a, db9b, web9a, web9b, pw9 after the browser gate) + V21 product review; then apply8 +
+  apply9, browser gate, evidence, validate, checkpoint 3.
+- `2026-10-31` db9b PARTIAL (report SHA `3f694487…`, proposals `f4880072…`): GREEN V18 MINOR-2 (second-org designer gets the same
+  selectors), AC-108 c3 / AC-190 c2 (foreign = first owner's real active rows, caller second org; taxonomy owner predicate
+  isolated), AC-146 c5 (prior active intact, all five reasons incl. retries_exhausted), AC-044 deletion (CMS-03C-09 retire;
+  BOUNDARY entry/instance deletion: no writer). DEFECT D1 (RED legacy_forest_red, 7 [RED]): provider passes 10-level / 544-root
+  live uses; placement places 10 levels. BOUNDARY: a second organization can never hold the CMS owner scope — the
+  cms_owner_initialization receipt is platform-single by BE03a 2593 (ratified Slice 09 design, not a slice-12 defect; noted).
+  Root DEC-247 = option A (re-prove CMS-03C-12 bounds in provider + placement with the existing tokens); BE03c 1585/388 +
+  changelog amended; raw record.
+- `2026-10-31` dispatched db10 (`briefs/db10-dec247.md`; WIP 20261031110000–119999) and refute9db
+  (`briefs/recite9-db-refutation.md`; db9a + db9b rows against the post-apply8 AC-294 part indexes). Live: web9a, web9b, db10,
+  refute9db (cap 4).
+- `2026-10-31` db10 GREEN (report SHA `6078490f…`, proposals `baa9c600…`): WIP 20261031110000 placement_nodes depth (closure
+  depth ≥ 9 → 422 pattern_depth_exceeded /patternId), 110100 live_pin_reason bounds, 110200 active_digest precedence
+  (not_active, nested, depth, nodes, digest, block_rules); db9b RED 7/112 → 112/112; new gaps_db10_bounds.sql (at-bound passes,
+  aggregation); 27 existing pattern/provider/placement files 6161/6163 (two AC-279 p95 perf asserts fail on a loaded host with
+  and without the WIP — canonical quiet-host db:verify decides); contracts tokens + cms-workflow-labels copy. Resumed for a sweep
+  of EVERY pattern-forest expander (update_nodes, linked scan, render plan/checker) — partial remediation rule. Root open item:
+  composition placement 422 copy for pattern_depth/nodes_exceeded falls back to the generic place sentence (web9b zone; next web
+  round).
+- `2026-10-31` refute9db DONE (report SHA `856c9b3a…`, JSON `0e10a92a…`): ACCEPT-WITH-DROPS, 76 rows → 32 KEEP / 27 DROP / 17 FIX.
+  AC-146 → verified (18 rows); AC-277 c4 cited (production path sound, no-wait observed); AC-294 +4 U1 rows at "authority/", U2 DROP
+  MODEL, lever rows drive CMS-03A-04/-06 not the create (lever reachable via contentTypeId/VersionId, untested); AC-108/190 foreign
+  rows fail the compatibility predicate too (BLIND to the owner predicate; guard cannot see it); AC-044 proposal guard-invalid
+  (one-word clause). Root DEC-248 (five rulings). db9a resumed: create-level lever + helper-level lever tests, label fix
+  (CMS-03C-06), stronger rows, U1 position-1 evidence, AC-108/190 matched pair (new gaps_db9c file).
+- `2026-10-31` web9a GREEN-with-open-item (report SHA `ff3a2763…`, proposals `8c1fe464…`): V20 B1/M1/m1/m2/m4/m7/m8/n1/n3 fixed;
+  new lib/read-within-deadline.ts (stops a fetch that ignores abort); locale 422 row; connected selector page-then-503 test
+  (product already kept the page); closing-words test per family (no-store + nothing claimed before the answer; mutation-checked);
+  AC-164 template pages' inline logic → cms-template-page-outcome.ts (37 tests). Cold vitest apps/web 824 files / 9,195 PASS;
+  bundle exit 0: pattern edit 92,093 (67 B), taxonomy edit 92,121 (39 B). Open: deadline not yet on pattern latest/nestable, terms
+  and connected selector reads (budget) → resumed: apply it, on-demand or find bytes, no budget change.
+- `2026-10-31` web9b PARTIAL (report SHA `a4bf10e4…`, proposals `b1ee39d4…` 38 AC-271 + 4 AC-069 rows): V20 m3/m5/m6/m9/m10, n4
+  (62 tests now assert the refetch, afterEach registry fails unasserted refetches), AC-284/285 pins assertion, governed submit 401
+  test, queue degraded retitles (+ product fix: 200-not-strict-page now offers Retry), 5 BLIND rows bite, PROOFGAP rows, closing
+  words for composition/related/governed read, AC-069 chain mount test; new lib/run-read-under-deadline.ts. Not green: bundle
+  (pattern edit 93,212, taxonomy edit 92,902 — read-within-deadline in their initial assets) → handed to web9a's running round.
+  D1 governed command POST without cache no-store → ROOT fixed (RED first: 6 workflow ops + governed closing-words row failed):
+  cache 'no-store' in cms-workflow-command-transport.ts AND governed-review-command-transport.ts (web9b mis-cited the shared one;
+  the governed panel uses its own); new cms-workflow-command-transport.no-store.test.ts; closing-words row strengthened (DEFECT
+  comment removed, cache joins the assertion). Hashes: scratchpad/root-d1.sha.
+- `2026-10-31` db9a follow-up GREEN (report SHA `aed0221f…`; ALT 120/120 alt-staged-none-185743-1600886, TAP `8ea21b1a…`; proposals
+  `890d1081…`): create-level lever (B's real cms_create_entry naming A's held type/version → concealed NOT_FOUND ~52 ms, holder
+  open after, A blocked), helper-level lever (cms_lock_default_template_shared(T1,B) returns at once; (T1,A) waits), CMS-03C-06
+  label fix + positive-form rows, U1 tuple lock on organization_actor_grant (position 1), db9c matched pair with predicate-removed
+  scratch readers. Real chain cannot activate the foreign-compatible clone → lifecycle-seam forgery; root DEC-249 accepts forged
+  rows for READ-filter clauses only (labelled, sensitivity arm, owner control).
+- `2026-10-31` root: workflow/governed/server suites after the D1 fix 215 files / 3,005 PASS.
+- `2026-10-31` dispatched refute9w (`briefs/recite9-web-refutation.md`: web9b rows, db9a follow-up rows, root D1 row; web9a
+  judged later) and V21b (`briefs/review-v21b-web9b.md`: web9b product + root D1, N/N sweep of CMS command transports for
+  no-store). Live: web9a, db10, refute9w, V21b (cap 4).
+- `2026-10-31` web9a round 2 GREEN (report SHA `cac90e63…`, proposals `e452a5f2…` 21 AC-271 + AC-164 rows): deadline on pattern
+  latest (on-demand pattern-latest-fetch), nestable, terms (on-demand taxonomy-terms-fetch) and connected selector reads, each with
+  a hung-fetch test that fails without it; proof test cms-on-demand-pattern-terms; bundle exit 0 — pattern edit 92,051 (109 B),
+  taxonomy edit 90,860 (1,300 B); cold vitest apps/web 835 files / 9,239 PASS; perf 204 PASS. Dispatched V21a
+  (`briefs/review-v21a-web9a.md`). web9a's AC-271 rows go to a later refutation pass (refute9a) after V21a.

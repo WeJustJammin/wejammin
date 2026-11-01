@@ -1,0 +1,53 @@
+-- Slice 12 race8: the committed locale world (lane claude_s12_db8; tracker P2-S12-AC-277 "locale source edit versus translation").  Include INSIDE the world
+-- transaction right after 020-edtl-world.sqlinc (it needs the S09 / DEC-202 machinery and its owner actor), with psql output redirected.
+-- Built by the real producers: an active content type `s12r8loc` (source locale en-US, supported en-US and fr-FR, fr-FR falls back to en-US, one
+-- LOCALIZED title field) and two entries of it (L1, L2) created by CMS-03B-10.  Stashed commands per entry: 'trans:<tag>' (CMS-03C-04 author a fr-FR variant
+-- of the first en-US revision at the entry's version 1) and 'edit:<tag>' (CMS-03B-01 append a source revision on top of it at version 1).
+create or replace function pg_temp.r8_make_loc_type() returns void language plpgsql as $b$
+declare resource jsonb;
+begin
+  resource := pg_temp.s09d_rpc('r8-loc:create', 'platform_api.cms_create_type_draft', 'owner', jsonb_build_object(
+    'typeKey', 's12r8loc', 'label', 'R8 locale', 'ownerCapability', 'cms.schema_designer', 'sourceLocale', 'en-US', 'defaultLocale', 'en-US',
+    'supportedLocales', '["en-US","fr-FR"]'::jsonb, 'fallbackChains', '{"fr-FR":["en-US"]}'::jsonb,
+    'workflowKey', 'editorial', 'workflowVersion', '1', 'defaultTemplateVersionId', null,
+    'fields', jsonb_build_array(jsonb_build_object(
+      'stableFieldId', extensions.gen_random_uuid(), 'key', 'title', 'kind', 'short_text', 'constraints', '{}'::jsonb, 'required', true,
+      'validatorKey', null, 'validatorVersion', null, 'defaultMode', 'none', 'localizationMode', 'localized',
+      'editorConfig', jsonb_build_object('label', 'Title', 'order', 0), 'lifecycle', 'active')),
+    'relations', '[]'::jsonb, 'templateBindings', '[]'::jsonb, 'capabilityBindings', '[]'::jsonb,
+    'idempotencyKey', pg_temp.s09d_idem('r8-loc', 'create')));
+  perform pg_temp.s09d_remember('r8-loc:type', (resource->>'contentTypeId')::uuid);
+  perform pg_temp.s09d_remember('r8-loc:version', (resource->>'id')::uuid);
+end;
+$b$;
+select pg_temp.r8_make_loc_type();
+select pg_temp.s09d_to_active('r8-loc', array['rev2']);
+select pg_temp.r7_note('loc_type', pg_temp.s09d_id('r8-loc:type')::text);
+select pg_temp.r7_note('loc_title_field', (select stable_field_id::text from platform_private.cms_field_definition_versions
+  where content_type_version_id = pg_temp.s09d_id('r8-loc:version') and field_key = 'title'));
+
+-- One entry of the locale type through the real create command; notes its id, first revision and the source hash.
+create or replace function pg_temp.r8_make_loc_entry(p_tag text) returns void language plpgsql as $b$
+begin
+  perform pg_temp.s12ga_rpc('r8-' || p_tag || '-create', 'platform_api.cms_create_entry', 'owner',
+    pg_temp.s12edtl_request('r8-loc', jsonb_build_object(pg_temp.r7_get('loc_title_field'), 'Hello ' || p_tag), 'r8-' || p_tag || '-create-key'),
+    pg_temp.s09d_context('owner', true));
+  perform pg_temp.r7_note(p_tag || '_create_state', pg_temp.s12ga_state('r8-' || p_tag || '-create'));
+  perform pg_temp.r7_note(p_tag, pg_temp.s12ga_body('r8-' || p_tag || '-create')->'entry'->>'id');
+  perform pg_temp.r7_note(p_tag || '_rev1', pg_temp.s12ga_body('r8-' || p_tag || '-create')->'revision'->>'id');
+  perform pg_temp.r7_note(p_tag || '_hash1', (select btrim(payload_hash::text) from platform_private.cms_entry_revisions
+    where id = (pg_temp.s12ga_body('r8-' || p_tag || '-create')->'revision'->>'id')::uuid));
+  perform pg_temp.r7_stash_cmd('trans:' || p_tag, 'owner', 'platform_api.cms_author_locale_variant', jsonb_build_object(
+    'entryId', pg_temp.r7_get(p_tag), 'locale', 'fr-FR', 'sourceRevisionId', pg_temp.r7_get(p_tag || '_rev1'), 'sourceHash', pg_temp.r7_get(p_tag || '_hash1'),
+    'fields', jsonb_build_array(jsonb_build_object('fieldId', pg_temp.r7_get('loc_title_field'), 'value', to_jsonb('Bonjour ' || p_tag))),
+    'fallbackChain', jsonb_build_array('en-US'), 'noFallbackFieldIds', '[]'::jsonb, 'expectedVersion', '1', 'ifMatch', '1',
+    'idempotencyKey', 'r8-trans-' || p_tag), pg_temp.s09d_context('owner', true));
+  perform pg_temp.r7_stash_cmd('edit:' || p_tag, 'owner', 'platform_api.cms_create_revision', jsonb_build_object(
+    'entryId', pg_temp.r7_get(p_tag), 'baseRevision', '1', 'locale', 'en-US', 'expectedVersion', '1', 'ifMatch', '1',
+    'changedPaths', jsonb_build_array('/fields/' || pg_temp.r7_get('loc_title_field')),
+    'values', jsonb_build_object(pg_temp.r7_get('loc_title_field'), 'Hello again ' || p_tag),
+    'idempotencyKey', 'r8-edit-' || p_tag), pg_temp.s09d_context('owner', true));
+end;
+$b$;
+select pg_temp.r8_make_loc_entry('l1');
+select pg_temp.r8_make_loc_entry('l2');

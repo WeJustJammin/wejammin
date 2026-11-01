@@ -8,13 +8,12 @@ import {
   loadCmsValidators,
   loadedCmsValidators,
 } from '../../lib/cms-contract-validators';
+import { BROWSER_READ_DEADLINE_MS } from '../../lib/read-deadline';
 import {
   rateLimitWaitSeconds,
   retryingSafeRead,
 } from '../../lib/safe-read-retry';
 import type { RelatedConflictReadResult } from './related-content-types';
-
-const READ_DEADLINE_MS = 8_000;
 
 interface ReadContext {
   readonly signal: AbortSignal;
@@ -133,7 +132,7 @@ const protectedRead = async <T>(
       rejectAbort = () => reject(aborted());
       controller.signal.addEventListener('abort', rejectAbort, { once: true });
     });
-    timer = setTimeout(cancel, READ_DEADLINE_MS);
+    timer = setTimeout(cancel, BROWSER_READ_DEADLINE_MS);
     const read = async (): Promise<StageResult<T>> => {
       const response = await requestStage(
         path,

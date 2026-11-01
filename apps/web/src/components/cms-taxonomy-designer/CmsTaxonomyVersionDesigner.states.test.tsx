@@ -86,7 +86,7 @@ describe('CmsTaxonomyVersionDesigner (CMS-03C-16) commandState', () => {
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it('[P2-S12-AC-271] commandState success (kept half): names the saved draft, locks the form and links its page; the versions list is NOT refetched (D4) (CMS-03C-16)', async () => {
+  it('[P2-S12-AC-271] commandState success: names the saved draft, locks the form and links its page; the versions table is refetched by itself (D4, DEC-242) (CMS-03C-16)', async () => {
     const readVersions = readStub(loadedVersions([base]));
     const submit = submitStub({
       kind: 'created',
@@ -111,6 +111,7 @@ describe('CmsTaxonomyVersionDesigner (CMS-03C-16) commandState', () => {
     ).toBe(true);
     expect(buttonNamed(container, 'Save successor draft').disabled).toBe(true);
     expect(submit).toHaveBeenCalledTimes(1);
+    expect(readVersions).toHaveBeenCalledTimes(1);
   });
 
   describe('commandState error', () => {
@@ -154,7 +155,7 @@ describe('CmsTaxonomyVersionDesigner (CMS-03C-16) commandState', () => {
       },
     );
 
-    it('[P2-S12-AC-271] commandState error (kept half): a 409 renders the fixed conflict copy, keeps the draft, and offers the explicit latest-version check; it is NOT refetched automatically (D2) (CMS-03C-16)', async () => {
+    it('[P2-S12-AC-271] commandState error: a 409 renders the fixed conflict copy, keeps the draft, refetches the versions by itself and keeps the check to repeat the read (D2, DEC-242) (CMS-03C-16)', async () => {
       const readVersions = readStub(loadedVersions([base]));
       const submit = submitStub({ kind: 'conflict', currentVersion: '4' });
       const { container } = mountEdit({ submit, readVersions });
@@ -167,6 +168,7 @@ describe('CmsTaxonomyVersionDesigner (CMS-03C-16) commandState', () => {
       expect(
         container.querySelector('.cms-taxonomy-status')?.getAttribute('role'),
       ).toBe('alert');
+      expect(readVersions).toHaveBeenCalledTimes(1);
       expect(buttonNamed(container, 'Check latest version').disabled).toBe(
         false,
       );

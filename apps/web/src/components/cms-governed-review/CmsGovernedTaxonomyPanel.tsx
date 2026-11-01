@@ -1,8 +1,9 @@
 import * as React from 'react';
 
-import {
+import { readTaxonomyVersionsOnDemand } from '../cms-taxonomy-designer/taxonomy-versions-on-demand';
+import type {
   readTaxonomyVersions,
-  type TaxonomyVersionFacts,
+  TaxonomyVersionFacts,
 } from '../cms-taxonomy-designer/taxonomy-versions-read';
 import type { WorkflowCommandEnvironment } from '../cms-editorial-workflow/use-cms-workflow-command';
 import CmsGovernedReviewPanel, {
@@ -47,7 +48,7 @@ export const taxonomySubjectOf = (
 /** The canonical re-read of the vocabulary's newest version (`cmsTaxonomyVersionsRead`), or null. */
 export const readTaxonomySubject = async (
   taxonomyId: string,
-  readVersions: typeof readTaxonomyVersions = readTaxonomyVersions,
+  readVersions: typeof readTaxonomyVersions = readTaxonomyVersionsOnDemand,
 ): Promise<GovernedPanelSubject | null> => {
   const result = await readVersions(taxonomyId);
   const newest = result.kind === 'loaded' ? result.page.items[0] : undefined;
@@ -63,7 +64,7 @@ export const readTaxonomySubject = async (
 export default function CmsGovernedTaxonomyPanel({
   detail,
   review = null,
-  readVersions = readTaxonomyVersions,
+  readVersions = readTaxonomyVersionsOnDemand,
   environment,
 }: CmsGovernedTaxonomyPanelProps): React.ReactElement {
   return (

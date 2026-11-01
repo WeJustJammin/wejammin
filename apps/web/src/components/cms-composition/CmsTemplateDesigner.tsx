@@ -1,26 +1,18 @@
 import * as React from 'react';
-import { useEffect, useRef, useState } from 'react';
 import type { TemplateDesignerContext } from '@wejammin/contracts';
 
 import { warmCmsValidators } from '../../lib/cms-contract-validators';
+import CmsRegistryChangeNotice from './CmsRegistryChangeNotice';
 import CmsTemplateBindings from './CmsTemplateBindings';
+import CmsTemplateExistingVersion from './CmsTemplateExistingVersion';
 import CmsTemplateFields from './CmsTemplateFields';
+import CmsTemplateLatestCheck from './CmsTemplateLatestCheck';
 import CmsTemplateLeaveGuard from './CmsTemplateLeaveGuard';
 import CmsTemplateSlots from './CmsTemplateSlots';
-import CmsTemplateStatus, {
-  templateKeyError,
-  type CmsTemplateFormStatus,
-} from './CmsTemplateStatus';
-import { buildCmsTemplateDraftRequest } from './cms-template-designer-request';
-import { submitCmsTemplateDraft } from './cms-template-designer-submit';
-import { useCmsTemplateRateWait } from './cms-template-rate-wait';
-import { focusCmsTemplateResult } from './cms-template-result-focus';
+import CmsTemplateStatus, { templateKeyError } from './CmsTemplateStatus';
+import { useCmsTemplateCreate } from './use-cms-template-create';
 import { useCmsTemplateDraftFields } from './use-cms-template-draft-fields';
 import { useCmsTemplateSentFields } from './use-cms-template-sent-fields';
-import {
-  CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE,
-  useCmsTemplateValidators,
-} from './use-cms-template-validators';
 
 interface Props {
   readonly context: TemplateDesignerContext;
@@ -37,81 +29,21 @@ export default function CmsTemplateDesigner({
 }: Props): React.ReactElement {
   const draft = useCmsTemplateDraftFields(context);
   const sent = useCmsTemplateSentFields();
-  const [status, setStatus] = useState<CmsTemplateFormStatus>({ kind: 'idle' });
-  const summaryRef = useRef<HTMLDivElement>(null);
-  const attemptRef = useRef<{ body: string; key: string } | null>(null);
-  const gate = useCmsTemplateValidators();
-  const rateWait = useCmsTemplateRateWait();
-  const cannotSubmit =
-    context.contentTypes.length === 0 ||
-    csrfToken.length === 0 ||
-    rateWait.waiting;
-
-  useEffect(() => {
-    if (status.kind !== 'idle' && status.kind !== 'pending')
-      focusCmsTemplateResult(summaryRef.current);
-  }, [status]);
+  const create = useCmsTemplateCreate(context, csrfToken);
+  const { status, reconcile } = create;
+  // The block choices the registry offers now: they are replaced after a 409 `block_registry_digest_mismatch`.
+  const offered = create.context;
 
   const submit = async (
     event: React.FormEvent<HTMLFormElement>,
   ): Promise<void> => {
     event.preventDefault();
-    if (
-      cannotSubmit ||
-      gate.isChecking() ||
-      status.kind === 'pending' ||
-      status.kind === 'created'
-    )
-      return;
-    // If the lazily loaded schemas cannot be fetched the draft is unchecked.
-    const validators = await gate.obtain();
-    if (validators === null) {
-      setStatus({
-        kind: 'validation',
-        message: CMS_TEMPLATE_CHECK_UNAVAILABLE_MESSAGE,
-      });
-      return;
-    }
-    const prepared = buildCmsTemplateDraftRequest(
-      validators,
-      draft.fields,
-      context,
-    );
-    if (!prepared.ok) {
-      setStatus({ kind: 'validation', message: prepared.message });
-      return;
-    }
-    const serialized = JSON.stringify(prepared.value);
-    const key =
-      attemptRef.current?.body === serialized
-        ? attemptRef.current.key
-        : crypto.randomUUID();
-    attemptRef.current = { body: serialized, key };
-    sent.remember(draft.fields);
-    setStatus({ kind: 'pending' });
-    const result = await submitCmsTemplateDraft(
-      validators,
-      prepared.value,
-      csrfToken,
-      key,
-    );
-    if (
-      result.kind === 'rejected' &&
-      result.status === 429 &&
-      result.retryAfterSeconds !== undefined
-    )
-      rateWait.start(result.retryAfterSeconds);
-    setStatus(
-      result.kind === 'created'
-        ? { kind: 'created', resource: result.resource }
-        : { kind: 'result', result },
-    );
+    await create.submit(draft.fields, () => sent.remember(draft.fields));
   };
 
   const reset = (): void => {
     draft.reset();
-    attemptRef.current = null;
-    setStatus({ kind: 'idle' });
+    create.reset();
   };
 
   const unsent = sent.unsent(
@@ -132,7 +64,7 @@ export default function CmsTemplateDesigner({
         choices come from the protected registry; the server validates them
         again when you submit.
       </p>
-      {context.contentTypes.length === 0 ? (
+      {offered.contentTypes.length === 0 ? (
         <p role="status">
           No active content types are available to this designer.
         </p>
@@ -140,7 +72,35 @@ export default function CmsTemplateDesigner({
       {csrfToken.length === 0 ? (
         <p role="status">Reload to restore the protected form session.</p>
       ) : null}
-      <CmsTemplateStatus status={status} summaryRef={summaryRef} />
+      <CmsTemplateStatus status={status} summaryRef={create.summaryRef} />
+      <CmsTemplateLatestCheck
+        offered={create.offered}
+        checking={reconcile.state.kind === 'checking'}
+        waiting={reconcile.waiting}
+        error={reconcile.state.kind === 'failed' ? reconcile.state.message : ''}
+        rateLimited={
+          reconcile.state.kind === 'failed' && reconcile.state.rateLimited
+        }
+        onCheck={create.check}
+      />
+      <CmsRegistryChangeNotice
+        state={create.registry.state}
+        waiting={create.registry.waiting}
+        onRead={create.registry.check}
+      />
+      {reconcile.state.kind === 'absent' ? (
+        <p role="status">
+          No draft with this key exists, so nothing was saved. Saving again is
+          safe: a retry of these unchanged values reuses the same idempotency
+          key.
+        </p>
+      ) : null}
+      {reconcile.state.kind === 'existing' ? (
+        <CmsTemplateExistingVersion
+          latest={reconcile.state.latest}
+          unsentValues={draft.fields}
+        />
+      ) : null}
       <form
         onSubmit={(event) => void submit(event)}
         onFocus={warmCmsValidators}
@@ -150,7 +110,7 @@ export default function CmsTemplateDesigner({
         <fieldset disabled={status.kind === 'created'}>
           <legend>Template definition</legend>
           <CmsTemplateFields
-            contentTypes={context.contentTypes}
+            contentTypes={offered.contentTypes}
             templateKey={draft.templateKey}
             keyError={templateKeyError(status)}
             setTemplateKey={draft.setTemplateKey}
@@ -164,7 +124,7 @@ export default function CmsTemplateDesigner({
             setExtraRegions={draft.setExtraRegions}
           />
           <CmsTemplateSlots
-            registeredBlocks={context.registeredBlocks}
+            registeredBlocks={offered.registeredBlocks}
             slots={draft.slots}
             setSlots={draft.setSlots}
           />
@@ -178,7 +138,9 @@ export default function CmsTemplateDesigner({
           </p>
           <button
             type="submit"
-            disabled={cannotSubmit || status.kind === 'pending'}
+            disabled={
+              create.cannotSubmit || create.held || status.kind === 'pending'
+            }
           >
             Create draft
           </button>

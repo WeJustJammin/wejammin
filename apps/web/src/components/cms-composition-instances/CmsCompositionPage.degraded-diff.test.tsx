@@ -19,6 +19,7 @@ import {
   settle,
 } from './composition-page.test-support';
 import { diffOf, id, propsPath, row } from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /*
  * FE03 1042 and 1048 (Slice 12 `diffState`, degraded: "The diff is never kept: it is re-required"; P2-S12-AC-117): when the
@@ -76,6 +77,7 @@ describe('a diff whose later read is degraded', () => {
       ).toHaveLength(3);
       expect(page.container.querySelector('.cms-diff')).not.toBeNull();
       expect(radio(page.container).checked).toBe(false);
+      expectListRefetches(page, 1);
       noStrayRequests(page.unexpected);
     },
   );

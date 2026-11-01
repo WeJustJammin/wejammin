@@ -95,7 +95,7 @@ test('CMS-11 keeps a stale tab’s unsent values through a real-route conflict a
     stalePage.getByRole('textbox', { name: 'Audience' }),
   ).toHaveValue('collaborators');
 
-  await stalePage.getByRole('button', { name: 'Check latest version' }).click();
+  // FE03 409 cell (DEC-242): the latest version is read automatically, beside the kept values.
   await expect(
     stalePage.getByRole('heading', { name: 'Latest version 2' }),
   ).toBeVisible();

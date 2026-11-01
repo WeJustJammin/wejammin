@@ -67,6 +67,33 @@ describe('classifyGovernedRefusal', () => {
     );
   });
 
+  it('[P2-S12-AC-271] gives an ineligible reviewer the one uniform copy at the reviewer field and a refetch (FE03 884, DEC-242)', () => {
+    const classified = classifyGovernedRefusal(
+      'CMS-03C-08',
+      refusal({
+        reason: 'reviewer_not_eligible',
+        governed: { reason: 'reviewer_not_eligible', domain: null },
+      }),
+    );
+    expect(classified).toMatchObject({
+      kind: 'field',
+      fields: ['reviewerPersonId'],
+      rotateKey: true,
+      refetch: true,
+      message: 'That person cannot be assigned to this review.',
+    });
+    // Only the assignment command carries the token; the decision and submission defer to the shared table.
+    expect(
+      classifyGovernedRefusal(
+        'CMS-03C-07',
+        refusal({
+          reason: 'reviewer_not_eligible',
+          governed: { reason: 'reviewer_not_eligible', domain: null },
+        }),
+      ),
+    ).toBeNull();
+  });
+
   it('defers every other refusal to the shared fixed-copy table', () => {
     for (const operation of ['CMS-03C-06', 'CMS-03C-07', 'CMS-03C-08'] as const)
       expect(

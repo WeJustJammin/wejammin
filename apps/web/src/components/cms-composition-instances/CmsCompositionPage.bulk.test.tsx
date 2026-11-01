@@ -20,12 +20,14 @@ import {
   settle,
 } from './composition-page.test-support';
 import {
+  ENTRY_ID,
   diffOf,
   id,
   plainPath,
   propsPath,
   row,
 } from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /*
  * FE03 887, 1115; DEC-181; P2-S12-AC-123: bulk acceptance only when no selected instance collides, never more than 32
@@ -121,19 +123,30 @@ describe('bulk accept', () => {
     ).toHaveLength(count);
     expect(page.container.textContent).toContain('0 selected');
     noStrayRequests(page.unexpected);
+    expectListRefetches(page, 1);
   });
 
-  it('stops at a failed request, says how many were applied and leaves the rest selected', async () => {
+  it('[P2-S12-AC-271] commandState error (test correction, FE03 1049): stops at a 409 request, says how many were applied, refetches the entry, the list and the unapplied diffs, and leaves the rest selected', async () => {
+    const reread = Object.fromEntries(
+      Array.from({ length: 8 }, (_, i) => [
+        diffPath(id(33 + i)),
+        [
+          json(diffOf(33 + i, [plainPath()]), 200, '"3"'),
+          json(diffOf(33 + i, [plainPath()]), 200, '"3"'),
+        ],
+      ]),
+    );
     const page = mountPage(
       {
         ...cleanDiffs(40),
+        ...reread,
         [UPDATE]: [
           appended(1, 32, '10'),
           refusal(409, 'COMPOSITION_VERSION_CONFLICT', {
             reasonCode: 'diff_has_collisions',
           }),
         ],
-        [ENTRY]: [entryDetail('10')],
+        [ENTRY]: [entryDetail('10'), entryDetail('11')],
       },
       { instances: rowsOf(40) },
     );
@@ -154,6 +167,16 @@ describe('bulk accept', () => {
     expect(page.container.querySelector('.cms-diff')?.textContent).toContain(
       '8 updates selected.',
     );
+    // The 409 read the entry again after the one between the requests, the list once, and the 8 unapplied diffs again.
+    expect(
+      page.calls.filter(
+        (call) => call.path === `/api/v1/cms/entries/${ENTRY_ID}`,
+      ),
+    ).toHaveLength(2);
+    expect(page.lists).toHaveLength(1);
+    expect(
+      page.calls.filter((call) => call.path.endsWith('/update-diff')),
+    ).toHaveLength(48);
   });
 
   it('refuses bulk acceptance when any selected instance collides and names it', async () => {
@@ -233,5 +256,6 @@ describe('bulk detach', () => {
         ?.textContent,
     ).toBe('Blocks detached');
     noStrayRequests(page.unexpected);
+    expectListRefetches(page, 1);
   });
 });

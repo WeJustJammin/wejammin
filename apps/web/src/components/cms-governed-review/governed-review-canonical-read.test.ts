@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 
 import {
   REVIEW_ID,
@@ -152,5 +152,30 @@ describe('readCanonicalGovernedReview', () => {
     expect(result.kind === 'degraded' && result.requestId).toBe(
       '0195b6f0-0000-7000-8000-000000000001',
     );
+  });
+});
+
+describe('readCanonicalGovernedReview deadline (DEC-246 ruling 1)', () => {
+  afterEach(() => vi.useRealTimers());
+
+  it('answers degraded at the shared 8,000 ms deadline when the read never answers, and aborts the fetch', async () => {
+    vi.useFakeTimers();
+    const signals: AbortSignal[] = [];
+    const fetcher = vi.fn((_url: string, init?: RequestInit) => {
+      signals.push(init?.signal as AbortSignal);
+      return new Promise<Response>(() => undefined);
+    });
+    const answer = readCanonicalGovernedReview(
+      REVIEW_ID,
+      fetcher as unknown as typeof fetch,
+    );
+    let settled: unknown = null;
+    void answer.then((value) => (settled = value));
+    await vi.advanceTimersByTimeAsync(7_999);
+    expect(settled).toBeNull();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(settled).toEqual({ kind: 'degraded', requestId: null });
+    expect(signals[0]?.aborted).toBe(true);
+    expect(vi.getTimerCount()).toBe(0);
   });
 });

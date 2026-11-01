@@ -47,7 +47,7 @@ export const PATTERN_ISSUE_COPY: Readonly<Record<DesignerIssueCode, string>> = {
   props_not_object: 'Props must be a JSON object, for example {}.',
   block_required: 'Choose a registered block.',
   block_unavailable:
-    'This block is no longer registered. Reload to refresh the block choices.',
+    'This block is no longer registered. Choose another block.',
   pattern_key_invalid:
     'Use 2 to 64 lowercase letters, digits or hyphens, starting with a letter.',
   key_reserved:

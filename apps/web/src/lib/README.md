@@ -40,6 +40,15 @@ do not own API policy, persistence, or provider credentials.
   `withCmsValidators(use, unavailable)` (form handlers), and a control receiving
   focus calls `warmCmsValidators`. A cold route load fetches none of it.
 
+- `read-deadline.ts` — `startReadDeadline(signal?, ms?)`: the 8,000 ms deadline of a protected
+  browser read (`BROWSER_READ_DEADLINE_MS`). Pass its `signal` to the fetch, `clear()` it in a
+  `finally`; `expired()` tells a timeout (show the failed state) from a caller abort (show nothing).
+  Every CMS browser read uses it; do not declare a local deadline constant.
+  `read-within-deadline.ts` — `withinDeadline(deadline, work)` races a fetch or body read against that
+  deadline, so a fetcher that ignores its signal still cannot hold the read open (`read-within-deadline.test.ts`).
+  `run-read-under-deadline.ts` — `runReadUnderDeadline(run, onEnd, parent?)`: the two together, the wrapper a read uses
+  to end: its answer, or `onEnd` at the deadline, on a caller abort or on a throw.
+
 - `safe-read-retry.ts` — the FE03 :1172-1173 network contract of a safe protected read.
   `retryingSafeRead`: a 502, 503 or 504 whose ApiError declares `details.retryable` is retried
   twice, after 250 ms and 750 ms, and the last answer is returned for the caller's degraded

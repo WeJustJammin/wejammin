@@ -1,0 +1,489 @@
+{
+ "lane": "claude_s12_db9a",
+ "tap": "db9a-race9-final-run.tap",
+ "tapSha256": "8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174",
+ "stamp": "run14",
+ "proposals": [
+  {
+   "criterion": "P2-S12-AC-294",
+   "clauses": [
+    {
+     "index": 1,
+     "text": "Deterministic concurrent tests prove authority/visibility and exact schema/default are rechecked after waits, with no invisible/foreign definition lock lever or late position-2 acquisition.",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+       "title": "a create naming T2 is observed blocked BY the real authority revocation in flight [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql:155 - a create naming T2 is observed blocked BY the real authority revocation in flight. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 155
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+       "title": "the lock the create waits on is the revoked grant itself: its row lock, read from pg_locks, is the tuple of identity_private.organization_actor_grant at the caller's cms.editor projection row, the authority row every write path share-locks at position 1 [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql:157 - the lock the create waits on is the revoked grant itself: its row lock, read from pg_locks, is the tuple of identity_private.organization_actor_grant at the caller's cms.editor projection row, the authority row every write path share-locks at position 1. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 157
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+       "title": "while it waits behind the real revocation the create holds no later position: not the relation target entry row (2), the default template (3) or the content type version (4) [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql:159 - while it waits behind the real revocation the create holds no later position: not the relation target entry row (2), the default template (3) or the content type version (4). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 159
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+       "title": "after the real revocation commits, the create whose own capability is cms.author answers the uniform VALIDATION_FAILED at /fields/{relation field} [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql:161 - after the real revocation commits, the create whose own capability is cms.author answers the uniform VALIDATION_FAILED at /fields/{relation field}. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 161
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+       "title": "the real revocation committed the grant end and the same-transaction assignment revocation (DEC-143): the caller keeps cms.author and the target is invisible [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql:163 - the real revocation committed the grant end and the same-transaction assignment revocation (DEC-143): the caller keeps cms.author and the target is invisible. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 163
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql",
+       "title": "the create refused after the real revocation wrote no entry and left no Idempotency-Key record [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_entry_unassigned.sql:165 - the create refused after the real revocation wrote no entry and left no Idempotency-Key record. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 165
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+       "title": "a caller of organization B sending the real create (CMS-03B-10) with organization A's contentTypeId and contentTypeVersionId is the concealed NOT_FOUND while A's session holds those rows FOR UPDATE [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql:113 - a caller of organization B sending the real create (CMS-03B-10) with organization A's contentTypeId and contentTypeVersionId is the concealed NOT_FOUND while A's session holds those rows FOR UPDATE. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 113
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+       "title": "the create naming A's existing content type and version and the create naming an absent pair answer the identical outcome, message and DETAIL: no existence oracle [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql:115 - the create naming A's existing content type and version and the create naming an absent pair answer the identical outcome, message and DETAIL: no existence oracle. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 115
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+       "title": "the create completed in under 0.9 s, inside its 1 s lock_timeout, and A's holder still owned the content type row, its versions and the template AFTER the call (probed): B requested no lock on them [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql:118 - the create completed in under 0.9 s, inside its 1 s lock_timeout, and A's holder still owned the content type row, its versions and the template AFTER the call (probed): B requested no lock on them. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 118
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+       "title": "the default template lock helper called for organization B returns at once (under 0.9 s inside a 1 s lock_timeout) while A's holder owns template T1 FOR UPDATE and still does afterwards: the owner predicate sits in the locking statement [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql:134 - the default template lock helper called for organization B returns at once (under 0.9 s inside a 1 s lock_timeout) while A's holder owns template T1 FOR UPDATE and still does afterwards: the owner predicate sits in the locking statement. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 134
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+       "title": "control: the same helper called for the owner of T1 is observed blocked BY the holder of T1 (pg_blocking_pids) [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql:136 - control: the same helper called for the owner of T1 is observed blocked BY the holder of T1 (pg_blocking_pids). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 136
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql",
+       "title": "control: organization A's own create of the bound content type is observed blocked BY the same holder (the probe sees a wait on these rows when one is requested) [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_definition_lever.sql:138 - control: organization A's own create of the bound content type is observed blocked BY the same holder (the probe sees a wait on these rows when one is requested). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 138
+      }
+     ],
+     "staleExisting": [],
+     "gap": "U1 (real CMS-03A-17) is filed under part \"authority/\" and U2 is NOT cited (DEC-248). Part \"with no invisible/foreign definition lock lever\" is judged on CMS-03B-10 itself: the create naming another owner's contentTypeId + contentTypeVersionId (concealed NOT_FOUND identical to an absent pair, completed in under 0.9 s inside a 1 s lock_timeout, holder probed still open afterwards, owner's create blocked by the same holder) and the default template lock helper at unit level (a create cannot name a template). Still open: part \"visibility\" (archived: no writer; unassigned: not reachable through a production revoker) and a SUPERSEDED default accepted after a wait."
+    }
+   ],
+   "proposedStatus": "partial",
+   "proposedLimitation": "Archived target between check and use: no archive writer exists (BE03b rule 2; DEC-245(6)). Unassigned: the production revoker holds position 1, so the position-2 recheck is unreachable through it (U1 cited under authority/; U2 has no production writer and is not cited). A default template superseded under a waiting create is not exercised."
+  },
+  {
+   "criterion": "P2-S12-AC-277",
+   "clauses": [
+    {
+     "index": 2,
+     "part": "related target unpublish,",
+     "text": "locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "once the unpublish has committed the public projection no longer lists the target [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:95 - once the unpublish has committed the public projection no longer lists the target. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 95
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "the production unpublisher holds the target entry row FOR SHARE (FOR UPDATE NOWAIT is refused, FOR SHARE NOWAIT is granted), exactly the lock the curation takes at position 2 [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:154 - the production unpublisher holds the target entry row FOR SHARE (FOR UPDATE NOWAIT is refused, FOR SHARE NOWAIT is granted), exactly the lock the curation takes at position 2. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 154
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "the real curation pinning the target completes WITHOUT waiting for the unpublish in flight (under a 1 s lock_timeout, while the unpublisher is still open) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:156 - the real curation pinning the target completes WITHOUT waiting for the unpublish in flight (under a 1 s lock_timeout, while the unpublisher is still open). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 156
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "the pin of the target is committed while its unpublish is still uncommitted [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:157 - the pin of the target is committed while its unpublish is still uncommitted. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 157
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "while the unpublish is uncommitted the public projection still lists the published target, pinned first [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:159 - while the unpublish is uncommitted the public projection still lists the published target, pinned first. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 159
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "the schedule is still executing (the executor's transaction owns its schedule row update) while the curation commits [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:160 - the schedule is still executing (the executor's transaction owns its schedule row update) while the curation commits. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 160
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "the scheduled unpublish commits as a revoked tombstone after the active publish [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:161 - the scheduled unpublish commits as a revoked tombstone after the active publish. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 161
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "the schedule is completed and the unpublished target stays pinned in the stored rule set (history is private, not removed) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:163 - the schedule is completed and the unpublished target stays pinned in the stored rule set (history is private, not removed). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 163
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "once the scheduled unpublish has committed the public projection no longer lists the target (it still projects the source's other eligible targets) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:165 - once the scheduled unpublish has committed the public projection no longer lists the target (it still projects the source's other eligible targets). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 165
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "the real execute command unpublishing the pinned target completes WITHOUT waiting for the curation in flight (under a 1 s lock_timeout, while the curation is still open) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:171 - the real execute command unpublishing the pinned target completes WITHOUT waiting for the curation in flight (under a 1 s lock_timeout, while the curation is still open). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 171
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "the unpublish is committed while the curation is not: no pin is visible yet [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:173 - the unpublish is committed while the curation is not: no pin is visible yet. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 173
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "once the curation commits the unpublished target is pinned (a target unpublished before the curation commits is still a valid pin) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:174 - once the curation commits the unpublished target is pinned (a target unpublished before the curation commits is still a valid pin). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 174
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "whichever command committed last, the public projection does not list the unpublished target [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:176 - whichever command committed last, the public projection does not list the unpublished target. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 176
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "control: the curation and the scheduled unpublish are each observed blocked BY a holder of the target entry row FOR UPDATE, so the no-wait outcomes above are real [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:181 - control: the curation and the scheduled unpublish are each observed blocked BY a holder of the target entry row FOR UPDATE, so the no-wait outcomes above are real. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 181
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "control: both wait for the holder's transaction on a row lock [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:183 - control: both wait for the holder's transaction on a row lock. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 183
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "while both wait nothing has been written: no pin, and the lineage head is the active publish [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:185 - while both wait nothing has been written: no pin, and the lineage head is the active publish. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 185
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "once the holder releases, both commit: the curation pins the target and the execute completes the unpublish [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:187 - once the holder releases, both commit: the curation pins the target and the execute completes the unpublish. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 187
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql",
+       "title": "the end state is the same in every order: unpublish tombstone, schedule completed, pin stored, target absent from the public projection [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race9_related_unpublish.sql:190 - the end state is the same in every order: unpublish tombstone, schedule completed, pin stored, target absent from the public projection. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 190
+      }
+     ],
+     "staleExisting": [],
+     "gap": null
+    }
+   ],
+   "proposedStatus": "partial",
+   "proposedLimitation": "unchanged for the other parts (linked pattern update versus local override, duplicate and out-of-order events, restore-epoch fencing)"
+  },
+  {
+   "criterion": "P2-S12-AC-108",
+   "clauses": [
+    {
+     "index": 3,
+     "text": "or other-owner version is never listed",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "BOUNDARY fact: the first owner's real governed submit refuses a pattern version that names the second organization's content type (cms_pattern_blocks_compatible fails closed on a type outside the owner scope) [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:124 - BOUNDARY fact: the first owner's real governed submit refuses a pattern version that names the second organization's content type (cms_pattern_blocks_compatible fails closed on a type outside the owner scope). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 124
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "control: the owner lists the clone through the selector, next to its real pattern [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:169 - control: the owner lists the clone through the selector, next to its real pattern. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 169
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "the second organization's author lists NOTHING for its own type although the first owner's ACTIVE clone names that very type: only the owner predicate excludes it (selector) [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:173 - the second organization's author lists NOTHING for its own type although the first owner's ACTIVE clone names that very type: only the owner predicate excludes it (selector). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 173
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "scratch copy of the selector: the owner predicate of the page query is removed and nothing else (the water-mark query keeps its own) [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:198 - scratch copy of the selector: the owner predicate of the page query is removed and nothing else (the water-mark query keeps its own). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 198
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "the scratch selector accepts the second organization's request (a refusal would make the next row meaningless) [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:216 - the scratch selector accepts the second organization's request (a refusal would make the next row meaningless). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 216
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "NEGATIVE ARM FAILS WITHOUT THE OWNER PREDICATE: the scratch selector lists the first owner's clone to the second organization for its own type [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:218 - NEGATIVE ARM FAILS WITHOUT THE OWNER PREDICATE: the scratch selector lists the first owner's clone to the second organization for its own type. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 218
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "control: the scratch copies answer the owner exactly as the installed readers do, so the only difference is the removed predicate [P2-S12-AC-108]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:223 - control: the scratch copies answer the owner exactly as the installed readers do, so the only difference is the removed predicate. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 223
+      }
+     ],
+     "staleExisting": [],
+     "gap": "CAUTION for the verdict: the matched pair's foreign row is ACTIVE through the guarded lifecycle seam under a labelled forgery, because the first owner's REAL governed chain refuses a foreign type id at submit (20261014100000:36-38 over 20261014090200). The sensitivity (the scratch selector without the owner predicate lists the row to the second organization) and the owner control are real; the row's activation path is not the producer path."
+    }
+   ],
+   "proposedStatus": "partial",
+   "proposedLimitation": "The foreign row of the matched pair is activated by the guarded lifecycle seam, not the real chain (the chain refuses the foreign type id)."
+  },
+  {
+   "criterion": "P2-S12-AC-190",
+   "clauses": [
+    {
+     "index": 2,
+     "text": "selectors)",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "control: the owner lists the clone through the nestable read [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:171 - control: the owner lists the clone through the nestable read. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 171
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "the second organization's template designer lists NOTHING for its own type although the first owner's ACTIVE clone names that very type (nestable read) [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:175 - the second organization's template designer lists NOTHING for its own type although the first owner's ACTIVE clone names that very type (nestable read). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 175
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "independent oracle: the active clone compatible with the second organization's type exists in the store and none of the first owner's ids is in either page of the second organization [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:179 - independent oracle: the active clone compatible with the second organization's type exists in the store and none of the first owner's ids is in either page of the second organization. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 179
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "scratch copy of the nestable read: the owner predicate of the page query is removed and nothing else [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:199 - scratch copy of the nestable read: the owner predicate of the page query is removed and nothing else. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 199
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql",
+       "title": "NEGATIVE ARM FAILS WITHOUT THE OWNER PREDICATE: the scratch nestable read lists the first owner's clone to the second organization for its own type [P2-S12-AC-190]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_gaps_db9c_selector_owner_pair.sql:220 - NEGATIVE ARM FAILS WITHOUT THE OWNER PREDICATE: the scratch nestable read lists the first owner's clone to the second organization for its own type. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db9a-race9-final-run.tap SHA-256 8ea21b1a5f881ee020a9c5772839cf37de33fc1ebc4fb3b526b9c70bc6a64174; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 220
+      }
+     ],
+     "staleExisting": [],
+     "gap": "Pattern half only (nestable read and, through AC-108 rows, the selector); the taxonomy half is db9b's. Same caution as AC-108: the foreign row's activation is the guarded lifecycle seam."
+    }
+   ],
+   "proposedStatus": "partial",
+   "proposedLimitation": "as AC-108 for the pattern branch"
+  }
+ ]
+}

@@ -4,10 +4,11 @@ import {
   versionIdentityValid,
   isNewerThanBase,
 } from './taxonomy-version-identity';
-import {
+import { readTaxonomyVersionsOnDemand } from './taxonomy-versions-on-demand';
+import type {
   readTaxonomyVersions,
-  type TaxonomyVersionFacts,
-  type TaxonomyVersionsResult,
+  TaxonomyVersionFacts,
+  TaxonomyVersionsResult,
 } from './taxonomy-versions-read';
 
 export type TaxonomyConflictState =
@@ -47,7 +48,7 @@ export const conflictFailure = (result: TaxonomyVersionsResult): string =>
 export const useTaxonomyConflict = (
   taxonomyId: string | null,
   base: TaxonomyBaseIdentity | null,
-  readVersions: typeof readTaxonomyVersions = readTaxonomyVersions,
+  readVersions: typeof readTaxonomyVersions = readTaxonomyVersionsOnDemand,
 ) => {
   const [state, setState] = useState<TaxonomyConflictState>({ kind: 'none' });
   // FE03 1048: the last verified latest version is kept while a re-read runs or fails.

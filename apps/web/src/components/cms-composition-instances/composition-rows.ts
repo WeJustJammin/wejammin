@@ -80,3 +80,37 @@ export const chunk = <T>(items: readonly T[], size: number): T[][] => {
     chunks.push(items.slice(start, start + size));
   return chunks;
 };
+
+/**
+ * The rows of a refetched list with the `retired` rows the island still holds. `cmsCompositionInstancesRead` lists only
+ * the newest `draft`, `active` or `pending_diff` row of each path (DEC-206), so a block an accept removed ("Removed from
+ * the entry") is absent from it, yet DEC-193 lets the author still detach it. Such a row keeps the place after the row
+ * that preceded it, unless the read now lists that path. Only a row of the draft revision the read answered
+ * (`revisionId`) is kept: a retired row of an earlier revision is not part of this draft, and its id would send a
+ * detach of the wrong revision (review V20 m3, DEC-246 ruling 2).
+ */
+export const keepRetired = (
+  listed: readonly InstanceRow[],
+  held: readonly InstanceRow[],
+  revisionId: string,
+): InstanceRow[] => {
+  const paths = new Set(listed.map((row) => row.path));
+  const result = [...listed];
+  held.forEach((row, index) => {
+    if (
+      row.state !== 'retired' ||
+      row.revisionId !== revisionId ||
+      paths.has(row.path)
+    )
+      return;
+    const before = held
+      .slice(0, index)
+      .reverse()
+      .map((previous) =>
+        result.findIndex((entry) => entry.path === previous.path),
+      )
+      .find((place) => place >= 0);
+    result.splice(before === undefined ? 0 : before + 1, 0, row);
+  });
+  return result;
+};

@@ -6,11 +6,15 @@ import { EXCLUSIONS_HEADING_ID } from './CmsRelatedExclusionList';
 import { PINS_HEADING_ID } from './CmsRelatedPinList';
 import type { RequestIssueTarget } from './related-content-request';
 import { RELATED_RULES, ruleByKey, type RelatedRuleKey } from './related-rules';
-import { failureCopy, failureHeading } from './related-status-copy';
 import {
-  RELATED_RESULT_HEADING_ID,
-  type RelatedStatus,
-} from './use-related-content-form';
+  failureCopy,
+  failureHeading,
+  NOT_RECORDED_COPY,
+  NOT_RECORDED_HEADING,
+  RECONCILING_LABEL,
+} from './related-status-copy';
+import type { RelatedStatus } from './related-content-types';
+import { RELATED_RESULT_HEADING_ID } from './use-related-content-form';
 
 const LINK_TARGET: Readonly<Record<RequestIssueTarget, string>> = {
   pins: PINS_HEADING_ID,
@@ -45,13 +49,22 @@ export default function CmsRelatedStatus({
   returnTo,
 }: Props): React.ReactElement | null {
   if (status.kind === 'idle') return null;
+  if (status.kind === 'reconciling')
+    return (
+      <div className="cms-related-status" role="status">
+        {RECONCILING_LABEL}
+      </div>
+    );
   if (status.kind === 'pending')
     return (
       <div className="cms-related-status" role="status">
         Saving related content…
       </div>
     );
-  const alert = status.kind === 'invalid' || status.kind === 'result';
+  const alert =
+    status.kind === 'invalid' ||
+    status.kind === 'result' ||
+    status.kind === 'not_recorded';
   return (
     <div className="cms-related-status" role={alert ? 'alert' : 'status'}>
       {status.kind === 'invalid' ? (
@@ -83,6 +96,14 @@ export default function CmsRelatedStatus({
               </li>
             ))}
           </ul>
+        </>
+      ) : null}
+      {status.kind === 'not_recorded' ? (
+        <>
+          <h2 id={RELATED_RESULT_HEADING_ID} tabIndex={-1}>
+            {NOT_RECORDED_HEADING}
+          </h2>
+          <p>{NOT_RECORDED_COPY}</p>
         </>
       ) : null}
       {status.kind === 'saved' ? (

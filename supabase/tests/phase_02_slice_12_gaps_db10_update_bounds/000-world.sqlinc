@@ -1,0 +1,42 @@
+-- Lane claude_s12_db10 sweep world.  Include after phase_02_slice_12_gaps_db9b_legacy_forest/000-world.sqlinc (p1..p9, roots32, l-deep, l-wide, src-valid).
+-- Two linked instances pinned to an in-bound version whose NEWEST ACTIVE successor is an over-bound legacy forest (built with db9b's d9l_draft, activated by the
+-- real governed chain, which supersedes the version the instance is pinned to), and live pins on the legacy forests themselves for the read-side expanders.
+
+-- upd-deep: v1 hero; v2 (legacy) pins p9 once, so it reaches p1 nine levels below it.   upd-wide: v1 hero; v2 (legacy) pins roots32 seventeen times (544 roots).
+select * from pg_temp.s12pl_pattern('ud1', 'd10-ud', jsonb_build_array(pg_temp.s12pd_block('hero')));
+select * from pg_temp.s12pu_place('upd-deep', 'ud1');
+select pg_temp.d9l_draft('ud2', 'd10-ud', pg_temp.s12pl_refs('p9', 1, 'n'), extensions.gen_random_uuid(),
+  (pg_temp.s12pd_body('ud1')->>'patternId')::uuid, 2, (pg_temp.s12pd_body('ud1')->>'id')::uuid);
+select * from pg_temp.s12pl_activate('ud2');
+select * from pg_temp.s12pl_pattern('uw1', 'd10-uw', jsonb_build_array(pg_temp.s12pd_block('hero')));
+select * from pg_temp.s12pu_place('upd-wide', 'uw1');
+select pg_temp.d9l_draft('uw2', 'd10-uw', pg_temp.s12pl_refs('roots32', 17, 'w'), extensions.gen_random_uuid(),
+  (pg_temp.s12pd_body('uw1')->>'patternId')::uuid, 2, (pg_temp.s12pd_body('uw1')->>'id')::uuid);
+select * from pg_temp.s12pl_activate('uw2');
+
+-- live pins on the legacy forests, ACTIVE rows (the restore reads active heads), plus an in-bound control of the same shape
+select pg_temp.s12pl_entry('rst-ctrl');
+select * from pg_temp.s12pc_seed('rst-ctrl', 'rst-ctrl', pg_temp.s12pu_head('src-valid', '/hero'), jsonb_build_object('state', 'active'));
+select pg_temp.s12pl_entry('rst-deep');
+select * from pg_temp.s12pc_seed('rst-deep', 'rst-deep', pg_temp.s12pu_head('src-valid', '/hero'),
+  jsonb_build_object('state', 'active', 'pattern_id', pg_temp.s12pd_body('l-deep')->'patternId', 'pattern_version', 1, 'path', '/' || repeat('n1/', 9) || 'hero'));
+select pg_temp.s12pl_entry('rst-wide');
+select * from pg_temp.s12pc_seed('rst-wide', 'rst-wide', pg_temp.s12pu_head('src-valid', '/hero'),
+  jsonb_build_object('state', 'active', 'pattern_id', pg_temp.s12pd_body('l-wide')->'patternId', 'pattern_version', 1, 'path', '/w1/root1'));
+
+-- run a private read and return 'ok' or 'SQLSTATE:message#DETAIL'
+create or replace function pg_temp.d10_try(p_sql text) returns text language plpgsql as $body$
+declare code text; msg text; det text; prior_rpc text := coalesce(current_setting('app.cms_rpc', true), '');
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  begin
+    execute p_sql;
+    perform set_config('app.cms_rpc', prior_rpc, true);
+    return 'ok';
+  exception when others then
+    get stacked diagnostics code = returned_sqlstate, msg = message_text, det = pg_exception_detail;
+    perform set_config('app.cms_rpc', prior_rpc, true);
+    return code || ':' || msg || coalesce('#' || nullif(det, ''), '');
+  end;
+end;
+$body$;

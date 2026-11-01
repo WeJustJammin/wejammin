@@ -65,7 +65,7 @@ come from the Worker through the first-party proxies in
   repeats the member's rule without zod (a positive integer or null, null unless the
   action is `activate`); `governed-activation-contract-drift.test.ts` proves it
   agrees with the generated schema.
-- Views: `CmsGovernedReviewQueue` (server-rendered), `CmsGovernedReviewDetail`. The
+- Views: `CmsGovernedReviewQueue` (server-rendered), `CmsGovernedReviewDetail` (with `CmsGovernedDecisionList`). The
   detail shows the review's most recent scheduled activation (DEC-191
   `activationSchedule`) as one line under the status: its state and, for a blocked
   or cancelled one, the fixed sentence of its closed `reasonCode` (FE03 :1118). The
@@ -120,8 +120,11 @@ lives in a component.
 A degraded review detail is never kept (FE03 1050): `CmsGovernedReviewDegraded` shows only that the review is not
 shown and when it was last verified, the stale assignment list is not shown, and the review stays hidden with every
 commit control disabled until a read VERIFIES, including while a re-read is in flight (the island derives `unverified`
-during render). A non-429 degrade offers "Read the review again"; a 429 offers none, because Retry-After governs and
-the automatic read follows it. A verified success clears the form's draft (decision, assignment, activation; activation
+during render). A non-429 degrade offers "Read the review again", which stays mounted (`aria-disabled`, same label) while the read runs so
+keyboard focus survives; a verified read the person started moves focus to the summary heading and announces "The review
+was read again." (`use-governed-reread.ts`). A 429 offers none, because Retry-After governs and the automatic read
+follows it and moves no focus. `reviewer_not_eligible` keeps its one uniform sentence at the reviewer field and, like every
+409 reason, refetches the review (`governed-review-refusal.ts`, DEC-242). A verified success clears the form's draft (decision, assignment, activation; activation
 only after the summary heading took focus), but only the fields that still hold what was sent: a value typed while the
 command ran is kept (`use-governed-sent-draft.ts`). The queue's degraded cell is settled by DEC-242: a closed notice
 with Retry, nothing from an earlier read (FE03 1050 amended).
@@ -130,6 +133,12 @@ No person, actor, party or lineage identifier in text, URL, storage or logs; the
 chosen reviewer id is island-local and is discarded on a step-up navigation. A
 scheduled version reads "Scheduled, not active". A decision reason, the policy basis
 and every assignment identifier are server-derived and never enter a URL or cache.
+
+The canonical review read (`governed-review-canonical-read.ts`) ends at the shared 8,000 ms browser deadline and answers
+`degraded`. A 200 queue page that is not the strict page is a degraded read like any other: the closed notice offers Retry at
+the same list position (`load-governed-queue-page.ts`). `CmsGovernedReview.closing-words.test.tsx` pins "no-store and
+never optimistic" for the submit command and the review read; `governed-review-page-mounts.test.tsx` drives the chain each
+template and pattern page runs and mounts the panel it renders (P2-S12-AC-069).
 
 ## Related links
 

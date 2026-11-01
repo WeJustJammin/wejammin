@@ -37,6 +37,7 @@ import {
   submitStub,
   versionFacts,
 } from './cms-taxonomy-designer/taxonomy-designer.test-support';
+import { taxonomyVersionsImporters } from './cms-taxonomy-designer/taxonomy-versions-on-demand';
 import { taxonomySubmitImporters } from './cms-taxonomy-designer/use-taxonomy-designer';
 import CmsTaxonomyTermForm from './cms-taxonomy-terms/CmsTaxonomyTermForm';
 import {
@@ -77,6 +78,7 @@ const real = {
   term: { ...termSubmitImporters },
   termAction: { ...termActionImporters },
   locale: { ...localeSubmitImporters },
+  versions: { ...taxonomyVersionsImporters },
 };
 const asked: string[] = [];
 const wrap = <T extends Record<string, () => Promise<unknown>>>(
@@ -100,6 +102,7 @@ beforeEach(() => {
   wrap('term', termSubmitImporters, real.term);
   wrap('termAction', termActionImporters, real.termAction);
   wrap('locale', localeSubmitImporters, real.locale);
+  wrap('versions', taxonomyVersionsImporters, real.versions);
   vi.stubGlobal(
     'fetch',
     vi.fn(async () => new Response('{}', { status: 500 })),
@@ -110,6 +113,7 @@ afterEach(() => {
   Object.assign(termSubmitImporters, real.term);
   Object.assign(termActionImporters, real.termAction);
   Object.assign(localeSubmitImporters, real.locale);
+  Object.assign(taxonomyVersionsImporters, real.versions);
   vi.unstubAllGlobals();
 });
 
@@ -158,6 +162,26 @@ describe('the vocabulary designer', () => {
     expect(asked).not.toContain('taxonomy.reconcile');
     await click(buttonNamed(unknown.container, 'Save successor draft'));
     await vi.waitFor(() => expect(asked).toContain('taxonomy.reconcile'), {
+      timeout: 15_000,
+    });
+  });
+});
+
+describe('the vocabulary versions read', () => {
+  it('taxonomy-versions-read: not requested by the mount, a scroll or the passing of time; requested when a saved vocabulary version is read back', async () => {
+    const base = versionFacts({
+      version: '2',
+      taxonomyVersion: 2,
+      state: 'active',
+    });
+    const { container } = mountDesigner({
+      latest: base,
+      submit: submitStub({ kind: 'created', resource: createdFacts() }),
+    });
+    await idle();
+    expect(asked).toEqual([]);
+    await click(buttonNamed(container, 'Save successor draft'));
+    await vi.waitFor(() => expect(asked).toContain('versions.read'), {
       timeout: 15_000,
     });
   });
@@ -220,16 +244,19 @@ describe('the translation form', () => {
     });
   });
 
-  it('locale-source-refresh: not requested by the mount or a save that is accepted; requested when a save finds the source changed', async () => {
+  it('locale-source-refresh: not requested by the mount; requested after a save is accepted (it refetches the source, FE03 1048 success) and when a save finds the source changed', async () => {
     const accepted = mountLocale({
       submit: vi.fn(async () => savedResult()),
     });
-    await typeInto(byLabel(accepted.container, 'Title'), 'Un titre');
-    await click(buttonNamed(accepted.container, 'Save translation'));
-    await flush();
     await idle();
     expect(spy.calls.refresh ?? 0).toBe(0);
+    await typeInto(byLabel(accepted.container, 'Title'), 'Un titre');
+    await click(buttonNamed(accepted.container, 'Save translation'));
+    await vi.waitFor(() => expect(spy.calls.refresh).toBe(1), {
+      timeout: 15_000,
+    });
     accepted.container.remove();
+    delete spy.calls.refresh;
     const changed = mountLocale({
       submit: vi.fn(async () => ({
         kind: 'conflict' as const,

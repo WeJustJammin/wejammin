@@ -8,7 +8,7 @@ import {
 import {
   PATTERN_LIFECYCLE_STATES,
   readLatestPatternVersion,
-} from './pattern-latest-read';
+} from './pattern-latest-fetch';
 
 const served = (overrides: Readonly<Record<string, unknown>> = {}) =>
   jsonResponse(200, patternDetailFixture(overrides), { etag: '"1"' });

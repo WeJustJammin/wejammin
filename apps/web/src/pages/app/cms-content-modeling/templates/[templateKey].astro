@@ -1,15 +1,9 @@
 ---
 import { env } from 'cloudflare:workers';
-import {
-  CmsTemplateKeySchema,
-  TemplateDesignerContextSchema,
-  TemplateVersionDetailSchema,
-  type TemplateDesignerContext,
-  type TemplateVersionDetail,
-} from '@wejammin/contracts';
+import { CmsTemplateKeySchema } from '@wejammin/contracts';
 
 import CmsTemplateEditDesigner from '../../../../components/cms-composition/CmsTemplateEditDesigner';
-import { cmsTemplateUnavailableCopy } from '../../../../components/cms-composition/cms-template-unavailable-copy';
+import { templateSuccessorPageOutcome } from '../../../../components/cms-composition/cms-template-page-outcome';
 import CmsGovernedTemplatePanel from '../../../../components/cms-governed-review/CmsGovernedTemplatePanel';
 import { createCmsGovernedPageReads } from '../../../../components/cms-governed-review/governed-review-page-reads';
 import { loadGovernedSubjectReview } from '../../../../components/cms-governed-review/load-governed-subject-review';
@@ -41,37 +35,15 @@ if (templateKey !== null) {
     readCmsTemplateDetail(Astro.request, env.PLATFORM_API, templateKey),
   ]);
 }
-if (selector.status === 401 || latest.status === 401) {
-  const returnTo = encodeURIComponent(
-    `/app/cms-content-modeling/templates/${templateKey}`,
-  );
-  return cmsRedirectResponse(`/auth/sign-in?returnTo=${returnTo}`);
-}
-
-let context: TemplateDesignerContext | null = null;
-let detail: TemplateVersionDetail | null = null;
-if (selector.ok && latest.ok) {
-  try {
-    const [selectorBody, latestBody] = await Promise.all([
-      selector.json(),
-      latest.json(),
-    ]);
-    const parsedContext = TemplateDesignerContextSchema.safeParse(selectorBody);
-    const parsedDetail = TemplateVersionDetailSchema.safeParse(latestBody);
-    if (
-      parsedContext.success &&
-      parsedDetail.success &&
-      parsedDetail.data.templateKey === templateKey &&
-      parsedDetail.data.version === String(parsedDetail.data.templateVersion) &&
-      latest.headers.get('etag') === `"${parsedDetail.data.version}"`
-    ) {
-      context = parsedContext.data;
-      detail = parsedDetail.data;
-    }
-  } catch {
-    // Never render a form from partial or malformed protected projections.
-  }
-}
+// P2-S12-AC-164: no form unless both reads were verified; the decision is tested in cms-template-page-outcome.
+const outcome = await templateSuccessorPageOutcome(
+  templateKey,
+  selector,
+  latest,
+);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
+const context = outcome.kind === 'ready' ? outcome.context : null;
+const detail = outcome.kind === 'ready' ? outcome.detail : null;
 
 // FE03 :877, :1066: the panel shows the version's review summary and links to the review itself.
 const panelReview =
@@ -87,22 +59,14 @@ const panelReview =
         },
       });
 
-const unavailable = detail === null || context === null;
-const failure = latest.ok ? selector : latest;
-if (unavailable) {
-  Astro.response.status = failure.ok ? 502 : failure.status;
-  const retryAfter = failure.headers.get('retry-after');
-  if (
-    (failure.status === 429 ||
-      failure.status === 503 ||
-      failure.status === 504) &&
-    retryAfter !== null &&
-    /^[1-9]\d{0,4}$/u.test(retryAfter)
-  )
-    Astro.response.headers.set('Retry-After', retryAfter);
+const unavailable = outcome.kind === 'unavailable';
+if (outcome.kind === 'unavailable') {
+  Astro.response.status = outcome.status;
+  if (outcome.retryAfter !== null)
+    Astro.response.headers.set('Retry-After', outcome.retryAfter);
 }
+const unavailableCopy = outcome.kind === 'unavailable' ? outcome.copy : '';
 const csrfToken = cmsEditorialCsrfCookie(Astro.request) ?? '';
-const unavailableCopy = cmsTemplateUnavailableCopy(templateKey, failure.status);
 ---
 
 <html lang="en">

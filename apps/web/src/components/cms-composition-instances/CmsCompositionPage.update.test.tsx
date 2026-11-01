@@ -28,6 +28,7 @@ import {
   row,
   structurePath,
 } from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /*
  * FE03 1115, 2708; P2-S12-AC-117, AC-123: resolve a pattern update. A pending_diff instance shows "Update available";
@@ -188,6 +189,7 @@ describe('accept: the exact request and the named outcome', () => {
     expect(page.container.querySelector('.cms-diff')).toBeNull();
     expect(page.container.textContent).toContain('Local copy');
     noStrayRequests(page.unexpected);
+    expectListRefetches(page, 1);
   });
 
   it('names a removal and the new pin of a clean accept', async () => {
@@ -206,6 +208,7 @@ describe('accept: the exact request and the named outcome', () => {
       '/main/row-1: Now on pattern version 2',
     );
     expect(page.container.textContent).toContain('Up to date');
+    expectListRefetches(page, 1);
   });
 });
 
@@ -244,6 +247,7 @@ describe('accept: refusals keep the author choices', () => {
     expect(radio(page.container, '/b', 'theirs').checked).toBe(true);
     expect(radio(page.container, '/c', 'yours').checked).toBe(false);
     expect(radio(page.container, '/c', 'theirs').checked).toBe(false);
+    expectListRefetches(page, 1);
     noStrayRequests(page.unexpected);
   });
 
@@ -267,6 +271,7 @@ describe('accept: refusals keep the author choices', () => {
     expect(radio(page.container, '/a', 'yours').checked).toBe(true);
     expect(buttonNamed(page.container, 'Accept update').disabled).toBe(true);
     expect(page.container.textContent).toContain('not an editable draft');
+    expectListRefetches(page, 1);
   });
 
   it('on a 422 keeps the choices, says nothing was applied and does not refetch', async () => {
@@ -305,6 +310,7 @@ describe('detach and Place', () => {
     });
     expect(page.container.textContent).toContain('/main/row-2: Local copy');
     expect(() => buttonNamed(page.container, 'Detach /main/row-2')).toThrow();
+    expectListRefetches(page, 1);
   });
 
   it('keeps another instance’s open diff and its choices when a different row is detached', async () => {
@@ -322,6 +328,7 @@ describe('detach and Place', () => {
     expect(page.container.querySelector('.cms-diff')).not.toBeNull();
     expect(radio(page.container, '/a', 'yours').checked).toBe(true);
     expect(page.container.textContent).toContain('/main/row-2: Local copy');
+    expectListRefetches(page, 1);
   });
 
   it('places a chosen new root through CMS-03C-02 with the instance revision, pattern and link mode', async () => {
@@ -379,5 +386,6 @@ describe('detach and Place', () => {
     expect(
       page.container.querySelectorAll('ul.cms-instance-rows > li'),
     ).toHaveLength(2);
+    expectListRefetches(page, 1);
   });
 });

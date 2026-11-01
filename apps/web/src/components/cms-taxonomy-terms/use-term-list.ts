@@ -1,9 +1,10 @@
 import { useCallback, useRef, useState } from 'react';
 
-import {
-  TAXONOMY_VERSIONS_PAGE_MAX,
+import { readTaxonomyVersionsOnDemand } from '../cms-taxonomy-designer/taxonomy-versions-on-demand';
+import { TAXONOMY_VERSIONS_PAGE_MAX } from '../cms-taxonomy-designer/taxonomy-vocabulary-core';
+import type {
   readTaxonomyVersions,
-  type TaxonomyVersionsResult,
+  TaxonomyVersionsResult,
 } from '../cms-taxonomy-designer/taxonomy-versions-read';
 import {
   readTaxonomyTerms,
@@ -69,7 +70,7 @@ export const useTermList = ({
   cursor: initialCursor,
   replaceUrl = () => undefined,
   readTerms = readTaxonomyTerms,
-  readVersions = readTaxonomyVersions,
+  readVersions = readTaxonomyVersionsOnDemand,
 }: TermListOptions) => {
   const [page, setPage] = useState(initialPage);
   const [active, setActive] = useState(initialActive);

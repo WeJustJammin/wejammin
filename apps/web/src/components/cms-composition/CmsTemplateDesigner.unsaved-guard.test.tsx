@@ -157,8 +157,8 @@ describe('CMS-11 successor designer: the baseline is the parent the form was reb
     const audience = () =>
       container.querySelector<HTMLInputElement>('#cms-template-audience')!;
     await act(async () => setInput(audience(), 'changed'));
+    // The 409 reads the latest version by itself (FE03 1048, DEC-242): the comparison is already there.
     await submit(container);
-    await press(buttonNamed(container, 'Check latest version'));
     await press(
       Array.from(container.querySelectorAll('button')).find((button) =>
         button.textContent?.includes('Use version 3 as parent'),

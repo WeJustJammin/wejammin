@@ -42,6 +42,7 @@ const exempt: Readonly<Record<string, string>> = {
   'components/cms-pattern-designer/pattern-designer-reasons.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/pattern-designer-submit.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/pattern-latest-read.ts': NO_STEP_UP_ROW,
+  'components/cms-pattern-designer/pattern-latest-fetch.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/pattern-nestable-read.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/pattern-status-copy.ts': NO_STEP_UP_ROW,
   'components/cms-pattern-designer/use-pattern-conflict.ts': NO_STEP_UP_ROW,
@@ -58,6 +59,7 @@ const exempt: Readonly<Record<string, string>> = {
   'components/cms-taxonomy-pages/load-taxonomy-page.ts': NO_STEP_UP_ROW,
   'components/cms-taxonomy-terms/CmsTaxonomyTermStatus.tsx': NO_STEP_UP_ROW,
   'components/cms-taxonomy-terms/taxonomy-terms-read.ts': NO_STEP_UP_ROW,
+  'components/cms-taxonomy-terms/taxonomy-terms-fetch.ts': NO_STEP_UP_ROW,
   'components/cms-taxonomy-terms/term-status-copy.ts': NO_STEP_UP_ROW,
   'server/cms-taxonomy-platform-details.ts': NO_STEP_UP_ROW,
   'components/cms-editorial-workflow/cms-workflow-canonical-read.ts':
@@ -71,6 +73,10 @@ const exempt: Readonly<Record<string, string>> = {
   'components/cms-composition/cms-template-edit-reconcile-state.ts':
     NO_STEP_UP_ROW,
   'components/cms-composition/cms-template-edit-reconcile.ts': NO_STEP_UP_ROW,
+  'components/cms-composition/cms-template-context-read.ts': NO_STEP_UP_ROW,
+  'components/cms-composition/use-cms-template-create-reconcile.ts':
+    NO_STEP_UP_ROW,
+  'components/cms-composition/cms-registry-read.ts': NO_STEP_UP_ROW,
   'components/cms-editorial/cms-editorial-entry-draft-detail-transport.ts':
     NO_STEP_UP_ROW,
   'components/cms-editorial/cms-editorial-conflict-detail-transport.ts':
@@ -91,9 +97,8 @@ const exempt: Readonly<Record<string, string>> = {
   'components/platform-configuration/platform-configuration-state.ts':
     'status-only fallback after parsePlatformConfigurationError, which keeps a typed STEP_UP_REQUIRED code',
   'lib/infrastructure-jobs.ts': WORKER_READ,
-  'pages/app/cms-content-modeling/templates/[templateKey].astro':
-    NO_STEP_UP_ROW,
-  'pages/app/cms-content-modeling/templates/new.astro': NO_STEP_UP_ROW,
+  // The two template pages' 401 handling moved into this module (P2-S12-AC-164, tested without Astro).
+  'components/cms-composition/cms-template-page-outcome.ts': NO_STEP_UP_ROW,
   'pages/app/identity-authority/[recordId].astro': SSR_READ,
   'pages/app/identity-authority/index.astro': SSR_READ,
   'pages/settings/security.astro':

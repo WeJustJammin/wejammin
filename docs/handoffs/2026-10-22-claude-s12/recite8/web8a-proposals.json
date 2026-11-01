@@ -1,0 +1,441 @@
+[
+  {
+    "criterion": "P2-S12-AC-271",
+    "clauses": [
+      {
+        "index": 0,
+        "text": "(the whole 7-state x 5-family table; web8a: template, locale, pattern, vocabulary and term islands: 409 / unknown-outcome / success-refetch cells)",
+        "add": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState error: a 409 reads the key by itself and shows the existing template beside the unsent values, which are kept",
+            "part": "error",
+            "cell": "CMS-03C-01 create 409: existing template read by itself, shown beside kept values"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState error: the closed registry-digest 409 reads the designer context, not a template (there is none to compare), and keeps its fixed copy",
+            "part": "error",
+            "cell": "CMS-03C-01 create 409: registry-digest token reads the designer context, not a template; fixed copy kept"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState degraded: an unknown outcome is read by itself, and a 404 for the key lets the same request be replayed with its key",
+            "part": "degraded",
+            "cell": "CMS-03C-01 create unknown outcome: 404 = nothing saved, same request replayed with its key"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState degraded: version 1 of the attempted definition is a committed create and is announced as created without a second write",
+            "part": "degraded",
+            "cell": "CMS-03C-01 create unknown outcome: version 1 of the attempt = created, no second write"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState degraded: another definition under the key is shown, never claimed as the attempt, and the success is not announced",
+            "part": "degraded",
+            "cell": "CMS-03C-01 create unknown outcome: another definition shown, never claimed"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState degraded: until a read verifies, no retry is possible, and the control repeats a failed read",
+            "part": "degraded",
+            "cell": "CMS-03C-01 create unknown outcome: no retry before the read verified; failed read repeatable"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState degraded: a 429 on the read of the key is announced politely with its stated wait and holds the retry",
+            "part": "degraded",
+            "cell": "CMS-03C-01 create: 429 on the key read announced politely, retry held"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState degraded: a 429 without a stated wait asks for a moment and leaves the read available",
+            "part": "degraded",
+            "cell": "CMS-03C-01 create: 429 without a wait asks for a moment, read available"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState error: a 409 whose read answers 401 renders its fixed alert copy and keeps the values",
+            "part": "error",
+            "cell": "CMS-03C-01 create 409: read refusal rendered with fixed alert copy, values kept"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState error: a 409 whose read answers 404 renders its fixed alert copy and keeps the values",
+            "part": "error",
+            "cell": "CMS-03C-01 create 409: read refusal rendered with fixed alert copy, values kept"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState error: a 409 whose read answers 403 renders its fixed alert copy and keeps the values",
+            "part": "error",
+            "cell": "CMS-03C-01 create 409: read refusal rendered with fixed alert copy, values kept"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState error: after a failed read of the key after a 409 the control repeats it and the existing template appears",
+            "part": "error",
+            "cell": "CMS-03C-01 create 409: failed read repeated by the control, existing template appears"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.reconcile.test.tsx",
+            "title": "CmsTemplateDesigner automatic refetch (CMS-03C-01 create) [P2-S12-AC-271] commandState degraded: an answer that arrives after the island was left changes nothing and announces nothing",
+            "part": "degraded",
+            "cell": "CMS-03C-01 create: late read answer after unmount changes nothing"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.registry-context.test.tsx",
+            "title": "template 'create designer': 409 block_registry_digest_mismatch [P2-S12-AC-271] commandState error: reads the designer context by itself, keeps the unsent values, replaces the block choices and names the selectors that changed",
+            "part": "error",
+            "cell": "CMS-03C-01 409 block_registry_digest_mismatch: context re-read by itself, values kept, changed selectors named"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.registry-context.test.tsx",
+            "title": "template 'create designer': 409 block_registry_digest_mismatch [P2-S12-AC-271] commandState error: an unchanged registry is said to be unchanged",
+            "part": "error",
+            "cell": "CMS-03C-01 409 block_registry_digest_mismatch: unchanged registry said to be unchanged"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.registry-context.test.tsx",
+            "title": "template 'create designer': 409 block_registry_digest_mismatch [P2-S12-AC-271] commandState error: while the read runs or after it failed no new send is possible, and the control repeats the read",
+            "part": "error",
+            "cell": "CMS-03C-01 409 block_registry_digest_mismatch: no send while the read runs or failed; read repeatable"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.registry-context.test.tsx",
+            "title": "template 'successor designer': 409 block_registry_digest_mismatch [P2-S12-AC-271] commandState error: reads the designer context by itself, keeps the unsent values, replaces the block choices and names the selectors that changed",
+            "part": "error",
+            "cell": "CMS-03C-01 409 block_registry_digest_mismatch: context re-read by itself, values kept, changed selectors named"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.registry-context.test.tsx",
+            "title": "template 'successor designer': 409 block_registry_digest_mismatch [P2-S12-AC-271] commandState error: an unchanged registry is said to be unchanged",
+            "part": "error",
+            "cell": "CMS-03C-01 409 block_registry_digest_mismatch: unchanged registry said to be unchanged"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.registry-context.test.tsx",
+            "title": "template 'successor designer': 409 block_registry_digest_mismatch [P2-S12-AC-271] commandState error: while the read runs or after it failed no new send is possible, and the control repeats the read",
+            "part": "error",
+            "cell": "CMS-03C-01 409 block_registry_digest_mismatch: no send while the read runs or failed; read repeatable"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'create designer' [P2-S12-AC-271] commandState error: a 409 renders fixed conflict copy and keeps the draft; the block-registry token has its fixed reason copy; a version conflict refetches the key by itself, the digest token re-reads the designer context (D2, DEC-242, V19 M2) (CMS-03C-01 create designer)",
+            "part": "error",
+            "cell": "CMS-03C-01 409 (create and successor): fixed copy; version conflict refetched by itself, digest token reads nothing"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'successor (edit) designer' [P2-S12-AC-271] commandState error: a 409 renders fixed conflict copy and keeps the draft; the block-registry token has its fixed reason copy; a version conflict refetches the key by itself, the digest token re-reads the designer context (D2, DEC-242, V19 M2) (CMS-03C-01 successor (edit) designer)",
+            "part": "error",
+            "cell": "CMS-03C-01 409 (create and successor): fixed copy; version conflict refetched by itself, digest token reads nothing"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState degraded [P2-S12-AC-271] commandState degraded (successor): an unknown outcome claims no success, refetches by itself before any retry (a held read refuses every send: CmsTemplateEditDesigner.uncertain-pending.test.tsx), then replays the same Idempotency-Key (CMS-03C-01 successor designer)",
+            "part": "degraded",
+            "cell": "CMS-03C-01 successor unknown outcome: refetch before any retry, same Idempotency-Key"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState degraded [P2-S12-AC-271] commandState degraded (create): an unknown outcome claims no success, reads the key by itself (404: nothing saved) before any retry, then replays the same Idempotency-Key (D3, DEC-242) (CMS-03C-01 create designer)",
+            "part": "degraded",
+            "cell": "CMS-03C-01 create unknown outcome: key read (404) before any retry, same Idempotency-Key"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateEditDesigner.auto-refetch.test.tsx",
+            "title": "CmsTemplateEditDesigner automatic refetch (CMS-03C-01 successor) [P2-S12-AC-271] commandState error: a 409 refetches the latest version by itself and compares it with the unsent values, which are kept",
+            "part": "error",
+            "cell": "CMS-03C-01 successor 409: latest version refetched by itself, compared with kept values"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateEditDesigner.auto-refetch.test.tsx",
+            "title": "CmsTemplateEditDesigner automatic refetch (CMS-03C-01 successor) [P2-S12-AC-271] commandState degraded: an unknown outcome is reconciled by a read by itself, and only a verified not-saved lets the same request be retried with its key",
+            "part": "degraded",
+            "cell": "CMS-03C-01 successor unknown outcome: read by itself, only a verified not-saved lets the same key retry"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateEditDesigner.auto-refetch.test.tsx",
+            "title": "CmsTemplateEditDesigner automatic refetch (CMS-03C-01 successor) [P2-S12-AC-271] commandState degraded: while the automatic read has not verified, no retry is possible, and the control repeats a failed read",
+            "part": "degraded",
+            "cell": "CMS-03C-01 successor unknown outcome: no retry before the read verified; failed read repeatable"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refetch.test.tsx",
+            "title": "CmsLocaleVariantForm unknown outcome (CMS-03C-04), FE03 1048 [P2-S12-AC-271] commandState degraded: an unknown outcome reads the entry by itself, and an unchanged entry lets the same request be replayed with its key",
+            "part": "degraded",
+            "cell": "CMS-03C-04 unknown outcome: entry read by itself, unchanged lets the same request replay"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refetch.test.tsx",
+            "title": "CmsLocaleVariantForm unknown outcome (CMS-03C-04), FE03 1048 [P2-S12-AC-271] commandState degraded: while the read has not verified, no retry is possible, and the control repeats a failed read",
+            "part": "degraded",
+            "cell": "CMS-03C-04 unknown outcome: no retry before the read verified; failed read repeatable"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refetch.test.tsx",
+            "title": "CmsLocaleVariantForm unknown outcome (CMS-03C-04), FE03 1048 [P2-S12-AC-271] commandState degraded: when only the entry version moved, the unknown outcome is reported and the retry is the identical request under the same key and If-Match (DEC-244 3)",
+            "part": "degraded",
+            "cell": "CMS-03C-04 unknown outcome: a moved entry/source is reported, never adopted; the retry is the identical request, key and If-Match (DEC-244 3)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refetch.test.tsx",
+            "title": "CmsLocaleVariantForm unknown outcome (CMS-03C-04), FE03 1048 [P2-S12-AC-271] commandState degraded: when the source moved, the unknown outcome is reported and the retry is the identical request under the same key and If-Match (DEC-244 3)",
+            "part": "degraded",
+            "cell": "CMS-03C-04 unknown outcome: a moved entry/source is reported, never adopted; the retry is the identical request, key and If-Match (DEC-244 3)"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refetch.test.tsx",
+            "title": "CmsLocaleVariantForm commandState success (CMS-03C-04), FE03 1048 [P2-S12-AC-271] commandState success: a verified save refetches the source by itself and, when it did not move, changes nothing the person sees",
+            "part": "success",
+            "cell": "CMS-03C-04 success: source refetched by itself, unchanged = nothing shown"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refetch.test.tsx",
+            "title": "CmsLocaleVariantForm commandState success (CMS-03C-04), FE03 1048 [P2-S12-AC-271] commandState success: a source that moved while saving puts the review of the current source in front of the next save, and keeps the saved translation",
+            "part": "success",
+            "cell": "CMS-03C-04 success: moved source proposed for review, translation kept"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refetch.test.tsx",
+            "title": "CmsLocaleVariantForm commandState success (CMS-03C-04), FE03 1048 [P2-S12-AC-271] commandState success: an entry version that moved with the same source is adopted for the next save, with no review",
+            "part": "success",
+            "cell": "CMS-03C-04 success: newer entry version of the same source adopted, no review"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refetch.test.tsx",
+            "title": "CmsLocaleVariantForm commandState success (CMS-03C-04), FE03 1048 [P2-S12-AC-271] commandState success: an older entry version than the one the save returned is never adopted (review V19 m2)",
+            "part": "success",
+            "cell": "CMS-03C-04 success: an older entry version is never adopted"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refetch.test.tsx",
+            "title": "CmsLocaleVariantForm commandState success (CMS-03C-04), FE03 1048 [P2-S12-AC-271] commandState success: a refetch that fails leaves the confirmed save and the form as they are",
+            "part": "success",
+            "cell": "CMS-03C-04 success: failed refetch leaves the confirmed save as it is"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.states.test.tsx",
+            "title": "CmsLocaleVariantForm (CMS-03C-04) commandState [P2-S12-AC-271] commandState success: names the saved draft, raises the entry version for the next save and refetches the source by itself (D4, DEC-242) (CMS-03C-04)",
+            "part": "success",
+            "cell": "CMS-03C-04 success: saved draft named, version raised, source refetched by itself"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.states.test.tsx",
+            "title": "CmsLocaleVariantForm (CMS-03C-04) commandState [P2-S12-AC-271] commandState degraded: an unknown outcome claims no success, reads the entry by itself before any retry, then replays the same Idempotency-Key (D3, DEC-242) (CMS-03C-04)",
+            "part": "degraded",
+            "cell": "CMS-03C-04 unknown outcome: entry read by itself before any retry, same Idempotency-Key"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.conflict-refetch.test.tsx",
+            "title": "CmsPatternVersionDesigner commandState error (CMS-03C-12), FE03 1048 and 1266 [P2-S12-AC-271] commandState error: a 409 refetches the latest version by itself and shows it beside the unsent tree, which is kept",
+            "part": "error",
+            "cell": "CMS-03C-12 409: latest version refetched by itself, unsent tree kept"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.conflict-refetch.test.tsx",
+            "title": "CmsPatternVersionDesigner commandState error (CMS-03C-12), FE03 1048 and 1266 [P2-S12-AC-271] commandState error: the save is held off while the automatic read runs and when it failed, and the read can be repeated",
+            "part": "error",
+            "cell": "CMS-03C-12 409: save held while the automatic read runs or failed; read repeatable"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.registry-context.test.tsx",
+            "title": "pattern designer: 409 block_registry_digest_mismatch [P2-S12-AC-271] commandState error: reads the designer context by itself, keeps the unsent tree, replaces the block choices and names the selectors that changed",
+            "part": "error",
+            "cell": "CMS-03C-12 409 block_registry_digest_mismatch: context re-read by itself, tree kept, changed selectors named"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.registry-context.test.tsx",
+            "title": "pattern designer: 409 block_registry_digest_mismatch [P2-S12-AC-271] commandState error: an unchanged registry is said to be unchanged",
+            "part": "error",
+            "cell": "CMS-03C-12 409 block_registry_digest_mismatch: unchanged registry said to be unchanged"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.registry-context.test.tsx",
+            "title": "pattern designer: 409 block_registry_digest_mismatch [P2-S12-AC-271] commandState error: while the read runs or after it failed no new send is possible, and the control repeats the read",
+            "part": "error",
+            "cell": "CMS-03C-12 409 block_registry_digest_mismatch: no send while the read runs or failed; read repeatable"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "title": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 {\"kind\":\"conflict\",\"currentVersion\":\"5\"} renders fixed copy and keeps the tree; a version conflict refetches the latest version by itself, the registry-digest refusal reads nothing (D2, DEC-242) (CMS-03C-12)",
+            "part": "error",
+            "cell": "CMS-03C-12 409: fixed copy; version conflict refetched by itself, registry-digest refusal re-reads the context"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "title": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error: a 409 {\"kind\":\"refused\",\"status\":409,\"reason\":\"block_registry_digest_mismatch\"} renders fixed copy and keeps the tree; a version conflict refetches the latest version by itself, the registry-digest refusal reads nothing (D2, DEC-242) (CMS-03C-12)",
+            "part": "error",
+            "cell": "CMS-03C-12 409: fixed copy; version conflict refetched by itself, registry-digest refusal re-reads the context"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.refetch.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner commandState error (CMS-03C-16), FE03 1048 and 1266 [P2-S12-AC-271] commandState error: a 409 refetches the versions by itself and shows the newer one beside the unsent draft, which is kept",
+            "part": "error",
+            "cell": "CMS-03C-16 409: versions refetched by itself, unsent draft kept"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.refetch.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner commandState error (CMS-03C-16), FE03 1048 and 1266 [P2-S12-AC-271] commandState error: the save is held off while the automatic read runs and after it failed, and the read can be repeated",
+            "part": "error",
+            "cell": "CMS-03C-16 409: save held while the automatic read runs or failed; read repeatable"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.refetch.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner commandState success (CMS-03C-16), FE03 1048 [P2-S12-AC-271] commandState success: a verified save refetches the versions table, which then lists the new draft",
+            "part": "success",
+            "cell": "CMS-03C-16 success: versions table refetched after a verified save"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.refetch.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner commandState success (CMS-03C-16), FE03 1048 [P2-S12-AC-271] commandState success: a new vocabulary has no table until the save, then lists its first version",
+            "part": "success",
+            "cell": "CMS-03C-16 success: new vocabulary lists its first version after the save"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.refetch.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner commandState success (CMS-03C-16), FE03 1048 [P2-S12-AC-271] commandState success: a refetch that fails keeps the table it had and says it could not be refreshed",
+            "part": "success",
+            "cell": "CMS-03C-16 success: failed refetch keeps the table and says so"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.states.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner (CMS-03C-16) commandState [P2-S12-AC-271] commandState success: names the saved draft, locks the form and links its page; the versions table is refetched by itself (D4, DEC-242) (CMS-03C-16)",
+            "part": "success",
+            "cell": "CMS-03C-16 success: saved draft named, form locked, versions table refetched"
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.states.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner (CMS-03C-16) commandState commandState error [P2-S12-AC-271] commandState error: a 409 renders the fixed conflict copy, keeps the draft, refetches the versions by itself and keeps the check to repeat the read (D2, DEC-242) (CMS-03C-16)",
+            "part": "error",
+            "cell": "CMS-03C-16 409: fixed copy, draft kept, versions refetched by itself"
+          }
+        ],
+        "staleExisting": [
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState degraded [P2-S12-AC-271] commandState degraded (kept half, create): an unknown outcome claims no success and replays the same Idempotency-Key, but nothing is refetched before the retry (D3) (CMS-03C-01 create designer)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState degraded [P2-S12-AC-271] commandState degraded (successor): an unknown outcome claims no success, blocks every send until a verified refetch, then replays the same Idempotency-Key (CMS-03C-01 successor designer)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'create designer' [P2-S12-AC-271] commandState error (kept half): a 409 renders fixed conflict copy and keeps the draft; the block-registry token has its fixed reason copy; no automatic refetch (D2) (CMS-03C-01 create designer)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-composition/CmsTemplateDesigner.states.test.tsx",
+            "title": "Template designer (CMS-03C-01) commandState: 'successor (edit) designer' [P2-S12-AC-271] commandState error (kept half): a 409 renders fixed conflict copy and keeps the draft; the block-registry token has its fixed reason copy; no automatic refetch (D2) (CMS-03C-01 successor (edit) designer)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.refusals.test.tsx",
+            "title": "CmsLocaleVariantForm: rate limit and unknown outcome keeps the idempotency key and replays the identical request while the outcome is unknown, and changes it with the request",
+            "reason": "web8a test correction: the unknown-outcome replay test now reads the entry back first (FE03 1048, DEC-242 item 3); retitled \"(each unknown outcome read back first)\". Not an AC-271 citation (untagged)."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.states.test.tsx",
+            "title": "CmsLocaleVariantForm (CMS-03C-04) commandState [P2-S12-AC-271] commandState degraded (kept half): an unknown outcome claims no success and replays the same Idempotency-Key; the entry is NOT refetched before the retry (D3) (CMS-03C-04)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-locale/CmsLocaleVariantForm.states.test.tsx",
+            "title": "CmsLocaleVariantForm (CMS-03C-04) commandState [P2-S12-AC-271] commandState success (kept half): names the saved draft and raises the entry version for the next save; the source is NOT refetched (D4) (CMS-03C-04)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "title": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error (kept half): a 409 {\"kind\":\"conflict\",\"currentVersion\":\"5\"} renders fixed copy and keeps the tree; the latest version is NOT refetched automatically (D2) (CMS-03C-12)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-pattern-designer/CmsPatternVersionDesigner.states.test.tsx",
+            "title": "CmsPatternVersionDesigner (CMS-03C-12) commandState commandState error [P2-S12-AC-271] commandState error (kept half): a 409 {\"kind\":\"refused\",\"status\":409,\"reason\":\"block_registry_digest_mismatch\"} renders fixed copy and keeps the tree; the latest version is NOT refetched automatically (D2) (CMS-03C-12)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.states.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner (CMS-03C-16) commandState [P2-S12-AC-271] commandState success (kept half): names the saved draft, locks the form and links its page; the versions list is NOT refetched (D4) (CMS-03C-16)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          },
+          {
+            "tool": "vitest",
+            "file": "apps/web/src/components/cms-taxonomy-designer/CmsTaxonomyVersionDesigner.states.test.tsx",
+            "title": "CmsTaxonomyVersionDesigner (CMS-03C-16) commandState commandState error [P2-S12-AC-271] commandState error (kept half): a 409 renders the fixed conflict copy, keeps the draft, and offers the explicit latest-version check; it is NOT refetched automatically (D2) (CMS-03C-16)",
+            "reason": "web8a test correction (FE03 1048, DEC-242 item 3): the title and body pinned the defect (no automatic refetch / reconcile before retry); the replacement row in `add` asserts the automatic read and the kept values."
+          }
+        ],
+        "gap": "Open cells after web8a (fix round V19): 422 at the field for the term reasons (no field named by FE03 or BE03c; summary-level, ratified by DEC-244 4); 409 and unknown outcome of a NEW vocabulary (no id or key read exists; same-key replay is the reconciliation). The registry-digest 409 is closed (context re-read, values kept, changed selectors named); the locale 422 copy now says the language is not supported for this content type (DEC-230, DEC-244 4)."
+      }
+    ],
+    "proposedStatus": "partial",
+    "proposedLimitation": "web8a closes, for the template create and successor designers (CMS-03C-01), the locale variant form (CMS-03C-04), the pattern designer (CMS-03C-12), the vocabulary designer (CMS-03C-16) and the term form (CMS-03C-03): 409 refetched by itself with the unsent values kept (template, pattern, vocabulary; locale chain mismatch keeps adopting its 409 body, DEC-242 item 2); the closed registry-digest 409 re-reads the designer context (template create, successor, pattern), keeps the values, replaces the block choices and names the selectors that changed; unknown outcome read back before any retry (template create and successor, locale; the pattern, vocabulary-edit and term islands already did), the locale retry being the identical request under its key and If-Match whatever the read saw (DEC-244 3); success refetch (vocabulary versions table; locale source, never adopting an older entry version; the term list already refetched). NOT closed: 422 reasons at a field for the term form (no field named; summary-level, DEC-244 4); a NEW vocabulary's 409 and unknown outcome (no id or key read; same-key replay); template and pattern success refetch is N/A (DEC-244 4). Cite a state part only when every island of that part, including web8b's, is closed."
+  }
+]

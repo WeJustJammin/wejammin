@@ -217,7 +217,7 @@ describe('CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState'
     },
   );
 
-  it('[P2-S12-AC-271] commandState error: 409 reviewer_not_eligible renders fixed copy at the reviewer field (no refetch is made)', async () => {
+  it('[P2-S12-AC-271] commandState error: 409 reviewer_not_eligible renders the one uniform copy at the reviewer field and refetches the review (FE03 884, DEC-242)', async () => {
     const { container, refetch } = mount(
       queuedFetcher([conflictFor('reviewer_not_eligible')]),
     );
@@ -231,7 +231,8 @@ describe('CmsGovernedAssignmentForm (CMS-03C-08 create and revoke) commandState'
         '[role="alert"] a[href="#governed-assignment-reviewer"]',
       ),
     ).not.toBeNull();
-    expect(refetch).toHaveBeenCalledTimes(0);
+    // FE03 884 gives the fixed copy and 1049 says 409 reasons "refetch": the review is read again (DEC-242).
+    expect(refetch).toHaveBeenCalledTimes(1);
   });
 
   it('[P2-S12-AC-271] commandState error: 422 expiry_out_of_bounds renders fixed copy at the expiry field', async () => {

@@ -25,7 +25,11 @@ import {
 import type { PatternSubmitResult } from './pattern-designer-submit';
 import type { PatternLatestResult } from './pattern-latest-read';
 
-beforeAll(enableReactAct);
+beforeAll(async () => {
+  enableReactAct();
+  // The latest-version read is an on-demand chunk (pattern-latest-read.ts): load it up front.
+  await import('./pattern-latest-fetch');
+});
 afterAll(disableReactAct);
 
 type Props = React.ComponentProps<typeof CmsPatternVersionDesigner>;
@@ -280,9 +284,8 @@ describe('CmsPatternVersionDesigner: reconciling with the latest version', () =>
     const { container } = mount({ submit, readLatest: read });
     await save(container);
     expect(text(status(container))).toContain('Nothing was overwritten.');
-    expect(read).not.toHaveBeenCalled();
-    await click(buttonNamed(container, 'Check latest version'));
-    await flush();
+    // No press: the 409 refetched the latest version by itself (FE03 1048, DEC-242).
+    expect(read).toHaveBeenCalledTimes(1);
     expect(read).toHaveBeenCalledWith('profile-hero');
     expect(text(container)).toContain(
       'Latest saved version: 5, 1 node, draft.',
@@ -315,8 +318,6 @@ describe('CmsPatternVersionDesigner: reconciling with the latest version', () =>
       readLatest: readLatest({ kind: 'loaded', detail: newer }),
     });
     await save(container);
-    await click(buttonNamed(container, 'Check latest version'));
-    await flush();
     await click(buttonNamed(container, 'Discard my edits and load version 5'));
     const keyInputs = container.querySelectorAll<HTMLInputElement>(
       'input[id^="cms-pattern-node-"][id$="-key"]',
@@ -331,8 +332,6 @@ describe('CmsPatternVersionDesigner: reconciling with the latest version', () =>
       readLatest: readLatest({ kind: 'loaded', detail: latestDetail() }),
     });
     await save(container);
-    await click(buttonNamed(container, 'Check latest version'));
-    await flush();
     expect(text(container)).toContain(
       'The version you started from is still the latest.',
     );
@@ -346,8 +345,6 @@ describe('CmsPatternVersionDesigner: reconciling with the latest version', () =>
     });
     await save(container);
     expect(text(status(container))).toContain('The result is unknown.');
-    await click(buttonNamed(container, 'Check latest version'));
-    await flush();
     expect(
       container.querySelector('[role="alert"]:not(#cms-pattern-status)')
         ?.textContent,

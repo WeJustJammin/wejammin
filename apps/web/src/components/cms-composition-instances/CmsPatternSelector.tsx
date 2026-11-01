@@ -36,11 +36,13 @@ const RESTART_NOTE =
   'The list of patterns changed while you were loading it, so it restarted from the first page.';
 
 const stateMessage = (state: ReadState<unknown>): string | null =>
-  state.kind === 'failed'
-    ? refusalMessage('selector', state.status ?? 0, state.reason)
-    : state.kind === 'rate_limited'
-      ? rateLimitMessage(state.retryAfterSeconds)
-      : null;
+  state.kind === 'stale'
+    ? stateMessage(state.cause)
+    : state.kind === 'failed'
+      ? refusalMessage('selector', state.status ?? 0, state.reason)
+      : state.kind === 'rate_limited'
+        ? rateLimitMessage(state.retryAfterSeconds)
+        : null;
 
 /**
  * The pattern chooser of the instance-insert form (FE03 886, 1508; P2-S12-AC-111): the active, compatible pattern
@@ -109,13 +111,15 @@ export default function CmsPatternSelector({
           {state.choiceCleared ? ' Choose the pattern again.' : ''}
         </p>
       ) : null}
-      {page.nextCursor === null ? null : (
+      {page.nextCursor === null && state.kind !== 'stale' ? null : (
         <button
           type="button"
           disabled={disabled || state.kind === 'loading'}
           onClick={onLoadMore}
         >
-          Load more patterns
+          {state.kind === 'stale'
+            ? 'Read the patterns again'
+            : 'Load more patterns'}
         </button>
       )}
     </div>

@@ -45,9 +45,10 @@ path by position then path. The first-party proxy is `../../server/cms-compositi
 - Server loading: `load-composition-page.ts` (the page loader), `load-composition-instances.ts` (the paged list walk),
   `composition-page-reads.ts` (the four protected reads behind one seam).
 - Transport: `composition-transport.ts` (`sendJson`, `readJson`), `composition-reads.ts`, `composition-commands.ts`,
+  `composition-instance-list.ts` (the browser read of the instance list, cursor walk),
   `composition-guards.ts` (structural checks of already verified answers).
 - State: `use-composition-session.ts` (entry facts, rows, the one result region, the key policy),
-  `use-composition-insert.ts`, `use-composition-updates.ts`, `use-composition-bulk.ts`, composed by
+  `use-composition-insert.ts`, `use-composition-updates.ts`, `use-composition-new-roots.ts`, `use-composition-bulk.ts`, composed by
   `use-composition-page.ts`.
 - Views: `CmsCompositionPage` over `CmsPatternInsertForm` (with `CmsPatternSelector`), `CmsCompositionInstanceList`
   (with `CmsCompositionInstanceRow`), `CmsPatternUpdateDiff` (with `CmsDiffPath`, `CmsDiffNewRoots`),
@@ -74,11 +75,19 @@ path by position then path. The first-party proxy is `../../server/cms-compositi
 - Unsaved changes (FE03 927): the insert form is dirty when its pattern, link mode, slot path or overrides differ from
   the last sent (or first shown) values; while dirty `beforeunload` is armed and a click on any link of the page (the
   island holds none, so the listener is on the document) shows `CmsCompositionLeaveConfirm`. No draft is stored anywhere.
-- An unknown placement outcome reads the entry (`readEntryFacts`) before the retry is offered; the read is only shown, so
-  the retry is the identical request with the same key. A read in flight (an update diff, a further selector page) shows
+- An unknown outcome of any command (placement, accept, detach, new blocks, bulk) renders the pending label "Checking the
+  entry before any retry…" while the session reads the entry (`readEntryFacts`) and the instance list
+  (`reconcileUnknown`) and only then offers the retry; the entry read is only shown, so the retry is the identical request
+  with the same key (FE03 1050).
+- The instance list is refetched through the browser proxy of `cmsCompositionInstancesRead`
+  (`composition-instance-list.ts`, `GET /api/v1/cms/entries/{entryId}/compositions`, DEC-206) after a verified command and
+  after a 409 (FE03 1047, 1049), replacing the rows with the server's render order; a list that cannot be read keeps the
+  rows the island holds, and a read a newer command overtook is dropped. A 409 on a bulk request also re-reads the
+  unapplied diffs and keeps the selection; a row ticked while a command ran stays ticked (only the applied ids leave it).
+- A read in flight (an update diff, a further selector page) shows
   a skeleton only after 250 ms (`../cms-editorial-workflow/CmsLoadingRegion.tsx`) and keeps the listed content.
 - A key is reused only for the identical request while its outcome is unknown; a 429 blocks commands for its stated
-  wait; a 409 `diff_has_collisions`/`revision_not_editable` refetches the entry facts and the diff and keeps the
+  wait; a 409 `diff_has_collisions`/`revision_not_editable` refetches the entry facts, the instance list and the diff and keeps the
   choices for every path whose base, theirs and yours did not change.
 - Link mode is an explicit choice (nothing is preselected); a collision answer is never preselected; keeping mine on a
   `structure` or `removed_root` collision names its consequence (a local copy that no longer receives updates).
@@ -100,3 +109,31 @@ the page suites (`CmsCompositionPage.*.test.tsx`) drive the real island against 
 - `../../server/README.md` (the same-origin proxies)
 - `.memory/wiki/specs/fe/03-cms-content-modeling.md`
 - `.memory/wiki/specs/be/03c-composition-taxonomy-localization.md` (CMS-03C-02, 1477)
+
+- The whole of a command is in flight (`session.hold`): its answer, and the reads that follow it (entry, instance list,
+  diffs), keep every control that starts another command disabled, so a second press cannot send a second request
+  (review V19 M3). An unknown outcome whose reconciling read could not read the entry holds the retry: the commands stay
+  off and "Check again" (`session.recheck`) is the only way on; it stays mounted and focused while it reads, a still
+  unverified read says so again without moving focus, and a verified one moves focus to the result heading (DEC-245(4)).
+  A list refetch keeps the `retired` rows the island holds (the DEC-206 read never lists them, DEC-193 lets them be
+  detached) and only the latest list answer may replace the rows.
+
+Wave 9 (review V20 m3, m5, m9, m10, n4; DEC-246):
+
+- Every composition read (`readJson`, so the selector page, the diff, the entry facts and the instance list) ends at the
+  shared 8,000 ms deadline (`../../lib/run-read-under-deadline.ts`) and answers `failed`; the hold of a command
+  (`session.hold`) ends with it, so a read that never settles cannot freeze the island (`CmsCompositionPage.read-deadline.test.tsx`).
+- `keepRetired(listed, held, revisionId)` keeps only the retired rows of the draft revision the read answered.
+- A repeated failed "Check again" names its attempt (`reconciliationLine(…, attempt)`), so the sentence differs and the
+  live region is written again.
+- A placement refused for a changed block registry (`block_registry_digest_mismatch`) reads the selector's first page again
+  (`composition-selector-reread.ts`, `use-composition-selector-reread.ts`) and carries the chosen pattern over with its
+  current digest; if the read fails the selector is `stale`, the placement stays off and "Read the patterns again" is the
+  way on (`CmsCompositionPage.registry-digest.test.tsx`).
+- Tests: a list read nobody scripted is answered by the server model (`composition-list-model.test-support.ts`: the rows
+  the page was given plus every mutation answer) and the test must assert the refetch through `page.lists`
+  (`expectListRefetches`); `composition-page.test-support.tsx` fails a test that left one unasserted.
+  `CmsCompositionPage.closing-words.test.tsx` pins "no-store and never optimistic" for the composition requests.
+  `use-composition-insert.load-more.test.tsx` pins the guards of `loadMore` the button cannot reach and the browser's own
+  `fetch` path of the selector re-read; `composition-update-diff.test-support.tsx` holds the fixtures and drivers shared by
+  the accept and detach suites of the update diff (`CmsPatternUpdateDiff.states.test.tsx`).

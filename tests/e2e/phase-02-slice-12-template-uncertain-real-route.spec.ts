@@ -62,13 +62,17 @@ test.describe('Phase 2 Slice 12 uncertain template mutation', () => {
     if (baseVersion === undefined)
       throw new Error('The template page did not identify its base version.');
     const nextVersion = String(BigInt(baseVersion) + 1n);
-    const reconcile = async (): Promise<void> => {
-      const read = page.waitForResponse(
+    // FE03 unknown-outcome cell (DEC-242): the island reads the latest version by itself before it
+    // offers a retry, so each read is armed before the save that ends in an unknown outcome.
+    const nextRead = () =>
+      page.waitForResponse(
         (response) =>
           response.request().method() === 'GET' &&
           response.url().endsWith('/api/v1/cms/templates/release-note'),
       );
-      await page.getByRole('button', { name: 'Check latest version' }).click();
+    const reconciled = async (
+      read: ReturnType<typeof nextRead>,
+    ): Promise<void> => {
       expect((await read).status()).toBe(200);
       await expect(
         page.getByText('The current parent is still latest.'),
@@ -85,6 +89,7 @@ test.describe('Phase 2 Slice 12 uncertain template mutation', () => {
     };
     await loseResponse();
     await page.getByRole('textbox', { name: 'Audience' }).fill('recovered');
+    const firstRead = nextRead();
     await page.getByRole('button', { name: 'Save successor draft' }).click();
     await expect(page.getByRole('alert')).toContainText(
       'The result is unknown.',
@@ -95,7 +100,8 @@ test.describe('Phase 2 Slice 12 uncertain template mutation', () => {
     );
 
     // The unchanged retry must reuse the same idempotency key.
-    await reconcile();
+    await reconciled(firstRead);
+    const secondRead = nextRead();
     await page.getByRole('button', { name: 'Save successor draft' }).click();
     await expect(page.getByRole('alert')).toContainText(
       'The result is unknown.',
@@ -108,7 +114,7 @@ test.describe('Phase 2 Slice 12 uncertain template mutation', () => {
     // Reconciliation reads the real protected route; the observed parent is
     // still latest, so the guard permits a retry of the retained values.
     await page.unroute(SUBMIT_URL);
-    await reconcile();
+    await reconciled(secondRead);
 
     const realPost = page.waitForResponse(
       (response) =>

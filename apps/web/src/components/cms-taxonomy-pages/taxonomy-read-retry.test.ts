@@ -9,7 +9,7 @@ import {
 } from '../../server/cms-taxonomy-platform.test-support';
 import { SAFE_READ_RETRY_DELAYS_MS } from '../../lib/safe-read-retry';
 import { readTaxonomyVersions } from '../cms-taxonomy-designer/taxonomy-versions-read';
-import { readTaxonomyTerms } from '../cms-taxonomy-terms/taxonomy-terms-read';
+import { readTaxonomyTerms } from '../cms-taxonomy-terms/taxonomy-terms-fetch';
 
 // The delays are `lib/safe-read-retry.ts`' to define (FE03 :1173); this file only follows them.
 const [FIRST_DELAY, SECOND_DELAY] = SAFE_READ_RETRY_DELAYS_MS;

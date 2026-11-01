@@ -1,0 +1,563 @@
+{
+ "lane": "claude_s12_db8",
+ "tap": "db8-race8-final-run.tap",
+ "tapSha256": "a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508",
+ "stamp": "run12",
+ "proposals": [
+  {
+   "criterion": "P2-S12-AC-085",
+   "clauses": [
+    {
+     "index": 1,
+     "text": "runs in one transaction that takes its locks in the Slice 12 lock order",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_activation_order.sql",
+       "title": "CMS-03C-09 activate is observed blocked BY the holder of the authority rows, the position 1 lock [P2-S12-AC-085]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_activation_order.sql:120 - CMS-03C-09 activate is observed blocked BY the holder of the authority rows, the position 1 lock. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 120
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_activation_order.sql",
+       "title": "blocked at position 1 the activation holds nothing after it: the subject row (3), the content type version row (4), the review row (5) and the advisory lock are all free [P2-S12-AC-085]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_activation_order.sql:122 - blocked at position 1 the activation holds nothing after it: the subject row (3), the content type version row (4), the review row (5) and the advisory lock are all free. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 122
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_activation_order.sql",
+       "title": "CMS-03C-09 activate is observed blocked BY the holder of the subject version row, the position 3 lock [P2-S12-AC-085]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_activation_order.sql:128 - CMS-03C-09 activate is observed blocked BY the holder of the subject version row, the position 3 lock. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 128
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_activation_order.sql",
+       "title": "blocked at the subject row (position 3) the activation already holds position 1 and holds nothing after: content type version row (4), review row (5) and advisory lock free [P2-S12-AC-085]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_activation_order.sql:130 - blocked at the subject row (position 3) the activation already holds position 1 and holds nothing after: content type version row (4), review row (5) and advisory lock free. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 130
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_activation_order.sql",
+       "title": "CMS-03C-09 activate is observed blocked BY the holder of the lineage's ACTIVE row, taken after the subject row [P2-S12-AC-085]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_activation_order.sql:136 - CMS-03C-09 activate is observed blocked BY the holder of the lineage's ACTIVE row, taken after the subject row. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 136
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_activation_order.sql",
+       "title": "blocked at the lineage's active row the activation holds position 1 and the subject row, and nothing after it: content type version row (4), review row (5), advisory lock free [P2-S12-AC-085]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_activation_order.sql:138 - blocked at the lineage's active row the activation holds position 1 and the subject row, and nothing after it: content type version row (4), review row (5), advisory lock free. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 138
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_activation_order.sql",
+       "title": "CMS-03C-09 activate is observed blocked BY the holder of the bound content type version row, the position 4 lock [P2-S12-AC-085]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_activation_order.sql:144 - CMS-03C-09 activate is observed blocked BY the holder of the bound content type version row, the position 4 lock. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 144
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_activation_order.sql",
+       "title": "blocked at the content type version row (position 4) the activation already holds positions 1 and 3, and the review row (5) and the advisory lock are still free [P2-S12-AC-085]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_activation_order.sql:146 - blocked at the content type version row (position 4) the activation already holds positions 1 and 3, and the review row (5) and the advisory lock are still free. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 146
+      }
+     ],
+     "staleExisting": [],
+     "gap": null
+    }
+   ],
+   "proposedStatus": "verified",
+   "proposedLimitation": ""
+  },
+  {
+   "criterion": "P2-S12-AC-294",
+   "clauses": [
+    {
+     "index": 1,
+     "text": "Deterministic concurrent tests prove authority/visibility and exact schema/default are rechecked after waits, with no invisible/foreign definition lock lever or late position-2 acquisition.",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "the create naming the target with expectedTargetVersion 1 is observed blocked BY the open revision append on the target entry (position 2) [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:152 - the create naming the target with expectedTargetVersion 1 is observed blocked BY the open revision append on the target entry (position 2). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 152
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "while the create waits at the relation target (position 2) it holds neither the default template row (3) nor the content type version row (4): position 2 is never acquired after 3 or 4 [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:154 - while the create waits at the relation target (position 2) it holds neither the default template row (3) nor the content type version row (4): position 2 is never acquired after 3 or 4. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 154
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "the pinned target version is decided after the wait: the bumped target is the uniform VALIDATION_FAILED at /fields/{relation field} [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:156 - the pinned target version is decided after the wait: the bumped target is the uniform VALIDATION_FAILED at /fields/{relation field}. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 156
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "the refused create wrote nothing: the bump committed (target version 2), no entry exists and the Idempotency-Key holds no record [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:158 - the refused create wrote nothing: the bump committed (target version 2), no entry exists and the Idempotency-Key holds no record. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 158
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "a create naming a concealed target answers the uniform VALIDATION_FAILED while the holder still owns the target's entry row: no lock is taken on it, no lock lever [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:165 - a create naming a concealed target answers the uniform VALIDATION_FAILED while the holder still owns the target's entry row: no lock is taken on it, no lock lever. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 165
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "a concealed target and an absent target id are refused with the identical outcome: no existence oracle [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:167 - a concealed target and an absent target id are refused with the identical outcome: no existence oracle. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 167
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "the concealed-target refusals wrote no entry [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:168 - the concealed-target refusals wrote no entry. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 168
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "a create naming two targets is observed blocked BY the holder of the higher-id target (position 2) [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:174 - a create naming two targets is observed blocked BY the holder of the higher-id target (position 2). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 174
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "while it waits for the higher-id target the create already holds the lower-id target entry row and the caller's assignment rows on it: the set is locked in ascending id order [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:176 - while it waits for the higher-id target the create already holds the lower-id target entry row and the caller's assignment rows on it: the set is locked in ascending id order. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 176
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "a create naming the same two targets is observed blocked BY the holder of the lower-id target (position 2) [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:178 - a create naming the same two targets is observed blocked BY the holder of the lower-id target (position 2). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 178
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "while it waits for the lower-id target the create has not yet touched the higher-id target: no later id is locked before an earlier one [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:180 - while it waits for the lower-id target the create has not yet touched the higher-id target: no later id is locked before an earlier one. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 180
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "a create arriving while the revocation is in flight waits for the revoking transaction (position 1) [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:185 - a create arriving while the revocation is in flight waits for the revoking transaction (position 1). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 185
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "the capability is re-proved under the position 1 lock after the wait: a revocation committed first wins, the create is FORBIDDEN [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:187 - the capability is re-proved under the position 1 lock after the wait: a revocation committed first wins, the create is FORBIDDEN. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 187
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "the create refused after the revocation wrote no entry and left no Idempotency-Key record [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:189 - the create refused after the revocation wrote no entry and left no Idempotency-Key record. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 189
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "a create of the superseded-to-be schema arriving during the activation is observed blocked BY it [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:195 - a create of the superseded-to-be schema arriving during the activation is observed blocked BY it. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 195
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "while the create waits behind the activation it has taken neither the relation target (2) nor the default template (3) [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:197 - while the create waits behind the activation it has taken neither the relation target (2) nor the default template (3). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 197
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "the exact schema is rechecked after the wait: the activation won, so the create is refused at /contentTypeVersionId [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:199 - the exact schema is rechecked after the wait: the activation won, so the create is refused at /contentTypeVersionId. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 199
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "the refused create stored no entry, no unlocked replacement pin and no Idempotency-Key record [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:201 - the refused create stored no entry, no unlocked replacement pin and no Idempotency-Key record. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 201
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_create.sql",
+       "title": "the activation committed: the bound content type has one active version, the successor, and two superseded ones [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_create.sql:203 - the activation committed: the bound content type has one active version, the successor, and two superseded ones. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 203
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_default.sql",
+       "title": "the create is observed blocked BY the open retire of its exact stored default template, the position 3 lock [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_default.sql:77 - the create is observed blocked BY the open retire of its exact stored default template, the position 3 lock. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 77
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_default.sql",
+       "title": "while the create waits at the default template (3) it already holds the relation target entry row (2), which no other session held before: position 2 precedes 3 [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_default.sql:79 - while the create waits at the default template (3) it already holds the relation target entry row (2), which no other session held before: position 2 precedes 3. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 79
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_default.sql",
+       "title": "the exact stored default is re-read after the wait: the retired default is the typed 409 CONFLICT [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_default.sql:82 - the exact stored default is re-read after the wait: the retired default is the typed 409 CONFLICT. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 82
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_entry_default.sql",
+       "title": "the retire committed and the refused create stored no entry, no pin and no Idempotency-Key record [P2-S12-AC-294]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_entry_default.sql:84 - the retire committed and the refused create stored no entry, no pin and no Idempotency-Key record. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 84
+      }
+     ],
+     "staleExisting": [],
+     "gap": null
+    }
+   ],
+   "proposedStatus": "verified",
+   "proposedLimitation": ""
+  },
+  {
+   "criterion": "P2-S12-AC-277",
+   "clauses": [
+    {
+     "index": 2,
+     "part": "locale source edit versus translation,",
+     "text": "locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_locale.sql",
+       "title": "the translation of the old source is observed blocked BY the open source edit (the entry row) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_locale.sql:99 - the translation of the old source is observed blocked BY the open source edit (the entry row). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 99
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_locale.sql",
+       "title": "the losing translation wrote nothing: no variant row and no Idempotency-Key record, while the source edit moved the head and the entry to version 2 [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_locale.sql:103 - the losing translation wrote nothing: no variant row and no Idempotency-Key record, while the source edit moved the head and the entry to version 2. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 103
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_locale.sql",
+       "title": "the translation retried on the new source revision and hash commits a draft variant pinned to the NEW source revision [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_locale.sql:105 - the translation retried on the new source revision and hash commits a draft variant pinned to the NEW source revision. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 105
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_locale.sql",
+       "title": "the source edit of the old entry version is observed blocked BY the open translation (the entry row) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_locale.sql:109 - the source edit of the old entry version is observed blocked BY the open translation (the entry row). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 109
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_locale.sql",
+       "title": "the losing source edit wrote nothing: the head is still the first revision, the translation is a draft variant with one localization event, no Idempotency-Key record [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_locale.sql:114 - the losing source edit wrote nothing: the head is still the first revision, the translation is a draft variant with one localization event, no Idempotency-Key record. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 114
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_locale.sql",
+       "title": "the source edit retried at the new entry version commits and moves the head [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_locale.sql:116 - the source edit retried at the new entry version commits and moves the head. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 116
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_locale.sql",
+       "title": "the source-change fan-out appended a stale variant row (version 2) after the committed translation: the variant is honestly stale [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_locale.sql:118 - the source-change fan-out appended a stale variant row (version 2) after the committed translation: the variant is honestly stale. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 118
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_locale.sql",
+       "title": "the stale row lists exactly the translated source field (stale_field_ids) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_locale.sql:120 - the stale row lists exactly the translated source field (stale_field_ids). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 120
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_locale.sql",
+       "title": "the stale transition emitted its own cms.localization.changed.v1 event (two events for the locale) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_locale.sql:121 - the stale transition emitted its own cms.localization.changed.v1 event (two events for the locale). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 121
+      }
+     ],
+     "staleExisting": [],
+     "gap": null
+    },
+    {
+     "index": 2,
+     "part": "related target unpublish,",
+     "text": "locale source edit versus translation, related target unpublish, duplicate and out-of-order events, worker lease expiry and restore-epoch fencing each have a deterministic tested outcome.",
+     "add": [
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "the curation pinning the target does not wait for the unpublish in flight and commits (eligibleCount is the one pin) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:90 - the curation pinning the target does not wait for the unpublish in flight and commits (eligibleCount is the one pin). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 90
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "the pin of the target is stored although its unpublish is in flight [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:91 - the pin of the target is stored although its unpublish is in flight. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 91
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "while the unpublish is uncommitted the public projection still lists the published target, pinned first (the projection reads committed lineage heads) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:93 - while the unpublish is uncommitted the public projection still lists the published target, pinned first (the projection reads committed lineage heads). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 93
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "the unpublish commits as a revoked tombstone after the active publish [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:94 - the unpublish commits as a revoked tombstone after the active publish. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 94
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "the unpublished target stays pinned in the stored rule set (history is private, not removed) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:96 - the unpublished target stays pinned in the stored rule set (history is private, not removed). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 96
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "the curation pinning the target is observed blocked BY the unpublishing writer on the target entry row (position 2) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:100 - the curation pinning the target is observed blocked BY the unpublishing writer on the target entry row (position 2). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 100
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "while it waits at the target the curation already owns the source entry row (position 0) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:101 - while it waits at the target the curation already owns the source entry row (position 0). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 101
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "while it waits the curation has stored no pin and the source projects no target [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:103 - while it waits the curation has stored no pin and the source projects no target. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 103
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "the unpublish committed as a revoked tombstone and the pin is stored [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:107 - the unpublish committed as a revoked tombstone and the pin is stored. Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 107
+      },
+      {
+       "tool": "pgtap",
+       "file": "supabase/tests/phase_02_slice_12_race8_related.sql",
+       "title": "whichever command committed last, the public projection does not list the unpublished target (it still projects the source's other eligible targets) [P2-S12-AC-277]",
+       "project": null,
+       "identitySource": "static",
+       "computed": false,
+       "evidence": "supabase/tests/phase_02_slice_12_race8_related.sql:109 - whichever command committed last, the public projection does not list the unpublished target (it still projects the source's other eligible targets). Real two-session dblink run on the ALT stack (lane none, promoted migrations only). TAP db8-race8-final-run.tap SHA-256 a96eddf6236d57fbbfd8a8c0c455a588ba154785bfe6480476a6515e96358508; the command under test is the real platform_api function under a dblink session.",
+       "descriptionLine": 109
+      }
+     ],
+     "staleExisting": [],
+     "gap": null
+    }
+   ],
+   "proposedStatus": "partial",
+   "proposedLimitation": "Parts \"locale source edit versus translation,\" and \"related target unpublish,\" are proven by two-session pgTAP (race8_locale.sql, race8_related.sql, applied through the verbatim split of refute7 7.3); the other parts (linked pattern update versus local override, duplicate and out-of-order events, restore-epoch fencing) are BOUNDARY readings for the owner."
+  }
+ ]
+}

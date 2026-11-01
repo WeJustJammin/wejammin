@@ -1,0 +1,98 @@
+-- Shared world of the legacy-forest suites (lane claude_s12_db9b, item 4, P2-S12-AC-211 "again before publish").  Include after the S09 DEC-108
+-- fragments, the p240 block fixture, the pattern-definition and placement fixtures and pattern_updates_common/000-helpers.
+--
+-- Real producers throughout, with three LABELLED fixtures:
+--   * ../phase_02_slice_12_gaps_db9b_support/010-consumer-bootstrap.sqlinc: the publication-settings lookup prerequisite and the consumer-only guarded entry
+--     bootstrap (the manifest builder needs both);
+--   * d9l_draft: a hand-built DRAFT pattern row.  The producer (CMS-03C-12) refuses these shapes today, so a stored row of that shape is legacy; the
+--     table CHECK cms_pattern_versions_block_tree_valid refuses a LITERAL tree over depth 8 or 512 nodes, so only the EXPANDED bounds (nesting through
+--     nested pattern pins) can be stored.  The row is a copy of a real row with the legacy tree, the digest of the platform's own function and the
+--     producer's content-hash formula; it is inserted as a draft (the only state the lifecycle guard admits) and made ACTIVE only by the real
+--     governed chain (CMS-03C-06 submit, 08 assign, 07 approve, 09 activate);
+--   * s12pc_seed: the guarded READ-fixture append that pins a revision to a stored pattern (dec193 pattern currentness uses it the same way).
+\ir ../phase_02_slice_12_gaps_db9b_support/010-consumer-bootstrap.sqlinc
+
+set local statement_timeout = '120s';
+
+-- A real nested chain: p1 literal, p2 refs p1, ... p9 refs p8 (p1 sits eight levels below p9: the deepest nesting the producer accepts).
+select * from pg_temp.s12pl_pattern('p1', 'd9l-p1', jsonb_build_array(pg_temp.s12pd_block('hero')));
+select * from pg_temp.s12pl_pattern('p2', 'd9l-p2', pg_temp.s12pl_refs('p1', 1, 'n'));
+select * from pg_temp.s12pl_pattern('p3', 'd9l-p3', pg_temp.s12pl_refs('p2', 1, 'n'));
+select * from pg_temp.s12pl_pattern('p4', 'd9l-p4', pg_temp.s12pl_refs('p3', 1, 'n'));
+select * from pg_temp.s12pl_pattern('p5', 'd9l-p5', pg_temp.s12pl_refs('p4', 1, 'n'));
+select * from pg_temp.s12pl_pattern('p6', 'd9l-p6', pg_temp.s12pl_refs('p5', 1, 'n'));
+select * from pg_temp.s12pl_pattern('p7', 'd9l-p7', pg_temp.s12pl_refs('p6', 1, 'n'));
+select * from pg_temp.s12pl_pattern('p8', 'd9l-p8', pg_temp.s12pl_refs('p7', 1, 'n'));
+select * from pg_temp.s12pl_pattern('p9', 'd9l-p9', pg_temp.s12pl_refs('p8', 1, 'n'));
+select * from pg_temp.s12pl_pattern('roots32', 'd9l-roots32', pg_temp.s12pd_forest(32));
+
+create or replace function pg_temp.d9l_draft(
+  p_label text, p_key text, p_tree jsonb, p_id uuid default extensions.gen_random_uuid(),
+  p_lineage uuid default null, p_version integer default 1, p_supersedes uuid default null) returns uuid language plpgsql as $body$
+declare base_row platform_private.cms_pattern_versions%rowtype; stamp timestamptz := clock_timestamp(); digest text; hash text;
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  digest := platform_private.cms_pattern_registry_digest(pg_temp.s09d_id('ownerOrg'), p_tree);
+  perform set_config('app.cms_rpc', '', true);
+  select * into base_row from platform_private.cms_pattern_versions where id = (pg_temp.s12pd_body('p1')->>'id')::uuid;
+  hash := platform_private.cms_jcs_sha256(jsonb_build_object('patternKey', p_key, 'compatibleTypeIds', base_row.compatible_type_ids,
+    'blockTree', p_tree, 'blockRegistryDigest', digest));
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_pattern_versions
+  select (jsonb_populate_record(null::platform_private.cms_pattern_versions, to_jsonb(base_row) || jsonb_build_object(
+    'id', p_id, 'pattern_id', coalesce(p_lineage, p_id), 'pattern_key', p_key, 'block_tree', p_tree, 'node_count', 512, 'state', 'draft',
+    'version', p_version, 'supersedes_id', p_supersedes, 'created_at', stamp, 'updated_at', stamp, 'lifecycle_version', 1,
+    'activated_at', null, 'retired_at', null, 'block_registry_digest', digest, 'content_hash', hash))).*;
+  perform set_config('app.cms_rpc', '', true);
+  insert into s12pd_out(label, response, state) values (p_label, jsonb_build_object('id', p_id, 'contentHash', hash,
+    'patternId', coalesce(p_lineage, p_id), 'patternVersion', p_version), '00000');
+  return p_id;
+end;
+$body$;
+
+-- l-deep: nested ten levels (p9 sits nine levels below it); l-wide: seventeen pins of a 32-root pattern, 544 block roots after expansion.
+select pg_temp.d9l_draft('l-deep', 'd9l-deep', pg_temp.s12pl_refs('p9', 1, 'n'));
+select pg_temp.d9l_draft('l-wide', 'd9l-wide', pg_temp.s12pl_refs('roots32', 17, 'w'));
+select * from pg_temp.s12pl_activate('l-deep');
+select * from pg_temp.s12pl_activate('l-wide');
+-- the cycle shapes: a mutual cycle X <-> Y (both drafts, pre-assigned lineage ids) and a self-lineage successor c2 -> c1
+create temp table d9l_cycle_ids on commit drop as select extensions.gen_random_uuid() x, extensions.gen_random_uuid() y;
+select pg_temp.d9l_draft('l-cx', 'd9l-cx', jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'toy', 'patternId', (select y from d9l_cycle_ids), 'patternVersion', 1)), (select x from d9l_cycle_ids));
+select pg_temp.d9l_draft('l-cy', 'd9l-cy', jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'tox', 'patternId', (select x from d9l_cycle_ids), 'patternVersion', 1)), (select y from d9l_cycle_ids));
+select pg_temp.s12pd_run('l-cx:submit', jsonb_build_object('subjectKind', 'pattern_version', 'subjectId', pg_temp.s12pd_body('l-cx')->'id',
+    'subjectHash', pg_temp.s12pd_body('l-cx')->'contentHash', 'idempotencyKey', 'd9l-cx-submit', 'context', pg_temp.s09d_context('owner', true)),
+  'owner', 'service_role', 'submit');
+select pg_temp.s12pd_run('l-cy:submit', jsonb_build_object('subjectKind', 'pattern_version', 'subjectId', pg_temp.s12pd_body('l-cy')->'id',
+    'subjectHash', pg_temp.s12pd_body('l-cy')->'contentHash', 'idempotencyKey', 'd9l-cy-submit', 'context', pg_temp.s09d_context('owner', true)),
+  'owner', 'service_role', 'submit');
+select * from pg_temp.s12pl_pattern('c1', 'd9l-cyc', jsonb_build_array(pg_temp.s12pd_block('hero')));
+select pg_temp.d9l_draft('c2', 'd9l-cyc', jsonb_build_array(jsonb_build_object('kind', 'pattern', 'key', 'self', 'patternId', pg_temp.s12pd_body('c1')->'patternId',
+    'patternVersion', 1)), extensions.gen_random_uuid(), (pg_temp.s12pd_body('c1')->>'patternId')::uuid, 2, (pg_temp.s12pd_body('c1')->>'id')::uuid);
+select * from pg_temp.s12pl_activate('c2');
+
+-- a pinned revision, as the publication provider reads it: the guarded READ-fixture append of a live pin (NULL detached_tree) at a path the pinned
+-- forest really expands to.  src-valid places the real pattern p1; the copies change only the pin and the path.
+select * from pg_temp.s12pu_place('src-valid', 'p1');
+\ir ../phase_02_slice_12_gaps_db9b_support/020-provider.sqlinc
+select pg_temp.s12pl_entry('seed-ctrl');
+select * from pg_temp.s12pc_seed('seed-ctrl', 'seed-ctrl', pg_temp.s12pu_head('src-valid', '/hero'), '{}'::jsonb);
+select pg_temp.s12pl_entry('seed-deep');
+select * from pg_temp.s12pc_seed('seed-deep', 'seed-deep', pg_temp.s12pu_head('src-valid', '/hero'),
+  jsonb_build_object('pattern_id', pg_temp.s12pd_body('l-deep')->'patternId', 'pattern_version', 1, 'path', '/' || repeat('n1/', 9) || 'hero'));
+select pg_temp.s12pl_entry('seed-wide');
+select * from pg_temp.s12pc_seed('seed-wide', 'seed-wide', pg_temp.s12pu_head('src-valid', '/hero'),
+  jsonb_build_object('pattern_id', pg_temp.s12pd_body('l-wide')->'patternId', 'pattern_version', 1, 'path', '/w1/root1'));
+create temp table d9l_provider_out(tag text primary key, result jsonb not null) on commit drop;
+create or replace function pg_temp.d9l_provider_result(p_tag text) returns jsonb language sql stable as $body$
+  select result from d9l_provider_out where tag = p_tag $body$;
+insert into d9l_provider_out select 'seed-ctrl', pg_temp.d9l_provider('seed-ctrl');
+insert into d9l_provider_out select 'seed-deep', pg_temp.d9l_provider('seed-deep');
+insert into d9l_provider_out select 'seed-wide', pg_temp.d9l_provider('seed-wide');
+
+-- one placement per legacy pattern through the real CMS-03C-02, recorded with the full before/after image
+select pg_temp.s12pl_entry('pl-deep');
+select pg_temp.s12pl_run('pl-deep', pg_temp.s12pl_request('pl-deep', 'l-deep', '/', '{}'::jsonb, 'd9l-place-deep'));
+select pg_temp.s12pl_entry('pl-wide');
+select pg_temp.s12pl_run('pl-wide', pg_temp.s12pl_request('pl-wide', 'l-wide', '/', '{}'::jsonb, 'd9l-place-wide'));
+select pg_temp.s12pl_entry('pl-c2');
+select pg_temp.s12pl_run('pl-c2', pg_temp.s12pl_request('pl-c2', 'c2', '/', '{}'::jsonb, 'd9l-place-c2'));

@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 
 import { useCmsTemplateRateWait } from '../cms-composition/cms-template-rate-wait';
+import { useReconcileOnOutcome } from '../cms-composition/use-reconcile-on-outcome';
+import { useRegistryContext } from '../cms-composition/use-registry-context';
+import type { TemplateDesignerContext } from '@wejammin/contracts';
 import type { PatternFormStatus } from './CmsPatternStatus';
 import type { PatternVersionFactsProps } from './CmsPatternVersionFacts';
 import {
@@ -35,6 +38,17 @@ export interface PatternDesignerOptions {
 
 const makeId = (): string => crypto.randomUUID();
 
+/** The members of the designer context this designer reads. */
+const patternContext = (
+  context: TemplateDesignerContext,
+): PatternDesignerContext => ({
+  contentTypes: context.contentTypes.map(({ id, typeKey }) => ({
+    id,
+    typeKey,
+  })),
+  registeredBlocks: context.registeredBlocks,
+});
+
 const identityOf = (detail: PatternLatestDetail): PatternBaseIdentity => ({
   id: detail.id,
   version: detail.version,
@@ -50,7 +64,7 @@ const factsOf = (detail: PatternLatestDetail): PatternVersionFactsProps => ({
 
 /** All state and commands of the pattern designer; the components only render. */
 export const usePatternDesigner = ({
-  context,
+  context: initialContext,
   latest,
   csrfToken,
   submit = submitPatternVersion,
@@ -79,6 +93,15 @@ export const usePatternDesigner = ({
   const [status, setStatus] = useState<PatternFormStatus>({ kind: 'idle' });
   const summaryRef = useRef<HTMLDivElement>(null);
   const rateWait = useCmsTemplateRateWait();
+  // FE03 1048: the closed registry-digest 409 re-reads the designer context (review V19 M2).
+  const registry = useRegistryContext(
+    initialContext,
+    patternContext,
+    status.kind === 'result' &&
+      status.result.kind === 'refused' &&
+      status.result.reason === 'block_registry_digest_mismatch',
+  );
+  const context = registry.context;
   const conflict = usePatternConflict(
     patternKey.trim(),
     baseIdentity,
@@ -100,6 +123,13 @@ export const usePatternDesigner = ({
       )?.focus();
   }, [status]);
 
+  // FE03 1048 `commandState` error: a 409 "refetches" by itself. An unknown outcome is already read by
+  // `outcome.send`; the explicit control only repeats a read that failed.
+  useReconcileOnOutcome(
+    status.kind === 'result' && status.result.kind === 'conflict',
+    () => void outcome.check(),
+  );
+
   const blur = usePatternBlurValidation(patternKey, editor.tree);
   const noTypes = context.contentTypes.length === 0;
   const done = status.kind === 'created';
@@ -109,6 +139,7 @@ export const usePatternDesigner = ({
     rateWait.waiting ||
     done ||
     outcome.unresolved ||
+    registry.holding ||
     conflict.state.kind === 'checking' ||
     conflict.state.kind === 'failed';
 
@@ -181,6 +212,8 @@ export const usePatternDesigner = ({
 
   return {
     editor,
+    context,
+    registry,
     patternKey,
     setPatternKey,
     compatibleTypeIds,

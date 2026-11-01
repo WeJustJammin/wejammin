@@ -7,6 +7,7 @@ import {
   cmsEditorialNoticeFor,
   cmsEditorialUnverifiedNotice,
 } from '../cms-editorial-pages/cms-editorial-page-outcome';
+import type { CmsEditorialPageNoticeOutcome } from '../cms-editorial-pages/cms-editorial-page-outcome';
 import type { CmsEditorialPageOutcome } from '../cms-editorial-pages/cms-editorial-page-view';
 import {
   CMS_REVIEW_QUEUE_RESTART_ANNOUNCEMENT,
@@ -27,6 +28,18 @@ export const GOVERNED_QUEUE_DESCRIPTION =
   'Review and approve templates, patterns and vocabularies.';
 
 const RESTART_STATUSES: ReadonlySet<number> = new Set([400, 422]);
+
+/**
+ * A 200 that is not the strict page is a degraded read like any other: the closed notice offers Retry at the same list
+ * position (DEC-242(1), FE03 1018/1630: the queue has no in-place re-read and no browser cache).
+ */
+const unverified = (retryHref: string): CmsEditorialPageNoticeOutcome => {
+  // `cmsEditorialUnverifiedNotice` answers a notice by construction (it has no redirect form).
+  const { notice } = cmsEditorialUnverifiedNotice(
+    'Definition reviews',
+  ) as Extract<CmsEditorialPageNoticeOutcome, { kind: 'notice' }>;
+  return { kind: 'notice', notice: { ...notice, retryHref } };
+};
 
 const search = (params: URLSearchParams): string => {
   const text = params.toString();
@@ -82,11 +95,10 @@ export const loadGovernedQueuePage = async (input: {
   try {
     body = await response.json();
   } catch {
-    return cmsEditorialUnverifiedNotice('Definition reviews');
+    return unverified(here);
   }
   const parsed = GovernedReviewQueuePageSchema.safeParse(body);
-  if (!parsed.success)
-    return cmsEditorialUnverifiedNotice('Definition reviews');
+  if (!parsed.success) return unverified(here);
   return {
     kind: 'view',
     status: 200,

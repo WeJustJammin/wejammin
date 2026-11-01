@@ -1,11 +1,8 @@
 ---
 import { env } from 'cloudflare:workers';
-import {
-  TemplateDesignerContextSchema,
-  type TemplateDesignerContext,
-} from '@wejammin/contracts';
 
 import CmsTemplateDesigner from '../../../../components/cms-composition/CmsTemplateDesigner';
+import { templateCreatePageOutcome } from '../../../../components/cms-composition/cms-template-page-outcome';
 import '../../../../components/cms-composition/cms-template-designer.css';
 import '../../../../styles/cms-danger-action.css';
 import { readCmsTemplateContext } from '../../../../server/cms-composition-platform-context';
@@ -22,43 +19,19 @@ if (Astro.request.method !== 'GET') {
   });
 }
 
-const selector = await readCmsTemplateContext(Astro.request, env.PLATFORM_API);
-if (selector.status === 401) {
-  return cmsRedirectResponse(
-    '/auth/sign-in?returnTo=%2Fapp%2Fcms-content-modeling%2Ftemplates%2Fnew',
-  );
+// P2-S12-AC-164: no form unless the context was read and verified; the decision is tested in cms-template-page-outcome.
+const outcome = await templateCreatePageOutcome(
+  await readCmsTemplateContext(Astro.request, env.PLATFORM_API),
+);
+if (outcome.kind === 'redirect') return cmsRedirectResponse(outcome.location);
+const context = outcome.kind === 'ready' ? outcome.context : null;
+if (outcome.kind === 'unavailable') {
+  Astro.response.status = outcome.status;
+  if (outcome.retryAfter !== null)
+    Astro.response.headers.set('Retry-After', outcome.retryAfter);
 }
-
-let context: TemplateDesignerContext | null = null;
-if (selector.ok) {
-  try {
-    const parsed = TemplateDesignerContextSchema.safeParse(
-      await selector.json(),
-    );
-    if (parsed.success) context = parsed.data;
-  } catch {
-    // The protected projection is unavailable; never fall back to guessed choices.
-  }
-}
-if (context === null) {
-  Astro.response.status = selector.ok ? 502 : selector.status;
-  const retryAfter = selector.headers.get('retry-after');
-  if (
-    (selector.status === 429 ||
-      selector.status === 503 ||
-      selector.status === 504) &&
-    retryAfter !== null &&
-    /^[1-9]\d{0,4}$/u.test(retryAfter)
-  )
-    Astro.response.headers.set('Retry-After', retryAfter);
-}
+const unavailableCopy = outcome.kind === 'unavailable' ? outcome.copy : '';
 const csrfToken = cmsEditorialCsrfCookie(Astro.request) ?? '';
-const unavailableCopy =
-  selector.status === 403
-    ? 'Template designer access is required for the current acting context.'
-    : selector.status === 429
-      ? 'Template choices are temporarily rate-limited. Wait and reload.'
-      : 'Template choices are unavailable. Reload when the service is ready.';
 ---
 
 <html lang="en">

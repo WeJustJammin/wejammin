@@ -1,4 +1,5 @@
-import type { PatternSummaryItem } from './CmsPatternStatus';
+import type { PatternFormStatus, PatternSummaryItem } from './CmsPatternStatus';
+import { targetDomId } from './pattern-designer-ids';
 import type { IssueField } from './pattern-designer-request';
 
 export interface GroupedItems {
@@ -26,4 +27,27 @@ export const groupItems = (
       ]);
   }
   return { byNode, byField };
+};
+
+/**
+ * The submit summary joined with the errors of visited controls (blur), sorted to the control that owns each. A problem
+ * shown twice is shown once.
+ */
+export const groupSummary = (
+  status: PatternFormStatus,
+  blurItems: readonly PatternSummaryItem[],
+): GroupedItems => {
+  const submitted =
+    status.kind === 'invalid' || status.kind === 'result' ? status.items : [];
+  return groupItems([
+    ...submitted,
+    ...blurItems.filter(
+      (blurred) =>
+        !submitted.some(
+          (entry) =>
+            entry.message === blurred.message &&
+            targetDomId(entry.target) === targetDomId(blurred.target),
+        ),
+    ),
+  ]);
 };

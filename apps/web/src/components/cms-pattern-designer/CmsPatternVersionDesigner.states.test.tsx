@@ -33,8 +33,12 @@ import { PATTERN_REFUSAL_COPY } from './pattern-designer-reasons';
 import type { PatternSubmitResult } from './pattern-designer-submit';
 import { mountEditHeldRead } from './pattern-uncertain-reconcile.test-support';
 
-beforeAll(enableReactAct);
+beforeAll(async () => {
+  enableReactAct();
+  await import('../cms-composition/cms-registry-read');
+});
 afterAll(disableReactAct);
+afterEach(() => vi.unstubAllGlobals());
 // A saved pattern rewrites the address bar (showSavedPatternAddress); each test starts clean.
 beforeEach(() =>
   window.history.replaceState(
@@ -193,35 +197,58 @@ describe('CmsPatternVersionDesigner (CMS-03C-12) commandState', () => {
       expect(commit(container).disabled).toBe(false);
     });
 
-    it.each([
-      [
-        { kind: 'conflict', currentVersion: '5' } as const,
+    it('[P2-S12-AC-271] commandState error: a 409 version conflict renders its fixed copy, keeps the tree and refetches the latest version by itself (CMS-03C-12)', async () => {
+      const view = mountEditHeldRead({ kind: 'conflict', currentVersion: '5' });
+      await click(commit(view.container));
+      await flush();
+      expect(region(view.container).getAttribute('role')).toBe('alert');
+      expect(text(region(view.container))).toContain(
         'Another version of this pattern was saved after the one you started from.',
-      ],
-      [
-        {
-          kind: 'refused',
-          status: 409,
-          reason: 'block_registry_digest_mismatch',
-        } as const,
-        'The block registry changed while you were editing.',
-      ],
-    ])(
-      '[P2-S12-AC-271] commandState error (kept half): a 409 %j renders fixed copy and keeps the tree; the latest version is NOT refetched automatically (D2) (CMS-03C-12)',
-      async (result, copy) => {
-        const view = mountEditHeldRead(result);
-        await click(commit(view.container));
-        await flush();
-        expect(region(view.container).getAttribute('role')).toBe('alert');
-        expect(text(region(view.container))).toContain(copy);
-        expect(text(view.container)).toContain('Node 1 · Level 1 of 8');
-        expect(view.readLatest).not.toHaveBeenCalled();
-        if (result.kind === 'conflict')
-          expect(
-            buttonNamed(view.container, 'Check latest version').disabled,
-          ).toBe(false);
-      },
-    );
+      );
+      expect(text(view.container)).toContain('Node 1 · Level 1 of 8');
+      expect(view.readLatest).toHaveBeenCalledTimes(1);
+      // The automatic read is in flight (held by the harness): the control shows it and is off.
+      expect(
+        buttonNamed(view.container, 'Checking latest version…').disabled,
+      ).toBe(true);
+    });
+
+    it('[P2-S12-AC-271] commandState error: a 409 registry-digest refusal renders its fixed copy, keeps the tree and reads the designer context again, not the latest version (V20 m7, DEC-245(1)) (CMS-03C-12)', async () => {
+      const fetcher = vi
+        .fn<typeof fetch>()
+        .mockImplementation((url) =>
+          Promise.resolve(
+            String(url) === '/api/v1/cms/templates/context'
+              ? Response.json(
+                  { contentTypes: [], registeredBlocks: [] },
+                  { status: 200 },
+                )
+              : Response.json({ code: 'X' }, { status: 503 }),
+          ),
+        );
+      vi.stubGlobal('fetch', fetcher);
+      const view = mountEditHeldRead({
+        kind: 'refused',
+        status: 409,
+        reason: 'block_registry_digest_mismatch',
+      });
+      await click(commit(view.container));
+      await flush();
+      expect(region(view.container).getAttribute('role')).toBe('alert');
+      expect(text(region(view.container))).toContain(
+        PATTERN_REFUSAL_COPY.block_registry_digest_mismatch,
+      );
+      expect(text(view.container)).toContain('Node 1 · Level 1 of 8');
+      expect(view.readLatest).not.toHaveBeenCalled();
+      const contextReads = fetcher.mock.calls.filter(
+        ([url]) => String(url) === '/api/v1/cms/templates/context',
+      );
+      expect(contextReads).toHaveLength(1);
+      expect(contextReads[0]![1]).toMatchObject({
+        method: 'GET',
+        cache: 'no-store',
+      });
+    });
 
     it.each(['key_reserved', 'block_rules_violated'] as const)(
       '[P2-S12-AC-271] commandState error: a 422 %s renders its fixed copy as an alert and links it to its control, keeping the tree (CMS-03C-12)',

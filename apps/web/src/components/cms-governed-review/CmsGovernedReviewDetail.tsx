@@ -1,9 +1,9 @@
 import type { GovernedReviewDetailResource } from '@wejammin/contracts';
 import * as React from 'react';
 
+import CmsGovernedDecisionList from './CmsGovernedDecisionList';
 import CmsGovernedReviewDegraded from './CmsGovernedReviewDegraded';
 import {
-  GOVERNED_DECISION_LABEL,
   GOVERNED_INVALIDATED_COPY,
   GOVERNED_RISK_CLASS_LABEL,
   GOVERNED_SUBJECT_KIND_LABEL,
@@ -21,6 +21,8 @@ export interface CmsGovernedReviewDetailProps {
   readonly degradedSince?: string | null;
   /** Reads the review again: offered in the degraded notice (a 429 re-reads by itself, so the island passes none). */
   readonly onReread?: (() => void) | undefined;
+  /** The offered re-read is in flight (the control stays mounted and disabled). */
+  readonly rereading?: boolean;
 }
 
 export const GOVERNED_DETAIL_HEADING_IDS = {
@@ -51,6 +53,7 @@ export default function CmsGovernedReviewDetail({
   review,
   degradedSince = null,
   onReread,
+  rereading = false,
 }: CmsGovernedReviewDetailProps): React.ReactElement {
   const showAssignments =
     review.assignments.length > 0 ||
@@ -65,7 +68,11 @@ export default function CmsGovernedReviewDetail({
   if (degradedSince !== null)
     return (
       <div data-cms-governed-review-detail="">
-        <CmsGovernedReviewDegraded since={degradedSince} onReread={onReread} />
+        <CmsGovernedReviewDegraded
+          since={degradedSince}
+          onReread={onReread}
+          rereading={rereading}
+        />
         {back}
       </div>
     );
@@ -149,31 +156,10 @@ export default function CmsGovernedReviewDetail({
           .
         </p>
       </section>
-      <section aria-labelledby={GOVERNED_DETAIL_HEADING_IDS.decisions}>
-        <h2 id={GOVERNED_DETAIL_HEADING_IDS.decisions} tabIndex={-1}>
-          Decisions
-        </h2>
-        {review.decisions.length === 0 ? (
-          <p>No decisions recorded yet.</p>
-        ) : (
-          <ul>
-            {review.decisions.map((decision) => (
-              <li key={decision.id} data-cms-review-decision="">
-                {decision.mine ? 'Your decision' : 'Decision'}:{' '}
-                {GOVERNED_DECISION_LABEL[decision.decision]} · Slot{' '}
-                <code>{decision.capability}</code> ·{' '}
-                <Time value={decision.decidedAt} />
-                {decision.reason === null ? null : (
-                  <>
-                    <br />
-                    Your reason: {decision.reason}
-                  </>
-                )}
-              </li>
-            ))}
-          </ul>
-        )}
-      </section>
+      <CmsGovernedDecisionList
+        headingId={GOVERNED_DETAIL_HEADING_IDS.decisions}
+        decisions={review.decisions}
+      />
       {showAssignments ? (
         <section aria-labelledby={GOVERNED_DETAIL_HEADING_IDS.assignments}>
           <h2 id={GOVERNED_DETAIL_HEADING_IDS.assignments} tabIndex={-1}>

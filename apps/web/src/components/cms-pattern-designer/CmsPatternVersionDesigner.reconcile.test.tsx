@@ -126,13 +126,17 @@ describe('CmsPatternVersionDesigner: an unknown outcome is reconciled before any
     expect(buttonNamed(container, 'Check latest version').disabled).toBe(false);
   });
 
-  it('does not read by itself after a plain conflict', async () => {
+  it('reads the latest version by itself after a plain conflict, and keeps the check for a read that failed', async () => {
     const { container, readLatest } = mountEdit(
       [{ kind: 'conflict', currentVersion: '5' }],
       { kind: 'unavailable' },
     );
     await saveEdit(container);
-    expect(readLatest).not.toHaveBeenCalled();
+    expect(readLatest).toHaveBeenCalledTimes(1);
+    expect(container.textContent).toContain(
+      'The latest version is unavailable',
+    );
+    expect(buttonNamed(container, 'Check latest version').disabled).toBe(false);
   });
 });
 
@@ -228,8 +232,6 @@ describe('CmsPatternVersionDesigner: only a comparable latest version is compare
       read,
     );
     await saveEdit(mounted.container);
-    await click(buttonNamed(mounted.container, 'Check latest version'));
-    await flush();
     return mounted;
   };
 

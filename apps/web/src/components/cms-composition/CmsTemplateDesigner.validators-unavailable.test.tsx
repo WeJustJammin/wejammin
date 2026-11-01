@@ -214,7 +214,9 @@ describe('template edit island without validators', () => {
       await settleCmsValidatorsForTest();
     });
     expect(container.textContent).toContain('The result is unknown');
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    // The POST, then the read the unknown outcome starts by itself (FE03 1048, DEC-242 item 3): it answered nothing
+    // verifiable, so the control that repeats it is the one under test.
+    expect(fetcher).toHaveBeenCalledTimes(2);
 
     resetCmsValidatorsForTest(offline);
     await act(async () => {
@@ -225,6 +227,7 @@ describe('template edit island without validators', () => {
     expect(container.textContent).toContain(
       'The latest version is unavailable. Wait and try again.',
     );
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    // Schemas that cannot be fetched make the repeated read unverifiable without any request.
+    expect(fetcher).toHaveBeenCalledTimes(2);
   });
 });

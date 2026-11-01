@@ -1,6 +1,7 @@
 import type { GovernedReviewDetailResource } from '@wejammin/contracts';
 
 import { addClientBindingIdHeader } from '../../lib/client-binding';
+import { runReadUnderDeadline } from '../../lib/run-read-under-deadline';
 import {
   rateLimitWaitSeconds,
   retryingSafeRead,
@@ -99,10 +100,24 @@ const verified = (
     : null;
 };
 
-/** CMS-03C-10 through the first-party proxy. */
-export const readCanonicalGovernedReview = async (
+/**
+ * CMS-03C-10 through the first-party proxy. The whole read, retries and body included, ends at the shared browser
+ * deadline (8,000 ms, DEC-246 ruling 1) and then answers `degraded`, which keeps the last verified review, disables
+ * every command and offers the re-read, so a read that never settles cannot hold the forms for ever.
+ */
+export const readCanonicalGovernedReview = (
   reviewId: string,
   fetcher: Fetcher = fetch,
+): Promise<CanonicalReadResult<GovernedReviewDetailResource>> =>
+  runReadUnderDeadline((signal) => readReview(reviewId, fetcher, signal), {
+    kind: 'degraded',
+    requestId: null,
+  });
+
+const readReview = async (
+  reviewId: string,
+  fetcher: Fetcher,
+  signal: AbortSignal,
 ): Promise<CanonicalReadResult<GovernedReviewDetailResource>> => {
   const path = `${GOVERNED_ROUTE_BASE}/${encodeURIComponent(reviewId)}`;
   let response: Response;
@@ -117,6 +132,7 @@ export const readCanonicalGovernedReview = async (
           cache: 'no-store',
           redirect: 'manual',
           headers: { accept: 'application/json' },
+          signal,
         }),
       ),
     );

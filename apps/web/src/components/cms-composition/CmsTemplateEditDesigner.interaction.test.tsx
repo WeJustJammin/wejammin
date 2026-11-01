@@ -137,15 +137,12 @@ describe('CMS-11 successor edit and reconciliation', () => {
         );
     });
     expect(container.textContent).toContain('conflict');
-    expect(fetcher).toHaveBeenCalledTimes(1);
+    // One POST, then the latest version read by itself (FE03 1048, DEC-242 item 3): no press.
+    expect(fetcher).toHaveBeenCalledTimes(2);
     expect(
       new Headers(fetcher.mock.calls[0]![1]?.headers).get('if-match'),
     ).toBe('"2"');
-    await act(async () => {
-      Array.from(container.querySelectorAll('button'))
-        .find((button) => button.textContent === 'Check latest version')
-        ?.click();
-    });
+    expect(fetcher.mock.calls[1]![1]?.method).toBe('GET');
     expect(container.textContent).toContain('Latest version 3');
     expect(container.textContent).toContain('newer');
     expect(
@@ -234,12 +231,7 @@ describe('CMS-11 successor edit and reconciliation', () => {
     expect(
       container.querySelector<HTMLButtonElement>('button[type="submit"]')
         ?.disabled,
-    ).toBe(true);
-    await act(async () => {
-      Array.from(container.querySelectorAll('button'))
-        .find((button) => button.textContent === 'Check latest version')
-        ?.click();
-    });
+    ).toBe(false);
     expect(container.textContent).toContain('Latest version 2');
     expect(
       container.querySelector<HTMLButtonElement>('button[type="submit"]')
@@ -296,11 +288,6 @@ describe('CMS-11 successor edit and reconciliation', () => {
       form.dispatchEvent(
         new Event('submit', { bubbles: true, cancelable: true }),
       );
-    });
-    await act(async () => {
-      Array.from(container.querySelectorAll('button'))
-        .find((button) => button.textContent === 'Check latest version')
-        ?.click();
     });
     await act(async () => {
       form.dispatchEvent(

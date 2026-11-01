@@ -71,7 +71,8 @@ export const useCompositionPage = (options: CompositionPageOptions) => {
   const busy =
     session.busy ||
     session.rateWaiting ||
-    insert.reconciling ||
+    session.holding ||
+    session.unconfirmed ||
     panel.kind === 'loading';
   return {
     session,

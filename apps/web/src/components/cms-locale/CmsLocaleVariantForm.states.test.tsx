@@ -19,7 +19,12 @@ import {
   text,
 } from './locale-variant-form.test-support';
 import type { LocaleSubmitResult } from './locale-variant-submit';
-import { PAGE_PATH, TITLE } from './locale-variant.test-support';
+import {
+  HASH,
+  PAGE_PATH,
+  SOURCE_REVISION_ID,
+  TITLE,
+} from './locale-variant.test-support';
 
 beforeAll(enableReactAct);
 afterAll(disableReactAct);
@@ -38,6 +43,18 @@ const READY_SOURCE = {
     texts: { [TITLE]: 'Autumn tour' },
   },
 } as const;
+
+/** The entry as the form holds it after a save of version 4 to 5 (or unchanged at 4): the same source. */
+const UNCHANGED = (version: string) =>
+  ({
+    kind: 'ready',
+    snapshot: {
+      version,
+      sourceRevisionId: SOURCE_REVISION_ID,
+      sourceHash: HASH,
+      texts: { [TITLE]: 'Spring tour' },
+    },
+  }) as const;
 
 const saveWith = async (
   result: LocaleSubmitResult | ((call: number) => LocaleSubmitResult),
@@ -70,8 +87,8 @@ describe('CmsLocaleVariantForm (CMS-03C-04) commandState', () => {
     expect(submit).not.toHaveBeenCalled();
   });
 
-  it('[P2-S12-AC-271] commandState success (kept half): names the saved draft and raises the entry version for the next save; the source is NOT refetched (D4) (CMS-03C-04)', async () => {
-    const refresh = refreshStub(READY_SOURCE);
+  it('[P2-S12-AC-271] commandState success: names the saved draft, raises the entry version for the next save and refetches the source by itself (D4, DEC-242) (CMS-03C-04)', async () => {
+    const refresh = refreshStub(UNCHANGED('5'));
     const { submit, container } = await saveWith(
       savedResult({ version: '5', savedFieldIds: [TITLE] }),
       { refresh },
@@ -85,6 +102,7 @@ describe('CmsLocaleVariantForm (CMS-03C-04) commandState', () => {
     expect(text(container)).toContain('Entry version5');
     expect(text(container)).toContain('StatusDraft');
     expect(document.activeElement?.id).toBe('cms-locale-result-heading');
+    expect(refresh).toHaveBeenCalledTimes(1);
     // The next save is based on the saved version: the draft is now the stored translation.
     await click(buttonNamed(container, 'Save translation'));
     await flush();
@@ -182,7 +200,7 @@ describe('CmsLocaleVariantForm (CMS-03C-04) commandState', () => {
         container.querySelector('.cms-locale-status')?.getAttribute('role'),
       ).toBe('alert');
       expect(text(container)).toContain(
-        'A translation was refused. Check each value against the limit shown beside its field, then save again.',
+        'This language is not supported for this content type, so the translation cannot be saved. Nothing was saved.',
       );
       expect(document.activeElement?.id).toBe('cms-locale-result-heading');
       expect(byLabel<HTMLInputElement>(container, 'Title').value).toBe(
@@ -191,8 +209,8 @@ describe('CmsLocaleVariantForm (CMS-03C-04) commandState', () => {
     });
   });
 
-  it('[P2-S12-AC-271] commandState degraded (kept half): an unknown outcome claims no success and replays the same Idempotency-Key; the entry is NOT refetched before the retry (D3) (CMS-03C-04)', async () => {
-    const refresh = refreshStub(READY_SOURCE);
+  it('[P2-S12-AC-271] commandState degraded: an unknown outcome claims no success, reads the entry by itself before any retry, then replays the same Idempotency-Key (D3, DEC-242) (CMS-03C-04)', async () => {
+    const refresh = refreshStub(UNCHANGED('4'));
     const { submit, container } = await saveWith(
       (call) =>
         call === 0
@@ -205,6 +223,8 @@ describe('CmsLocaleVariantForm (CMS-03C-04) commandState', () => {
       'We could not confirm whether the save went through. Saving again is safe: the same request is never applied twice.',
     );
     expect(text(container)).not.toContain('Translation saved as a draft');
+    // The read ran by itself, once, and found the entry exactly as it was: the retry is offered.
+    expect(refresh).toHaveBeenCalledTimes(1);
     await click(buttonNamed(container, 'Save translation'));
     await flush();
     expect(submit).toHaveBeenCalledTimes(2);

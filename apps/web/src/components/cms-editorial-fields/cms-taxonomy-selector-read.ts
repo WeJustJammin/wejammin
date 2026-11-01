@@ -1,5 +1,7 @@
 import type { TaxonomySelectorPage } from '@wejammin/contracts';
 
+import { startReadDeadline } from '../../lib/read-deadline';
+import { withinDeadline } from '../../lib/read-within-deadline';
 import {
   rateLimitWaitSeconds,
   retryingSafeRead,
@@ -79,12 +81,14 @@ const waitForRead = (
 
 /**
  * Read one page of the selector without carrying mutation authority; the caller's input is
- * admitted first so nothing it invented reaches the proxy.
+ * admitted first so nothing it invented reaches the proxy. The whole read has the shared 8,000 ms
+ * deadline (DEC-246(1)): a read that never answers is `unavailable`, the degraded cell with its
+ * Try again control. A caller abort (`signal`) is also `unavailable`, and is not shown.
  */
 export const readCmsTaxonomySelector = async (
   query: TaxonomySelectorQueryInput,
   fetcher: typeof fetch = fetch,
-  signal?: AbortSignal,
+  caller?: AbortSignal,
 ): Promise<TaxonomySelectorResult> => {
   const parsed = parseSelectorQuery(query);
   if (!parsed.ok)
@@ -96,46 +100,47 @@ export const readCmsTaxonomySelector = async (
   });
   if (parsed.value.cursor !== null) search.set('cursor', parsed.value.cursor);
   search.set('limit', String(parsed.value.limit));
-  let response: Response;
+  const deadline = startReadDeadline(caller);
+  const { signal } = deadline;
   try {
-    response = await retryingSafeRead(
-      async () => {
-        requireLiveRead(signal);
-        const answer = await fetcher(`${TAXONOMY_SELECTOR_PATH}?${search}`, {
-          method: 'GET',
-          credentials: 'same-origin',
-          cache: 'no-store',
-          redirect: 'error',
-          ...(signal === undefined ? {} : { signal }),
-        });
-        requireLiveRead(signal);
-        return answer;
-      },
-      { sleep: (delay) => waitForRead(delay, signal) },
+    const response = await withinDeadline(
+      deadline,
+      retryingSafeRead(
+        async () => {
+          requireLiveRead(signal);
+          const answer = await fetcher(`${TAXONOMY_SELECTOR_PATH}?${search}`, {
+            method: 'GET',
+            credentials: 'same-origin',
+            cache: 'no-store',
+            redirect: 'error',
+            signal,
+          });
+          requireLiveRead(signal);
+          return answer;
+        },
+        { sleep: (delay) => waitForRead(delay, signal) },
+      ),
     );
+    if (!(response instanceof Response)) return { kind: 'unavailable' };
+    if (REJECTED_STATUSES.includes(response.status)) {
+      const status = response.status as TaxonomySelectorRejectedStatus;
+      const wait =
+        status === 429
+          ? await withinDeadline(deadline, rateLimitWaitSeconds(response))
+          : null;
+      return { kind: 'rejected', status, retryAfterSeconds: wait };
+    }
+    if (response.status !== 200) return { kind: 'unavailable' };
+    if (!declaresNoStore(response)) return { kind: 'unavailable' };
+    const candidate = await withinDeadline(deadline, response.json());
+    const page = verifiedTaxonomySelectorPage(
+      candidate,
+      response.headers.get('etag'),
+    );
+    return page === null ? { kind: 'unavailable' } : { kind: 'loaded', page };
   } catch {
     return { kind: 'unavailable' };
+  } finally {
+    deadline.clear();
   }
-  if (readCanceled(signal) || !(response instanceof Response))
-    return { kind: 'unavailable' };
-  if (REJECTED_STATUSES.includes(response.status)) {
-    const status = response.status as TaxonomySelectorRejectedStatus;
-    const wait = status === 429 ? await rateLimitWaitSeconds(response) : null;
-    if (readCanceled(signal)) return { kind: 'unavailable' };
-    return { kind: 'rejected', status, retryAfterSeconds: wait };
-  }
-  if (response.status !== 200) return { kind: 'unavailable' };
-  if (!declaresNoStore(response)) return { kind: 'unavailable' };
-  let candidate: unknown;
-  try {
-    candidate = await response.json();
-  } catch {
-    return { kind: 'unavailable' };
-  }
-  if (readCanceled(signal)) return { kind: 'unavailable' };
-  const page = verifiedTaxonomySelectorPage(
-    candidate,
-    response.headers.get('etag'),
-  );
-  return page === null ? { kind: 'unavailable' } : { kind: 'loaded', page };
 };

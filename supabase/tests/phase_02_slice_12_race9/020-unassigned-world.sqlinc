@@ -1,0 +1,63 @@
+-- Slice 12 race9: the CMS-03B-10 create world with a target that is visible ONLY through a cms.editor assignment (lane claude_s12_db9a; tracker P2-S12-AC-294
+-- "unassigned").  Include INSIDE the world transaction, after `select no_plan();` and with psql output redirected (\o /dev/null).  It is race8's DEC-202 create
+-- world (020-edtl-world.sqlinc: default template T1, the bound content type with its relation field, the article type) plus, built by the real producers:
+--   * designer2 (a confirmed member of the owner organization, already bound to it) gets cms.editor through the real CMS-03A-15 grant command, creates two
+--     article targets T2 and T3 through the real CMS-03B-10 create (so each carries ONLY a cms.editor assignment of designer2: the creator's assignment keeps the
+--     capability the create proved, and an editor-only creator proves editor), and only then gets cms.author;
+--   * so designer2's OWN capability for a create is cms.author while T2 and T3 are readable to designer2 through the editor grant plus the editor assignment;
+--   * stashed commands: 'u0' / 'u1' / 'u2' (designer2's create of the bound type naming T2 / T2 / T3 with pin 1) and 'revoke_editor' (the owner's real
+--     CMS-03A-17 revocation of designer2's editor grant at its exact version).
+create or replace function pg_temp.r9_stash_create(p_key text, p_target uuid, p_pin text default '1') returns void language plpgsql as $b$
+declare v_values jsonb;
+begin
+  v_values := jsonb_build_object(
+    (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('edtl-bound:version') and field_key = 'title'), 'R9 ' || p_key,
+    pg_temp.r7_get('relation_field'), jsonb_build_object('targets', jsonb_build_array(
+      jsonb_strip_nulls(jsonb_build_object('targetId', p_target, 'expectedTargetVersion', p_pin)))));
+  perform pg_temp.r7_stash_cmd(p_key, 'designer2', 'platform_api.cms_create_entry',
+    pg_temp.s12edtl_request('edtl-bound', v_values, 'r9-' || p_key || '-key'), pg_temp.s09d_context('designer2', true));
+end;
+$b$;
+create or replace function pg_temp.r9_make_target(p_label text) returns void language plpgsql as $b$
+begin
+  perform pg_temp.s12ga_rpc(p_label, 'platform_api.cms_create_entry', 'designer2',
+    pg_temp.s12edtl_request('edtl-target', jsonb_build_object(
+      (select stable_field_id::text from platform_private.cms_field_definition_versions
+        where content_type_version_id = pg_temp.s09d_id('edtl-target:version') and field_key = 'title'), 'R9 ' || p_label), p_label || '-key'),
+    pg_temp.s09d_context('designer2', true));
+end;
+$b$;
+
+\ir ../phase_02_slice_12_race8/020-edtl-world.sqlinc
+
+select pg_temp.r7_note('editor_grant', pg_temp.s09d_grant_via_rpc('designer2', 'cms.editor'));
+select pg_temp.r9_make_target('r9-t2');
+select pg_temp.r9_make_target('r9-t3');
+select pg_temp.r7_note('author_grant', pg_temp.s09d_grant_via_rpc('designer2', 'cms.author'));
+select pg_temp.r7_note('t2_state', pg_temp.s12ga_state('r9-t2'));
+select pg_temp.r7_note('t3_state', pg_temp.s12ga_state('r9-t3'));
+select pg_temp.r7_note('t2', pg_temp.s12ga_body('r9-t2')->'entry'->>'id');
+select pg_temp.r7_note('t3', pg_temp.s12ga_body('r9-t3')->'entry'->>'id');
+select pg_temp.r7_note('designer_auth', pg_temp.s12ga_auth('designer2')::text);
+select pg_temp.r7_note('designer_person', pg_temp.s12ga_person('designer2')::text);
+select pg_temp.r7_note('t2_assignments', (select string_agg(capability_key || ':' || state, ',' order by capability_key) from platform_private.cms_entry_assignments
+  where entry_id = pg_temp.r7_get('t2')::uuid and assignee_person_id = pg_temp.s12ga_person('designer2')));
+select pg_temp.r7_note('t3_assignments', (select string_agg(capability_key || ':' || state, ',' order by capability_key) from platform_private.cms_entry_assignments
+  where entry_id = pg_temp.r7_get('t3')::uuid and assignee_person_id = pg_temp.s12ga_person('designer2')));
+select pg_temp.r7_note('grants', (select string_agg(capability_code || ':' || active::text, ',' order by capability_code) from identity_private.organization_actor_grant
+  where organization_id = pg_temp.s12ga_org() and person_id = pg_temp.s12ga_person('designer2') and capability_code in ('cms.author', 'cms.editor')));
+select set_config('app.cms_rpc', 'true', true);
+select pg_temp.r7_note('visible_t2', platform_private.cms_relation_target_visible(pg_temp.s12ga_auth('designer2'), pg_temp.s12ga_org(), pg_temp.r7_get('t2')::uuid, 'article')::text);
+select pg_temp.r7_note('visible_t3', platform_private.cms_relation_target_visible(pg_temp.s12ga_auth('designer2'), pg_temp.s12ga_org(), pg_temp.r7_get('t3')::uuid, 'article')::text);
+select pg_temp.r9_stash_create('u0', pg_temp.r7_get('t2')::uuid);
+select pg_temp.r9_stash_create('u1', pg_temp.r7_get('t2')::uuid);
+select pg_temp.r9_stash_create('u2', pg_temp.r7_get('t3')::uuid);
+select pg_temp.r7_note('editor_grant_id', (select id::text from platform_private.cms_capability_grants
+  where owner_id = pg_temp.s12ga_org() and subject_person_ref = pg_temp.s12ga_person('designer2') and capability_code = 'cms.editor'));
+select pg_temp.r7_stash_cmd('revoke_editor', 'owner', 'platform_api.cms_revoke_capability_grant', jsonb_build_object(
+    'grantId', (select id from platform_private.cms_capability_grants
+      where owner_id = pg_temp.s12ga_org() and subject_person_ref = pg_temp.s12ga_person('designer2') and capability_code = 'cms.editor'),
+    'expectedVersion', (select version::text from platform_private.cms_capability_grants
+      where owner_id = pg_temp.s12ga_org() and subject_person_ref = pg_temp.s12ga_person('designer2') and capability_code = 'cms.editor'),
+    'idempotencyKey', 'r9-revoke-editor-key'), pg_temp.s09d_context('owner', true));

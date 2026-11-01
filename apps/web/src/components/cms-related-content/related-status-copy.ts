@@ -73,9 +73,17 @@ export const failureCopy = (failure: Failure): string => {
           : `Too many requests. Try again in ${failure.retryAfterSeconds} seconds.`
         : (REJECTED_COPY[failure.status] ?? REJECTED_COPY[500]!);
     case 'uncertain':
-      return 'We could not confirm whether the save went through. Saving again is safe: the same request is never applied twice.';
+      return 'We could not confirm whether the save went through, so saving is off until it is checked. Your choices are kept. Check again.';
   }
 };
+
+/** The result of a reconciling read that verified and found no such save (FE03 1050). */
+export const NOT_RECORDED_HEADING = 'Save not recorded';
+export const NOT_RECORDED_COPY =
+  'The save was not recorded. Your choices are kept. Saving again is safe: the same request is never applied twice.';
+
+/** The stable pending label while an unknown outcome is read back (FE03 1050). */
+export const RECONCILING_LABEL = 'Checking whether the save went through…';
 
 /** Fixed read-failure copy, with no server detail or inferred authority. */
 export const reviewStateCopy = (state: RelatedConflictReviewState): string => {

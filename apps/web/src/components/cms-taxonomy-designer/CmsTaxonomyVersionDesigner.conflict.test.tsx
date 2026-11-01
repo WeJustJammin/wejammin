@@ -80,9 +80,8 @@ describe('CmsTaxonomyVersionDesigner: a compare-and-set conflict', () => {
       'Another version was saved',
     );
     expect(text(container)).toContain('Nothing was overwritten.');
-    expect(readVersions).not.toHaveBeenCalled();
-    await click(buttonNamed(container, 'Check latest version'));
-    await flush();
+    // No press: the 409 refetched the versions by itself (FE03 1048, DEC-242).
+    expect(readVersions).toHaveBeenCalledTimes(1);
     expect(text(container)).toContain('Latest saved version: 4, draft.');
     expect(text(container)).toContain('Your unsent draft: Role, Place');
     expect(text(container)).toContain('Version 4: Flat');
@@ -114,8 +113,6 @@ describe('CmsTaxonomyVersionDesigner: a compare-and-set conflict', () => {
     await click(byLabel(container, 'Place'));
     await click(buttonNamed(container, 'Save successor draft'));
     await flush();
-    await click(buttonNamed(container, 'Check latest version'));
-    await flush();
     await click(buttonNamed(container, 'Discard my edits and load version 4'));
     expect(byLabel<HTMLInputElement>(container, /^Flat/u).checked).toBe(true);
     expect(byLabel<HTMLInputElement>(container, 'Place').checked).toBe(false);
@@ -141,8 +138,6 @@ describe('CmsTaxonomyVersionDesigner: a compare-and-set conflict', () => {
     });
     await click(buttonNamed(container, 'Save successor draft'));
     await flush();
-    await click(buttonNamed(container, 'Check latest version'));
-    await flush();
     expect(
       container.querySelector('.cms-taxonomy-conflict [role="alert"]')
         ?.textContent,
@@ -156,8 +151,6 @@ describe('CmsTaxonomyVersionDesigner: a compare-and-set conflict', () => {
       readVersions: readStub(loadedVersions([base])),
     });
     await click(buttonNamed(container, 'Save successor draft'));
-    await flush();
-    await click(buttonNamed(container, 'Check latest version'));
     await flush();
     expect(text(container)).toContain(
       'The version you started from is still the latest.',
@@ -183,8 +176,6 @@ describe('CmsTaxonomyVersionDesigner: a compare-and-set conflict', () => {
       readVersions: readStub(read),
     });
     await click(buttonNamed(container, 'Save successor draft'));
-    await flush();
-    await click(buttonNamed(container, 'Check latest version'));
     await flush();
     expect(
       container.querySelector('.cms-taxonomy-conflict [role="alert"]')

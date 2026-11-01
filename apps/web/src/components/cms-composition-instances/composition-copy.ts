@@ -20,7 +20,7 @@ const REASONS: Readonly<
     nested_pattern_not_active:
       'A pattern nested inside this one is no longer active. Choose another pattern.',
     block_registry_digest_mismatch:
-      'The block registry changed since this pattern was listed. Reload the page and choose the pattern again.',
+      'The block registry changed since this pattern was listed. Choose the pattern again; your input is kept.',
     pattern_cycle: 'This pattern would create a cycle and cannot be placed.',
     block_rules_violated:
       'This pattern breaks the composition rules of one of its blocks, so it cannot be placed. Choose another pattern; your input is kept.',
@@ -44,6 +44,21 @@ const REASONS: Readonly<
       'This update is too large to compare here (more than 128 paths or 256 KiB). Nothing was changed.',
   },
   selector: {},
+};
+
+/**
+ * The placement's digest refusal (BE03c 388, DEC-186) by what the selector read again found (DEC-246 ruling 5): the
+ * values the author typed are kept in every case, and none of these sentences asks for a reload.
+ */
+export const registryChangedMessage = (
+  outcome: 'read' | 'cleared' | 'unread',
+): string => {
+  const lead = 'The block registry changed since this pattern was listed.';
+  if (outcome === 'read')
+    return `${lead} The pattern list was read again and your input is kept; check it and place again.`;
+  if (outcome === 'cleared')
+    return `${lead} The pattern is no longer in the pattern list that was read again; choose another pattern. The rest of your input is kept.`;
+  return `${lead} The pattern list could not be read again; place again to read it once more. Your input is kept.`;
 };
 
 const PLAIN_409: Readonly<Record<CompositionOperation, string>> = {
@@ -90,3 +105,29 @@ export const COMPOSITION_COPY = {
   notEditable:
     "This entry's current revision is not an editable draft, so patterns cannot be inserted or updated here.",
 } as const;
+
+const RECONCILE_WORDS = {
+  place: { moved: 'the placement', again: 'place twice' },
+  update: { moved: 'the change', again: 'apply twice' },
+} as const;
+
+/**
+ * What the entry read after an unknown outcome says (FE03 1050): still the version sent, moved on, or unreadable. The
+ * read is only shown: the request, and so its `Idempotency-Key`, stays exactly as it was sent, so the retry can never
+ * apply twice. `attempt` counts the checks of one unknown outcome (review V20 m5, DEC-246 ruling 3).
+ */
+export const reconciliationLine = (
+  current: string | null,
+  sent: string,
+  kind: keyof typeof RECONCILE_WORDS,
+  attempt = 1,
+): string => {
+  const words = RECONCILE_WORDS[kind];
+  const retry = `Sending again retries the same request and cannot ${words.again}.`;
+  // A repeated failed check names its attempt, so the sentence differs from the one before and is announced again.
+  if (current === null)
+    return `The entry could not be read to check${attempt > 1 ? ` (attempt ${attempt})` : ''}, so nothing more is known. Sending is off until it has been read: check again.`;
+  return current === sent
+    ? `The entry is still at version ${current}. ${retry}`
+    : `The entry has moved to version ${current} since the request was sent, so ${words.moved} may have been applied. ${retry}`;
+};

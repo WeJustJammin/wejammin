@@ -1,5 +1,14 @@
 // @vitest-environment jsdom
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { act } from 'react';
+import {
+  afterAll,
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  vi,
+} from 'vitest';
 
 import {
   buttonNamed,
@@ -163,5 +172,35 @@ describe('facts of a chosen entry', () => {
     expect(
       container.querySelector('ol.cms-related-rows li small')?.textContent,
     ).toContain('fr-FR');
+  });
+});
+
+describe('a candidate page that never answers (DEC-246 ruling 1)', () => {
+  afterEach(() => {
+    vi.useRealTimers();
+    vi.unstubAllGlobals();
+  });
+
+  it('[P2-S12-AC-271] loading and error closing words: Load more entries leaves its loading state at the 8,000 ms deadline, says the page could not be loaded and offers it again, keeping the list', async () => {
+    vi.useFakeTimers();
+    vi.stubGlobal(
+      'fetch',
+      vi.fn(() => new Promise<Response>(() => undefined)),
+    );
+    const { container } = mount({ candidates: first });
+    await click(buttonNamed(container, 'Load more entries'));
+    expect(buttonNamed(container, 'Loading…').disabled).toBe(true);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(7_999);
+    });
+    expect(buttonNamed(container, 'Loading…').disabled).toBe(true);
+    await act(async () => {
+      await vi.advanceTimersByTimeAsync(1);
+    });
+    expect(text(container)).toContain(
+      'More entries could not be loaded right now.',
+    );
+    expect(buttonNamed(container, 'Load more entries').disabled).toBe(false);
+    expect(ids(container)).toEqual([id(1), id(2)]);
   });
 });

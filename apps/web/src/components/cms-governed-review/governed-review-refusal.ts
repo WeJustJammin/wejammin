@@ -1,4 +1,7 @@
-import type { ClassifiedRefusal } from '../cms-editorial-workflow/cms-workflow-refusal';
+import {
+  classifyWorkflowRefusal,
+  type ClassifiedRefusal,
+} from '../cms-editorial-workflow/cms-workflow-refusal';
 import { classifyGovernedActivationRefusal } from './governed-activation-refusal';
 import type { GovernedRefusal } from './governed-review-command-transport';
 import type { GovernedCommandOperation } from './governed-review-reasons';
@@ -35,6 +38,14 @@ export const classifyGovernedRefusal = (
 ): ClassifiedRefusal | null => {
   if (operation === 'CMS-03C-09')
     return classifyGovernedActivationRefusal(refusal);
+  // FE03 884 + 1049: `reviewer_not_eligible` keeps its one uniform sentence at the reviewer field (the shared table
+  // speaks it) and, like every 409 reason, refetches the review (DEC-242). The refetch cannot disclose eligibility:
+  // it returns the same review resource.
+  if (
+    operation === 'CMS-03C-08' &&
+    refusal.governed.reason === 'reviewer_not_eligible'
+  )
+    return { ...classifyWorkflowRefusal('CMS-03B-18', refusal), refetch: true };
   if (operation !== 'CMS-03C-06') return null;
   if (refusal.governed.reason === 'subject_not_submittable')
     return withDefaults(

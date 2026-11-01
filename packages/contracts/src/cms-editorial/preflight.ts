@@ -142,6 +142,8 @@ export const CMS_PREFLIGHT_REGISTRY = [
       'pattern_not_active',
       'pattern_digest_changed',
       'nested_pattern_not_active',
+      'pattern_depth_exceeded',
+      'pattern_nodes_exceeded',
       'pattern_block_rules_violated',
     ],
   },

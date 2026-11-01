@@ -59,8 +59,6 @@ const mountConflicted = async (result: PatternLatestResult) => {
   );
   await click(buttonNamed(mounted.container, 'Save successor draft'));
   await flush();
-  await click(buttonNamed(mounted.container, 'Check latest version'));
-  await flush();
   return mounted;
 };
 const section = (container: HTMLElement, name: RegExp): HTMLElement => {

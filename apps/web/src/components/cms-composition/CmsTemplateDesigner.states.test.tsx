@@ -20,6 +20,7 @@ import {
  */
 let root: Root | null = null;
 beforeAll(async () => {
+  await import('./cms-registry-read');
   await loadCmsValidators();
 });
 afterEach(async () => {
@@ -166,15 +167,31 @@ describe.each(templateSurfaces)(
       expect(commit(container).disabled).toBe(false);
     });
 
-    it(`[P2-S12-AC-271] commandState error (kept half): a 409 renders fixed conflict copy and keeps the draft; the block-registry token has its fixed reason copy; no automatic refetch (D2) (CMS-03C-01 ${surface.name})`, async () => {
-      const fetcher = vi
-        .fn<typeof fetch>()
-        .mockResolvedValueOnce(refusal(409, 'TEMPLATE_VERSION_CONFLICT'))
-        .mockResolvedValueOnce(
-          refusal(409, 'TEMPLATE_VERSION_CONFLICT', {
-            reasonCode: 'block_registry_digest_mismatch',
-          }),
-        );
+    it(`[P2-S12-AC-271] commandState error: a 409 renders fixed conflict copy and keeps the draft; the block-registry token has its fixed reason copy; a version conflict refetches the key by itself, the digest token re-reads the designer context (D2, DEC-242, V19 M2) (CMS-03C-01 ${surface.name})`, async () => {
+      const writes = [
+        refusal(409, 'TEMPLATE_VERSION_CONFLICT'),
+        refusal(409, 'TEMPLATE_VERSION_CONFLICT', {
+          reasonCode: 'block_registry_digest_mismatch',
+        }),
+      ];
+      const parent = (templateSurfaces[1]!.element.props as { detail: object })
+        .detail;
+      const latest =
+        surface.name === 'create designer'
+          ? { ...parent, version: '1', templateVersion: 1 }
+          : parent;
+      const fetcher = vi.fn<typeof fetch>().mockImplementation((_url, init) =>
+        init?.method === 'POST'
+          ? Promise.resolve(writes.shift()!)
+          : Promise.resolve(
+              Response.json(latest, {
+                status: 200,
+                headers: {
+                  etag: surface.name === 'create designer' ? '"1"' : '"2"',
+                },
+              }),
+            ),
+      );
       const container = await mountElement(surface.element, fetcher);
       await surface.prepare(container);
       await nativeSubmit(container);
@@ -184,28 +201,37 @@ describe.each(templateSurfaces)(
           ? 'The server reported a conflict. Review the existing template and refresh before making a different change.'
           : 'The server reported a conflict. Check the latest version and explicitly reconcile your unsent values before another submit.',
       );
-      if (surface.name !== 'create designer') {
-        // The successor offers the explicit latest-version check; a conflict blocks the write until it ran.
-        expect(
-          Array.from(container.querySelectorAll('button')).some(
-            (button) => button.textContent === 'Check latest version',
-          ),
-        ).toBe(true);
-        expect(commit(container).disabled).toBe(true);
-      }
+      // The key is read by itself (once), and the control that repeats the read is offered.
+      expect(
+        Array.from(container.querySelectorAll('button')).some(
+          (button) => button.textContent === 'Check latest version',
+        ),
+      ).toBe(true);
+      if (surface.name !== 'create designer')
+        // The successor's latest equals its parent, so the verified read lifts the hold (DEC-242 item 3).
+        expect(commit(container).disabled).toBe(false);
       expect(
         container.querySelector<HTMLInputElement>('#cms-template-audience')!
           .value.length,
       ).toBeGreaterThan(0);
       expect(
         fetcher.mock.calls.filter(([, init]) => init?.method === 'GET'),
-      ).toHaveLength(0);
-      if (surface.name === 'create designer') {
-        await nativeSubmit(container);
-        expect(region(container).textContent).toContain(
-          PATTERN_REFUSAL_COPY.block_registry_digest_mismatch,
-        );
-      }
+      ).toHaveLength(1);
+      await nativeSubmit(container);
+      expect(region(container).textContent).toContain(
+        PATTERN_REFUSAL_COPY.block_registry_digest_mismatch,
+      );
+      // The create designer has no template to compare for the closed registry-digest 409, so it reads no template
+      // more; the successor reads its parent again, as it does for any 409. Both read the designer context (V19 M2).
+      const reads = fetcher.mock.calls
+        .filter(([, init]) => init?.method === 'GET')
+        .map(([url]) => String(url));
+      expect(
+        reads.filter((url) => url !== '/api/v1/cms/templates/context'),
+      ).toHaveLength(surface.name === 'create designer' ? 1 : 2);
+      expect(
+        reads.filter((url) => url === '/api/v1/cms/templates/context'),
+      ).toHaveLength(1);
     });
 
     it(`[P2-S12-AC-271] commandState error: a 422 renders the fixed rejected copy in the result region and keeps the values (CMS-03C-01 ${surface.name})`, async () => {
@@ -293,7 +319,7 @@ describe('Template designer (CMS-03C-01) commandState degraded', () => {
     TemplateSurface,
   ];
 
-  it('[P2-S12-AC-271] commandState degraded (successor): an unknown outcome claims no success, blocks every send until a verified refetch, then replays the same Idempotency-Key (CMS-03C-01 successor designer)', async () => {
+  it('[P2-S12-AC-271] commandState degraded (successor): an unknown outcome claims no success, refetches by itself before any retry (a held read refuses every send: CmsTemplateEditDesigner.uncertain-pending.test.tsx), then replays the same Idempotency-Key (CMS-03C-01 successor designer)', async () => {
     let lost = false;
     const detail = (successor.element.props as { detail: object }).detail;
     const fetcher = vi.fn<typeof fetch>().mockImplementation((_input, init) => {
@@ -312,18 +338,11 @@ describe('Template designer (CMS-03C-01) commandState degraded', () => {
     await nativeSubmit(container);
     expect(region(container).textContent).toContain('The result is unknown.');
     expect(region(container).textContent).not.toContain('Draft version saved');
-    // No retry before the refetch: both the button and a native submit are refused.
-    expect(commit(container).disabled).toBe(true);
-    await nativeSubmit(container);
-    expect(posts(fetcher)).toHaveLength(1);
-    await act(async () => {
-      Array.from(container.querySelectorAll('button'))
-        .find((button) => button.textContent === 'Check latest version')!
-        .click();
-    });
+    // The refetch ran by itself (DEC-242 item 3) before any retry was possible.
     expect(
       fetcher.mock.calls.filter(([, init]) => init?.method === 'GET'),
     ).toHaveLength(1);
+    expect(posts(fetcher)).toHaveLength(1);
     await nativeSubmit(container);
     expect(posts(fetcher)).toHaveLength(2);
     const [first, second] = posts(fetcher).map(([, init]) =>
@@ -333,9 +352,11 @@ describe('Template designer (CMS-03C-01) commandState degraded', () => {
     expect(region(container).textContent).toContain('Draft version saved');
   });
 
-  it('[P2-S12-AC-271] commandState degraded (kept half, create): an unknown outcome claims no success and replays the same Idempotency-Key, but nothing is refetched before the retry (D3) (CMS-03C-01 create designer)', async () => {
+  it('[P2-S12-AC-271] commandState degraded (create): an unknown outcome claims no success, reads the key by itself (404: nothing saved) before any retry, then replays the same Idempotency-Key (D3, DEC-242) (CMS-03C-01 create designer)', async () => {
     let lost = false;
-    const fetcher = vi.fn<typeof fetch>().mockImplementation(() => {
+    const fetcher = vi.fn<typeof fetch>().mockImplementation((_url, init) => {
+      if (init?.method === 'GET')
+        return Promise.resolve(refusal(404, 'TEMPLATE_NOT_FOUND'));
       if (!lost) {
         lost = true;
         return Promise.reject(new Error('response lost after send'));
@@ -349,6 +370,10 @@ describe('Template designer (CMS-03C-01) commandState degraded', () => {
       'The result is unknown. Check for an existing draft before retrying',
     );
     expect(region(container).textContent).not.toContain('Draft created');
+    // The read of the key ran by itself, once, before the retry.
+    expect(
+      fetcher.mock.calls.filter(([, init]) => init?.method === 'GET'),
+    ).toHaveLength(1);
     await nativeSubmit(container);
     expect(posts(fetcher)).toHaveLength(2);
     const keys = posts(fetcher).map(([, init]) =>

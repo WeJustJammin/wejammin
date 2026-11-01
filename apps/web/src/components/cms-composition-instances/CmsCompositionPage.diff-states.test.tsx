@@ -28,6 +28,7 @@ import {
   settle,
 } from './composition-page.test-support';
 import { diffOf, id, propsPath, row } from './composition.test-support';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /**
  * [P2-S12-AC-271] FE03 1042 to 1048, `diffState` (CMS-03C-14), the seven states of the state table in
@@ -198,6 +199,7 @@ describe('diffState (CMS-03C-14)', () => {
     expect(
       page.calls.filter((call) => call.path.endsWith('/update-diff')),
     ).toHaveLength(3);
+    expectListRefetches(page, 1);
   });
 
   it('[P2-S12-AC-271] diffState disabled: the accept control is off and its description names the unavailable newer version', async () => {

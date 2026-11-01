@@ -4,7 +4,10 @@ import {
   isCmsVersion,
 } from '@wejammin/contracts/client';
 
+import { startReadDeadline } from '../../lib/read-deadline';
+import { withinDeadline } from '../../lib/read-within-deadline';
 import { retryingSafeRead } from '../../lib/safe-read-retry';
+import { TAXONOMY_VERSIONS_PAGE_MAX } from './taxonomy-vocabulary-core';
 import { TAG_LIMIT, tagPattern, type TagKind } from './taxonomy-tags';
 import {
   TAXONOMY_KEY_REGEX,
@@ -152,8 +155,7 @@ const verifiedVersion = (
   };
 };
 
-/** `cmsTaxonomyVersionsRead` holds at most the newest 50 versions (BE03c 406). */
-export const TAXONOMY_VERSIONS_PAGE_MAX = 50;
+export { TAXONOMY_VERSIONS_PAGE_MAX };
 
 /** The page of THIS vocabulary, newest first, whose strong ETag is its page version, or null. */
 export const verifiedVersionsPage = (
@@ -195,36 +197,38 @@ export const readTaxonomyVersions = async (
   fetcher: typeof fetch = fetch,
 ): Promise<TaxonomyVersionsResult> => {
   if (!isCmsUuid(taxonomyId)) return { kind: 'unavailable' };
-  let response: Response;
+  // The shared read deadline covers the fetch, its safe retries and the body (DEC-246(1)).
+  const deadline = startReadDeadline();
   try {
-    response = await retryingSafeRead(() =>
-      fetcher(`/api/v1/cms/taxonomies/${taxonomyId}/versions`, {
-        method: 'GET',
-        credentials: 'same-origin',
-        cache: 'no-store',
-        redirect: 'error',
-      }),
+    const response = await withinDeadline(
+      deadline,
+      retryingSafeRead(() =>
+        fetcher(`/api/v1/cms/taxonomies/${taxonomyId}/versions`, {
+          method: 'GET',
+          credentials: 'same-origin',
+          cache: 'no-store',
+          redirect: 'error',
+          signal: deadline.signal,
+        }),
+      ),
     );
+    if (!(response instanceof Response)) return { kind: 'unavailable' };
+    if ([401, 403, 404, 429].includes(response.status))
+      return {
+        kind: 'rejected',
+        status: response.status as 401 | 403 | 404 | 429,
+      };
+    if (response.status !== 200) return { kind: 'unavailable' };
+    const candidate = await withinDeadline(deadline, response.json());
+    const page = verifiedVersionsPage(
+      candidate,
+      taxonomyId,
+      response.headers.get('etag'),
+    );
+    return page === null ? { kind: 'unavailable' } : { kind: 'loaded', page };
   } catch {
     return { kind: 'unavailable' };
+  } finally {
+    deadline.clear();
   }
-  if (!(response instanceof Response)) return { kind: 'unavailable' };
-  if ([401, 403, 404, 429].includes(response.status))
-    return {
-      kind: 'rejected',
-      status: response.status as 401 | 403 | 404 | 429,
-    };
-  if (response.status !== 200) return { kind: 'unavailable' };
-  let candidate: unknown;
-  try {
-    candidate = await response.json();
-  } catch {
-    return { kind: 'unavailable' };
-  }
-  const page = verifiedVersionsPage(
-    candidate,
-    taxonomyId,
-    response.headers.get('etag'),
-  );
-  return page === null ? { kind: 'unavailable' } : { kind: 'loaded', page };
 };

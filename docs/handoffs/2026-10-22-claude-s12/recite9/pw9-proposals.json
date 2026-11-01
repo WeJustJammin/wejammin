@@ -1,0 +1,85 @@
+[
+ {
+  "criterion": "P2-S12-AC-273",
+  "clauses": [
+   {
+    "index": 0,
+    "text": "End-to-end journeys: Playwright, using the real routes and two people, ... shows a dependency invalidation returning a subject to draft, a linked pattern update accepted and detached, ...; and runs keyboard-only and at 200% zoom with no diff value, canonical id or person id in the URL, storage, logs or telemetry.",
+    "add": [
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-dependency-journey-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J7 a dependency change returns approved patterns to draft: the owner is refused in the browser, the recheck job invalidates the other, and each review page says so",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "dependency-journey:71-203 - three patterns: a child is active, two patterns nest its version 1 (the first submitted from its page, assigned and decided in the browser; the second approved through the routes); the child gets an activated successor, so the nested version is superseded while both stored reviews still read approved (control, DB); the owner presses Activate on the second in the browser and the page states 'A dependency of this version changed ... back to draft' (CMS-03C-09 step 4), the database holds invalidated|dependency_changed, the pattern is draft and no activation event exists; the cms.governed_review.recheck job (production RPCs as service_role: event resolver then run) invalidates exactly the first (invalidated 1, dependencyChanged 1); each review page, loaded afresh, states 'State: Invalidated', 'Subject: Draft' and the invalidated copy and offers no activation; the first pattern's page states 'Lifecycle: Draft'.",
+      "descriptionLine": 71
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-linked-update-journey-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J8 a linked pattern update is accepted on one entry and detached on another: the scan job appends the update, the diff shows the new text, and a fresh load shows both outcomes",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "linked-update-journey:58-207 - version 1 of a pattern is active and placed linked into two entries from the insert form; version 2 (changed title text) is activated; the cms.pattern.linked_update_scan job (production RPC as service_role) appends 2 pending_diff rows (DB: pending_diff|linked|1); on the first entry the row says 'Update available', Review update shows 'Pinned to pattern version 1; version 2 is available.', '1 changed path, 0 collisions', the base and new text, and Accept update answers <300 with a strong If-Match, heading 'Update applied', DB active|linked|2; on the second entry Detach as a local copy answers <300, heading 'Detached', DB newest row detached; a fresh load shows 'Up to date / Pinned to pattern version 2' and 'Local copy' with no Review update control; the diff texts, reasons and person ids are scanned in URLs, console, storage, IndexedDB names, outbox payloads and audit rows.",
+      "descriptionLine": 58
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-protected-journey-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J9 a protected vocabulary is defined, submitted, assigned to two reviewers, decided by the base reviewer and then its specialist, and activated, all in the browser",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "protected-journey:85-200 - a vocabulary over a DEC-110 cms.disclosure.policy type is defined in the browser form and submitted from its page; the review page says 'Risk class: Protected', '0 of 2 decisions recorded.' and the policy slot; the owner assigns the base reviewer and the specialist in the browser (2 assignments, DB); the base reviewer approves in the browser: review open, 'Subject: In review', '1 of 2 decisions recorded.', slot cms.reviewer; the specialist approves: 'State: Approved', '2 of 2 decisions recorded.', two decision records; the owner activates in the browser and the vocabulary page states 'Lifecycle: Active'; ids and reasons scanned as above.",
+      "descriptionLine": 85
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-pattern-journey-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J10 a pattern is created in the browser, submitted, assigned, decided and scheduled by three people",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "pattern-journey:56-126 - a pattern is CREATED in the /patterns/new form (201, ETag \"1\", DB draft), submitted from its page (review), assigned and decided in the browser (approved), and SCHEDULED by the owner in the browser: DB scheduled with exactly one pending schedule row and no activation event; the review page states 'Scheduled activation: pending.' and 'Subject: Scheduled, not active'; the pattern page states 'Lifecycle: Scheduled'; ids and reasons scanned as above.",
+      "descriptionLine": 56
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-keyboard-journeys-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J11 a template is defined, submitted, assigned, decided and scheduled by keyboard alone at a 640x400 viewport",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "keyboard-journeys:117 - at 640x400 (1280x800 at 200% zoom) the designer defines a template by key presses only (key, content type, locale, audience, Create draft, the page's link), submits it from its page, the owner assigns the reviewer (select by ArrowDown, date-time typed segment by segment), the reviewer decides, the owner schedules (radio by arrow keys, time zone and local time typed): review approved, one pending schedule row, 'Scheduled activation: pending.', 'Lifecycle: Scheduled'; no horizontal scroll at each page; ids and reasons scanned.",
+      "descriptionLine": 117
+     },
+     {
+      "tool": "playwright",
+      "file": "tests/e2e/phase-02-slice-12-keyboard-journeys-real-route.spec.ts",
+      "title": "[P2-S12-AC-273] J12 a pattern is submitted, assigned, decided and scheduled by keyboard alone at a 640x400 viewport",
+      "project": "real-route-chrome",
+      "identitySource": "static",
+      "computed": false,
+      "status": "pending root run",
+      "evidence": "keyboard-journeys:143 - the same keyboard-only journey (submit, assign, decide, schedule) for a saved pattern at 640x400: DB scheduled with one pending schedule row, 'Lifecycle: Scheduled'; the pattern tree editor itself is not keyboard-driven here (J10 creates a pattern with the mouse).",
+      "descriptionLine": 143
+     }
+    ],
+    "staleExisting": [],
+    "gap": "PARTIAL, do not cite as closing the clause. Added by pw9 (pending root run, written blind): J7 dependency invalidation, J8 linked update accepted and detached, J9 protected decision with browser submit and assignment, J10 pattern created in the browser then scheduled, J11/J12 keyboard-only at 640x400 for a template and a pattern, and the identifier scan extended to IndexedDB names, outbox payloads and audit rows. Still not proven: (1) Worker and web LOG LINES and any external telemetry sink are not capturable by a spec in the real-route harness (the Worker logger is a no-op, wrangler stdout is inherited and not piped) - BOUNDARY, see the lane report; (2) the two system jobs (recheck, linked scan) are run through their production RPCs because the harness has no queue consumer or outbox relay; (3) keyboard-only coverage is the template and pattern submit/assign/decide/schedule, not the pattern tree editor, the vocabulary define/assign, the diff accept/detach or the term/locale/related pages; (4) the protected decision is shown for a vocabulary subject (the policy basis is the same machinery for template and pattern)."
+   }
+  ],
+  "proposedStatus": "partial",
+  "proposedLimitation": "Unproven (uncited): Worker and web log lines and external telemetry (not capturable in the real-route harness); queue consumption of the recheck and linked-scan jobs (run through the production RPCs instead); keyboard-only coverage of the pattern tree editor, vocabulary define/assign, diff accept/detach and the term, locale and related pages. Added by pw9 (pending root run): the dependency invalidation, linked update, protected-in-journey, browser-created scheduled pattern and keyboard-only template and pattern journeys.",
+  "lane": "claude_s12_pw9",
+  "runStatus": "pending root run: Playwright, the stack and db may not be run by this lane"
+ }
+]

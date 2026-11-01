@@ -32,7 +32,8 @@ import {
 /*
  * [P2-S12-AC-271] `latestReadState` of `cmsTaxonomyVersionsRead` (FE03 "Slice 12 definition governance states"): the
  * vocabulary designer over its real conflict panel, hooks, version list and versions reader (only `fetch` is replaced).
- * The page and the version table are server HTML; the read is the explicit "Check latest version" offered after a conflict.
+ * The page and the version table are server HTML; a 409 is refetched by itself (FE03 1048, DEC-242 item 3): the first
+ * scripted read is the automatic one and the explicit "Check latest version" only repeats a read.
  */
 const base = versionFacts({
   version: '2',
@@ -60,6 +61,11 @@ const refusal = (status: number): Response =>
   Response.json({ code: 'X', message: 'owner other-owner-key' }, { status });
 
 beforeAll(enableReactAct);
+// The versions read is an on-demand chunk (taxonomy-versions-on-demand.ts): a real module load
+// cannot progress under the fake timers below, so load it before the first test needs it.
+beforeAll(async () => {
+  await import('./taxonomy-versions-read');
+});
 afterAll(disableReactAct);
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {
@@ -99,7 +105,7 @@ const mount = (csrfToken = CSRF_TOKEN) =>
       submit={submitStub({ kind: 'conflict', currentVersion: '4' })}
     />,
   );
-/** Mounts the edit form, toggles a domain and saves: the conflict offers the check. */
+/** Mounts the edit form, toggles a domain and saves: the 409 starts the first scripted read by itself. */
 const mountConflicted = async (
   ...reads: Array<Response | Promise<Response>>
 ) => {
@@ -142,7 +148,6 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
       release = resolve;
     });
     const { container, fetcher } = await mountConflicted(held);
-    await click(check(container));
     await settle(249);
     expect(skeleton(container)).toBeNull();
     expect(check(container).textContent).toBe('Checking latest version…');
@@ -166,8 +171,9 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
   });
 
   it('[P2-S12-AC-271] latestReadState success: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): a 200 page is compared with the unsent draft, and Discard prefills the form from the latest read while Keep rebases only on request', async () => {
-    const { container } = await mountConflicted(page());
-    await press(container);
+    const { container, fetcher } = await mountConflicted(page());
+    // No press: the 409 itself read the versions.
+    expect(fetcher).toHaveBeenCalledTimes(1);
     expect(container.textContent).toContain('Latest saved version: 4, draft.');
     expect(container.textContent).toContain('Version 4: Flat');
     expect(place(container).checked).toBe(true);
@@ -179,7 +185,6 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
     expect(place(container).checked).toBe(true);
     expect(container.querySelector('.cms-taxonomy-conflict')).toBeNull();
     const second = await mountConflicted(page());
-    await press(second.container);
     await click(
       buttonNamed(second.container, 'Discard my edits and load version 4'),
     );
@@ -190,14 +195,12 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
 
   it("[P2-S12-AC-271] latestReadState empty (not-disclosed): cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): an absent or another owner's vocabulary answers 404 and shows only the concealing copy; no-records is N/A (an existing vocabulary always has a version; a zero-item page is refused as unverifiable)", async () => {
     const { container } = await mountConflicted(refusal(404));
-    await press(container);
     expect(alerts(container)).toContain(
       'This vocabulary is unavailable to the current acting context.',
     );
     expect(container.textContent).not.toContain('other-owner-key');
     expect(container.textContent).not.toContain('Latest saved version');
     const empty = await mountConflicted(page([]));
-    await press(empty.container);
     expect(alerts(empty.container)).toContain(
       'The latest version could not be verified. Reload.',
     );
@@ -216,7 +219,6 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
     '[P2-S12-AC-271] latestReadState error: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): a typed %i read renders its fixed alert copy and keeps the unsent draft',
     async (status, copy) => {
       const { container } = await mountConflicted(refusal(status));
-      await press(container);
       expect(alerts(container)).toContain(copy);
       expect(container.textContent).not.toContain('other-owner-key');
       expect(place(container).checked).toBe(true);
@@ -226,7 +228,6 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
 
   it('[P2-S12-AC-271] latestReadState degraded: cmsTaxonomyVersionsRead (CmsTaxonomyVersionDesigner): a read that fails keeps the base version, the unsent draft and the earlier verified comparison, and submit stays disabled', async () => {
     const { container } = await mountConflicted(page(), refusal(503));
-    await press(container);
     expect(container.textContent).toContain('Latest saved version: 4');
     await press(container);
     expect(alerts(container)).toContain(
@@ -245,7 +246,6 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
       release = resolve;
     });
     const { container } = await mountConflicted(page(), held);
-    await press(container);
     const keep = () =>
       buttonNamed(container, 'Keep my edits and base them on version 4');
     const discard = () =>
@@ -272,7 +272,6 @@ describe('CmsTaxonomyVersionDesigner (cmsTaxonomyVersionsRead) latestReadState',
     );
     expect(fresh.container.textContent).not.toContain('Check latest version');
     const denied = await mountConflicted(refusal(403));
-    await press(denied.container);
     expect(alerts(denied.container)).toContain(
       'Taxonomy curator access is required for this acting context.',
     );

@@ -10,6 +10,7 @@ import type {
 import { readLatestCmsTemplateVersion } from './cms-template-edit-reconcile';
 import { templateDetailToDraftFields } from './cms-template-designer-request';
 import { useCmsTemplateRateWait } from './cms-template-rate-wait';
+import { useReconcileOnOutcome } from './use-reconcile-on-outcome';
 import { focusCmsTemplateResult } from './cms-template-result-focus';
 import { useTemplateUnknownAttempt } from './use-template-unknown-attempt';
 
@@ -154,6 +155,14 @@ export const useCmsTemplateEditState = (detail: TemplateVersionDetail) => {
     startReadWait,
     readWait.waiting,
   ]);
+
+  // FE03 1048 `commandState`: a 409 "refetches" and an unknown outcome "reconciles by refetching ... before any
+  // retry", both by themselves (DEC-242 item 3). The explicit control only repeats a read that failed.
+  useReconcileOnOutcome(
+    status.kind === 'result' &&
+      (status.result.kind === 'conflict' || status.result.kind === 'uncertain'),
+    () => void checkLatest(),
+  );
 
   const useLatestAsParent = useCallback((): void => {
     if (latest === null || BigInt(latest.version) <= BigInt(baseDetail.version))

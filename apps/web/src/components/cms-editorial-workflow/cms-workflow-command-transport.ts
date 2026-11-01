@@ -241,6 +241,7 @@ export const sendWorkflowCommand = async <TPath, TBody, TResource>(
       path,
       await addClientBindingIdHeader(path, {
         method: 'POST',
+        cache: 'no-store',
         credentials: 'same-origin',
         redirect: 'manual',
         headers: {

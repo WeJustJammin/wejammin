@@ -11,7 +11,12 @@ import {
   validateCmsFieldValue,
 } from '../cms-editorial-fields/cms-field-value';
 import { isLocaleTag } from './locale-variant-path';
-import type { LocaleEntryFacts, LocaleFieldInit } from './locale-variant-types';
+import type {
+  LocaleEntryFacts,
+  LocaleFieldInit,
+  LocaleIssue,
+  LocaleIssueCode,
+} from './locale-variant-types';
 
 const MAX_FIELDS = 128;
 const MAX_CHAIN = 16;
@@ -25,27 +30,7 @@ export interface LocaleVariantFields {
   readonly inputErrors?: Readonly<Record<string, string>>;
 }
 
-export type LocaleIssueCode =
-  | 'entry_invalid'
-  | 'locale_invalid'
-  | 'source_invalid'
-  | 'hash_invalid'
-  | 'version_invalid'
-  | 'chain_invalid'
-  | 'nothing_to_save'
-  | 'too_many_fields'
-  | 'field_invalid'
-  | 'module_unavailable';
-
-export interface LocaleIssue {
-  readonly code: LocaleIssueCode;
-  /** The summary line: for a field it names the field. */
-  readonly message: string;
-  /** What is wrong with a field, for the message beside its control. */
-  readonly detail?: string;
-  /** A field id, or `form` for an issue about the request as a whole. */
-  readonly target: string;
-}
+export type { LocaleIssue, LocaleIssueCode } from './locale-variant-types';
 
 export type LocaleVariantBuild =
   | {

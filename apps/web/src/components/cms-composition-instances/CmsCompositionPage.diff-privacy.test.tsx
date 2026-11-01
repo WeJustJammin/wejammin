@@ -25,6 +25,7 @@ import {
 } from './composition-page.test-support';
 import { diffOf, id, plainPath, row } from './composition.test-support';
 import type { DiffPath } from './composition-types';
+import { expectListRefetches } from './composition-refetch.test-support';
 
 /**
  * [P2-S12-AC-272] FE03 895 and 1845: the pattern diff values "never enter a public/private cache,
@@ -183,6 +184,7 @@ describe('pattern diff surface: sentinel values stay on the diff surface', () =>
     expect(consoleCalls).toEqual([]);
     for (const channel of Object.values(channels))
       expect(channel).not.toHaveBeenCalled();
+    expectListRefetches(page, 1);
   });
 
   it('[P2-S12-AC-272] opening another instance replaces the diff, so the first values are not kept', async () => {

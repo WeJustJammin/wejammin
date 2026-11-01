@@ -1,5 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 
+import { readCmsTaxonomySelector } from './cms-taxonomy-selector-read';
+
 import {
   PARENT_ID,
   SELECTOR_PATH,
@@ -57,7 +59,8 @@ describe('readCmsTaxonomySelector transport', () => {
     });
     expect(init.headers).toBeUndefined();
     expect(init.body).toBeUndefined();
-    expect(init.signal).toBeUndefined();
+    // The read's own deadline signal (DEC-246(1)); it follows a caller's abort (next test).
+    expect(init.signal).toBeInstanceOf(AbortSignal);
     expect(result).toEqual({ kind: 'loaded', page: selectorPage() });
   });
 
@@ -111,15 +114,22 @@ describe('readCmsTaxonomySelector transport', () => {
     expect(searchOf(call(fetcher)[0]).cursor).toBe(cursor);
   });
 
-  it('propagates the abort signal to the read', async () => {
+  it('propagates the caller abort to the signal of the fetch, and answers unavailable', async () => {
     const controller = new AbortController();
-    const { result, fetcher } = await readSelector(
-      served(),
+    let sentAborted: boolean | null = null;
+    const fetcher = vi.fn(async (_url: string, init?: RequestInit) => {
+      controller.abort();
+      sentAborted = init?.signal?.aborted ?? null;
+      return served();
+    });
+    const result = await readCmsTaxonomySelector(
       SELECTOR_QUERY,
+      fetcher as unknown as typeof fetch,
       controller.signal,
     );
-    expect(result.kind).toBe('loaded');
-    expect(call(fetcher)[1].signal).toBe(controller.signal);
+    // The fetch gets the read's own deadline signal (DEC-246(1)); it follows the caller's abort.
+    expect(sentAborted).toBe(true);
+    expect(result).toEqual({ kind: 'unavailable' });
   });
 
   it.each([400, 401, 403, 404, 409, 415, 422])(

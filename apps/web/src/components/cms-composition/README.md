@@ -27,7 +27,7 @@ rebase selects a verified newer parent.
 `use-template-unknown-attempt.ts` owns an immutable request/body/key/base
 snapshot and a synchronous admission guard, set before lazy validation. A lost
 response blocks every submit path, including native form events, until the
-manual canonical read verifies the original attempt's parent. Failed or
+canonical read (started by itself, repeatable by hand) verifies the original attempt's parent. Failed or
 unverifiable reads and elapsed rate waits cannot resolve that uncertainty.
 Verified not-saved permits unchanged-body replay with its original key; a
 verified newer parent still requires explicit rebase. Local edits remain
@@ -35,6 +35,42 @@ editable and are never overwritten by pending requests or reconciliation.
 Scope generations ignore obsolete validation, POST, and read completions after
 unmount or detail changes; the existing safe-read retry and rate-wait cleanup
 remain in their original helpers.
+
+A 409 or an unknown outcome is read back by itself (FE03 1048; DEC-242 item 3): `use-reconcile-on-outcome.ts` starts the
+island's own canonical read once each time the island enters that outcome, so no one has to press "Check latest version".
+That control only repeats a read that failed or was rate-limited, and a retry stays held until a read verified the
+parent. The create designer has no parent version, so `use-cms-template-create.ts` (state and commands) and
+`use-cms-template-create-reconcile.ts` read the template KEY the attempt used: `cms-template-create-reconcile.ts` decides
+whether a 404 (nothing saved), version 1 of exactly the attempted definition (committed) or another template (shown beside
+the unsent values by `CmsTemplateExistingVersion.tsx`, never claimed) is the answer. The closed registry-digest 409 reads no
+template in the create designer (there is none to compare); it re-reads the designer context instead (below).
+
+A 409 `block_registry_digest_mismatch` re-reads the designer context by itself (`use-registry-context.ts`, the zod-free
+`cms-template-context-read.ts` over `GET /api/v1/cms/templates/context`; FE03 1048, review V19 M2): the person's values are
+kept, the block choices are replaced, `CmsRegistryChangeNotice.tsx` names the selectors that changed
+(`cms-registry-changes.ts`), and no new send is possible while the read runs or after it failed. The create and successor
+designers take it through `use-template-registry.ts`; the pattern designer through its own adapter.
+
+The reader is an on-demand chunk and must stay one (`CMS_ON_DEMAND_CHUNKS`, entry `cms-registry-read`): the pattern edit and
+taxonomy edit routes have 94 B and 64 B of initial-route margin. `use-registry-context.ts` imports only
+`registry-read-on-demand.ts` (the seam a test replaces: a dynamic `import('./cms-registry-read')`) and the types in
+`registry-read-types.ts`; `cms-registry-read.ts` holds the reader, its structural rules and the sentences of a read, and
+nothing on the initial route may import it or `cms-template-context-read.ts`. The read has the shared 8,000 ms deadline
+(`../../lib/read-deadline.ts`, `../../lib/read-within-deadline.ts`; `cms-template-context-read.deadline.test.ts`): a read
+that never answers is the failed read with its "Read the block choices again" control, never a frozen send.
+The read of the template key or of the latest version that holds a retry (`cms-template-edit-reconcile.ts`) has the same
+deadline (`cms-template-edit-reconcile.deadline.test.ts`).
+`CmsRegistryChangeNotice.tsx` keeps its polite region always mounted, empty until a read finishes, and writes the lines into
+that node (`CmsRegistryChangeNotice.announcer.test.tsx`). The fixed copy of the digest refusal says the block choices are read again
+and the values are kept; it never says reload (`pattern-designer-reasons.test.ts`).
+
+`cms-template-page-outcome.ts` is what the two template pages (`pages/app/cms-content-modeling/templates/`) do with their
+protected reads before they hydrate a form: sign-in redirect (401), capability sentence (403), rate-wait sentence with a
+believed `Retry-After` (429) and retry sentence (5xx, malformed); no form, so no submission, unless the context (and for a
+successor the latest detail, key and strong ETag) verified. It is server-only and tested without Astro in
+`cms-template-page-outcome.test.ts`. `CmsTemplateDesigner.closing-words.test.tsx` asserts the closing words of the FE03
+state table for both designers: every request is a same-origin `no-store` request and nothing is claimed before the server
+answers.
 
 Only the commit action is disabled during preparation and POST; it exposes
 pending text. The latest-read and reviewer 429 notices retain an initially

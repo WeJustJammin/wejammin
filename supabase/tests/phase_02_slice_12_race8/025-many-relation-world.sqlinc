@@ -1,0 +1,41 @@
+-- Slice 12 race8: a content type whose relation takes TWO targets, and the second article target (lane claude_s12_db8; tracker P2-S12-AC-294 "locks the complete
+-- authorized relation-target/caller-assignment set at position 2 in ascending target UUID order").  Include INSIDE the world transaction after
+-- 020-edtl-world.sqlinc.  Real producers only, the same chain as the world's own bound type (create draft, add field, CMS-03A-bind-relation, activate) with
+-- `max` 2 and no default template, and a second article entry created by the real CMS-03B-10 command.  Notes: the two targets in ascending id order
+-- ('low_target', 'high_target'), the relation field of the many type, its version, and the stashed commands 'many-high' and 'many-low' (two targets, two keys).
+select pg_temp.s09d_create_type('r8-many', 's12r8many');
+select pg_temp.s09d_add_field_only('r8-many');
+select pg_temp.s09d_rpc('r8-many:relation', 'platform_api.cms_bind_relation', 'owner',
+  jsonb_build_object(
+    'contentTypeId', pg_temp.s09d_id('r8-many:type'), 'versionId', pg_temp.s09d_id('r8-many:version'), 'fieldId', pg_temp.s09d_id('r8-many:fieldId'),
+    'targetKind', 'content', 'targetType', 'article', 'projectionKey', 'cms.article.card',
+    'cardinality', 'many', 'min', 0, 'max', 2, 'ordered', true, 'onUnavailable', 'omit',
+    'expectedVersion', pg_temp.s09d_version('r8-many'), 'idempotencyKey', 'r8-many-bind'));
+select pg_temp.s09d_to_active('r8-many', array['rev2']);
+select pg_temp.s12ga_rpc('r8-t2-create', 'platform_api.cms_create_entry', 'owner',
+  pg_temp.s12edtl_request('edtl-target', jsonb_build_object(
+    (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('edtl-target:version') and field_key = 'title'), 'R8 SECOND TARGET'), 'r8-t2-create-key'),
+  pg_temp.s09d_context('owner', true));
+select pg_temp.r7_note('t2_create_state', pg_temp.s12ga_state('r8-t2-create'));
+select pg_temp.r7_note('many_type', pg_temp.s09d_id('r8-many:type')::text);
+select pg_temp.r7_note('low_target', least(pg_temp.r7_get('target')::uuid, (pg_temp.s12ga_body('r8-t2-create')->'entry'->>'id')::uuid)::text);
+select pg_temp.r7_note('high_target', greatest(pg_temp.r7_get('target')::uuid, (pg_temp.s12ga_body('r8-t2-create')->'entry'->>'id')::uuid)::text);
+select pg_temp.r7_note('many_active', (select state::text from platform_private.cms_content_type_versions where id = pg_temp.s09d_id('r8-many:version')));
+
+create or replace function pg_temp.r8_stash_many(p_key text) returns void language plpgsql as $b$
+declare
+  v_title text := (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('r8-many:version') and field_key = 'title');
+  v_rel text := (select stable_field_id::text from platform_private.cms_field_definition_versions
+      where content_type_version_id = pg_temp.s09d_id('r8-many:version') and field_key = 'related');
+begin
+  perform pg_temp.r7_stash_cmd(p_key, 'owner', 'platform_api.cms_create_entry', pg_temp.s12edtl_request('r8-many', jsonb_build_object(
+    v_title, 'R8 ' || p_key,
+    v_rel, jsonb_build_object('targets', jsonb_build_array(
+      jsonb_build_object('targetId', pg_temp.r7_get('high_target')), jsonb_build_object('targetId', pg_temp.r7_get('low_target'))))), 'r8-' || p_key),
+    pg_temp.s09d_context('owner', true));
+end;
+$b$;
+select pg_temp.r8_stash_many('many-high');
+select pg_temp.r8_stash_many('many-low');

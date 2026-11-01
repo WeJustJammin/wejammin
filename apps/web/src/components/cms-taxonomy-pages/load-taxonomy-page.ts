@@ -19,9 +19,9 @@ import {
   type TaxonomyVersionFacts,
 } from '../cms-taxonomy-designer/taxonomy-versions-read';
 import type { TaxonomyShape } from '../cms-taxonomy-designer/taxonomy-vocabulary';
+import { verifiedTermsPage } from '../cms-taxonomy-terms/taxonomy-terms-fetch';
 import {
   TERM_LIFECYCLES,
-  verifiedTermsPage,
   type TermLifecycle,
   type TermsPageFacts,
 } from '../cms-taxonomy-terms/taxonomy-terms-read';

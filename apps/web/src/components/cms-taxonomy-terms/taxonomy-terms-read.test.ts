@@ -6,7 +6,7 @@ import {
   jsonResponse,
   termsPageFixture,
 } from '../../server/cms-taxonomy-platform.test-support';
-import { readTaxonomyTerms, verifiedTermsPage } from './taxonomy-terms-read';
+import { readTaxonomyTerms, verifiedTermsPage } from './taxonomy-terms-fetch';
 
 const page = () => termsPageFixture();
 interface Plain {

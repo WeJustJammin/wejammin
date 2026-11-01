@@ -90,6 +90,12 @@ the value, the draft state and every mutation — a read never writes a value.
   a link moves focus to the control (`field-<stableFieldId>`).
 - `CmsFieldValueView.tsx` — a typed read-only rendering (text, numbers, dates,
   rich text through the typed renderer, lists, objects, relations, taxonomy).
+- `CmsTaxonomyFieldEditor.connected-degraded.test.tsx` — the connected selector's degraded state (a page read that fails
+  after a verified page keeps that page, the selection and the count, and the retry asks for the same page), a read that never
+  answers (it ends at the shared 8,000 ms deadline of `cms-taxonomy-selector-read.ts` in the degraded cell, DEC-246(1)) and its
+  closing words (every read is a `no-store` GET; nothing changes before the server answers).
+- `cms-taxonomy-selector-read.edges.test.ts` — the selector reader's defensive answers (a non-Response, a caller that aborts
+  while a 429 wait is read).
 - `*.test-support.ts(x)` — shared fixtures (parsed through the real contract
   schemas) and a native-DOM driver for jsdom tests.
 

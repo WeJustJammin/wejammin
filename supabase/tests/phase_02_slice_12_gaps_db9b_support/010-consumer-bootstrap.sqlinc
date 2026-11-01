@@ -1,0 +1,75 @@
+-- Lane claude_s12_db9b shared fixture.  Copied from phase_02_slice_12_dec193_consumers/000-fixture.sqlinc lines 2-72 (that file also builds a whole world
+-- these suites do not need): the labelled publication-settings lookup prerequisite and the consumer-only guarded entry bootstrap.  Include after the
+-- pattern-placement fixtures (it redefines pg_temp.s12pl_entry with a revision whose payload_hash is JCS({})).
+-- CS-E7 lookup-only prerequisite BEGIN
+-- Direct-entry read fixtures did not run a normal write tail. This is not
+-- settings-writer/materializer or provider evidence; seed only the E7 lookup.
+select is((select count(*) from platform_private.cms_publication_settings_snapshots
+  where owner_id=pg_temp.s09d_id('ownerOrg') and state='active' and version=1
+  and ordinal=1 and registry_version=1 and effective_values='[]'::jsonb
+  and snapshot_hash='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'),
+  0::bigint, 'CS-E7-01 exact empty publication-settings lookup prerequisite is initially missing');
+do $consumer_settings_fixture$
+declare prior_rpc text := current_setting('app.cms_rpc',true);
+begin
+  perform set_config('app.cms_rpc','true',true);
+  begin
+    insert into platform_private.cms_publication_settings_snapshots(
+      owner_id,state,version,ordinal,registry_version,snapshot_hash,effective_values
+    ) values (
+      pg_temp.s09d_id('ownerOrg'),'active',1,1,1,
+      '4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'::char(64),'[]'::jsonb
+    );
+  exception when others then
+    perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+    raise;
+  end;
+  perform set_config('app.cms_rpc',coalesce(prior_rpc,''),true);
+end;
+$consumer_settings_fixture$;
+select is((select count(*) from platform_private.cms_publication_settings_snapshots
+  where owner_id=pg_temp.s09d_id('ownerOrg') and state='active' and version=1
+  and ordinal=1 and registry_version=1 and effective_values='[]'::jsonb
+  and snapshot_hash='4f53cda18c2baa0c0354bb5f9a3ecbe5ed12ab4d8e11ba873c2f11161202b945'),
+  1::bigint, 'CS-E7-02 exact empty publication-settings lookup prerequisite is present before consumer calls and images');
+-- CS-E7 lookup-only prerequisite END
+-- CS-PAYLOAD guarded consumer bootstrap BEGIN
+-- Consumer-only copy of the existing guarded bootstrap. These revisions have
+-- zero field values: payload_hash is JCS({}) at INSERT, never a later mutation.
+create or replace function pg_temp.s12pl_entry(
+  p_tag text, p_template uuid default null, p_assignee text default 'owner', p_type_ordinal integer default 1)
+returns uuid
+language plpgsql
+as $body$
+declare
+  entry_uuid uuid := extensions.gen_random_uuid();
+  revision_uuid uuid := extensions.gen_random_uuid();
+  org uuid := pg_temp.s09d_id('ownerOrg');
+  stamp timestamptz := timestamptz '2026-10-08T12:00:00Z';
+begin
+  perform set_config('app.cms_rpc', 'true', true);
+  insert into platform_private.cms_content_entries(
+    id, owner_id, content_type_id, owner_party_id, lifecycle, current_draft_revision_id, version,
+    created_by, created_at, updated_at)
+  values (entry_uuid, org, (select id from s12pd_types where ordinal = p_type_ordinal), org, 'active', null, 1,
+    (select auth_user_id from s09d_actor where key = 'owner'), stamp, stamp);
+  insert into platform_private.cms_entry_revisions(
+    id, owner_id, entry_id, revision_number, schema_version_id, template_version_id, taxonomy_version_ids,
+    parent_revision_ids, locale, payload_hash, author_person_id, acting_party_id, state, version,
+    validation_state, validation_report, created_at, updated_at)
+  values (revision_uuid, org, entry_uuid, 1, (select version_id from s12pd_types where ordinal = p_type_ordinal),
+    p_template, '[]'::jsonb, '[]'::jsonb, 'en-US',
+    platform_private.cms_jcs_sha256('{}'::jsonb),
+    (select person_id from s09d_actor where key = 'owner'), org, 'draft', 1, 'valid', '{}'::jsonb, stamp, stamp);
+  update platform_private.cms_content_entries set current_draft_revision_id = revision_uuid where id = entry_uuid;
+  if p_assignee is not null then
+    insert into platform_private.cms_entry_assignments(
+      owner_id, entry_id, assignee_person_id, capability_key, state, version, created_at, updated_at)
+    values (org, entry_uuid, (select person_id from s09d_actor where key = p_assignee), 'cms.author', 'active', 1,
+      stamp, stamp);
+  end if;
+  insert into s12pl_ids(key, value) values (p_tag || ':entry', entry_uuid::text), (p_tag || ':revision', revision_uuid::text);
+  return revision_uuid;
+end;
+$body$;
+

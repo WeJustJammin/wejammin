@@ -52,7 +52,11 @@ const CELLO = namedTerm(
 );
 const TUBA = namedTerm('50000000-0000-4000-8000-0000000000a1', 'tuba', 'Tuba');
 
-beforeAll(enableReactAct);
+beforeAll(async () => {
+  enableReactAct();
+  // The terms read is an on-demand chunk (taxonomy-terms-read.ts); a real module load cannot progress under fake timers.
+  await import('./taxonomy-terms-fetch');
+});
 afterAll(disableReactAct);
 beforeEach(() => vi.useFakeTimers());
 afterEach(() => {

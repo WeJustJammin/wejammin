@@ -23,8 +23,9 @@ import CmsTemplateEditDesigner from './CmsTemplateEditDesigner';
 
 /*
  * [P2-S12-AC-271] `latestReadState` of `cmsTemplateLatestRead` (FE03 "Slice 12 definition governance states"): the
- * successor designer CmsTemplateEditDesigner over its real latest check, panel and reconcile state. The read is the
- * explicit "Check latest version" offered after a 409 or an unknown outcome; the page itself is server HTML.
+ * successor designer CmsTemplateEditDesigner over its real latest check, panel and reconcile state. A 409 or an unknown
+ * outcome is refetched by itself (FE03 1048, DEC-242 item 3): the first scripted read is the automatic one and the
+ * explicit "Check latest version" only repeats a read; the page itself is server HTML.
  */
 const TYPE_ID = '018f0c45-73fe-7dc2-9c09-68f7ecf132da';
 const HASH = 'a'.repeat(64);
@@ -143,7 +144,7 @@ const element = (csrfToken = 'csrf', types = context) => (
     csrfToken={csrfToken}
   />
 );
-/** Mounts the successor form, edits the audience and submits: the 409 offers the check. */
+/** Mounts the successor form, edits the audience and submits: the 409 starts the first scripted read by itself. */
 const mountConflicted = async (
   ...reads: Array<Response | Promise<Response>>
 ) => {
@@ -183,10 +184,8 @@ describe('CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState', () =
       release = resolve;
     });
     const { container, fetcher } = await mountConflicted(held);
-    expect(fetcher).toHaveBeenCalledTimes(1);
-    await act(async () => {
-      check(container).click();
-    });
+    // One POST and the automatic read, which is held.
+    expect(fetcher).toHaveBeenCalledTimes(2);
     await settle(249);
     expect(skeleton(container)).toBeNull();
     expect(check(container).textContent).toBe('Checking latest version…');
@@ -213,7 +212,6 @@ describe('CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState', () =
   it('[P2-S12-AC-271] latestReadState success: cmsTemplateLatestRead (CmsTemplateEditDesigner): a 200 detail is shown beside the preserved unsent values; the form is never overwritten and rebases only on request', async () => {
     const { container, fetcher } = await mountConflicted(newer());
     expect(save(container).disabled).toBe(true);
-    await press(container);
     expect(container.textContent).toContain('Latest version 3');
     expect(container.textContent).toContain('Latest canonical values');
     expect(container.querySelector('pre')?.textContent).toContain(
@@ -234,7 +232,6 @@ describe('CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState', () =
 
   it("[P2-S12-AC-271] latestReadState empty (not-disclosed): cmsTemplateLatestRead (CmsTemplateEditDesigner): an absent or another owner's key answers 404 and shows only the concealing copy; no-records is N/A for a single-detail read", async () => {
     const { container } = await mountConflicted(refusal(404));
-    await press(container);
     expect(alerts(container)).toContain(
       'This template is unavailable to the current acting context.',
     );
@@ -253,7 +250,6 @@ describe('CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState', () =
     '[P2-S12-AC-271] latestReadState error: cmsTemplateLatestRead (CmsTemplateEditDesigner): a typed %i read renders its fixed alert copy, keeps the unsent values and keeps submit disabled',
     async (status, copy) => {
       const { container } = await mountConflicted(refusal(status));
-      await press(container);
       expect(alerts(container)).toContain(copy);
       expect(container.textContent).not.toContain('other-owner-key');
       expect(audience(container).value).toBe('changed');
@@ -273,7 +269,6 @@ describe('CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState', () =
       { status: 429, headers: { 'retry-after': '5' } },
     );
     const { container } = await mountConflicted(limited);
-    await press(container);
     const notice = container.querySelector('[data-cms-template-rate-limit]');
     expect(notice?.getAttribute('role')).toBe('status');
     expect(notice?.textContent).toBe(rateLimitMessage(5));
@@ -284,7 +279,6 @@ describe('CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState', () =
 
   it('[P2-S12-AC-271] latestReadState degraded: cmsTemplateLatestRead (CmsTemplateEditDesigner): a read that fails keeps the last verified base version, the last verified latest comparison and the unsent values, and submit stays disabled', async () => {
     const { container } = await mountConflicted(newer(), refusal(503));
-    await press(container);
     expect(container.textContent).toContain('Latest version 3');
     await press(container);
     expect(alerts(container)).toContain(
@@ -304,7 +298,6 @@ describe('CmsTemplateEditDesigner (cmsTemplateLatestRead) latestReadState', () =
     );
     expect(save(container).disabled).toBe(true);
     const { container: denied } = await mountConflicted(refusal(403));
-    await press(denied);
     expect(alerts(denied)).toContain(
       'Template designer access is required for this acting context.',
     );

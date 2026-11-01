@@ -159,13 +159,8 @@ const nativeSubmit = async (container: HTMLElement): Promise<void> => {
     );
   });
 };
-const checkLatest = async (container: HTMLElement): Promise<void> => {
-  await act(async () => {
-    Array.from(container.querySelectorAll('button'))
-      .find((button) => button.textContent === 'Check latest version')!
-      .click();
-  });
-};
+const getCalls = (fetcher: ReturnType<typeof vi.fn<typeof fetch>>) =>
+  fetcher.mock.calls.filter(([, init]) => init?.method === 'GET');
 const postCalls = (fetcher: ReturnType<typeof vi.fn<typeof fetch>>) =>
   fetcher.mock.calls.filter(([, init]) => init?.method === 'POST');
 const uncertain = async (read: Promise<Response>, successorVersion = 3) => {
@@ -181,6 +176,8 @@ const uncertain = async (read: Promise<Response>, successorVersion = 3) => {
   await nativeSubmit(container);
   expect(container.textContent).toContain('The result is unknown.');
   expect(postCalls(fetcher)).toHaveLength(1);
+  // FE03 1048 (DEC-242 item 3): the canonical read of the unknown outcome started by itself, once, and is held.
+  expect(getCalls(fetcher)).toHaveLength(1);
   return { container, fetcher };
 };
 
@@ -236,20 +233,18 @@ describe('CMS-11 uncertain attempt admission and pending controls', () => {
         'unknown original attempt still owns admission',
       ).toHaveLength(1);
       expect(
-        fetcher.mock.calls.filter(([, init]) => init?.method === 'GET'),
-      ).toHaveLength(0);
+        getCalls(fetcher),
+        'a native submit starts no second read',
+      ).toHaveLength(1);
       expect(audience(container).value).toBe(value);
     },
   );
 
-  it('B-TPL-004 blocks a changed native submit while the manual canonical GET is held', async () => {
+  it('B-TPL-004 blocks a changed native submit while the automatic canonical GET is held', async () => {
     const read = deferredRead();
     const { container, fetcher } = await uncertain(read.promise);
     await editAudience(container, 'changed');
-    await checkLatest(container);
-    expect(
-      fetcher.mock.calls.filter(([, init]) => init?.method === 'GET'),
-    ).toHaveLength(1);
+    expect(getCalls(fetcher)).toHaveLength(1);
     await nativeSubmit(container);
     expect(
       postCalls(fetcher),
@@ -287,7 +282,6 @@ describe('CMS-11 uncertain attempt admission and pending controls', () => {
       const read = deferredRead();
       const { container, fetcher } = await uncertain(read.promise);
       await editAudience(container, 'changed');
-      await checkLatest(container);
       await act(async () => read.resolve(response()));
       await nativeSubmit(container);
       expect(
@@ -306,12 +300,11 @@ describe('CMS-11 uncertain attempt admission and pending controls', () => {
     },
   );
 
-  it('B-TPL-006 reuses the original key and body after a manual verified not-saved read', async () => {
+  it('B-TPL-006 reuses the original key and body after the automatic verified not-saved read', async () => {
     const read = deferredRead();
     const { container, fetcher } = await uncertain(read.promise);
     const first = postCalls(fetcher)[0]![1]!;
     await editAudience(container, 'changed');
-    await checkLatest(container);
     await act(async () => read.resolve(current()));
     expect(audience(container).value).toBe('changed');
     await editAudience(container, 'original');
@@ -332,7 +325,6 @@ describe('CMS-11 uncertain attempt admission and pending controls', () => {
     const read = deferredRead();
     const { container, fetcher } = await uncertain(read.promise, 4);
     await editAudience(container, 'changed');
-    await checkLatest(container);
     await act(async () =>
       read.resolve(
         current({
